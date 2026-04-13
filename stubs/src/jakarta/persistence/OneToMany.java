@@ -1,0 +1,1 @@
+package jakarta.persistence; public @interface OneToMany { String mappedBy() default ""; CascadeType[] cascade() default {}; boolean orphanRemoval() default false; FetchType fetch() default FetchType.LAZY; }

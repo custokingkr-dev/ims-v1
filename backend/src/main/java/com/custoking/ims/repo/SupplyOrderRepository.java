@@ -1,0 +1,1 @@
+package com.custoking.ims.repo; import com.custoking.ims.entity.SupplyOrderEntity; import org.springframework.data.jpa.repository.JpaRepository; public interface SupplyOrderRepository extends JpaRepository<SupplyOrderEntity, String> {}

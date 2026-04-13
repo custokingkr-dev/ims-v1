@@ -1,0 +1,1 @@
+package org.springframework.web.bind.annotation; public @interface ResponseStatus { org.springframework.http.HttpStatus value(); }

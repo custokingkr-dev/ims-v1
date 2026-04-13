@@ -1,0 +1,1 @@
+package org.apache.poi.xssf.usermodel; public class XSSFWorkbook implements java.lang.AutoCloseable { public Sheet createSheet(String s){ return new Sheet(); } public void write(java.io.OutputStream o){} public void close(){} public static class Sheet { public org.apache.poi.ss.usermodel.Row createRow(int i){ return new org.apache.poi.ss.usermodel.Row(){}; } } }

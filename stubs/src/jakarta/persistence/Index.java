@@ -1,0 +1,1 @@
+package jakarta.persistence; public @interface Index { String name() default ""; String columnList() default ""; boolean unique() default false; }

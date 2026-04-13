@@ -1,0 +1,1 @@
+package jakarta.persistence; public @interface Column { String name() default ""; boolean nullable() default true; String columnDefinition() default ""; int length() default 255; boolean unique() default false; }

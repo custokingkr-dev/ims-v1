@@ -1,0 +1,1 @@
+package org.springframework.web.bind.annotation; public @interface PostMapping { String[] value() default {}; String[] path() default {}; String[] produces() default {}; String[] consumes() default {}; }

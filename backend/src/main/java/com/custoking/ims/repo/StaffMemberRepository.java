@@ -1,0 +1,1 @@
+package com.custoking.ims.repo; import com.custoking.ims.entity.StaffMemberEntity; import org.springframework.data.jpa.repository.JpaRepository; public interface StaffMemberRepository extends JpaRepository<StaffMemberEntity, Long> {}

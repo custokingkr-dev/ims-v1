@@ -1,0 +1,1 @@
+package jakarta.persistence; public @interface JoinColumn { String name() default ""; boolean nullable() default true; }

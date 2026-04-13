@@ -1,0 +1,1 @@
+package org.apache.poi.ss.usermodel; public interface Row { default Cell createCell(int i){ return null; } interface Cell { default void setCellValue(String s){} } }

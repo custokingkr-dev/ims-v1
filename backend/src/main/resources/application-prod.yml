@@ -1,0 +1,11 @@
+spring:
+  sql:
+    init:
+      mode: never
+  jpa:
+    hibernate:
+      ddl-auto: validate
+server:
+  forward-headers-strategy: framework
+app:
+  bootstrap-users: ${APP_BOOTSTRAP_USERS:false}

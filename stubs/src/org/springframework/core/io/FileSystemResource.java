@@ -1,0 +1,1 @@
+package org.springframework.core.io; public class FileSystemResource implements Resource { public FileSystemResource(java.io.File f){} public FileSystemResource(java.nio.file.Path p){} }

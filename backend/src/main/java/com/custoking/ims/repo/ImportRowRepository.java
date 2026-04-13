@@ -1,0 +1,1 @@
+package com.custoking.ims.repo; import com.custoking.ims.entity.ImportRowEntity; import org.springframework.data.jpa.repository.JpaRepository; import java.util.List; public interface ImportRowRepository extends JpaRepository<ImportRowEntity, String> { List<ImportRowEntity> findByBatch_IdOrderByRowNumberAsc(String batchId); }

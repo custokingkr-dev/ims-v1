@@ -1,0 +1,1 @@
+package org.springframework.transaction.support; import java.util.function.*; public class TransactionTemplate { public <T> T execute(Function<Object,T> f){ return f.apply(null);} public void executeWithoutResult(Consumer<Object> c){ c.accept(null);} }

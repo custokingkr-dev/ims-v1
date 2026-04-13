@@ -1,0 +1,12 @@
+package com.custoking.ims.repo;
+
+import com.custoking.ims.entity.FirefightingRequestEntity;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface FirefightingRequestRepository extends JpaRepository<FirefightingRequestEntity, String> {
+    List<FirefightingRequestEntity> findBySchool_Id(Long schoolId);
+    List<FirefightingRequestEntity> findBySchool_IdAndStatus(Long schoolId, String status);
+    long countBySchool_IdAndStatusNot(Long schoolId, String status);
+    long countBySchool_IdAndStatus(Long schoolId, String status);
+}
