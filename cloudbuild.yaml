@@ -31,6 +31,8 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
+      - --set-env-vars=SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://10.116.0.3:5432/custoking_ims_v1,SPRING_DATASOURCE_USERNAME=appuser,APP_BOOTSTRAP_USERS=false,SPRING_JPA_HIBERNATE_DDL_AUTO=validate,APP_CORS_ALLOWED_ORIGINS=https://custoking-frontend-755376288593.asia-south2.run.app
+      - --set-secrets=SPRING_DATASOURCE_PASSWORD=db-password:latest,APP_AADHAR_SECRET=aadhar-secret:latest
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
