@@ -32,6 +32,6 @@ jobs:
         run: |
           gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_VITE_API_BASE_URL=https://${{ github.event.inputs.backend_url }}/api,COMMIT_SHA=${{ github.sha }} \
+            --substitutions=_VITE_API_BASE_URL=https://${{ github.event.inputs.backend_url }}/api,_COMMIT_SHA=${{ github.sha }} \
             --project=custoking-ims \
             .
