@@ -1,0 +1,37 @@
+name: Deploy to GCP
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'Backend Cloud Run hostname only — no https:// and no /api. Leave as REPLACE_BACKEND_URL on first deploy.'
+        required: false
+        default: 'REPLACE_BACKEND_URL'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via Workload Identity
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/755376288593/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-sa@custoking-ims.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Submit build and deploy via Cloud Build
+        run: |
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions=_VITE_API_BASE_URL=https://${{ github.event.inputs.backend_url }}/api \
+            --project=custoking-ims \
+            .
