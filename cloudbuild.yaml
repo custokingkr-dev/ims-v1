@@ -42,6 +42,7 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
+      - --port=80
 
 images:
   - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}'
