@@ -6,20 +6,20 @@ substitutions:
   _BACKEND_IMAGE: custoking-backend
   _FRONTEND_IMAGE: custoking-frontend
   _VITE_API_BASE_URL: https://REPLACE_BACKEND_URL/api
-  COMMIT_SHA: latest
+  _COMMIT_SHA: latest
 
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${COMMIT_SHA}', './backend']
+    args: ['build', '-t', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}', './backend']
 
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${COMMIT_SHA}', '--build-arg', 'VITE_API_BASE_URL=${_VITE_API_BASE_URL}', './frontend']
+    args: ['build', '-t', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}', '--build-arg', 'VITE_API_BASE_URL=${_VITE_API_BASE_URL}', './frontend']
 
   - name: gcr.io/cloud-builders/docker
-    args: ['push', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${COMMIT_SHA}']
+    args: ['push', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}']
 
   - name: gcr.io/cloud-builders/docker
-    args: ['push', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${COMMIT_SHA}']
+    args: ['push', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}']
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
@@ -27,7 +27,7 @@ steps:
       - run
       - deploy
       - ${_BACKEND_SERVICE}
-      - --image=asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${COMMIT_SHA}
+      - --image=asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
@@ -38,11 +38,11 @@ steps:
       - run
       - deploy
       - ${_FRONTEND_SERVICE}
-      - --image=asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${COMMIT_SHA}
+      - --image=asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
 
 images:
-  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${COMMIT_SHA}'
-  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${COMMIT_SHA}'
+  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}'
+  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}'
