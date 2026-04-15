@@ -2,11 +2,6 @@ name: Deploy to GCP
 
 on:
   workflow_dispatch:
-    inputs:
-      backend_url:
-        description: 'Backend Cloud Run hostname only — no https:// and no /api. Leave as REPLACE_BACKEND_URL on first deploy.'
-        required: false
-        default: 'REPLACE_BACKEND_URL'
 
 jobs:
   deploy:
@@ -32,6 +27,7 @@ jobs:
         run: |
           gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_VITE_API_BASE_URL=https://${{ github.event.inputs.backend_url }}/api,_COMMIT_SHA=${{ github.sha }} \
+            --substitutions=_COMMIT_SHA=${{ github.sha }} \
             --project=custoking-ims \
+            --suppress-logs \
             .
