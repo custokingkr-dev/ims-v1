@@ -8,4 +8,5 @@ public interface StudentRepository extends JpaRepository<StudentEntity, Long> {
  List<StudentEntity> findBySchoolClass_IdAndSection_IdOrderByFullNameAsc(String classId, String sectionId);
  long countBySection_Id(String sectionId);
  List<StudentEntity> findByAcademicYear_Id(String academicYearId);
+ List<StudentEntity> findBySchool_IdOrderByFullNameAsc(Long schoolId);
 }

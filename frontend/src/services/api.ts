@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthUser } from '../types/auth';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api'
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  timeout: 30000
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {

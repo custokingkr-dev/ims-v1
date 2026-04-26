@@ -5,7 +5,13 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    show-sql: false
 server:
   forward-headers-strategy: framework
+logging:
+  level:
+    root: WARN
+    com.custoking: INFO
+    org.flywaydb: INFO
 app:
   bootstrap-users: ${APP_BOOTSTRAP_USERS:false}

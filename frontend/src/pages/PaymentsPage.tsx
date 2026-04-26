@@ -2,39 +2,81 @@ import { FormEvent, useEffect, useState } from 'react';
 import api from '../services/api';
 import { Invoice, Payment } from '../types/invoice';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHero } from '../components/PageHero';
 
 export default function PaymentsPage() {
   const { user } = useAuth();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [form, setForm] = useState({ invoiceId: 1, paymentDate: new Date().toISOString().slice(0,10), amount: 0, paymentMode: 'UPI', referenceNo: '', notes: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    invoiceId: 1,
+    paymentDate: new Date().toISOString().slice(0, 10),
+    amount: 0,
+    paymentMode: 'UPI',
+    referenceNo: '',
+    notes: '',
+  });
 
-  function load() {
-    api.get('/payments').then((res) => setPayments(res.data));
-    api.get('/invoices').then((res) => setInvoices(res.data));
-  }
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const [payRes, invRes] = await Promise.all([
+        api.get<Payment[]>('/payments'),
+        api.get<Invoice[]>('/invoices'),
+      ]);
+      setPayments(payRes.data);
+      setInvoices(invRes.data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load data.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { void load(); }, []);
 
-  async function submit(e: FormEvent) {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    await api.post('/payments', { ...form, invoiceId: Number(form.invoiceId), amount: Number(form.amount), branchId: user?.branchId || 1 });
-    setForm({ invoiceId: 1, paymentDate: new Date().toISOString().slice(0,10), amount: 0, paymentMode: 'UPI', referenceNo: '', notes: '' });
-    void load();
-  }
+    try {
+      setSaving(true);
+      setError('');
+      await api.post('/payments', {
+        ...form,
+        invoiceId: Number(form.invoiceId),
+        amount: Number(form.amount),
+        branchId: user?.branchId || 1,
+      });
+      setForm({
+        invoiceId: 1,
+        paymentDate: new Date().toISOString().slice(0, 10),
+        amount: 0,
+        paymentMode: 'UPI',
+        referenceNo: '',
+        notes: '',
+      });
+      void load();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to record payment.';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="page-stack">
-      <section className="hero">
-        <div className="hero-row">
-          <div>
-            <div className="section-label">Collections</div>
-            <h1 className="page-title">Record incoming <em>payments</em></h1>
-            <p className="page-subtitle">Capture settlement details with mode, reference numbers, and linked invoices.</p>
-          </div>
-          <div className="badge">{payments.length} payments</div>
-        </div>
-      </section>
-
+      <PageHero
+        label="Collections"
+        title={<>Record incoming <em>payments</em></>}
+        subtitle="Capture settlement details with mode, reference numbers, and linked invoices."
+        actions={<div className="badge">{payments.length} payments</div>}
+      />
+      {error && <p className="ck-alert ck-alert-re">{error}</p>}
       <div className="two-col">
         <form className="card" onSubmit={submit}>
           <div className="section-head"><div><h3>Record payment</h3><p className="section-copy">Link collections to the correct invoice and payment mode.</p></div></div>
@@ -48,16 +90,18 @@ export default function PaymentsPage() {
           </select>
           <input value={form.referenceNo} onChange={(e) => setForm({ ...form, referenceNo: e.target.value })} placeholder="Reference no" />
           <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Notes" />
-          <button type="submit">Save payment</button>
+          <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save payment'}</button>
         </form>
         <div className="card">
           <div className="section-head"><div><h3>Payment list</h3><p className="section-copy">Recent collections logged by your team.</p></div></div>
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Invoice</th><th>Amount</th><th>Mode</th><th>Date</th><th>By</th></tr></thead>
-              <tbody>{payments.map(p => <tr key={p.id}><td>{p.invoiceNo}</td><td>₹ {p.amount}</td><td>{p.paymentMode}</td><td>{p.paymentDate}</td><td>{p.receivedBy}</td></tr>)}</tbody>
-            </table>
-          </div>
+          {loading ? <p>Loading…</p> : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Invoice</th><th>Amount</th><th>Mode</th><th>Date</th><th>By</th></tr></thead>
+                <tbody>{payments.map(p => <tr key={p.id}><td>{p.invoiceNo}</td><td>₹ {p.amount}</td><td>{p.paymentMode}</td><td>{p.paymentDate}</td><td>{p.receivedBy}</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

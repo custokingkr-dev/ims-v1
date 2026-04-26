@@ -1,17 +1,21 @@
 package com.custoking.ims.util;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.util.Base64;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
 
-public final class PasswordUtil {
-    private PasswordUtil() {}
-    public static String hash(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return Base64.getEncoder().encodeToString(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception e) {
-            throw new IllegalStateException("Unable to hash password");
-        }
+@Component
+public class PasswordUtil {
+    private final PasswordEncoder encoder;
+
+    public PasswordUtil(PasswordEncoder encoder) {
+        this.encoder = encoder;
+    }
+
+    public String hash(String raw) {
+        return encoder.encode(raw);
+    }
+
+    public boolean verify(String raw, String hash) {
+        return encoder.matches(raw, hash);
     }
 }

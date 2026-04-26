@@ -2,35 +2,56 @@ import { FormEvent, useEffect, useState } from 'react';
 import api from '../services/api';
 import { Customer } from '../types/invoice';
 import { useAuth } from '../contexts/AuthContext';
+import { PageHero } from '../components/PageHero';
 
 export default function CustomersPage() {
   const { user } = useAuth();
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ code: '', name: '', email: '', phone: '', gstin: '', addressLine: '' });
 
-  function load() { api.get('/customers').then((res) => setCustomers(res.data)); }
+  const load = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const res = await api.get<Customer[]>('/customers');
+      setCustomers(res.data);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load customers.';
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { void load(); }, []);
 
-  async function submit(e: FormEvent) {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
-    await api.post('/customers', { ...form, branchId: user?.branchId || 1, active: true });
-    setForm({ code: '', name: '', email: '', phone: '', gstin: '', addressLine: '' });
-    void load();
-  }
+    try {
+      setSaving(true);
+      await api.post('/customers', { ...form, branchId: user?.branchId || 1, active: true });
+      setForm({ code: '', name: '', email: '', phone: '', gstin: '', addressLine: '' });
+      void load();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to save customer.';
+      setError(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="page-stack">
-      <section className="hero">
-        <div className="hero-row">
-          <div>
-            <div className="section-label">Customer master</div>
-            <h1 className="page-title">Manage <em>customers</em></h1>
-            <p className="page-subtitle">Capture schools, parents, and B2B records with branch-aligned billing details.</p>
-          </div>
-          <div className="badge">{customers.length} records</div>
-        </div>
-      </section>
-
+      <PageHero
+        label="Customer master"
+        title={<>Manage <em>customers</em></>}
+        subtitle="Capture schools, parents, and B2B records with branch-aligned billing details."
+        actions={<div className="badge">{customers.length} records</div>}
+      />
+      {error && <p className="ck-alert ck-alert-re">{error}</p>}
       <div className="two-col">
         <form className="card" onSubmit={submit}>
           <div className="section-head"><div><h3>Create customer</h3><p className="section-copy">Add a new customer profile for invoicing and collections.</p></div></div>
@@ -40,16 +61,18 @@ export default function CustomersPage() {
           <input placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           <input placeholder="GSTIN" value={form.gstin} onChange={(e) => setForm({ ...form, gstin: e.target.value })} />
           <textarea placeholder="Address" value={form.addressLine} onChange={(e) => setForm({ ...form, addressLine: e.target.value })} />
-          <button type="submit">Save customer</button>
+          <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save customer'}</button>
         </form>
         <div className="card">
           <div className="section-head"><div><h3>Customer list</h3><p className="section-copy">Recent customer records in the current workspace.</p></div></div>
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Code</th><th>Name</th><th>Branch</th><th>Email</th></tr></thead>
-              <tbody>{customers.map(c => <tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.branchName}</td><td>{c.email || '-'}</td></tr>)}</tbody>
-            </table>
-          </div>
+          {loading ? <p>Loading…</p> : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Code</th><th>Name</th><th>Branch</th><th>Email</th></tr></thead>
+                <tbody>{customers.map(c => <tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.branchName}</td><td>{c.email || '-'}</td></tr>)}</tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

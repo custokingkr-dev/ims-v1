@@ -1,23 +1,28 @@
 package com.custoking.ims.controller;
 
-import com.custoking.ims.service.DatabaseStore;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.custoking.ims.service.UserContextService;
+import com.custoking.ims.service.WorkspaceService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
+@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class UserController {
-    private final DatabaseStore store;
-    public UserController(DatabaseStore store) { this.store = store; }
+    private final UserContextService userContext;
+    private final WorkspaceService workspaceService;
+
+    public UserController(UserContextService userContext, WorkspaceService workspaceService) {
+        this.userContext = userContext;
+        this.workspaceService = workspaceService;
+    }
 
     @GetMapping
     public List<Map<String, Object>> list(@RequestHeader(value = "Authorization", required = false) String authorization) {
-        store.requireUser(authorization);
-        return store.users();
+        userContext.requireUser(authorization);
+        return workspaceService.users();
     }
 }

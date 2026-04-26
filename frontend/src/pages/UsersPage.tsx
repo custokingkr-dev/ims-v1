@@ -1,30 +1,56 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
+import { PageHero } from '../components/PageHero';
+
+interface UserRecord {
+  id: number;
+  fullName: string;
+  email: string;
+  role: string;
+  branchName?: string;
+}
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<any[]>([]);
-  useEffect(() => { api.get('/users').then((res) => setUsers(res.data)); }, []);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get<UserRecord[]>('/users')
+      .then((res) => setUsers(res.data))
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to load users.';
+        setError(msg);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
     <div className="page-stack">
-      <section className="hero">
-        <div className="hero-row">
-          <div>
-            <div className="section-label">Access control</div>
-            <h1 className="page-title">Platform <em>users</em></h1>
-            <p className="page-subtitle">Review active users, their roles, and branch coverage from one central view.</p>
-          </div>
-          <div className="badge">{users.length} users</div>
-        </div>
-      </section>
+      <PageHero
+        label="Access control"
+        title={<>Platform <em>users</em></>}
+        subtitle="Review active users, their roles, and branch coverage from one central view."
+        actions={<div className="badge">{users.length} users</div>}
+      />
+      {error && <p className="ck-alert ck-alert-re">{error}</p>}
       <div className="card">
         <div className="section-head"><div><h2>Users</h2><p className="section-copy">Role-aligned access across the platform.</p></div></div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch</th></tr></thead>
-            <tbody>{users.map(u => <tr key={u.id}><td>{u.fullName}</td><td>{u.email}</td><td><span className="badge">{u.role}</span></td><td>{u.branchName || 'Global'}</td></tr>)}</tbody>
-          </table>
-        </div>
+        {loading ? <p>Loading…</p> : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Branch</th></tr></thead>
+              <tbody>{users.map(u => (
+                <tr key={u.id}>
+                  <td>{u.fullName}</td>
+                  <td>{u.email}</td>
+                  <td><span className="badge">{u.role}</span></td>
+                  <td>{u.branchName || 'Global'}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

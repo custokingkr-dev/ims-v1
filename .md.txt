@@ -1,0 +1,49 @@
+# CLAUDE.md — Custoking IMS
+
+## Java version
+Java 21. Use records, switch expressions, text blocks, and pattern matching in all NEW code.
+Do not refactor existing code just to use Java 21 features.
+
+## Build & test commands
+- Backend compile:    ./mvnw compile -pl backend
+- Backend test:       ./mvnw test -pl backend
+- Frontend build:     npm run build --prefix frontend
+- Start locally:      ./mvnw spring-boot:run -pl backend
+
+## Architecture rules (non-negotiable)
+1. Controllers inject services only — no repository injection in controllers.
+2. Services are @Transactional — no @Transactional on controllers.
+3. No Map<String,Object> in any public method signature after migration.
+4. schoolId filtering via TenantContext — never pass raw schoolId param through service layer.
+5. All auth via @AuthenticationPrincipal AppUserDetails — never parse Authorization header manually.
+6. @PreAuthorize on every controller method.
+
+## Supply OS — DO NOT BREAK
+These must work identically after every change:
+
+Endpoints:   /api/supply/**  /api/ff/**  /api/sa/**
+State machines:
+  CatalogOrderEntity:        DRAFT → DESIGN_APPROVAL / PROCESSING / AWAITING_APPROVAL → APPROVED → DELIVERED
+  FirefightingRequestEntity: DRAFT → AWAITING_BURSAR → AWAITING_PRINCIPAL → APPROVED → FULFILLED / REJECTED
+ID formats:  CK-{n}  FF-{nnn}  INV-2025-{n}
+GST:         12% of amount — hardcoded, do not change
+Annual plan summary vsLastYearPercent: hardcoded 12 — do not change
+
+After changing any Supply OS service, run curl tests against every endpoint in the
+protected inventory (Section 3 of the architecture guide) before declaring done.
+
+## Do NOT modify
+- entity/ package    — all entity classes are correct, never rename fields or columns
+- repo/ package      — only ADD @Query methods; never change existing method signatures
+- DatabaseBootstrap.java  — seed data logic must not change
+- AadharCrypto.java  — keep as-is, KMS upgrade is out of scope
+- simplePdf()        — keep stub; PDF endpoints must return application/pdf
+- studentImportTemplate() — Excel column order is consumed by schools, must not change
+
+## When you break a test
+Fix all failing tests before moving to the next file.
+Never comment out a test to make it pass.
+
+## One phase at a time
+Complete the "Verify" checklist at the end of each phase before starting the next one.
+If verification fails, fix it before proceeding.
