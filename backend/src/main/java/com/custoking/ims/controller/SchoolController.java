@@ -3,9 +3,11 @@ package com.custoking.ims.controller;
 import com.custoking.ims.dto.school.SchoolAdminRequest;
 import com.custoking.ims.dto.school.SchoolCreateRequest;
 import com.custoking.ims.dto.school.SchoolUpdateRequest;
-import com.custoking.ims.service.DatabaseStore;
+import com.custoking.ims.service.SchoolService;
+import com.custoking.ims.service.UserContextService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,25 +15,28 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/schools")
+@PreAuthorize("hasRole('SUPERADMIN')")
 public class SchoolController {
-    private final DatabaseStore store;
+    private final UserContextService userContext;
+    private final SchoolService schoolService;
 
-    public SchoolController(DatabaseStore store) {
-        this.store = store;
+    public SchoolController(UserContextService userContext, SchoolService schoolService) {
+        this.userContext = userContext;
+        this.schoolService = schoolService;
     }
 
     @GetMapping
     public List<Map<String, Object>> list(@RequestHeader(value = "Authorization", required = false) String authorization) {
-        store.requireSuperAdmin(authorization);
-        return store.listSchools();
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.listSchools();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Map<String, Object> create(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @Valid @RequestBody SchoolCreateRequest request) {
-        store.requireSuperAdmin(authorization);
-        return store.createSchool(request);
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.createSchool(request);
     }
 
     @PostMapping("/{schoolId}/admin")
@@ -39,22 +44,22 @@ public class SchoolController {
     public Map<String, Object> createOrResetAdmin(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                    @PathVariable Long schoolId,
                                                    @Valid @RequestBody SchoolAdminRequest request) {
-        store.requireSuperAdmin(authorization);
-        return store.createOrResetSchoolAdmin(schoolId, request);
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.createOrResetSchoolAdmin(schoolId, request);
     }
 
     @GetMapping("/{schoolId}/admin")
     public Map<String, Object> getAdmin(@RequestHeader(value = "Authorization", required = false) String authorization,
                                         @PathVariable Long schoolId) {
-        store.requireSuperAdmin(authorization);
-        return store.getSchoolAdmin(schoolId);
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.getSchoolAdmin(schoolId);
     }
 
     @PatchMapping("/{schoolId}")
     public Map<String, Object> update(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable Long schoolId,
                                       @RequestBody SchoolUpdateRequest request) {
-        store.requireSuperAdmin(authorization);
-        return store.updateSchool(schoolId, request);
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.updateSchool(schoolId, request);
     }
 }

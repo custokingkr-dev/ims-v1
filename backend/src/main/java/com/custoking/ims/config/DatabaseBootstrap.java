@@ -16,6 +16,13 @@ import java.util.UUID;
 
 @Configuration
 public class DatabaseBootstrap {
+
+    private final PasswordUtil passwordUtil;
+
+    public DatabaseBootstrap(PasswordUtil passwordUtil) {
+        this.passwordUtil = passwordUtil;
+    }
+
     @Bean
     CommandLineRunner bootstrapData(
             @Value("${app.bootstrap-users:true}") boolean bootstrap,
@@ -66,6 +73,9 @@ public class DatabaseBootstrap {
             }
             if (userRepository.findByEmailIgnoreCase("admin@demo.custoking.com").isEmpty()) {
                 createUser(userRepository, "Demo Admin", "admin@demo.custoking.com", "Admin@123", "ADMIN", demoSchool.getId(), demoSchool.getName());
+            }
+            if (userRepository.findByEmailIgnoreCase("admin@demo.com").isEmpty()) {
+                createUser(userRepository, "Demo Admin", "admin@demo.com", "admin123", "ADMIN", demoSchool.getId(), demoSchool.getName());
             }
 
             if (classRepository.count() == 0) {
@@ -176,7 +186,9 @@ public class DatabaseBootstrap {
         AppUserEntity user = new AppUserEntity();
         user.setFullName(fullName);
         user.setEmail(email);
-        user.setPasswordHash(PasswordUtil.hash(password));
+        // BCrypt hash — on first run after V99 migration, seed users are created fresh with BCrypt.
+        // Existing rows with old SHA-256 hashes must be deleted or reset by an operator.
+        user.setPasswordHash(passwordUtil.hash(password));
         user.setRole(role);
         user.setBranchId(branchId);
         user.setBranchName(branchName);
