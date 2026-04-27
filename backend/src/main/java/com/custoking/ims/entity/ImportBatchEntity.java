@@ -20,7 +20,7 @@ public class ImportBatchEntity {
     private int pct;
     private int inserted;
     private int skipped;
-    @Lob
+    @Column(columnDefinition = "TEXT")
     private String skippedJson;
     private OffsetDateTime createdAt = OffsetDateTime.now();
     private OffsetDateTime completedAt;
