@@ -15,9 +15,9 @@ public class ImportRowEntity {
     private String admissionNo;
     private String phone;
     private String status;
-    @Lob private String message;
-    @Lob private String rawJson;
-    @Lob private String normalizedJson;
+    @Column(columnDefinition = "TEXT") private String message;
+    @Column(name = "raw_json", columnDefinition = "TEXT") private String rawJson;
+    @Column(name = "normalized_json", columnDefinition = "TEXT") private String normalizedJson;
     public String getId() { return id; } public void setId(String id) { this.id = id; }
     public ImportBatchEntity getBatch() { return batch; } public void setBatch(ImportBatchEntity batch) { this.batch = batch; }
     public int getRowNumber() { return rowNumber; } public void setRowNumber(int rowNumber) { this.rowNumber = rowNumber; }
