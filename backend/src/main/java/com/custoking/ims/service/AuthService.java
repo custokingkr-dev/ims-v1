@@ -3,7 +3,7 @@ package com.custoking.ims.service;
 import com.custoking.ims.audit.AuditLogService;
 import com.custoking.ims.dto.AuthResponse;
 import com.custoking.ims.dto.LoginRequest;
-import com.custoking.ims.dto.RefreshRequest;
+import com.custoking.ims.dto.LoginResult;
 import com.custoking.ims.entity.AppUserEntity;
 import com.custoking.ims.repo.AppUserRepository;
 import com.custoking.ims.security.AppUserDetails;
@@ -38,7 +38,7 @@ public class AuthService {
         this.auditLogService = auditLogService;
     }
 
-    public AuthResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         String ip = resolveClientIp();
         AppUserEntity user = userRepository.findByEmailIgnoreCase(request.email())
                 .orElseGet(() -> {
@@ -51,11 +51,32 @@ public class AuthService {
         }
         auditLogService.loginSuccess(user.getId(), user.getEmail(), ip);
         AppUserDetails details = new AppUserDetails(user);
-        return new AuthResponse(
-                jwtService.generateToken(details),
+        return new LoginResult(
                 jwtService.generateRefreshToken(details),
-                user.getId(), user.getFullName(), user.getEmail(),
-                user.getRole(), user.getBranchId(), user.getBranchName());
+                new AuthResponse(
+                        jwtService.generateToken(details),
+                        user.getId(), user.getFullName(), user.getEmail(),
+                        user.getRole(), user.getBranchId(), user.getBranchName()));
+    }
+
+    public LoginResult refresh(String rawRefreshToken) {
+        String email;
+        try {
+            email = jwtService.extractUsername(rawRefreshToken);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        }
+        if (!jwtService.isTokenValid(rawRefreshToken, email)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        }
+        AppUserDetails details = (AppUserDetails) userDetailsService.loadUserByUsername(email);
+        AppUserEntity user = details.getUser();
+        return new LoginResult(
+                jwtService.generateRefreshToken(details),
+                new AuthResponse(
+                        jwtService.generateToken(details),
+                        user.getId(), user.getFullName(), user.getEmail(),
+                        user.getRole(), user.getBranchId(), user.getBranchName()));
     }
 
     private String resolveClientIp() {
@@ -67,24 +88,5 @@ public class AuthService {
         } catch (Exception e) {
             return "unknown";
         }
-    }
-
-    public AuthResponse refresh(RefreshRequest request) {
-        String email;
-        try {
-            email = jwtService.extractUsername(request.refreshToken());
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
-        }
-        if (!jwtService.isTokenValid(request.refreshToken(), email)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
-        }
-        AppUserDetails details = (AppUserDetails) userDetailsService.loadUserByUsername(email);
-        AppUserEntity user = details.getUser();
-        return new AuthResponse(
-                jwtService.generateToken(details),
-                jwtService.generateRefreshToken(details),
-                user.getId(), user.getFullName(), user.getEmail(),
-                user.getRole(), user.getBranchId(), user.getBranchName());
     }
 }

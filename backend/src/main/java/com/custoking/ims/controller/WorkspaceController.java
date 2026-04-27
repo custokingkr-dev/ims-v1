@@ -15,8 +15,11 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/workspace")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN','VIEWER')")
 public class WorkspaceController {
+
+    private static final String WRITE_ROLES = "hasAnyRole('ADMIN','SUPERADMIN')";
+
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;
     private final StudentService studentService;
@@ -43,6 +46,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/students")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> addStudent(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -53,6 +57,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/bulk-import")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> bulkImport(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -63,6 +68,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/fees/record-payment")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> recordPayment(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -73,6 +79,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/fee-structures")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> addFeeItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -83,6 +90,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/fees/assign-plan")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> assignFeePlan(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         userContext.requireUser(authorization);
@@ -101,6 +109,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/students/import/preview")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> previewStudentImport(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                     @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -113,6 +122,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/students/import/confirm")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> confirmStudentImport(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                     @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -141,6 +151,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/attendance")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> saveAttendance(@RequestHeader(value = "Authorization", required = false) String authorization,
                                               @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -148,6 +159,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/timetable")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> addTimetable(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @RequestBody Map<String, Object> request) {
         userContext.requireUser(authorization);
@@ -155,6 +167,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/staff")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> addStaff(@RequestHeader(value = "Authorization", required = false) String authorization,
                                         @RequestBody Map<String, Object> request) {
         userContext.requireUser(authorization);
@@ -162,6 +175,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/orders")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> createOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                            @RequestBody Map<String, Object> request) {
         userContext.requireUser(authorization);
@@ -169,6 +183,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/annual-plan")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> savePlan(@RequestHeader(value = "Authorization", required = false) String authorization,
                                         @RequestBody Map<String, Object> request) {
         userContext.requireUser(authorization);
@@ -176,6 +191,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/firefighting")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> createFirefighting(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                   @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -183,6 +199,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/firefighting/{code}/{action}")
+    @PreAuthorize(WRITE_ROLES)
     public Map<String, Object> decideFirefighting(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                   @PathVariable String code,
                                                   @PathVariable String action) {

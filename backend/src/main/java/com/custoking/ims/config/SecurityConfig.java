@@ -2,12 +2,13 @@ package com.custoking.ims.config;
 
 import com.custoking.ims.security.JwtAuthFilter;
 import com.custoking.ims.security.LoginRateLimiter;
+import com.custoking.ims.security.RequestCorrelationFilter;
 import com.custoking.ims.security.TenantResolverFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -24,13 +25,16 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final TenantResolverFilter tenantResolverFilter;
     private final LoginRateLimiter loginRateLimiter;
+    private final RequestCorrelationFilter requestCorrelationFilter;
 
     public SecurityConfig(JwtAuthFilter jwtAuthFilter,
                           TenantResolverFilter tenantResolverFilter,
-                          LoginRateLimiter loginRateLimiter) {
+                          LoginRateLimiter loginRateLimiter,
+                          RequestCorrelationFilter requestCorrelationFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.tenantResolverFilter = tenantResolverFilter;
         this.loginRateLimiter = loginRateLimiter;
+        this.requestCorrelationFilter = requestCorrelationFilter;
     }
 
     @Bean
@@ -46,8 +50,19 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/actuator/health").permitAll()
+                        // Public: auth + liveness/readiness probes
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/actuator/health",
+                                "/actuator/health/liveness",
+                                "/actuator/health/readiness"
+                        ).permitAll()
+                        // Metrics scraping — authenticated (service-account token or SUPERADMIN)
+                        .requestMatchers("/actuator/prometheus").authenticated()
+                        // All other actuator endpoints require SUPERADMIN
+                        .requestMatchers("/actuator/**").hasRole("SUPERADMIN")
                         .anyRequest().authenticated())
+                .addFilterBefore(requestCorrelationFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(loginRateLimiter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(tenantResolverFilter, JwtAuthFilter.class)

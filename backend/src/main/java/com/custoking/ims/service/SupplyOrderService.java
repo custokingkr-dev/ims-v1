@@ -113,7 +113,9 @@ public class SupplyOrderService {
     public Map<String, Object> placeCatalogOrder(String orderId, AuthUser actor) {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        assertSchoolOwnership("order", entity.getSchool().getId(), TenantContext.get());
+        assertSchoolOwnership("order",
+                entity.getSchool() != null ? entity.getSchool().getId() : null,
+                TenantContext.get());
         String category = String.valueOf(entity.getCategory()).toUpperCase(Locale.ROOT);
         if (List.of("UNIFORMS", "NOTEBOOKS").contains(category)) {
             entity.setStatus("DESIGN_APPROVAL");
@@ -321,7 +323,7 @@ public class SupplyOrderService {
                 "status",      e.getStatus(),
                 "placedAt",    e.getPlacedAt() == null ? null : e.getPlacedAt().toString(),
                 "estimatedDelivery", e.getEstimatedDelivery(),
-                "date",        e.getCreatedAt().toLocalDate().toString(),
+                "date",        e.getCreatedAt() == null ? null : e.getCreatedAt().toLocalDate().toString(),
                 "action",      "Track"
         );
     }
