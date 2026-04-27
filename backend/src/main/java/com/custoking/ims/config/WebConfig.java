@@ -24,6 +24,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOriginPatterns(allowedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .allowCredentials(false);
+                // Required so the browser sends the HttpOnly refresh-token cookie on cross-origin
+                // requests (Vite dev server on :5173 → Spring on :8080).  allowedOriginPatterns
+                // must list explicit origins (not '*') when credentials are enabled.
+                .allowCredentials(true);
     }
 }

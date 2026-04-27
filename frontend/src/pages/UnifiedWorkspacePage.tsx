@@ -42,7 +42,7 @@ export default function UnifiedWorkspacePage() {
   // ── Core ───────────────────────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [workspaceError, setWorkspaceError] = useState('');
-  const [panel, setPanel] = useState<PanelKey>(user?.role === 'SUPERADMIN' ? 'orders' : 'home');
+  const [panel, setPanel] = useState<PanelKey>(user?.role === 'SUPERADMIN' ? 'orders' : 'catalog');
   const [saving, setSaving] = useState<string>('');
 
   // ── Students ───────────────────────────────────────────────────────────────

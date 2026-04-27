@@ -1,13 +1,25 @@
 spring:
+  datasource:
+    # Local dev: connect as the superuser until ims_app is provisioned via V4 migration.
+    # Override with SPRING_DATASOURCE_USERNAME=ims_app once V4 has been applied.
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
   jpa:
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 logging:
   level:
     com.custoking: DEBUG
     org.springframework.security: INFO
     org.flywaydb: INFO
+
 app:
-  bootstrap-users: true
+  # Disable bootstrap so the app starts without requiring SUPERADMIN_PASSWORD.
+  # To seed demo data locally: APP_BOOTSTRAP_USERS=true SUPERADMIN_PASSWORD=<strong> mvn spring-boot:run
+  bootstrap-users: ${APP_BOOTSTRAP_USERS:false}
+
+  # Dev-only secrets — long enough to pass ApplicationSecurityValidator.
+  # Replace with real secrets (APP_JWT_SECRET / APP_AADHAR_SECRET env vars) in any shared environment.
+  jwt-secret: ${APP_JWT_SECRET:dev-only-jwt-secret-key-at-least-32-chars!!}
+  aadhar-secret: ${APP_AADHAR_SECRET:dev-only-aadhar!!}

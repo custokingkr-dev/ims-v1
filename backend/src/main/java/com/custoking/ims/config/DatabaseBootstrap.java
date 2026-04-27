@@ -27,7 +27,8 @@ public class DatabaseBootstrap {
     CommandLineRunner bootstrapData(
             @Value("${app.bootstrap-users:true}") boolean bootstrap,
             @Value("${SUPERADMIN_EMAIL:superadmin@custoking.com}") String superAdminEmail,
-            @Value("${SUPERADMIN_PASSWORD:Admin@123}") String superAdminPassword,
+            @Value("${SUPERADMIN_PASSWORD:#{null}}") String superAdminPassword,
+            @Value("${DEMO_ADMIN_PASSWORD:#{null}}") String demoAdminPassword,
             AppUserRepository userRepository,
             SchoolRepository schoolRepository,
             AcademicYearRepository academicYearRepository,
@@ -68,14 +69,17 @@ public class DatabaseBootstrap {
             }
             AcademicYearEntity year = academicYearRepository.findFirstByActiveTrue().orElseThrow();
 
+            // ApplicationSecurityValidator has already enforced that superAdminPassword
+            // is non-null and not a known weak value before this runner executes.
             if (userRepository.findByEmailIgnoreCase(superAdminEmail).isEmpty()) {
                 createUser(userRepository, "Super Admin", superAdminEmail, superAdminPassword, "SUPERADMIN", null, null);
             }
-            if (userRepository.findByEmailIgnoreCase("admin@demo.custoking.com").isEmpty()) {
-                createUser(userRepository, "Demo Admin", "admin@demo.custoking.com", "Admin@123", "ADMIN", demoSchool.getId(), demoSchool.getName());
-            }
-            if (userRepository.findByEmailIgnoreCase("admin@demo.com").isEmpty()) {
-                createUser(userRepository, "Demo Admin", "admin@demo.com", "admin123", "ADMIN", demoSchool.getId(), demoSchool.getName());
+
+            // Demo school admin — only created when DEMO_ADMIN_PASSWORD is explicitly set.
+            // Omitting the env var skips creation; the validator ensures it is not weak if set.
+            if (demoAdminPassword != null
+                    && userRepository.findByEmailIgnoreCase("admin@demo.custoking.com").isEmpty()) {
+                createUser(userRepository, "Demo Admin", "admin@demo.custoking.com", demoAdminPassword, "ADMIN", demoSchool.getId(), demoSchool.getName());
             }
 
             if (classRepository.count() == 0) {

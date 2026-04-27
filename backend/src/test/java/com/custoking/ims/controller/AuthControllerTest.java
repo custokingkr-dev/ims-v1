@@ -2,6 +2,7 @@ package com.custoking.ims.controller;
 
 import com.custoking.ims.dto.AuthResponse;
 import com.custoking.ims.dto.LoginRequest;
+import com.custoking.ims.dto.LoginResult;
 import com.custoking.ims.security.AppUserDetailsService;
 import com.custoking.ims.security.JwtService;
 import com.custoking.ims.service.AuthService;
@@ -32,18 +33,22 @@ class AuthControllerTest {
     @MockitoBean AppUserDetailsService userDetailsService;
 
     @Test
-    void postLogin_validCredentials_returnsAccessAndRefreshTokens() throws Exception {
-        AuthResponse resp = new AuthResponse(
-                "jwt-access-token", "jwt-refresh-token",
+    void postLogin_validCredentials_returnsAccessTokenInBodyAndRefreshInCookie() throws Exception {
+        AuthResponse authResp = new AuthResponse(
+                "jwt-access-token",
                 1L, "Admin User", "admin@test.com", "ADMIN", null, null);
-        when(authService.login(any())).thenReturn(resp);
+        LoginResult loginResult = new LoginResult("jwt-refresh-token", authResp);
+        when(authService.login(any())).thenReturn(loginResult);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest("admin@test.com", "password"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("jwt-access-token"))
-                .andExpect(jsonPath("$.refreshToken").value("jwt-refresh-token"));
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(cookie().exists("refresh_token"))
+                .andExpect(cookie().httpOnly("refresh_token", true))
+                .andExpect(cookie().path("refresh_token", "/api/auth"));
     }
 
     @Test

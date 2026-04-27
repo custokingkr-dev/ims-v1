@@ -1,58 +1,70 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthUser } from '../types/auth';
 
+// Access token lives only in this module-level variable — never written to
+// localStorage or sessionStorage so XSS cannot steal it.  Lost on page refresh;
+// AuthProvider calls refreshToken() on mount to restore it via the HttpOnly cookie.
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-  timeout: 30000
+  timeout: 30000,
+  // Sends the HttpOnly refresh-token cookie automatically on every request.
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const auth = localStorage.getItem('custoking_auth');
-  if (auth) {
-    const parsed = JSON.parse(auth) as AuthUser;
-    config.headers.Authorization = `Bearer ${parsed.accessToken}`;
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
   }
   return config;
 });
 
+// Deduplication guard: multiple concurrent 401s share one refresh call.
 let refreshing: Promise<AuthUser | null> | null = null;
+
+/**
+ * Calls POST /api/auth/refresh — the browser sends the HttpOnly cookie automatically.
+ * On success updates the in-memory access token and returns the full user object.
+ * On failure clears auth state; the caller is responsible for redirecting to /login.
+ */
+export async function refreshToken(): Promise<AuthUser | null> {
+  refreshing ??= api.post<AuthUser>('/auth/refresh')
+    .then((res) => {
+      accessToken = res.data.accessToken;
+      return res.data;
+    })
+    .catch(() => {
+      accessToken = null;
+      localStorage.removeItem('custoking_isLoggedIn');
+      return null;
+    })
+    .finally(() => {
+      refreshing = null;
+    });
+  return refreshing;
+}
 
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<{ message?: string }>) => {
     const original = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
-    const status = error.response?.status;
-    const message = error.response?.data?.message || '';
-    const looksLikeExpiredSession = status === 401 || ((status === 400 || status === 403) && ['Invalid access token', 'Missing bearer token'].includes(message));
-    if (looksLikeExpiredSession && original && !original._retry) {
+    const isAuthEndpoint = original?.url?.includes('/auth/');
+
+    // Only intercept 401s on non-auth endpoints, and only once per request.
+    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint) {
       original._retry = true;
-      const stored = localStorage.getItem('custoking_auth');
-      if (!stored) {
-        return Promise.reject(error);
+      const user = await refreshToken();
+      if (user) {
+        original.headers.Authorization = `Bearer ${user.accessToken}`;
+        return api(original);
       }
-      const auth = JSON.parse(stored) as AuthUser;
-      if (!auth.refreshToken) {
-        localStorage.removeItem('custoking_auth');
-        return Promise.reject(error);
-      }
-      refreshing ??= api.post<AuthUser>('/auth/refresh', { refreshToken: auth.refreshToken })
-        .then((res) => {
-          const merged: AuthUser = { ...auth, ...res.data, refreshToken: res.data.refreshToken || auth.refreshToken };
-          localStorage.setItem('custoking_auth', JSON.stringify(merged));
-          return merged;
-        })
-        .catch((refreshError) => {
-          localStorage.removeItem('custoking_auth');
-          throw refreshError;
-        })
-        .finally(() => {
-          refreshing = null;
-        });
-      const refreshed = await refreshing;
-      if (refreshed) {
-        original.headers.Authorization = `Bearer ${refreshed.accessToken}`;
-      }
-      return api(original);
+      // Refresh failed — session is gone; send the user to login.
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

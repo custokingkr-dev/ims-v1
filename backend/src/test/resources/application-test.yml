@@ -1,0 +1,27 @@
+# Integration-test profile — Testcontainers manages the real PostgreSQL instance.
+# Spring Boot auto-detects the @ServiceConnection annotation on the container bean
+# and overrides datasource URL / credentials automatically.
+spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 0
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  lifecycle:
+    timeout-per-shutdown-phase: 5s
+
+app:
+  bootstrap-users: false
+  aadhar-secret: TestAadharSecret!
+  jwt-secret: TestJwtSecretKeyForHS256MustBeAtLeast32Bytes!!
+  jwt-expiration-ms: 3600000
+  cors-allowed-origins: http://localhost:5173
+
+logging:
+  level:
+    root: WARN
+    com.custoking: DEBUG
+    org.flywaydb: INFO
