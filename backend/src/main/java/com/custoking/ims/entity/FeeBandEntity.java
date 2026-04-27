@@ -6,7 +6,7 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "fee_bands")
 public class FeeBandEntity {
-    @Id private String id; private String name; private int classFrom; private int classTo; private double discount; @Lob private String activeSchedulesCsv; private OffsetDateTime createdAt = OffsetDateTime.now(); private OffsetDateTime updatedAt = OffsetDateTime.now();
+    @Id private String id; private String name; private int classFrom; private int classTo; private double discount; @Column(columnDefinition = "TEXT") private String activeSchedulesCsv; private OffsetDateTime createdAt = OffsetDateTime.now(); private OffsetDateTime updatedAt = OffsetDateTime.now();
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "academic_year_id") private AcademicYearEntity academicYear;
     public String getId() { return id; } public void setId(String id) { this.id = id; }
     public String getName() { return name; } public void setName(String name) { this.name = name; }
