@@ -1,8 +1,12 @@
 package com.custoking.ims.integration;
 
 import com.custoking.ims.AbstractIntegrationTest;
+import com.custoking.ims.entity.AcademicYearEntity;
 import com.custoking.ims.entity.AppUserEntity;
+import com.custoking.ims.entity.SchoolEntity;
+import com.custoking.ims.repo.AcademicYearRepository;
 import com.custoking.ims.repo.AppUserRepository;
+import com.custoking.ims.repo.SchoolRepository;
 import com.custoking.ims.util.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -23,21 +27,41 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired TestRestTemplate rest;
     @Autowired AppUserRepository userRepo;
+    @Autowired SchoolRepository schoolRepo;
+    @Autowired AcademicYearRepository yearRepo;
     @Autowired PasswordUtil passwordUtil;
 
     private static final String ADMIN_EMAIL    = "it-admin@test.com";
     private static final String ADMIN_PASSWORD = "Test@1234";
 
     @BeforeEach
-    void seedUser() {
+    void seedData() {
+        // Seed school (needed by dashboard endpoint)
+        SchoolEntity school = schoolRepo.findAll().stream().findFirst().orElseGet(() -> {
+            SchoolEntity s = new SchoolEntity();
+            s.setName("Test School");
+            s.setShortCode("TEST");
+            return schoolRepo.save(s);
+        });
+
+        // Seed active academic year (needed by workspace/dashboard)
+        yearRepo.findFirstByActiveTrue().orElseGet(() -> {
+            AcademicYearEntity y = new AcademicYearEntity();
+            y.setId("2024-25");
+            y.setLabel("2024-25");
+            y.setActive(true);
+            return yearRepo.save(y);
+        });
+
+        // Seed admin user (BCrypt hash is expensive — only compute once)
         if (userRepo.findByEmailIgnoreCase(ADMIN_EMAIL).isEmpty()) {
             AppUserEntity u = new AppUserEntity();
             u.setFullName("IT Admin");
             u.setEmail(ADMIN_EMAIL);
             u.setPasswordHash(passwordUtil.hash(ADMIN_PASSWORD));
             u.setRole("ADMIN");
-            u.setBranchId(1L);
-            u.setBranchName("Test School");
+            u.setBranchId(school.getId());
+            u.setBranchName(school.getName());
             userRepo.save(u);
         }
     }
