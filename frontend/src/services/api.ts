@@ -11,7 +11,7 @@ export function setAccessToken(token: string | null): void {
 }
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 30000,
   // Sends the HttpOnly refresh-token cookie automatically on every request.
   withCredentials: true,
@@ -28,7 +28,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 let refreshing: Promise<AuthUser | null> | null = null;
 
 /**
- * Calls POST /api/auth/refresh — the browser sends the HttpOnly cookie automatically.
+ * Calls POST /api/v1/auth/refresh — the browser sends the HttpOnly cookie automatically.
  * On success updates the in-memory access token and returns the full user object.
  * On failure clears auth state; the caller is responsible for redirecting to /login.
  */

@@ -6,7 +6,8 @@ import jakarta.persistence.*;
 @Table(name = "catalog_items")
 public class CatalogItemEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "catalog_item_seq")
+    @SequenceGenerator(name = "catalog_item_seq", sequenceName = "seq_catalog_items", allocationSize = 1)
     private Long id;
     private String title;
     private String subtitle;

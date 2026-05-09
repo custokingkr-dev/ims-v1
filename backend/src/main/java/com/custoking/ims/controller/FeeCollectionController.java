@@ -31,14 +31,14 @@ public class FeeCollectionController {
         this.feeService = feeService;
     }
 
-    @GetMapping("/api/classes")
+    @GetMapping("/api/v1/classes")
     public List<Map<String, Object>> classes(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestParam(value = "schoolId", required = false) Long schoolId) {
         var actor = userContext.requireUser(authorization);
         return studentService.classesList(actor, schoolId);
     }
 
-    @GetMapping("/api/classes/{classId}/sections")
+    @GetMapping("/api/v1/classes/{classId}/sections")
     public List<Map<String, Object>> sections(@RequestHeader(value = "Authorization", required = false) String authorization,
                                               @PathVariable String classId,
                                               @RequestParam(value = "schoolId", required = false) Long schoolId) {
@@ -46,7 +46,7 @@ public class FeeCollectionController {
         return studentService.sectionsForClass(classId, actor, schoolId);
     }
 
-    @GetMapping("/api/classes/{classId}/sections/{sectionId}/students")
+    @GetMapping("/api/v1/classes/{classId}/sections/{sectionId}/students")
     public List<Map<String, Object>> students(@RequestHeader(value = "Authorization", required = false) String authorization,
                                               @PathVariable String classId,
                                               @PathVariable String sectionId,
@@ -55,7 +55,7 @@ public class FeeCollectionController {
         return studentService.studentsForClassSection(classId, sectionId, actor, schoolId);
     }
 
-    @PostMapping("/api/fee-assignments")
+    @PostMapping("/api/v1/fee-assignments")
     public Map<String, Object> assignFee(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -63,7 +63,7 @@ public class FeeCollectionController {
         return feeService.feeAssignmentApi(request, actor);
     }
 
-    @PostMapping("/api/payments")
+    @PostMapping("/api/v1/payments")
     public Map<String, Object> createPayment(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -71,7 +71,7 @@ public class FeeCollectionController {
         return feeService.paymentApi(request, actor);
     }
 
-    @GetMapping("/api/fees/report")
+    @GetMapping("/api/v1/fees/report")
     public List<Map<String, Object>> feeReport(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @RequestParam String classId,
                                                @RequestParam String sectionId,
@@ -80,7 +80,7 @@ public class FeeCollectionController {
         return feeService.feeReport(classId, sectionId, actor, schoolId);
     }
 
-    @GetMapping("/api/fees/overdue")
+    @GetMapping("/api/v1/fees/overdue")
     public List<Map<String, Object>> feeOverdue(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                 @RequestParam String classId,
                                                 @RequestParam String sectionId,
@@ -89,7 +89,7 @@ public class FeeCollectionController {
         return feeService.feeOverdue(classId, sectionId, actor, schoolId);
     }
 
-    @GetMapping(value = "/api/receipts/{paymentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = "/api/v1/receipts/{paymentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> receiptPdf(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @PathVariable String paymentId) {
         userContext.requireUser(authorization);
@@ -100,7 +100,7 @@ public class FeeCollectionController {
                 .body(pdf);
     }
 
-    @PostMapping("/api/fees/send-reminders")
+    @PostMapping("/api/v1/fees/send-reminders")
     public Map<String, Object> sendReminders(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);

@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/approvals")
+@RequestMapping("/api/v1/approvals")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class ApprovalController {
     private final UserContextService userContext;

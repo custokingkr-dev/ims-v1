@@ -43,8 +43,7 @@ public class SchoolService {
     }
 
     public List<Map<String, Object>> listSchools() {
-        return schoolRepository.findAll().stream()
-                .sorted(Comparator.comparing(SchoolEntity::getName, String.CASE_INSENSITIVE_ORDER))
+        return schoolRepository.findAllByOrderByNameAsc().stream()
                 .map(school -> {
                     AppUserEntity admin = userRepository.findFirstByRoleIgnoreCaseAndBranchId("ADMIN", school.getId()).orElse(null);
                     return Map.<String, Object>of(
@@ -119,8 +118,7 @@ public class SchoolService {
 
     public List<Map<String, Object>> listSchoolsWithStats() {
         List<CatalogOrderEntity> allOrders = catalogOrderRepository.findAll();
-        return schoolRepository.findAll().stream()
-                .sorted(Comparator.comparing(SchoolEntity::getName, String.CASE_INSENSITIVE_ORDER))
+        return schoolRepository.findAllByOrderByNameAsc().stream()
                 .map(school -> {
                     List<CatalogOrderEntity> schoolOrders = allOrders.stream()
                             .filter(o -> o.getSchool() != null && school.getId().equals(o.getSchool().getId()))

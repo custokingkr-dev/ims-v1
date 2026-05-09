@@ -50,12 +50,15 @@ public class SecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public: auth + liveness/readiness probes
+                        // Public: auth + liveness/readiness probes + Swagger UI
                         .requestMatchers(
-                                "/api/auth/**",
+                                "/api/v1/auth/**",
                                 "/actuator/health",
                                 "/actuator/health/liveness",
-                                "/actuator/health/readiness"
+                                "/actuator/health/readiness",
+                                "/v3/api-docs/**",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html"
                         ).permitAll()
                         // Metrics scraping — authenticated (service-account token or SUPERADMIN)
                         .requestMatchers("/actuator/prometheus").authenticated()

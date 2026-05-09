@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/invoices")
+@RequestMapping("/api/v1/invoices")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class InvoiceController {
     private final UserContextService userContext;

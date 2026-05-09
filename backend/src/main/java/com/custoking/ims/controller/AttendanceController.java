@@ -12,7 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/attendance")
+@RequestMapping("/api/v1/attendance")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class AttendanceController {
     private final UserContextService userContext;

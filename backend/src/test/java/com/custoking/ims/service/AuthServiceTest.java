@@ -1,5 +1,6 @@
 package com.custoking.ims.service;
 
+import com.custoking.ims.auth.service.AuthService;
 import com.custoking.ims.dto.LoginRequest;
 import com.custoking.ims.dto.LoginResult;
 import com.custoking.ims.entity.AppUserEntity;

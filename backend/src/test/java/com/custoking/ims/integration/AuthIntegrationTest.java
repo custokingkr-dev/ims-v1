@@ -70,7 +70,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void login_validCredentials_returns200WithAccessTokenAndCookie() {
-        var response = post("/api/auth/login",
+        var response = post("/api/v1/auth/login",
                 Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -87,12 +87,12 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 .filter(c -> c.startsWith("refresh_token=")).findFirst().orElseThrow();
         assertThat(rtCookie).contains("HttpOnly");
         assertThat(rtCookie).contains("SameSite=Strict");
-        assertThat(rtCookie).contains("Path=/api/auth");
+        assertThat(rtCookie).contains("Path=/api/v1/auth");
     }
 
     @Test
     void login_wrongPassword_returns401() {
-        var response = post("/api/auth/login",
+        var response = post("/api/v1/auth/login",
                 Map.of("email", ADMIN_EMAIL, "password", "wrong-password"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -101,7 +101,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void login_unknownEmail_returns401() {
-        var response = post("/api/auth/login",
+        var response = post("/api/v1/auth/login",
                 Map.of("email", "nobody@test.com", "password", "whatever"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -109,7 +109,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void login_missingPassword_returns400WithRequestId() {
-        var response = post("/api/auth/login", Map.of("email", ADMIN_EMAIL));
+        var response = post("/api/v1/auth/login", Map.of("email", ADMIN_EMAIL));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         Map<String, Object> body = response.getBody();
@@ -121,7 +121,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     @Test
     void refresh_validRefreshCookie_returnsNewAccessToken() {
         // Login to obtain the Set-Cookie header
-        var loginResp = post("/api/auth/login",
+        var loginResp = post("/api/v1/auth/login",
                 Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD));
         assertThat(loginResp.getStatusCode()).isEqualTo(HttpStatus.OK);
         String cookieHeader = extractRefreshCookieValue(loginResp.getHeaders());
@@ -131,7 +131,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(HttpHeaders.COOKIE, "refresh_token=" + cookieHeader);
         var refreshResp = rest.exchange(
-                "/api/auth/refresh", HttpMethod.POST,
+                "/api/v1/auth/refresh", HttpMethod.POST,
                 new HttpEntity<>(null, headers), MAP_TYPE);
 
         assertThat(refreshResp.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -147,7 +147,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(HttpHeaders.COOKIE, "refresh_token=not.a.real.token");
         var response = rest.exchange(
-                "/api/auth/refresh", HttpMethod.POST,
+                "/api/v1/auth/refresh", HttpMethod.POST,
                 new HttpEntity<>(null, headers), MAP_TYPE);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -155,7 +155,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void refresh_missingCookie_returns401() {
-        var response = post("/api/auth/refresh", Map.of());
+        var response = post("/api/v1/auth/refresh", Map.of());
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
@@ -165,7 +165,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     @Test
     void logout_clearsCookie() {
         var response = rest.exchange(
-                "/api/auth/logout", HttpMethod.POST, HttpEntity.EMPTY, MAP_TYPE);
+                "/api/v1/auth/logout", HttpMethod.POST, HttpEntity.EMPTY, MAP_TYPE);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         List<String> setCookie = response.getHeaders().get("Set-Cookie");
@@ -178,7 +178,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     @Test
     void dashboard_withoutToken_returns401Or403() {
         ResponseEntity<Map<String, Object>> response =
-                rest.exchange("/api/dashboard", HttpMethod.GET, HttpEntity.EMPTY, MAP_TYPE);
+                rest.exchange("/api/v1/dashboard", HttpMethod.GET, HttpEntity.EMPTY, MAP_TYPE);
 
         assertThat(response.getStatusCode().value()).isIn(401, 403);
     }
@@ -190,7 +190,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         ResponseEntity<Map<String, Object>> response = rest.exchange(
-                "/api/dashboard", HttpMethod.GET,
+                "/api/v1/dashboard", HttpMethod.GET,
                 new HttpEntity<>(headers), MAP_TYPE);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -200,7 +200,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void error_response_containsRequiredFields() {
-        var response = post("/api/auth/login", Map.of("email", ADMIN_EMAIL));
+        var response = post("/api/v1/auth/login", Map.of("email", ADMIN_EMAIL));
 
         Map<String, Object> body = response.getBody();
         assertThat(body).isNotNull()
@@ -216,7 +216,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         headers.set("X-Request-ID", "test-correlation-123");
 
         ResponseEntity<Map<String, Object>> response = rest.exchange(
-                "/api/auth/login", HttpMethod.POST,
+                "/api/v1/auth/login", HttpMethod.POST,
                 new HttpEntity<>(Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD), headers),
                 MAP_TYPE);
 
@@ -244,7 +244,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     private String loginAndGetToken() {
-        var resp = post("/api/auth/login",
+        var resp = post("/api/v1/auth/login",
                 Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD));
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         return (String) resp.getBody().get("accessToken");

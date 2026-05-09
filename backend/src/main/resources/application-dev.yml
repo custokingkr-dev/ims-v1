@@ -1,0 +1,25 @@
+# Local development configuration.
+# These are non-production placeholder values — never use these in staging or prod.
+# Prod secrets must be supplied via environment variables (see ApplicationSecurityValidator).
+
+spring:
+  datasource:
+    # Use the local superuser for dev — ims_app is a prod-only least-privilege role.
+    username: postgres
+    password: root
+
+app:
+  jwt-secret: "dev-local-jwt-secret-key-minimum-32-chars-ok"
+  aadhar-secret: "dev-aadhar-secret-16"
+  bootstrap-users: true
+  cookie-secure: false
+
+# Bootstrap credentials for local dev seed data
+SUPERADMIN_PASSWORD: "DevAdmin@1234!"
+
+logging:
+  level:
+    root: INFO
+    com.custoking: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.flywaydb: INFO

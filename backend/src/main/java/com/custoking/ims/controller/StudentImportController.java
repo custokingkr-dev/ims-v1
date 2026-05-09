@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/students/import")
+@RequestMapping("/api/v1/students/import")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class StudentImportController {
     private final UserContextService userContext;

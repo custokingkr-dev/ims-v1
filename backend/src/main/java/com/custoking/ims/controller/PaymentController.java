@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/billing-payments")
+@RequestMapping("/api/v1/billing-payments")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class PaymentController {
     private final UserContextService userContext;

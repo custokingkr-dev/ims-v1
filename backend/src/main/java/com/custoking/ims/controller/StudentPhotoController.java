@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/students")
+@RequestMapping("/api/v1/students")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class StudentPhotoController {
     private static final long MAX_SIZE = 2 * 1024 * 1024;
@@ -63,7 +63,7 @@ public class StudentPhotoController {
         String filename = "student-" + id + "-" + UUID.randomUUID() + "." + extension;
         Path target = uploadDir.resolve(filename).normalize();
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        String photoUrl = "/api/students/photo/" + filename;
+        String photoUrl = "/api/v1/students/photo/" + filename;
         Map<String, Object> student = studentService.attachStudentPhoto(id, photoUrl);
         return Map.of("message", "Photo uploaded successfully", "photoUrl", photoUrl, "student", student);
     }
