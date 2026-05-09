@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/ff")
+@RequestMapping("/api/v1/ff")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class FirefightingController {
     private final UserContextService userContext;

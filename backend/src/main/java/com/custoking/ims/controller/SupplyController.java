@@ -1,6 +1,7 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.service.SupplyOrderService;
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -8,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/supply")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/supply")
+@PreAuthorize(PermissionConstants.ADMIN_ACCESS)
 public class SupplyController {
     private final UserContextService userContext;
     private final SupplyOrderService supplyOrderService;
@@ -50,7 +51,7 @@ public class SupplyController {
     }
 
     @GetMapping("/orders/pending-approval")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Object pendingApprovalOrders(@RequestHeader(value = "Authorization", required = false) String authorization) {
         return supplyOrderService.listOrdersPendingApproval(userContext.requireSuperAdmin(authorization));
     }
@@ -75,14 +76,14 @@ public class SupplyController {
     }
 
     @PostMapping("/orders/{orderId}/superadmin-approve")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Map<String, Object> superadminApprove(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                   @PathVariable String orderId) {
         return supplyOrderService.superadminApproveOrder(orderId, userContext.requireSuperAdmin(authorization));
     }
 
     @PostMapping("/orders/{orderId}/superadmin-reject")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Map<String, Object> superadminReject(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                  @PathVariable String orderId,
                                                  @RequestBody Map<String, Object> request) {

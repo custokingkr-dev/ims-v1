@@ -4,6 +4,8 @@ import com.custoking.ims.entity.*;
 import com.custoking.ims.repo.*;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +17,8 @@ import java.util.*;
 @Service
 @Transactional
 public class SuperadminService {
+
+    private static final Logger log = LoggerFactory.getLogger(SuperadminService.class);
 
     private final CatalogOrderRepository catalogOrderRepository;
     private final SuperadminInvoiceRepository saInvoiceRepository;
@@ -124,6 +128,8 @@ public class SuperadminService {
         e.setDueAt(LocalDate.now().plusDays(14).toString());
         e.setNotes(trimToNull(str(request.get("notes"), "")));
         saInvoiceRepository.save(e);
+        log.info("superadmin.invoice.created invoiceId={} orderRef={} schoolId={} actorId={}",
+                e.getId(), e.getOrderRef(), e.getSchoolId(), "system");
         return saInvoiceRow(e);
     }
 

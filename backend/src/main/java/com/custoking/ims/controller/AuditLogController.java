@@ -21,7 +21,7 @@ import java.util.Map;
  * SUPERADMIN can query all schools; ADMIN/VIEWER can only query their own school.
  */
 @RestController
-@RequestMapping("/api/audit-logs")
+@RequestMapping("/api/v1/audit-logs")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN','VIEWER')")
 public class AuditLogController {
 

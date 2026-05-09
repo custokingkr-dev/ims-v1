@@ -10,6 +10,9 @@ public interface FirefightingRequestRepository extends JpaRepository<Firefightin
     List<FirefightingRequestEntity> findBySchool_IdAndStatus(Long schoolId, String status);
     long countBySchool_IdAndStatusNot(Long schoolId, String status);
     long countBySchool_IdAndStatus(Long schoolId, String status);
+    List<FirefightingRequestEntity> findAllByOrderByCreatedAtDesc();
+    List<FirefightingRequestEntity> findBySchool_IdOrderByCreatedAtDesc(Long schoolId);
+    List<FirefightingRequestEntity> findByStatus(String status);
     @Query("SELECT r.code FROM FirefightingRequestEntity r")
     List<String> findAllCodes();
 }

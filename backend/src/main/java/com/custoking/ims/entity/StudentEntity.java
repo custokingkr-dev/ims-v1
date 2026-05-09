@@ -9,7 +9,9 @@ import java.time.OffsetDateTime;
         @UniqueConstraint(name = "uk_student_admission_no", columnNames = "admission_no")
 })
 public class StudentEntity {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+    @Id @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "student_seq")
+    @SequenceGenerator(name = "student_seq", sequenceName = "seq_students", allocationSize = 1)
+    private Long id;
     @Column(name = "admission_no", nullable = false) private String admissionNo;
     private String rollNo; private String boardRegNo; @Column(nullable = false) private String fullName; private LocalDate dob; private String gender; private String fatherName; private String fatherContact; private String motherName; private String phone; @Column(columnDefinition = "TEXT") private String address; private String houseNumber; private String street; private String locality; private String city; private String state; private String pinCode; private String photoUrl; private String feeStatus; private Double attendancePercent; private OffsetDateTime importedAt; private String importBatchId; private OffsetDateTime createdAt = OffsetDateTime.now(); private OffsetDateTime updatedAt = OffsetDateTime.now();
     @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name = "school_id") private SchoolEntity school;

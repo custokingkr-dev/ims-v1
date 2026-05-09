@@ -3,9 +3,10 @@ package com.custoking.ims.controller;
 import com.custoking.ims.dto.AuthResponse;
 import com.custoking.ims.dto.LoginRequest;
 import com.custoking.ims.dto.LoginResult;
+import com.custoking.ims.auth.controller.AuthController;
+import com.custoking.ims.auth.service.AuthService;
 import com.custoking.ims.security.AppUserDetailsService;
 import com.custoking.ims.security.JwtService;
-import com.custoking.ims.service.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ class AuthControllerTest {
         LoginResult loginResult = new LoginResult("jwt-refresh-token", authResp);
         when(authService.login(any())).thenReturn(loginResult);
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest("admin@test.com", "password"))))
                 .andExpect(status().isOk())
@@ -48,12 +49,12 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andExpect(cookie().exists("refresh_token"))
                 .andExpect(cookie().httpOnly("refresh_token", true))
-                .andExpect(cookie().path("refresh_token", "/api/auth"));
+                .andExpect(cookie().path("refresh_token", "/api/v1/auth"));
     }
 
     @Test
     void postLogin_missingEmail_returns400() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"secret\"}"))
                 .andExpect(status().isBadRequest());
@@ -61,7 +62,7 @@ class AuthControllerTest {
 
     @Test
     void postLogin_missingPassword_returns400() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"admin@test.com\"}"))
                 .andExpect(status().isBadRequest());

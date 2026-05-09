@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/schools")
+@RequestMapping("/api/v1/schools")
 @PreAuthorize("hasRole('SUPERADMIN')")
 public class SchoolController {
     private final UserContextService userContext;

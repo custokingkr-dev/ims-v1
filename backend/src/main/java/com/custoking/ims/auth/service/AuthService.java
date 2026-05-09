@@ -1,4 +1,4 @@
-package com.custoking.ims.service;
+package com.custoking.ims.auth.service;
 
 import com.custoking.ims.audit.AuditLogService;
 import com.custoking.ims.dto.AuthResponse;
@@ -11,6 +11,8 @@ import com.custoking.ims.security.AppUserDetailsService;
 import com.custoking.ims.security.JwtService;
 import com.custoking.ims.util.PasswordUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -19,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final AppUserRepository userRepository;
     private final JwtService jwtService;
@@ -50,11 +54,15 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
         }
         auditLogService.loginSuccess(user.getId(), user.getEmail(), ip);
+        log.info("user.login userId={} email={} ip={}", user.getId(), user.getEmail(), ip);
         AppUserDetails details = new AppUserDetails(user);
+        String refreshToken = jwtService.generateRefreshToken(details);
+        String accessToken = jwtService.generateToken(details);
+        log.info("user.login.success userId={} role={}", user.getId(), user.getRole());
         return new LoginResult(
-                jwtService.generateRefreshToken(details),
+                refreshToken,
                 new AuthResponse(
-                        jwtService.generateToken(details),
+                        accessToken,
                         user.getId(), user.getFullName(), user.getEmail(),
                         user.getRole(), user.getBranchId(), user.getBranchName()));
     }

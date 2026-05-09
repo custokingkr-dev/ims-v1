@@ -15,7 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/fee-structure")
+@RequestMapping("/api/v1/fee-structure")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class FeeStructureController {
     private final UserContextService userContext;

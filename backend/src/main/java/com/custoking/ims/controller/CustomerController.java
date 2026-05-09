@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/customers")
+@RequestMapping("/api/v1/customers")
 @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
 public class CustomerController {
     private final UserContextService userContext;

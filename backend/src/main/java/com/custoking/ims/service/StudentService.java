@@ -8,6 +8,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 public class StudentService {
+
+    private static final Logger log = LoggerFactory.getLogger(StudentService.class);
 
     private final StudentRepository studentRepository;
     private final SchoolRepository schoolRepository;
@@ -151,6 +155,7 @@ public class StudentService {
         s.setUpdatedAt(OffsetDateTime.now());
         studentRepository.save(s);
         ensureFeeAssignmentForStudent(s, request, actor);
+        log.info("student.added studentId={} admissionNo={} actorId={}", s.getId(), s.getAdmissionNo(), actor.userId());
         return studentDetailRow(s);
     }
 
@@ -330,6 +335,7 @@ public class StudentService {
         batch.setCompletedAt(OffsetDateTime.now());
         batch.setSkippedJson(toJson(skippedRows));
         importBatchRepository.save(batch);
+        log.info("student.importConfirmed fileToken={} inserted={} skipped={} actorId={}", fileToken, inserted, skipped, actor.userId());
         return row("jobId", batch.getJobId());
     }
 

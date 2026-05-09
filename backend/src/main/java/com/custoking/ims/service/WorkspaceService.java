@@ -153,7 +153,7 @@ public class WorkspaceService {
     }
 
     public List<Map<String, Object>> users() {
-        return userRepository.findAll().stream()
+        return userRepository.findAllByOrderByFullNameAsc().stream()
                 .map(u -> row("id", u.getId(), "fullName", u.getFullName(), "email", u.getEmail(),
                         "role", u.getRole(), "branchName", u.getBranchName()))
                 .toList();

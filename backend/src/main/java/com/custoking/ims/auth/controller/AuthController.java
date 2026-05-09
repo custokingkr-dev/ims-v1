@@ -1,9 +1,9 @@
-package com.custoking.ims.controller;
+package com.custoking.ims.auth.controller;
 
 import com.custoking.ims.dto.AuthResponse;
 import com.custoking.ims.dto.LoginRequest;
 import com.custoking.ims.dto.LoginResult;
-import com.custoking.ims.service.AuthService;
+import com.custoking.ims.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Duration;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private static final String COOKIE_NAME = "refresh_token";
@@ -53,7 +53,6 @@ public class AuthController {
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(HttpServletResponse response) {
-        // Clear the cookie by setting Max-Age=0
         response.addHeader(HttpHeaders.SET_COOKIE, buildCookie("", Duration.ZERO).toString());
     }
 
@@ -66,7 +65,7 @@ public class AuthController {
                 .httpOnly(true)
                 .sameSite("Strict")
                 .secure(cookieSecure)
-                .path("/api/auth")
+                .path("/api/v1/auth")
                 .maxAge(maxAge)
                 .build();
     }
