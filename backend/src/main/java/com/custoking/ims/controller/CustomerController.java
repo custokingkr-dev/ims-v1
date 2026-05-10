@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.dto.CustomerCreateRequest;
 import com.custoking.ims.service.UserContextService;
 import com.custoking.ims.service.WorkspaceService;
@@ -11,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/customers")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize(PermissionConstants.CUSTOMER_READ)
 public class CustomerController {
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;
@@ -28,6 +29,7 @@ public class CustomerController {
     }
 
     @PostMapping
+    @PreAuthorize(PermissionConstants.CUSTOMER_CREATE)
     public Map<String, Object> create(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @RequestBody CustomerCreateRequest request) {
         userContext.requireUser(authorization);

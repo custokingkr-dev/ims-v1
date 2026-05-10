@@ -1,8 +1,48 @@
+# Build outputs
 node_modules/
 frontend/node_modules/
 frontend/dist/
 backend/target/
-*.log
+dist/
+build/
+
+# Java
 *.class
+*.jar
+!gradle-wrapper.jar
+
+# Environment / secrets — never commit
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# OS
 .DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# Coverage and test reports
+coverage/
+playwright-report/
+test-results/
+target/surefire-reports/
+
+# Uploads (local dev only)
+uploads/
+
+# Packaging artifacts
+custoking-ims-clean.zip

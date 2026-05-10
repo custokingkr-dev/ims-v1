@@ -11,7 +11,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/users")
-@PreAuthorize(PermissionConstants.ADMIN_ACCESS)
+@PreAuthorize(PermissionConstants.USER_READ)
 public class UserController {
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;
