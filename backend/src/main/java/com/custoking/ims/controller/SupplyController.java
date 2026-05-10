@@ -10,7 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/supply")
-@PreAuthorize(PermissionConstants.ADMIN_ACCESS)
+@PreAuthorize(PermissionConstants.ORDER_READ)
 public class SupplyController {
     private final UserContextService userContext;
     private final SupplyOrderService supplyOrderService;
@@ -27,12 +27,14 @@ public class SupplyController {
     }
 
     @PostMapping("/orders")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> createOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                            @RequestBody Map<String, Object> request) {
         return supplyOrderService.createCatalogOrder(request, userContext.requireUser(authorization));
     }
 
     @PostMapping("/orders/{orderId}/place")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> placeOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String orderId) {
         return supplyOrderService.placeCatalogOrder(orderId, userContext.requireUser(authorization));
@@ -57,6 +59,7 @@ public class SupplyController {
     }
 
     @PatchMapping("/orders/{orderId}/status")
+    @PreAuthorize(PermissionConstants.ORDER_UPDATE)
     public Map<String, Object> updateOrderStatus(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                  @PathVariable String orderId,
                                                  @RequestBody Map<String, Object> request) {
@@ -70,6 +73,7 @@ public class SupplyController {
     }
 
     @PostMapping("/orders/{orderId}/design-approved")
+    @PreAuthorize(PermissionConstants.ORDER_UPDATE)
     public Map<String, Object> markDesignApproved(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                    @PathVariable String orderId) {
         return supplyOrderService.markCatalogOrderDesignApproved(orderId, userContext.requireUser(authorization));
@@ -97,12 +101,14 @@ public class SupplyController {
     }
 
     @PostMapping("/annual-plan/items")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> savePlanItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @RequestBody Map<String, Object> request) {
         return supplyOrderService.saveAnnualPlanItem(request, userContext.requireUser(authorization));
     }
 
     @PostMapping("/annual-plan/confirm")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> confirmPlan(@RequestHeader(value = "Authorization", required = false) String authorization) {
         return supplyOrderService.confirmAnnualPlan(userContext.requireUser(authorization));
     }

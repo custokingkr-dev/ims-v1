@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.FirefightingService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,7 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/ff")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize(PermissionConstants.FIREFIGHTING_READ)
 public class FirefightingController {
     private final UserContextService userContext;
     private final FirefightingService firefightingService;
@@ -32,12 +33,14 @@ public class FirefightingController {
     }
 
     @PostMapping("/requests")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_CREATE)
     public Map<String, Object> create(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @RequestBody Map<String, Object> request) {
         return firefightingService.createFireRequest(request, userContext.requireUser(authorization));
     }
 
     @PatchMapping("/requests/{id}")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_UPDATE)
     public Map<String, Object> update(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable String id,
                                       @RequestBody Map<String, Object> request) {
@@ -45,6 +48,7 @@ public class FirefightingController {
     }
 
     @PatchMapping("/requests/{id}/quotations/{quotationId}")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_UPDATE)
     public Map<String, Object> updateQuotation(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @PathVariable String id,
                                                @PathVariable String quotationId,
@@ -60,6 +64,7 @@ public class FirefightingController {
     }
 
     @PostMapping("/requests/{id}/quotations")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_UPDATE)
     public Map<String, Object> addQuotation(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @PathVariable String id,
                                             @RequestBody Map<String, Object> request) {
@@ -67,6 +72,7 @@ public class FirefightingController {
     }
 
     @DeleteMapping("/requests/{id}/quotations/{quotationId}")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_UPDATE)
     public Map<String, Object> deleteQuotation(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @PathVariable String id,
                                                @PathVariable String quotationId) {
@@ -74,12 +80,14 @@ public class FirefightingController {
     }
 
     @PostMapping("/requests/{id}/submit")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_UPDATE)
     public Map<String, Object> submit(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable String id) {
         return firefightingService.submitFireRequest(id, userContext.requireUser(authorization));
     }
 
     @PostMapping("/requests/{id}/approve-bursar")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_APPROVE)
     public Map<String, Object> approveBursar(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @PathVariable String id,
                                              @RequestBody Map<String, Object> request) {
@@ -87,6 +95,7 @@ public class FirefightingController {
     }
 
     @PostMapping("/requests/{id}/approve-principal")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_APPROVE)
     public Map<String, Object> approvePrincipal(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                 @PathVariable String id,
                                                 @RequestBody Map<String, Object> request) {
@@ -94,6 +103,7 @@ public class FirefightingController {
     }
 
     @PostMapping("/requests/{id}/reject")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_APPROVE)
     public Map<String, Object> reject(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable String id,
                                       @RequestBody Map<String, Object> request) {
@@ -101,12 +111,14 @@ public class FirefightingController {
     }
 
     @PostMapping("/requests/{id}/approve-custoking")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Map<String, Object> approveCustoking(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                 @PathVariable String id) {
         return firefightingService.approveCustoking(id, userContext.requireUser(authorization));
     }
 
     @PatchMapping("/requests/{id}/fulfill")
+    @PreAuthorize(PermissionConstants.FIREFIGHTING_FULFILL)
     public Map<String, Object> fulfill(@RequestHeader(value = "Authorization", required = false) String authorization,
                                        @PathVariable String id) {
         return firefightingService.fulfillFireRequest(id, userContext.requireUser(authorization));

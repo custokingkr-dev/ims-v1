@@ -9,6 +9,8 @@ import com.custoking.ims.security.AppUserDetailsService;
 import com.custoking.ims.security.JwtService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -37,7 +39,8 @@ class AuthControllerTest {
     void postLogin_validCredentials_returnsAccessTokenInBodyAndRefreshInCookie() throws Exception {
         AuthResponse authResp = new AuthResponse(
                 "jwt-access-token",
-                1L, "Admin User", "admin@test.com", "ADMIN", null, null);
+                1L, "Admin User", "admin@test.com", "ADMIN", null, null, null, null,
+                List.of("ADMIN"), List.of());
         LoginResult loginResult = new LoginResult("jwt-refresh-token", authResp);
         when(authService.login(any())).thenReturn(loginResult);
 

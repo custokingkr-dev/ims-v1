@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.FeeService;
@@ -17,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize(PermissionConstants.STUDENT_READ)
 public class FeeCollectionController {
     private final UserContextService userContext;
     private final StudentService studentService;
@@ -56,6 +57,7 @@ public class FeeCollectionController {
     }
 
     @PostMapping("/api/v1/fee-assignments")
+    @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> assignFee(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -64,6 +66,7 @@ public class FeeCollectionController {
     }
 
     @PostMapping("/api/v1/payments")
+    @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> createPayment(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -72,6 +75,7 @@ public class FeeCollectionController {
     }
 
     @GetMapping("/api/v1/fees/report")
+    @PreAuthorize(PermissionConstants.FEE_READ)
     public List<Map<String, Object>> feeReport(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @RequestParam String classId,
                                                @RequestParam String sectionId,
@@ -81,6 +85,7 @@ public class FeeCollectionController {
     }
 
     @GetMapping("/api/v1/fees/overdue")
+    @PreAuthorize(PermissionConstants.FEE_READ)
     public List<Map<String, Object>> feeOverdue(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                 @RequestParam String classId,
                                                 @RequestParam String sectionId,
@@ -90,6 +95,7 @@ public class FeeCollectionController {
     }
 
     @GetMapping(value = "/api/v1/receipts/{paymentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize(PermissionConstants.FEE_READ)
     public ResponseEntity<byte[]> receiptPdf(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @PathVariable String paymentId) {
         userContext.requireUser(authorization);
@@ -101,6 +107,7 @@ public class FeeCollectionController {
     }
 
     @PostMapping("/api/v1/fees/send-reminders")
+    @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> sendReminders(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);

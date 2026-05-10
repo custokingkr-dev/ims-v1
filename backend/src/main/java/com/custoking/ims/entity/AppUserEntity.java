@@ -26,6 +26,9 @@ public class AppUserEntity {
     private Long branchId;
     private String branchName;
 
+    private Long zoneId;
+    private String zoneName;
+
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
@@ -43,6 +46,10 @@ public class AppUserEntity {
     public void setBranchId(Long branchId) { this.branchId = branchId; }
     public String getBranchName() { return branchName; }
     public void setBranchName(String branchName) { this.branchName = branchName; }
+    public Long getZoneId() { return zoneId; }
+    public void setZoneId(Long zoneId) { this.zoneId = zoneId; }
+    public String getZoneName() { return zoneName; }
+    public void setZoneName(String zoneName) { this.zoneName = zoneName; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

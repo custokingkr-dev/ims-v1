@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.StudentService;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/students/import")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize(PermissionConstants.STUDENT_IMPORT)
 public class StudentImportController {
     private final UserContextService userContext;
     private final StudentService studentService;

@@ -3,6 +3,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import SchoolManagementPage from './pages/SchoolManagementPage';
 import UnifiedWorkspacePage from './pages/UnifiedWorkspacePage';
+import ZoneManagementPage from './pages/ZoneManagementPage';
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><UnifiedWorkspacePage /></ProtectedRoute>} />
       <Route path="/schools" element={<ProtectedRoute><SchoolManagementPage /></ProtectedRoute>} />
+      <Route path="/zones" element={<ProtectedRoute><ZoneManagementPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

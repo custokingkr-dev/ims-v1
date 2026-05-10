@@ -2,6 +2,7 @@ package com.custoking.ims.controller;
 
 import com.custoking.ims.dto.school.SchoolAdminRequest;
 import com.custoking.ims.dto.school.SchoolCreateRequest;
+import com.custoking.ims.dto.school.SchoolOperationsUserRequest;
 import com.custoking.ims.dto.school.SchoolUpdateRequest;
 import com.custoking.ims.service.SchoolService;
 import com.custoking.ims.service.UserContextService;
@@ -61,5 +62,23 @@ public class SchoolController {
                                       @RequestBody SchoolUpdateRequest request) {
         userContext.requireSuperAdmin(authorization);
         return schoolService.updateSchool(schoolId, request);
+    }
+
+    @PostMapping("/{schoolId}/operations-user")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createOrResetOperationsUser(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable Long schoolId,
+            @Valid @RequestBody SchoolOperationsUserRequest request) {
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.createOrResetSchoolOperationsUser(schoolId, request);
+    }
+
+    @GetMapping("/{schoolId}/operations-user")
+    public Map<String, Object> getOperationsUser(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable Long schoolId) {
+        userContext.requireSuperAdmin(authorization);
+        return schoolService.getSchoolOperationsUser(schoolId);
     }
 }

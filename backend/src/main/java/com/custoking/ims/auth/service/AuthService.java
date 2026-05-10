@@ -9,6 +9,7 @@ import com.custoking.ims.repo.AppUserRepository;
 import com.custoking.ims.security.AppUserDetails;
 import com.custoking.ims.security.AppUserDetailsService;
 import com.custoking.ims.security.JwtService;
+import com.custoking.ims.service.RbacService;
 import com.custoking.ims.util.PasswordUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -18,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 public class AuthService {
@@ -29,17 +33,20 @@ public class AuthService {
     private final AppUserDetailsService userDetailsService;
     private final PasswordUtil passwordUtil;
     private final AuditLogService auditLogService;
+    private final RbacService rbacService;
 
     public AuthService(AppUserRepository userRepository,
                        JwtService jwtService,
                        AppUserDetailsService userDetailsService,
                        PasswordUtil passwordUtil,
-                       AuditLogService auditLogService) {
+                       AuditLogService auditLogService,
+                       RbacService rbacService) {
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.userDetailsService = userDetailsService;
         this.passwordUtil = passwordUtil;
         this.auditLogService = auditLogService;
+        this.rbacService = rbacService;
     }
 
     public LoginResult login(LoginRequest request) {
@@ -58,13 +65,17 @@ public class AuthService {
         AppUserDetails details = new AppUserDetails(user);
         String refreshToken = jwtService.generateRefreshToken(details);
         String accessToken = jwtService.generateToken(details);
+        List<String> roleNames = rbacService.getUserRoleNames(user.getId());
+        List<String> permissions = new ArrayList<>(rbacService.getUserPermissions(user.getId()));
         log.info("user.login.success userId={} role={}", user.getId(), user.getRole());
         return new LoginResult(
                 refreshToken,
                 new AuthResponse(
                         accessToken,
                         user.getId(), user.getFullName(), user.getEmail(),
-                        user.getRole(), user.getBranchId(), user.getBranchName()));
+                        user.getRole(), user.getBranchId(), user.getBranchName(),
+                        user.getZoneId(), user.getZoneName(),
+                        roleNames, permissions));
     }
 
     public LoginResult refresh(String rawRefreshToken) {
@@ -79,12 +90,16 @@ public class AuthService {
         }
         AppUserDetails details = (AppUserDetails) userDetailsService.loadUserByUsername(email);
         AppUserEntity user = details.getUser();
+        List<String> roleNames = rbacService.getUserRoleNames(user.getId());
+        List<String> permissions = new ArrayList<>(rbacService.getUserPermissions(user.getId()));
         return new LoginResult(
                 jwtService.generateRefreshToken(details),
                 new AuthResponse(
                         jwtService.generateToken(details),
                         user.getId(), user.getFullName(), user.getEmail(),
-                        user.getRole(), user.getBranchId(), user.getBranchName()));
+                        user.getRole(), user.getBranchId(), user.getBranchName(),
+                        user.getZoneId(), user.getZoneName(),
+                        roleNames, permissions));
     }
 
     private String resolveClientIp() {

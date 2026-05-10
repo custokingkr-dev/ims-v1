@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.FeeService;
@@ -16,7 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/fee-structure")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize(PermissionConstants.FEE_READ)
 public class FeeStructureController {
     private final UserContextService userContext;
     private final FeeService feeService;
@@ -34,6 +35,7 @@ public class FeeStructureController {
     }
 
     @PostMapping("/item")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> addItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                        @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -42,6 +44,7 @@ public class FeeStructureController {
     }
 
     @PutMapping("/item/{id}")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> updateItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String id,
                                           @RequestBody Map<String, Object> request) {
@@ -51,6 +54,7 @@ public class FeeStructureController {
     }
 
     @DeleteMapping("/item/{id}")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> deleteItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String id) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -59,6 +63,7 @@ public class FeeStructureController {
     }
 
     @PostMapping("/band")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> createBand(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -67,6 +72,7 @@ public class FeeStructureController {
     }
 
     @PutMapping("/band/{id}")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> updateBand(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String id,
                                           @RequestBody Map<String, Object> request) {
@@ -76,6 +82,7 @@ public class FeeStructureController {
     }
 
     @DeleteMapping("/band/{id}")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> deleteBand(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String id) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -84,6 +91,7 @@ public class FeeStructureController {
     }
 
     @PatchMapping("/band/{id}")
+    @PreAuthorize(PermissionConstants.FEE_CONFIGURE)
     public Map<String, Object> patchBand(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @PathVariable String id,
                                          @RequestBody Map<String, Object> request) {
@@ -100,6 +108,7 @@ public class FeeStructureController {
     }
 
     @GetMapping(value = "/export", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize(PermissionConstants.FEE_EXPORT)
     public ResponseEntity<byte[]> export(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestParam(required = false) String academicYearId,
                                          @RequestParam(defaultValue = "pdf") String format) {
