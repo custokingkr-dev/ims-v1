@@ -100,8 +100,6 @@ public class DatabaseBootstrap {
                         sectionRepository.save(section);
                     }
                 }
-                classRepository.flush();
-                sectionRepository.flush();
             }
 
             if (feeBandRepository.count() == 0) {
