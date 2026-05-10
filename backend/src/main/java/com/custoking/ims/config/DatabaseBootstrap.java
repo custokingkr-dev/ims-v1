@@ -93,6 +93,12 @@ public class DatabaseBootstrap {
                     schoolClass.setName("Class " + i);
                     schoolClass.setSortOrder(i);
                     classRepository.save(schoolClass);
+                }
+            }
+
+            if (sectionRepository.count() == 0) {
+                for (int i = 1; i <= 12; i++) {
+                    SchoolClassEntity schoolClass = classRepository.findById(String.valueOf(i)).orElseThrow();
                     for (String sec : List.of("A", "B")) {
                         SchoolSectionEntity section = new SchoolSectionEntity();
                         section.setId(i + sec);
