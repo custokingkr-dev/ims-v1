@@ -2,11 +2,13 @@ package com.custoking.ims.config;
 
 import com.custoking.ims.entity.*;
 import com.custoking.ims.repo.*;
+import com.custoking.ims.service.RbacService;
 import com.custoking.ims.util.PasswordUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
@@ -18,9 +20,11 @@ import java.util.UUID;
 public class DatabaseBootstrap {
 
     private final PasswordUtil passwordUtil;
+    private final RbacService rbacService;
 
-    public DatabaseBootstrap(PasswordUtil passwordUtil) {
+    public DatabaseBootstrap(PasswordUtil passwordUtil, @Lazy RbacService rbacService) {
         this.passwordUtil = passwordUtil;
+        this.rbacService = rbacService;
     }
 
     @Bean
@@ -89,6 +93,12 @@ public class DatabaseBootstrap {
                     schoolClass.setName("Class " + i);
                     schoolClass.setSortOrder(i);
                     classRepository.save(schoolClass);
+                }
+            }
+
+            if (sectionRepository.count() == 0) {
+                for (int i = 1; i <= 12; i++) {
+                    SchoolClassEntity schoolClass = classRepository.findById(String.valueOf(i)).orElseThrow();
                     for (String sec : List.of("A", "B")) {
                         SchoolSectionEntity section = new SchoolSectionEntity();
                         section.setId(i + sec);
@@ -197,6 +207,7 @@ public class DatabaseBootstrap {
         user.setBranchId(branchId);
         user.setBranchName(branchName);
         repo.save(user);
+        rbacService.assignRole(user.getId(), role, null);
     }
 
     private void seedStudents(StudentRepository repo, SchoolClassRepository classRepo, SchoolSectionRepository sectionRepo, AcademicYearEntity year) {

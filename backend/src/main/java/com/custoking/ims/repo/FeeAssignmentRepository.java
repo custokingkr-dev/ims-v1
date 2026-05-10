@@ -9,6 +9,7 @@ public interface FeeAssignmentRepository extends JpaRepository<FeeAssignmentEnti
     List<FeeAssignmentEntity> findByStudent_SchoolClass_IdAndStudent_Section_IdAndAcademicYear_Id(String classId, String sectionId, String academicYearId);
     Optional<FeeAssignmentEntity> findByStudent_Id(Long studentId);
     List<FeeAssignmentEntity> findByAcademicYear_IdAndStudent_School_Id(String yearId, Long schoolId);
+    List<FeeAssignmentEntity> findByAcademicYear_Id(String yearId);
     @Query("SELECT COUNT(a) FROM FeeAssignmentEntity a WHERE a.academicYear.id = :yearId AND a.student.school.id = :schoolId AND a.netPayable > a.paidAmount")
     long countOverdueByYearAndSchool(@Param("yearId") String yearId, @Param("schoolId") Long schoolId);
 }

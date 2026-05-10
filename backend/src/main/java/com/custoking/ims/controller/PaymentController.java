@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.dto.PaymentCreateRequest;
 import com.custoking.ims.service.UserContextService;
 import com.custoking.ims.service.WorkspaceService;
@@ -10,8 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/billing-payments")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/billing-payments")
+@PreAuthorize(PermissionConstants.PAYMENT_READ)
 public class PaymentController {
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;
@@ -28,6 +29,7 @@ public class PaymentController {
     }
 
     @PostMapping
+    @PreAuthorize(PermissionConstants.PAYMENT_CREATE)
     public Map<String, Object> create(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @RequestBody PaymentCreateRequest request) {
         var user = userContext.requireUser(authorization);

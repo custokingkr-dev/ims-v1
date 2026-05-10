@@ -1,4 +1,4 @@
-export type Role = 'SUPERADMIN' | 'ADMIN';
+export type Role = 'SUPERADMIN' | 'ZONE_ADMIN' | 'ADMIN' | 'OPERATIONS' | 'ACCOUNTANT' | 'TEACHER' | 'VIEWER';
 
 export interface AuthUser {
   accessToken: string;
@@ -8,4 +8,8 @@ export interface AuthUser {
   role: Role;
   branchId?: number | null;
   branchName?: string | null;
+  zoneId?: number | null;
+  zoneName?: string | null;
+  roles?: string[];
+  permissions?: string[];
 }

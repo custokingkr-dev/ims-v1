@@ -4,6 +4,8 @@ import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.repo.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +18,8 @@ import java.util.*;
 @Service
 @Transactional
 public class AttendanceService {
+
+    private static final Logger log = LoggerFactory.getLogger(AttendanceService.class);
 
     private final AttendanceDailyRepository attendanceDailyRepository;
     private final SchoolSectionRepository sectionRepository;
@@ -126,6 +130,8 @@ public class AttendanceService {
         entity.setUpdatedBy(actor.userId());
         entity.setUpdatedAt(OffsetDateTime.now());
         attendanceDailyRepository.save(entity);
+        log.info("attendance.saved date={} sectionId={} presentCount={} totalEnrolled={} actorId={}",
+                date, sectionId, present, total, actor.userId());
         return row("ok", true, "message", "Saved — " + schoolClass.getName() + "-" + section.getName()
                 + " · " + present + "/" + total + " present ("
                 + round(total == 0 ? 0 : present * 100.0 / total) + "%)");

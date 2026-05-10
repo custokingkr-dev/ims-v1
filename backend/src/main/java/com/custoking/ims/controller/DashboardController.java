@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.UserContextService;
 import com.custoking.ims.service.WorkspaceService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -8,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/dashboard")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN','VIEWER')")
+@RequestMapping("/api/v1/dashboard")
+@PreAuthorize(PermissionConstants.WORKSPACE_ACCESS)
 public class DashboardController {
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;

@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.StudentService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.core.io.FileSystemResource;
@@ -19,8 +20,8 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/students")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/students")
+@PreAuthorize(PermissionConstants.STUDENT_READ)
 public class StudentPhotoController {
     private static final long MAX_SIZE = 2 * 1024 * 1024;
     private final UserContextService userContext;
@@ -53,6 +54,7 @@ public class StudentPhotoController {
     }
 
     @PostMapping(path = "/{id}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize(PermissionConstants.STUDENT_UPDATE)
     public Map<String, Object> uploadStudentPhoto(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                   @PathVariable long id,
                                                   @RequestParam("file") MultipartFile file) throws IOException {
@@ -63,7 +65,7 @@ public class StudentPhotoController {
         String filename = "student-" + id + "-" + UUID.randomUUID() + "." + extension;
         Path target = uploadDir.resolve(filename).normalize();
         Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-        String photoUrl = "/api/students/photo/" + filename;
+        String photoUrl = "/api/v1/students/photo/" + filename;
         Map<String, Object> student = studentService.attachStudentPhoto(id, photoUrl);
         return Map.of("message", "Photo uploaded successfully", "photoUrl", photoUrl, "student", student);
     }

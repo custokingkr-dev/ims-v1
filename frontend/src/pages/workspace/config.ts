@@ -8,7 +8,8 @@ export type PanelKey =
   | 'addstudent' | 'bulkimport' | 'staff' | 'catalog' | 'orders' | 'planning'
   | 'ff-dashboard' | 'ff-new' | 'ff-approvals' | 'ff-orders'
   | 'sa-all-orders' | 'sa-new-order' | 'sa-invoices'
-  | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog';
+  | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog'
+  | 'za-overview' | 'za-schools';
 
 export const ADMIN_NAV_SECTIONS: Array<{
   title: string;
@@ -45,6 +46,53 @@ export const ADMIN_NAV_SECTIONS: Array<{
       { key: 'addstudent', label: 'Add student', icon: '➕' },
       { key: 'bulkimport', label: 'Bulk import', icon: '📥' },
       { key: 'staff', label: 'Staff & HR', icon: '👥' },
+    ],
+  },
+];
+
+// OPERATIONS role: daily ops access — no finance, no user management
+export const OPERATIONS_NAV_SECTIONS: Array<{
+  title: string;
+  fire?: boolean;
+  items: Array<{ key: PanelKey; label: string; icon: string }>;
+}> = [
+  {
+    title: 'Supply OS',
+    items: [
+      { key: 'catalog', label: 'Catalog', icon: '⊞' },
+      { key: 'orders', label: 'My orders', icon: '📦' },
+    ],
+  },
+  {
+    title: 'Firefighting',
+    fire: true,
+    items: [
+      { key: 'ff-dashboard', label: 'All requests', icon: '📋' },
+      { key: 'ff-new', label: 'New request', icon: '➕' },
+      { key: 'ff-orders', label: 'Placed orders', icon: '📦' },
+    ],
+  },
+  {
+    title: 'School ERP',
+    items: [
+      { key: 'home', label: 'Dashboard', icon: '◼' },
+      { key: 'students', label: 'Students', icon: '🎓' },
+      { key: 'attendance', label: 'Attendance', icon: '✓' },
+      { key: 'addstudent', label: 'Add student', icon: '➕' },
+    ],
+  },
+];
+
+export const ZONE_ADMIN_NAV_SECTIONS: Array<{
+  title: string;
+  fire?: boolean;
+  items: Array<{ key: PanelKey; label: string; icon: string }>;
+}> = [
+  {
+    title: 'Zone',
+    items: [
+      { key: 'za-overview', label: 'Zone overview', icon: '🗺' },
+      { key: 'za-schools', label: 'My schools', icon: '🏫' },
     ],
   },
 ];
@@ -111,6 +159,8 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   'sa-erp': 'ERP activity',
   'sa-revenue': 'Revenue',
   'sa-catalog': 'Catalog management',
+  'za-overview': 'Zone overview',
+  'za-schools': 'My schools',
 };
 
 export const SA_NEW_ORDER_CATEGORIES = [

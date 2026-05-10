@@ -6,7 +6,8 @@ import jakarta.persistence.*;
 @Table(name = "annual_plan_entries")
 public class AnnualPlanEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "annual_plan_entry_seq")
+    @SequenceGenerator(name = "annual_plan_entry_seq", sequenceName = "seq_annual_plan_entries", allocationSize = 1)
     private Long id;
     private String termName;
     private String category;

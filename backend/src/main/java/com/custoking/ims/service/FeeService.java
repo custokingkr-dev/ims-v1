@@ -5,6 +5,8 @@ import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.repo.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,9 +14,12 @@ import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 @Service
 @Transactional
 public class FeeService {
+
+    private static final Logger log = LoggerFactory.getLogger(FeeService.class);
 
     private final FeeBandRepository feeBandRepository;
     private final FeeItemRepository feeItemRepository;
@@ -193,6 +198,7 @@ public class FeeService {
         feeAssignmentRepository.save(assignment);
         student.setFeeStatus(assignment.getPaidAmount() >= assignment.getNetPayable() ? "Paid" : "Overdue");
         studentRepository.save(student);
+        log.info("fee.assignment studentId={} assignmentId={} actorId={}", student.getId(), assignment.getId(), actor.userId());
         return row("ok", true, "assignment", assignmentRow(assignment));
     }
 
@@ -233,7 +239,9 @@ public class FeeService {
         feeAssignmentRepository.save(assignment);
         student.setFeeStatus(assignment.getPaidAmount() >= assignment.getNetPayable() ? "Paid" : "Overdue");
         studentRepository.save(student);
-        return row("paymentId", payment.getId(), "receiptUrl", "/api/receipts/" + payment.getId() + "/pdf");
+        log.info("payment.record studentId={} amount={} mode={} actorId={}", student.getId(), amount, payment.getMode(), actor.userId());
+        log.info("payment.recorded paymentId={} receiptNumber={}", payment.getId(), payment.getReceiptNumber());
+        return row("paymentId", payment.getId(), "receiptUrl", "/api/v1/receipts/" + payment.getId() + "/pdf");
     }
 
     public Map<String, Object> recordPayment(Map<String, Object> request, AuthUser actor) {
@@ -241,7 +249,7 @@ public class FeeService {
     }
 
     public List<Map<String, Object>> payments() {
-        return paymentRecordRepository.findAll().stream()
+        return paymentRecordRepository.findAllByOrderByPaidAtDesc().stream()
                 .map(p -> row("id", p.getId(), "student", p.getStudent().getFullName(),
                         "amount", p.getAmount(), "mode", p.getMode(), "paidAt", p.getPaidAt().toString()))
                 .toList();
@@ -326,12 +334,11 @@ public class FeeService {
         List<FeeAssignmentEntity> scoped = schoolId != null
                 ? feeAssignmentRepository.findByAcademicYear_IdAndStudent_School_Id(yearId, schoolId).stream()
                         .filter(a -> a.getStudent() != null && a.getBand() != null).toList()
-                : feeAssignmentRepository.findAll().stream()
-                        .filter(a -> a.getAcademicYear() != null && yearId.equals(a.getAcademicYear().getId())
-                                && a.getStudent() != null && a.getBand() != null).toList();
+                : feeAssignmentRepository.findByAcademicYear_Id(yearId).stream()
+                        .filter(a -> a.getStudent() != null && a.getBand() != null).toList();
         long collected = schoolId != null
                 ? paymentRecordRepository.sumAmountBySchoolId(schoolId)
-                : paymentRecordRepository.findAll().stream().mapToLong(PaymentRecordEntity::getAmount).sum();
+                : paymentRecordRepository.sumAmount();
         long target = scoped.stream().mapToLong(FeeAssignmentEntity::getNetPayable).sum();
         Set<String> bandIds = scoped.stream().map(a -> a.getBand().getId()).collect(Collectors.toSet());
         Map<String, Long> bandTotalMap = bandTotals(bandIds);

@@ -8,4 +8,5 @@ public interface AppUserRepository extends JpaRepository<AppUserEntity, Long> {
     List<AppUserEntity> findAllByRoleIgnoreCase(String role);
     Optional<AppUserEntity> findFirstByRoleIgnoreCaseAndBranchId(String role, Long branchId);
     void deleteByRoleIgnoreCaseAndBranchId(String role, Long branchId);
+    List<AppUserEntity> findAllByOrderByFullNameAsc();
 }

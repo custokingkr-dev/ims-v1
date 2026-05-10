@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.AttendanceService;
@@ -12,8 +13,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/attendance")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/attendance")
+@PreAuthorize(PermissionConstants.ATTENDANCE_READ)
 public class AttendanceController {
     private final UserContextService userContext;
     private final AttendanceService attendanceService;
@@ -42,6 +43,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/daily-entry")
+    @PreAuthorize(PermissionConstants.ATTENDANCE_MANAGE)
     public Map<String, Object> dailyEntry(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -50,6 +52,7 @@ public class AttendanceController {
     }
 
     @PostMapping("/submit-day")
+    @PreAuthorize(PermissionConstants.ATTENDANCE_MANAGE)
     public Map<String, Object> submitDay(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);

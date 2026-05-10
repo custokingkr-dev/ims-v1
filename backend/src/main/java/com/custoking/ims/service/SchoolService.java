@@ -1,7 +1,10 @@
 package com.custoking.ims.service;
 
+import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantScope;
 import com.custoking.ims.dto.school.SchoolAdminRequest;
 import com.custoking.ims.dto.school.SchoolCreateRequest;
+import com.custoking.ims.dto.school.SchoolOperationsUserRequest;
 import com.custoking.ims.dto.school.SchoolUpdateRequest;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.repo.*;
@@ -43,17 +46,22 @@ public class SchoolService {
     }
 
     public List<Map<String, Object>> listSchools() {
-        return schoolRepository.findAll().stream()
-                .sorted(Comparator.comparing(SchoolEntity::getName, String.CASE_INSENSITIVE_ORDER))
+        TenantScope scope = TenantContext.getScope();
+        List<SchoolEntity> schools = (scope != null && "ZONE_ADMIN".equals(scope.primaryRole()) && scope.accessibleSchoolIds() != null)
+                ? schoolRepository.findAllByIdInOrderByNameAsc(scope.accessibleSchoolIds())
+                : schoolRepository.findAllByOrderByNameAsc();
+        return schools.stream()
                 .map(school -> {
                     AppUserEntity admin = userRepository.findFirstByRoleIgnoreCaseAndBranchId("ADMIN", school.getId()).orElse(null);
-                    return Map.<String, Object>of(
+                    AppUserEntity ops = userRepository.findFirstByRoleIgnoreCaseAndBranchId("OPERATIONS", school.getId()).orElse(null);
+                    return row(
                             "id", school.getId(),
                             "name", school.getName(),
                             "shortCode", school.getShortCode(),
                             "city", school.getCity() == null ? "" : school.getCity(),
                             "active", school.isActive(),
                             "adminEmail", admin == null ? "" : admin.getEmail(),
+                            "operationsEmail", ops == null ? "" : ops.getEmail(),
                             "configuredClassCount", school.getConfiguredClassCount() == null ? 12 : school.getConfiguredClassCount(),
                             "configuredSectionCount", school.getConfiguredSectionCount() == null ? 2 : school.getConfiguredSectionCount()
                     );
@@ -119,8 +127,7 @@ public class SchoolService {
 
     public List<Map<String, Object>> listSchoolsWithStats() {
         List<CatalogOrderEntity> allOrders = catalogOrderRepository.findAll();
-        return schoolRepository.findAll().stream()
-                .sorted(Comparator.comparing(SchoolEntity::getName, String.CASE_INSENSITIVE_ORDER))
+        return schoolRepository.findAllByOrderByNameAsc().stream()
                 .map(school -> {
                     List<CatalogOrderEntity> schoolOrders = allOrders.stream()
                             .filter(o -> o.getSchool() != null && school.getId().equals(o.getSchool().getId()))
@@ -141,6 +148,32 @@ public class SchoolService {
                     );
                 })
                 .collect(Collectors.toList());
+    }
+
+    public Map<String, Object> createOrResetSchoolOperationsUser(Long schoolId, SchoolOperationsUserRequest request) {
+        SchoolEntity school = schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
+        userRepository.findFirstByRoleIgnoreCaseAndBranchId("OPERATIONS", schoolId).ifPresent(existing -> {
+            authSessionRepository.deleteByUser_Id(existing.getId());
+            userRepository.delete(existing);
+        });
+        AppUserEntity user = new AppUserEntity();
+        user.setFullName(request.fullName().trim());
+        user.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
+        user.setPasswordHash(passwordUtil.hash(request.temporaryPassword()));
+        user.setRole("OPERATIONS");
+        user.setBranchId(school.getId());
+        user.setBranchName(school.getName());
+        userRepository.save(user);
+        return operationsUserDetails(user);
+    }
+
+    public Map<String, Object> getSchoolOperationsUser(Long schoolId) {
+        schoolRepository.findById(schoolId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
+        AppUserEntity ops = userRepository.findFirstByRoleIgnoreCaseAndBranchId("OPERATIONS", schoolId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OPERATIONS user not found for school"));
+        return operationsUserDetails(ops);
     }
 
     public void ensureSchoolSections(SchoolEntity school, Integer classCountInput, Integer sectionCountInput) {
@@ -203,6 +236,16 @@ public class SchoolService {
     }
 
     private Map<String, Object> adminDetails(AppUserEntity user) {
+        return Map.of(
+                "userId", user.getId(),
+                "fullName", user.getFullName(),
+                "email", user.getEmail(),
+                "branchId", user.getBranchId(),
+                "branchName", user.getBranchName()
+        );
+    }
+
+    private Map<String, Object> operationsUserDetails(AppUserEntity user) {
         return Map.of(
                 "userId", user.getId(),
                 "fullName", user.getFullName(),

@@ -1,5 +1,6 @@
 package com.custoking.ims.service;
 
+import com.custoking.ims.auth.service.AuthService;
 import com.custoking.ims.dto.LoginRequest;
 import com.custoking.ims.dto.LoginResult;
 import com.custoking.ims.entity.AppUserEntity;
@@ -17,7 +18,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,6 +35,7 @@ class AuthServiceTest {
     @Mock AppUserDetailsService userDetailsService;
     @Mock PasswordUtil passwordUtil;
     @Mock AuditLogService auditLogService;
+    @Mock RbacService rbacService;
     @InjectMocks AuthService authService;
 
     private AppUserEntity user;
@@ -52,6 +56,8 @@ class AuthServiceTest {
         when(passwordUtil.verify("secret", "hashed-secret")).thenReturn(true);
         when(jwtService.generateToken(any(AppUserDetails.class))).thenReturn("access-jwt");
         when(jwtService.generateRefreshToken(any(AppUserDetails.class))).thenReturn("refresh-jwt");
+        when(rbacService.getUserRoleNames(1L)).thenReturn(List.of("ADMIN"));
+        when(rbacService.getUserPermissions(1L)).thenReturn(Set.of());
 
         LoginResult result = authService.login(new LoginRequest("admin@test.com", "secret"));
 
@@ -85,6 +91,8 @@ class AuthServiceTest {
                 .thenReturn(new AppUserDetails(user));
         when(jwtService.generateToken(any(AppUserDetails.class))).thenReturn("new-access-jwt");
         when(jwtService.generateRefreshToken(any(AppUserDetails.class))).thenReturn("new-refresh-jwt");
+        when(rbacService.getUserRoleNames(1L)).thenReturn(List.of("ADMIN"));
+        when(rbacService.getUserPermissions(1L)).thenReturn(Set.of());
 
         LoginResult result = authService.refresh("good-refresh");
 
