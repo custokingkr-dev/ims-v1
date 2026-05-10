@@ -17,19 +17,20 @@
     </springProfile>
 
     <!-- ── Production: structured JSON to stdout (collected by Cloud Logging) ── -->
+<!-- ── Production: structured JSON to stdout (collected by Cloud Logging) ── -->
     <springProfile name="prod">
         <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <immediateFlush>true</immediateFlush>
             <encoder class="net.logstash.logback.encoder.LogstashEncoder">
                 <includeCallerData>false</includeCallerData>
                 <customFields>{"service":"custoking-ims"}</customFields>
-                <!-- Promote MDC keys to top-level JSON fields -->
                 <includeMdcKeyName>requestId</includeMdcKeyName>
                 <includeMdcKeyName>userId</includeMdcKeyName>
                 <includeMdcKeyName>userEmail</includeMdcKeyName>
                 <includeMdcKeyName>schoolId</includeMdcKeyName>
             </encoder>
         </appender>
-
+    
         <root level="WARN">
             <appender-ref ref="JSON_CONSOLE"/>
         </root>
