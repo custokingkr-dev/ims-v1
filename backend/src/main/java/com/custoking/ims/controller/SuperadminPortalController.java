@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.SchoolService;
 import com.custoking.ims.service.SuperadminService;
 import com.custoking.ims.service.UserContextService;
@@ -12,8 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/sa")
-@PreAuthorize("hasRole('SUPERADMIN')")
+@RequestMapping("/api/v1/sa")
+@PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
 public class SuperadminPortalController {
     private final UserContextService userContext;
     private final SuperadminService superadminService;

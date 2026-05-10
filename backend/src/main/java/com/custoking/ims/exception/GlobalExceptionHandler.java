@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -88,8 +89,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleOther(Exception ex) {
-        log.error("Unhandled exception [requestId={}]", MDC.get("requestId"), ex);
-        return error(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        String cid = UUID.randomUUID().toString().substring(0, 8);
+        log.error("unhandled-exception correlationId={}", cid, ex);
+        Map<String, Object> body = errorBody(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        body.put("correlationId", cid);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

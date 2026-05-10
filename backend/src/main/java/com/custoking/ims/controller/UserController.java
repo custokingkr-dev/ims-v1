@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.UserContextService;
 import com.custoking.ims.service.WorkspaceService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/users")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/users")
+@PreAuthorize(PermissionConstants.USER_READ)
 public class UserController {
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;

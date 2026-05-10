@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.dto.ApprovalDecisionRequest;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
@@ -12,8 +13,8 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/approvals")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/approvals")
+@PreAuthorize(PermissionConstants.ORDER_READ)
 public class ApprovalController {
     private final UserContextService userContext;
     private final WorkspaceService workspaceService;
@@ -30,7 +31,7 @@ public class ApprovalController {
     }
 
     @PostMapping("/{id}/{action}")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ORDER_APPROVE)
     public Map<String, Object> decide(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable long id,
                                       @PathVariable String action,

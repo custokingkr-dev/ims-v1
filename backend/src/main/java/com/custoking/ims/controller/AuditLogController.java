@@ -2,6 +2,7 @@ package com.custoking.ims.controller;
 
 import com.custoking.ims.audit.AuditLogEntity;
 import com.custoking.ims.audit.AuditLogRepository;
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.data.domain.Page;
@@ -18,11 +19,11 @@ import java.util.Map;
 
 /**
  * Read-only audit log endpoint.
- * SUPERADMIN can query all schools; ADMIN/VIEWER can only query their own school.
+ * SUPERADMIN/ZONE_ADMIN can query across schools; ADMIN/ACCOUNTANT scoped to own school.
  */
 @RestController
-@RequestMapping("/api/audit-logs")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN','VIEWER')")
+@RequestMapping("/api/v1/audit-logs")
+@PreAuthorize(PermissionConstants.AUDIT_READ)
 public class AuditLogController {
 
     private final AuditLogRepository auditRepo;

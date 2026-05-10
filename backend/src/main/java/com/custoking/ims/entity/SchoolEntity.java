@@ -7,7 +7,8 @@ import java.time.OffsetDateTime;
 @Table(name = "schools", uniqueConstraints = @UniqueConstraint(name = "uk_school_short_code", columnNames = "short_code"))
 public class SchoolEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "school_seq")
+    @SequenceGenerator(name = "school_seq", sequenceName = "seq_schools", allocationSize = 1)
     private Long id;
 
     @Column(nullable = false)

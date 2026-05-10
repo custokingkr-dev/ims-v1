@@ -11,6 +11,8 @@ import com.custoking.ims.repo.FirefightingRequestRepository;
 import com.custoking.ims.repo.SchoolRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,8 @@ import java.util.*;
 @Service
 @Transactional
 public class FirefightingService {
+
+    private static final Logger log = LoggerFactory.getLogger(FirefightingService.class);
 
     private final FirefightingRequestRepository firefightingRequestRepository;
     private final FirefightingQuotationRepository firefightingQuotationRepository;
@@ -51,11 +55,9 @@ public class FirefightingService {
     public List<Map<String, Object>> listFireRequests(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         List<FirefightingRequestEntity> rows = (schoolId == null)
-                ? firefightingRequestRepository.findAll()
-                : firefightingRequestRepository.findBySchool_Id(schoolId);
+                ? firefightingRequestRepository.findAllByOrderByCreatedAtDesc()
+                : firefightingRequestRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId);
         return rows.stream()
-                .sorted(Comparator.comparing(FirefightingRequestEntity::getCreatedAt,
-                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
                 .map(this::fireRequestRow)
                 .toList();
     }
@@ -69,8 +71,8 @@ public class FirefightingService {
     public Map<String, Object> fireRequestStats(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         List<FirefightingRequestEntity> rows = (schoolId == null)
-                ? firefightingRequestRepository.findAll()
-                : firefightingRequestRepository.findBySchool_Id(schoolId);
+                ? firefightingRequestRepository.findAllByOrderByCreatedAtDesc()
+                : firefightingRequestRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId);
         long activeRequests = rows.stream()
                 .filter(r -> !List.of("FULFILLED", "REJECTED").contains(
                         String.valueOf(r.getStatus()).toUpperCase(Locale.ROOT)))
@@ -111,6 +113,8 @@ public class FirefightingService {
         e.setStatus("DRAFT");
         e.setCustokingCriteriaJson(toJson(custokingCriteria(e.getCategory())));
         firefightingRequestRepository.save(e);
+        log.info("fire.request.created requestId={} schoolId={} actorId={}",
+                e.getCode(), e.getSchool() != null ? e.getSchool().getId() : null, actor.userId());
         return fireRequestDetailRow(e);
     }
 
@@ -225,6 +229,7 @@ public class FirefightingService {
         ff.setBursarApprovedAt(OffsetDateTime.now());
         ff.setStatus("AWAITING_PRINCIPAL");
         firefightingRequestRepository.save(ff);
+        log.info("fire.request.bursarApproved requestId={} actorId={} status={}", id, actor.userId(), ff.getStatus());
         auditLogService.statusTransition("ff_request", id, oldStatus, "AWAITING_PRINCIPAL", actor.userId());
         return fireRequestDetailRow(ff);
     }
@@ -247,6 +252,7 @@ public class FirefightingService {
         }
         ff.setStatus("APPROVED");
         firefightingRequestRepository.save(ff);
+        log.info("fire.request.principalApproved requestId={} actorId={} status={}", id, actor.userId(), ff.getStatus());
         auditLogService.statusTransition("ff_request", id, oldStatus, "APPROVED", actor.userId());
         return fireRequestDetailRow(ff);
     }

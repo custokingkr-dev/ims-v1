@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class LoginRateLimiter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(LoginRateLimiter.class);
-    private static final String LOGIN_PATH = "/api/auth/login";
+    private static final String LOGIN_PATH = "/api/v1/auth/login";
     private static final int MAX_ATTEMPTS = 10;
     private static final long WINDOW_MS = 15 * 60 * 1000L;
 

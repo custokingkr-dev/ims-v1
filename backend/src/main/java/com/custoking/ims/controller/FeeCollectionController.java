@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.FeeService;
@@ -17,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@PreAuthorize(PermissionConstants.STUDENT_READ)
 public class FeeCollectionController {
     private final UserContextService userContext;
     private final StudentService studentService;
@@ -31,14 +32,14 @@ public class FeeCollectionController {
         this.feeService = feeService;
     }
 
-    @GetMapping("/api/classes")
+    @GetMapping("/api/v1/classes")
     public List<Map<String, Object>> classes(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestParam(value = "schoolId", required = false) Long schoolId) {
         var actor = userContext.requireUser(authorization);
         return studentService.classesList(actor, schoolId);
     }
 
-    @GetMapping("/api/classes/{classId}/sections")
+    @GetMapping("/api/v1/classes/{classId}/sections")
     public List<Map<String, Object>> sections(@RequestHeader(value = "Authorization", required = false) String authorization,
                                               @PathVariable String classId,
                                               @RequestParam(value = "schoolId", required = false) Long schoolId) {
@@ -46,7 +47,7 @@ public class FeeCollectionController {
         return studentService.sectionsForClass(classId, actor, schoolId);
     }
 
-    @GetMapping("/api/classes/{classId}/sections/{sectionId}/students")
+    @GetMapping("/api/v1/classes/{classId}/sections/{sectionId}/students")
     public List<Map<String, Object>> students(@RequestHeader(value = "Authorization", required = false) String authorization,
                                               @PathVariable String classId,
                                               @PathVariable String sectionId,
@@ -55,7 +56,8 @@ public class FeeCollectionController {
         return studentService.studentsForClassSection(classId, sectionId, actor, schoolId);
     }
 
-    @PostMapping("/api/fee-assignments")
+    @PostMapping("/api/v1/fee-assignments")
+    @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> assignFee(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -63,7 +65,8 @@ public class FeeCollectionController {
         return feeService.feeAssignmentApi(request, actor);
     }
 
-    @PostMapping("/api/payments")
+    @PostMapping("/api/v1/payments")
+    @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> createPayment(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -71,7 +74,8 @@ public class FeeCollectionController {
         return feeService.paymentApi(request, actor);
     }
 
-    @GetMapping("/api/fees/report")
+    @GetMapping("/api/v1/fees/report")
+    @PreAuthorize(PermissionConstants.FEE_READ)
     public List<Map<String, Object>> feeReport(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @RequestParam String classId,
                                                @RequestParam String sectionId,
@@ -80,7 +84,8 @@ public class FeeCollectionController {
         return feeService.feeReport(classId, sectionId, actor, schoolId);
     }
 
-    @GetMapping("/api/fees/overdue")
+    @GetMapping("/api/v1/fees/overdue")
+    @PreAuthorize(PermissionConstants.FEE_READ)
     public List<Map<String, Object>> feeOverdue(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                 @RequestParam String classId,
                                                 @RequestParam String sectionId,
@@ -89,7 +94,8 @@ public class FeeCollectionController {
         return feeService.feeOverdue(classId, sectionId, actor, schoolId);
     }
 
-    @GetMapping(value = "/api/receipts/{paymentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = "/api/v1/receipts/{paymentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @PreAuthorize(PermissionConstants.FEE_READ)
     public ResponseEntity<byte[]> receiptPdf(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @PathVariable String paymentId) {
         userContext.requireUser(authorization);
@@ -100,7 +106,8 @@ public class FeeCollectionController {
                 .body(pdf);
     }
 
-    @PostMapping("/api/fees/send-reminders")
+    @PostMapping("/api/v1/fees/send-reminders")
+    @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> sendReminders(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);

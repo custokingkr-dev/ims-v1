@@ -4,7 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import {
   type PanelKey, type WorkspaceData,
-  ADMIN_NAV_SECTIONS, SUPERADMIN_NAV_SECTIONS, PANEL_TITLES,
+  ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS, SUPERADMIN_NAV_SECTIONS, ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
   SA_NEW_ORDER_CATEGORIES, CATALOG_TILES,
 } from './workspace/config';
 import {
@@ -42,7 +42,7 @@ export default function UnifiedWorkspacePage() {
   // ── Core ───────────────────────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [workspaceError, setWorkspaceError] = useState('');
-  const [panel, setPanel] = useState<PanelKey>(user?.role === 'SUPERADMIN' ? 'orders' : 'catalog');
+  const [panel, setPanel] = useState<PanelKey>(user?.role === 'SUPERADMIN' ? 'orders' : user?.role === 'ZONE_ADMIN' ? 'za-overview' : user?.role === 'OPERATIONS' ? 'home' : 'catalog');
   const [saving, setSaving] = useState<string>('');
 
   // ── Students ───────────────────────────────────────────────────────────────
@@ -1283,7 +1283,7 @@ useEffect(() => {
   const orderStats = liveOrderStats;
 
   const currentTitle = user?.role === 'SUPERADMIN' && panel === 'orders' ? 'Supply order approvals' : PANEL_TITLES[panel];
-  const navSections = user?.role === 'SUPERADMIN' ? SUPERADMIN_NAV_SECTIONS : ADMIN_NAV_SECTIONS;
+  const navSections = user?.role === 'SUPERADMIN' ? SUPERADMIN_NAV_SECTIONS : user?.role === 'ZONE_ADMIN' ? ZONE_ADMIN_NAV_SECTIONS : user?.role === 'OPERATIONS' ? OPERATIONS_NAV_SECTIONS : ADMIN_NAV_SECTIONS;
   const isFire = panel.startsWith('ff-');
   const feeSummary = workspace?.fees?.summary ?? { progressPercent: 0, collected: 0, outstanding: 0, overdueCount: 0, target: 0 };
   const filteredFeeRecords = useMemo(() => {
@@ -1545,7 +1545,7 @@ useEffect(() => {
           <div className="ck-user-name">{user?.fullName}</div>
           <div className="ck-user-meta">{user?.email}</div>
           <div className="ck-badge-row">
-            <span className="ck-pill">{user?.role === 'SUPERADMIN' ? 'Super Admin' : 'Admin'}</span>
+            <span className="ck-pill">{user?.role === 'SUPERADMIN' ? 'Super Admin' : user?.role === 'OPERATIONS' ? 'Operations' : 'Admin'}</span>
             <span className="ck-pill">{user?.branchName || 'Global'}</span>
           </div>
           <button className="ck-btn ck-btn-ghost" onClick={logout}>Logout</button>

@@ -7,7 +7,8 @@ import java.time.OffsetDateTime;
 @Table(name = "app_users", uniqueConstraints = @UniqueConstraint(name = "uk_app_user_email", columnNames = "email"))
 public class AppUserEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "app_user_seq")
+    @SequenceGenerator(name = "app_user_seq", sequenceName = "seq_app_users", allocationSize = 1)
     private Long id;
 
     @Column(nullable = false)
@@ -24,6 +25,9 @@ public class AppUserEntity {
 
     private Long branchId;
     private String branchName;
+
+    private Long zoneId;
+    private String zoneName;
 
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
@@ -42,6 +46,10 @@ public class AppUserEntity {
     public void setBranchId(Long branchId) { this.branchId = branchId; }
     public String getBranchName() { return branchName; }
     public void setBranchName(String branchName) { this.branchName = branchName; }
+    public Long getZoneId() { return zoneId; }
+    public void setZoneId(Long zoneId) { this.zoneId = zoneId; }
+    public String getZoneName() { return zoneName; }
+    public void setZoneName(String zoneName) { this.zoneName = zoneName; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

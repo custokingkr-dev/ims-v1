@@ -1,6 +1,7 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.service.SupplyOrderService;
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -8,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/supply")
-@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+@RequestMapping("/api/v1/supply")
+@PreAuthorize(PermissionConstants.ORDER_READ)
 public class SupplyController {
     private final UserContextService userContext;
     private final SupplyOrderService supplyOrderService;
@@ -26,12 +27,14 @@ public class SupplyController {
     }
 
     @PostMapping("/orders")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> createOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                            @RequestBody Map<String, Object> request) {
         return supplyOrderService.createCatalogOrder(request, userContext.requireUser(authorization));
     }
 
     @PostMapping("/orders/{orderId}/place")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> placeOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String orderId) {
         return supplyOrderService.placeCatalogOrder(orderId, userContext.requireUser(authorization));
@@ -50,12 +53,13 @@ public class SupplyController {
     }
 
     @GetMapping("/orders/pending-approval")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Object pendingApprovalOrders(@RequestHeader(value = "Authorization", required = false) String authorization) {
         return supplyOrderService.listOrdersPendingApproval(userContext.requireSuperAdmin(authorization));
     }
 
     @PatchMapping("/orders/{orderId}/status")
+    @PreAuthorize(PermissionConstants.ORDER_UPDATE)
     public Map<String, Object> updateOrderStatus(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                  @PathVariable String orderId,
                                                  @RequestBody Map<String, Object> request) {
@@ -69,20 +73,21 @@ public class SupplyController {
     }
 
     @PostMapping("/orders/{orderId}/design-approved")
+    @PreAuthorize(PermissionConstants.ORDER_UPDATE)
     public Map<String, Object> markDesignApproved(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                    @PathVariable String orderId) {
         return supplyOrderService.markCatalogOrderDesignApproved(orderId, userContext.requireUser(authorization));
     }
 
     @PostMapping("/orders/{orderId}/superadmin-approve")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Map<String, Object> superadminApprove(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                   @PathVariable String orderId) {
         return supplyOrderService.superadminApproveOrder(orderId, userContext.requireSuperAdmin(authorization));
     }
 
     @PostMapping("/orders/{orderId}/superadmin-reject")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Map<String, Object> superadminReject(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                  @PathVariable String orderId,
                                                  @RequestBody Map<String, Object> request) {
@@ -96,12 +101,14 @@ public class SupplyController {
     }
 
     @PostMapping("/annual-plan/items")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> savePlanItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @RequestBody Map<String, Object> request) {
         return supplyOrderService.saveAnnualPlanItem(request, userContext.requireUser(authorization));
     }
 
     @PostMapping("/annual-plan/confirm")
+    @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> confirmPlan(@RequestHeader(value = "Authorization", required = false) String authorization) {
         return supplyOrderService.confirmAnnualPlan(userContext.requireUser(authorization));
     }
