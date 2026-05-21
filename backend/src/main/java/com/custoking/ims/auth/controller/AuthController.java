@@ -52,7 +52,10 @@ public class AuthController {
 
     @PostMapping("/logout")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logout(HttpServletResponse response) {
+    public void logout(
+            @CookieValue(name = COOKIE_NAME, required = false) String refreshToken,
+            HttpServletResponse response) {
+        authService.logout(refreshToken);
         response.addHeader(HttpHeaders.SET_COOKIE, buildCookie("", Duration.ZERO).toString());
     }
 

@@ -1,5 +1,6 @@
 package com.custoking.ims.config;
 
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.security.AppUserDetails;
 import com.custoking.ims.security.AppUserDetailsService;
 import com.custoking.ims.security.JwtService;
@@ -32,7 +33,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         long start = System.currentTimeMillis();
         String userId = MDC.get("userId");
-        String schoolId = MDC.get("schoolId");
+        // Resolve userId from JWT for early MDC population (before security filters run).
         if (userId == null) {
             String token = resolveBearerToken(request);
             if (token != null) {
@@ -41,11 +42,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                     var details = userDetailsService.loadUserByUsername(username);
                     if (details instanceof AppUserDetails appUser) {
                         userId = String.valueOf(appUser.getUser().getId());
-                        if (appUser.getUser().getBranchId() != null) {
-                            schoolId = String.valueOf(appUser.getUser().getBranchId());
-                        }
                         MDC.put("userId", userId);
-                        if (schoolId != null) MDC.put("schoolId", schoolId);
                     }
                 } catch (Exception ignored) {
                     // invalid token — no request-level identity attached
@@ -55,6 +52,14 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
+            // Prefer RBAC-derived school context set by TenantResolverFilter over any fallback.
+            String schoolId = MDC.get("schoolId");
+            if (schoolId == null) {
+                Long tenantSchoolId = TenantContext.get();
+                if (tenantSchoolId != null) {
+                    schoolId = String.valueOf(tenantSchoolId);
+                }
+            }
             String requestPath = request.getMethod() + " " + request.getRequestURI();
             int status = response.getStatus();
             long duration = System.currentTimeMillis() - start;

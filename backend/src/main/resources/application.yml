@@ -6,8 +6,8 @@ spring:
       enabled: true
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
-    # Default to the least-privilege app role that has RLS policies applied (V4 migration).
-    # For local dev before V4 is applied, override: SPRING_DATASOURCE_USERNAME=postgres
+    # Least-privilege application role. RLS is currently disabled (V117); isolation is
+    # enforced at the service layer. In prod, provision ims_app with SELECT/INSERT/UPDATE/DELETE only.
     username: ${SPRING_DATASOURCE_USERNAME:ims_app}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
     hikari:

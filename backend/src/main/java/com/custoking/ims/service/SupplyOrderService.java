@@ -7,7 +7,6 @@ import com.custoking.ims.entity.AcademicYearEntity;
 import com.custoking.ims.entity.CatalogOrderEntity;
 import com.custoking.ims.entity.SchoolEntity;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
 import com.custoking.ims.repo.AcademicYearRepository;
 import com.custoking.ims.repo.AnnualPlanItemRepository;
 import com.custoking.ims.repo.CatalogOrderRepository;
@@ -257,7 +256,8 @@ public class SupplyOrderService {
     public Map<String, Object> catalogOrderDetail(String orderId, AuthUser actor) {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        if (actor.role() != Role.SUPERADMIN) {
+        var scope = TenantContext.getScope();
+        if (scope == null || !scope.isSuperadmin()) {
             assertSchoolOwnership("order", entity.getSchool().getId(), TenantContext.get());
         }
         return catalogOrderDetailRow(entity);

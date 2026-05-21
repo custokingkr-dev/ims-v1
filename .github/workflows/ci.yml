@@ -7,7 +7,7 @@ on:
 
 jobs:
 
-  # ── Backend: unit + integration tests + coverage + security scan ───────────
+  # ── Backend: unit + integration tests + coverage ─────────────────────────────
   backend-test:
     runs-on: ubuntu-latest
     defaults:
@@ -35,6 +35,52 @@ jobs:
           path: backend/target/site/jacoco/
           if-no-files-found: warn
 
+  # ── DB migration smoke test ────────────────────────────────────────────────
+  db-migration-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ims_migrationtest
+          POSTGRES_USER: migrator
+          POSTGRES_PASSWORD: migrator
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: maven
+
+      - name: Run Flyway migrations on fresh DB
+        env:
+          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ims_migrationtest
+          SPRING_DATASOURCE_USERNAME: migrator
+          SPRING_DATASOURCE_PASSWORD: migrator
+          FLYWAY_URL: jdbc:postgresql://localhost:5432/ims_migrationtest
+          FLYWAY_USERNAME: migrator
+          FLYWAY_PASSWORD: migrator
+        run: |
+          mvn -B flyway:migrate \
+            -Dflyway.url="jdbc:postgresql://localhost:5432/ims_migrationtest" \
+            -Dflyway.user=migrator \
+            -Dflyway.password=migrator \
+            --no-transfer-progress
+          echo "All Flyway migrations applied successfully."
+
   # ── Frontend: type-check + build ──────────────────────────────────────────
   frontend-build:
     runs-on: ubuntu-latest
@@ -53,6 +99,9 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --include=dev
 
+      - name: Audit frontend dependencies (fail on critical)
+        run: npm audit --audit-level=critical
+
       - name: Build frontend
         run: npm run build
 
@@ -62,7 +111,7 @@ jobs:
     defaults:
       run:
         working-directory: backend
-    # Run on push to main/master only (expensive, ~5 min); skip on every PR
+    # Run on push to main/master only (expensive, ~5 min); skip on every PR.
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
@@ -80,13 +129,12 @@ jobs:
           key: owasp-nvd-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}
           restore-keys: owasp-nvd-${{ runner.os }}-
 
-      - name: OWASP dependency-check
+      - name: OWASP dependency-check (fail on CVSS >= 9)
         run: |
           mvn -B org.owasp:dependency-check-maven:check \
             -DfailBuildOnCVSS=9 \
             -DsuppressionFile=.owasp-suppressions.xml \
-            --no-transfer-progress || true
-        # || true — report but don't fail CI until suppressions are tuned
+            --no-transfer-progress
 
       - name: Upload OWASP report
         if: always()
@@ -95,6 +143,19 @@ jobs:
           name: owasp-report
           path: backend/target/dependency-check-report.html
           if-no-files-found: ignore
+
+  # ── Secret scanning with Gitleaks ─────────────────────────────────────────
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for Gitleaks
+
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ── Docker build smoke test (no push) ─────────────────────────────────────
   docker-build:
@@ -116,6 +177,32 @@ jobs:
         with:
           context: ./frontend
           build-args: |
-            VITE_API_BASE_URL=/api
+            VITE_API_BASE_URL=/api/v1
           push: false
           tags: custoking-frontend:ci
+
+  # ── Trivy image vulnerability scan (after Docker build) ───────────────────
+  trivy-scan:
+    runs-on: ubuntu-latest
+    needs: [ docker-build ]
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: false
+          load: true
+          tags: custoking-backend:scan
+
+      - name: Trivy scan backend image (fail on CRITICAL)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: custoking-backend:scan
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL

@@ -2,6 +2,7 @@ package com.custoking.ims.firefighting.domain;
 
 import com.custoking.ims.common.domain.FirefightingRequestStatus;
 import com.custoking.ims.common.domain.UserRole;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.entity.FirefightingRequestEntity;
 import com.custoking.ims.repo.FirefightingRequestRepository;
 import org.springframework.stereotype.Service;
@@ -95,8 +96,9 @@ public class FirefightingDomainService {
     }
 
     public boolean canUserApproveRequest(UserRole userRole, FirefightingRequestEntity request) {
-        if (userRole == UserRole.SUPERADMIN) {
-            return true; // Superadmin can approve any request
+        var scope = TenantContext.getScope();
+        if (scope != null && scope.isSuperadmin()) {
+            return true;
         }
         if (userRole == UserRole.APPROVER) {
             return FirefightingRequestStatus.valueOf(request.getStatus()).canBeApprovedByAdmin();
@@ -105,7 +107,8 @@ public class FirefightingDomainService {
     }
 
     public boolean canUserFulfillRequest(UserRole userRole, FirefightingRequestEntity request) {
-        return userRole == UserRole.SUPERADMIN &&
-               FirefightingRequestStatus.valueOf(request.getStatus()).canBeFulfilledBySuperadmin();
+        var scope = TenantContext.getScope();
+        return scope != null && scope.isSuperadmin()
+               && FirefightingRequestStatus.valueOf(request.getStatus()).canBeFulfilledBySuperadmin();
     }
 }

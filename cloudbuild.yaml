@@ -6,6 +6,12 @@ substitutions:
   _BACKEND_IMAGE: custoking-backend
   _FRONTEND_IMAGE: custoking-frontend
   _COMMIT_SHA: latest
+  # Override these per environment via Cloud Build trigger substitution variables
+  _DB_HOST: 10.116.0.3:5432
+  _DB_NAME: custoking_ims_v1
+  _FRONTEND_ORIGIN: custoking-frontend-755376288593.asia-south2.run.app
+  _SUPERADMIN_EMAIL: superadmin@custoking.com
+  _FLYWAY_USERNAME: appuser
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -30,8 +36,8 @@ steps:
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
-      - --set-env-vars=SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://10.116.0.3:5432/custoking_ims_v1,SPRING_DATASOURCE_USERNAME=ims_app,APP_BOOTSTRAP_USERS=false,APP_CORS_ALLOWED_ORIGINS=https://custoking-frontend-755376288593.asia-south2.run.app,FLYWAY_URL=jdbc:postgresql://10.116.0.3:5432/custoking_ims_v1,FLYWAY_USERNAME=appuser,SUPERADMIN_PASSWORD=Custoking@2024X,SUPERADMIN_EMAIL=superadmin@custoking.com
-      - --set-secrets=SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,APP_AADHAR_SECRET=aadhar-secret:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest
+      - --set-env-vars=SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=ims_app,APP_BOOTSTRAP_USERS=false,APP_CORS_ALLOWED_ORIGINS=https://${_FRONTEND_ORIGIN},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_USERNAME},SUPERADMIN_EMAIL=${_SUPERADMIN_EMAIL}
+      - --set-secrets=SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,APP_AADHAR_SECRET=aadhar-secret:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,SUPERADMIN_PASSWORD=superadmin-password:latest
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:

@@ -2,165 +2,197 @@ package com.custoking.ims.common.domain;
 
 /**
  * Centralised Spring Security SpEL expressions for @PreAuthorize.
- * All role names match the Role enum: SUPERADMIN, ZONE_ADMIN, ADMIN,
- * OPERATIONS, ACCOUNTANT, TEACHER, VIEWER.
- * Add new constants here; never hard-code role strings in controllers.
+ * All expressions delegate to RbacService which checks the RBAC tables
+ * (roles → role_permissions → permissions). Role names are NOT hard-coded here.
+ *
+ * Permission codes map to rows in the "permissions" table seeded by V112/V118.
+ * To grant a new role access to an endpoint, update role_permissions in the DB
+ * — no code change required.
  */
 public final class PermissionConstants {
 
     // ── Broad access tiers ────────────────────────────────────────────────────
+    /** Any request that must come from a platform-level administrator. */
     public static final String SUPERADMIN_ACCESS =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'platform:admin')";
 
+    /** SUPERADMIN or ZONE_ADMIN — zone-scoped administrative access. */
     public static final String ZONE_OR_SUPER =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN')";
+            "@rbacService.hasPermission(authentication, 'zone:read')";
 
+    /** SUPERADMIN or ADMIN — school-level administrative access. */
     public static final String ADMIN_ACCESS =
-            "hasAnyRole('SUPERADMIN','ADMIN')";
+            "@rbacService.hasPermission(authentication, 'school:admin_manage')";
 
-    /** Any authenticated school-level or above user. */
+    /** Any user with an active role that grants workspace access. */
     public static final String WORKSPACE_ACCESS =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','OPERATIONS','ACCOUNTANT','TEACHER','VIEWER')";
-
-    /** Can make write-level school ops (ADMIN + OPERATIONS). */
-    public static final String WRITE_ACCESS =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'workspace:access')";
 
     // ── School management ─────────────────────────────────────────────────────
     public static final String SCHOOL_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN')";
+            "@rbacService.hasPermission(authentication, 'school:read')";
     public static final String SCHOOL_CREATE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'school:create')";
     public static final String SCHOOL_UPDATE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'school:update')";
     public static final String SCHOOL_MANAGE_ADMIN =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'school:admin_manage')";
     public static final String SCHOOL_MANAGE_OPERATIONS =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'school:admin_manage')";
 
     // ── Zone management ───────────────────────────────────────────────────────
     public static final String ZONE_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN')";
+            "@rbacService.hasPermission(authentication, 'zone:read')";
     public static final String ZONE_CREATE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'zone:manage')";
     public static final String ZONE_UPDATE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'zone:manage')";
     public static final String ZONE_ASSIGN_SCHOOL =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'zone:assign_school')";
     public static final String ZONE_ASSIGN_ADMIN =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'zone:manage')";
 
     // ── Student management ────────────────────────────────────────────────────
     public static final String STUDENT_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','OPERATIONS','ACCOUNTANT','TEACHER','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'student:read')";
     public static final String STUDENT_CREATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'student:create')";
     public static final String STUDENT_UPDATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'student:update')";
     public static final String STUDENT_DELETE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'student:delete')";
     public static final String STUDENT_IMPORT =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'student:import')";
     public static final String STUDENT_EXPORT =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'student:read')";
 
     // ── Attendance ────────────────────────────────────────────────────────────
     public static final String ATTENDANCE_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','OPERATIONS','ACCOUNTANT','TEACHER','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'attendance:read')";
     public static final String ATTENDANCE_MANAGE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS','TEACHER')";
+            "@rbacService.hasPermission(authentication, 'attendance:manage')";
 
-    // ── Fee management — OPERATIONS excluded from configure/collect ───────────
+    // ── Fee management ────────────────────────────────────────────────────────
     public static final String FEE_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'fee:read')";
     public static final String FEE_CONFIGURE =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'fee_structure:manage')";
     public static final String FEE_COLLECT =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'fee:collect')";
     public static final String FEE_UPDATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'fee_structure:manage')";
     public static final String FEE_EXPORT =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'fee:read')";
 
     // ── Supply / catalog orders ───────────────────────────────────────────────
     public static final String ORDER_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','OPERATIONS','ACCOUNTANT','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'order:read')";
     public static final String ORDER_CREATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'order:create')";
     public static final String ORDER_UPDATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'order:update')";
     public static final String ORDER_APPROVE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'order:approve')";
     public static final String ORDER_FULFILL =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'order:fulfill')";
 
     // ── Firefighting requests ─────────────────────────────────────────────────
     public static final String FIREFIGHTING_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','OPERATIONS','ACCOUNTANT','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'firefighting:read')";
     public static final String FIREFIGHTING_CREATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'firefighting:create')";
     public static final String FIREFIGHTING_UPDATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS')";
+            "@rbacService.hasPermission(authentication, 'firefighting:update')";
     public static final String FIREFIGHTING_APPROVE =
-            "hasAnyRole('SUPERADMIN','ADMIN')";
+            "@rbacService.hasPermission(authentication, 'firefighting:approve')";
     public static final String FIREFIGHTING_FULFILL =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'firefighting:fulfill')";
 
     // ── Payments ──────────────────────────────────────────────────────────────
     public static final String PAYMENT_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'payment:read')";
     public static final String PAYMENT_CREATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'payment:create')";
     public static final String PAYMENT_REVERSE =
-            "hasAnyRole('SUPERADMIN','ADMIN')";
+            "@rbacService.hasPermission(authentication, 'fee:reverse')";
 
     // ── Invoices ──────────────────────────────────────────────────────────────
     public static final String INVOICE_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'invoice:read')";
     public static final String INVOICE_CREATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'invoice:create')";
     public static final String INVOICE_CANCEL =
-            "hasAnyRole('SUPERADMIN','ADMIN')";
+            "@rbacService.hasPermission(authentication, 'invoice:cancel')";
 
     // ── Customers / parents ───────────────────────────────────────────────────
     public static final String CUSTOMER_READ =
-            "hasAnyRole('SUPERADMIN','ADMIN','OPERATIONS','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'customer:read')";
     public static final String CUSTOMER_CREATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'customer:create')";
     public static final String CUSTOMER_UPDATE =
-            "hasAnyRole('SUPERADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'customer:create')";
 
     // ── Reports ───────────────────────────────────────────────────────────────
     public static final String REPORT_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT','TEACHER','VIEWER')";
+            "@rbacService.hasPermission(authentication, 'report:read')";
     public static final String REPORT_EXPORT =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'report:read')";
 
     // ── Audit logs ────────────────────────────────────────────────────────────
     public static final String AUDIT_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'audit:read')";
 
     // ── User management ───────────────────────────────────────────────────────
     public static final String USER_READ =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'user:read')";
     public static final String USER_CREATE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'user:create')";
     public static final String USER_UPDATE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'user:update')";
     public static final String USER_DISABLE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'user:disable')";
     public static final String USER_RESET_PASSWORD =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'user:reset_password')";
     public static final String USER_MANAGE =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'user:read')";
 
     // ── Workflow ──────────────────────────────────────────────────────────────
     public static final String WORKFLOW_READ =
-            "hasAnyRole('SUPERADMIN','ZONE_ADMIN','ADMIN','OPERATIONS','ACCOUNTANT')";
+            "@rbacService.hasPermission(authentication, 'workflow:read')";
     public static final String WORKFLOW_APPROVE =
-            "hasAnyRole('SUPERADMIN','ADMIN')";
+            "@rbacService.hasPermission(authentication, 'workflow:act')";
     public static final String WORKFLOW_ADMIN =
-            "hasRole('SUPERADMIN')";
+            "@rbacService.hasPermission(authentication, 'workflow:act')";
+
+    // ── RBAC management ───────────────────────────────────────────────────────
+    public static final String ROLE_READ =
+            "@rbacService.hasPermission(authentication, 'role:read')";
+    public static final String ROLE_CREATE =
+            "@rbacService.hasPermission(authentication, 'role:create')";
+    public static final String ROLE_UPDATE =
+            "@rbacService.hasPermission(authentication, 'role:update')";
+    public static final String ROLE_ASSIGN =
+            "@rbacService.hasPermission(authentication, 'role:assign')";
+    public static final String ROLE_REVOKE =
+            "@rbacService.hasPermission(authentication, 'role:revoke')";
+    public static final String ROLE_DISABLE =
+            "@rbacService.hasPermission(authentication, 'role:disable')";
+    public static final String PERMISSION_READ =
+            "@rbacService.hasPermission(authentication, 'permission:read')";
+    public static final String PERMISSION_ASSIGN =
+            "@rbacService.hasPermission(authentication, 'permission:assign')";
+    public static final String PERMISSION_REVOKE =
+            "@rbacService.hasPermission(authentication, 'permission:revoke')";
+
+    // ── Notifications ─────────────────────────────────────────────────────────
+    public static final String NOTIFICATION_READ =
+            "@rbacService.hasPermission(authentication, 'notification:read')";
+    public static final String NOTIFICATION_SEND =
+            "@rbacService.hasPermission(authentication, 'notification:send')";
+
+    // ── System / platform operations ──────────────────────────────────────────
+    public static final String SYSTEM_ACTUATOR =
+            "@rbacService.hasPermission(authentication, 'system:actuator')";
 
     private PermissionConstants() {}
 }

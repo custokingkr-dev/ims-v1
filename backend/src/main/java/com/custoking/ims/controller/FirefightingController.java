@@ -1,7 +1,9 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.service.FirefightingService;
+import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +16,13 @@ import java.util.Map;
 public class FirefightingController {
     private final UserContextService userContext;
     private final FirefightingService firefightingService;
+    private final ModuleEntitlementService moduleService;
 
-    public FirefightingController(UserContextService userContext, FirefightingService firefightingService) {
+    public FirefightingController(UserContextService userContext, FirefightingService firefightingService,
+                                  ModuleEntitlementService moduleService) {
         this.userContext = userContext;
         this.firefightingService = firefightingService;
+        this.moduleService = moduleService;
     }
 
     @GetMapping("/requests")
@@ -36,7 +41,9 @@ public class FirefightingController {
     @PreAuthorize(PermissionConstants.FIREFIGHTING_CREATE)
     public Map<String, Object> create(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @RequestBody Map<String, Object> request) {
-        return firefightingService.createFireRequest(request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.createFireRequest(request, actor);
     }
 
     @PatchMapping("/requests/{id}")
@@ -44,7 +51,9 @@ public class FirefightingController {
     public Map<String, Object> update(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable String id,
                                       @RequestBody Map<String, Object> request) {
-        return firefightingService.updateFireRequest(id, request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.updateFireRequest(id, request, actor);
     }
 
     @PatchMapping("/requests/{id}/quotations/{quotationId}")
@@ -53,7 +62,9 @@ public class FirefightingController {
                                                @PathVariable String id,
                                                @PathVariable String quotationId,
                                                @RequestBody Map<String, Object> request) {
-        return firefightingService.updateFireQuotation(id, quotationId, request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.updateFireQuotation(id, quotationId, request, actor);
     }
 
     @GetMapping("/requests/{id}")
@@ -68,7 +79,9 @@ public class FirefightingController {
     public Map<String, Object> addQuotation(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @PathVariable String id,
                                             @RequestBody Map<String, Object> request) {
-        return firefightingService.addFireQuotation(id, request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.addFireQuotation(id, request, actor);
     }
 
     @DeleteMapping("/requests/{id}/quotations/{quotationId}")
@@ -76,14 +89,18 @@ public class FirefightingController {
     public Map<String, Object> deleteQuotation(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                @PathVariable String id,
                                                @PathVariable String quotationId) {
-        return firefightingService.deleteFireQuotation(id, quotationId, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.deleteFireQuotation(id, quotationId, actor);
     }
 
     @PostMapping("/requests/{id}/submit")
     @PreAuthorize(PermissionConstants.FIREFIGHTING_UPDATE)
     public Map<String, Object> submit(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable String id) {
-        return firefightingService.submitFireRequest(id, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.submitFireRequest(id, actor);
     }
 
     @PostMapping("/requests/{id}/approve-bursar")
@@ -91,7 +108,9 @@ public class FirefightingController {
     public Map<String, Object> approveBursar(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @PathVariable String id,
                                              @RequestBody Map<String, Object> request) {
-        return firefightingService.approveFireBursar(id, request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.approveFireBursar(id, request, actor);
     }
 
     @PostMapping("/requests/{id}/approve-principal")
@@ -99,7 +118,9 @@ public class FirefightingController {
     public Map<String, Object> approvePrincipal(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                 @PathVariable String id,
                                                 @RequestBody Map<String, Object> request) {
-        return firefightingService.approveFirePrincipal(id, request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.approveFirePrincipal(id, request, actor);
     }
 
     @PostMapping("/requests/{id}/reject")
@@ -107,7 +128,9 @@ public class FirefightingController {
     public Map<String, Object> reject(@RequestHeader(value = "Authorization", required = false) String authorization,
                                       @PathVariable String id,
                                       @RequestBody Map<String, Object> request) {
-        return firefightingService.rejectFireRequest(id, request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.FIREFIGHTING);
+        return firefightingService.rejectFireRequest(id, request, actor);
     }
 
     @PostMapping("/requests/{id}/approve-custoking")

@@ -207,7 +207,12 @@ public class DatabaseBootstrap {
         user.setBranchId(branchId);
         user.setBranchName(branchName);
         repo.save(user);
-        rbacService.assignRole(user.getId(), role, null);
+        // Use explicitly-scoped assignment: platform-wide for SUPERADMIN, school-scoped otherwise.
+        if (branchId == null) {
+            rbacService.assignPlatformRole(user.getId(), role, null);
+        } else {
+            rbacService.assignSchoolRole(user.getId(), role, branchId, null);
+        }
     }
 
     private void seedStudents(StudentRepository repo, SchoolClassRepository classRepo, SchoolSectionRepository sectionRepo, AcademicYearEntity year) {

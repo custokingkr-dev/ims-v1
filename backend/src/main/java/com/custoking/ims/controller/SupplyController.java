@@ -2,6 +2,8 @@ package com.custoking.ims.controller;
 
 import com.custoking.ims.service.SupplyOrderService;
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -14,10 +16,13 @@ import java.util.Map;
 public class SupplyController {
     private final UserContextService userContext;
     private final SupplyOrderService supplyOrderService;
+    private final ModuleEntitlementService moduleService;
 
-    public SupplyController(UserContextService userContext, SupplyOrderService supplyOrderService) {
+    public SupplyController(UserContextService userContext, SupplyOrderService supplyOrderService,
+                            ModuleEntitlementService moduleService) {
         this.userContext = userContext;
         this.supplyOrderService = supplyOrderService;
+        this.moduleService = moduleService;
     }
 
     @GetMapping("/catalog-categories")
@@ -30,14 +35,18 @@ public class SupplyController {
     @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> createOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                            @RequestBody Map<String, Object> request) {
-        return supplyOrderService.createCatalogOrder(request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.ORDERS);
+        return supplyOrderService.createCatalogOrder(request, actor);
     }
 
     @PostMapping("/orders/{orderId}/place")
     @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> placeOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String orderId) {
-        return supplyOrderService.placeCatalogOrder(orderId, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.ORDERS);
+        return supplyOrderService.placeCatalogOrder(orderId, actor);
     }
 
     @GetMapping("/orders")
@@ -104,12 +113,16 @@ public class SupplyController {
     @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> savePlanItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                             @RequestBody Map<String, Object> request) {
-        return supplyOrderService.saveAnnualPlanItem(request, userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.ORDERS);
+        return supplyOrderService.saveAnnualPlanItem(request, actor);
     }
 
     @PostMapping("/annual-plan/confirm")
     @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> confirmPlan(@RequestHeader(value = "Authorization", required = false) String authorization) {
-        return supplyOrderService.confirmAnnualPlan(userContext.requireUser(authorization));
+        var actor = userContext.requireUser(authorization);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.ORDERS);
+        return supplyOrderService.confirmAnnualPlan(actor);
     }
 }

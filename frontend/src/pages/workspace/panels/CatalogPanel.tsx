@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { OrderSummaryPanel, thStyle, tdStyle, inlineInputStyle } from '../ui';
 import { formatMoney, toPaise } from '../utils';
 import { CATALOG_TILES } from '../config';
@@ -12,7 +13,8 @@ interface Props {
 
 export function CatalogPanel({ setPanel }: Props) {
   const { user } = useAuth();
-  const schoolScopedParams = user?.role !== 'SUPERADMIN' && user?.branchId ? { schoolId: user.branchId } : undefined;
+  const { can } = usePermissions();
+  const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [catalogSearch, setCatalogSearch] = useState('');

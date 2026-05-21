@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: '◫' },
@@ -11,7 +12,8 @@ const navItems = [
 
 export default function AppLayout() {
   const { user, logout } = useAuth();
-  const accentClass = user?.role === 'SUPERADMIN' ? 'superadmin-theme' : 'admin-theme';
+  const { can } = usePermissions();
+  const accentClass = can('platform:admin') ? 'superadmin-theme' : 'admin-theme';
 
   return (
     <div className={`app-shell ${accentClass}`}>
@@ -39,17 +41,17 @@ export default function AppLayout() {
               <span>{item.label}</span>
             </NavLink>
           ))}
-          {user?.role === 'SUPERADMIN' && (
-            <>
-              <NavLink to="/schools" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-ico">🏫</span>
-                <span>Schools</span>
-              </NavLink>
-              <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
-                <span className="nav-ico">👥</span>
-                <span>Users</span>
-              </NavLink>
-            </>
+          {can('school:read') && (
+            <NavLink to="/schools" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <span className="nav-ico">🏫</span>
+              <span>Schools</span>
+            </NavLink>
+          )}
+          {can('user:manage') && (
+            <NavLink to="/users" className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}>
+              <span className="nav-ico">👥</span>
+              <span>Users</span>
+            </NavLink>
           )}
         </nav>
 
@@ -60,7 +62,7 @@ export default function AppLayout() {
           <h3 style={{ margin: '8px 0 4px' }}>{user?.fullName}</h3>
           <div className="top-note">{user?.email}</div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span className="badge">{user?.role === 'SUPERADMIN' ? 'Super Admin' : 'Admin'}</span>
+            <span className="badge">{can('platform:admin') ? 'Super Admin' : user?.role ?? 'User'}</span>
             <span className="badge">{user?.branchName || 'Global'}</span>
           </div>
         </div>

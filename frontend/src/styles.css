@@ -359,3 +359,270 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-card-inline-filters select { min-width: 180px; }
 .ck-row-selected td { background: #f7fbff; }
 .ck-table tbody tr:hover td { background: #fafcff; }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Command Center — ck-command-* namespace
+   All layout/color via CSS custom properties from :root.
+   No inline styles needed in the component layer.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Animations */
+@keyframes ck-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes ck-slide-in { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes ck-rise { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+@keyframes ck-toast-in { from{opacity:0;transform:translateX(-50%) translateY(20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+@keyframes ck-sweep { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }
+
+/* ── Greeting header ─────────────────────────────────────────────── */
+.ck-command-header { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:24px; }
+.ck-command-brand { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.ck-command-brand-name { font:400 18px 'Fraunces',serif; color:var(--g); letter-spacing:-.02em; }
+.ck-command-live-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; background:var(--white); border:1px solid var(--border); font-size:12px; font-weight:600; color:var(--ink2); }
+.ck-command-live-dot { width:7px; height:7px; border-radius:50%; background:var(--g); flex-shrink:0; animation:ck-blink 1.6s infinite; }
+.ck-command-title { margin:0; font:400 42px/1.02 'Instrument Serif',serif; }
+.ck-command-title em { color:var(--g); font-style:italic; }
+.ck-command-subtitle { margin:8px 0 0; color:var(--ink3); font-size:14px; }
+.ck-command-clock { text-align:right; }
+.ck-command-time { font:700 32px/1 'DM Sans',sans-serif; letter-spacing:-.02em; font-variant-numeric:tabular-nums; }
+.ck-command-date { color:var(--ink3); font-size:13px; margin-top:5px; }
+.ck-command-crit-badge { margin-top:11px; display:inline-flex; align-items:center; gap:7px; background:var(--re1); border:1px solid #f5c0bd; border-radius:999px; padding:5px 13px; font-size:12px; font-weight:700; color:var(--re); }
+.ck-command-crit-dot { width:7px; height:7px; border-radius:50%; background:var(--re); animation:ck-blink .9s infinite; }
+
+/* ── Critical alert strip ────────────────────────────────────────── */
+.ck-command-critical { display:flex; align-items:center; gap:14px; padding:14px 18px; border-radius:12px; background:var(--re1); border:1px solid #f5c0bd; border-left:3px solid var(--re); margin-bottom:20px; flex-wrap:wrap; }
+.ck-command-critical-icon { font-size:18px; flex-shrink:0; }
+.ck-command-critical-body { flex:1; min-width:0; }
+.ck-command-critical-label { font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--re); margin-bottom:4px; }
+.ck-command-critical-title { font-size:15px; font-weight:700; color:var(--ink); margin-bottom:3px; }
+.ck-command-critical-why { font-size:13px; color:var(--ink2); }
+.ck-command-critical-cta { flex-shrink:0; }
+
+/* ── Pulse — KPI grid ────────────────────────────────────────────── */
+.ck-command-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin-bottom:24px; }
+.ck-command-kpi { background:var(--white); border:1px solid var(--border); border-radius:16px; padding:16px 18px; text-align:left; cursor:pointer; transition:box-shadow .2s,transform .2s; animation:ck-rise .45s cubic-bezier(.2,.8,.2,1) backwards; }
+.ck-command-kpi:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+.ck-command-kpi-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.ck-command-kpi-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink3); }
+.ck-command-kpi-value-row { display:flex; align-items:baseline; gap:6px; }
+.ck-command-kpi-value { font:800 30px/1 'DM Sans',sans-serif; letter-spacing:-.02em; }
+.ck-command-kpi-unit { color:var(--ink3); font-size:15px; font-weight:600; }
+.ck-command-kpi-bottom { margin-top:6px; display:flex; justify-content:space-between; align-items:center; }
+.ck-command-kpi-sub { font-size:12px; color:var(--ink3); }
+.ck-command-kpi-delta { font-size:12.5px; font-weight:700; }
+.ck-command-kpi-delta.up { color:var(--g); }
+.ck-command-kpi-delta.down { color:var(--re); }
+.ck-command-kpi-delta.up-bad { color:var(--re); }  /* e.g. rising defaulters = bad */
+.ck-command-kpi-delta.down-good { color:var(--g); }
+
+/* ── Main 2-column layout ────────────────────────────────────────── */
+.ck-command-grid { display:grid; grid-template-columns:1fr 340px; gap:18px; align-items:start; }
+.ck-command-left { display:flex; flex-direction:column; gap:18px; }
+.ck-command-right { position:sticky; top:26px; display:flex; flex-direction:column; gap:14px; }
+
+/* ── Section headings ────────────────────────────────────────────── */
+.ck-command-section-head { display:flex; align-items:center; gap:11px; margin-bottom:14px; flex-wrap:wrap; }
+.ck-command-section-title { margin:0; font:400 26px/1 'Instrument Serif',serif; }
+.ck-command-ai-badge { font-size:10px; font-weight:700; letter-spacing:.06em; color:var(--white); background:var(--g); padding:3px 9px; border-radius:6px; }
+.ck-command-section-count { margin-left:auto; color:var(--ink3); font-size:12.5px; }
+
+/* ── Module filter chips ─────────────────────────────────────────── */
+.ck-command-chips { display:flex; gap:7px; margin-bottom:16px; flex-wrap:wrap; }
+.ck-command-chip { border-radius:999px; padding:6px 13px; font-size:12.5px; font-weight:600; cursor:pointer; transition:all .15s ease; background:var(--white); border:1px solid var(--border); color:var(--ink2); }
+.ck-command-chip:hover { border-color:var(--border2); }
+.ck-command-chip.on-fees    { background:var(--g);  border-color:var(--g);  color:var(--white); }
+.ck-command-chip.on-students{ background:var(--b);  border-color:var(--b);  color:var(--white); }
+.ck-command-chip.on-supply  { background:var(--pu); border-color:var(--pu); color:var(--white); }
+.ck-command-chip.on-firefighting{ background:var(--re); border-color:var(--re); color:var(--white); }
+.ck-command-chip.on-attendance{ background:var(--am); border-color:var(--am); color:var(--white); }
+.ck-command-chip.on-all     { background:var(--ink); border-color:var(--ink); color:var(--white); }
+
+/* ── Action card (Priority Queue) ────────────────────────────────── */
+.ck-command-queue { display:flex; flex-direction:column; gap:14px; }
+.ck-command-acard { background:var(--white); border:1px solid var(--border); border-radius:16px; padding:18px 20px; position:relative; overflow:hidden; transition:box-shadow .2s,transform .2s; animation:ck-rise .5s cubic-bezier(.2,.8,.2,1) backwards; }
+.ck-command-acard:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+
+/* Left accent bars per module */
+.ck-command-acard.mod-fees         { border-left:3px solid var(--g); }
+.ck-command-acard.mod-students     { border-left:3px solid var(--b); }
+.ck-command-acard.mod-supply       { border-left:3px solid var(--pu); }
+.ck-command-acard.mod-firefighting { border-left:3px solid var(--re); }
+.ck-command-acard.mod-attendance   { border-left:3px solid var(--am); }
+
+/* Critical sweep bar */
+.ck-command-sweep { position:absolute; top:0; left:0; right:0; height:2px; background-size:200% 100%; animation:ck-sweep 2s linear infinite; }
+.ck-command-sweep.mod-firefighting { background:linear-gradient(90deg,var(--re),transparent,var(--re)); }
+.ck-command-sweep.mod-fees         { background:linear-gradient(90deg,var(--g),transparent,var(--g)); }
+.ck-command-sweep.mod-students     { background:linear-gradient(90deg,var(--b),transparent,var(--b)); }
+.ck-command-sweep.mod-supply       { background:linear-gradient(90deg,var(--pu),transparent,var(--pu)); }
+.ck-command-sweep.mod-attendance   { background:linear-gradient(90deg,var(--am),transparent,var(--am)); }
+
+.ck-command-acard-inner { display:flex; gap:16px; justify-content:space-between; }
+.ck-command-acard-body { flex:1; min-width:0; }
+.ck-command-acard-tags { display:flex; align-items:center; gap:8px; margin-bottom:9px; flex-wrap:wrap; }
+
+/* Module tag per module */
+.ck-command-mod-tag { font-size:10px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:6px; }
+.ck-command-mod-tag.fees         { color:var(--g);  background:var(--g1);  border:1px solid rgba(26,104,64,.2); }
+.ck-command-mod-tag.students     { color:var(--b);  background:var(--b1);  border:1px solid rgba(26,79,168,.2); }
+.ck-command-mod-tag.supply       { color:var(--pu); background:var(--pu1); border:1px solid rgba(91,45,138,.2); }
+.ck-command-mod-tag.firefighting { color:var(--re); background:var(--re1); border:1px solid rgba(192,49,43,.2); }
+.ck-command-mod-tag.attendance   { color:var(--am); background:var(--am1); border:1px solid rgba(179,92,0,.2); }
+
+/* Urgency badge */
+.ck-command-urgency { font-size:10px; font-weight:700; padding:3px 9px; border-radius:6px; }
+.ck-command-urgency.critical { color:var(--re); background:var(--re1); }
+.ck-command-urgency.high     { color:var(--or); background:var(--or1); }
+.ck-command-urgency.medium   { color:var(--b);  background:var(--b1); }
+.ck-command-urgency.low      { color:var(--g);  background:var(--g1); }
+
+.ck-command-acard-code { font-family:ui-monospace,monospace; font-size:11px; color:var(--ink3); }
+.ck-command-acard-title { margin:0 0 6px; font-size:18px; font-weight:700; line-height:1.25; letter-spacing:-.01em; }
+.ck-command-acard-why { margin:0; color:var(--ink2); font-size:13.5px; line-height:1.55; }
+.ck-command-acard-meta { display:flex; gap:14px; margin-top:11px; flex-wrap:wrap; align-items:center; }
+.ck-command-acard-impact { font-size:12.5px; font-weight:700; }
+.ck-command-acard-impact.fees         { color:var(--g); }
+.ck-command-acard-impact.students     { color:var(--b); }
+.ck-command-acard-impact.supply       { color:var(--pu); }
+.ck-command-acard-impact.firefighting { color:var(--re); }
+.ck-command-acard-impact.attendance   { color:var(--am); }
+.ck-command-acard-state { font-size:11px; font-family:ui-monospace,monospace; color:var(--ink3); background:var(--bg); padding:2px 8px; border-radius:5px; }
+.ck-command-acard-actions { display:flex; gap:9px; margin-top:15px; align-items:center; flex-wrap:wrap; }
+.ck-command-acard-why-btn { margin-left:auto; background:none; border:none; color:var(--ink3); font-size:12px; font-weight:600; cursor:pointer; padding:0; }
+
+/* Accept / Dismiss buttons */
+.ck-command-btn-accept { border:none; border-radius:9px; padding:10px 18px; font-weight:700; font-size:13.5px; cursor:pointer; color:var(--white); transition:filter .15s,transform .15s; }
+.ck-command-btn-accept:hover { filter:brightness(1.08); transform:translateY(-1px); }
+.ck-command-btn-accept.fees         { background:var(--g); }
+.ck-command-btn-accept.students     { background:var(--b); }
+.ck-command-btn-accept.supply       { background:var(--pu); }
+.ck-command-btn-accept.firefighting { background:var(--re); }
+.ck-command-btn-accept.attendance   { background:var(--am); }
+.ck-command-btn-dismiss { background:var(--white); color:var(--ink2); border:1px solid var(--border2); border-radius:9px; padding:10px 16px; font-weight:600; font-size:13.5px; cursor:pointer; transition:border-color .15s,transform .15s; }
+.ck-command-btn-dismiss:hover { border-color:var(--border2); transform:translateY(-1px); }
+
+/* Confidence ring wrapper */
+.ck-command-ring-wrap { text-align:center; min-width:50px; flex-shrink:0; }
+.ck-command-ring-rel { position:relative; display:inline-block; }
+.ck-command-ring-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; }
+.ck-command-ring-sub { font-size:9px; color:var(--ink3); letter-spacing:.08em; text-transform:uppercase; margin-top:2px; }
+
+/* Empty queue */
+.ck-command-queue-empty { background:var(--white); border:1px dashed var(--border2); border-radius:16px; padding:44px; text-align:center; color:var(--ink3); }
+.ck-command-queue-empty-icon { font-size:28px; margin-bottom:8px; color:var(--g); }
+
+/* ── Broadcast Channel ───────────────────────────────────────────── */
+.ck-command-broadcast { background:var(--white); border:1px solid var(--border); border-radius:18px; overflow:hidden; }
+.ck-command-broadcast-head { padding:15px 18px 13px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; }
+.ck-command-broadcast-icon { font-size:15px; color:var(--b); }
+.ck-command-broadcast-title { margin:0; font:400 19px/1 'Instrument Serif',serif; }
+.ck-command-broadcast-compose { margin-left:auto; background:var(--g); color:var(--white); border:none; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; transition:filter .15s; }
+.ck-command-broadcast-compose:hover { filter:brightness(1.08); }
+.ck-command-broadcast-stats { padding:10px 18px; display:flex; gap:14px; border-bottom:1px solid var(--bg); font-size:11.5px; color:var(--ink3); }
+.ck-command-broadcast-stats b.b { color:var(--b); }
+.ck-command-broadcast-stats b.g { color:var(--g); }
+.ck-command-broadcast-stats b.d { color:var(--ink2); }
+.ck-command-broadcast-list { max-height:430px; overflow-y:auto; padding:4px 0; }
+.ck-command-bc-item { padding:13px 18px; border-bottom:1px solid var(--bg); animation:ck-slide-in .4s cubic-bezier(.2,.8,.2,1); }
+.ck-command-bc-item.mod-fees         { border-left:3px solid var(--g); }
+.ck-command-bc-item.mod-students     { border-left:3px solid var(--b); }
+.ck-command-bc-item.mod-supply       { border-left:3px solid var(--pu); }
+.ck-command-bc-item.mod-firefighting { border-left:3px solid var(--re); }
+.ck-command-bc-item.mod-attendance   { border-left:3px solid var(--am); }
+.ck-command-bc-tags { display:flex; align-items:center; gap:7px; margin-bottom:6px; flex-wrap:wrap; }
+.ck-command-bc-kind { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; }
+.ck-command-bc-kind.event  { color:var(--pu); background:var(--pu1); }
+.ck-command-bc-kind.notice { color:var(--am); background:var(--am1); }
+.ck-command-bc-status { font-size:9.5px; font-weight:700; padding:2px 7px; border-radius:5px; }
+.ck-command-bc-status.scheduled { color:var(--b); background:var(--b1); }
+.ck-command-bc-status.sending   { color:var(--g); background:var(--g1); }
+.ck-command-bc-status.draft     { color:var(--ink3); background:var(--bg); }
+.ck-command-bc-when { margin-left:auto; font-size:11px; font-weight:700; }
+.ck-command-bc-when.live   { color:var(--g); }
+.ck-command-bc-when.draft  { color:var(--ink3); }
+.ck-command-bc-when.sched  { color:var(--b); }
+.ck-command-bc-title { font-size:14px; font-weight:700; line-height:1.3; margin-bottom:4px; }
+.ck-command-bc-meta { font-size:11.5px; color:var(--ink3); margin-bottom:6px; }
+.ck-command-bc-channels { display:flex; gap:5px; margin-bottom:7px; flex-wrap:wrap; }
+.ck-command-bc-channel { display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:var(--ink2); background:var(--bg); border:1px solid var(--border); padding:2px 8px; border-radius:999px; }
+.ck-command-bc-channel-icon { font-size:11px; }
+.ck-command-bc-channel-icon.fees         { color:var(--g); }
+.ck-command-bc-channel-icon.students     { color:var(--b); }
+.ck-command-bc-channel-icon.supply       { color:var(--pu); }
+.ck-command-bc-channel-icon.firefighting { color:var(--re); }
+.ck-command-bc-channel-icon.attendance   { color:var(--am); }
+.ck-command-bc-progress-wrap { height:4px; background:var(--bg); border-radius:999px; overflow:hidden; margin-bottom:7px; }
+.ck-command-bc-progress-fill { height:100%; background:var(--g); border-radius:999px; transition:width .6s; }
+.ck-command-bc-note { font-size:11.5px; color:var(--ink3); line-height:1.45; margin-bottom:8px; }
+.ck-command-bc-actions { display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+.ck-command-bc-btn-approve { border:none; border-radius:7px; padding:6px 13px; font-size:12px; font-weight:700; color:var(--white); cursor:pointer; transition:filter .15s; }
+.ck-command-bc-btn-approve.fees         { background:var(--g); }
+.ck-command-bc-btn-approve.students     { background:var(--b); }
+.ck-command-bc-btn-approve.supply       { background:var(--pu); }
+.ck-command-bc-btn-approve.firefighting { background:var(--re); }
+.ck-command-bc-btn-approve.attendance   { background:var(--am); }
+.ck-command-bc-btn-approve:hover { filter:brightness(1.08); }
+.ck-command-bc-btn-send { background:var(--white); border-radius:7px; padding:6px 13px; font-size:12px; font-weight:700; cursor:pointer; transition:filter .15s; }
+.ck-command-bc-btn-send.fees         { color:var(--g);  border:1px solid var(--g); }
+.ck-command-bc-btn-send.students     { color:var(--b);  border:1px solid var(--b); }
+.ck-command-bc-btn-send.supply       { color:var(--pu); border:1px solid var(--pu); }
+.ck-command-bc-btn-send.firefighting { color:var(--re); border:1px solid var(--re); }
+.ck-command-bc-btn-send.attendance   { color:var(--am); border:1px solid var(--am); }
+.ck-command-bc-btn-send:hover { filter:brightness(.94); }
+.ck-command-bc-btn-edit { background:none; color:var(--ink3); border:1px solid var(--border); border-radius:7px; padding:6px 11px; font-size:12px; font-weight:600; cursor:pointer; }
+.ck-command-bc-delivering { font-size:12px; font-weight:600; color:var(--g); display:inline-flex; align-items:center; gap:5px; }
+.ck-command-bc-delivering-dot { width:7px; height:7px; border-radius:50%; background:var(--g); animation:ck-blink 1s infinite; }
+
+/* ── Live Signal Feed ────────────────────────────────────────────── */
+.ck-command-feed { background:var(--white); border:1px solid var(--border); border-radius:18px; overflow:hidden; }
+.ck-command-feed-head { padding:15px 18px 13px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:9px; }
+.ck-command-feed-live-dot { width:8px; height:8px; border-radius:50%; background:var(--g); animation:ck-blink 1.4s infinite; }
+.ck-command-feed-title { margin:0; font:400 19px/1 'Instrument Serif',serif; }
+.ck-command-feed-poll { margin-left:auto; font-size:10.5px; font-weight:700; color:var(--g); }
+.ck-command-feed-list { max-height:360px; overflow-y:auto; padding:4px 0; }
+.ck-command-feed-item { display:flex; gap:11px; padding:11px 18px; border-bottom:1px solid var(--bg); animation:ck-slide-in .4s cubic-bezier(.2,.8,.2,1); }
+.ck-command-feed-timeline { display:flex; flex-direction:column; align-items:center; padding-top:4px; }
+.ck-command-feed-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ck-command-feed-dot.fees         { background:var(--g); }
+.ck-command-feed-dot.students     { background:var(--b); }
+.ck-command-feed-dot.supply       { background:var(--pu); }
+.ck-command-feed-dot.firefighting { background:var(--re); }
+.ck-command-feed-dot.attendance   { background:var(--am); }
+.ck-command-feed-line { width:1px; flex:1; background:var(--border); margin-top:4px; }
+.ck-command-feed-body { flex:1; }
+.ck-command-feed-text { font-size:13.5px; line-height:1.4; color:var(--ink); }
+.ck-command-feed-meta { display:flex; gap:7px; margin-top:3px; align-items:center; }
+.ck-command-feed-module { font-size:10.5px; font-weight:600; }
+.ck-command-feed-module.fees         { color:var(--g); }
+.ck-command-feed-module.students     { color:var(--b); }
+.ck-command-feed-module.supply       { color:var(--pu); }
+.ck-command-feed-module.firefighting { color:var(--re); }
+.ck-command-feed-module.attendance   { color:var(--am); }
+.ck-command-feed-time { font-size:10.5px; color:var(--ink3); font-family:ui-monospace,monospace; }
+
+/* ── Daily Brief ─────────────────────────────────────────────────── */
+.ck-command-brief { background:linear-gradient(165deg, var(--g1), var(--white)); border:1px solid var(--g2); border-radius:18px; padding:16px 18px; }
+.ck-command-brief-label { font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--g); margin-bottom:8px; }
+.ck-command-brief-text { margin:0; font-size:13.5px; line-height:1.6; color:var(--ink2); }
+.ck-command-brief-text b.g  { color:var(--g); }
+.ck-command-brief-text b.re { color:var(--re); }
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+.ck-command-toast { position:fixed; bottom:26px; left:50%; transform:translateX(-50%); background:var(--white); border-radius:12px; padding:13px 22px; display:flex; align-items:center; gap:11px; box-shadow:var(--shadow); animation:ck-toast-in .35s cubic-bezier(.2,.8,.2,1); z-index:100; max-width:480px; white-space:nowrap; }
+.ck-command-toast.ok   { border:1px solid var(--g2);  border-left:3px solid var(--g); }
+.ck-command-toast.fail { border:1px solid var(--border2); border-left:3px solid var(--ink3); }
+.ck-command-toast-icon { font-size:17px; }
+.ck-command-toast-icon.ok   { color:var(--g); }
+.ck-command-toast-icon.fail { color:var(--ink3); }
+.ck-command-toast-text { font-size:14px; font-weight:600; }
+
+/* ── Responsive overrides ────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .ck-command-kpis { grid-template-columns:repeat(2,1fr); }
+  .ck-command-grid { grid-template-columns:1fr; }
+  .ck-command-right { position:static; }
+}
+@media (max-width: 640px) {
+  .ck-command-kpis { grid-template-columns:1fr; }
+  .ck-command-header { flex-direction:column; align-items:flex-start; }
+  .ck-command-clock { text-align:left; }
+}

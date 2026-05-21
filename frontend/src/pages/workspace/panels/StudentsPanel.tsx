@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Info } from '../ui';
 import { formatAddress, initials, attendanceNumber } from '../utils';
 import type { PanelKey } from '../config';
@@ -12,7 +13,8 @@ interface Props {
 
 export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const { user } = useAuth();
-  const schoolScopedParams = user?.role !== 'SUPERADMIN' && user?.branchId ? { schoolId: user.branchId } : undefined;
+  const { can } = usePermissions();
+  const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
   const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });

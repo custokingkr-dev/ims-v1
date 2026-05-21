@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
 type ZoneRow = {
   id: number;
@@ -18,6 +19,7 @@ const defaultAdminForm = { fullName: '', email: '', temporaryPassword: 'Welcome@
 
 export default function ZoneManagementPage() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,7 +31,7 @@ export default function ZoneManagementPage() {
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (user?.role !== 'SUPERADMIN') return <Navigate to="/dashboard" replace />;
+  if (!can('platform:admin')) return <Navigate to="/dashboard" replace />;
 
   function load() {
     setLoading(true);
