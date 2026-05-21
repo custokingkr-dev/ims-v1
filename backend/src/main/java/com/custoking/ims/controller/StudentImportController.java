@@ -1,8 +1,9 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
+import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.StudentService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.http.HttpHeaders;
@@ -22,10 +23,13 @@ import java.util.Map;
 public class StudentImportController {
     private final UserContextService userContext;
     private final StudentService studentService;
+    private final ModuleEntitlementService moduleService;
 
-    public StudentImportController(UserContextService userContext, StudentService studentService) {
+    public StudentImportController(UserContextService userContext, StudentService studentService,
+                                   ModuleEntitlementService moduleService) {
         this.userContext = userContext;
         this.studentService = studentService;
+        this.moduleService = moduleService;
     }
 
     @PostMapping("/preview")
@@ -33,6 +37,7 @@ public class StudentImportController {
                                        @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.STUDENTS);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rows = (List<Map<String, Object>>) request.getOrDefault("rows", List.of());
         return studentService.previewStudentImport(rows, actor);
@@ -43,6 +48,7 @@ public class StudentImportController {
                                        @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
+        moduleService.requireModule(TenantContext.get(), ModuleEntitlementService.Module.STUDENTS);
         return studentService.confirmStudentImport(String.valueOf(request.get("fileToken")), actor);
     }
 
@@ -63,10 +69,10 @@ public class StudentImportController {
                 .body(body);
     }
 
-    private void forbidSuperAdmin(AuthUser actor) {
-        if (actor.role() == Role.SUPERADMIN) {
+    private void forbidSuperAdmin(AuthUser ignored) {
+        if (userContext.isPlatformAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "SUPERADMIN cannot perform school ERP operations. Use a school admin account.");
+                    "Platform admins cannot perform school ERP operations. Use a school admin account.");
         }
     }
 }

@@ -1,9 +1,10 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
 import com.custoking.ims.service.FeeService;
+import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.StudentService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.http.HttpHeaders;
@@ -23,13 +24,16 @@ public class FeeCollectionController {
     private final UserContextService userContext;
     private final StudentService studentService;
     private final FeeService feeService;
+    private final ModuleEntitlementService moduleService;
 
     public FeeCollectionController(UserContextService userContext,
                                     StudentService studentService,
-                                    FeeService feeService) {
+                                    FeeService feeService,
+                                    ModuleEntitlementService moduleService) {
         this.userContext = userContext;
         this.studentService = studentService;
         this.feeService = feeService;
+        this.moduleService = moduleService;
     }
 
     @GetMapping("/api/v1/classes")
@@ -61,7 +65,7 @@ public class FeeCollectionController {
     public Map<String, Object> assignFee(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.feeAssignmentApi(request, actor);
     }
 
@@ -70,7 +74,7 @@ public class FeeCollectionController {
     public Map<String, Object> createPayment(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.paymentApi(request, actor);
     }
 
@@ -111,17 +115,18 @@ public class FeeCollectionController {
     public Map<String, Object> sendReminders(@RequestHeader(value = "Authorization", required = false) String authorization,
                                              @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.sendFeeReminders(
                 String.valueOf(request.getOrDefault("classId", "")),
                 String.valueOf(request.getOrDefault("sectionId", "")),
                 actor, null);
     }
 
-    private void forbidSuperAdmin(AuthUser actor) {
-        if (actor.role() == Role.SUPERADMIN) {
+    private void requireSchoolModule(ModuleEntitlementService.Module module) {
+        if (userContext.isPlatformAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "SUPERADMIN cannot perform school ERP operations. Use a school admin account.");
+                    "Platform admins cannot perform school ERP operations. Use a school admin account.");
         }
+        moduleService.requireModule(TenantContext.get(), module);
     }
 }

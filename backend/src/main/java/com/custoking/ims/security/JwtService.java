@@ -29,7 +29,7 @@ public class JwtService {
 
     public String generateToken(AppUserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", userDetails.getUser().getRole());
+        claims.put("userId", userDetails.getUser().getId());
         return Jwts.builder()
                 .claims(claims)
                 .subject(userDetails.getUsername())
@@ -41,7 +41,7 @@ public class JwtService {
 
     public String generateRefreshToken(AppUserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
-        claims.put("role", userDetails.getUser().getRole());
+        claims.put("userId", userDetails.getUser().getId());
         claims.put("type", "refresh");
         return Jwts.builder()
                 .claims(claims)

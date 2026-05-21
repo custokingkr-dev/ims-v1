@@ -1,9 +1,10 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
 import com.custoking.ims.service.AttendanceService;
+import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,10 +19,13 @@ import java.util.Map;
 public class AttendanceController {
     private final UserContextService userContext;
     private final AttendanceService attendanceService;
+    private final ModuleEntitlementService moduleService;
 
-    public AttendanceController(UserContextService userContext, AttendanceService attendanceService) {
+    public AttendanceController(UserContextService userContext, AttendanceService attendanceService,
+                                ModuleEntitlementService moduleService) {
         this.userContext = userContext;
         this.attendanceService = attendanceService;
+        this.moduleService = moduleService;
     }
 
     @GetMapping("/daily-summary")
@@ -47,7 +51,7 @@ public class AttendanceController {
     public Map<String, Object> dailyEntry(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.ATTENDANCE);
         return attendanceService.saveDailyAttendance(request, actor);
     }
 
@@ -56,14 +60,15 @@ public class AttendanceController {
     public Map<String, Object> submitDay(@RequestHeader(value = "Authorization", required = false) String authorization,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.ATTENDANCE);
         return attendanceService.submitAttendanceDay(String.valueOf(request.getOrDefault("date", "today")), actor);
     }
 
-    private void forbidSuperAdmin(AuthUser actor) {
-        if (actor.role() == Role.SUPERADMIN) {
+    private void requireSchoolModule(ModuleEntitlementService.Module module) {
+        if (userContext.isPlatformAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "SUPERADMIN cannot perform school ERP operations. Use a school admin account.");
+                    "Platform admins cannot perform school ERP operations. Use a school admin account.");
         }
+        moduleService.requireModule(TenantContext.get(), module);
     }
 }

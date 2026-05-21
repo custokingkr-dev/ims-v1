@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { PageHero } from '../components/PageHero';
 
 interface DashboardData {
@@ -14,6 +15,7 @@ interface DashboardData {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -43,7 +45,7 @@ export default function DashboardPage() {
         subtitle="Track invoices, collections, approvals, and school operations from a unified operational workspace."
         actions={
           <>
-            <span className="badge">{user?.role === 'SUPERADMIN' ? 'Super Admin' : 'Admin'} workspace</span>
+            <span className="badge">{can('platform:admin') ? 'Super Admin' : 'Admin'} workspace</span>
             <span className="badge">{data.pendingApprovals} pending approvals</span>
           </>
         }

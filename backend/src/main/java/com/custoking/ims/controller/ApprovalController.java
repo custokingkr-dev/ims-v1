@@ -2,8 +2,6 @@ package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.dto.ApprovalDecisionRequest;
-import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
 import com.custoking.ims.service.UserContextService;
 import com.custoking.ims.service.WorkspaceService;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,9 +34,9 @@ public class ApprovalController {
                                       @PathVariable long id,
                                       @PathVariable String action,
                                       @RequestBody(required = false) ApprovalDecisionRequest request) {
-        AuthUser user = userContext.requireUser(authorization);
-        if (user.role() != Role.SUPERADMIN) {
-            throw new IllegalArgumentException("Only super admin can review approvals");
+        userContext.requireUser(authorization);
+        if (!userContext.isPlatformAdmin()) {
+            throw new IllegalArgumentException("Only platform admins can review approvals");
         }
         return workspaceService.decideApproval(id, action, request);
     }

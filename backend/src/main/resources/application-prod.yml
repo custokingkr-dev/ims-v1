@@ -7,23 +7,21 @@ spring:
       ddl-auto: validate
     show-sql: false
   datasource:
-    # Must connect as ims_app so PostgreSQL RLS policies (V4 migration) are enforced.
-    # Apply V4 with a superuser before deploying; then set SPRING_DATASOURCE_USERNAME=ims_app.
+    # Tenant isolation is enforced at the application layer (TenantScopeService +
+    # scoped user_role_assignments). PostgreSQL RLS is currently disabled (see V117).
     username: ${SPRING_DATASOURCE_USERNAME:ims_app}
-    # Tighter pool for Cloud Run (single-instance default: 2 vCPU)
     hikari:
       maximum-pool-size: ${DB_POOL_MAX:5}
       minimum-idle: 1
   flyway:
-    # Flyway runs migrations with DDL rights — use a separate superuser connection.
-    # FLYWAY_USERNAME and FLYWAY_PASSWORD must be set in the prod environment (e.g. Cloud Run secrets).
+    # Flyway runs migrations with DDL rights via a separate superuser connection.
+    # FLYWAY_USERNAME and FLYWAY_PASSWORD must be set in prod secrets (Cloud Run).
     url: ${FLYWAY_URL:${SPRING_DATASOURCE_URL}}
     user: ${FLYWAY_USERNAME}
     password: ${FLYWAY_PASSWORD}
 
 server:
   forward-headers-strategy: framework
-  # Trust Cloud Run's load-balancer for real client IPs
   tomcat:
     remoteip:
       remote-ip-header: X-Forwarded-For
@@ -32,15 +30,20 @@ server:
 management:
   endpoint:
     health:
-      # In prod, only authenticated users see component details
       show-details: when-authorized
   endpoints:
     web:
       exposure:
-        # Narrow down exposed endpoints in production
         include: health,prometheus,info
 
-# Logging config is handled by logback-spring.xml (prod profile = JSON)
+# Swagger/OpenAPI: disabled by default in production.
+# Set SWAGGER_ENABLED=true only for controlled internal access (requires valid JWT).
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:false}
+
 logging:
   level:
     root: WARN
@@ -49,4 +52,4 @@ logging:
 
 app:
   bootstrap-users: ${APP_BOOTSTRAP_USERS:false}
-  cookie-secure: true  # HTTPS in prod — Secure flag required on refresh-token cookie
+  cookie-secure: true

@@ -15,6 +15,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -43,26 +44,34 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        final var actuatorAccess = new WebExpressionAuthorizationManager(
+                "@rbacService.hasPermission(authentication, 'system:actuator')");
+        final var swaggerAccess = new WebExpressionAuthorizationManager(
+                "@rbacService.hasPermission(authentication, 'system:swagger')");
+
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public: auth + liveness/readiness probes + Swagger UI
+                        // Public: auth endpoints + Cloud Run health probes only.
                         .requestMatchers(
                                 "/api/v1/auth/**",
                                 "/actuator/health",
                                 "/actuator/health/liveness",
-                                "/actuator/health/readiness",
+                                "/actuator/health/readiness"
+                        ).permitAll()
+                        // Swagger: require system:swagger permission (SUPERADMIN only).
+                        .requestMatchers(
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
-                        ).permitAll()
-                        // Metrics scraping — authenticated (service-account token or SUPERADMIN)
+                        ).access(swaggerAccess)
+                        // Prometheus scraping: any authenticated service-account JWT.
                         .requestMatchers("/actuator/prometheus").authenticated()
-                        // All other actuator endpoints require SUPERADMIN
-                        .requestMatchers("/actuator/**").hasRole("SUPERADMIN")
+                        // All other actuator endpoints: require system:actuator permission.
+                        .requestMatchers("/actuator/**").access(actuatorAccess)
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) ->

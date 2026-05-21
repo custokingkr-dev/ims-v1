@@ -1,4 +1,6 @@
-import type { AuthUser, Role } from '../types/auth';
+import type { AuthUser } from '../types/auth';
+
+// ── Core permission helpers (permission-code based) ───────────────────────────
 
 export function hasPermission(user: AuthUser | null, code: string): boolean {
   if (!user) return false;
@@ -15,33 +17,12 @@ export function hasAllPermissions(user: AuthUser | null, codes: string[]): boole
   return codes.every(c => hasPermission(user, c));
 }
 
-export function hasRole(user: AuthUser | null, role: Role): boolean {
-  if (!user) return false;
-  return user.role === role;
-}
-
-export function isSuperAdmin(user: AuthUser | null): boolean {
-  return hasRole(user, 'SUPERADMIN');
-}
-
-export function isZoneAdmin(user: AuthUser | null): boolean {
-  return hasRole(user, 'ZONE_ADMIN');
-}
-
-export function isSchoolLevel(user: AuthUser | null): boolean {
-  if (!user) return false;
-  const schoolLevelRoles: Role[] = ['ADMIN', 'OPERATIONS', 'ACCOUNTANT', 'TEACHER', 'VIEWER'];
-  return schoolLevelRoles.includes(user.role);
-}
+// ── Convenience wrappers using permission codes (preferred) ───────────────────
 
 export function canWrite(user: AuthUser | null): boolean {
-  if (!user) return false;
-  const writeRoles: Role[] = ['SUPERADMIN', 'ADMIN', 'OPERATIONS'];
-  return writeRoles.includes(user.role);
+  return hasAnyPermission(user, ['student:create', 'order:create', 'firefighting:create']);
 }
 
 export function canManageFees(user: AuthUser | null): boolean {
-  if (!user) return false;
-  const feeRoles: Role[] = ['SUPERADMIN', 'ADMIN', 'ACCOUNTANT'];
-  return feeRoles.includes(user.role);
+  return hasPermission(user, 'fee:collect');
 }

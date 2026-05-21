@@ -1,7 +1,31 @@
 {
   "permissions": {
     "allow": [
-      "Bash(./mvnw compile:*)"
+      "Bash(./mvnw compile:*)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\" -Directory)",
+      "Bash(Select-Object Name)",
+      "PowerShell(Get-Item \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\" | ForEach-Object { Get-ChildItem $_.FullName })",
+      "Bash(mvn compile *)",
+      "Bash(mvn test-compile *)",
+      "Bash(Get-Content \"C:\\\\Users\\\\abhis\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-abhis-Desktop-Custoking-New-folder-ims-v1\\\\1ab0e6d5-8500-4aa4-9238-3a28d6246051\\\\tasks\\\\bsb4xd6ot.output\" -Wait -Tail 30)",
+      "Bash(Select-Object -First 50)",
+      "Bash(python3 -c ' *)",
+      "Bash(npm run *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\" -Recurse -File -Name)",
+      "Bash(Select-String -Pattern \"\\(SecurityConfig|application-prod|OpenApiConfig|ci\\\\.yml|\\\\.gitignore|Tenant|WorkspaceController\\)\")",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\" -Force | Select-Object Name, @{n='Type';e={if\\($_.PSIsContainer\\){'Dir'}else{'File'}}} | Format-Table -AutoSize)",
+      "Bash(xargs grep *)",
+      "Bash(python3 -c \"import sys; print\\(sys.stdin.buffer.read\\(\\).decode\\('utf-8', errors='replace'\\)\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(grep -v \"//\")",
+      "Bash(mvn clean *)",
+      "Bash(mvn test *)",
+      "Bash(Start-Sleep -Seconds 60)",
+      "Bash(Get-Content \"C:\\\\Users\\\\abhis\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-abhis-Desktop-Custoking-New-folder-ims-v1\\\\8f3562c3-e97c-4d4a-af58-e3c201114ab3\\\\tasks\\\\b9582qvqt.output\")",
+      "Bash(Select-Object -Last 60)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(echo \"EXIT_CODE:$?\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\\\\frontend\\\\src\" -Directory)"
     ]
   }
 }

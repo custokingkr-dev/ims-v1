@@ -3,6 +3,21 @@
 
 export type WorkspaceData = any;
 
+export type ModuleCode =
+  | 'STUDENTS' | 'ATTENDANCE' | 'FEES' | 'INVOICES'
+  | 'PAYMENTS' | 'ORDERS' | 'FIREFIGHTING' | 'REPORTS';
+
+export const ALL_MODULES: Array<{ code: ModuleCode; label: string; icon: string; desc: string }> = [
+  { code: 'STUDENTS',     label: 'Students',     icon: '🎓', desc: 'Student records, enrollment, bulk import' },
+  { code: 'ATTENDANCE',   label: 'Attendance',   icon: '✓',  desc: 'Daily attendance tracking' },
+  { code: 'FEES',         label: 'Fees',         icon: '₹',  desc: 'Fee collection and structure management' },
+  { code: 'INVOICES',     label: 'Invoices',     icon: '🧾', desc: 'Invoice generation and management' },
+  { code: 'PAYMENTS',     label: 'Payments',     icon: '💳', desc: 'Payment records and reconciliation' },
+  { code: 'ORDERS',       label: 'Supply OS',    icon: '📦', desc: 'Catalog ordering and annual planning' },
+  { code: 'FIREFIGHTING', label: 'Firefighting', icon: '🔥', desc: 'Non-catalog emergency procurement' },
+  { code: 'REPORTS',      label: 'Reports',      icon: '📊', desc: 'Analytics and export reports' },
+];
+
 export type PanelKey =
   | 'home' | 'students' | 'fees' | 'feestructure' | 'attendance' | 'timetable'
   | 'addstudent' | 'bulkimport' | 'staff' | 'catalog' | 'orders' | 'planning'
@@ -14,38 +29,38 @@ export type PanelKey =
 export const ADMIN_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string }>;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
 }> = [
   {
     title: 'Supply OS',
     items: [
-      { key: 'catalog', label: 'Catalog', icon: '⊞' },
-      { key: 'orders', label: 'My orders', icon: '📦' },
-      { key: 'planning', label: 'Annual plan', icon: '🗓' },
+      { key: 'catalog',   label: 'Catalog',      icon: '⊞', module: 'ORDERS' },
+      { key: 'orders',    label: 'My orders',    icon: '📦', module: 'ORDERS' },
+      { key: 'planning',  label: 'Annual plan',  icon: '🗓', module: 'ORDERS' },
     ],
   },
   {
     title: 'Firefighting',
     fire: true,
     items: [
-      { key: 'ff-dashboard', label: 'All requests', icon: '📋' },
-      { key: 'ff-new', label: 'New request', icon: '➕' },
-      { key: 'ff-approvals', label: 'Approvals', icon: '✅' },
-      { key: 'ff-orders', label: 'Placed orders', icon: '📦' },
+      { key: 'ff-dashboard', label: 'All requests',  icon: '📋', module: 'FIREFIGHTING' },
+      { key: 'ff-new',       label: 'New request',   icon: '➕', module: 'FIREFIGHTING' },
+      { key: 'ff-approvals', label: 'Approvals',     icon: '✅', module: 'FIREFIGHTING' },
+      { key: 'ff-orders',    label: 'Placed orders', icon: '📦', module: 'FIREFIGHTING' },
     ],
   },
   {
     title: 'School ERP',
     items: [
-      { key: 'home', label: 'Dashboard', icon: '◼' },
-      { key: 'students', label: 'Students', icon: '🎓' },
-      { key: 'fees', label: 'Fee collection', icon: '₹' },
-      { key: 'feestructure', label: 'Fee structure', icon: '📐' },
-      { key: 'attendance', label: 'Attendance', icon: '✓' },
-      { key: 'timetable', label: 'Timetable', icon: '📅' },
-      { key: 'addstudent', label: 'Add student', icon: '➕' },
-      { key: 'bulkimport', label: 'Bulk import', icon: '📥' },
-      { key: 'staff', label: 'Staff & HR', icon: '👥' },
+      { key: 'home',        label: 'Dashboard',      icon: '◼' },
+      { key: 'students',    label: 'Students',       icon: '🎓', module: 'STUDENTS' },
+      { key: 'fees',        label: 'Fee collection', icon: '₹',  module: 'FEES' },
+      { key: 'feestructure',label: 'Fee structure',  icon: '📐', module: 'FEES' },
+      { key: 'attendance',  label: 'Attendance',     icon: '✓',  module: 'ATTENDANCE' },
+      { key: 'timetable',   label: 'Timetable',      icon: '📅' },
+      { key: 'addstudent',  label: 'Add student',    icon: '➕', module: 'STUDENTS' },
+      { key: 'bulkimport',  label: 'Bulk import',    icon: '📥', module: 'STUDENTS' },
+      { key: 'staff',       label: 'Staff & HR',     icon: '👥' },
     ],
   },
 ];
@@ -54,31 +69,31 @@ export const ADMIN_NAV_SECTIONS: Array<{
 export const OPERATIONS_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string }>;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
 }> = [
   {
     title: 'Supply OS',
     items: [
-      { key: 'catalog', label: 'Catalog', icon: '⊞' },
-      { key: 'orders', label: 'My orders', icon: '📦' },
+      { key: 'catalog', label: 'Catalog',   icon: '⊞', module: 'ORDERS' },
+      { key: 'orders',  label: 'My orders', icon: '📦', module: 'ORDERS' },
     ],
   },
   {
     title: 'Firefighting',
     fire: true,
     items: [
-      { key: 'ff-dashboard', label: 'All requests', icon: '📋' },
-      { key: 'ff-new', label: 'New request', icon: '➕' },
-      { key: 'ff-orders', label: 'Placed orders', icon: '📦' },
+      { key: 'ff-dashboard', label: 'All requests',  icon: '📋', module: 'FIREFIGHTING' },
+      { key: 'ff-new',       label: 'New request',   icon: '➕', module: 'FIREFIGHTING' },
+      { key: 'ff-orders',    label: 'Placed orders', icon: '📦', module: 'FIREFIGHTING' },
     ],
   },
   {
     title: 'School ERP',
     items: [
-      { key: 'home', label: 'Dashboard', icon: '◼' },
-      { key: 'students', label: 'Students', icon: '🎓' },
-      { key: 'attendance', label: 'Attendance', icon: '✓' },
-      { key: 'addstudent', label: 'Add student', icon: '➕' },
+      { key: 'home',       label: 'Dashboard',   icon: '◼' },
+      { key: 'students',   label: 'Students',    icon: '🎓', module: 'STUDENTS' },
+      { key: 'attendance', label: 'Attendance',  icon: '✓',  module: 'ATTENDANCE' },
+      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'STUDENTS' },
     ],
   },
 ];
@@ -86,7 +101,7 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
 export const ZONE_ADMIN_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string }>;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
 }> = [
   {
     title: 'Zone',
@@ -100,7 +115,7 @@ export const ZONE_ADMIN_NAV_SECTIONS: Array<{
 export const SUPERADMIN_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string }>;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
 }> = [
   {
     title: 'Operations',

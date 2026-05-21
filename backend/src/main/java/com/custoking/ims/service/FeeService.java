@@ -203,8 +203,8 @@ public class FeeService {
     }
 
     public Map<String, Object> assignFeePlan(Map<String, Object> request) {
-        return feeAssignmentApi(request, new AuthUser(1L, "System", "system@custoking.com",
-                Role.SUPERADMIN, null, null, null));
+        return feeAssignmentApi(request, AuthUser.identity(1L, "System", "system@custoking.com",
+                Role.ADMIN.name(), null, null));
     }
 
     // ── Payments ─────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Field, Stat } from '../ui';
 import { formatMoney, formatLakh } from '../utils';
 import type { WorkspaceData } from '../config';
@@ -12,7 +13,8 @@ interface Props {
 
 export function FeesPanel({ workspace, onRefresh }: Props) {
   const { user } = useAuth();
-  const schoolScopedParams = user?.role !== 'SUPERADMIN' && user?.branchId ? { schoolId: user.branchId } : undefined;
+  const { can } = usePermissions();
+  const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const feeSummary = workspace?.fees?.summary ?? { progressPercent: 0, collected: 0, outstanding: 0, overdueCount: 0, target: 0 };
 

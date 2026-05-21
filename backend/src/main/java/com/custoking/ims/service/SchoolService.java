@@ -9,6 +9,7 @@ import com.custoking.ims.dto.school.SchoolUpdateRequest;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.repo.*;
 import com.custoking.ims.util.PasswordUtil;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +28,8 @@ public class SchoolService {
     private final SchoolClassRepository classRepository;
     private final SchoolSectionRepository sectionRepository;
     private final CatalogOrderRepository catalogOrderRepository;
+    private final UserRoleAssignmentRepository uraRepo;
+    private final RbacService rbacService;
     private final PasswordUtil passwordUtil;
 
     public SchoolService(SchoolRepository schoolRepository,
@@ -35,6 +38,8 @@ public class SchoolService {
                          SchoolClassRepository classRepository,
                          SchoolSectionRepository sectionRepository,
                          CatalogOrderRepository catalogOrderRepository,
+                         UserRoleAssignmentRepository uraRepo,
+                         @Lazy RbacService rbacService,
                          PasswordUtil passwordUtil) {
         this.schoolRepository = schoolRepository;
         this.userRepository = userRepository;
@@ -42,18 +47,21 @@ public class SchoolService {
         this.classRepository = classRepository;
         this.sectionRepository = sectionRepository;
         this.catalogOrderRepository = catalogOrderRepository;
+        this.uraRepo = uraRepo;
+        this.rbacService = rbacService;
         this.passwordUtil = passwordUtil;
     }
 
     public List<Map<String, Object>> listSchools() {
         TenantScope scope = TenantContext.getScope();
-        List<SchoolEntity> schools = (scope != null && "ZONE_ADMIN".equals(scope.primaryRole()) && scope.accessibleSchoolIds() != null)
+        List<SchoolEntity> schools = (scope != null && !scope.isSuperadmin()
+                && scope.accessibleSchoolIds() != null && !scope.accessibleSchoolIds().isEmpty())
                 ? schoolRepository.findAllByIdInOrderByNameAsc(scope.accessibleSchoolIds())
                 : schoolRepository.findAllByOrderByNameAsc();
         return schools.stream()
                 .map(school -> {
-                    AppUserEntity admin = userRepository.findFirstByRoleIgnoreCaseAndBranchId("ADMIN", school.getId()).orElse(null);
-                    AppUserEntity ops = userRepository.findFirstByRoleIgnoreCaseAndBranchId("OPERATIONS", school.getId()).orElse(null);
+                    AppUserEntity admin = findFirstSchoolUserByRole("ADMIN", school.getId()).orElse(null);
+                    AppUserEntity ops = findFirstSchoolUserByRole("OPERATIONS", school.getId()).orElse(null);
                     return row(
                             "id", school.getId(),
                             "name", school.getName(),
@@ -102,25 +110,29 @@ public class SchoolService {
     public Map<String, Object> createOrResetSchoolAdmin(Long schoolId, SchoolAdminRequest request) {
         SchoolEntity school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
-        userRepository.findFirstByRoleIgnoreCaseAndBranchId("ADMIN", schoolId).ifPresent(existing -> {
-            authSessionRepository.deleteByUser_Id(existing.getId());
-            userRepository.delete(existing);
+        // Revoke existing RBAC assignments and remove old user account
+        uraRepo.findEffectiveByRoleAndSchool("ADMIN", schoolId).forEach(ura -> {
+            rbacService.revokeRoleAssignment(ura.getId(), null);
+            authSessionRepository.deleteByUser_Id(ura.getUser().getId());
+            userRepository.delete(ura.getUser());
         });
         AppUserEntity user = new AppUserEntity();
         user.setFullName(request.fullName().trim());
         user.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
         user.setPasswordHash(passwordUtil.hash(request.temporaryPassword()));
-        user.setRole("ADMIN");
-        user.setBranchId(school.getId());
+        user.setRole("ADMIN");           // display/legacy metadata
+        user.setBranchId(school.getId()); // display/legacy metadata
         user.setBranchName(school.getName());
         userRepository.save(user);
+        // Create RBAC school-scoped assignment
+        rbacService.assignSchoolRole(user.getId(), "ADMIN", schoolId, null);
         return adminDetails(user);
     }
 
     public Map<String, Object> getSchoolAdmin(Long schoolId) {
         schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
-        AppUserEntity admin = userRepository.findFirstByRoleIgnoreCaseAndBranchId("ADMIN", schoolId)
+        AppUserEntity admin = findFirstSchoolUserByRole("ADMIN", schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "ADMIN not found for school"));
         return adminDetails(admin);
     }
@@ -133,7 +145,7 @@ public class SchoolService {
                             .filter(o -> o.getSchool() != null && school.getId().equals(o.getSchool().getId()))
                             .toList();
                     long gmv = schoolOrders.stream().mapToLong(CatalogOrderEntity::getTotalAmount).sum();
-                    AppUserEntity admin = userRepository.findFirstByRoleIgnoreCaseAndBranchId("ADMIN", school.getId()).orElse(null);
+                    AppUserEntity admin = findFirstSchoolUserByRole("ADMIN", school.getId()).orElse(null);
                     return row(
                             "id", school.getId(),
                             "name", school.getName(),
@@ -153,25 +165,29 @@ public class SchoolService {
     public Map<String, Object> createOrResetSchoolOperationsUser(Long schoolId, SchoolOperationsUserRequest request) {
         SchoolEntity school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
-        userRepository.findFirstByRoleIgnoreCaseAndBranchId("OPERATIONS", schoolId).ifPresent(existing -> {
-            authSessionRepository.deleteByUser_Id(existing.getId());
-            userRepository.delete(existing);
+        // Revoke existing RBAC assignments and remove old user account
+        uraRepo.findEffectiveByRoleAndSchool("OPERATIONS", schoolId).forEach(ura -> {
+            rbacService.revokeRoleAssignment(ura.getId(), null);
+            authSessionRepository.deleteByUser_Id(ura.getUser().getId());
+            userRepository.delete(ura.getUser());
         });
         AppUserEntity user = new AppUserEntity();
         user.setFullName(request.fullName().trim());
         user.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
         user.setPasswordHash(passwordUtil.hash(request.temporaryPassword()));
-        user.setRole("OPERATIONS");
-        user.setBranchId(school.getId());
+        user.setRole("OPERATIONS");       // display/legacy metadata
+        user.setBranchId(school.getId());  // display/legacy metadata
         user.setBranchName(school.getName());
         userRepository.save(user);
+        // Create RBAC school-scoped assignment
+        rbacService.assignSchoolRole(user.getId(), "OPERATIONS", schoolId, null);
         return operationsUserDetails(user);
     }
 
     public Map<String, Object> getSchoolOperationsUser(Long schoolId) {
         schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
-        AppUserEntity ops = userRepository.findFirstByRoleIgnoreCaseAndBranchId("OPERATIONS", schoolId)
+        AppUserEntity ops = findFirstSchoolUserByRole("OPERATIONS", schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "OPERATIONS user not found for school"));
         return operationsUserDetails(ops);
     }
@@ -220,6 +236,17 @@ public class SchoolService {
                     section.setActive(true);
                     return sectionRepository.save(section);
                 });
+    }
+
+    /**
+     * Finds the first user with an effective school-scoped RBAC assignment for the given role.
+     * Replaces the legacy app_users.role + branchId lookup.
+     */
+    private Optional<AppUserEntity> findFirstSchoolUserByRole(String roleName, Long schoolId) {
+        return uraRepo.findEffectiveByRoleAndSchool(roleName.toUpperCase(Locale.ROOT), schoolId)
+                .stream()
+                .findFirst()
+                .map(UserRoleAssignmentEntity::getUser);
     }
 
     private Map<String, Object> schoolDetails(SchoolEntity school) {
