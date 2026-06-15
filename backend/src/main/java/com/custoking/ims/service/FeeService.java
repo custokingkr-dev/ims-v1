@@ -1,5 +1,6 @@
 package com.custoking.ims.service;
 
+import com.custoking.ims.audit.AuditLogService;
 import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
@@ -27,23 +28,27 @@ public class FeeService {
     private final PaymentRecordRepository paymentRecordRepository;
     private final AcademicYearRepository academicYearRepository;
     private final StudentRepository studentRepository;
+    private final AuditLogService auditLogService;
 
     public FeeService(FeeBandRepository feeBandRepository,
                       FeeItemRepository feeItemRepository,
                       FeeAssignmentRepository feeAssignmentRepository,
                       PaymentRecordRepository paymentRecordRepository,
                       AcademicYearRepository academicYearRepository,
-                      StudentRepository studentRepository) {
+                      StudentRepository studentRepository,
+                      AuditLogService auditLogService) {
         this.feeBandRepository = feeBandRepository;
         this.feeItemRepository = feeItemRepository;
         this.feeAssignmentRepository = feeAssignmentRepository;
         this.paymentRecordRepository = paymentRecordRepository;
         this.academicYearRepository = academicYearRepository;
         this.studentRepository = studentRepository;
+        this.auditLogService = auditLogService;
     }
 
     // ── Fee structure ────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> feeStructureData(String academicYearId) {
         String yearId = academicYearId == null || academicYearId.isBlank() ? currentAcademicYearId() : academicYearId;
         AcademicYearEntity year = academicYearRepository.findById(yearId).orElse(currentAcademicYearEntity());
@@ -153,6 +158,7 @@ public class FeeService {
         return row("removed", true, "bandId", bandId);
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> matchFeeStructureBand(String classId) {
         int sort = classSortOrder(classId);
         FeeBandEntity band = feeBandRepository
@@ -239,6 +245,11 @@ public class FeeService {
         feeAssignmentRepository.save(assignment);
         student.setFeeStatus(assignment.getPaidAmount() >= assignment.getNetPayable() ? "Paid" : "Overdue");
         studentRepository.save(student);
+        auditLogService.recordEvent("FEE_COLLECTED",
+                actor == null ? null : actor.userId(),
+                student.getSchool() != null ? student.getSchool().getId() : TenantContext.get(),
+                "payment", payment.getId(),
+                null, payment.getReceiptNumber() + " amount=" + payment.getAmount());
         log.info("payment.record studentId={} amount={} mode={} actorId={}", student.getId(), amount, payment.getMode(), actor.userId());
         log.info("payment.recorded paymentId={} receiptNumber={}", payment.getId(), payment.getReceiptNumber());
         return row("paymentId", payment.getId(), "receiptUrl", "/api/v1/receipts/" + payment.getId() + "/pdf");
@@ -248,6 +259,7 @@ public class FeeService {
         return paymentApi(request, actor);
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> payments() {
         return paymentRecordRepository.findAllByOrderByPaidAtDesc().stream()
                 .map(p -> row("id", p.getId(), "student", p.getStudent().getFullName(),
@@ -275,6 +287,7 @@ public class FeeService {
 
     // ── Reports ──────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> feeReport(String classId, String sectionId, AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         List<FeeAssignmentEntity> assignments = feeAssignmentRepository
@@ -300,6 +313,7 @@ public class FeeService {
         }).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> feeOverdue(String classId, String sectionId, AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         return feeAssignmentRepository
@@ -330,6 +344,7 @@ public class FeeService {
 
     // ── Used by WorkspaceService ─────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> buildFeesModule(String yearId, Long schoolId) {
         List<FeeAssignmentEntity> scoped = schoolId != null
                 ? feeAssignmentRepository.findByAcademicYear_IdAndStudent_School_Id(yearId, schoolId).stream()
@@ -352,6 +367,7 @@ public class FeeService {
         return row("summary", row("collected", collected, "target", target), "records", records);
     }
 
+    @Transactional(readOnly = true)
     public long feeOverdueCount(String yearId, Long schoolId) {
         return feeAssignmentRepository.countOverdueByYearAndSchool(yearId, schoolId);
     }

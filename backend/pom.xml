@@ -17,6 +17,8 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Skipped by default; set to false in the 'ci' profile to enforce coverage gate. -->
+        <jacoco.check.skip>true</jacoco.check.skip>
     </properties>
 
     <dependencies>
@@ -120,6 +122,10 @@
         <!-- Used by CI: runs unit tests (surefire) + integration tests (failsafe) -->
         <profile>
             <id>ci</id>
+            <properties>
+                <!-- Enable the JaCoCo coverage gate when running mvn verify -Pci -->
+                <jacoco.check.skip>false</jacoco.check.skip>
+            </properties>
             <build>
                 <plugins>
                     <plugin>
@@ -166,6 +172,32 @@
                         <id>report</id>
                         <phase>test</phase>
                         <goals><goal>report</goal></goals>
+                    </execution>
+                    <!--
+                        Minimum coverage gate: 20 % instruction coverage on the whole module.
+                        Only enforced in the 'ci' profile (mvn verify -Pci) so local
+                        'mvn test' is not broken.  Raise the minimum in increments as
+                        more service-layer tests are added (target: 50 % by Group D).
+                    -->
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <skip>${jacoco.check.skip}</skip>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>INSTRUCTION</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.20</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

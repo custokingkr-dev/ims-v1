@@ -49,6 +49,13 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
   const [ffError, setFfError] = useState('');
   const [ffDraftSaving, setFfDraftSaving] = useState(false);
   const [ffExistingQuotes, setFfExistingQuotes] = useState<ExistingQuote[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     if (!editingCode) { setFfForm(ffFormInit()); setFfStep(1); setFfExistingQuotes([]); return; }
@@ -69,7 +76,7 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
       })
       .catch((err: unknown) => {
         const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to open draft';
-        alert(msg);
+        setToast(msg);
       });
   }, [editingCode]);
 
@@ -133,7 +140,8 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
   };
 
   return (
-    <ModuleShell title={editingCode ? '🔥 Edit draft — add quotations' : '🔥 New request'} subtitle={editingCode ? `Editing draft ${editingCode} — add quotations and submit for approval` : 'Raise a procurement request for anything not in the Custoking catalog'}>
+    <>
+    <ModuleShell title={editingCode ? 'Urgent Procurement — Edit Draft' : 'Urgent Procurement — New Request'} subtitle={editingCode ? `Editing draft ${editingCode} — add quotations and submit for approval` : 'Raise a procurement request for anything not in the Custoking catalog'}>
       <div className="ck-step-bar">
         {([['Describe need', 'What do you need?'], ['Add quotations', 'Optional — speeds up approval'], ['Review & submit', 'Send for approval']] as [string, string][]).map(([label, sub], i) => (
           <div key={i} className={`ck-step ${ffStep > i + 1 ? 'done' : ffStep === i + 1 ? 'active' : ''}`} onClick={() => { if (ffStep > i + 1) setFfStep((i + 1) as 1 | 2 | 3); }}>
@@ -164,7 +172,7 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
               <div className="ck-form-card">
                 <div className="ck-form-head">How it works</div>
                 <div className="ck-form-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {[['1', 'or', 'Describe your need and add 2–3 vendor quotations'], ['2', 'or', 'Bursar reviews the quotes and budget'], ['3', 'or', 'Principal gives final approval'], ['4', 'g', 'Custoking fulfils — single invoice to your school']].map(([n, tone, text]) => (
+                  {[['1', 'or', 'Describe your need and add 2–3 vendor quotations'], ['2', 'or', 'Finance Review: budget check on the quotes'], ['3', 'or', 'Admin Approval: final sign-off'], ['4', 'g', 'Custoking fulfils — single invoice to your school']].map(([n, tone, text]) => (
                     <div key={n} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: `var(--${tone}1)`, border: `1.5px solid var(--${tone})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: `var(--${tone})`, flexShrink: 0 }}>{n}</div>
                       <div style={{ fontSize: 12.5, color: 'var(--ink2)' }}>{text}</div>
@@ -263,7 +271,7 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
             <div className="ck-form-card" style={{ marginBottom: 0 }}>
               <div className="ck-form-head">Approval routing</div>
               <div className="ck-form-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[['1', 'am', 'Bursar review', 'Budget check'], ['2', 'b', 'Principal approval', 'Final sign-off'], ['3', 'g', 'Custoking fulfils', 'After approval']].map(([n, tone, title, sub]) => (
+                {[['1', 'am', 'Finance Review', 'Budget check'], ['2', 'b', 'Admin Approval', 'Final sign-off'], ['3', 'g', 'Custoking fulfils', 'After approval']].map(([n, tone, title, sub]) => (
                   <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'var(--bg)', borderRadius: 8 }}>
                     <div style={{ width: 32, height: 32, borderRadius: '50%', background: `var(--${tone}1)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: `var(--${tone})`, flexShrink: 0 }}>{n}</div>
                     <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600 }}>{title}</div><div style={{ fontSize: 12, color: 'var(--ink3)' }}>{sub}</div></div>
@@ -290,10 +298,17 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
               <button className="ck-btn ck-btn-or" style={{ justifyContent: 'center' }} disabled={ffSaving} onClick={submitFfRequest}>{ffSaving ? 'Submitting…' : 'Submit for approval →'}</button>
               <button className="ck-btn ck-btn-ghost" style={{ justifyContent: 'center' }} onClick={() => setFfStep(2)}>← Back to quotations</button>
             </div>
-            <div className="ck-alert ck-alert-g"><span>✓</span><div>Once submitted, the Bursar gets notified to review. Track status in real time.</div></div>
+            <div className="ck-alert ck-alert-g"><span>✓</span><div>Once submitted, Finance Review is notified. Track status in real time.</div></div>
           </div>
         </div>
       )}
     </ModuleShell>
+
+      {toast && (
+        <div className="ck-command-toast ok" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          {toast}
+        </div>
+      )}
+    </>
   );
 }

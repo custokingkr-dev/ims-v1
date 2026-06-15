@@ -9,6 +9,8 @@ import com.custoking.ims.dto.school.SchoolUpdateRequest;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.repo.*;
 import com.custoking.ims.util.PasswordUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ import java.util.stream.Collectors;
 @Transactional
 public class SchoolService {
 
+    private static final Logger log = LoggerFactory.getLogger(SchoolService.class);
+
     private final SchoolRepository schoolRepository;
     private final AppUserRepository userRepository;
     private final AuthSessionRepository authSessionRepository;
@@ -31,6 +35,7 @@ public class SchoolService {
     private final UserRoleAssignmentRepository uraRepo;
     private final RbacService rbacService;
     private final PasswordUtil passwordUtil;
+    private final SchoolOnboardingService onboardingService;
 
     public SchoolService(SchoolRepository schoolRepository,
                          AppUserRepository userRepository,
@@ -40,7 +45,8 @@ public class SchoolService {
                          CatalogOrderRepository catalogOrderRepository,
                          UserRoleAssignmentRepository uraRepo,
                          @Lazy RbacService rbacService,
-                         PasswordUtil passwordUtil) {
+                         PasswordUtil passwordUtil,
+                         SchoolOnboardingService onboardingService) {
         this.schoolRepository = schoolRepository;
         this.userRepository = userRepository;
         this.authSessionRepository = authSessionRepository;
@@ -50,6 +56,7 @@ public class SchoolService {
         this.uraRepo = uraRepo;
         this.rbacService = rbacService;
         this.passwordUtil = passwordUtil;
+        this.onboardingService = onboardingService;
     }
 
     public List<Map<String, Object>> listSchools() {
@@ -94,6 +101,8 @@ public class SchoolService {
         school.setActive(true);
         schoolRepository.save(school);
         ensureSchoolSections(school, school.getConfiguredClassCount(), school.getConfiguredSectionCount());
+        onboardingService.recordSchoolCreated(school.getId(), school.getName(), null);
+        log.info("school.created id={} name={} shortCode={}", school.getId(), school.getName(), school.getShortCode());
         return schoolDetails(school);
     }
 
@@ -126,6 +135,8 @@ public class SchoolService {
         userRepository.save(user);
         // Create RBAC school-scoped assignment
         rbacService.assignSchoolRole(user.getId(), "ADMIN", schoolId, null);
+        onboardingService.recordAdminUserCreated(schoolId, user.getId(), user.getEmail(), null);
+        log.info("school.adminCreated schoolId={} userId={} email={}", schoolId, user.getId(), user.getEmail());
         return adminDetails(user);
     }
 
