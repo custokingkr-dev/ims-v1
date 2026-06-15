@@ -3,6 +3,8 @@ package com.custoking.ims.controller;
 import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.StudentService;
 import com.custoking.ims.service.UserContextService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -10,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/students")
 @PreAuthorize(PermissionConstants.STUDENT_READ)
@@ -38,8 +42,8 @@ public class StudentPhotoController {
                                             @RequestParam(name = "class", required = false) String className,
                                             @RequestParam(name = "section", required = false) String sectionName,
                                             @RequestParam(name = "feeStatus", required = false) String feeStatus,
-                                            @RequestParam(name = "page", defaultValue = "0") int page,
-                                            @RequestParam(name = "size", defaultValue = "100") int size,
+                                            @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
+                                            @RequestParam(name = "size", defaultValue = "100") @Min(1) @Max(500) int size,
                                             @RequestParam(name = "schoolId", required = false) Long schoolId) {
         var actor = userContext.requireUser(authorization);
         return studentService.studentsPage(className, sectionName, feeStatus, page, size, actor, schoolId);

@@ -126,27 +126,58 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
       <div className="ck-form-card">
         <div className="ck-form-head">Student profile</div>
         <div className="ck-form-body">
-          <div className="ck-form-grid ck-fg-3">
-            <Field label="Admission Number *"><input value={studentForm.admissionNumber} onChange={(e) => setStudentForm({ ...studentForm, admissionNumber: e.target.value })} placeholder="Manual unique ID" /></Field>
-            <Field label="Board Registration Number"><input value={studentForm.boardRegistrationNumber} onChange={(e) => setStudentForm({ ...studentForm, boardRegistrationNumber: e.target.value })} placeholder="Alphanumeric" /></Field>
-            <Field label="Full name *"><input value={studentForm.fullName} onChange={(e) => setStudentForm({ ...studentForm, fullName: e.target.value })} placeholder="Student full name" /></Field>
-            <Field label="Date of birth"><input type="date" value={studentForm.dateOfBirth} onChange={(e) => setStudentForm({ ...studentForm, dateOfBirth: e.target.value })} /></Field>
-            <Field label="Gender"><select value={studentForm.gender} onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}><option>Male</option><option>Female</option><option>Other</option></select></Field>
-            <Field label="Admission date"><input type="date" value={studentForm.admissionDate} onChange={(e) => setStudentForm({ ...studentForm, admissionDate: e.target.value })} /></Field>
-            <Field label="Class *"><select value={studentForm.gradeLevel} onChange={(e) => setStudentForm({ ...studentForm, gradeLevel: e.target.value })}><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option><option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option></select></Field>
-            <Field label="Section"><select value={studentForm.sectionName} onChange={(e) => setStudentForm({ ...studentForm, sectionName: e.target.value })}><option>A</option><option>B</option><option>C</option><option>D</option></select></Field>
-            <Field label="Academic year"><input value={studentForm.academicYear} onChange={(e) => setStudentForm({ ...studentForm, academicYear: e.target.value })} /></Field>
+          <div className="ck-form-section">
+            <div className="ck-form-section-title">
+              <span className="ck-form-section-icon">👤</span>
+              Student Details
+            </div>
+            <div className="ck-form-grid ck-fg-3">
+              <Field label="Admission Number *"><input value={studentForm.admissionNumber} onChange={(e) => setStudentForm({ ...studentForm, admissionNumber: e.target.value })} placeholder="Manual unique ID" /></Field>
+              <Field label="Board Registration Number"><input value={studentForm.boardRegistrationNumber} onChange={(e) => setStudentForm({ ...studentForm, boardRegistrationNumber: e.target.value })} placeholder="Alphanumeric" /></Field>
+              <Field label="Full name *"><input value={studentForm.fullName} onChange={(e) => setStudentForm({ ...studentForm, fullName: e.target.value })} placeholder="Student full name" /></Field>
+              <Field label="Date of birth"><input type="date" value={studentForm.dateOfBirth} onChange={(e) => setStudentForm({ ...studentForm, dateOfBirth: e.target.value })} /></Field>
+              <Field label="Gender"><select value={studentForm.gender} onChange={(e) => setStudentForm({ ...studentForm, gender: e.target.value })}><option>Male</option><option>Female</option><option>Other</option></select></Field>
+              <Field label="Admission date"><input type="date" value={studentForm.admissionDate} onChange={(e) => setStudentForm({ ...studentForm, admissionDate: e.target.value })} /></Field>
+            </div>
           </div>
-          <div className="ck-form-grid ck-fg-3" style={{ marginTop: 16 }}>
-            <Field label="House number"><input value={studentForm.houseNumber} onChange={(e) => setStudentForm({ ...studentForm, houseNumber: e.target.value })} /></Field>
-            <Field label="Street"><input value={studentForm.street} onChange={(e) => setStudentForm({ ...studentForm, street: e.target.value })} /></Field>
-            <Field label="Locality"><input value={studentForm.locality} onChange={(e) => setStudentForm({ ...studentForm, locality: e.target.value })} /></Field>
-            <Field label="City"><input value={studentForm.city} onChange={(e) => setStudentForm({ ...studentForm, city: e.target.value })} /></Field>
-            <Field label="State"><input value={studentForm.state} onChange={(e) => setStudentForm({ ...studentForm, state: e.target.value })} /></Field>
-            <Field label="PIN code"><input value={studentForm.pinCode} onChange={(e) => setStudentForm({ ...studentForm, pinCode: e.target.value.replace(/\D/g, '').slice(0, 6) })} /></Field>
-            <Field label="Father name"><input value={studentForm.fatherName} onChange={(e) => setStudentForm({ ...studentForm, fatherName: e.target.value })} /></Field>
-            <Field label="Father contact number"><input value={studentForm.fatherContactNumber} onChange={(e) => setStudentForm({ ...studentForm, fatherContactNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })} /></Field>
-            <Field label="Default payment schedule"><select value={studentForm.paymentSchedule} onChange={(e) => setStudentForm({ ...studentForm, paymentSchedule: e.target.value })}><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option></select></Field>
+
+          <div className="ck-form-section">
+            <div className="ck-form-section-title">
+              <span className="ck-form-section-icon">🎓</span>
+              Academic Details
+            </div>
+            <div className="ck-form-grid ck-fg-3">
+              <Field label="Class *"><select value={studentForm.gradeLevel} onChange={(e) => setStudentForm({ ...studentForm, gradeLevel: e.target.value })}><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option><option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option></select></Field>
+              <Field label="Section"><select value={studentForm.sectionName} onChange={(e) => setStudentForm({ ...studentForm, sectionName: e.target.value })}><option>A</option><option>B</option><option>C</option><option>D</option></select></Field>
+              <Field label="Academic year"><input value={studentForm.academicYear} onChange={(e) => setStudentForm({ ...studentForm, academicYear: e.target.value })} /></Field>
+            </div>
+          </div>
+
+          <div className="ck-form-section">
+            <div className="ck-form-section-title">
+              <span className="ck-form-section-icon">👨‍👩‍👦</span>
+              Parent / Guardian
+            </div>
+            <div className="ck-form-grid ck-fg-3">
+              <Field label="Father name"><input value={studentForm.fatherName} onChange={(e) => setStudentForm({ ...studentForm, fatherName: e.target.value })} /></Field>
+              <Field label="Father contact number"><input value={studentForm.fatherContactNumber} onChange={(e) => setStudentForm({ ...studentForm, fatherContactNumber: e.target.value.replace(/\D/g, '').slice(0, 10) })} /></Field>
+              <Field label="Default payment schedule"><select value={studentForm.paymentSchedule} onChange={(e) => setStudentForm({ ...studentForm, paymentSchedule: e.target.value })}><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option></select></Field>
+            </div>
+          </div>
+
+          <div className="ck-form-section">
+            <div className="ck-form-section-title">
+              <span className="ck-form-section-icon">📍</span>
+              Address
+            </div>
+            <div className="ck-form-grid ck-fg-3">
+              <Field label="House number"><input value={studentForm.houseNumber} onChange={(e) => setStudentForm({ ...studentForm, houseNumber: e.target.value })} /></Field>
+              <Field label="Street"><input value={studentForm.street} onChange={(e) => setStudentForm({ ...studentForm, street: e.target.value })} /></Field>
+              <Field label="Locality"><input value={studentForm.locality} onChange={(e) => setStudentForm({ ...studentForm, locality: e.target.value })} /></Field>
+              <Field label="City"><input value={studentForm.city} onChange={(e) => setStudentForm({ ...studentForm, city: e.target.value })} /></Field>
+              <Field label="State"><input value={studentForm.state} onChange={(e) => setStudentForm({ ...studentForm, state: e.target.value })} /></Field>
+              <Field label="PIN code"><input value={studentForm.pinCode} onChange={(e) => setStudentForm({ ...studentForm, pinCode: e.target.value.replace(/\D/g, '').slice(0, 6) })} /></Field>
+            </div>
           </div>
 
           <div className="ck-photo-panel">

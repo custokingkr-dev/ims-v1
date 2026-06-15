@@ -62,7 +62,7 @@ export default function AppLayout() {
           <h3 style={{ margin: '8px 0 4px' }}>{user?.fullName}</h3>
           <div className="top-note">{user?.email}</div>
           <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <span className="badge">{can('platform:admin') ? 'Super Admin' : user?.role ?? 'User'}</span>
+            <span className="badge">{can('platform:admin') ? 'Platform Admin' : user?.role ?? 'User'}</span>
             <span className="badge">{user?.branchName || 'Global'}</span>
           </div>
         </div>

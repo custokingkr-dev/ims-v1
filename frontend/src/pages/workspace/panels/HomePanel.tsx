@@ -21,9 +21,21 @@ import { Stat } from '../ui';
 import { Modal } from '../../../components/Modal';
 import { usePermissions } from '../../../hooks/usePermissions';
 import api from '../../../services/api';
-import type { WorkspaceData, SuggestedAction, Broadcast, ActionModule } from '../../../types/workspace';
+import type { WorkspaceData, SuggestedAction, Broadcast, BroadcastStatus, ActionModule, ActionUrgency, DeliveryChannel } from '../../../types/workspace';
 import type { PanelKey } from '../config';
 import { MOCK_SUGGESTIONS, MOCK_BROADCASTS } from './command/fixtures';
+import type { CommandCentreCard, PolCode } from './command/commandCentreTypes';
+import { deriveCommandCentreCards, panelForCard } from './command/commandCentreUtils';
+import { ProofOfLifeModal } from './command/ProofOfLifeModals';
+import { fetchCommandCenterMetrics } from '../../../api/dashboardCommandCenterApi';
+import type { DashboardCommandCenterResponse } from '../../../types/dashboardCommandCenter';
+import { ActionInsightCard } from '../dashboard/components/ActionInsightCard';
+import { FeeDefaultersDrawer } from '../dashboard/drawers/FeeDefaultersDrawer';
+import { ClassPhotographyDrawer } from '../dashboard/drawers/ClassPhotographyDrawer';
+import { StudentReviewDrawer } from '../dashboard/drawers/StudentReviewDrawer';
+import { LowAttendanceDrawer } from '../dashboard/drawers/LowAttendanceDrawer';
+import { VendorDuesDrawer } from '../dashboard/drawers/VendorDuesDrawer';
+import { ReorderSignalsDrawer } from '../dashboard/drawers/ReorderSignalsDrawer';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -43,6 +55,45 @@ interface FeedItem {
 interface Toast {
   ok: boolean;
   txt: string;
+}
+
+// Backend API response shapes (kept local — only HomePanel maps these)
+interface BackendAction {
+  id: string;
+  module: string;
+  urgency: string;
+  confidence: number;
+  title: string;
+  reason: string | null;
+  impact: string | null;
+  currentState: string | null;
+  targetState: string | null;
+  ctaLabel: string | null;
+}
+
+interface BackendBroadcast {
+  id: string;
+  module: string | null;
+  title: string;
+  message: string | null;
+  audienceType: string;
+  channels: string[];
+  status: string;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  createdAt: string;
+}
+
+interface BackendFeedItem {
+  id: string;
+  module: string;
+  title: string;
+  createdAt: string;
+}
+
+interface DailyBriefData {
+  summary: string;
+  recommendedNextStep: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,16 +122,80 @@ const SEED_FEED: FeedItem[] = [
   { module: 'supply',       txt: 'Vendor quote in for lab consumables', t: '31m' },
 ];
 
-const EXTRA_FEED_POOL: FeedItem[] = [
-  { module: 'fees',         txt: '₹1.8L collected · 7 fresh UPI debits', t: 'now' },
-  { module: 'attendance',   txt: 'Section 8-B marked · 2 absentees', t: 'now' },
-  { module: 'supply',       txt: 'Stationery store hit reorder point', t: 'now' },
-  { module: 'firefighting', txt: 'FF-2025-009 marked resolved', t: 'now' },
-  { module: 'students',     txt: '3 admissions confirmed · Grade 6', t: 'now' },
-];
-
 type FilterKey = 'all' | ActionModule;
 const FILTER_KEYS: FilterKey[] = ['all', 'fees', 'students', 'supply', 'firefighting', 'attendance'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Backend → frontend type mappers
+// ─────────────────────────────────────────────────────────────────────────────
+
+const VALID_MODULES = new Set<string>(['fees', 'students', 'supply', 'firefighting', 'attendance']);
+
+function coerceModule(raw: string | null | undefined): ActionModule {
+  const m = (raw ?? '').toLowerCase();
+  return VALID_MODULES.has(m) ? (m as ActionModule) : 'fees';
+}
+
+function relativeTime(iso: string): string {
+  const diffMin = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return 'now';
+  if (diffMin < 60) return `${diffMin}m`;
+  return `${Math.floor(diffMin / 60)}h`;
+}
+
+function mapBackendAction(a: BackendAction): CommandCentreCard {
+  const state = a.currentState && a.targetState
+    ? `${a.currentState} → ${a.targetState}`
+    : (a.currentState ?? '');
+  return {
+    id: a.id,
+    module: coerceModule(a.module),
+    urgency: a.urgency.toLowerCase() as ActionUrgency,
+    confidence: a.confidence,
+    code: `CC-${a.id.slice(-6).toUpperCase()}`,
+    title: a.title,
+    why: a.reason ?? '',
+    impact: a.impact ?? '',
+    state,
+    cta: a.ctaLabel ?? 'Review',
+  };
+}
+
+function mapBackendBroadcast(b: BackendBroadcast): Broadcast {
+  const statusMap: Record<string, BroadcastStatus> = {
+    DRAFT: 'draft', SENT: 'sending', SCHEDULED: 'scheduled',
+  };
+  const status: BroadcastStatus = statusMap[b.status] ?? 'draft';
+  const refStr = b.scheduledAt ?? b.sentAt ?? b.createdAt;
+  const dt = new Date(refStr);
+  const diffDays = Math.round((dt.getTime() - Date.now()) / 86400000);
+  let when = '', whenShort = '';
+  if (status === 'sending') {
+    when = 'Sent'; whenShort = 'live';
+  } else if (diffDays <= 0) {
+    when = 'Today'; whenShort = 'today';
+  } else if (diffDays === 1) {
+    when = 'Tomorrow'; whenShort = 'tomorrow';
+  } else {
+    when = `In ${diffDays} days`; whenShort = `in ${diffDays}d`;
+  }
+  const audienceLabels: Record<string, string> = {
+    ALL_PARENTS: 'All Parents', ALL_STAFF: 'All Staff', WHOLE_SCHOOL: 'Whole School',
+    GRADE_PARENTS: 'Grade Parents', CLASS_PARENTS: 'Class Parents',
+  };
+  return {
+    id: b.id,
+    kind: 'notice',
+    status,
+    module: coerceModule(b.module),
+    title: b.title,
+    when,
+    whenShort,
+    audience: audienceLabels[b.audienceType] ?? b.audienceType,
+    channels: b.channels as DeliveryChannel[],
+    note: b.message ?? '',
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Inline SVG helpers (no library — pure <svg>)
@@ -206,17 +321,14 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
 
 // §1 + §2: Greeting + Critical alert — combined header block
 function GreetingHeader({
-  workspace, clock, criticalAction, onAcceptCritical,
+  workspace, criticalAction, onAcceptCritical,
 }: {
   workspace: WorkspaceData;
-  clock: Date;
-  criticalAction: SuggestedAction | null;
-  onAcceptCritical: (a: SuggestedAction) => void;
+  criticalAction: CommandCentreCard | null;
+  onAcceptCritical: (a: CommandCentreCard) => void;
 }) {
   const { can } = usePermissions();
-  const h = clock.getHours();
-  const timeStr = clock.toLocaleTimeString('en-IN', { hour12: false });
-  const dateStr = clock.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const h = new Date().getHours();
   const d = workspace.dashboard;
 
   return (
@@ -239,12 +351,8 @@ function GreetingHeader({
               : `${d.students} students enrolled · ${d.attendancePercent}% present today · ${d.pendingApprovals} approvals pending.`
             }
           </p>
-        </div>
-        <div className="ck-command-clock">
-          <div className="ck-command-time">{timeStr}</div>
-          <div className="ck-command-date">{dateStr}</div>
           {criticalAction && (
-            <div className="ck-command-crit-badge">
+            <div className="ck-command-crit-badge" style={{ marginTop: 10 }}>
               <span className="ck-command-crit-dot" />
               1 critical action pending
             </div>
@@ -326,19 +434,121 @@ function PulseKpis({
   );
 }
 
+// §3b: Action Insights — real-time metrics from backend command-center endpoint
+function ActionInsightsSection({
+  metrics, setPanel, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
+}: {
+  metrics: DashboardCommandCenterResponse | null;
+  setPanel: (k: PanelKey) => void;
+  onOpenFeeDefaulters: () => void;
+  onOpenClassPhotography: () => void;
+  onOpenStudentReview: () => void;
+  onOpenLowAttendance: () => void;
+  onOpenVendorDues: () => void;
+  onOpenReorderSignals: () => void;
+}) {
+  if (!metrics) return null;
+
+  const { fees, photography, lifecycle, attendance, vendorDues, reorderSignals } = metrics;
+  const overdueRupees = Math.round(fees.totalOverdueAmountPaise / 100);
+  const feeVariant = fees.defaulterCount > 0 ? 'danger' : 'ok';
+  const attVariant = attendance.sectionsBelowThresholdCount > 0 ? 'warn' : 'ok';
+  const photoCollectedRupees = Math.round(photography.collectedAmount / 100);
+  const photoPendingRupees = Math.round(photography.pendingAmount / 100);
+
+  return (
+    <section>
+      <div className="ck-command-section-head">
+        <h2 className="ck-command-section-title">Action Insights</h2>
+        <span className="ck-command-ai-badge">LIVE</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+        <ActionInsightCard
+          module="fees"
+          title="Fee Defaulters"
+          description="Students with outstanding fee balance in the active academic year."
+          metrics={[
+            { value: fees.defaulterCount, label: 'defaulters', variant: feeVariant },
+            ...(overdueRupees > 0 ? [{ value: `₹${overdueRupees.toLocaleString('en-IN')}`, label: 'overdue', variant: 'danger' as const }] : []),
+            ...(fees.oldestDueDays > 0 ? [{ value: `${fees.oldestDueDays}d`, label: 'oldest due', variant: 'warn' as const }] : []),
+          ]}
+          ctaLabel="View Defaulters"
+          onCta={onOpenFeeDefaulters}
+        />
+        <ActionInsightCard
+          module="attendance"
+          title="Low Attendance Sections"
+          description={`Sections below ${attendance.thresholdPercent}% attendance today.`}
+          metrics={[
+            { value: attendance.sectionsBelowThresholdCount, label: 'sections below threshold', variant: attVariant },
+          ]}
+          ctaLabel="View Sections"
+          onCta={onOpenLowAttendance}
+        />
+        <ActionInsightCard
+          module="photography"
+          title="Class Photography"
+          description="Student contribution status for the upcoming photography event."
+          metrics={[
+            ...(photoCollectedRupees > 0 ? [{ value: `₹${photoCollectedRupees.toLocaleString('en-IN')}`, label: 'collected', variant: 'ok' as const }] : []),
+            ...(photoPendingRupees > 0 ? [{ value: `₹${photoPendingRupees.toLocaleString('en-IN')}`, label: 'pending', variant: 'warn' as const }] : []),
+            ...(photography.eventId == null ? [{ value: '—', label: 'no active event' }] : []),
+          ]}
+          ctaLabel="View Payments"
+          onCta={onOpenClassPhotography}
+        />
+        <ActionInsightCard
+          module="students"
+          title="Student Lifecycle"
+          description="Students pending annual review or with extended absence."
+          metrics={[
+            { value: lifecycle.pendingReviewCount, label: 'pending review', variant: lifecycle.pendingReviewCount > 0 ? 'warn' : 'ok' },
+            { value: lifecycle.longAbsenceCount, label: 'long absence', variant: lifecycle.longAbsenceCount > 0 ? 'warn' : 'ok' },
+          ]}
+          ctaLabel="Review Students"
+          onCta={onOpenStudentReview}
+        />
+        <ActionInsightCard
+          module="orders"
+          title="Vendor Payment Dues"
+          description="Approved orders and firefighting requests with outstanding vendor payment."
+          metrics={[
+            { value: (vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0), label: 'unpaid orders', variant: ((vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0)) > 0 ? 'warn' : 'ok' },
+            ...(vendorDues?.totalDuesPaise > 0 ? [{ value: `₹${Math.round(vendorDues.totalDuesPaise / 100).toLocaleString('en-IN')}`, label: 'total due', variant: 'warn' as const }] : []),
+          ]}
+          ctaLabel="View Dues"
+          onCta={onOpenVendorDues}
+        />
+        <ActionInsightCard
+          module="orders"
+          title="Inventory Reorder Signals"
+          description="Supply categories predicted to need reordering based on historical order cadence."
+          metrics={[
+            { value: reorderSignals?.alertCount ?? 0, label: 'categories need attention', variant: (reorderSignals?.alertCount ?? 0) > 0 ? 'warn' : 'ok' },
+          ]}
+          ctaLabel="View Signals"
+          onCta={onOpenReorderSignals}
+        />
+      </div>
+    </section>
+  );
+}
+
 // §4: Priority Queue — AI-ranked suggested next steps
 function PriorityQueue({
-  actions, onAccept, onDismiss, setPanel,
+  actions, onAccept, onDismiss, onPrimaryModal, onSecondary, setPanel,
 }: {
-  actions: SuggestedAction[];
-  onAccept: (a: SuggestedAction) => void;
-  onDismiss: (a: SuggestedAction) => void;
+  actions: CommandCentreCard[];
+  onAccept: (a: CommandCentreCard) => void;
+  onDismiss: (a: CommandCentreCard) => void;
+  onPrimaryModal: (a: CommandCentreCard) => void;
+  onSecondary: (a: CommandCentreCard) => void;
   setPanel: (k: PanelKey) => void;
 }) {
   const { can } = usePermissions();
   const [filter, setFilter] = useState<FilterKey>('all');
 
-  const canAct = (a: SuggestedAction): boolean => {
+  const canAct = (a: CommandCentreCard): boolean => {
     switch (a.module) {
       case 'firefighting': return can('firefighting:approve');
       case 'fees':         return can('fee:report');
@@ -349,12 +559,12 @@ function PriorityQueue({
     }
   };
 
-  const panelForAction = (a: SuggestedAction): PanelKey => {
-    switch (a.module) {
+  const moduleFallback = (mod: string): string => {
+    switch (mod) {
       case 'firefighting': return 'ff-approvals';
       case 'fees':         return 'fees';
-      case 'supply':       return 'ff-orders';
-      case 'students':     return a.id === 'plan1' ? 'planning' : 'students';
+      case 'supply':       return 'orders';
+      case 'students':     return 'students';
       case 'attendance':   return 'attendance';
       default:             return 'home';
     }
@@ -397,26 +607,38 @@ function PriorityQueue({
           </div>
         )}
 
-        {shown.map((a, i) => (
-          <ActionCard
-            key={a.id}
-            action={a}
-            index={i}
-            onAccept={() => { onAccept(a); setPanel(panelForAction(a)); }}
-            onDismiss={() => onDismiss(a)}
-          />
-        ))}
+        {shown.map((a, i) => {
+          const primaryHandler = a.primaryPolCode
+            ? () => onPrimaryModal(a)
+            : () => { onAccept(a); setPanel(panelForCard(a, moduleFallback) as PanelKey); };
+
+          const secondaryHandler = a.cta2
+            ? () => onSecondary(a)
+            : undefined;
+
+          return (
+            <ActionCard
+              key={a.id}
+              action={a}
+              index={i}
+              onPrimary={primaryHandler}
+              onSecondary={secondaryHandler}
+              onDismiss={() => onDismiss(a)}
+            />
+          );
+        })}
       </div>
     </section>
   );
 }
 
 function ActionCard({
-  action: a, index, onAccept, onDismiss,
+  action: a, index, onPrimary, onSecondary, onDismiss,
 }: {
-  action: SuggestedAction;
+  action: CommandCentreCard;
   index: number;
-  onAccept: () => void;
+  onPrimary: () => void;
+  onSecondary?: () => void;
   onDismiss: () => void;
 }) {
   return (
@@ -455,9 +677,14 @@ function ActionCard({
       </div>
 
       <div className="ck-command-acard-actions">
-        <button className={`ck-command-btn-accept ${a.module}`} onClick={onAccept}>
+        <button className={`ck-command-btn-accept ${a.module}`} onClick={onPrimary}>
           {a.cta}
         </button>
+        {a.cta2 && onSecondary && (
+          <button className="ck-command-btn-secondary" onClick={onSecondary}>
+            {a.cta2}
+          </button>
+        )}
         <button className="ck-command-btn-dismiss" onClick={onDismiss}>
           Dismiss
         </button>
@@ -623,7 +850,18 @@ function SignalFeed({ feed, pollKey }: { feed: FeedItem[]; pollKey: number }) {
 }
 
 // Daily Brief card
-function DailyBrief({ actions }: { actions: SuggestedAction[] }) {
+function DailyBrief({ brief, actions }: { brief: DailyBriefData | null; actions: CommandCentreCard[] }) {
+  if (brief) {
+    return (
+      <div className="ck-command-brief">
+        <div className="ck-command-brief-label">Daily Brief · AI</div>
+        <p className="ck-command-brief-text">{brief.summary}</p>
+        {brief.recommendedNextStep && (
+          <p className="ck-command-brief-text ts">{brief.recommendedNextStep}</p>
+        )}
+      </div>
+    );
+  }
   const critCount = actions.filter(a => a.urgency === 'critical').length;
   const highCount = actions.filter(a => a.urgency === 'high').length;
   return (
@@ -636,15 +874,46 @@ function DailyBrief({ actions }: { actions: SuggestedAction[] }) {
         {highCount > 0 && (
           <><b className="g">{highCount} high-priority</b> items are queued. </>
         )}
-        Clearing the top {Math.min(3, actions.length)} suggestion{actions.length !== 1 ? 's' : ''} protects an estimated{' '}
-        <b className="g">₹58L</b> today.
+        Clearing the top {Math.min(3, actions.length)} suggestion{actions.length !== 1 ? 's' : ''} protects operational continuity today.
       </p>
     </div>
   );
 }
 
-// Compose broadcast modal (stub — form wired to real endpoint when it ships)
-function ComposeBroadcastModal({ onClose }: { onClose: () => void }) {
+// Compose broadcast modal — wired to POST /notifications/broadcasts
+function ComposeBroadcastModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (b: Broadcast) => void;
+}) {
+  const [title, setTitle] = useState('');
+  const [audience, setAudience] = useState('');
+  const [channel, setChannel] = useState('');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!title.trim() || !audience || !channel) return;
+    setSaving(true);
+    try {
+      const r = await api.post<BackendBroadcast>('/notifications/broadcasts', {
+        title,
+        message: note,
+        audienceType: audience,
+        channels: [channel],
+        module: 'fees',
+      });
+      onCreated(mapBackendBroadcast(r.data));
+      onClose();
+    } catch {
+      // stay open on error
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <Modal
       title="Compose Broadcast"
@@ -653,41 +922,48 @@ function ComposeBroadcastModal({ onClose }: { onClose: () => void }) {
       footer={
         <>
           <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
-          {/* TODO: wire POST /api/notifications/broadcasts when endpoint ships */}
-          <button className="ck-btn ck-btn-g" onClick={onClose}>Save as draft</button>
+          <button className="ck-btn ck-btn-g" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving…' : 'Save as draft'}
+          </button>
         </>
       }
     >
       <div className="ck-form-grid" style={{ gap: 14 }}>
         <div className="ck-field">
           <label htmlFor="bc-title">Title</label>
-          <input id="bc-title" type="text" placeholder="e.g. Parent–Teacher Meeting · Grade 6–8" />
+          <input
+            id="bc-title" type="text" placeholder="e.g. Parent–Teacher Meeting · Grade 6–8"
+            value={title} onChange={e => setTitle(e.target.value)}
+          />
         </div>
         <div className="ck-field">
           <label htmlFor="bc-audience">Audience</label>
-          <select id="bc-audience">
+          <select id="bc-audience" value={audience} onChange={e => setAudience(e.target.value)}>
             <option value="">Select audience…</option>
-            <option value="all-parents">All parents</option>
-            <option value="all-staff">All staff</option>
-            <option value="whole-school">Whole school</option>
+            <option value="ALL_PARENTS">All parents</option>
+            <option value="ALL_STAFF">All staff</option>
+            <option value="WHOLE_SCHOOL">Whole school</option>
+            <option value="GRADE_PARENTS">Grade parents</option>
+            <option value="CLASS_PARENTS">Class parents</option>
           </select>
         </div>
         <div className="ck-field">
-          <label htmlFor="bc-channels">Delivery channels</label>
-          <select id="bc-channels">
-            <option value="">Select channels…</option>
-            <option value="sms">SMS</option>
-            <option value="whatsapp">WhatsApp</option>
-            <option value="email">Email</option>
-            <option value="push">Push notification</option>
+          <label htmlFor="bc-channels">Delivery channel</label>
+          <select id="bc-channels" value={channel} onChange={e => setChannel(e.target.value)}>
+            <option value="">Select channel…</option>
+            <option value="SMS">SMS</option>
+            <option value="WhatsApp">WhatsApp</option>
+            <option value="Email">Email</option>
+            <option value="Push">Push notification</option>
           </select>
         </div>
         <div className="ck-field">
           <label htmlFor="bc-note">Message / note</label>
-          <textarea id="bc-note" rows={4} placeholder="Write your announcement…" />
+          <textarea
+            id="bc-note" rows={4} placeholder="Write your announcement…"
+            value={note} onChange={e => setNote(e.target.value)}
+          />
         </div>
-        {/* TODO: add datetime picker, RSVP toggle, attachment when endpoint ships */}
-        <p className="ts">Draft saved locally until the broadcast API is live.</p>
       </div>
     </Modal>
   );
@@ -713,53 +989,115 @@ function ToastBanner({ toast }: { toast: Toast }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function HomePanel({ workspace, setPanel }: Props) {
-  // Clock
-  const [clock, setClock] = useState(() => new Date());
-  useEffect(() => {
-    const t = setInterval(() => setClock(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
 
-  // Suggestions — fetch from API, fall back to mocks on 404
-  const [actions, setActions] = useState<SuggestedAction[]>([]);
+  // Action insights — structured metrics from /dashboard/command-center
+  const [commandCenterMetrics, setCommandCenterMetrics] = useState<DashboardCommandCenterResponse | null>(null);
   useEffect(() => {
     let cancelled = false;
-    api.get<SuggestedAction[]>('/dashboard/suggestions')
-      .then(r => { if (!cancelled) setActions(r.data); })
-      .catch(() => { if (!cancelled) setActions(MOCK_SUGGESTIONS); });
+    fetchCommandCenterMetrics()
+      .then(data => { if (!cancelled) setCommandCenterMetrics(data); })
+      .catch(() => { /* non-critical: section hidden on error */ });
     return () => { cancelled = true; };
   }, []);
 
-  // Broadcasts — fetch from API, fall back to mocks on 404
+  // Fee Defaulters drawer
+  const [showFeeDefaulters, setShowFeeDefaulters] = useState(false);
+
+  // Class Photography drawer
+  const [showClassPhotography, setShowClassPhotography] = useState(false);
+
+  // Student Review drawer
+  const [showStudentReview, setShowStudentReview] = useState(false);
+
+  // Low Attendance drawer
+  const [showLowAttendance, setShowLowAttendance] = useState(false);
+
+  // Vendor Dues drawer
+  const [showVendorDues, setShowVendorDues] = useState(false);
+
+  // Reorder Signals drawer
+  const [showReorderSignals, setShowReorderSignals] = useState(false);
+
+  // Actions — from backend, fall back to derived workspace data then mocks
+  const [actions, setActions] = useState<CommandCentreCard[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api.get<BackendAction[]>('/command-centre/actions')
+      .then(r => { if (!cancelled) setActions(r.data.map(mapBackendAction)); })
+      .catch(() => {
+        if (!cancelled) {
+          const derived = deriveCommandCentreCards(workspace);
+          setActions(derived.length > 0 ? derived : (MOCK_SUGGESTIONS as CommandCentreCard[]));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [workspace]);
+
+  // Broadcasts — from backend, fall back to mocks
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   useEffect(() => {
     let cancelled = false;
-    api.get<Broadcast[]>('/notifications/broadcasts')
-      .then(r => { if (!cancelled) setBroadcasts(r.data); })
+    api.get<BackendBroadcast[]>('/notifications/broadcasts')
+      .then(r => { if (!cancelled) setBroadcasts(r.data.map(mapBackendBroadcast)); })
       .catch(() => { if (!cancelled) setBroadcasts(MOCK_BROADCASTS); });
     return () => { cancelled = true; };
   }, []);
 
-  // Feed — seeded from workspace.recentActivity, then augmented by poll interval
-  const [feed, setFeed] = useState<FeedItem[]>(() => {
-    const fromWs: FeedItem[] = (workspace.recentActivity ?? []).slice(0, 5).map(a => ({
-      module: 'fees' as ActionModule,  // tag is display-only; module unknown from raw activity
-      txt: a.title,
-      t: a.meta,
-    }));
-    return fromWs.length > 0 ? fromWs : SEED_FEED;
-  });
-  const [pollKey, setPollKey] = useState(0);
-  const extraIdx = useRef(0);
+  // Daily brief — from backend
+  const [brief, setBrief] = useState<DailyBriefData | null>(null);
+  useEffect(() => {
+    api.get<DailyBriefData>('/command-centre/brief')
+      .then(r => setBrief(r.data))
+      .catch(() => { /* use local fallback */ });
+  }, []);
 
-  // Polling interval — PRD §6.12: polling, no websockets
+  // Feed — initial fetch from backend, then poll every 15s for new items
+  const [feed, setFeed] = useState<FeedItem[]>(SEED_FEED);
+  const [pollKey, setPollKey] = useState(0);
+  const seenFeedIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<BackendFeedItem[]>('/command-centre/feed?limit=20')
+      .then(r => {
+        if (cancelled) return;
+        const mapped = r.data.map(item => ({
+          _id: item.id,
+          module: coerceModule(item.module),
+          txt: item.title,
+          t: relativeTime(item.createdAt),
+        }));
+        mapped.forEach(f => seenFeedIds.current.add(f._id));
+        setFeed(mapped.map(({ _id: _, ...rest }) => rest));
+      })
+      .catch(() => { /* keep SEED_FEED */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Poll backend feed every 15s, prepend genuinely new items
   useEffect(() => {
     const iv = setInterval(() => {
-      const e = EXTRA_FEED_POOL[extraIdx.current % EXTRA_FEED_POOL.length];
-      extraIdx.current += 1;
-      setFeed(f => [{ ...e, t: 'now' }, ...f.slice(0, 8)]);
-      setPollKey(k => k + 1);
-    }, 5000);
+      api.get<BackendFeedItem[]>('/command-centre/feed?limit=5')
+        .then(r => {
+          const newItems = r.data
+            .filter(item => !seenFeedIds.current.has(item.id))
+            .map(item => ({
+              _id: item.id,
+              module: coerceModule(item.module),
+              txt: item.title,
+              t: relativeTime(item.createdAt),
+            }));
+          newItems.forEach(f => seenFeedIds.current.add(f._id));
+          if (newItems.length > 0) {
+            setFeed(prev => [
+              ...newItems.map(({ _id: _, ...rest }) => rest),
+              ...prev.slice(0, 15),
+            ]);
+          }
+        })
+        .catch(() => { /* polling error ignored */ })
+        .finally(() => setPollKey(k => k + 1));
+    }, 15000);
     return () => clearInterval(iv);
   }, []);
 
@@ -773,32 +1111,60 @@ export function HomePanel({ workspace, setPanel }: Props) {
   // Compose modal
   const [showCompose, setShowCompose] = useState(false);
 
-  // Action handlers
-  const handleAccept = useCallback((a: SuggestedAction) => {
+  // Proof-of-life modal state
+  const [polState, setPolState] = useState<{ card: CommandCentreCard; code: PolCode } | null>(null);
+
+  // Action handlers — optimistic UI with backend persistence
+  const handleAccept = useCallback((a: CommandCentreCard) => {
     setActions(prev => prev.filter(x => x.id !== a.id));
-    setFeed(f => [{ module: a.module, txt: `Executed · ${a.code} → ${a.cta}`, t: 'now' }, ...f.slice(0, 8)]);
+    setFeed(f => [{ module: a.module, txt: `Executed · ${a.cta} (${a.code})`, t: 'now' }, ...f.slice(0, 8)]);
     showToast({ ok: true, txt: `${a.cta} — dispatched (${a.code})` });
+    api.post(`/command-centre/actions/${a.id}/accept`).catch(() => {
+      setActions(prev => [a, ...prev]);
+      showToast({ ok: false, txt: 'Failed to confirm — please retry' });
+    });
   }, [showToast]);
 
-  const handleDismiss = useCallback((a: SuggestedAction) => {
+  const handleDismiss = useCallback((a: CommandCentreCard) => {
     setActions(prev => prev.filter(x => x.id !== a.id));
     setFeed(f => [{ module: a.module, txt: `Dismissed · ${a.code}`, t: 'now' }, ...f.slice(0, 8)]);
     showToast({ ok: false, txt: 'Suggestion dismissed' });
+    api.post(`/command-centre/actions/${a.id}/dismiss`, { reason: 'Dismissed by user' }).catch(() => {
+      setActions(prev => [a, ...prev]);
+    });
   }, [showToast]);
+
+  const handlePrimaryModal = useCallback((a: CommandCentreCard) => {
+    if (a.primaryPolCode) setPolState({ card: a, code: a.primaryPolCode });
+  }, []);
+
+  const handleSecondaryAction = useCallback((a: CommandCentreCard) => {
+    if (a.cta2PanelKey) {
+      setPanel(a.cta2PanelKey);
+    } else if (a.cta2PolCode) {
+      setPolState({ card: a, code: a.cta2PolCode });
+    }
+  }, [setPanel]);
 
   const handleSendBroadcast = useCallback((b: Broadcast) => {
     setBroadcasts(prev => prev.map(x => x.id === b.id
-      ? { ...x, status: 'sending', whenShort: 'live', when: 'Sending now', note: 'Queued to gateway · delivering', progress: 5 }
+      ? { ...x, status: 'sending' as BroadcastStatus, whenShort: 'live', when: 'Sending now', note: 'Queued to gateway · delivering', progress: 5 }
       : x));
     setFeed(f => [{ module: b.module, txt: `Broadcast sent · ${b.title}`, t: 'now' }, ...f.slice(0, 8)]);
     showToast({ ok: true, txt: `Broadcast queued to ${b.channels.join(' · ')}` });
+    api.post(`/notifications/broadcasts/${b.id}/send`).catch(() => { /* optimistic kept */ });
   }, [showToast]);
 
   const handleApproveBroadcast = useCallback((b: Broadcast) => {
     setBroadcasts(prev => prev.map(x => x.id === b.id
-      ? { ...x, status: 'scheduled', whenShort: 'scheduled', note: 'Approved and scheduled.' }
+      ? { ...x, status: 'scheduled' as BroadcastStatus, whenShort: 'scheduled', note: 'Approved and scheduled.' }
       : x));
-    showToast({ ok: true, txt: `Broadcast approved and scheduled` });
+    showToast({ ok: true, txt: 'Broadcast approved and scheduled' });
+  }, [showToast]);
+
+  const handleBroadcastCreated = useCallback((b: Broadcast) => {
+    setBroadcasts(prev => [b, ...prev]);
+    showToast({ ok: true, txt: 'Broadcast saved as draft' });
   }, [showToast]);
 
   const criticalAction = actions.find(a => a.urgency === 'critical') ?? null;
@@ -808,15 +1174,38 @@ export function HomePanel({ workspace, setPanel }: Props) {
       {/* §1 Greeting + §2 Critical alert strip */}
       <GreetingHeader
         workspace={workspace}
-        clock={clock}
         criticalAction={criticalAction}
-        onAcceptCritical={a => { handleAccept(a); setPanel('ff-approvals'); }}
+        onAcceptCritical={a => {
+          handleAccept(a);
+          setPanel(panelForCard(a, mod => {
+            switch (mod) {
+              case 'firefighting': return 'ff-approvals';
+              case 'fees':         return 'fees';
+              case 'supply':       return 'orders';
+              case 'students':     return 'students';
+              case 'attendance':   return 'attendance';
+              default:             return 'home';
+            }
+          }) as PanelKey);
+        }}
       />
 
       {/* §3 Pulse KPIs */}
       <PulseKpis workspace={workspace} setPanel={setPanel} />
 
       {/* §4 + §5 + §6 — main 2-column grid */}
+      {/* §3b Action Insights */}
+      <ActionInsightsSection
+        metrics={commandCenterMetrics}
+        setPanel={setPanel}
+        onOpenFeeDefaulters={() => setShowFeeDefaulters(true)}
+        onOpenClassPhotography={() => setShowClassPhotography(true)}
+        onOpenStudentReview={() => setShowStudentReview(true)}
+        onOpenLowAttendance={() => setShowLowAttendance(true)}
+        onOpenVendorDues={() => setShowVendorDues(true)}
+        onOpenReorderSignals={() => setShowReorderSignals(true)}
+      />
+
       <div className="ck-command-grid">
         {/* LEFT: Priority Queue + Broadcast (full-width on narrow) */}
         <div className="ck-command-left">
@@ -824,6 +1213,8 @@ export function HomePanel({ workspace, setPanel }: Props) {
             actions={actions}
             onAccept={handleAccept}
             onDismiss={handleDismiss}
+            onPrimaryModal={handlePrimaryModal}
+            onSecondary={handleSecondaryAction}
             setPanel={setPanel}
           />
 
@@ -844,15 +1235,74 @@ export function HomePanel({ workspace, setPanel }: Props) {
           <SignalFeed feed={feed} pollKey={pollKey} />
 
           {/* Daily Brief */}
-          <DailyBrief actions={actions} />
+          <DailyBrief brief={brief} actions={actions} />
         </aside>
       </div>
 
       {/* Compose modal */}
-      {showCompose && <ComposeBroadcastModal onClose={() => setShowCompose(false)} />}
+      {showCompose && (
+        <ComposeBroadcastModal
+          onClose={() => setShowCompose(false)}
+          onCreated={handleBroadcastCreated}
+        />
+      )}
+
+      {/* Proof-of-life modals */}
+      {polState && (
+        <ProofOfLifeModal
+          polCode={polState.code}
+          card={polState.card}
+          workspace={workspace}
+          onClose={() => setPolState(null)}
+          showToast={showToast}
+        />
+      )}
 
       {/* Toast notification */}
       {toast && <ToastBanner toast={toast} />}
+
+      {/* Fee Defaulters drawer */}
+      <FeeDefaultersDrawer
+        open={showFeeDefaulters}
+        onClose={() => setShowFeeDefaulters(false)}
+        onMetricsRefresh={data => setCommandCenterMetrics(data)}
+      />
+
+      {/* Class Photography drawer */}
+      <ClassPhotographyDrawer
+        open={showClassPhotography}
+        onClose={() => setShowClassPhotography(false)}
+        onMetricsRefresh={data => setCommandCenterMetrics(data)}
+      />
+
+      {/* Student Lifecycle Review drawer */}
+      <StudentReviewDrawer
+        open={showStudentReview}
+        onClose={() => setShowStudentReview(false)}
+        onMetricsRefresh={() => {
+          fetchCommandCenterMetrics()
+            .then(data => setCommandCenterMetrics(data))
+            .catch(() => { /* non-critical */ });
+        }}
+      />
+
+      {/* Low Attendance drawer */}
+      <LowAttendanceDrawer
+        open={showLowAttendance}
+        onClose={() => setShowLowAttendance(false)}
+      />
+
+      {/* Vendor Dues drawer */}
+      <VendorDuesDrawer
+        open={showVendorDues}
+        onClose={() => setShowVendorDues(false)}
+      />
+
+      {/* Reorder Signals drawer */}
+      <ReorderSignalsDrawer
+        open={showReorderSignals}
+        onClose={() => setShowReorderSignals(false)}
+      />
     </>
   );
 }

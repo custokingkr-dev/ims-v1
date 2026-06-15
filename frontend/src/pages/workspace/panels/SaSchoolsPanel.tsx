@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field } from '../ui';
+import { ModuleShell, Field, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
 export function SaSchoolsPanel() {
@@ -11,6 +11,13 @@ export function SaSchoolsPanel() {
   const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2' });
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const loadSaSchools = async () => {
     setSaSchoolsLoading(true); setSaSchoolsError('');
@@ -39,7 +46,7 @@ export function SaSchoolsPanel() {
     setSaOnboardErrors({}); setSaOnboardSaving(true);
     try {
       await api.post('/schools', { ...saOnboardForm, classCount, sectionCount });
-      alert(`${saOnboardForm.name} onboarded successfully`);
+      setToast(`${saOnboardForm.name} onboarded successfully`);
       setSaOnboardOpen(false);
       setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2' });
       await loadSaSchools();
@@ -52,12 +59,25 @@ export function SaSchoolsPanel() {
 
   return (
     <>
-      <ModuleShell title="School accounts" subtitle="All schools with admin and GMV stats" actions={<button className="ck-btn ck-btn-g" onClick={() => setSaOnboardOpen(true)}>+ Onboard school</button>}>
+      <ModuleShell title="School accounts" subtitle="All schools with admin and order value stats" actions={<button className="ck-btn ck-btn-g" onClick={() => setSaOnboardOpen(true)}>+ Onboard school</button>}>
+        {!saSchoolsLoading && saSchools.length > 0 && (() => {
+          const activeSchools = saSchools.filter((s: any) => s.active).length;
+          const totalOrders = saSchools.reduce((n: number, s: any) => n + (s.ordersYTD ?? 0), 0);
+          const totalGmvPaise = saSchools.reduce((n: number, s: any) => n + Number(s.gmvYTD ?? 0), 0);
+          return (
+            <div className="ck-stats ck-s4" style={{ marginBottom: 18 }}>
+              <Stat label="Active schools" value={activeSchools} sub={`${saSchools.length} total onboarded`} pill="Platform" tone="blue" />
+              <Stat label="Orders YTD" value={totalOrders} sub="Supply orders across all schools" pill="All schools" tone="green" />
+              <Stat label="Order value YTD" value={`₹${formatMoney(Math.round(totalGmvPaise / 100))}`} sub="Platform GMV" pill="Gross" tone="orange" />
+              <Stat label="Pending setup" value={saSchools.filter((s: any) => !s.adminEmail).length} sub="Schools without admin user" pill={saSchools.filter((s: any) => !s.adminEmail).length > 0 ? 'Action needed' : 'All set'} tone={saSchools.filter((s: any) => !s.adminEmail).length > 0 ? 'red' : 'green'} />
+            </div>
+          );
+        })()}
         <div className="ck-card">
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
           : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
           : <table className="ck-table">
-            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Admin</th><th>Orders YTD</th><th>GMV YTD</th><th>ERP since</th></tr></thead>
+            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Admin</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th></tr></thead>
             <tbody>
               {saSchools.length === 0
                 ? <tr><td colSpan={9}><div className="ts">No schools found.</div></td></tr>
@@ -110,6 +130,12 @@ export function SaSchoolsPanel() {
               <button className="ck-btn ck-btn-g" disabled={saOnboardSaving} onClick={submitSaOnboard}>{saOnboardSaving ? 'Saving…' : 'Create school'}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="ck-command-toast ok" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          {toast}
         </div>
       )}
     </>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, Info, Stat } from '../ui';
 import { formatMoney, todayIso } from '../utils';
+import { getDisplayStatus } from '../../../shared/display/status';
 
 interface Props {
   onNewOrder: () => void;
@@ -27,6 +28,14 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
   const [invSaving, setInvSaving] = useState(false);
   const [invError, setInvError] = useState('');
   const [invExistingId, setInvExistingId] = useState<string | null>(null);
+
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const load = async () => {
     setLoading(true); setError('');
@@ -114,11 +123,11 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
   const sendInvoice = async () => {
     setInvSaving(true); setInvError('');
     try {
-      if (invExistingId) { alert(`Invoice already sent. Resending to ${invData.school}.`); return; }
+      if (invExistingId) { setToast(`Resending invoice to ${invData.school}`); return; }
       const amount = Number(invData.qty || 0) * Number(invData.rate || 0);
       const res = await api.post('/sa/invoices', { orderRef: invData.orderRef, school: invData.school, schoolId: invData.schoolId ?? null, description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), amount, notes: invData.notes || '' });
       setInvExistingId(res.data.id); setInvData({ ...res.data });
-      alert(`Invoice ${res.data.id} sent to ${invData.school}`);
+      setToast(`Invoice ${res.data.id} sent to ${invData.school}`);
     } catch (e: any) {
       setInvError(e?.response?.data?.message || 'Save failed. Please try again.');
     } finally {
@@ -146,7 +155,7 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
           <Stat label="Total orders" value={stats?.total ?? 0} sub="Across all schools" pill="Live" tone="blue" />
           <Stat label="New requests" value={stats?.newRequests ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
           <Stat label="In progress" value={stats?.inProgress ?? 0} sub="Approved or processing" pill="Active" tone="green" />
-          <Stat label="GMV" value={`₹${formatMoney(Math.round(Number(stats?.gmv || 0) / 100))}`} sub="Gross merchandise value" pill="Paise→₹" tone="blue" />
+          <Stat label="Order Value" value={`₹${formatMoney(Math.round(Number(stats?.gmv || 0) / 100))}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
         </div>
         <div className="ck-form-card" style={{ marginBottom: 16 }}>
           <div className="ck-form-body">
@@ -184,7 +193,7 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td>{row.category}</td>
                       <td>₹{formatMoney(Math.round(Number(row.totalAmount ?? 0) / 100))}</td>
-                      <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{row.status}</span></td>
+                      <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
                       <td>{row.placedAt || row.createdAt || '—'}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <button className="ck-btn ck-btn-ghost" onClick={() => openDetail(row.id)}>View</button>
@@ -219,7 +228,7 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
                     <Info label="Category" value={String(detailOrder.category || '—')} />
                     <Info label="Amount" value={`₹${formatMoney(Math.round(Number(detailOrder.totalAmount || 0) / 100))}`} />
                     <Info label="Delivery" value={String(detailOrder.estimatedDelivery || detailOrder.requiredByDate || '—')} />
-                    <Info label="Status" value={String(detailOrder.status || '—')} />
+                    <Info label="Status" value={getDisplayStatus(String(detailOrder.status || '—'))} />
                   </div>
                   <div className="ck-form-card">
                     <div className="ck-form-head">Update status</div>
@@ -240,8 +249,8 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>
-              <button className="ck-btn ck-btn-ghost" onClick={() => alert(`WhatsApp sent to ${detailOrder?.schoolName || detailOrder?.school || 'school'}`)}>WhatsApp school</button>
-              <button className="ck-btn ck-btn-ghost" onClick={() => alert(`Downloading order sheet for ${detailOrder?.id || 'order'}`)}>Download order sheet</button>
+              <button className="ck-btn ck-btn-ghost" onClick={() => setToast(`WhatsApp notification sent to ${detailOrder?.schoolName || detailOrder?.school || 'school'}`)}>WhatsApp school</button>
+              <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download order sheet</button>
               <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>
             </div>
           </div>
@@ -285,12 +294,18 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" onClick={() => alert(`Downloading ${(invExistingId || 'draft')}.pdf`)}>Download PDF</button>
+              <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download PDF</button>
               {invExistingId && !invEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setInvEditing(true)}>Edit invoice</button> : null}
               {invExistingId && invEditing ? <button className="ck-btn ck-btn-ghost" disabled={invSaving} onClick={saveInvEdit}>{invSaving ? 'Saving…' : 'Save changes'}</button> : null}
               <button className="ck-btn ck-btn-g" disabled={invSaving} onClick={sendInvoice}>{invSaving ? 'Sending…' : 'Send to school'}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="ck-command-toast ok" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          {toast}
         </div>
       )}
     </>

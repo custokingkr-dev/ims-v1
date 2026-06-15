@@ -329,7 +329,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
 
   return (
     <ModuleShell
-      title="Fee structure"
+      title="Fee Configuration"
       subtitle={`Define class bands, fee items and payment schedules · Academic year ${feeStructureData.academicYear || '2025–26'}`}
       actions={
         <>

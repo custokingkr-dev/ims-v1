@@ -1,15 +1,20 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.model.PageResponse;
 import com.custoking.ims.service.SupplyOrderService;
 import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.UserContextService;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Validated
 @RestController
 @RequestMapping("/api/v1/supply")
 @PreAuthorize(PermissionConstants.ORDER_READ)
@@ -50,9 +55,12 @@ public class SupplyController {
     }
 
     @GetMapping("/orders")
-    public Object orders(@RequestHeader(value = "Authorization", required = false) String authorization,
-                         @RequestParam(value = "schoolId", required = false) Long schoolId) {
-        return supplyOrderService.listCatalogOrders(userContext.requireUser(authorization), schoolId);
+    public PageResponse<Map<String, Object>> orders(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @RequestParam(value = "schoolId", required = false) Long schoolId,
+            @RequestParam(name = "page", defaultValue = "0") @Min(0) int page,
+            @RequestParam(name = "size", defaultValue = "20") @Min(1) @Max(200) int size) {
+        return supplyOrderService.listCatalogOrders(userContext.requireUser(authorization), schoolId, page, size);
     }
 
     @GetMapping("/orders/stats")

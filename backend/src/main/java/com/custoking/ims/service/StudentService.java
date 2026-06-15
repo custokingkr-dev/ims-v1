@@ -1,5 +1,6 @@
 package com.custoking.ims.service;
 
+import com.custoking.ims.audit.AuditLogService;
 import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
@@ -37,6 +38,7 @@ public class StudentService {
     private final FeeAssignmentRepository feeAssignmentRepository;
     private final ImportBatchRepository importBatchRepository;
     private final ImportRowRepository importRowRepository;
+    private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public StudentService(StudentRepository studentRepository,
@@ -48,7 +50,8 @@ public class StudentService {
                           FeeItemRepository feeItemRepository,
                           FeeAssignmentRepository feeAssignmentRepository,
                           ImportBatchRepository importBatchRepository,
-                          ImportRowRepository importRowRepository) {
+                          ImportRowRepository importRowRepository,
+                          AuditLogService auditLogService) {
         this.studentRepository = studentRepository;
         this.schoolRepository = schoolRepository;
         this.classRepository = classRepository;
@@ -59,12 +62,15 @@ public class StudentService {
         this.feeAssignmentRepository = feeAssignmentRepository;
         this.importBatchRepository = importBatchRepository;
         this.importRowRepository = importRowRepository;
+        this.auditLogService = auditLogService;
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> studentsData(Long schoolId) {
         return scopedStudents(schoolId).stream().filter(this::isStudentRenderable).map(this::studentListRow).toList();
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> studentsPage(String className, String sectionName, String feeStatus,
                                              int page, int size, AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
@@ -92,6 +98,7 @@ public class StudentService {
                         "feeStatuses", List.of("Paid", "Overdue", "Pending", "Partial")));
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> studentDetail(long id, AuthUser actor, Long requestedSchoolId) {
         StudentEntity s = studentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
@@ -155,10 +162,16 @@ public class StudentService {
         s.setUpdatedAt(OffsetDateTime.now());
         studentRepository.save(s);
         ensureFeeAssignmentForStudent(s, request, actor);
+        auditLogService.recordEvent("STUDENT_CREATED",
+                actor == null ? null : actor.userId(),
+                s.getSchool() != null ? s.getSchool().getId() : TenantContext.get(),
+                "student", String.valueOf(s.getId()),
+                null, s.getAdmissionNo() + " | " + s.getFullName());
         log.info("student.added studentId={} admissionNo={} actorId={}", s.getId(), s.getAdmissionNo(), actor.userId());
         return studentDetailRow(s);
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> classesList(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         return sectionRepository.findBySchool_Id(schoolId).stream()
@@ -171,6 +184,7 @@ public class StudentService {
                 .map(c -> row("id", c.getId(), "name", c.getName())).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> sectionsForClass(String classId, AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         return sectionRepository.findBySchoolClass_IdOrderByNameAsc(classId).stream()
@@ -178,6 +192,7 @@ public class StudentService {
                 .map(s -> row("id", s.getId(), "name", s.getName())).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> studentsForClassSection(String classId, String sectionId,
                                                               AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
@@ -335,10 +350,16 @@ public class StudentService {
         batch.setCompletedAt(OffsetDateTime.now());
         batch.setSkippedJson(toJson(skippedRows));
         importBatchRepository.save(batch);
+        auditLogService.recordEvent("STUDENT_IMPORT_COMPLETED",
+                actor == null ? null : actor.userId(),
+                TenantContext.get(),
+                "import_batch", batch.getId(),
+                null, "inserted=" + inserted + " skipped=" + skipped);
         log.info("student.importConfirmed fileToken={} inserted={} skipped={} actorId={}", fileToken, inserted, skipped, actor.userId());
         return row("jobId", batch.getJobId());
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> importJobStatus(String jobId) {
         ImportBatchEntity batch = importBatchRepository.findByJobId(jobId)
                 .orElseThrow(() -> new IllegalArgumentException("Import job not found"));
@@ -401,6 +422,7 @@ public class StudentService {
         return s != null && s.getSection() != null && s.getSchoolClass() != null;
     }
 
+    @Transactional(readOnly = true)
     public List<StudentEntity> scopedStudents(Long schoolId) {
         return studentRepository.findBySchool_IdOrderByFullNameAsc(schoolId).stream()
                 .filter(this::isStudentRenderable)

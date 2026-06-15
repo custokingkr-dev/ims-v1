@@ -4,7 +4,7 @@ A React + Spring Boot + PostgreSQL multi-tenant school operations platform suppo
 
 ## Architecture
 
-- **Frontend:** React 19 + TypeScript + Vite
+- **Frontend:** React 18 + TypeScript + Vite
 - **Backend:** Spring Boot 3.4, Java 21, Spring Security (JWT + RBAC)
 - **Database:** PostgreSQL 16 with Flyway migrations
 - **Auth:** JWT (Bearer) + HttpOnly refresh cookie, role-based + permission-based access
@@ -56,7 +56,8 @@ Integration tests use [Testcontainers](https://testcontainers.com/) — Docker m
 ```bash
 cd frontend
 npm ci
-npm run build  # type-check + build
+npm test         # vitest unit tests
+npm run build    # type-check + production build
 ```
 
 ## Packaging a clean source ZIP
@@ -138,6 +139,135 @@ GitHub Actions (`ci.yml`) runs on every push and PR:
 
 Security scan suppression file: `backend/.owasp-suppressions.xml` — all entries require justification and expiry dates.
 
-## GCP deployment
-See `cloudbuild.yaml` for Cloud Build + Cloud Run deployment config.
-Secrets are managed via Secret Manager; never commit secrets to git.
+## GCP / Cloud Run deployment
+
+### Architecture overview
+
+```
+Cloud Build → Artifact Registry (Docker image)
+                      ↓
+               Cloud Run (backend)   ← Secrets from Secret Manager
+               Cloud Run (frontend)  ← Static SPA served via nginx
+                      ↓
+               Cloud SQL (PostgreSQL 16)
+```
+
+### Prerequisites
+
+- GCP project with Cloud Run, Cloud Build, Artifact Registry, Cloud SQL, Secret Manager enabled
+- A Cloud SQL PostgreSQL 16 instance with two users:
+  - `ims_app` — app user (`SELECT / INSERT / UPDATE / DELETE` only)
+  - `ims_flyway` (or a superuser) — migration user (`CREATE TABLE / ALTER / DROP`)
+- All secrets created in Secret Manager (see list below)
+
+### Secrets in Secret Manager
+
+Create each secret, then grant the Cloud Run service account `roles/secretmanager.secretAccessor`:
+
+```bash
+# Create secrets (replace values with real ones)
+gcloud secrets create APP_JWT_SECRET      --replication-policy=automatic
+gcloud secrets create APP_AADHAR_SECRET   --replication-policy=automatic
+gcloud secrets create SPRING_DATASOURCE_PASSWORD --replication-policy=automatic
+gcloud secrets create FLYWAY_PASSWORD     --replication-policy=automatic
+gcloud secrets create SUPERADMIN_PASSWORD --replication-policy=automatic
+
+# Populate a secret version
+echo -n "$(openssl rand -hex 32)" | \
+  gcloud secrets versions add APP_JWT_SECRET --data-file=-
+```
+
+### Initial deploy (first time)
+
+```bash
+# 1. Build and push the backend image via Cloud Build
+gcloud builds submit ./backend \
+  --tag=us-central1-docker.pkg.dev/<PROJECT>/custoking/backend:latest
+
+# 2. Deploy to Cloud Run
+gcloud run deploy custoking-ims-backend \
+  --image=us-central1-docker.pkg.dev/<PROJECT>/custoking/backend:latest \
+  --region=us-central1 \
+  --platform=managed \
+  --allow-unauthenticated \
+  --set-env-vars="SPRING_PROFILES_ACTIVE=prod,APP_BOOTSTRAP_USERS=true" \
+  --set-secrets="APP_JWT_SECRET=APP_JWT_SECRET:latest,\
+APP_AADHAR_SECRET=APP_AADHAR_SECRET:latest,\
+SPRING_DATASOURCE_PASSWORD=SPRING_DATASOURCE_PASSWORD:latest,\
+FLYWAY_PASSWORD=FLYWAY_PASSWORD:latest,\
+SUPERADMIN_PASSWORD=SUPERADMIN_PASSWORD:latest" \
+  --set-env-vars="SPRING_DATASOURCE_URL=jdbc:postgresql:///<DB_NAME>?cloudSqlInstance=<INSTANCE_CONNECTION_NAME>&socketFactory=com.google.cloud.sql.postgres.SocketFactory,\
+SPRING_DATASOURCE_USERNAME=ims_app,\
+FLYWAY_URL=jdbc:postgresql:///<DB_NAME>?cloudSqlInstance=<INSTANCE_CONNECTION_NAME>&socketFactory=com.google.cloud.sql.postgres.SocketFactory,\
+FLYWAY_USERNAME=ims_flyway,\
+APP_COOKIE_SECURE=true,\
+APP_CORS_ALLOWED_ORIGINS=https://<FRONTEND_DOMAIN>"
+```
+
+After the first deploy, **change `APP_BOOTSTRAP_USERS` to `false`** to prevent re-seeding:
+
+```bash
+gcloud run services update custoking-ims-backend \
+  --update-env-vars=APP_BOOTSTRAP_USERS=false \
+  --region=us-central1
+```
+
+### Subsequent deploys
+
+```bash
+# Build new image (CI does this automatically via cloudbuild.yaml)
+gcloud builds submit ./backend \
+  --tag=us-central1-docker.pkg.dev/<PROJECT>/custoking/backend:<GIT_SHA>
+
+# Update the Cloud Run service to use the new image
+gcloud run services update custoking-ims-backend \
+  --image=us-central1-docker.pkg.dev/<PROJECT>/custoking/backend:<GIT_SHA> \
+  --region=us-central1
+```
+
+Cloud Run performs a zero-downtime rolling deploy by default.
+
+### Rollback
+
+```bash
+# List recent revisions
+gcloud run revisions list --service=custoking-ims-backend --region=us-central1
+
+# Send 100 % traffic to a previous revision
+gcloud run services update-traffic custoking-ims-backend \
+  --to-revisions=<REVISION_NAME>=100 \
+  --region=us-central1
+```
+
+### Cloud SQL connection
+
+Cloud Run connects to Cloud SQL via the **Unix socket** (no VPC required for serverless):
+
+```
+SPRING_DATASOURCE_URL=jdbc:postgresql:///<DB_NAME>?cloudSqlInstance=<PROJECT>:<REGION>:<INSTANCE>&socketFactory=com.google.cloud.sql.postgres.SocketFactory
+```
+
+The Cloud Run service account must have the `roles/cloudsql.client` IAM role.
+
+### Environment variable reference
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `SPRING_PROFILES_ACTIVE` | Yes | `prod` |
+| `SPRING_DATASOURCE_URL` | Yes | Cloud SQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | Yes | `ims_app` |
+| `SPRING_DATASOURCE_PASSWORD` | Yes | Via Secret Manager |
+| `FLYWAY_URL` | Yes | Same as datasource URL (or separate) |
+| `FLYWAY_USERNAME` | Yes | DBA / migration user |
+| `FLYWAY_PASSWORD` | Yes | Via Secret Manager |
+| `APP_JWT_SECRET` | Yes | ≥ 32 chars; via Secret Manager |
+| `APP_AADHAR_SECRET` | Yes | ≥ 16 chars; via Secret Manager |
+| `SUPERADMIN_PASSWORD` | First deploy | Via Secret Manager |
+| `APP_BOOTSTRAP_USERS` | First deploy only | `true` once, then `false` |
+| `APP_COOKIE_SECURE` | Yes | `true` (HTTPS) |
+| `APP_CORS_ALLOWED_ORIGINS` | Yes | Frontend domain(s) |
+| `SWAGGER_ENABLED` | No | Default `false`; never `true` in prod |
+| `DB_POOL_MAX` | No | Default 5 in prod profile |
+| `PORT` | No | Injected by Cloud Run automatically |
+
+See `backend/.env.example` for all variables with descriptions and default values.

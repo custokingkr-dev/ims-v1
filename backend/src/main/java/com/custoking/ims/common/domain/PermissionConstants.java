@@ -83,6 +83,9 @@ public final class PermissionConstants {
             "@rbacService.hasPermission(authentication, 'fee_structure:manage')";
     public static final String FEE_EXPORT =
             "@rbacService.hasPermission(authentication, 'fee:read')";
+    /** Send fee overdue reminders to parents — requires fee collection rights. */
+    public static final String FEE_NOTIFY_PARENT =
+            "@rbacService.hasPermission(authentication, 'fee:collect')";
 
     // ── Supply / catalog orders ───────────────────────────────────────────────
     public static final String ORDER_READ =
@@ -156,6 +159,24 @@ public final class PermissionConstants {
     public static final String USER_MANAGE =
             "@rbacService.hasPermission(authentication, 'user:read')";
 
+    // ── Timetable ─────────────────────────────────────────────────────────────
+    public static final String TIMETABLE_READ =
+            "@rbacService.hasPermission(authentication, 'timetable:read')";
+    public static final String TIMETABLE_MANAGE =
+            "@rbacService.hasPermission(authentication, 'timetable:manage')";
+
+    // ── Staff / HR ────────────────────────────────────────────────────────────
+    public static final String STAFF_READ =
+            "@rbacService.hasPermission(authentication, 'staff:read')";
+    public static final String STAFF_MANAGE =
+            "@rbacService.hasPermission(authentication, 'staff:manage')";
+
+    // ── Annual plan ───────────────────────────────────────────────────────────
+    public static final String PLAN_READ =
+            "@rbacService.hasPermission(authentication, 'plan:read')";
+    public static final String PLAN_MANAGE =
+            "@rbacService.hasPermission(authentication, 'plan:manage')";
+
     // ── Workflow ──────────────────────────────────────────────────────────────
     public static final String WORKFLOW_READ =
             "@rbacService.hasPermission(authentication, 'workflow:read')";
@@ -189,6 +210,27 @@ public final class PermissionConstants {
             "@rbacService.hasPermission(authentication, 'notification:read')";
     public static final String NOTIFICATION_SEND =
             "@rbacService.hasPermission(authentication, 'notification:send')";
+
+    // ── Dashboard ─────────────────────────────────────────────────────────────
+    /** View the dashboard command center — requires workspace access. */
+    public static final String DASHBOARD_VIEW =
+            "@rbacService.hasPermission(authentication, 'workspace:access')";
+
+    // ── Student Review Campaigns ──────────────────────────────────────────────
+    /** Initiate a student review campaign (ID card review, name verification). */
+    public static final String STUDENT_REVIEW_INITIATE =
+            "@rbacService.hasPermission(authentication, 'student:update')";
+    /** Update a student review item checklist. */
+    public static final String STUDENT_REVIEW_UPDATE =
+            "@rbacService.hasPermission(authentication, 'student:update')";
+
+    // ── Academic Events (Class Photography etc.) ──────────────────────────────
+    /** View payment status for academic events such as class photography. */
+    public static final String EVENT_PAYMENT_VIEW =
+            "@rbacService.hasPermission(authentication, 'fee:read')";
+    /** Send payment reminders for academic events to parents. */
+    public static final String EVENT_PAYMENT_NOTIFY_PARENT =
+            "@rbacService.hasPermission(authentication, 'fee:collect')";
 
     // ── System / platform operations ──────────────────────────────────────────
     public static final String SYSTEM_ACTUATOR =

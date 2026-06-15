@@ -168,7 +168,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/timetable")
-    @PreAuthorize("@rbacService.hasPermission(authentication, 'timetable:manage')")
+    @PreAuthorize(PermissionConstants.TIMETABLE_MANAGE)
     public Map<String, Object> addTimetable(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestBody Map<String, Object> request) {
@@ -177,7 +177,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/staff")
-    @PreAuthorize("@rbacService.hasPermission(authentication, 'staff:manage')")
+    @PreAuthorize(PermissionConstants.STAFF_MANAGE)
     public Map<String, Object> addStaff(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestBody Map<String, Object> request) {
@@ -195,7 +195,7 @@ public class WorkspaceController {
     }
 
     @PostMapping("/annual-plan")
-    @PreAuthorize("@rbacService.hasPermission(authentication, 'plan:manage')")
+    @PreAuthorize(PermissionConstants.PLAN_MANAGE)
     public Map<String, Object> savePlan(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestBody Map<String, Object> request) {

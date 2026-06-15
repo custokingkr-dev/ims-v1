@@ -6,6 +6,7 @@ import com.custoking.ims.entity.FirefightingQuotationEntity;
 import com.custoking.ims.entity.FirefightingRequestEntity;
 import com.custoking.ims.entity.SchoolEntity;
 import com.custoking.ims.model.AuthUser;
+import com.custoking.ims.model.PageResponse;
 import com.custoking.ims.repo.FirefightingQuotationRepository;
 import com.custoking.ims.repo.FirefightingRequestRepository;
 import com.custoking.ims.repo.SchoolRepository;
@@ -13,6 +14,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,26 +51,36 @@ public class FirefightingService {
 
     // ── List requests ────────────────────────────────────────────
 
-    public List<Map<String, Object>> listFireRequests(AuthUser actor) {
-        return listFireRequests(actor, null);
+    @Transactional(readOnly = true)
+    public PageResponse<Map<String, Object>> listFireRequests(AuthUser actor) {
+        return listFireRequests(actor, null, 0, 20);
     }
 
-    public List<Map<String, Object>> listFireRequests(AuthUser actor, Long requestedSchoolId) {
+    @Transactional(readOnly = true)
+    public PageResponse<Map<String, Object>> listFireRequests(AuthUser actor, Long requestedSchoolId) {
+        return listFireRequests(actor, requestedSchoolId, 0, 20);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<Map<String, Object>> listFireRequests(AuthUser actor, Long requestedSchoolId,
+                                                               int page, int size) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
-        List<FirefightingRequestEntity> rows = (schoolId == null)
-                ? firefightingRequestRepository.findAllByOrderByCreatedAtDesc()
-                : firefightingRequestRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId);
-        return rows.stream()
-                .map(this::fireRequestRow)
-                .toList();
+        int clampedSize = Math.max(1, Math.min(size, 200));
+        PageRequest pageable = PageRequest.of(Math.max(0, page), clampedSize);
+        Page<FirefightingRequestEntity> dbPage = (schoolId == null)
+                ? firefightingRequestRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : firefightingRequestRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId, pageable);
+        return PageResponse.of(dbPage.map(this::fireRequestRow));
     }
 
     // ── Stats ────────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> fireRequestStats(AuthUser actor) {
         return fireRequestStats(actor, null);
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> fireRequestStats(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         List<FirefightingRequestEntity> rows = (schoolId == null)
@@ -160,10 +173,12 @@ public class FirefightingService {
 
     // ── Detail ───────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> fireRequestDetail(String id, AuthUser actor) {
         return fireRequestDetail(id, actor, null);
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> fireRequestDetail(String id, AuthUser actor, Long requestedSchoolId) {
         FirefightingRequestEntity e = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
@@ -212,6 +227,10 @@ public class FirefightingService {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
         assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        if (!"DRAFT".equalsIgnoreCase(ff.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Request can only be submitted from DRAFT status (current: " + ff.getStatus() + ")");
+        }
         ff.setStatus("AWAITING_BURSAR");
         firefightingRequestRepository.save(ff);
         auditLogService.statusTransition("ff_request", id, "DRAFT", "AWAITING_BURSAR", actor.userId());
@@ -224,6 +243,10 @@ public class FirefightingService {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
         assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        if (!"AWAITING_BURSAR".equalsIgnoreCase(ff.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Finance Review requires AWAITING_BURSAR status (current: " + ff.getStatus() + ")");
+        }
         String oldStatus = ff.getStatus();
         ff.setBursarNote(trimToNull(str(request.get("note"), "")));
         ff.setBursarApprovedAt(OffsetDateTime.now());
@@ -240,6 +263,10 @@ public class FirefightingService {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
         assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        if (!"AWAITING_PRINCIPAL".equalsIgnoreCase(ff.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Admin Approval requires AWAITING_PRINCIPAL status (current: " + ff.getStatus() + ")");
+        }
         String oldStatus = ff.getStatus();
         ff.setPrincipalNote(trimToNull(str(request.get("note"), "")));
         ff.setPrincipalApprovedAt(OffsetDateTime.now());
@@ -262,6 +289,10 @@ public class FirefightingService {
     public Map<String, Object> approveCustoking(String id, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        if (!"APPROVED".equalsIgnoreCase(ff.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Move to Fulfilment requires APPROVED status (current: " + ff.getStatus() + ")");
+        }
         String oldStatus = ff.getStatus();
         ff.setStatus("CUSTOKING_APPROVED");
         firefightingRequestRepository.save(ff);
@@ -289,6 +320,10 @@ public class FirefightingService {
     public Map<String, Object> fulfillFireRequest(String id, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        if (!"CUSTOKING_APPROVED".equalsIgnoreCase(ff.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Mark as Delivered requires CUSTOKING_APPROVED status (current: " + ff.getStatus() + ")");
+        }
         String oldStatus = ff.getStatus();
         ff.setStatus("FULFILLED");
         firefightingRequestRepository.save(ff);
@@ -298,10 +333,12 @@ public class FirefightingService {
 
     // ── Pending approvals (bursar + principal) ───────────────────
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> pendingFireApprovals(AuthUser actor) {
         return pendingFireApprovals(actor, null);
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> pendingFireApprovals(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         List<FirefightingRequestEntity> pending = new ArrayList<>();
@@ -314,10 +351,12 @@ public class FirefightingService {
 
     // ── Timeline — always exactly 6 steps ────────────────────────
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> fireRequestTimeline(String id, AuthUser actor) {
         return fireRequestTimeline(id, actor, null);
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> fireRequestTimeline(String id, AuthUser actor, Long requestedSchoolId) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));

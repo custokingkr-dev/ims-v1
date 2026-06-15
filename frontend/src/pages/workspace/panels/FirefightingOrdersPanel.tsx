@@ -3,6 +3,7 @@ import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { formatMoney } from '../utils';
 import type { FirefightingRequest } from '../../../types/workspace';
+import { getDisplayStatus } from '../../../shared/display/status';
 
 interface FfTrackItem {
   state: string;
@@ -23,11 +24,19 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
   const [ffTrackRequest, setFfTrackRequest] = useState<FirefightingRequest | null>(null);
   const [ffTimeline, setFfTimeline] = useState<FfTrackItem[]>([]);
   const [ffTimelineLoading, setFfTimelineLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
-    api.get<FirefightingRequest[]>('/ff/requests')
-      .then((res) => setSaFfRequests(Array.isArray(res.data) ? res.data : []))
+    // PageResponse envelope → extract content; size=200 for the full orders list
+    api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } })
+      .then((res) => setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []))
       .catch(() => setSaFfRequests([]));
   }, [isSuperAdmin]);
 
@@ -50,13 +59,13 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
     try {
       await api.post(`/ff/requests/${req.code}/approve-custoking`, {});
       if (isSuperAdmin) {
-        const res = await api.get<FirefightingRequest[]>('/ff/requests');
-        setSaFfRequests(Array.isArray(res.data) ? res.data : []);
+        const res = await api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } });
+        setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []);
       }
       await onRefresh();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to approve for Custoking fulfillment';
-      alert(msg);
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to approve for Custoking fulfilment';
+      setToast(msg);
     }
   };
 
@@ -64,13 +73,13 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
     try {
       await api.patch(`/ff/requests/${req.code}/fulfill`);
       if (isSuperAdmin) {
-        const res = await api.get<FirefightingRequest[]>('/ff/requests');
-        setSaFfRequests(Array.isArray(res.data) ? res.data : []);
+        const res = await api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } });
+        setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []);
       }
       await onRefresh();
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to mark as fulfilled';
-      alert(msg);
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to mark as delivered';
+      setToast(msg);
     }
   };
 
@@ -80,13 +89,13 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
   return (
     <>
       <ModuleShell
-        title={isSuperAdmin ? '🔥 Firefighting — approve & fulfill' : '🔥 Placed orders'}
-        subtitle={isSuperAdmin ? 'Approve for Custoking fulfillment and mark orders as delivered' : 'Firefighting requests approved and fulfilled by Custoking'}
+        title={isSuperAdmin ? 'Urgent Procurement — Fulfilment Tracking' : 'Urgent Procurement — Placed Orders'}
+        subtitle={isSuperAdmin ? 'Approve for Custoking fulfilment and mark orders as delivered' : 'Urgent procurement requests approved and fulfilled by Custoking'}
       >
         {isSuperAdmin && (
           <div className="ck-alert ck-alert-b" style={{ marginBottom: 18 }}>
             <span>ℹ</span>
-            <div>Once bursar and principal approve, click <strong>Approve for fulfillment</strong> to start Custoking processing. After delivery and invoice, click <strong>Mark fulfilled</strong>.</div>
+            <div>Once Finance Review and Admin Approval are complete, click <strong>Move to Fulfilment</strong> to start Custoking processing. After delivery and invoice, click <strong>Mark as Delivered</strong>.</div>
           </div>
         )}
         <div className="ck-card">
@@ -108,14 +117,14 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
                   <td style={{ fontWeight: 600, color: 'var(--g)' }}>₹{formatMoney(Number(row.winnerAmount || row.amount || 0))}</td>
                   <td>
                     <span className={`ck-status ${row.status === 'FULFILLED' ? 'sg' : row.status === 'CUSTOKING_APPROVED' ? 'sg' : 'sb2'}`}>
-                      {row.status === 'CUSTOKING_APPROVED' ? 'Custoking fulfils approved' : row.status}
+                      {getDisplayStatus(row.status)}
                     </span>
                   </td>
                   <td style={{ color: 'var(--ink3)' }}>{row.date}</td>
                   {isSuperAdmin && (
                     <td>
-                      {row.status === 'APPROVED' && <button className="ck-btn ck-btn-or" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void approveFfCustoking(row)}>Approve for fulfillment</button>}
-                      {row.status === 'CUSTOKING_APPROVED' && <button className="ck-btn ck-btn-g" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void fulfillFfRequest(row)}>Mark fulfilled</button>}
+                      {row.status === 'APPROVED' && <button className="ck-btn ck-btn-or" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void approveFfCustoking(row)}>Move to Fulfilment</button>}
+                      {row.status === 'CUSTOKING_APPROVED' && <button className="ck-btn ck-btn-g" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void fulfillFfRequest(row)}>Mark as Delivered</button>}
                     </td>
                   )}
                 </tr>
@@ -161,6 +170,12 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
             </div>
             <div className="ck-modal-foot"><button className="ck-btn ck-btn-ghost" onClick={() => setFfTrackOpen(false)}>Close</button></div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="ck-command-toast ok" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          {toast}
         </div>
       )}
     </>

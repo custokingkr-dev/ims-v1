@@ -87,3 +87,5 @@ app:
   jwt-expiration-ms: ${APP_JWT_EXPIRATION_MS:86400000}
   # Set to true in production (HTTPS) so the refresh-token cookie carries the Secure flag.
   cookie-secure: ${APP_COOKIE_SECURE:false}
+  full-demo-seed:
+    enabled: ${APP_FULL_DEMO_SEED:false}

@@ -11,6 +11,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -44,6 +46,71 @@ public class AttendanceController {
                                            @RequestParam(value = "schoolId", required = false) Long schoolId) {
         var actor = userContext.requireUser(authorization);
         return attendanceService.attendanceSectionInfo(date, classId, sectionId, actor, schoolId);
+    }
+
+    /**
+     * GET /api/v1/attendance/section-register
+     * Load students and attendance records for a section on a given date.
+     */
+    @GetMapping("/section-register")
+    public Map<String, Object> getSectionRegister(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                   @RequestParam String date,
+                                                   @RequestParam String classId,
+                                                   @RequestParam String sectionId) {
+        AuthUser actor = userContext.requireUser(authorization);
+        requireSchoolModule(ModuleEntitlementService.Module.ATTENDANCE);
+        LocalDate parsedDate = LocalDate.parse(date);
+        return attendanceService.getSectionRegister(parsedDate, classId, sectionId, actor);
+    }
+
+    /**
+     * PUT /api/v1/attendance/section-register
+     * Save/update student attendance records for a section.
+     */
+    @PutMapping("/section-register")
+    @PreAuthorize(PermissionConstants.ATTENDANCE_MANAGE)
+    public Map<String, Object> saveSectionRegister(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                                    @RequestBody Map<String, Object> request) {
+        AuthUser actor = userContext.requireUser(authorization);
+        requireSchoolModule(ModuleEntitlementService.Module.ATTENDANCE);
+        
+        String date = (String) request.get("date");
+        String classId = (String) request.get("classId");
+        String sectionId = (String) request.get("sectionId");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> records = (List<Map<String, Object>>) request.get("records");
+        
+        if (date == null || classId == null || sectionId == null || records == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Missing required fields: date, classId, sectionId, records");
+        }
+        
+        LocalDate parsedDate = LocalDate.parse(date);
+        return attendanceService.saveSectionRegister(parsedDate, classId, sectionId, records, actor);
+    }
+
+    /**
+     * POST /api/v1/attendance/submit-section
+     * Lock a section's attendance (requires all students to have records).
+     */
+    @PostMapping("/submit-section")
+    @PreAuthorize(PermissionConstants.ATTENDANCE_MANAGE)
+    public Map<String, Object> submitSection(@RequestHeader(value = "Authorization", required = false) String authorization,
+                                             @RequestBody Map<String, Object> request) {
+        AuthUser actor = userContext.requireUser(authorization);
+        requireSchoolModule(ModuleEntitlementService.Module.ATTENDANCE);
+        
+        String date = (String) request.get("date");
+        String classId = (String) request.get("classId");
+        String sectionId = (String) request.get("sectionId");
+        
+        if (date == null || classId == null || sectionId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Missing required fields: date, classId, sectionId");
+        }
+        
+        LocalDate parsedDate = LocalDate.parse(date);
+        return attendanceService.submitSection(parsedDate, classId, sectionId, actor);
     }
 
     @PostMapping("/daily-entry")

@@ -5,6 +5,7 @@ import com.custoking.ims.dto.school.SchoolAdminRequest;
 import com.custoking.ims.dto.school.SchoolCreateRequest;
 import com.custoking.ims.dto.school.SchoolOperationsUserRequest;
 import com.custoking.ims.dto.school.SchoolUpdateRequest;
+import com.custoking.ims.service.SchoolOnboardingService;
 import com.custoking.ims.service.SchoolService;
 import com.custoking.ims.service.UserContextService;
 import jakarta.validation.Valid;
@@ -20,10 +21,14 @@ import java.util.Map;
 public class SchoolController {
     private final UserContextService userContext;
     private final SchoolService schoolService;
+    private final SchoolOnboardingService onboardingService;
 
-    public SchoolController(UserContextService userContext, SchoolService schoolService) {
+    public SchoolController(UserContextService userContext,
+                            SchoolService schoolService,
+                            SchoolOnboardingService onboardingService) {
         this.userContext = userContext;
         this.schoolService = schoolService;
+        this.onboardingService = onboardingService;
     }
 
     @GetMapping
@@ -92,5 +97,20 @@ public class SchoolController {
             @PathVariable Long schoolId) {
         userContext.requireSuperAdmin(authorization);
         return schoolService.getSchoolOperationsUser(schoolId);
+    }
+
+    /**
+     * Returns a structured onboarding checklist for the given school.
+     * Accessible to any user with SCHOOL_READ permission (admin + superadmin).
+     *
+     * GET /api/v1/schools/{schoolId}/onboarding/status
+     */
+    @GetMapping("/{schoolId}/onboarding/status")
+    @PreAuthorize(PermissionConstants.SCHOOL_READ)
+    public Map<String, Object> onboardingStatus(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
+            @PathVariable Long schoolId) {
+        userContext.requireUser(authorization);
+        return onboardingService.onboardingStatus(schoolId);
     }
 }

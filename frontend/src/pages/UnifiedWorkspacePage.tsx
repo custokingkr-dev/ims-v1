@@ -7,6 +7,7 @@ import {
   type PanelKey, type WorkspaceData,
   ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS, SUPERADMIN_NAV_SECTIONS, ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
 } from './workspace/config';
+import { NavIcon } from '../shared/display/icons';
 import { HomePanel } from './workspace/panels/HomePanel';
 import { StudentsPanel } from './workspace/panels/StudentsPanel';
 import { FeesPanel } from './workspace/panels/FeesPanel';
@@ -61,7 +62,9 @@ export default function UnifiedWorkspacePage() {
     : undefined;
 
   // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
-  const [liveOrders, setLiveOrders] = useState<any[] | null>(null);
+  // liveOrders holds the full PageResponse envelope { content, page, size, totalElements, totalPages, last }
+  const [liveOrders, setLiveOrders] = useState<any | null>(null);
+  const [ordersPage, setOrdersPage] = useState(0);
   const [liveOrderStats, setLiveOrderStats] = useState<any | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [catalogNotice, setCatalogNotice] = useState<{ type: string; msg: string } | null>(null);
@@ -72,6 +75,7 @@ export default function UnifiedWorkspacePage() {
   const [approvalNotice, setApprovalNotice] = useState<{ type: string; msg: string } | null>(null);
   const [rejectModalOrderId, setRejectModalOrderId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Workspace data loader ───────────────────────────────────────────────────
   const refresh = async () => {
@@ -91,14 +95,16 @@ export default function UnifiedWorkspacePage() {
   };
 
   // ── Supply order loaders and actions ───────────────────────────────────────
-  const loadLiveOrders = async () => {
+  const loadLiveOrders = async (page = 0) => {
     setOrdersLoading(true);
     try {
       const [ordRes, statsRes] = await Promise.all([
-        api.get('/supply/orders', { params: schoolScopedParams }),
+        api.get('/supply/orders', { params: { ...schoolScopedParams, page, size: 20 } }),
         api.get('/supply/orders/stats', { params: schoolScopedParams }),
       ]);
+      // ordRes.data is a PageResponse envelope: { content, page, size, totalElements, totalPages, last }
       setLiveOrders(ordRes.data);
+      setOrdersPage(page);
       setLiveOrderStats(statsRes.data);
     } catch {}
     finally { setOrdersLoading(false); }
@@ -198,7 +204,8 @@ export default function UnifiedWorkspacePage() {
         : ADMIN_NAV_SECTIONS;
 
   const isFire = panel.startsWith('ff-');
-  const orderRows = liveOrders ?? workspace?.orders ?? [];
+  // liveOrders is a PageResponse envelope; fall back to workspace snapshot for first render
+  const orderRows: any[] = (liveOrders?.content) ?? workspace?.orders ?? [];
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!workspace && workspaceError) {
@@ -221,11 +228,32 @@ export default function UnifiedWorkspacePage() {
 
   return (
     <div className="workspace-shell">
-      <aside className="ck-sidebar">
+      {/* Mobile sidebar backdrop */}
+      <div
+        className={`ck-sidebar-backdrop${sidebarOpen ? ' open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
+      <aside
+        id="ck-sidebar-nav"
+        className={`ck-sidebar${sidebarOpen ? ' open' : ''}`}
+      >
         <div className="ck-sb-header">
           <div className="ck-sb-logo">custoking</div>
           <div className="ck-school-name">{workspace.school.name}</div>
           <div className="ck-school-meta">{workspace.school.meta}</div>
+          {workspace?.school?.name && (
+            <div className="ck-sb-school-badge">
+              {workspace.school.name}
+            </div>
+          )}
+          <button
+            className="ck-sb-close"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            ×
+          </button>
         </div>
 
         <nav className="ck-nav">
@@ -233,8 +261,8 @@ export default function UnifiedWorkspacePage() {
             <div key={section.title}>
               {section.fire ? (
                 <div className="ck-fire-header">
-                  <div className="ck-fire-label">🔥 Firefighting</div>
-                  <div className="ck-fire-sub">Non-catalog procurement</div>
+                  <div className="ck-fire-label">🚨 Urgent Procurement</div>
+                  <div className="ck-fire-sub">Non-catalog urgent requests</div>
                 </div>
               ) : (
                 <div className="ck-nav-section">{section.title}</div>
@@ -243,9 +271,9 @@ export default function UnifiedWorkspacePage() {
                 <button
                   key={item.key}
                   className={`ck-nav-item ${panel === item.key ? 'on' : ''} ${section.fire ? 'fire' : ''}`}
-                  onClick={() => setPanel(item.key)}
+                  onClick={() => { setPanel(item.key); setSidebarOpen(false); }}
                 >
-                  <span>{item.icon}</span>
+                  <NavIcon panelKey={item.key} />
                   <span>{item.label}</span>
                   {item.key === 'sa-invoices' && saInvBadge > 0 && (
                     <span style={{ marginLeft: 'auto', background: 'var(--re)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>
@@ -260,19 +288,37 @@ export default function UnifiedWorkspacePage() {
         </nav>
 
         <div className="ck-user-card">
-          <div className="ck-nav-section" style={{ padding: 0, marginBottom: 8 }}>Signed in as</div>
-          <div className="ck-user-name">{user?.fullName}</div>
-          <div className="ck-user-meta">{user?.email}</div>
-          <div className="ck-badge-row">
-            <span className="ck-pill">{isPlatformAdmin ? 'Super Admin' : isOperations ? 'Operations' : 'Admin'}</span>
-            <span className="ck-pill">{user?.branchName || 'Global'}</span>
+          <div className="ck-user-card-inner">
+            <div className="ck-user-avatar" aria-hidden="true">
+              {(user?.fullName ?? user?.email ?? 'U').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="ck-user-name">{user?.fullName ?? user?.email}</div>
+              <div className="ck-user-meta">{isPlatformAdmin ? 'Platform Admin' : isOperations ? 'Operations User' : 'School Admin'}</div>
+            </div>
           </div>
-          <button className="ck-btn ck-btn-ghost" onClick={logout}>Logout</button>
+          <div className="ck-badge-row" style={{ marginTop: 10 }}>
+            <button
+              className="ck-btn ck-btn-ghost ck-btn-sm"
+              onClick={() => { logout(); navigate('/login', { replace: true }); }}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </aside>
 
       <main className="ck-main">
         <div className="ck-topbar">
+          <button
+            className="ck-menu-toggle"
+            onClick={() => setSidebarOpen(v => !v)}
+            aria-label="Open navigation menu"
+            aria-expanded={sidebarOpen}
+            aria-controls="ck-sidebar-nav"
+          >
+            ☰
+          </button>
           <div className="ck-topbar-title">{currentTitle}</div>
           {isPlatformAdmin && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 'auto', marginLeft: 12 }}>
@@ -285,7 +331,7 @@ export default function UnifiedWorkspacePage() {
             </div>
           )}
           {isFire && (
-            <button className="ck-btn ck-btn-or" onClick={() => setPanel('ff-new')}>+ New FF request</button>
+            <button className="ck-btn ck-btn-or" onClick={() => setPanel('ff-new')}>+ New Urgent Request</button>
           )}
         </div>
 
@@ -347,6 +393,9 @@ export default function UnifiedWorkspacePage() {
               loading={ordersLoading}
               notice={catalogNotice}
               schoolScopedParams={schoolScopedParams}
+              page={ordersPage}
+              totalPages={liveOrders?.totalPages ?? 1}
+              onPageChange={(p) => loadLiveOrders(p)}
               onNewOrder={() => setPanel('catalog')}
               onMarkDesignApproved={markDesignApproved}
               onReorder={async (row) => {
@@ -360,12 +409,12 @@ export default function UnifiedWorkspacePage() {
                   status: 'DRAFT',
                   ...(schoolScopedParams || {}),
                 });
-                loadLiveOrders();
+                loadLiveOrders(0);
               }}
             />
           )}
 
-          {panel === 'planning' && workspace && <PlanningPanel workspace={workspace} onRefresh={refresh} />}
+          {panel === 'planning' && workspace && <PlanningPanel workspace={workspace} onRefresh={refresh} setPanel={setPanel} />}
 
           {panel === 'ff-dashboard' && (
             <FirefightingDashboardPanel

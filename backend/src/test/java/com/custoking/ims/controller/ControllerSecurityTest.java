@@ -213,6 +213,7 @@ class ControllerSecurityTest {
     private static Set<String> permissionsForRole(String role) {
         return switch (role) {
             case "SUPERADMIN" -> Set.of(
+                    "platform:admin", "workspace:access",
                     "student:read", "student:create", "student:update", "student:delete", "student:import",
                     "fee_structure:read", "fee_structure:manage", "fee:collect", "fee:read", "fee:reverse", "fee:assign",
                     "attendance:read", "attendance:manage",

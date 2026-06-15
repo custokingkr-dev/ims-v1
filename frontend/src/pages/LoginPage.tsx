@@ -5,9 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 // ── Strings — single extraction point for future i18n ─────────────────────────
 const S = {
   brand: 'Custoking',
-  brandSub: 'IMS',
+  brandSub: 'School Operations Platform',
   heading: 'Sign in',
-  subtitle: 'Access your dashboard, orders, inventory and approvals.',
+  subtitle: 'Access your school operations, orders, and approvals.',
   statusNormal: 'All systems normal',
   googleLabel: 'Google',
   msLabel: 'Microsoft',

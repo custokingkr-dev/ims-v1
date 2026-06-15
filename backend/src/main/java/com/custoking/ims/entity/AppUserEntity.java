@@ -20,10 +20,27 @@ public class AppUserEntity {
     @Column(nullable = false)
     private String passwordHash;
 
+    /**
+     * @deprecated Display-only legacy role label. Do NOT use for authorization decisions.
+     *             Real authorization flows exclusively through the RBAC tables
+     *             ({@code user_role_assignments} → {@code role_permissions} → {@code permissions}).
+     *             This field is kept for UI display and backward-compat only.
+     *             Remove once all UI callers have been migrated to permission codes.
+     */
+    @Deprecated(since = "V122", forRemoval = false)
     @Column(nullable = false)
     private String role;
 
+    /**
+     * @deprecated Display-only school reference. Do NOT use for tenant scoping.
+     *             The authoritative tenant is resolved by {@code TenantResolverFilter}
+     *             via {@code TenantContext} (backed by {@code user_role_assignments}).
+     */
+    @Deprecated(since = "V122", forRemoval = false)
     private Long branchId;
+
+    /** @deprecated Display-only. See {@link #branchId}. */
+    @Deprecated(since = "V122", forRemoval = false)
     private String branchName;
 
     private Long zoneId;

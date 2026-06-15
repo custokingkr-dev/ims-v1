@@ -18,6 +18,13 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
   const [saInvSaving, setSaInvSaving] = useState(false);
   const [saInvError, setSaInvError] = useState('');
   const [saInvExistingId, setSaInvExistingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const loadSaInvoices = async () => {
     setSaInvoicesLoading(true); setSaInvoicesError('');
@@ -46,19 +53,19 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
     setSaInvError(''); setSaInvEditing(false); setSaInvSaving(false);
     try {
       const inv = saInvoices.find((i: any) => i.id === invoiceId);
-      if (!inv) { alert('Record not found'); return; }
+      if (!inv) { setToast('Record not found'); return; }
       setSaInvData({ ...inv }); setSaInvExistingId(invoiceId); setSaInvOpen(true);
-    } catch { alert('Failed to load invoice'); }
+    } catch { setToast('Failed to load invoice'); }
   };
 
   const sendSaInvoice = async () => {
     setSaInvSaving(true); setSaInvError('');
     try {
-      if (saInvExistingId) { alert(`Invoice already sent. Resending to ${saInvData.school}.`); return; }
+      if (saInvExistingId) { setToast(`Resending invoice to ${saInvData.school}`); return; }
       const amount = Number(saInvData.qty || 0) * Number(saInvData.rate || 0);
       const res = await api.post('/sa/invoices', { orderRef: saInvData.orderRef, school: saInvData.school, schoolId: saInvData.schoolId ?? null, description: saInvData.description, qty: Number(saInvData.qty || 0), rate: Number(saInvData.rate || 0), amount, notes: saInvData.notes || '' });
       setSaInvExistingId(res.data.id); setSaInvData({ ...res.data });
-      alert(`Invoice ${res.data.id} sent to ${saInvData.school}`);
+      setToast(`Invoice ${res.data.id} sent to ${saInvData.school}`);
       await loadSaInvoices();
     } catch (e: any) {
       setSaInvError(e?.response?.data?.message || 'Save failed. Please try again.');
@@ -85,7 +92,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
 
   return (
     <>
-      <ModuleShell title="Invoices" subtitle="All superadmin invoices across schools" actions={<button className="ck-btn ck-btn-g" onClick={openBlankSaInvoice}>+ Create invoice</button>}>
+      <ModuleShell title="Invoices" subtitle="All platform invoices across schools" actions={<button className="ck-btn ck-btn-g" onClick={openBlankSaInvoice}>+ Create invoice</button>}>
         <div className="ck-grid ck-grid-4" style={{ marginBottom: 16 }}>
           <Stat label="Sent this month" value={saInvStats?.sentThisMonth ?? 0} sub="Invoices issued" pill="Current" tone="blue" />
           <Stat label="Paid" value={saInvStats?.paid ?? 0} sub="Settled invoices" pill="Received" tone="green" />
@@ -111,8 +118,8 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td style={{ display: 'flex', gap: 8 }}>
                       <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
                       {String(row.status).toLowerCase().includes('awaiting')
-                        ? <button className="ck-btn ck-btn-ghost" onClick={() => alert(`Invoice ${row.id} resent to ${row.school}`)}>Resend</button>
-                        : <button className="ck-btn ck-btn-ghost" onClick={() => alert(`Downloading ${row.id}.pdf`)}>Download</button>}
+                        ? <button className="ck-btn ck-btn-ghost" onClick={() => setToast(`Invoice ${row.id} resent to ${row.school}`)}>Resend</button>
+                        : <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download</button>}
                     </td>
                   </tr>
                 ))}
@@ -158,12 +165,18 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" onClick={() => alert(`Downloading ${(saInvExistingId || 'draft')}.pdf`)}>Download PDF</button>
+              <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download PDF</button>
               {saInvExistingId && !saInvEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setSaInvEditing(true)}>Edit invoice</button> : null}
               {saInvExistingId && saInvEditing ? <button className="ck-btn ck-btn-ghost" disabled={saInvSaving} onClick={saveSaInvoiceEdit}>{saInvSaving ? 'Saving…' : 'Save changes'}</button> : null}
               <button className="ck-btn ck-btn-g" disabled={saInvSaving} onClick={sendSaInvoice}>{saInvSaving ? 'Sending…' : 'Send to school'}</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="ck-command-toast ok" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+          {toast}
         </div>
       )}
     </>

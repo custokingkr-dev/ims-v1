@@ -40,6 +40,10 @@ public class CatalogOrderEntity {
     private Long placedBy;
     private OffsetDateTime placedAt;
     private String notes;
+    private OffsetDateTime vendorPaidAt;
+    private Long vendorPaidBy;
+    @Column(columnDefinition = "TEXT")
+    private String vendorPaymentNotes;
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
     @PrePersist
@@ -93,6 +97,12 @@ public class CatalogOrderEntity {
     public void setPlacedAt(OffsetDateTime placedAt) { this.placedAt = placedAt; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public OffsetDateTime getVendorPaidAt() { return vendorPaidAt; }
+    public void setVendorPaidAt(OffsetDateTime vendorPaidAt) { this.vendorPaidAt = vendorPaidAt; }
+    public Long getVendorPaidBy() { return vendorPaidBy; }
+    public void setVendorPaidBy(Long vendorPaidBy) { this.vendorPaidBy = vendorPaidBy; }
+    public String getVendorPaymentNotes() { return vendorPaymentNotes; }
+    public void setVendorPaymentNotes(String vendorPaymentNotes) { this.vendorPaymentNotes = vendorPaymentNotes; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

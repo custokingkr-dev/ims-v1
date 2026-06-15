@@ -1,14 +1,24 @@
 package com.custoking.ims.entity;
 
 import jakarta.persistence.*;
+import org.springframework.data.domain.Persistable;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "attendance_daily", uniqueConstraints = @UniqueConstraint(name = "uk_attendance_day_section_year", columnNames = {"attendanceDate", "section_id", "academicYear_id"}))
-public class AttendanceDailyEntity {
+public class AttendanceDailyEntity implements Persistable<String> {
     @Id
     private String id;
+
+    /**
+     * Tracks whether this instance was freshly constructed (never persisted).
+     * Spring Data JPA uses isNew() to decide between persist() and merge() for
+     * entities with manually-assigned String IDs. @PostLoad and @PostPersist reset
+     * it to false so subsequent save() calls use merge() as expected.
+     */
+    @Transient
+    private boolean isNew = false;
     private LocalDate attendanceDate;
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     private SchoolClassEntity schoolClass;
@@ -24,8 +34,18 @@ public class AttendanceDailyEntity {
     private Long updatedBy;
     private OffsetDateTime updatedAt;
     private boolean locked;
+    @Override
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+
+    @Override
+    public boolean isNew() { return isNew; }
+
+    public void markNew() { this.isNew = true; }
+
+    @PostLoad
+    @PostPersist
+    void markPersisted() { this.isNew = false; }
     public LocalDate getAttendanceDate() { return attendanceDate; }
     public void setAttendanceDate(LocalDate attendanceDate) { this.attendanceDate = attendanceDate; }
     public SchoolClassEntity getSchoolClass() { return schoolClass; }

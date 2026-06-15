@@ -34,8 +34,11 @@ public class FirefightingRequestEntity {
     private String custokingCriteriaJson;
     private String winnerVendor;
     private Long winnerAmount;
+    private OffsetDateTime vendorPaidAt;
+    private Long vendorPaidBy;
+    @Column(columnDefinition = "TEXT")
+    private String vendorPaymentNotes;
     private OffsetDateTime createdAt = OffsetDateTime.now();
-
 
     @PrePersist
     void prePersist() {
@@ -82,6 +85,12 @@ public class FirefightingRequestEntity {
     public void setWinnerVendor(String winnerVendor) { this.winnerVendor = winnerVendor; }
     public Long getWinnerAmount() { return winnerAmount; }
     public void setWinnerAmount(Long winnerAmount) { this.winnerAmount = winnerAmount; }
+    public OffsetDateTime getVendorPaidAt() { return vendorPaidAt; }
+    public void setVendorPaidAt(OffsetDateTime vendorPaidAt) { this.vendorPaidAt = vendorPaidAt; }
+    public Long getVendorPaidBy() { return vendorPaidBy; }
+    public void setVendorPaidBy(Long vendorPaidBy) { this.vendorPaidBy = vendorPaidBy; }
+    public String getVendorPaymentNotes() { return vendorPaymentNotes; }
+    public void setVendorPaymentNotes(String vendorPaymentNotes) { this.vendorPaymentNotes = vendorPaymentNotes; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
 }

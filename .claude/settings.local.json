@@ -25,7 +25,30 @@
       "Bash(Select-Object -Last 60)",
       "Bash(echo \"EXIT:$?\")",
       "Bash(echo \"EXIT_CODE:$?\")",
-      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\\\\frontend\\\\src\" -Directory)"
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\\\\frontend\\\\src\" -Directory)",
+      "Bash(mvn -q clean test -Dspring.profiles.active=test)",
+      "Bash(mvn -q clean test)",
+      "Bash(npm install *)",
+      "Bash(npm test *)",
+      "Bash(ls \"C:\\\\Users\\\\abhis\\\\.claude\\\\projects\\\\c--Users-abhis-Desktop-Custoking-New-folder-ims-v1\\\\\" 2>&1)",
+      "Read(//c/Users/abhis/.claude/projects/**)",
+      "Bash(grep -v \"import\\\\|//\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\\\\frontend\\\\src\\\\pages\\\\workspace\\\\panels\\\\command\\\\\" -File)",
+      "Bash(Get-ChildItem -Path 'c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\\\\frontend\\\\src\\\\pages\\\\workspace\\\\panels\\\\command\\\\' -File)",
+      "Bash(git -C \"c:\\\\Users\\\\abhis\\\\Desktop\\\\Custoking\\\\New folder\\\\ims-v1\" log --oneline -20)",
+      "Bash(mvn -B compile --no-transfer-progress -q)",
+      "Bash(mvn -B test --no-transfer-progress -q)",
+      "Bash(mvn -B test --no-transfer-progress)",
+      "Bash(npx vitest *)",
+      "Bash(cat \"c:/Users/abhis/AppData/Local/Temp/claude/c--Users-abhis-Desktop-Custoking-New-folder-ims-v1/ecac0701-60d7-4c5e-80a1-d2b6b757f65e/tasks/bpamaccqs.output\" 2>/dev/null | grep -E \"Tests run:|BUILD|FAIL\" | tail -15)",
+      "Read(//c/Users/abhis/AppData/Local/Temp/claude/c--Users-abhis-Desktop-Custoking-New-folder-ims-v1/ecac0701-60d7-4c5e-80a1-d2b6b757f65e/tasks/**)",
+      "Bash(awk '{sum += $3; skip += $9} END {print \"Total passed:\", sum-skip, \"| Skipped:\", skip, \"| BUILD: last line\"}')"
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true
   }
 }
