@@ -1,6 +1,6 @@
 package com.custoking.ims.service;
 
-import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantAccess;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -170,6 +171,8 @@ public class FeeService {
     public Map<String, Object> feeAssignmentApi(Map<String, Object> request, AuthUser actor) {
         StudentEntity student = studentRepository.findById(longNum(request.get("studentId"), -1))
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        TenantAccess.assertSchoolAccess("student",
+                student.getSchool() == null ? null : student.getSchool().getId(), null);
         FeeBandEntity band = feeBandRepository.findById(str(request.get("bandId"), ""))
                 .orElseThrow(() -> new IllegalArgumentException("Fee band not found"));
         String schedule = str(request.get("schedule"), "");
@@ -212,6 +215,8 @@ public class FeeService {
     public Map<String, Object> paymentApi(Map<String, Object> request, AuthUser actor) {
         StudentEntity student = studentRepository.findById(longNum(request.get("studentId"), -1))
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        TenantAccess.assertSchoolAccess("student",
+                student.getSchool() == null ? null : student.getSchool().getId(), null);
         long amount = longNum(request.get("amount"), 0);
         if (amount <= 0) throw new IllegalArgumentException("Amount must be greater than zero");
         FeeAssignmentEntity assignment = feeAssignmentRepository
@@ -228,12 +233,11 @@ public class FeeService {
         payment.setAmount(amount);
         payment.setMode(str(request.get("mode"), "UPI"));
         payment.setNotes(str(request.get("notes"), ""));
-        payment.setPaidAt(request.get("paidAt") == null ? OffsetDateTime.now()
-                : OffsetDateTime.parse(String.valueOf(request.get("paidAt"))));
+        payment.setPaidAt(parsePaidAt(request.get("paidAt")));
         payment.setRecordedBy(actor.userId());
         payment.setReceiptNumber("RCPT-" + System.currentTimeMillis());
         paymentRecordRepository.save(payment);
-        assignment.setPaidAmount(assignment.getPaidAmount() + amount);
+        assignment.setPaidAmount(safeAdd(assignment.getPaidAmount(), amount, "paid amount"));
         assignment.setUpdatedBy(actor.userId());
         assignment.setUpdatedAt(OffsetDateTime.now());
         feeAssignmentRepository.save(assignment);
@@ -250,8 +254,8 @@ public class FeeService {
 
     public List<Map<String, Object>> payments() {
         return paymentRecordRepository.findAllByOrderByPaidAtDesc().stream()
-                .map(p -> row("id", p.getId(), "student", p.getStudent().getFullName(),
-                        "amount", p.getAmount(), "mode", p.getMode(), "paidAt", p.getPaidAt().toString()))
+                .map(p -> row("id", p.getId(), "student", studentName(p.getStudent()),
+                        "amount", p.getAmount(), "mode", p.getMode(), "paidAt", isoDate(p.getPaidAt())))
                 .toList();
     }
 
@@ -263,7 +267,7 @@ public class FeeService {
         PaymentRecordEntity payment = paymentRecordRepository.findById(paymentId)
                 .orElseThrow(() -> new IllegalArgumentException("Payment not found"));
         return simplePdf("Receipt " + payment.getReceiptNumber()
-                + " | " + payment.getStudent().getFullName()
+                + " | " + studentName(payment.getStudent())
                 + " | INR " + indian(payment.getAmount()));
     }
 
@@ -276,18 +280,19 @@ public class FeeService {
     // ── Reports ──────────────────────────────────────────────────────
 
     public List<Map<String, Object>> feeReport(String classId, String sectionId, AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         List<FeeAssignmentEntity> assignments = feeAssignmentRepository
                 .findByStudent_SchoolClass_IdAndStudent_Section_IdAndAcademicYear_Id(classId, sectionId, currentAcademicYearId())
                 .stream()
-                .filter(a -> a.getStudent() != null && a.getStudent().getSection() != null
+                .filter(a -> a.getStudent() != null && a.getBand() != null
+                        && a.getStudent().getSection() != null
                         && a.getStudent().getSection().getSchool() != null
                         && schoolId.equals(a.getStudent().getSection().getSchool().getId()))
                 .toList();
         Set<String> bandIds = assignments.stream().map(a -> a.getBand().getId()).collect(Collectors.toSet());
         Map<String, Long> totals = bandTotals(bandIds);
         return assignments.stream().map(a -> {
-            long due = Math.max(a.getNetPayable() - a.getPaidAmount(), 0);
+            long due = dueAmount(a);
             return row("paymentId", latestPaymentId(a.getStudent().getId()),
                     "student", a.getStudent().getFullName(),
                     "planName", a.getBand().getName(),
@@ -301,7 +306,7 @@ public class FeeService {
     }
 
     public List<Map<String, Object>> feeOverdue(String classId, String sectionId, AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return feeAssignmentRepository
                 .findByStudent_SchoolClass_IdAndStudent_Section_IdAndAcademicYear_Id(classId, sectionId, currentAcademicYearId())
                 .stream()
@@ -310,13 +315,13 @@ public class FeeService {
                         && a.getStudent().getSection().getSchool() != null
                         && schoolId.equals(a.getStudent().getSection().getSchool().getId()))
                 .map(a -> row("student", a.getStudent().getFullName(), "schedule", a.getSchedule(),
-                        "dueAmount", a.getNetPayable() - a.getPaidAmount(),
-                        "daysOverdue", 12 + (a.getStudent().getId().intValue() % 24)))
+                        "dueAmount", dueAmount(a),
+                        "daysOverdue", 12 + studentIdModulo(a.getStudent(), 24)))
                 .toList();
     }
 
     public Map<String, Object> sendFeeReminders(String classId, String sectionId, AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         long queued = feeAssignmentRepository
                 .findByStudent_SchoolClass_IdAndStudent_Section_IdAndAcademicYear_Id(classId, sectionId, currentAcademicYearId())
                 .stream()
@@ -345,7 +350,7 @@ public class FeeService {
         List<Map<String, Object>> records = scoped.stream()
                 .map(a -> row("studentId", a.getStudent().getId(), "studentName", a.getStudent().getFullName(),
                         "planName", a.getBand().getName(), "schedule", a.getSchedule(),
-                        "dueAmount", Math.max(a.getNetPayable() - a.getPaidAmount(), 0),
+                        "dueAmount", dueAmount(a),
                         "totalAnnualFee", bandTotalMap.getOrDefault(a.getBand().getId(), 0L),
                         "paidAmount", a.getPaidAmount()))
                 .toList();
@@ -366,14 +371,16 @@ public class FeeService {
                 .map(item -> row("id", item.getId(), "name", item.getName(), "frequency", item.getFrequency(),
                         "amount", item.getAmount(),
                         "percentOfTotal", total == 0 ? 0 : Math.round(item.getAmount() * 100.0 / total),
-                        "createdAt", item.getCreatedAt().toString(), "updatedAt", item.getUpdatedAt().toString()))
+                        "createdAt", isoDate(item.getCreatedAt()), "updatedAt", isoDate(item.getUpdatedAt())))
                 .toList();
+        AcademicYearEntity academicYear = band.getAcademicYear();
         return row("id", band.getId(), "name", band.getName(), "groupName", band.getName(),
                 "classFrom", band.getClassFrom(), "classTo", band.getClassTo(),
-                "academicYearId", band.getAcademicYear().getId(), "academicYear", band.getAcademicYear().getLabel(),
+                "academicYearId", academicYear == null ? "" : academicYear.getId(),
+                "academicYear", academicYear == null ? "" : academicYear.getLabel(),
                 "discount", round(band.getDiscount()), "activeSchedules", schedules, "allowedSchedules", schedules,
                 "items", items, "annualTotal", total,
-                "createdAt", band.getCreatedAt().toString(), "updatedAt", band.getUpdatedAt().toString());
+                "createdAt", isoDate(band.getCreatedAt()), "updatedAt", isoDate(band.getUpdatedAt()));
     }
 
     private long bandTotal(String bandId) {
@@ -382,7 +389,7 @@ public class FeeService {
     }
 
     private Map<String, Long> bandTotals(Set<String> bandIds) {
-        if (bandIds.isEmpty()) return new HashMap<>();
+        if (bandIds.isEmpty()) return Collections.emptyMap();
         return feeItemRepository.sumAmountByBandIds(bandIds).stream()
                 .collect(Collectors.toMap(
                         row -> (String) row[0],
@@ -395,7 +402,10 @@ public class FeeService {
     }
 
     private Map<String, Object> assignmentRow(FeeAssignmentEntity a) {
-        return row("id", a.getId(), "studentId", a.getStudent().getId(), "bandId", a.getBand().getId(),
+        StudentEntity student = a.getStudent();
+        FeeBandEntity band = a.getBand();
+        return row("id", a.getId(), "studentId", student == null ? null : student.getId(),
+                "bandId", band == null ? null : band.getId(),
                 "schedule", a.getSchedule(), "bandDiscount", a.getBandDiscount(),
                 "manualDiscount", a.getManualDiscount(), "surcharge", a.getSurcharge(),
                 "netPayable", a.getNetPayable(), "paidAmount", a.getPaidAmount());
@@ -403,10 +413,12 @@ public class FeeService {
 
     private long calculateNetPayable(long total, double bandDiscount, double manualDiscount,
                                       double surcharge, String schedule) {
-        long bandAmt = Math.round(total * bandDiscount / 100.0);
-        long manualAmt = Math.round(total * manualDiscount / 100.0);
-        long surchargeAmt = "Annual".equalsIgnoreCase(schedule) ? 0 : Math.round(total * surcharge / 100.0);
-        return total - bandAmt - manualAmt + surchargeAmt;
+        long bandAmt = percentageAmount(total, bandDiscount);
+        long manualAmt = percentageAmount(total, manualDiscount);
+        long surchargeAmt = "Annual".equalsIgnoreCase(schedule) ? 0 : percentageAmount(total, surcharge);
+        long discounted = safeSubtract(total, bandAmt, "net payable");
+        discounted = safeSubtract(discounted, manualAmt, "net payable");
+        return Math.max(safeAdd(discounted, surchargeAmt, "net payable"), 0);
     }
 
     private String latestPaymentId(Long studentId) {
@@ -428,9 +440,18 @@ public class FeeService {
     }
 
     private int classSortOrder(String classId) {
-        String digits = String.valueOf(classId).replaceAll("\\D+", "");
-        if (digits.isBlank()) return 0;
-        return Integer.parseInt(digits);
+        String value = String.valueOf(classId);
+        long digits = 0;
+        boolean foundDigit = false;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (!Character.isDigit(ch)) continue;
+            foundDigit = true;
+            int digit = Character.digit(ch, 10);
+            if (digits > (Integer.MAX_VALUE - digit) / 10L) return Integer.MAX_VALUE;
+            digits = digits * 10L + digit;
+        }
+        return foundDigit ? (int) digits : 0;
     }
 
     private List<String> toStringList(Object value) {
@@ -446,13 +467,16 @@ public class FeeService {
     private long toPaise(Object value) {
         if (value == null) return 0;
         if (value instanceof Number n) {
-            long raw = Math.round(n.doubleValue());
-            return raw > 100000 ? raw : raw * 100;
+            return amountToPaise(n.doubleValue());
         }
         String s = String.valueOf(value).replace(",", "").trim();
         if (s.isBlank()) return 0;
-        double d = Double.parseDouble(s);
-        return d > 100000 ? Math.round(d) : Math.round(d * 100);
+        try {
+            double d = Double.parseDouble(s);
+            return amountToPaise(d);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("amount must be numeric", e);
+        }
     }
 
     private Object firstPresent(Map<String, Object> request, String... keys) {
@@ -470,7 +494,7 @@ public class FeeService {
         if (value instanceof Number n) return n.longValue();
         try {
             return Long.parseLong(String.valueOf(value).replace(",", "").trim());
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             return fallback;
         }
     }
@@ -480,13 +504,75 @@ public class FeeService {
         if (value instanceof Number n) return n.doubleValue();
         try {
             return Double.parseDouble(String.valueOf(value).replace(",", "").trim());
-        } catch (Exception e) {
+        } catch (NumberFormatException e) {
             return fallback;
         }
     }
 
     private double round(double d) {
+        if (!Double.isFinite(d)) return 0;
         return Math.round(d * 10.0) / 10.0;
+    }
+
+    private OffsetDateTime parsePaidAt(Object value) {
+        if (value == null) return OffsetDateTime.now();
+        try {
+            return OffsetDateTime.parse(String.valueOf(value));
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("paidAt must be an ISO-8601 offset date-time", e);
+        }
+    }
+
+    private long dueAmount(FeeAssignmentEntity assignment) {
+        long due = safeSubtract(assignment.getNetPayable(), assignment.getPaidAmount(), "due amount");
+        return Math.max(due, 0);
+    }
+
+    private long percentageAmount(long total, double percent) {
+        if (total <= 0 || !Double.isFinite(percent) || percent == 0) return 0;
+        double amount = total * percent / 100.0;
+        if (!Double.isFinite(amount) || amount > Long.MAX_VALUE || amount < Long.MIN_VALUE) {
+            throw new IllegalArgumentException("percentage amount is too large");
+        }
+        return Math.round(amount);
+    }
+
+    private long amountToPaise(double value) {
+        if (!Double.isFinite(value) || value < 0) return 0;
+        double paise = value > 100_000 ? value : value * 100.0;
+        if (!Double.isFinite(paise) || paise > Long.MAX_VALUE) {
+            throw new IllegalArgumentException("amount is too large");
+        }
+        return Math.round(paise);
+    }
+
+    private long safeAdd(long left, long right, String fieldName) {
+        try {
+            return Math.addExact(left, right);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(fieldName + " is too large", e);
+        }
+    }
+
+    private long safeSubtract(long left, long right, String fieldName) {
+        try {
+            return Math.subtractExact(left, right);
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(fieldName + " is too large", e);
+        }
+    }
+
+    private String studentName(StudentEntity student) {
+        return student == null ? "" : str(student.getFullName(), "");
+    }
+
+    private int studentIdModulo(StudentEntity student, int divisor) {
+        if (student == null || student.getId() == null || divisor <= 0) return 0;
+        return Math.floorMod(student.getId().intValue(), divisor);
+    }
+
+    private String isoDate(OffsetDateTime dateTime) {
+        return dateTime == null ? "" : dateTime.toString();
     }
 
     private String indian(long paise) {
@@ -494,19 +580,52 @@ public class FeeService {
     }
 
     private byte[] simplePdf(String content) {
-        String safe = content.replace("(", "[").replace(")", "]");
-        String pdf = "%PDF-1.4\n1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj\n"
-                + "2 0 obj<< /Type /Pages /Count 1 /Kids [3 0 R] >>endobj\n"
-                + "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>endobj\n"
-                + "4 0 obj<< /Length 120 >>stream\nBT /F1 12 Tf 36 740 Td (" + safe + ") Tj ET\nendstream endobj\n"
-                + "5 0 obj<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>endobj\n"
-                + "xref\n0 6\n0000000000 65535 f \n0000000010 00000 n \n0000000063 00000 n \n"
-                + "0000000122 00000 n \n0000000248 00000 n \n0000000395 00000 n \n"
-                + "trailer<< /Size 6 /Root 1 0 R >>\nstartxref\n465\n%%EOF";
-        return pdf.getBytes(StandardCharsets.US_ASCII);
+        String safe = escapePdfText(content);
+        String stream = "BT /F1 12 Tf 36 740 Td (" + safe + ") Tj ET\n";
+        List<String> objects = List.of(
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Count 1 /Kids [3 0 R] >>",
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+                "<< /Length " + stream.getBytes(StandardCharsets.US_ASCII).length + " >>stream\n"
+                        + stream + "endstream",
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
+        );
+
+        StringBuilder pdf = new StringBuilder("%PDF-1.4\n");
+        List<Integer> offsets = new ArrayList<>(objects.size());
+        for (int i = 0; i < objects.size(); i++) {
+            offsets.add(pdf.length());
+            pdf.append(i + 1).append(" 0 obj").append(objects.get(i)).append("endobj\n");
+        }
+        int xrefOffset = pdf.length();
+        pdf.append("xref\n0 ").append(objects.size() + 1).append('\n')
+                .append("0000000000 65535 f \n");
+        for (Integer offset : offsets) {
+            pdf.append(String.format(Locale.ENGLISH, "%010d 00000 n \n", offset));
+        }
+        pdf.append("trailer<< /Size ").append(objects.size() + 1).append(" /Root 1 0 R >>\n")
+                .append("startxref\n").append(xrefOffset).append("\n%%EOF");
+        return pdf.toString().getBytes(StandardCharsets.US_ASCII);
+    }
+
+    private String escapePdfText(String content) {
+        if (content == null || content.isBlank()) return "";
+        StringBuilder escaped = new StringBuilder(content.length());
+        for (int i = 0; i < content.length(); i++) {
+            char ch = content.charAt(i);
+            if (ch == '(' || ch == ')' || ch == '\\') {
+                escaped.append('\\').append(ch);
+            } else if (ch >= 32 && ch <= 126) {
+                escaped.append(ch);
+            } else {
+                escaped.append(' ');
+            }
+        }
+        return escaped.toString();
     }
 
     private Map<String, Object> row(Object... kv) {
+        if (kv.length % 2 != 0) throw new IllegalArgumentException("row requires key/value pairs");
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         for (int i = 0; i < kv.length; i += 2) map.put(String.valueOf(kv[i]), kv[i + 1]);
         return map;

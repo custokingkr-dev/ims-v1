@@ -1,1 +1,0 @@
-package org.springframework.validation; public class FieldError { public String getDefaultMessage(){ return "";} public String getField(){ return "field"; } }

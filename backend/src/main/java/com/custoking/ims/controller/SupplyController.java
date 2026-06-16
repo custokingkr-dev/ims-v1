@@ -1,8 +1,13 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.dto.supply.AnnualPlanItemRequest;
+import com.custoking.ims.dto.supply.CatalogOrderRequest;
+import com.custoking.ims.dto.supply.OrderReturnRequest;
+import com.custoking.ims.dto.supply.OrderStatusUpdateRequest;
 import com.custoking.ims.service.SupplyOrderService;
 import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.service.UserContextService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,8 +34,8 @@ public class SupplyController {
     @PostMapping("/orders")
     @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> createOrder(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                           @RequestBody Map<String, Object> request) {
-        return supplyOrderService.createCatalogOrder(request, userContext.requireUser(authorization));
+                                           @Valid @RequestBody CatalogOrderRequest request) {
+        return supplyOrderService.createCatalogOrder(request.toMap(), userContext.requireUser(authorization));
     }
 
     @PostMapping("/orders/{orderId}/place")
@@ -62,8 +67,8 @@ public class SupplyController {
     @PreAuthorize(PermissionConstants.ORDER_UPDATE)
     public Map<String, Object> updateOrderStatus(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                  @PathVariable String orderId,
-                                                 @RequestBody Map<String, Object> request) {
-        return supplyOrderService.updateCatalogOrderStatus(orderId, request, userContext.requireUser(authorization));
+                                                 @Valid @RequestBody OrderStatusUpdateRequest request) {
+        return supplyOrderService.updateCatalogOrderStatus(orderId, request.toMap(), userContext.requireUser(authorization));
     }
 
     @GetMapping("/orders/{orderId}")
@@ -90,8 +95,10 @@ public class SupplyController {
     @PreAuthorize(PermissionConstants.SUPERADMIN_ACCESS)
     public Map<String, Object> superadminReject(@RequestHeader(value = "Authorization", required = false) String authorization,
                                                  @PathVariable String orderId,
-                                                 @RequestBody Map<String, Object> request) {
-        return supplyOrderService.superadminRejectOrder(orderId, request, userContext.requireSuperAdmin(authorization));
+                                                 @RequestBody(required = false) OrderReturnRequest request) {
+        return supplyOrderService.superadminRejectOrder(orderId,
+                request == null ? new OrderReturnRequest(null).toMap() : request.toMap(),
+                userContext.requireSuperAdmin(authorization));
     }
 
     @GetMapping("/annual-plan")
@@ -103,8 +110,8 @@ public class SupplyController {
     @PostMapping("/annual-plan/items")
     @PreAuthorize(PermissionConstants.ORDER_CREATE)
     public Map<String, Object> savePlanItem(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                            @RequestBody Map<String, Object> request) {
-        return supplyOrderService.saveAnnualPlanItem(request, userContext.requireUser(authorization));
+                                            @Valid @RequestBody AnnualPlanItemRequest request) {
+        return supplyOrderService.saveAnnualPlanItem(request.toMap(), userContext.requireUser(authorization));
     }
 
     @PostMapping("/annual-plan/confirm")

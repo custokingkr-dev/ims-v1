@@ -1,11 +1,15 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.dto.fee.FeeAssignmentRequest;
+import com.custoking.ims.dto.fee.FeePaymentRequest;
+import com.custoking.ims.dto.fee.FeeReminderRequest;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.FeeService;
 import com.custoking.ims.service.StudentService;
 import com.custoking.ims.service.UserContextService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -59,19 +63,19 @@ public class FeeCollectionController {
     @PostMapping("/api/v1/fee-assignments")
     @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> assignFee(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                         @RequestBody Map<String, Object> request) {
+                                         @Valid @RequestBody FeeAssignmentRequest request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
-        return feeService.feeAssignmentApi(request, actor);
+        return feeService.feeAssignmentApi(request.toMap(), actor);
     }
 
     @PostMapping("/api/v1/payments")
     @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> createPayment(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                             @RequestBody Map<String, Object> request) {
+                                             @Valid @RequestBody FeePaymentRequest request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
-        return feeService.paymentApi(request, actor);
+        return feeService.paymentApi(request.toMap(), actor);
     }
 
     @GetMapping("/api/v1/fees/report")
@@ -109,13 +113,13 @@ public class FeeCollectionController {
     @PostMapping("/api/v1/fees/send-reminders")
     @PreAuthorize(PermissionConstants.FEE_COLLECT)
     public Map<String, Object> sendReminders(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                             @RequestBody Map<String, Object> request) {
+                                             @Valid @RequestBody FeeReminderRequest request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
         return feeService.sendFeeReminders(
-                String.valueOf(request.getOrDefault("classId", "")),
-                String.valueOf(request.getOrDefault("sectionId", "")),
-                actor, null);
+                request.classId(),
+                request.sectionId(),
+                actor, request.schoolId());
     }
 
     private void forbidSuperAdmin(AuthUser actor) {

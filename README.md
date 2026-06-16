@@ -2,44 +2,52 @@
 
 A React + Spring Boot + PostgreSQL school operations platform with school-scoped admin access, Supply OS, and Firefighting workflows.
 
-## What was validated in this package
-- Frontend production build: `npm ci && npm run build`
-- Catalog tab build fixes applied
-- Repo cleaned for GitHub commit safety:
-  - removed compiled `.class` files from source tree
-  - added `.dockerignore` files
-  - added GitHub Actions CI workflow
-  - added Cloud Run deployment scaffold
+## Local Development
 
-## Local development
-### Frontend
+Use Tilt for the full local stack:
+
+```bash
+tilt up
+```
+
+Tilt uses `docker-compose.yml` and starts:
+
+- Frontend: `http://localhost`
+- Backend: `http://localhost:8080`
+- Health check: `http://localhost:8080/actuator/health`
+- PostgreSQL: `localhost:5432`
+
+Default local logins:
+
+- `superadmin@custoking.com` / `LocalSuperadmin@2026!`
+- `admin@demo.custoking.com` / `LocalDemoAdmin@2026!`
+
+Stop the stack:
+
+```bash
+tilt down
+```
+
+Reset the local database:
+
+```bash
+docker compose down -v
+tilt up
+```
+
+## Direct Frontend Build
+
 ```bash
 cd frontend
 npm ci
-npm run dev
+npm run build
 ```
 
-### Full stack with Docker
-```bash
-docker compose up --build
-```
+## Architecture Docs
 
-Services:
-- Frontend: `http://localhost`
-- Backend: `http://localhost:8080`
-- PostgreSQL: `localhost:5432`
+- [Architecture hardening HLD](docs/HLD-architecture-hardening.md)
+- [Architecture hardening changelog](docs/CHANGELOG-architecture-hardening.md)
 
-## Production guidance
-- Use `SPRING_PROFILES_ACTIVE=prod` for backend
-- Use Cloud SQL for PostgreSQL or managed PostgreSQL instead of local Docker PostgreSQL
-- Store DB password and `APP_AADHAR_SECRET` in Secret Manager
-- Set `APP_BOOTSTRAP_USERS=false` in production
-- Build frontend with `VITE_API_BASE_URL=https://<backend-url>/api`
+## Notes
 
-## GitHub
-After pushing this repo, GitHub Actions runs:
-- frontend build verification
-- Docker image builds for backend and frontend
-
-## GCP
-See `deploy/gcp/README.md` and `cloudbuild.yaml`.
+This repo includes local Tilt/Compose development, CI checks, and a manual GitHub Actions workflow for GCP Cloud Build / Cloud Run deployment.

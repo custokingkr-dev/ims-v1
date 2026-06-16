@@ -1,121 +1,80 @@
-name: ci
+name: CI
 
 on:
-  push:
-    branches: [ main, master ]
   pull_request:
+  push:
+    branches:
+      - master
+      - architecture-hardening-local-dev
 
 jobs:
-
-  # ── Backend: unit + integration tests + coverage + security scan ───────────
-  backend-test:
+  backend:
+    name: Backend verify
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
-
-    # Testcontainers spins up its own PostgreSQL; no external service needed.
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-java@v4
         with:
-          java-version: 21
           distribution: temurin
+          java-version: "21"
           cache: maven
+      - name: Maven verify
+        run: mvn -B -Pci verify
 
-      - name: Run tests with JaCoCo coverage
-        run: mvn -B verify -Pci
-
-      - name: Upload JaCoCo coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-report
-          path: backend/target/site/jacoco/
-          if-no-files-found: warn
-
-  # ── Frontend: type-check + build ──────────────────────────────────────────
-  frontend-build:
+  frontend:
+    name: Frontend build
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci --include=dev
-
-      - name: Build frontend
+      - name: Install dependencies
+        run: npm ci
+      - name: Dependency audit
+        run: npm audit --audit-level=critical
+      - name: Build
         run: npm run build
 
-  # ── OWASP dependency vulnerability scan ──────────────────────────────────
-  owasp-scan:
+  deployment-config:
+    name: GCP deployment config check
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    # Run on push to main/master only (expensive, ~5 min); skip on every PR
-    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-
-      - name: Cache OWASP NVD data
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/org/owasp
-          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}
-          restore-keys: owasp-nvd-${{ runner.os }}-
-
-      - name: OWASP dependency-check
+      - name: Verify GitHub and Cloud Build deployment config
         run: |
-          mvn -B org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=9 \
-            -DsuppressionFile=.owasp-suppressions.xml \
-            --no-transfer-progress || true
-        # || true — report but don't fail CI until suppressions are tuned
+          test -f .github/workflows/deploy.yml
+          test -f cloudbuild.yaml
+          test -f deploy/gcp/README.md
+          grep -q "gcloud builds submit" .github/workflows/deploy.yml
+          ! grep -q -- "--async" .github/workflows/deploy.yml
+          grep -q "VITE_API_BASE_URL=.*api/v1" cloudbuild.yaml
+          grep -q "gcloud" cloudbuild.yaml
+          grep -q "run" cloudbuild.yaml
+          grep -q "APP_COOKIE_SAME_SITE=None" cloudbuild.yaml
+          grep -q "APP_JWT_SECRET=jwt-secret:latest" cloudbuild.yaml
+          grep -q "APP_AADHAR_SECRET=aadhar-secret:latest" cloudbuild.yaml
 
-      - name: Upload OWASP report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: owasp-report
-          path: backend/target/dependency-check-report.html
-          if-no-files-found: ignore
-
-  # ── Docker build smoke test (no push) ─────────────────────────────────────
-  docker-build:
+  containers:
+    name: Compose and image build
     runs-on: ubuntu-latest
-    needs: [ backend-test, frontend-build ]
+    needs:
+      - backend
+      - frontend
+      - deployment-config
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-
+      - name: Validate compose file
+        run: docker compose config
       - name: Build backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./backend
-          push: false
-          tags: custoking-backend:ci
-
+        run: docker build ./backend
       - name: Build frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          build-args: |
-            VITE_API_BASE_URL=/api
-          push: false
-          tags: custoking-frontend:ci
+        run: docker build ./frontend --build-arg VITE_API_BASE_URL=/api/v1

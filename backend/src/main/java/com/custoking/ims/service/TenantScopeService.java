@@ -40,7 +40,7 @@ public class TenantScopeService {
         List<Long> accessibleSchoolIds = new ArrayList<>();
         if ("ZONE_ADMIN".equals(user.getRole())) {
             zoneAdminRepo.findByUser_Id(user.getId()).forEach(zaa ->
-                    zoneMappingRepo.findByZone_Id(zaa.getZone().getId()).forEach(zsm ->
+                    zoneMappingRepo.findByZone_IdAndActiveTrue(zaa.getZone().getId()).forEach(zsm ->
                             accessibleSchoolIds.add(zsm.getSchool().getId())
                     )
             );
@@ -55,7 +55,7 @@ public class TenantScopeService {
                 user.getBranchName(),
                 user.getZoneId(),
                 user.getZoneName(),
-                Collections.unmodifiableList(accessibleSchoolIds),
+                Collections.unmodifiableList(accessibleSchoolIds.stream().distinct().toList()),
                 isSuperadmin
         );
     }
@@ -80,7 +80,13 @@ public class TenantScopeService {
         if (scope.isSuperadmin()) return requestedId;
         if (!scope.accessibleSchoolIds().isEmpty()) {
             if (requestedId != null && scope.accessibleSchoolIds().contains(requestedId)) return requestedId;
-            return scope.accessibleSchoolIds().isEmpty() ? null : scope.accessibleSchoolIds().get(0);
+            if (requestedId != null) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have access to this school");
+            }
+            return scope.accessibleSchoolIds().get(0);
+        }
+        if (requestedId != null && scope.schoolId() != null && !scope.schoolId().equals(requestedId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You do not have access to this school");
         }
         return scope.schoolId();
     }

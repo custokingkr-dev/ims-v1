@@ -15,7 +15,8 @@ app:
   cookie-secure: false
 
 # Bootstrap credentials for local dev seed data
-SUPERADMIN_PASSWORD: "DevAdmin@1234!"
+SUPERADMIN_PASSWORD: "LocalSuperadmin@2026!"
+DEMO_ADMIN_PASSWORD: "LocalDemoAdmin@2026!"
 
 logging:
   level:

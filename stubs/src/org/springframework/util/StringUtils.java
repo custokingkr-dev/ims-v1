@@ -1,1 +1,0 @@
-package org.springframework.util; public class StringUtils { public static String cleanPath(String p){return p;} public static String getFilenameExtension(String p){ int i=p==null?-1:p.lastIndexOf("."); return i<0?null:p.substring(i+1);} }

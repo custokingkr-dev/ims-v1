@@ -126,8 +126,19 @@ class ControllerSecurityTest {
         mockMvc.perform(post(url)
                 .with(user(operationsUser))
                 .contentType("application/json")
-                .content("{}"))
+                .content(validFeePayload(url)))
                .andExpect(status().isForbidden());
+    }
+
+    private String validFeePayload(String url) {
+        if (url.endsWith("/fee-assignments")) {
+            return """
+                    {"studentId":1,"bandId":"BAND-1","schedule":"MONTHLY"}
+                    """;
+        }
+        return """
+                {"studentId":1,"amount":1000}
+                """;
     }
 
     // ── OPERATIONS cannot manage users ────────────────────────────────────────

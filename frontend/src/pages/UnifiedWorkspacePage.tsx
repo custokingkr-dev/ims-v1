@@ -1,4 +1,4 @@
-import { DragEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { DragEvent, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,24 +16,24 @@ import {
   ModuleShell, Field, Info, Stat, OrderSummaryPanel,
   thStyle, tdStyle, inlineInputStyle,
 } from './workspace/ui';
-import { HomePanel } from './workspace/panels/HomePanel';
-import { StudentsPanel } from './workspace/panels/StudentsPanel';
-import { FeesPanel } from './workspace/panels/FeesPanel';
-import { FeeStructurePanel } from './workspace/panels/FeeStructurePanel';
-import { AttendancePanel } from './workspace/panels/AttendancePanel';
-import { TimetablePanel } from './workspace/panels/TimetablePanel';
-import { StaffPanel } from './workspace/panels/StaffPanel';
-import { PlanningPanel } from './workspace/panels/PlanningPanel';
-import { CatalogPanel } from './workspace/panels/CatalogPanel';
-import { AddStudentPanel } from './workspace/panels/AddStudentPanel';
-import { BulkImportPanel } from './workspace/panels/BulkImportPanel';
-import { FirefightingDashboardPanel } from './workspace/panels/FirefightingDashboardPanel';
-import { FirefightingNewPanel } from './workspace/panels/FirefightingNewPanel';
-import { FirefightingApprovalsPanel } from './workspace/panels/FirefightingApprovalsPanel';
-import { FirefightingOrdersPanel } from './workspace/panels/FirefightingOrdersPanel';
-import { SaErpPanel } from './workspace/panels/SaErpPanel';
-import { SaRevenuePanel } from './workspace/panels/SaRevenuePanel';
-import { SaCatalogPanel } from './workspace/panels/SaCatalogPanel';
+const HomePanel = lazy(() => import('./workspace/panels/HomePanel').then((m) => ({ default: m.HomePanel })));
+const StudentsPanel = lazy(() => import('./workspace/panels/StudentsPanel').then((m) => ({ default: m.StudentsPanel })));
+const FeesPanel = lazy(() => import('./workspace/panels/FeesPanel').then((m) => ({ default: m.FeesPanel })));
+const FeeStructurePanel = lazy(() => import('./workspace/panels/FeeStructurePanel').then((m) => ({ default: m.FeeStructurePanel })));
+const AttendancePanel = lazy(() => import('./workspace/panels/AttendancePanel').then((m) => ({ default: m.AttendancePanel })));
+const TimetablePanel = lazy(() => import('./workspace/panels/TimetablePanel').then((m) => ({ default: m.TimetablePanel })));
+const StaffPanel = lazy(() => import('./workspace/panels/StaffPanel').then((m) => ({ default: m.StaffPanel })));
+const PlanningPanel = lazy(() => import('./workspace/panels/PlanningPanel').then((m) => ({ default: m.PlanningPanel })));
+const CatalogPanel = lazy(() => import('./workspace/panels/CatalogPanel').then((m) => ({ default: m.CatalogPanel })));
+const AddStudentPanel = lazy(() => import('./workspace/panels/AddStudentPanel').then((m) => ({ default: m.AddStudentPanel })));
+const BulkImportPanel = lazy(() => import('./workspace/panels/BulkImportPanel').then((m) => ({ default: m.BulkImportPanel })));
+const FirefightingDashboardPanel = lazy(() => import('./workspace/panels/FirefightingDashboardPanel').then((m) => ({ default: m.FirefightingDashboardPanel })));
+const FirefightingNewPanel = lazy(() => import('./workspace/panels/FirefightingNewPanel').then((m) => ({ default: m.FirefightingNewPanel })));
+const FirefightingApprovalsPanel = lazy(() => import('./workspace/panels/FirefightingApprovalsPanel').then((m) => ({ default: m.FirefightingApprovalsPanel })));
+const FirefightingOrdersPanel = lazy(() => import('./workspace/panels/FirefightingOrdersPanel').then((m) => ({ default: m.FirefightingOrdersPanel })));
+const SaErpPanel = lazy(() => import('./workspace/panels/SaErpPanel').then((m) => ({ default: m.SaErpPanel })));
+const SaRevenuePanel = lazy(() => import('./workspace/panels/SaRevenuePanel').then((m) => ({ default: m.SaRevenuePanel })));
+const SaCatalogPanel = lazy(() => import('./workspace/panels/SaCatalogPanel').then((m) => ({ default: m.SaCatalogPanel })));
 
 export default function UnifiedWorkspacePage() {
   const { user, logout } = useAuth();
@@ -1571,6 +1571,7 @@ useEffect(() => {
         </div>
 
         <div className="ck-content">
+          <Suspense fallback={<div className="ck-loading">Loading module...</div>}>
           {panel === 'home' && workspace && <HomePanel workspace={workspace} setPanel={setPanel} />}
 
           {panel === 'students' && <StudentsPanel setPanel={setPanel} onRefresh={refresh} />}
@@ -1665,6 +1666,7 @@ useEffect(() => {
           {panel === 'ff-approvals' && <FirefightingApprovalsPanel pendingRequests={workspace?.firefighting?.requests ?? []} onRefresh={refresh} />}
 
           {panel === 'ff-orders' && <FirefightingOrdersPanel isSuperAdmin={user?.role === 'SUPERADMIN'} adminRequests={workspace?.firefighting?.requests ?? []} onRefresh={refresh} />}
+          </Suspense>
         </div>
 
         {saDetailOpen && (<div className="ck-modal-bg" onClick={() => setSaDetailOpen(false)}><div className="ck-modal" onClick={(e) => e.stopPropagation()}><div className="ck-modal-h"><div className="ck-modal-title">Order detail</div><button className="ck-modal-x" onClick={() => setSaDetailOpen(false)}>×</button></div><div className="ck-modal-body">{saDetailLoading ? <div className="ts">Loading order…</div> : saDetailError ? <div className="ts">{saDetailError}</div> : !saDetailOrder ? <div className="ts">Record not found.</div> : <><div className="ck-student-modal-info" style={{ marginBottom: 16 }}><Info label="Order ID" value={String(saDetailOrder.id || '—')} /><Info label="School" value={String(saDetailOrder.schoolName || saDetailOrder.school || '—')} /><Info label="Category" value={String(saDetailOrder.category || '—')} /><Info label="Amount" value={`₹${formatMoney(Math.round(Number(saDetailOrder.totalAmount || 0) / 100))}`} /><Info label="Delivery" value={String(saDetailOrder.estimatedDelivery || saDetailOrder.requiredByDate || '—')} /><Info label="Status" value={String(saDetailOrder.status || '—')} /></div><div className="ck-form-card"><div className="ck-form-head">Update status</div><div className="ck-form-body"><Field label="Status"><select value={saNewStatus} onChange={(e) => setSaNewStatus(e.target.value)}><option>AWAITING_APPROVAL</option><option>IN_PROGRESS</option><option>APPROVED</option><option>PROCESSING</option><option>DELIVERED</option></select></Field></div></div></>}</div><div className="ck-modal-foot"><button className="ck-btn ck-btn-ghost" onClick={() => saDetailOrder && openSaInvoiceFromOrder(saDetailOrder.id, saDetailOrder.schoolName || '—', saDetailOrder.schoolId ?? null, Number(saDetailOrder.totalAmount || 0))}>Generate invoice</button><button className="ck-btn ck-btn-ghost" onClick={() => alert(`WhatsApp sent to ${saDetailOrder?.schoolName || saDetailOrder?.school || 'school'}`)}>WhatsApp school</button><button className="ck-btn ck-btn-ghost" onClick={() => alert(`Downloading order sheet for ${saDetailOrder?.id || 'order'}`)}>Download order sheet</button><button className="ck-btn ck-btn-g" disabled={saStatusSaving} onClick={saveSaOrderStatus}>{saStatusSaving ? 'Saving…' : 'Update status'}</button></div></div></div>)}

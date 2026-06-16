@@ -1,6 +1,6 @@
 package com.custoking.ims.service;
 
-import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantAccess;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.repo.*;
@@ -67,7 +67,7 @@ public class StudentService {
 
     public Map<String, Object> studentsPage(String className, String sectionName, String feeStatus,
                                              int page, int size, AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         List<StudentEntity> filtered = scopedStudents(schoolId).stream()
                 .filter(s -> blankOr(className, s.getSchoolClass().getName()))
                 .filter(s -> blankOr(sectionName, s.getSection().getName()))
@@ -95,7 +95,7 @@ public class StudentService {
     public Map<String, Object> studentDetail(long id, AuthUser actor, Long requestedSchoolId) {
         StudentEntity s = studentRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
-        Long actorSchoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long actorSchoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         Long entitySchoolId = s.getSection() != null && s.getSection().getSchool() != null
                 ? s.getSection().getSchool().getId()
                 : (s.getSchool() != null ? s.getSchool().getId() : null);
@@ -120,7 +120,7 @@ public class StudentService {
             throw new IllegalArgumentException("Admission Number already exists");
         String fullName = str(request.get("fullName"), "").trim();
         if (fullName.isBlank()) throw new IllegalArgumentException("Full name is mandatory");
-        Long schoolId = TenantContext.get();
+        Long schoolId = TenantAccess.resolveSchoolId(null);
         SchoolEntity school = schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new IllegalArgumentException("School not found"));
         SchoolClassEntity schoolClass = classRepository.findByName(str(request.get("gradeLevel"), str(request.get("className"), "Class 9")))
@@ -160,7 +160,7 @@ public class StudentService {
     }
 
     public List<Map<String, Object>> classesList(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return sectionRepository.findBySchool_Id(schoolId).stream()
                 .filter(sec -> sec != null && sec.getSchoolClass() != null)
                 .map(SchoolSectionEntity::getSchoolClass)
@@ -172,7 +172,7 @@ public class StudentService {
     }
 
     public List<Map<String, Object>> sectionsForClass(String classId, AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return sectionRepository.findBySchoolClass_IdOrderByNameAsc(classId).stream()
                 .filter(s -> s.getSchool() != null && schoolId.equals(s.getSchool().getId()))
                 .map(s -> row("id", s.getId(), "name", s.getName())).toList();
@@ -180,7 +180,7 @@ public class StudentService {
 
     public List<Map<String, Object>> studentsForClassSection(String classId, String sectionId,
                                                               AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return scopedStudents(schoolId).stream()
                 .filter(s -> s.getSchoolClass() != null && classId.equals(s.getSchoolClass().getId())
                         && s.getSection() != null && sectionId.equals(s.getSection().getId()))
@@ -206,7 +206,7 @@ public class StudentService {
 
     public Map<String, Object> previewStudentImport(List<Map<String, Object>> rawRows, AuthUser actor) {
         if (rawRows.size() > 500) throw new IllegalArgumentException("Maximum 500 rows per import");
-        Long schoolId = TenantContext.get();
+        Long schoolId = TenantAccess.resolveSchoolId(null);
         ImportBatchEntity batch = new ImportBatchEntity();
         batch.setId(UUID.randomUUID().toString());
         batch.setFileToken(UUID.randomUUID().toString());
@@ -279,7 +279,7 @@ public class StudentService {
         batch.setPct(20);
         importBatchRepository.save(batch);
         AcademicYearEntity year = currentAcademicYearEntity();
-        Long schoolId = TenantContext.get();
+        Long schoolId = TenantAccess.resolveSchoolId(null);
         int inserted = 0;
         int skipped = 0;
         List<Map<String, Object>> skippedRows = new ArrayList<>();

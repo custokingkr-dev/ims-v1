@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @DependsOn("applicationSecurityValidator")
@@ -19,12 +20,15 @@ public class JwtService {
 
     private final SecretKey key;
     private final long expirationMs;
+    private final long refreshExpirationMs;
 
     public JwtService(
             @Value("${app.jwt-secret}") String secret,
-            @Value("${app.jwt-expiration-ms:86400000}") long expirationMs) {
+            @Value("${app.jwt-expiration-ms:900000}") long expirationMs,
+            @Value("${app.refresh-token-expiration-ms:604800000}") long refreshExpirationMs) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
+        this.refreshExpirationMs = refreshExpirationMs;
     }
 
     public String generateToken(AppUserDetails userDetails) {
@@ -32,6 +36,7 @@ public class JwtService {
         claims.put("role", userDetails.getUser().getRole());
         return Jwts.builder()
                 .claims(claims)
+                .id(UUID.randomUUID().toString())
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
@@ -45,9 +50,10 @@ public class JwtService {
         claims.put("type", "refresh");
         return Jwts.builder()
                 .claims(claims)
+                .id(UUID.randomUUID().toString())
                 .subject(userDetails.getUsername())
                 .issuedAt(new Date())
-                .expiration(new Date(System.currentTimeMillis() + 7 * 24 * 60 * 60 * 1000L))
+                .expiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
                 .signWith(key)
                 .compact();
     }
@@ -58,6 +64,19 @@ public class JwtService {
 
     public boolean isTokenValid(String token, String username) {
         return extractUsername(token).equals(username) && !isTokenExpired(token);
+    }
+
+    public boolean isRefreshToken(String token) {
+        Object type = getClaims(token).get("type");
+        return "refresh".equals(type);
+    }
+
+    public Date extractExpiration(String token) {
+        return getClaims(token).getExpiration();
+    }
+
+    public long refreshExpirationMs() {
+        return refreshExpirationMs;
     }
 
     private boolean isTokenExpired(String token) {

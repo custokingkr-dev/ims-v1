@@ -1,7 +1,7 @@
 package com.custoking.ims.service;
 
 import com.custoking.ims.audit.AuditLogService;
-import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantAccess;
 import com.custoking.ims.entity.AnnualPlanItemEntity;
 import com.custoking.ims.entity.AcademicYearEntity;
 import com.custoking.ims.entity.CatalogOrderEntity;
@@ -71,7 +71,7 @@ public class SupplyOrderService {
     public Map<String, Object> createCatalogOrder(Map<String, Object> request, AuthUser actor) {
         Long reqSchoolId = request.get("schoolId") == null ? null
                 : longNum(request.get("schoolId"), -1) < 0 ? null : longNum(request.get("schoolId"), -1);
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : reqSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(reqSchoolId);
         CatalogOrderEntity entity = new CatalogOrderEntity();
         entity.setId("CK-" + (1000 + catalogOrderRepository.count() + 1));
         entity.setSchool(resolveSchool(schoolId));
@@ -113,9 +113,8 @@ public class SupplyOrderService {
     public Map<String, Object> placeCatalogOrder(String orderId, AuthUser actor) {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        assertSchoolOwnership("order",
-                entity.getSchool() != null ? entity.getSchool().getId() : null,
-                TenantContext.get());
+        TenantAccess.assertSchoolAccess("order",
+                entity.getSchool() != null ? entity.getSchool().getId() : null, null);
         String category = String.valueOf(entity.getCategory()).toUpperCase(Locale.ROOT);
         if (List.of("UNIFORMS", "NOTEBOOKS").contains(category)) {
             entity.setStatus("DESIGN_APPROVAL");
@@ -140,7 +139,7 @@ public class SupplyOrderService {
     public Map<String, Object> updateCatalogOrderStatus(String orderId, Map<String, Object> request, AuthUser actor) {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        assertSchoolOwnership("order", entity.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("order", entity.getSchool().getId(), null);
         String oldStatus = entity.getStatus();
         String newStatus = str(request.get("status"), entity.getStatus()).toUpperCase(Locale.ROOT);
         entity.setStatus(newStatus);
@@ -172,7 +171,7 @@ public class SupplyOrderService {
     public Map<String, Object> markCatalogOrderDesignApproved(String orderId, AuthUser actor) {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        assertSchoolOwnership("order", entity.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("order", entity.getSchool().getId(), null);
         if (!List.of("UNIFORMS", "NOTEBOOKS").contains(
                 String.valueOf(entity.getCategory()).toUpperCase(Locale.ROOT))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
@@ -244,7 +243,7 @@ public class SupplyOrderService {
     }
 
     public List<Map<String, Object>> listCatalogOrders(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return catalogOrderRepository.findBySchool_Id(schoolId).stream()
                 .sorted(Comparator.comparing(CatalogOrderEntity::getCreatedAt,
                         Comparator.nullsLast(Comparator.naturalOrder())).reversed())
@@ -258,7 +257,7 @@ public class SupplyOrderService {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
         if (actor.role() != Role.SUPERADMIN) {
-            assertSchoolOwnership("order", entity.getSchool().getId(), TenantContext.get());
+            TenantAccess.assertSchoolAccess("order", entity.getSchool().getId(), null);
         }
         return catalogOrderDetailRow(entity);
     }
@@ -270,7 +269,7 @@ public class SupplyOrderService {
     }
 
     public Map<String, Object> catalogOrderStats(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         List<CatalogOrderEntity> orders = catalogOrderRepository.findBySchool_Id(schoolId);
         long activeOrders = orders.stream()
                 .filter(o -> !List.of("DELIVERED", "DRAFT").contains(
@@ -299,15 +298,11 @@ public class SupplyOrderService {
     }
 
     private SchoolEntity resolveSchool(Long schoolId) {
+        if (schoolId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
+        }
         return schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
-    }
-
-    private void assertSchoolOwnership(String entityLabel, Long entitySchoolId, Long actorSchoolId) {
-        if (actorSchoolId != null && entitySchoolId != null && !actorSchoolId.equals(entitySchoolId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You do not have access to this " + entityLabel);
-        }
     }
 
     private Map<String, Object> catalogOrderListRow(CatalogOrderEntity e) {
@@ -355,6 +350,13 @@ public class SupplyOrderService {
 
     private String valueAsJson(Object raw, Object fallback) {
         try {
+            if (raw instanceof String text) {
+                if (text.isBlank()) {
+                    return objectMapper.writeValueAsString(fallback);
+                }
+                objectMapper.readTree(text);
+                return text;
+            }
             return objectMapper.writeValueAsString(raw == null ? fallback : raw);
         } catch (Exception e) {
             return toJson(fallback);
@@ -364,7 +366,7 @@ public class SupplyOrderService {
     // ── Annual plan ─────────────────────────────────────────────────
 
     public Map<String, Object> listAnnualPlan(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return annualPlanPayload(schoolId);
     }
 
@@ -372,7 +374,7 @@ public class SupplyOrderService {
         Long reqSchoolId2 = request.get("schoolId") == null ? null
                 : longNum(request.get("schoolId"), -1) < 0 ? null
                 : longNum(request.get("schoolId"), -1);
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : reqSchoolId2;
+        Long schoolId = TenantAccess.resolveSchoolId(reqSchoolId2);
         String id = trimToNull(str(request.get("id"), ""));
         AnnualPlanItemEntity item = id == null ? new AnnualPlanItemEntity()
                 : annualPlanItemRepository.findById(id).orElseGet(AnnualPlanItemEntity::new);

@@ -1,6 +1,6 @@
 package com.custoking.ims.service;
 
-import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantAccess;
 import com.custoking.ims.dto.ApprovalDecisionRequest;
 import com.custoking.ims.dto.InvoiceCreateRequest;
 import com.custoking.ims.dto.PaymentCreateRequest;
@@ -69,9 +69,9 @@ public class WorkspaceService {
 
     public Map<String, Object> workspace(AuthUser actor, Long requestedSchoolId) {
         AcademicYearEntity year = currentAcademicYearEntity();
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
-        SchoolEntity school = schoolRepository.findById(schoolId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
+        SchoolEntity school = resolveWorkspaceSchool(schoolId);
+        schoolId = school.getId();
         List<StudentEntity> students = studentService.scopedStudents(schoolId);
         long sectionCount = sectionRepository.findBySchool_Id(schoolId).size();
         Map<String, Object> attendanceSummary = attendanceService.attendanceDailySummary("today", schoolId);
@@ -161,7 +161,7 @@ public class WorkspaceService {
 
     public List<Map<String, Object>> approvals(AuthUser actor) {
         return firefightingRequestRepository
-                .findBySchool_IdAndStatus(TenantContext.get(), "AWAITING_PRINCIPAL")
+                .findBySchool_IdAndStatus(TenantAccess.resolveSchoolId(null), "AWAITING_PRINCIPAL")
                 .stream().map(this::fireRequestRow).toList();
     }
 
@@ -215,9 +215,7 @@ public class WorkspaceService {
     public Map<String, Object> createOrder(Map<String, Object> request) {
         CatalogOrderEntity e = new CatalogOrderEntity();
         e.setId("CK-" + (1000 + catalogOrderRepository.count() + 1));
-        e.setSchool(schoolRepository.findById(TenantContext.get())
-                .orElseGet(() -> schoolRepository.findAll().stream().findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No school available"))));
+        e.setSchool(resolveWorkspaceSchool(TenantAccess.resolveSchoolId(null)));
         e.setCategory(str(request.get("category"), "STATIONERY"));
         e.setOrderData(toJson(row("title", str(request.get("title"), "Order"),
                 "items", str(request.get("items"), "1 unit"))));
@@ -235,9 +233,7 @@ public class WorkspaceService {
     public Map<String, Object> savePlan(Map<String, Object> request) {
         AnnualPlanItemEntity e = new AnnualPlanItemEntity();
         e.setId(UUID.randomUUID().toString());
-        e.setSchool(schoolRepository.findById(TenantContext.get())
-                .orElseGet(() -> schoolRepository.findAll().stream().findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No school available"))));
+        e.setSchool(resolveWorkspaceSchool(TenantAccess.resolveSchoolId(null)));
         e.setAcademicYear(currentAcademicYearEntity());
         e.setTermName(str(request.get("term"), "Term 1"));
         e.setCategory(str(request.get("category"), "Stationery"));
@@ -253,9 +249,7 @@ public class WorkspaceService {
     public Map<String, Object> createFirefightingRequest(Map<String, Object> request, Long actorUserId) {
         FirefightingRequestEntity e = new FirefightingRequestEntity();
         e.setCode(nextFireCode());
-        e.setSchool(schoolRepository.findById(TenantContext.get())
-                .orElseGet(() -> schoolRepository.findAll().stream().findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No school available"))));
+        e.setSchool(resolveWorkspaceSchool(TenantAccess.resolveSchoolId(null)));
         e.setTitle(str(request.get("title"), "Request"));
         e.setCategory(str(request.get("category"), "Other"));
         e.setDescription(str(firstPresent(request, "description", "summary"), ""));
@@ -302,6 +296,15 @@ public class WorkspaceService {
     }
 
     // ── Private helpers ──────────────────────────────────────────────
+
+    private SchoolEntity resolveWorkspaceSchool(Long schoolId) {
+        if (schoolId != null) {
+            return schoolRepository.findById(schoolId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
+        }
+        return schoolRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No school available"));
+    }
 
     private List<Map<String, Object>> catalogCategories() {
         return List.of(

@@ -1,10 +1,13 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.dto.attendance.DailyAttendanceRequest;
+import com.custoking.ims.dto.attendance.SubmitAttendanceDayRequest;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.model.Role;
 import com.custoking.ims.service.AttendanceService;
 import com.custoking.ims.service.UserContextService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -45,19 +48,19 @@ public class AttendanceController {
     @PostMapping("/daily-entry")
     @PreAuthorize(PermissionConstants.ATTENDANCE_MANAGE)
     public Map<String, Object> dailyEntry(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                          @RequestBody Map<String, Object> request) {
+                                          @Valid @RequestBody DailyAttendanceRequest request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
-        return attendanceService.saveDailyAttendance(request, actor);
+        return attendanceService.saveDailyAttendance(request.toMap(), actor);
     }
 
     @PostMapping("/submit-day")
     @PreAuthorize(PermissionConstants.ATTENDANCE_MANAGE)
     public Map<String, Object> submitDay(@RequestHeader(value = "Authorization", required = false) String authorization,
-                                         @RequestBody Map<String, Object> request) {
+                                         @RequestBody(required = false) SubmitAttendanceDayRequest request) {
         AuthUser actor = userContext.requireUser(authorization);
         forbidSuperAdmin(actor);
-        return attendanceService.submitAttendanceDay(String.valueOf(request.getOrDefault("date", "today")), actor);
+        return attendanceService.submitAttendanceDay(request == null ? "today" : request.effectiveDate(), actor);
     }
 
     private void forbidSuperAdmin(AuthUser actor) {

@@ -1,7 +1,7 @@
 package com.custoking.ims.service;
 
 import com.custoking.ims.audit.AuditLogService;
-import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantAccess;
 import com.custoking.ims.entity.FirefightingQuotationEntity;
 import com.custoking.ims.entity.FirefightingRequestEntity;
 import com.custoking.ims.entity.SchoolEntity;
@@ -53,7 +53,7 @@ public class FirefightingService {
     }
 
     public List<Map<String, Object>> listFireRequests(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         List<FirefightingRequestEntity> rows = (schoolId == null)
                 ? firefightingRequestRepository.findAllByOrderByCreatedAtDesc()
                 : firefightingRequestRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId);
@@ -69,7 +69,7 @@ public class FirefightingService {
     }
 
     public Map<String, Object> fireRequestStats(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         List<FirefightingRequestEntity> rows = (schoolId == null)
                 ? firefightingRequestRepository.findAllByOrderByCreatedAtDesc()
                 : firefightingRequestRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId);
@@ -98,7 +98,7 @@ public class FirefightingService {
         Long reqSchoolId = request.get("schoolId") == null ? null
                 : longNum(request.get("schoolId"), -1) < 0 ? null
                 : longNum(request.get("schoolId"), -1);
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : reqSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(reqSchoolId);
         FirefightingRequestEntity e = new FirefightingRequestEntity();
         e.setCode(nextFireCode());
         e.setSchool(resolveSchool(schoolId));
@@ -123,7 +123,7 @@ public class FirefightingService {
     public Map<String, Object> updateFireRequest(String id, Map<String, Object> request, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
         if (!"DRAFT".equalsIgnoreCase(ff.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Request can only be edited in DRAFT status");
@@ -143,7 +143,8 @@ public class FirefightingService {
     public Map<String, Object> updateFireQuotation(String id, String quotationId, Map<String, Object> request, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
+        requireStatus(ff, "DRAFT");
         FirefightingQuotationEntity q = firefightingQuotationRepository.findById(quotationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Quotation not found"));
         if (request.containsKey("vendorName")) {
@@ -167,8 +168,7 @@ public class FirefightingService {
     public Map<String, Object> fireRequestDetail(String id, AuthUser actor, Long requestedSchoolId) {
         FirefightingRequestEntity e = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", e.getSchool().getId(),
-                TenantContext.get() != null ? TenantContext.get() : requestedSchoolId);
+        TenantAccess.assertSchoolAccess("request", e.getSchool().getId(), requestedSchoolId);
         return fireRequestDetailRow(e);
     }
 
@@ -178,7 +178,8 @@ public class FirefightingService {
     public Map<String, Object> addFireQuotation(String id, Map<String, Object> request, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
+        requireStatus(ff, "DRAFT");
         FirefightingQuotationEntity q = new FirefightingQuotationEntity();
         q.setId(UUID.randomUUID().toString());
         q.setRequest(ff);
@@ -197,7 +198,7 @@ public class FirefightingService {
     public Map<String, Object> deleteFireQuotation(String id, String quotationId, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
         if (!"DRAFT".equalsIgnoreCase(ff.getStatus())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Quotation can be removed only in DRAFT status");
@@ -211,7 +212,8 @@ public class FirefightingService {
     public Map<String, Object> submitFireRequest(String id, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
+        requireStatus(ff, "DRAFT");
         ff.setStatus("AWAITING_BURSAR");
         firefightingRequestRepository.save(ff);
         auditLogService.statusTransition("ff_request", id, "DRAFT", "AWAITING_BURSAR", actor.userId());
@@ -223,7 +225,8 @@ public class FirefightingService {
     public Map<String, Object> approveFireBursar(String id, Map<String, Object> request, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
+        requireStatus(ff, "AWAITING_BURSAR");
         String oldStatus = ff.getStatus();
         ff.setBursarNote(trimToNull(str(request.get("note"), "")));
         ff.setBursarApprovedAt(OffsetDateTime.now());
@@ -239,7 +242,8 @@ public class FirefightingService {
     public Map<String, Object> approveFirePrincipal(String id, Map<String, Object> request, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
+        requireStatus(ff, "AWAITING_PRINCIPAL");
         String oldStatus = ff.getStatus();
         ff.setPrincipalNote(trimToNull(str(request.get("note"), "")));
         ff.setPrincipalApprovedAt(OffsetDateTime.now());
@@ -262,6 +266,7 @@ public class FirefightingService {
     public Map<String, Object> approveCustoking(String id, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        requireStatus(ff, "APPROVED");
         String oldStatus = ff.getStatus();
         ff.setStatus("CUSTOKING_APPROVED");
         firefightingRequestRepository.save(ff);
@@ -274,7 +279,8 @@ public class FirefightingService {
     public Map<String, Object> rejectFireRequest(String id, Map<String, Object> request, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(), TenantContext.get());
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), null);
+        rejectIfTerminal(ff);
         String oldStatus = ff.getStatus();
         ff.setRejectedBy(str(request.get("rejectedBy"), actor.fullName()));
         ff.setRejectedReason(str(firstPresent(request, "reason", "rejectedReason"), ""));
@@ -289,6 +295,7 @@ public class FirefightingService {
     public Map<String, Object> fulfillFireRequest(String id, AuthUser actor) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
+        requireStatus(ff, "CUSTOKING_APPROVED");
         String oldStatus = ff.getStatus();
         ff.setStatus("FULFILLED");
         firefightingRequestRepository.save(ff);
@@ -303,7 +310,7 @@ public class FirefightingService {
     }
 
     public List<Map<String, Object>> pendingFireApprovals(AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         List<FirefightingRequestEntity> pending = new ArrayList<>();
         pending.addAll(firefightingRequestRepository.findBySchool_IdAndStatus(schoolId, "AWAITING_BURSAR"));
         pending.addAll(firefightingRequestRepository.findBySchool_IdAndStatus(schoolId, "AWAITING_PRINCIPAL"));
@@ -321,8 +328,7 @@ public class FirefightingService {
     public List<Map<String, Object>> fireRequestTimeline(String id, AuthUser actor, Long requestedSchoolId) {
         FirefightingRequestEntity ff = firefightingRequestRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Request not found"));
-        assertSchoolOwnership("request", ff.getSchool().getId(),
-                TenantContext.get() != null ? TenantContext.get() : requestedSchoolId);
+        TenantAccess.assertSchoolAccess("request", ff.getSchool().getId(), requestedSchoolId);
         String status = ff.getStatus();
         boolean submitted  = !List.of("DRAFT").contains(status);
         boolean bursarDone = ff.getBursarApprovedAt() != null;
@@ -416,14 +422,28 @@ public class FirefightingService {
     }
 
     private SchoolEntity resolveSchool(Long schoolId) {
+        if (schoolId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
+        }
         return schoolRepository.findById(schoolId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "School not found"));
     }
 
-    private void assertSchoolOwnership(String entityLabel, Long entitySchoolId, Long actorSchoolId) {
-        if (actorSchoolId != null && entitySchoolId != null && !actorSchoolId.equals(entitySchoolId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You do not have access to this " + entityLabel);
+    private void requireStatus(FirefightingRequestEntity request, String... allowedStatuses) {
+        String current = String.valueOf(request.getStatus()).toUpperCase(Locale.ROOT);
+        for (String allowed : allowedStatuses) {
+            if (current.equals(allowed)) {
+                return;
+            }
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Request is in " + request.getStatus() + " status and cannot perform this action");
+    }
+
+    private void rejectIfTerminal(FirefightingRequestEntity request) {
+        if (List.of("REJECTED", "FULFILLED").contains(String.valueOf(request.getStatus()).toUpperCase(Locale.ROOT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Request is already " + request.getStatus());
         }
     }
 

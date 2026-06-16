@@ -1,6 +1,6 @@
 package com.custoking.ims.service;
 
-import com.custoking.ims.context.TenantContext;
+import com.custoking.ims.context.TenantAccess;
 import com.custoking.ims.entity.*;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.repo.*;
@@ -40,7 +40,7 @@ public class AttendanceService {
     }
 
     public Map<String, Object> attendanceDailySummary(String dateInput, AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         return attendanceDailySummary(dateInput, schoolId);
     }
 
@@ -78,7 +78,7 @@ public class AttendanceService {
 
     public Map<String, Object> attendanceSectionInfo(String dateInput, String classId, String sectionId,
                                                       AuthUser actor, Long requestedSchoolId) {
-        Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
+        Long schoolId = TenantAccess.resolveSchoolId(requestedSchoolId);
         SchoolSectionEntity section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new IllegalArgumentException("Section not found"));
         assertSchoolOwnership("section", section.getSchool() == null ? null : section.getSchool().getId(), schoolId);
@@ -109,6 +109,8 @@ public class AttendanceService {
                 .orElseThrow(() -> new IllegalArgumentException("Class not found"));
         SchoolSectionEntity section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new IllegalArgumentException("Section not found"));
+        TenantAccess.assertSchoolAccess("section",
+                section.getSchool() == null ? null : section.getSchool().getId(), null);
         AttendanceDailyEntity entity = attendanceDailyRepository
                 .findByAttendanceDateAndSection_IdAndAcademicYear_Id(date, sectionId, currentAcademicYearId())
                 .orElseGet(AttendanceDailyEntity::new);
@@ -140,7 +142,15 @@ public class AttendanceService {
     public Map<String, Object> submitAttendanceDay(String dateText, AuthUser actor) {
         LocalDate date = parseDate(dateText);
         List<AttendanceDailyEntity> records = attendanceDailyRepository
-                .findByAttendanceDateAndAcademicYear_Id(date, currentAcademicYearId());
+                .findByAttendanceDateAndAcademicYear_Id(date, currentAcademicYearId()).stream()
+                .filter(r -> {
+                    Long schoolId = r.getSection() != null && r.getSection().getSchool() != null
+                            ? r.getSection().getSchool().getId()
+                            : null;
+                    TenantAccess.assertSchoolAccess("attendance record", schoolId, null);
+                    return true;
+                })
+                .toList();
         records.forEach(r -> r.setLocked(true));
         attendanceDailyRepository.saveAll(records);
         return row("ok", true, "submitted", records.size());
