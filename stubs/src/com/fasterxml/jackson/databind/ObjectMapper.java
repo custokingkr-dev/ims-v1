@@ -1,1 +1,0 @@
-package com.fasterxml.jackson.databind; public class ObjectMapper { public String writeValueAsString(Object v) throws Exception { return ""; } public <T> T readValue(String v, com.fasterxml.jackson.core.type.TypeReference<T> t) throws Exception { return null; } }

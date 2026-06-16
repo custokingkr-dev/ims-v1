@@ -151,6 +151,24 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void refresh_reusesOldCookieAfterRotation_returns401() {
+        var loginResp = post("/api/v1/auth/login",
+                Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD));
+        assertThat(loginResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String firstCookie = extractRefreshCookieValue(loginResp.getHeaders());
+
+        var firstRefresh = refreshWithCookie(firstCookie);
+        assertThat(firstRefresh.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String rotatedCookie = extractRefreshCookieValue(firstRefresh.getHeaders());
+
+        var replay = refreshWithCookie(firstCookie);
+        assertThat(replay.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+
+        var secondRefresh = refreshWithCookie(rotatedCookie);
+        assertThat(secondRefresh.getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
     void refresh_invalidCookie_returns401() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -173,13 +191,22 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void logout_clearsCookie() {
+        var loginResp = post("/api/v1/auth/login",
+                Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD));
+        assertThat(loginResp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String cookieHeader = extractRefreshCookieValue(loginResp.getHeaders());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.COOKIE, "refresh_token=" + cookieHeader);
         var response = rest.exchange(
-                "/api/v1/auth/logout", HttpMethod.POST, HttpEntity.EMPTY, MAP_TYPE);
+                "/api/v1/auth/logout", HttpMethod.POST, new HttpEntity<>(null, headers), MAP_TYPE);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         List<String> setCookie = response.getHeaders().get("Set-Cookie");
         assertThat(setCookie).isNotNull()
                 .anyMatch(c -> c.startsWith("refresh_token=") && c.contains("Max-Age=0"));
+
+        assertThat(refreshWithCookie(cookieHeader).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     // ── RBAC: protected endpoint ──────────────────────────────────────────────
@@ -257,6 +284,15 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
                 Map.of("email", ADMIN_EMAIL, "password", ADMIN_PASSWORD));
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         return (String) resp.getBody().get("accessToken");
+    }
+
+    private ResponseEntity<Map<String, Object>> refreshWithCookie(String refreshCookieValue) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set(HttpHeaders.COOKIE, "refresh_token=" + refreshCookieValue);
+        return rest.exchange(
+                "/api/v1/auth/refresh", HttpMethod.POST,
+                new HttpEntity<>(null, headers), MAP_TYPE);
     }
 
     /** Extracts the raw refresh token value from a Set-Cookie header. */

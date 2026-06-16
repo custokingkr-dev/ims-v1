@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface ZoneSchoolMappingRepository extends JpaRepository<ZoneSchoolMappingEntity, Long> {
     List<ZoneSchoolMappingEntity> findByZone_Id(Long zoneId);
+    List<ZoneSchoolMappingEntity> findByZone_IdAndActiveTrue(Long zoneId);
     List<ZoneSchoolMappingEntity> findBySchool_Id(Long schoolId);
     Optional<ZoneSchoolMappingEntity> findByZone_IdAndSchool_Id(Long zoneId, Long schoolId);
     long countByZone_Id(Long zoneId);

@@ -23,6 +23,9 @@ secrets/
 *.log
 *.tmp
 *.swp
+tilt-debug.json
+.tilt/
+.tiltbuild/
 
 # OS
 .DS_Store
