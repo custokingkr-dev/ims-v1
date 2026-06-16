@@ -1,1 +1,0 @@
-package org.springframework.http; public enum HttpStatus { OK, CREATED, BAD_REQUEST, FORBIDDEN, NOT_FOUND, CONFLICT, INTERNAL_SERVER_ERROR }

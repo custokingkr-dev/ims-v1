@@ -2,6 +2,11 @@ name: Deploy to GCP
 
 on:
   workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Image tag to deploy. Defaults to the workflow commit SHA."
+        required: false
+        type: string
 
 jobs:
   deploy:
@@ -17,8 +22,8 @@ jobs:
       - name: Authenticate to GCP via Workload Identity
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/755376288593/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'github-actions-sa@custoking-ims.iam.gserviceaccount.com'
+          workload_identity_provider: "projects/755376288593/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "github-actions-sa@custoking-ims.iam.gserviceaccount.com"
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -27,7 +32,6 @@ jobs:
         run: |
           gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_COMMIT_SHA=${{ github.sha }} \
+            --substitutions=_COMMIT_SHA=${{ inputs.commit_sha || github.sha }} \
             --project=custoking-ims \
-            --async \
             .
