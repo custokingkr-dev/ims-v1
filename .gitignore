@@ -35,6 +35,9 @@ Thumbs.db
 *.suo
 *.user
 
+# Claude Code local tool settings
+.claude/
+
 # Coverage and test reports
 coverage/
 playwright-report/

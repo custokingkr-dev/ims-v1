@@ -34,7 +34,25 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
           <Field label="Payroll"><select value={form.payrollStatus} onChange={(e) => setForm({ ...form, payrollStatus: e.target.value })}><option>Pending</option><option>Processed</option></select></Field>
         </div>
       </div>
-      <div className="ck-card"><table className="ck-table"><thead><tr><th>Name</th><th>Designation</th><th>Department</th><th>Payroll</th><th>Monthly salary</th></tr></thead><tbody>{(workspace.staff || []).map((row: { id: string; name: string; designation: string; department: string; payrollStatus: string; monthlySalary: number }) => <tr key={row.id}><td>{row.name}</td><td>{row.designation}</td><td>{row.department}</td><td><span className={`ck-status ${row.payrollStatus === 'Processed' ? 'sg' : 'sam'}`}>{row.payrollStatus}</span></td><td>₹{formatMoney(row.monthlySalary)}</td></tr>)}</tbody></table></div>
+      <div className="ck-card"><table className="ck-table"><thead><tr><th>Name</th><th>Designation</th><th>Department</th><th>Payroll</th><th className="col-money">Monthly salary</th></tr></thead><tbody>{(workspace.staff || []).length === 0 ? (
+        <tr>
+          <td colSpan={5}>
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>👥</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>No staff members yet</div>
+              <div style={{ fontSize: 13, color: 'var(--ink3)' }}>Add your first staff member using the form above</div>
+            </div>
+          </td>
+        </tr>
+      ) : (workspace.staff || []).map((row: { id: string; name: string; designation: string; department: string; payrollStatus: string; monthlySalary: number }) => (
+        <tr key={row.id}>
+          <td>{row.name}</td>
+          <td>{row.designation}</td>
+          <td>{row.department}</td>
+          <td><span className={`ck-status ${row.payrollStatus === 'Processed' ? 'spaid' : 'spending'}`}>{row.payrollStatus}</span></td>
+          <td className="col-money">₹{formatMoney(row.monthlySalary)}</td>
+        </tr>
+      ))}</tbody></table></div>
     </ModuleShell>
   );
 }

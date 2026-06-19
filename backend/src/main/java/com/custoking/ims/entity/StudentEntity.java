@@ -6,7 +6,9 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Table(name = "students", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_student_admission_no", columnNames = "admission_no")
+        // Composite constraint: admission_no must be unique within each school.
+        // V126 migration replaced the old global uk_student_admission_no with this.
+        @UniqueConstraint(name = "uix_students_school_admission", columnNames = {"school_id", "admission_no"})
 })
 public class StudentEntity {
     @Id @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "student_seq")

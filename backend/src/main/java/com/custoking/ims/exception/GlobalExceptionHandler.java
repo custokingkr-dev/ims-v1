@@ -1,5 +1,6 @@
 package com.custoking.ims.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -45,6 +46,29 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(body);
     }
 
+    /**
+     * Handles constraint violations from {@code @Validated} + method-level
+     * annotations ({@code @Min}, {@code @Max}, {@code @NotBlank}, …) on
+     * controller parameters and service methods.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        List<String> violations = ex.getConstraintViolations().stream()
+                .map(v -> {
+                    String path = v.getPropertyPath().toString();
+                    // Strip method name prefix (e.g. "listStudents.page" → "page")
+                    int dot = path.lastIndexOf('.');
+                    String param = dot >= 0 ? path.substring(dot + 1) : path;
+                    return param + ": " + v.getMessage();
+                })
+                .sorted()
+                .collect(Collectors.toList());
+        Map<String, Object> body = errorBody(HttpStatus.BAD_REQUEST,
+                violations.isEmpty() ? "Request parameter validation failed" : violations.get(0));
+        body.put("errors", violations);
+        return ResponseEntity.badRequest().body(body);
+    }
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException ex) {
         return error(HttpStatus.BAD_REQUEST, "Missing required parameter: " + ex.getParameterName());
@@ -64,10 +88,15 @@ public class GlobalExceptionHandler {
 
     // ── 409 Conflict ─────────────────────────────────────────────────────────
 
+    /**
+     * Maps known DB constraint names to user-friendly messages.
+     * Never exposes raw SQL in the response — constraint details go to the log only.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        // Never expose raw SQL — return a generic conflict message
-        return error(HttpStatus.CONFLICT, "A record with conflicting data already exists");
+        log.debug("data-integrity-violation", ex);
+        String message = friendlyConstraintMessage(ex);
+        return error(HttpStatus.CONFLICT, message);
     }
 
     // ── 413 Payload Too Large ────────────────────────────────────────────────
@@ -113,5 +142,34 @@ public class GlobalExceptionHandler {
             body.put("requestId", requestId);
         }
         return body;
+    }
+
+    /**
+     * Translates known DB constraint names to user-friendly messages.
+     * Falls back to a generic conflict message — never leaks raw SQL.
+     */
+    static String friendlyConstraintMessage(DataIntegrityViolationException ex) {
+        String msg = ex.getMostSpecificCause().getMessage();
+        if (msg == null) return "A record with conflicting data already exists";
+        String lower = msg.toLowerCase();
+
+        // School-scoped admission number uniqueness (V126)
+        if (lower.contains("uix_students_school_admission")) {
+            return "Admission number already exists in this school";
+        }
+        // Legacy global admission constraint (pre-V126 environments)
+        if (lower.contains("uk_student_admission_no")) {
+            return "Admission number already exists";
+        }
+        if (lower.contains("uk_app_users_email") || lower.contains("app_users_email")) {
+            return "An account with this email address already exists";
+        }
+        if (lower.contains("schools_short_code") || lower.contains("uk_school_short_code")) {
+            return "A school with this short code already exists";
+        }
+        if (lower.contains("fee_assignments") && lower.contains("unique")) {
+            return "A fee assignment already exists for this student and academic year";
+        }
+        return "A record with conflicting data already exists";
     }
 }

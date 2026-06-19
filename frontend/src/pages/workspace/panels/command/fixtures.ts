@@ -1,0 +1,137 @@
+/**
+ * Typed mock fixtures for Command Center sections.
+ *
+ * These are used as fallbacks when the real backend endpoints are not yet live:
+ *   - TODO: GET /api/dashboard/suggestions  → SuggestedAction[]
+ *   - TODO: GET /api/notifications/broadcasts → Broadcast[]
+ *
+ * Remove the fallback import and wire `useApiData` directly once the endpoints ship.
+ */
+import type { SuggestedAction, Broadcast } from '../../../../types/workspace';
+
+export const MOCK_SUGGESTIONS: SuggestedAction[] = [
+  {
+    id: 'ff1',
+    module: 'firefighting',
+    urgency: 'critical',
+    confidence: 99,
+    code: 'FF-2025-014',
+    title: 'Approve quotation — Block-C extinguisher refit',
+    why: 'Quotation uploaded by Custoking 22 min ago. Annual safety audit lapses in 4 days; non-approval risks compliance flag on the tenant.',
+    impact: '₹84,000 · compliance critical',
+    state: 'QUOTATION_SENT → APPROVED',
+    cta: 'Approve quotation',
+  },
+  {
+    id: 'fee1',
+    module: 'fees',
+    urgency: 'high',
+    confidence: 92,
+    code: 'DEFAULTER-30D',
+    title: 'Push fee reminders to 214 defaulters (30+ days)',
+    why: 'Defaulter algorithm surfaces ₹38.4L crossing the 30-day band. This cohort historically settles 3.2× faster after a reminder before 6 PM.',
+    impact: '+₹29L recovery est.',
+    state: 'PENDING → reminder dispatched',
+    cta: 'Launch reminder run',
+  },
+  {
+    id: 'stu1',
+    module: 'students',
+    urgency: 'medium',
+    confidence: 87,
+    code: 'RECLASS-Q3',
+    title: 'Re-section 46 students on performance signal',
+    why: 'Attendance + assessment model detects 46 students sustaining >85th percentile across 3 cycles in under-loaded sections. Section change needs admin sign-off.',
+    impact: 'Section balance +; retention +6.1%',
+    state: 'student:update · admin',
+    cta: 'Review roster',
+  },
+  {
+    id: 'sup1',
+    module: 'supply',
+    urgency: 'high',
+    confidence: 95,
+    code: 'ORD-2025-338',
+    title: 'Approve 3 supply orders — lab consumables',
+    why: 'Consumption is running 1.4× forecast at 3 schools; reorder point breached. Orders sit in SUBMITTED awaiting zone-admin decision. Vendor lead time 7 days.',
+    impact: '₹2.1L · averts 12 lab cancellations',
+    state: 'SUBMITTED → APPROVED',
+    cta: 'Approve orders',
+  },
+  {
+    id: 'plan1',
+    module: 'students',
+    urgency: 'low',
+    confidence: 81,
+    code: 'PLAN-26-27',
+    title: 'Open 2 sections for Grade 9 · AY 2026-27',
+    why: 'Admission funnel + sibling-conversion model projects 64 net seats over configured section count. Hiring lead time 45 days favours acting now.',
+    impact: 'Capture ₹1.3Cr projected revenue',
+    state: 'planning · school admin',
+    cta: 'Model scenarios',
+  },
+];
+
+export const MOCK_BROADCASTS: Broadcast[] = [
+  {
+    id: 'bc1',
+    kind: 'event',
+    status: 'scheduled',
+    module: 'students',
+    title: 'Parent–Teacher Meeting · Grades 6–8',
+    when: 'Sat, 24 May · 9:00 AM',
+    whenShort: 'in 3 days',
+    audience: 'Parents · 842 recipients',
+    channels: ['SMS', 'WhatsApp', 'Email'],
+    note: 'Auto-reminder fires 24h prior. RSVP link included.',
+  },
+  {
+    id: 'bc2',
+    kind: 'notice',
+    status: 'sending',
+    module: 'fees',
+    title: 'Term-2 fee window now open',
+    when: 'Sending now',
+    whenShort: 'live',
+    audience: 'All parents · 2,392 recipients',
+    channels: ['SMS', 'WhatsApp'],
+    note: '412 of 2,392 delivered · 38% opened',
+    progress: 17,
+  },
+  {
+    id: 'bc3',
+    kind: 'event',
+    status: 'scheduled',
+    module: 'attendance',
+    title: 'Annual Sports Day',
+    when: 'Fri, 30 May · 8:00 AM',
+    whenShort: 'in 9 days',
+    audience: 'Whole school · 2,392 + staff',
+    channels: ['Push', 'Email'],
+    note: 'Holiday calendar updated. Transport routes adjusted.',
+  },
+  {
+    id: 'bc4',
+    kind: 'notice',
+    status: 'draft',
+    module: 'firefighting',
+    title: 'Fire drill — Block C, 11:30 AM',
+    when: 'Awaiting approval',
+    whenShort: 'draft',
+    audience: 'Staff + Grades 9–12 · 1,140',
+    channels: ['Push', 'SMS'],
+    note: 'Drafted by safety coordinator. Needs admin sign-off to schedule.',
+  },
+  {
+    id: 'bc5',
+    kind: 'event',
+    status: 'scheduled',
+    module: 'supply',
+    title: 'New uniform stock — collection drive',
+    when: 'Mon, 26 May · all day',
+    whenShort: 'in 5 days',
+    audience: 'Grades 1–5 parents · 638',
+    channels: ['WhatsApp', 'Email'],
+    note: 'Linked to fulfilled supply order ORD-2025-301.',
+  },
+];

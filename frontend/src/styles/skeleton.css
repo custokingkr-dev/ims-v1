@@ -1,0 +1,31 @@
+/* frontend/src/styles/skeleton.css */
+
+@keyframes ck-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.ck-skeleton {
+  background: linear-gradient(90deg, #ede9e1 25%, #f7f4ed 50%, #ede9e1 75%);
+  background-size: 800px 100%;
+  animation: ck-shimmer 1.4s ease-in-out infinite;
+  border-radius: var(--ck-radius-sm);
+}
+
+.ck-skeleton-text    { height: 14px; border-radius: var(--ck-radius-xs); margin-bottom: 6px; }
+.ck-skeleton-title   { height: 22px; width: 60%; border-radius: var(--ck-radius-sm); margin-bottom: 10px; }
+.ck-skeleton-badge   { height: 22px; width: 72px; border-radius: var(--ck-radius-pill); display: inline-block; }
+.ck-skeleton-avatar  { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+.ck-skeleton-avatar-lg { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; }
+.ck-skeleton-btn     { height: 36px; width: 100px; border-radius: var(--ck-radius-pill); }
+.ck-skeleton-card    { height: 96px; border-radius: var(--ck-radius-md); }
+.ck-skeleton-stat    { height: 100px; border-radius: var(--ck-radius-md); }
+
+.ck-skeleton-row     { display: flex; gap: 16px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--ck-border-subtle); }
+.ck-skeleton-row .ck-skeleton-text { margin: 0; flex: 1; }
+
+.ck-skeleton-stagger-1 { animation-delay: 0.05s; }
+.ck-skeleton-stagger-2 { animation-delay: 0.10s; }
+.ck-skeleton-stagger-3 { animation-delay: 0.15s; }
+.ck-skeleton-stagger-4 { animation-delay: 0.20s; }
+.ck-skeleton-stagger-5 { animation-delay: 0.25s; }

@@ -58,6 +58,11 @@ public class LoginRateLimiter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /** Clears all rate-limit windows. For test isolation and operational reset. */
+    public void reset() {
+        windows.clear();
+    }
+
     private String resolveClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {

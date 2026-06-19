@@ -30,8 +30,9 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
   useEffect(() => {
     if (!isSuperAdmin) return;
     setSaFfLoading(true);
-    api.get<FirefightingRequest[]>('/ff/requests')
-      .then((res) => setSaFfRequests(Array.isArray(res.data) ? res.data : []))
+    // size=200: pipeline board needs all cards visible at once; PageResponse envelope → extract content
+    api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } })
+      .then((res) => setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []))
       .catch(() => setSaFfRequests([]))
       .finally(() => setSaFfLoading(false));
   }, [isSuperAdmin]);
@@ -52,7 +53,28 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
   };
 
   const allReqs = isSuperAdmin ? saFfRequests : adminRequests;
-  if (isSuperAdmin && saFfLoading) return <div className="ck-card" style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>Loading firefighting requests…</div>;
+  if (isSuperAdmin && saFfLoading) return (
+    <div style={{ padding: '0 0 16px' }}>
+      <div className="ck-stats ck-s4" style={{ marginBottom: 20 }}>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="ck-card" style={{ padding: 20 }}>
+            <div className="ck-skeleton ck-skeleton-text" style={{ width: '50%', marginBottom: 8 }} />
+            <div className="ck-skeleton" style={{ height: 32, width: '60%', borderRadius: 6, marginBottom: 8 }} />
+            <div className="ck-skeleton ck-skeleton-text" style={{ width: '40%' }} />
+          </div>
+        ))}
+      </div>
+      <div className="ck-skeleton ck-skeleton-title" style={{ width: 200, marginBottom: 16 }} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+        {[1,2,3,4].map(i => (
+          <div key={i} className="ck-card" style={{ padding: 16, minHeight: 160 }}>
+            <div className="ck-skeleton ck-skeleton-text" style={{ width: '70%', marginBottom: 12 }} />
+            {[1,2].map(j => <div key={j} className="ck-skeleton ck-skeleton-text" style={{ marginBottom: 8 }} />)}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const totalReqs = allReqs.length;
   const awaitingCount = allReqs.filter((r) => ['AWAITING_BURSAR', 'AWAITING_PRINCIPAL'].includes(r.status)).length;
@@ -67,7 +89,7 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
 
   return (
     <>
-      <ModuleShell title="🔥 Firefighting requests" subtitle="Non-catalog procurement — transparent 3-stage approval workflow" actions={!isSuperAdmin ? <button className="ck-btn ck-btn-or" onClick={() => setPanel('ff-new')}>+ New request</button> : undefined}>
+      <ModuleShell title="Urgent Procurement — Request Dashboard" subtitle="Non-catalog urgent procurement — transparent 3-stage approval workflow" actions={!isSuperAdmin ? <button className="ck-btn ck-btn-or" onClick={() => setPanel('ff-new')}>+ New Urgent Request</button> : undefined}>
         <div className="ck-stats ck-s4">
           <Stat label="Total requests" value={totalReqs} sub="This academic year" pill={`${awaitingCount > 0 ? awaitingCount + ' active' : 'None active'}`} tone="orange" onClick={() => {}} />
           <Stat label="Awaiting approval" value={awaitingCount} sub="Quotes submitted" pill={awaitingCount > 0 ? 'Action needed' : 'All clear'} tone={awaitingCount > 0 ? 'orange' : 'green'} onClick={() => setPanel('ff-approvals')} />
@@ -98,8 +120,9 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
                       <div className="pc-id">{r.code}</div>
                       <div className="pc-title">{r.title}</div>
                       <div className="pc-meta">{r.category}{r.urgency === 'HIGH' ? ' · Urgent' : ''}</div>
+                      {r.urgency === 'HIGH' && <div className="ck-urgency-strip high" style={{ marginTop: 6 }}>High urgency</div>}
                       {r.status === 'DRAFT' && <div style={{ fontSize: 10, color: 'var(--ink3)', marginTop: 4 }}>Click to add quotations</div>}
-                      {r.status === 'CUSTOKING_APPROVED' && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--g)', marginTop: 4 }}>✦ Custoking fulfils approved</div>}
+                      {r.status === 'CUSTOKING_APPROVED' && <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--g)', marginTop: 4 }}>✦ Approved for Fulfilment</div>}
                       {r.amount ? <div className="pc-amount">₹{formatMoney(Number(r.amount))}</div> : null}
                     </div>
                   ))}
@@ -111,7 +134,7 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
         </div>
         <div className="ck-alert ck-alert-g" style={{ marginTop: 18 }}>
           <span>✦</span>
-          <div><strong>Custoking insight:</strong> Raise a firefighting request for any non-catalog item. Add 2–3 vendor quotations, get bursar and principal approval, and Custoking fulfils with a single GST invoice.</div>
+          <div><strong>Custoking insight:</strong> Raise an urgent procurement request for any non-catalog item. Add 2–3 vendor quotations, get Finance Review and Admin Approval, and Custoking fulfils with a single GST invoice.</div>
         </div>
       </ModuleShell>
 
@@ -127,19 +150,34 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
             </div>
             <div className="ck-modal-body">
               {ffTimelineLoading ? (
-                <div style={{ textAlign: 'center', color: 'var(--ink3)', padding: 20 }}>Loading timeline…</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {ffTimeline.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: i < ffTimeline.length - 1 ? 20 : 0, position: 'relative' }}>
-                      {i < ffTimeline.length - 1 && <div style={{ position: 'absolute', left: 10, top: 22, width: 2, height: 'calc(100% - 4px)', background: item.state === 'done' ? 'var(--g)' : 'var(--border2)', zIndex: 0 }} />}
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: item.state === 'done' ? 'var(--g)' : item.state === 'active' ? 'var(--b)' : 'var(--border2)', border: item.state === 'active' ? '2px solid var(--b)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: item.state === 'pending' ? 'var(--ink3)' : '#fff', fontWeight: 700, zIndex: 1 }}>
-                        {item.state === 'done' ? '✓' : item.state === 'active' ? '•' : '○'}
+                <div className="ck-timeline">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="ck-timeline-item">
+                      <div className="ck-timeline-left">
+                        <div className="ck-timeline-dot" style={{ background: 'var(--border2)' }} />
+                        {i < 3 && <div className="ck-timeline-line" />}
                       </div>
-                      <div style={{ flex: 1, paddingTop: 2 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 600, color: item.state === 'pending' ? 'var(--ink3)' : 'var(--ink)' }}>{item.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{item.meta}</div>
-                        {item.note && <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 5, background: 'var(--bg)', padding: '5px 10px', borderRadius: 6, borderLeft: '3px solid var(--border2)' }}>{item.note}</div>}
+                      <div className="ck-timeline-body">
+                        <div className="ck-skeleton ck-skeleton-text" style={{ width: '60%', marginBottom: 6 }} />
+                        <div className="ck-skeleton ck-skeleton-text" style={{ width: '40%' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="ck-timeline">
+                  {ffTimeline.map((item, i) => (
+                    <div key={i} className="ck-timeline-item">
+                      <div className="ck-timeline-left">
+                        <div className={`ck-timeline-dot${item.state === 'done' ? ' done' : item.state === 'active' ? ' active' : ''}`}>
+                          {item.state === 'done' ? '✓' : item.state === 'active' ? '•' : '○'}
+                        </div>
+                        {i < ffTimeline.length - 1 && <div className={`ck-timeline-line${item.state === 'done' ? ' done' : ''}`} />}
+                      </div>
+                      <div className="ck-timeline-body">
+                        <div className="ck-timeline-title">{item.title}</div>
+                        <div className="ck-timeline-meta">{item.meta}</div>
+                        {item.note && <div className="ck-timeline-note">{item.note}</div>}
                       </div>
                     </div>
                   ))}

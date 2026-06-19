@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../../services/api';
+import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Info } from '../ui';
 import { formatAddress, initials, attendanceNumber } from '../utils';
 import type { PanelKey } from '../config';
@@ -12,20 +14,23 @@ interface Props {
 
 export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const { user } = useAuth();
-  const schoolScopedParams = user?.role !== 'SUPERADMIN' && user?.branchId ? { schoolId: user.branchId } : undefined;
+  const { can } = usePermissions();
+  const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
-  const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
+  const [studentsPage, setStudentsPage] = useState(0);
+  const PAGE_SIZE = 50;
+  const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentDetail, setStudentDetail] = useState<any | null>(null);
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [studentModalLoading, setStudentModalLoading] = useState(false);
   const [photoFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const loadStudents = async (filters = studentFilters) => {
+  const loadStudents = async (filters = studentFilters, page = studentsPage) => {
     try {
       setStudentsLoading(true);
-      const params: Record<string, string> = {};
+      const params: Record<string, any> = { page, size: PAGE_SIZE };
       if (filters.className !== 'All') params.class = filters.className;
       if (filters.sectionName !== 'All') params.section = filters.sectionName;
       if (filters.feeStatus !== 'All') params.feeStatus = filters.feeStatus;
@@ -36,10 +41,22 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   };
 
+  /** When filters change, reset to page 0 and reload. */
+  const applyFilters = (filters: typeof studentFilters) => {
+    setStudentFilters(filters);
+    setStudentsPage(0);
+    loadStudents(filters, 0);
+  };
+
+  const handlePageChange = (page: number) => {
+    setStudentsPage(page);
+    loadStudents(studentFilters, page);
+  };
+
   useEffect(() => {
-    loadStudents(studentFilters);
+    loadStudents(studentFilters, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentFilters]);
+  }, []);
 
   const openStudentModal = async (student: any) => {
     try {
@@ -58,6 +75,16 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setStudentModalOpen(false);
     setPanel('addstudent');
   };
+
+  function feeStatusClass(status: string): string {
+    switch ((status ?? '').toLowerCase()) {
+      case 'paid':    return 'sg spaid';
+      case 'overdue': return 'sr soverdue';
+      case 'partial': return 'sor spartial';
+      case 'pending': return 'sam spending';
+      default:        return 'sgr sneutral';
+    }
+  }
 
   return (
     <>
@@ -78,34 +105,45 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           </div>
         ) : null}
 
-        <div className="ck-form-card" style={{ marginBottom: 16 }}>
-          <div className="ck-form-body">
-            <div className="ck-form-grid ck-fg-4">
-              <div className="ck-field">
-                <label>Class</label>
-                <select value={studentFilters.className} onChange={(e) => setStudentFilters({ ...studentFilters, className: e.target.value })}>
-                  <option>All</option>
-                  {(studentsView.filters?.classes || []).map((v: string) => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-              <div className="ck-field">
-                <label>Section</label>
-                <select value={studentFilters.sectionName} onChange={(e) => setStudentFilters({ ...studentFilters, sectionName: e.target.value })}>
-                  <option>All</option>
-                  {(studentsView.filters?.sections || []).map((v: string) => <option key={v} value={v}>{v}</option>)}
-                </select>
-              </div>
-              <div className="ck-field">
-                <label>Fee Status</label>
-                <select value={studentFilters.feeStatus} onChange={(e) => setStudentFilters({ ...studentFilters, feeStatus: e.target.value })}>
-                  <option>All</option>
-                  <option>Paid</option>
-                  <option>Overdue</option>
-                  <option>Pending</option>
-                  <option>Partial</option>
-                </select>
-              </div>
-            </div>
+        {/* Change 1: Improved filter bar */}
+        <div className="ck-card-h-wrap" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: '#fbfaf8' }}>
+          <div className="ck-card-inline-filters">
+            <select
+              value={studentFilters.className}
+              onChange={e => applyFilters({ ...studentFilters, className: e.target.value, sectionName: 'All' })}
+              style={{ minWidth: 120 }}
+              aria-label="Filter by class"
+            >
+              <option value="All">All classes</option>
+              {studentsView.filters?.classes?.map((c: string) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              value={studentFilters.sectionName}
+              onChange={e => applyFilters({ ...studentFilters, sectionName: e.target.value })}
+              style={{ minWidth: 120 }}
+              aria-label="Filter by section"
+            >
+              <option value="All">All sections</option>
+              {studentsView.filters?.sections?.map((s: string) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <select
+              value={studentFilters.feeStatus}
+              onChange={e => applyFilters({ ...studentFilters, feeStatus: e.target.value })}
+              style={{ minWidth: 140 }}
+              aria-label="Filter by fee status"
+            >
+              <option value="All">All fee statuses</option>
+              {(studentsView.filters?.feeStatuses ?? ['Paid', 'Overdue', 'Pending', 'Partial']).map((s: string) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 'auto', flexShrink: 0 }}>
+            {studentsLoading ? '…' : `${studentsView.filteredCount ?? studentsView.items?.length ?? 0} students`}
           </div>
         </div>
 
@@ -122,13 +160,28 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 <th />
               </tr>
             </thead>
-            <tbody>
-              {studentsLoading ? (
-                <tr><td colSpan={7}><div className="ts">Loading students…</div></td></tr>
-              ) : (studentsView.items || []).length === 0 ? (
-                <tr><td colSpan={7}><div className="ts">No students match the selected filters.</div></td></tr>
-              ) : (
-                (studentsView.items || []).map((student: any) => {
+            {/* Change 2: Skeleton loading rows */}
+            {studentsLoading && (
+              <tbody>
+                {[0,1,2,3,4].map(i => (
+                  <tr key={i}>
+                    <td colSpan={99} style={{ padding: 0, border: 'none' }}>
+                      <div className="ck-skeleton-row" style={{ animationDelay: `${i * 0.06}s` }}>
+                        <div className="ck-skeleton ck-skeleton-avatar" />
+                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                          <div className="ck-skeleton ck-skeleton-text" style={{ width: '45%' }} />
+                          <div className="ck-skeleton ck-skeleton-text" style={{ width: '30%', height: 11 }} />
+                        </div>
+                        <div className="ck-skeleton ck-skeleton-badge" />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            )}
+            {!studentsLoading && (
+              <tbody>
+                {(studentsView.items || []).map((student: any) => {
                   const attendanceValue = attendanceNumber(student.attendance);
                   return (
                     <tr key={student.id}>
@@ -153,9 +206,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                         <div className="ts">Contact {student.fatherContact || '—'}</div>
                       </td>
                       <td>{student.fatherContact || student.parentPhone || '—'}</td>
+                      {/* Change 4: Improved fee status badge */}
                       <td>
-                        <span className={`ck-status ${student.feeStatus === 'Paid' ? 'sg' : student.feeStatus === 'Overdue' ? 'sr' : 'sam'}`}>
-                          {student.feeStatus}
+                        <span className={`ck-status ${feeStatusClass(student.feeStatus ?? '')}`}>
+                          {student.feeStatus ?? 'Unknown'}
                         </span>
                       </td>
                       <td>
@@ -171,11 +225,39 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
+                })}
+              </tbody>
+            )}
           </table>
+
+          {/* Change 3: Designed empty state */}
+          {!studentsLoading && (studentsView.items?.length ?? 0) === 0 && (
+            <div style={{ padding: '48px 24px', textAlign: 'center' }}>
+              <div style={{ fontSize: 38, marginBottom: 10, lineHeight: 1 }}>🎓</div>
+              <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
+                {studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
+                  ? 'No students match these filters'
+                  : 'No students enrolled yet'}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 14, maxWidth: 320, margin: '0 auto 14px' }}>
+                {studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
+                  ? 'Try adjusting the class, section, or fee status filters above.'
+                  : 'Add your first student to get started.'}
+              </div>
+              {can('student:write') && studentFilters.className === 'All' && (
+                <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>
+                  Add first student
+                </button>
+              )}
+            </div>
+          )}
         </div>
+
+        <Paginator
+          page={studentsPage}
+          totalPages={studentsView.totalPages ?? 1}
+          onPageChange={handlePageChange}
+        />
       </ModuleShell>
 
       {studentModalOpen && (
@@ -227,8 +309,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                           <div className="ck-progress-fill" style={{ width: `${attendanceNumber(studentDetail.attendance)}%` }} />
                         </div>
                       </div>
-                      <span className={`ck-status ${studentDetail.feeStatus === 'Paid' ? 'sg' : studentDetail.feeStatus === 'Overdue' ? 'sr' : 'sam'}`}>
-                        {studentDetail.feeStatus}
+                      <span className={`ck-status ${feeStatusClass(studentDetail.feeStatus ?? '')}`}>
+                        {studentDetail.feeStatus ?? 'Unknown'}
                       </span>
                     </div>
                   </div>

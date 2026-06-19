@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.MDC;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -32,22 +33,32 @@ public class TenantResolverFilter extends OncePerRequestFilter {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.isAuthenticated()
                     && auth.getPrincipal() instanceof AppUserDetails details) {
-                String role = details.getUser().getRole();
 
                 // Build full tenant scope for all authenticated users
                 TenantScope scope = tenantScopeService.buildScope(details.getUser());
                 TenantContext.setScope(scope);
 
-                // Set numeric branchId for school-level users (not SUPERADMIN or ZONE_ADMIN)
-                if (!"SUPERADMIN".equals(role) && !"ZONE_ADMIN".equals(role)) {
-                    Long branchId = details.getUser().getBranchId();
-                    if (branchId != null) {
-                        TenantContext.set(branchId);
+                // Enrich MDC for structured logging (picked up by logback-spring.xml prod profile)
+                MDC.put("userId", String.valueOf(details.getUser().getId()));
+                MDC.put("userEmail", details.getUser().getEmail());
+                if (scope.schoolId() != null) {
+                    MDC.put("schoolId", String.valueOf(scope.schoolId()));
+                }
+
+                // Platform admins operate across all schools — no school pinning.
+                // School-scoped users get their RBAC-derived primary school set for module entitlement checks.
+                if (!scope.isSuperadmin()) {
+                    Long schoolId = scope.schoolId();
+                    if (schoolId != null) {
+                        TenantContext.set(schoolId);
                     }
                 }
             }
             filterChain.doFilter(request, response);
         } finally {
+            MDC.remove("userId");
+            MDC.remove("userEmail");
+            MDC.remove("schoolId");
             TenantContext.clear();
         }
     }

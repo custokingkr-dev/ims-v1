@@ -7,7 +7,7 @@ import com.custoking.ims.entity.AcademicYearEntity;
 import com.custoking.ims.entity.CatalogOrderEntity;
 import com.custoking.ims.entity.SchoolEntity;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
+import com.custoking.ims.model.PageResponse;
 import com.custoking.ims.repo.AcademicYearRepository;
 import com.custoking.ims.repo.AnnualPlanItemRepository;
 import com.custoking.ims.repo.CatalogOrderRepository;
@@ -15,6 +15,8 @@ import com.custoking.ims.repo.SchoolRepository;
 import com.custoking.ims.repo.StudentRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +56,7 @@ public class SupplyOrderService {
 
     // ── Catalog categories ──────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> catalogCategories() {
         return List.of(
                 row("id", "UNIFORMS", "emoji", "👕", "label", "Uniforms", "orderType", "Recurring", "description", "Full uniform sets by size and house"),
@@ -116,6 +119,10 @@ public class SupplyOrderService {
         assertSchoolOwnership("order",
                 entity.getSchool() != null ? entity.getSchool().getId() : null,
                 TenantContext.get());
+        if (!"DRAFT".equalsIgnoreCase(entity.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Order can only be placed from DRAFT status (current: " + entity.getStatus() + ")");
+        }
         String category = String.valueOf(entity.getCategory()).toUpperCase(Locale.ROOT);
         if (List.of("UNIFORMS", "NOTEBOOKS").contains(category)) {
             entity.setStatus("DESIGN_APPROVAL");
@@ -151,6 +158,7 @@ public class SupplyOrderService {
 
     // ── List pending superadmin approval ────────────────────────
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> listOrdersPendingApproval(AuthUser actor) {
         return catalogOrderRepository.findAll().stream()
                 .filter(e -> ("DESIGN_APPROVED_PROCESSING".equalsIgnoreCase(e.getStatus())
@@ -239,25 +247,36 @@ public class SupplyOrderService {
 
     // ── List orders ─────────────────────────────────────────────
 
-    public List<Map<String, Object>> listCatalogOrders(AuthUser actor) {
-        return listCatalogOrders(actor, null);
+    @Transactional(readOnly = true)
+    public PageResponse<Map<String, Object>> listCatalogOrders(AuthUser actor) {
+        return listCatalogOrders(actor, null, 0, 20);
     }
 
-    public List<Map<String, Object>> listCatalogOrders(AuthUser actor, Long requestedSchoolId) {
+    @Transactional(readOnly = true)
+    public PageResponse<Map<String, Object>> listCatalogOrders(AuthUser actor, Long requestedSchoolId) {
+        return listCatalogOrders(actor, requestedSchoolId, 0, 20);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<Map<String, Object>> listCatalogOrders(AuthUser actor, Long requestedSchoolId,
+                                                                int page, int size) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
-        return catalogOrderRepository.findBySchool_Id(schoolId).stream()
-                .sorted(Comparator.comparing(CatalogOrderEntity::getCreatedAt,
-                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
-                .map(this::catalogOrderListRow)
-                .toList();
+        int clampedSize = Math.max(1, Math.min(size, 200));
+        PageRequest pageable = PageRequest.of(Math.max(0, page), clampedSize);
+        Page<CatalogOrderEntity> dbPage = (schoolId == null)
+                ? catalogOrderRepository.findAllByOrderByCreatedAtDesc(pageable)
+                : catalogOrderRepository.findBySchool_IdOrderByCreatedAtDesc(schoolId, pageable);
+        return PageResponse.of(dbPage.map(this::catalogOrderListRow));
     }
 
     // ── Order detail ─────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> catalogOrderDetail(String orderId, AuthUser actor) {
         CatalogOrderEntity entity = catalogOrderRepository.findById(orderId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-        if (actor.role() != Role.SUPERADMIN) {
+        var scope = TenantContext.getScope();
+        if (scope == null || !scope.isSuperadmin()) {
             assertSchoolOwnership("order", entity.getSchool().getId(), TenantContext.get());
         }
         return catalogOrderDetailRow(entity);
@@ -265,10 +284,12 @@ public class SupplyOrderService {
 
     // ── Order stats ──────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> catalogOrderStats(AuthUser actor) {
         return catalogOrderStats(actor, null);
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> catalogOrderStats(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         List<CatalogOrderEntity> orders = catalogOrderRepository.findBySchool_Id(schoolId);
@@ -363,6 +384,7 @@ public class SupplyOrderService {
 
     // ── Annual plan ─────────────────────────────────────────────────
 
+    @Transactional(readOnly = true)
     public Map<String, Object> listAnnualPlan(AuthUser actor, Long requestedSchoolId) {
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
         return annualPlanPayload(schoolId);

@@ -1,0 +1,25 @@
+# Gitleaks configuration for Custoking IMS.
+# Extends the built-in ruleset and suppresses false positives on documented
+# placeholder/example files. Real secrets live only in gitignored .env files
+# (local) or GCP Secret Manager / Cloud Run env vars (deployed) — never here.
+# Docs: https://github.com/gitleaks/gitleaks#configuration
+title = "Custoking IMS gitleaks config"
+
+[extend]
+# Keep all of gitleaks' default rules; only add the allowlist below.
+useDefault = true
+
+[allowlist]
+description = "Allow placeholder values in committed example env files."
+# Path regexes are matched against each file's path. Any *.env.example is a
+# template containing documented placeholders (e.g. APP_AADHAR_SECRET=replace_with_16plus),
+# not real credentials, so it should never be scanned for secrets.
+paths = [
+  '''(^|/)\.env\.example$''',
+]
+# Belt-and-suspenders: never treat obvious placeholder tokens as secrets,
+# even if they appear outside the example files above.
+regexes = [
+  '''replace_with[A-Za-z0-9_]*''',
+  '''change_me[A-Za-z0-9_]*''',
+]

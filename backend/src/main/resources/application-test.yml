@@ -1,7 +1,6 @@
 spring:
   datasource:
-    # Local dev: connect as the superuser until ims_app is provisioned via V4 migration.
-    # Override with SPRING_DATASOURCE_USERNAME=ims_app once V4 has been applied.
+    # Connect as superuser for tests — ims_app least-privilege role is for production only.
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
   jpa:
     show-sql: false

@@ -16,6 +16,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -24,14 +26,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Verifies that access-control annotations on controllers work as expected.
  * Uses Spring Security's test support to inject users directly — no real
- * JWT tokens needed.  Assertions against 403/401 are answered by the security
- * filter chain before any service code runs, so the DB content is irrelevant.
+ * JWT tokens needed.
  *
- * Key assertions:
- * - OPERATIONS user gets 403 on endpoints that require higher permissions.
- * - OPERATIONS user gets non-403 on endpoints they are allowed to access.
- * - SUPERADMIN can access superadmin-only endpoints.
- * - Unauthenticated users get 401 on all protected endpoints.
+ * Each mock principal is constructed with the in-memory permission set that
+ * RbacService loads from the DB at auth time. This lets the @PreAuthorize
+ * SpEL expressions evaluate without a live DB query during the test.
+ *
+ * Permission sets mirror the V112/V118 seed data exactly.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
@@ -77,7 +78,7 @@ class ControllerSecurityTest {
         mockMvc.perform(get(url)).andExpect(status().isUnauthorized());
     }
 
-    // ── OPERATIONS can access attendance (ATTENDANCE_READ) ────────────────────
+    // ── OPERATIONS can access attendance (attendance:read) ────────────────────
 
     @ParameterizedTest
     @ValueSource(strings = {
@@ -85,12 +86,11 @@ class ControllerSecurityTest {
         "/api/v1/attendance/section-info?date=2026-01-01&classId=1&sectionId=1A",
     })
     void operations_canRead_attendance(String url) throws Exception {
-        // Security must pass OPERATIONS through; service may 500 on empty DB — that's OK.
         mockMvc.perform(get(url).with(user(operationsUser)))
                .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
-    // ── OPERATIONS can read firefighting ──────────────────────────────────────
+    // ── OPERATIONS can read firefighting (firefighting:read) ──────────────────
 
     @Test
     void operations_canRead_firefighting() throws Exception {
@@ -98,7 +98,7 @@ class ControllerSecurityTest {
                .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
-    // ── OPERATIONS can read supply orders ────────────────────────────────────
+    // ── OPERATIONS can read supply orders (order:read) ────────────────────────
 
     @Test
     void operations_canRead_orders() throws Exception {
@@ -106,7 +106,7 @@ class ControllerSecurityTest {
                .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
-    // ── OPERATIONS cannot access fee structure mutating endpoints ─────────────
+    // ── OPERATIONS cannot write fee structure (no fee_structure:manage) ───────
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/fee-structure/item", "/api/v1/fee-structure/band"})
@@ -118,7 +118,7 @@ class ControllerSecurityTest {
                .andExpect(status().isForbidden());
     }
 
-    // ── OPERATIONS cannot collect fees / record payments ─────────────────────
+    // ── OPERATIONS cannot collect fees / create payments ─────────────────────
 
     @ParameterizedTest
     @ValueSource(strings = {"/api/v1/fee-assignments", "/api/v1/payments"})
@@ -130,7 +130,7 @@ class ControllerSecurityTest {
                .andExpect(status().isForbidden());
     }
 
-    // ── OPERATIONS cannot manage users ────────────────────────────────────────
+    // ── OPERATIONS cannot manage users (no user:manage) ───────────────────────
 
     @Test
     void operations_cannotAccess_userManagement() throws Exception {
@@ -138,7 +138,7 @@ class ControllerSecurityTest {
                .andExpect(status().isForbidden());
     }
 
-    // ── OPERATIONS cannot access schools endpoint ─────────────────────────────
+    // ── OPERATIONS cannot access schools (no school:read) ────────────────────
 
     @Test
     void operations_cannotAccess_schools() throws Exception {
@@ -146,7 +146,7 @@ class ControllerSecurityTest {
                .andExpect(status().isForbidden());
     }
 
-    // ── ACCOUNTANT cannot approve orders ─────────────────────────────────────
+    // ── ACCOUNTANT cannot approve supply orders (no order:approve) ────────────
 
     @Test
     void accountant_cannotApprove_orders() throws Exception {
@@ -155,17 +155,16 @@ class ControllerSecurityTest {
                .andExpect(status().isForbidden());
     }
 
-    // ── Only SUPERADMIN can approve orders ───────────────────────────────────
+    // ── SUPERADMIN can approve orders (order:approve) ────────────────────────
 
     @Test
     void superadmin_canApprove_orders() throws Exception {
-        // Service layer will 404 for id=999999, but security must allow it through.
         mockMvc.perform(post("/api/v1/approvals/999999/approve")
                 .with(user(superadminUser)))
                .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
-    // ── ADMIN cannot fulfill firefighting (SUPERADMIN only) ──────────────────
+    // ── ADMIN cannot fulfill firefighting (no firefighting:fulfill) ───────────
 
     @Test
     void admin_cannotFulfill_firefighting() throws Exception {
@@ -174,7 +173,7 @@ class ControllerSecurityTest {
                .andExpect(status().isForbidden());
     }
 
-    // ── ADMIN can approve firefighting requests ───────────────────────────────
+    // ── ADMIN can approve firefighting (firefighting:approve) ────────────────
 
     @Test
     void admin_canApprove_firefighting() throws Exception {
@@ -185,7 +184,7 @@ class ControllerSecurityTest {
                .andExpect(result -> assertNotEquals(403, result.getResponse().getStatus()));
     }
 
-    // ── SUPERADMIN can access all school management ───────────────────────────
+    // ── SUPERADMIN can list schools (school:read) ─────────────────────────────
 
     @Test
     void superadmin_canAccess_schoolManagement() throws Exception {
@@ -203,6 +202,81 @@ class ControllerSecurityTest {
         entity.setRole(role);
         entity.setPasswordHash("$2a$12$fake");
         entity.setBranchId(branchId);
-        return new AppUserDetails(entity);
+        return new AppUserDetails(entity, permissionsForRole(role));
+    }
+
+    /**
+     * In-memory permission sets that mirror the V112/V118 seed data.
+     * Keep in sync with Flyway migrations — do not add permissions here
+     * that are not in the DB seed.
+     */
+    private static Set<String> permissionsForRole(String role) {
+        return switch (role) {
+            case "SUPERADMIN" -> Set.of(
+                    "platform:admin", "workspace:access",
+                    "student:read", "student:create", "student:update", "student:delete", "student:import",
+                    "fee_structure:read", "fee_structure:manage", "fee:collect", "fee:read", "fee:reverse", "fee:assign",
+                    "attendance:read", "attendance:manage",
+                    "order:read", "order:create", "order:update", "order:approve", "order:fulfill", "order:reject",
+                    "firefighting:read", "firefighting:create", "firefighting:update",
+                    "firefighting:approve", "firefighting:fulfill",
+                    "payment:create", "payment:read", "payment:reconcile",
+                    "invoice:create", "invoice:read", "invoice:cancel",
+                    "staff:read", "staff:manage",
+                    "audit:read", "user:manage",
+                    "school:read", "school:create", "school:update", "school:admin_manage", "school:suspend",
+                    "zone:read", "zone:manage", "zone:assign_school",
+                    "plan:read", "plan:manage", "timetable:read", "timetable:manage",
+                    "workflow:read", "workflow:act",
+                    "customer:read", "customer:create", "report:read",
+                    "notification:read", "notification:send",
+                    "role:read", "role:create", "role:update", "permission:read"
+            );
+            case "ADMIN" -> Set.of(
+                    "student:read", "student:create", "student:update", "student:import",
+                    "fee:read", "fee:collect", "fee_structure:read", "fee_structure:manage", "fee:reverse", "fee:assign",
+                    "attendance:read", "attendance:manage",
+                    "order:read", "order:create", "order:update", "order:reject",
+                    "firefighting:read", "firefighting:create", "firefighting:update", "firefighting:approve",
+                    "payment:read", "payment:create",
+                    "invoice:read", "invoice:cancel",
+                    "staff:read", "staff:manage", "audit:read",
+                    "plan:read", "plan:manage", "timetable:read", "timetable:manage",
+                    "workflow:read", "workflow:act",
+                    "customer:read", "customer:create", "report:read",
+                    "notification:read", "notification:send"
+            );
+            case "OPERATIONS" -> Set.of(
+                    "student:read", "student:create", "student:update", "student:import",
+                    "attendance:read", "attendance:manage",
+                    "order:read", "order:create",
+                    "firefighting:read", "firefighting:create",
+                    "staff:read", "plan:read", "timetable:read",
+                    "workflow:read",
+                    "customer:read"
+            );
+            case "ACCOUNTANT" -> Set.of(
+                    "student:read",
+                    "fee:read", "fee:collect", "fee_structure:read", "fee_structure:manage",
+                    "order:read", "firefighting:read",
+                    "payment:read", "payment:create", "payment:reconcile",
+                    "invoice:read", "invoice:create", "invoice:cancel",
+                    "audit:read", "workflow:read", "workflow:act",
+                    "customer:read", "customer:create", "report:read",
+                    "notification:read"
+            );
+            case "TEACHER" -> Set.of(
+                    "student:read", "student:update",
+                    "attendance:read", "attendance:manage",
+                    "timetable:read", "timetable:manage", "staff:read"
+            );
+            case "VIEWER" -> Set.of(
+                    "student:read", "fee:read", "fee_structure:read",
+                    "attendance:read", "order:read", "firefighting:read",
+                    "payment:read", "invoice:read", "staff:read",
+                    "plan:read", "timetable:read", "workflow:read", "report:read"
+            );
+            default -> Set.of();
+        };
     }
 }

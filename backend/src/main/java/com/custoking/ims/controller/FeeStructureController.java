@@ -1,9 +1,10 @@
 package com.custoking.ims.controller;
 
 import com.custoking.ims.common.domain.PermissionConstants;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
 import com.custoking.ims.service.FeeService;
+import com.custoking.ims.service.ModuleEntitlementService;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,10 +22,13 @@ import java.util.Map;
 public class FeeStructureController {
     private final UserContextService userContext;
     private final FeeService feeService;
+    private final ModuleEntitlementService moduleService;
 
-    public FeeStructureController(UserContextService userContext, FeeService feeService) {
+    public FeeStructureController(UserContextService userContext, FeeService feeService,
+                                  ModuleEntitlementService moduleService) {
         this.userContext = userContext;
         this.feeService = feeService;
+        this.moduleService = moduleService;
     }
 
     @GetMapping
@@ -39,7 +43,7 @@ public class FeeStructureController {
     public Map<String, Object> addItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                        @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.addFeeStructureItem(request, actor);
     }
 
@@ -49,7 +53,7 @@ public class FeeStructureController {
                                           @PathVariable String id,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.updateFeeStructureItem(id, request, actor);
     }
 
@@ -58,7 +62,7 @@ public class FeeStructureController {
     public Map<String, Object> deleteItem(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String id) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.deleteFeeStructureItem(id, actor);
     }
 
@@ -67,7 +71,7 @@ public class FeeStructureController {
     public Map<String, Object> createBand(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.createFeeStructureBand(request, actor);
     }
 
@@ -77,7 +81,7 @@ public class FeeStructureController {
                                           @PathVariable String id,
                                           @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.updateFeeStructureBand(id, request, actor);
     }
 
@@ -86,7 +90,7 @@ public class FeeStructureController {
     public Map<String, Object> deleteBand(@RequestHeader(value = "Authorization", required = false) String authorization,
                                           @PathVariable String id) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.deleteFeeStructureBand(id, actor);
     }
 
@@ -96,7 +100,7 @@ public class FeeStructureController {
                                          @PathVariable String id,
                                          @RequestBody Map<String, Object> request) {
         AuthUser actor = userContext.requireUser(authorization);
-        forbidSuperAdmin(actor);
+        requireSchoolModule(ModuleEntitlementService.Module.FEES);
         return feeService.patchFeeStructureBand(id, request, actor);
     }
 
@@ -121,10 +125,11 @@ public class FeeStructureController {
                 .body(pdf);
     }
 
-    private void forbidSuperAdmin(AuthUser actor) {
-        if (actor.role() == Role.SUPERADMIN) {
+    private void requireSchoolModule(ModuleEntitlementService.Module module) {
+        if (userContext.isPlatformAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "SUPERADMIN cannot perform school ERP operations. Use a school admin account.");
+                    "Platform admins cannot perform school ERP operations. Use a school admin account.");
         }
+        moduleService.requireModule(TenantContext.get(), module);
     }
 }

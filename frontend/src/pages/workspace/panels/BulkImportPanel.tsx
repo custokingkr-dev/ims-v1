@@ -31,6 +31,48 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
     });
   };
 
+  // Coerce an ExcelJS cell value to a scalar, mirroring xlsx sheet_to_json's defval: ''.
+  const cellToScalar = (value: unknown): string | number => {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'number' || typeof value === 'string') return value;
+    if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === 'object') {
+      const v = value as Record<string, unknown>;
+      if (Array.isArray(v.richText)) return v.richText.map((t) => (t as { text?: string }).text ?? '').join('');
+      if (typeof v.text === 'string') return v.text;           // hyperlink cell
+      if ('result' in v) return cellToScalar(v.result);        // formula cell → cached result
+    }
+    return '';
+  };
+
+  const parseXlsxRows = async (buffer: ArrayBuffer) => {
+    const ExcelJS = (await import('exceljs')).default;
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const sheet = workbook.worksheets[0];
+    if (!sheet) return [] as Record<string, string | number>[];
+
+    const headers: string[] = [];
+    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => { headers[col] = String(cellToScalar(cell.value)); });
+
+    const dataRows: Record<string, string | number>[] = [];
+    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const parsed: Record<string, string | number> = {};
+      let hasValue = false;
+      for (let col = 1; col < headers.length; col += 1) {
+        const key = headers[col];
+        if (!key) continue;
+        const val = cellToScalar(row.getCell(col).value);
+        if (val !== '') hasValue = true;
+        parsed[key] = val;
+      }
+      if (hasValue) dataRows.push(parsed);
+    });
+    return dataRows.map((row, index) => ({ ...row, __rowNumber: index + 2 }));
+  };
+
   const handleBulkImportFile = async (file: File) => {
     const ext = file.name.toLowerCase();
     setBulkImportError('');
@@ -44,10 +86,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       if (ext.endsWith('.csv')) {
         rows = parseCsvRows(await file.text());
       } else {
-        const XLSX = await import('xlsx');
-        const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        rows = XLSX.utils.sheet_to_json(sheet, { defval: '' }).map((row, index) => ({ ...(row as Record<string, string | number>), __rowNumber: index + 2 }));
+        rows = await parseXlsxRows(await file.arrayBuffer());
       }
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
       setBulkImportFileName(file.name);

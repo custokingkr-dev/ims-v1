@@ -63,10 +63,12 @@ public class WorkspaceService {
         this.attendanceService = attendanceService;
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> workspace(AuthUser actor) {
         return workspace(actor, null);
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> workspace(AuthUser actor, Long requestedSchoolId) {
         AcademicYearEntity year = currentAcademicYearEntity();
         Long schoolId = TenantContext.get() != null ? TenantContext.get() : requestedSchoolId;
@@ -152,6 +154,7 @@ public class WorkspaceService {
                 num(dashboard.get("feeTargetLakh"), 0));
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> users() {
         return userRepository.findAllByOrderByFullNameAsc().stream()
                 .map(u -> row("id", u.getId(), "fullName", u.getFullName(), "email", u.getEmail(),
@@ -159,6 +162,7 @@ public class WorkspaceService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<Map<String, Object>> approvals(AuthUser actor) {
         return firefightingRequestRepository
                 .findBySchool_IdAndStatus(TenantContext.get(), "AWAITING_PRINCIPAL")
@@ -454,6 +458,116 @@ public class WorkspaceService {
         } catch (Exception e) {
             return fallback;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> commandCentreCards(AuthUser actor, Long schoolId) {
+        boolean isSuperAdmin = schoolId == null;
+        List<Map<String, Object>> cards = new ArrayList<>();
+
+        // ── Firefighting: approvals pending ──────────────────────────────────
+        List<FirefightingRequestEntity> ffPending = isSuperAdmin
+                ? merge(firefightingRequestRepository.findByStatus("AWAITING_BURSAR"),
+                        firefightingRequestRepository.findByStatus("AWAITING_PRINCIPAL"))
+                : merge(firefightingRequestRepository.findBySchool_IdAndStatus(schoolId, "AWAITING_BURSAR"),
+                        firefightingRequestRepository.findBySchool_IdAndStatus(schoolId, "AWAITING_PRINCIPAL"));
+        if (!ffPending.isEmpty()) {
+            int count = ffPending.size();
+            cards.add(row(
+                "id", "cc-ff-approval",
+                "module", "firefighting",
+                "urgency", "critical",
+                "confidence", 97,
+                "code", "FF-APPROVE-" + count,
+                "title", count + " urgent procurement request" + (count > 1 ? "s" : "") + " pending approval",
+                "why", count + " request" + (count > 1 ? "s" : "") + " in review need sign-off before procurement can proceed.",
+                "impact", "Approval required · SLA at risk",
+                "state", "AWAITING → APPROVED",
+                "cta", "Approve requests",
+                "count", count
+            ));
+        }
+
+        // ── Firefighting: drafts missing quotation ────────────────────────────
+        List<FirefightingRequestEntity> ffDrafts = isSuperAdmin
+                ? firefightingRequestRepository.findByStatus("DRAFT")
+                : firefightingRequestRepository.findBySchool_IdAndStatus(schoolId, "DRAFT");
+        if (!ffDrafts.isEmpty()) {
+            int count = ffDrafts.size();
+            cards.add(row(
+                "id", "cc-ff-drafts",
+                "module", "firefighting",
+                "urgency", "high",
+                "confidence", 91,
+                "code", "FF-DRAFT-" + count,
+                "title", count + " urgent procurement request" + (count > 1 ? "s" : "") + " awaiting quotation",
+                "why", count + " open request" + (count > 1 ? "s" : "") + " need vendor quotation before approval can proceed.",
+                "impact", "Quotation needed · " + count + " request" + (count > 1 ? "s" : ""),
+                "state", "DRAFT → IN REVIEW",
+                "cta", "Add quotations",
+                "count", count
+            ));
+        }
+
+        // ── Supply orders: submitted, awaiting approval ───────────────────────
+        List<CatalogOrderEntity> submittedOrders = isSuperAdmin
+                ? catalogOrderRepository.findByStatusOrderByCreatedAtDesc("SUBMITTED")
+                : catalogOrderRepository.findBySchool_IdAndStatus(schoolId, "SUBMITTED");
+        if (!submittedOrders.isEmpty()) {
+            int count = submittedOrders.size();
+            long totalPaise = submittedOrders.stream()
+                    .mapToLong(CatalogOrderEntity::getTotalAmount)
+                    .sum();
+            String impact = totalPaise > 0
+                    ? "₹" + String.format("%.1f", totalPaise / 100_000.0) + "L pending approval"
+                    : count + " orders pending";
+            cards.add(row(
+                "id", "cc-orders-pending",
+                "module", "supply",
+                "urgency", "high",
+                "confidence", 93,
+                "code", "ORD-PENDING-" + count,
+                "title", count + " supply order" + (count > 1 ? "s" : "") + " awaiting approval",
+                "why", count + " submitted order" + (count > 1 ? "s" : "") + " need approval. Delays extend vendor lead time.",
+                "impact", impact,
+                "state", "SUBMITTED → APPROVED",
+                "cta", "Review orders",
+                "count", count
+            ));
+        }
+
+        // ── Fee collections: overdue (school scope only) ──────────────────────
+        if (!isSuperAdmin) {
+            AcademicYearEntity year = currentAcademicYearEntity();
+            long overdueCount = feeService.feeOverdueCount(year.getId(), schoolId);
+            if (overdueCount > 0) {
+                cards.add(row(
+                    "id", "cc-fee-overdue",
+                    "module", "fees",
+                    "urgency", overdueCount > 50 ? "high" : "medium",
+                    "confidence", 95,
+                    "code", "FEES-OVERDUE-" + overdueCount,
+                    "title", overdueCount + " student" + (overdueCount > 1 ? "s" : "") + " have overdue fees",
+                    "why", overdueCount + " families have missed the payment deadline. A reminder before 6 PM recovers dues faster.",
+                    "impact", overdueCount + " students unpaid",
+                    "state", "Overdue → Reminded",
+                    "cta", "Send reminders",
+                    "count", (int) overdueCount
+                ));
+            }
+        }
+
+        // Sort: critical → high → medium → low
+        List<String> order = List.of("critical", "high", "medium", "low");
+        cards.sort(Comparator.comparingInt(c -> order.indexOf(String.valueOf(c.get("urgency")))));
+        return cards;
+    }
+
+    @SafeVarargs
+    private static <T> List<T> merge(List<T>... lists) {
+        List<T> result = new ArrayList<>();
+        for (List<T> l : lists) result.addAll(l);
+        return result;
     }
 
     private double round(double d) {

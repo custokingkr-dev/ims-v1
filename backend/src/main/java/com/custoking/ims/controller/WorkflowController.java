@@ -1,5 +1,6 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.dto.workflow.WorkflowActionRequest;
 import com.custoking.ims.model.AuthUser;
 import com.custoking.ims.service.UserContextService;
@@ -12,7 +13,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/workflows")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize(PermissionConstants.WORKFLOW_READ)
 public class WorkflowController {
 
     private final UserContextService userContext;
@@ -40,6 +41,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{instanceId}/approve")
+    @PreAuthorize(PermissionConstants.WORKFLOW_APPROVE)
     public Map<String, Object> approve(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long instanceId,
@@ -52,6 +54,7 @@ public class WorkflowController {
     }
 
     @PostMapping("/{instanceId}/reject")
+    @PreAuthorize(PermissionConstants.WORKFLOW_APPROVE)
     public Map<String, Object> reject(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long instanceId,
