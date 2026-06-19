@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Field } from '../ui';
 import { formatMoney } from '../utils';
 
@@ -10,7 +11,8 @@ interface Props {
 
 export function FeeStructurePanel({ onRefresh }: Props) {
   const { user } = useAuth();
-  const schoolScopedParams = user?.role !== 'SUPERADMIN' && user?.branchId ? { schoolId: user.branchId } : undefined;
+  const { can } = usePermissions();
+  const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [saving, setSaving] = useState('');
   const [feeClasses, setFeeClasses] = useState<any[]>([]);
@@ -327,7 +329,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
 
   return (
     <ModuleShell
-      title="Fee structure"
+      title="Fee Configuration"
       subtitle={`Define class bands, fee items and payment schedules · Academic year ${feeStructureData.academicYear || '2025–26'}`}
       actions={
         <>

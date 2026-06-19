@@ -140,6 +140,46 @@ export interface WorkspaceDashboard {
   pendingApprovals: number;
 }
 
+// ── Command Center: AI-suggested next steps ───────────────────────────────────
+// Backend endpoint: GET /api/dashboard/suggestions (not yet implemented)
+// Falls back to typed mock fixtures in command/fixtures.ts when 404.
+export type ActionModule = 'fees' | 'students' | 'supply' | 'firefighting' | 'attendance';
+export type ActionUrgency = 'critical' | 'high' | 'medium' | 'low';
+
+export interface SuggestedAction {
+  id: string;
+  module: ActionModule;
+  urgency: ActionUrgency;
+  confidence: number;        // 0–100
+  code: string;              // e.g. "FF-2025-014"
+  title: string;
+  why: string;               // one-line rationale
+  impact: string;            // e.g. "₹84,000 · compliance critical"
+  state: string;             // e.g. "SUBMITTED → APPROVED"
+  cta: string;               // primary button label
+}
+
+// ── Command Center: Broadcast Channel ────────────────────────────────────────
+// Backend endpoint: GET /api/notifications/broadcasts (not yet implemented)
+// Falls back to typed mock fixtures in command/fixtures.ts when 404.
+export type BroadcastKind = 'event' | 'notice';
+export type BroadcastStatus = 'scheduled' | 'sending' | 'draft';
+export type DeliveryChannel = 'SMS' | 'WhatsApp' | 'Email' | 'Push';
+
+export interface Broadcast {
+  id: string;
+  kind: BroadcastKind;
+  status: BroadcastStatus;
+  module: ActionModule;
+  title: string;
+  when: string;              // human-readable datetime
+  whenShort: string;         // e.g. "in 3 days" or "live"
+  audience: string;          // e.g. "Parents · 842 recipients"
+  channels: DeliveryChannel[];
+  note: string;
+  progress?: number;         // 0–100, only when status === 'sending'
+}
+
 export interface WorkspaceData {
   school: WorkspaceSchool;
   dashboard: WorkspaceDashboard;

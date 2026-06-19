@@ -1,0 +1,118 @@
+/* frontend/src/styles/tokens.css
+   Semantic token aliases on top of the existing :root shorthand vars.
+   Never remove the original vars — these are additive aliases only.
+*/
+
+:root {
+  /* ── Brand Colors ──────────────────────────────────────────────── */
+  --ck-color-primary:        var(--g);
+  --ck-color-primary-dark:   #135533;
+  --ck-color-primary-soft:   var(--g1);
+  --ck-color-primary-border: var(--g2);
+
+  --ck-color-accent:         var(--b);
+  --ck-color-accent-soft:    var(--b1);
+
+  --ck-color-warning:        var(--am);
+  --ck-color-warning-soft:   var(--am1);
+
+  --ck-color-danger:         var(--re);
+  --ck-color-danger-soft:    var(--re1);
+
+  --ck-color-orange:         var(--or);
+  --ck-color-orange-soft:    var(--or1);
+
+  --ck-color-purple:         var(--pu);
+  --ck-color-purple-soft:    var(--pu1);
+
+  /* ── Surfaces ──────────────────────────────────────────────────── */
+  --ck-bg-app:               var(--bg);
+  --ck-bg-surface:           var(--white);
+  --ck-bg-surface-raised:    #faf9f7;
+  --ck-bg-overlay:           rgba(0,0,0,.32);
+
+  /* ── Text ──────────────────────────────────────────────────────── */
+  --ck-text-primary:         var(--ink);
+  --ck-text-secondary:       var(--ink2);
+  --ck-text-muted:           var(--ink3);
+  --ck-text-inverse:         #ffffff;
+
+  /* ── Borders ───────────────────────────────────────────────────── */
+  --ck-border-subtle:        var(--border);
+  --ck-border-default:       var(--border2);
+
+  /* ── Shadows ───────────────────────────────────────────────────── */
+  --ck-shadow-card:          0 1px 4px rgba(0,0,0,.03);
+  --ck-shadow-raised:        var(--shadow);
+  --ck-shadow-popover:       0 8px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
+  --ck-shadow-drawer:        -4px 0 24px rgba(0,0,0,.08);
+
+  /* ── Border Radius ─────────────────────────────────────────────── */
+  --ck-radius-xs:            4px;
+  --ck-radius-sm:            8px;
+  --ck-radius-md:            12px;
+  --ck-radius-lg:            16px;
+  --ck-radius-xl:            20px;
+  --ck-radius-pill:          999px;
+
+  /* ── Spacing Scale (8px base) ──────────────────────────────────── */
+  --ck-space-1:              4px;
+  --ck-space-2:              8px;
+  --ck-space-3:              12px;
+  --ck-space-4:              16px;
+  --ck-space-5:              20px;
+  --ck-space-6:              24px;
+  --ck-space-7:              32px;
+  --ck-space-8:              48px;
+
+  /* ── Typography Scale ──────────────────────────────────────────── */
+  --ck-font-display:         'Instrument Serif', serif;
+  --ck-font-heading:         'Fraunces', serif;
+  --ck-font-body:            'DM Sans', system-ui, sans-serif;
+  --ck-font-mono:            ui-monospace, 'JetBrains Mono', monospace;
+
+  --ck-text-xs:              10px;
+  --ck-text-sm:              12px;
+  --ck-text-base:            13px;
+  --ck-text-md:              14px;
+  --ck-text-lg:              16px;
+  --ck-text-xl:              18px;
+  --ck-text-2xl:             22px;
+  --ck-text-3xl:             28px;
+
+  /* ── Z-Index Layers ────────────────────────────────────────────── */
+  --ck-z-base:               0;
+  --ck-z-sticky:             10;
+  --ck-z-topbar:             20;
+  --ck-z-dropdown:           30;
+  --ck-z-drawer:             50;
+  --ck-z-modal:              60;
+  --ck-z-toast:              100;
+
+  /* ── Animation ─────────────────────────────────────────────────── */
+  --ck-duration-fast:        0.12s;
+  --ck-duration-base:        0.18s;
+  --ck-duration-slow:        0.3s;
+  --ck-ease-out:             cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* ── Status Colors ─────────────────────────────────────────────── */
+  --ck-status-paid:          var(--g);
+  --ck-status-paid-bg:       var(--g1);
+  --ck-status-pending:       var(--am);
+  --ck-status-pending-bg:    var(--am1);
+  --ck-status-overdue:       var(--re);
+  --ck-status-overdue-bg:    var(--re1);
+  --ck-status-partial:       var(--or);
+  --ck-status-partial-bg:    var(--or1);
+  --ck-status-info:          var(--b);
+  --ck-status-info-bg:       var(--b1);
+  --ck-status-neutral:       #888;
+  --ck-status-neutral-bg:    #f4f4f0;
+
+  /* ── Chart / Module Identity ───────────────────────────────────── */
+  --ck-chart-fees:           var(--g);
+  --ck-chart-students:       var(--b);
+  --ck-chart-attendance:     var(--am);
+  --ck-chart-supply:         var(--pu);
+  --ck-chart-firefighting:   var(--re);
+}

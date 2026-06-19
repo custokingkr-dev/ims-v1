@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { PageHero } from '../components/PageHero';
 
 interface ApprovalItem {
@@ -13,6 +14,7 @@ interface ApprovalItem {
 
 export default function ApprovalsPage() {
   const { user } = useAuth();
+  const { can } = usePermissions();
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -73,7 +75,7 @@ export default function ApprovalsPage() {
                     <td><span className={`status-pill ${String(a.status).toLowerCase()}`}>{a.status}</span></td>
                     <td>{a.reason}</td>
                     <td>
-                      {user?.role === 'SUPERADMIN' && a.status === 'PENDING' ? (
+                      {can('order:approve') && a.status === 'PENDING' ? (
                         <div className="actions-inline">
                           <button type="button" disabled={deciding === a.id} onClick={() => void decide(a.id, 'approve')}>Approve</button>
                           <button type="button" className="secondary" disabled={deciding === a.id} onClick={() => void decide(a.id, 'reject')}>Reject</button>

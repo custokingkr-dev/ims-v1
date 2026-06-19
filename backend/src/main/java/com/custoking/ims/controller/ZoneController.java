@@ -1,10 +1,10 @@
 package com.custoking.ims.controller;
 
+import com.custoking.ims.common.domain.PermissionConstants;
 import com.custoking.ims.dto.zone.ZoneAdminRequest;
 import com.custoking.ims.dto.zone.ZoneCreateRequest;
 import com.custoking.ims.dto.zone.ZoneUpdateRequest;
 import com.custoking.ims.model.AuthUser;
-import com.custoking.ims.model.Role;
 import com.custoking.ims.service.UserContextService;
 import com.custoking.ims.service.ZoneService;
 import jakarta.validation.Valid;
@@ -28,16 +28,16 @@ public class ZoneController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_READ)
     public List<Map<String, Object>> listZones(
             @RequestHeader(value = "Authorization", required = false) String authorization) {
-        userContext.requireSuperAdmin(authorization);
+        userContext.requireUser(authorization);
         return zoneService.listZones();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_CREATE)
     public Map<String, Object> createZone(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @Valid @RequestBody ZoneCreateRequest request) {
@@ -48,7 +48,7 @@ public class ZoneController {
     }
 
     @PatchMapping("/{zoneId}")
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_UPDATE)
     public Map<String, Object> updateZone(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long zoneId,
@@ -60,7 +60,7 @@ public class ZoneController {
 
     @PostMapping("/{zoneId}/schools/{schoolId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_ASSIGN_SCHOOL)
     public void assignSchool(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long zoneId,
@@ -71,7 +71,7 @@ public class ZoneController {
 
     @DeleteMapping("/{zoneId}/schools/{schoolId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_ASSIGN_SCHOOL)
     public void removeSchool(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long zoneId,
@@ -81,20 +81,16 @@ public class ZoneController {
     }
 
     @GetMapping("/{zoneId}/schools")
-    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ZONE_ADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_READ)
     public List<Map<String, Object>> getSchoolsInZone(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long zoneId) {
-        AuthUser actor = userContext.requireUser(authorization);
-        if (actor.role() != Role.SUPERADMIN && actor.role() != Role.ZONE_ADMIN) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    HttpStatus.FORBIDDEN, "SUPERADMIN or ZONE_ADMIN access required");
-        }
+        userContext.requireUser(authorization);
         return zoneService.getSchoolsInZone(zoneId);
     }
 
     @GetMapping("/my-zone/schools")
-    @PreAuthorize("hasAnyRole('SUPERADMIN', 'ZONE_ADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_READ)
     public List<Map<String, Object>> getMyZoneSchools(
             @RequestHeader(value = "Authorization", required = false) String authorization) {
         AuthUser actor = userContext.requireUser(authorization);
@@ -103,7 +99,7 @@ public class ZoneController {
 
     @PostMapping("/{zoneId}/admin")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('SUPERADMIN')")
+    @PreAuthorize(PermissionConstants.ZONE_ASSIGN_ADMIN)
     public Map<String, Object> createOrResetZoneAdmin(
             @RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable Long zoneId,

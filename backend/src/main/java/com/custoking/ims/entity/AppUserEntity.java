@@ -20,10 +20,27 @@ public class AppUserEntity {
     @Column(nullable = false)
     private String passwordHash;
 
+    /**
+     * @deprecated Display-only legacy role label. Do NOT use for authorization decisions.
+     *             Real authorization flows exclusively through the RBAC tables
+     *             ({@code user_role_assignments} → {@code role_permissions} → {@code permissions}).
+     *             This field is kept for UI display and backward-compat only.
+     *             Remove once all UI callers have been migrated to permission codes.
+     */
+    @Deprecated(since = "V122", forRemoval = false)
     @Column(nullable = false)
     private String role;
 
+    /**
+     * @deprecated Display-only school reference. Do NOT use for tenant scoping.
+     *             The authoritative tenant is resolved by {@code TenantResolverFilter}
+     *             via {@code TenantContext} (backed by {@code user_role_assignments}).
+     */
+    @Deprecated(since = "V122", forRemoval = false)
     private Long branchId;
+
+    /** @deprecated Display-only. See {@link #branchId}. */
+    @Deprecated(since = "V122", forRemoval = false)
     private String branchName;
 
     private Long zoneId;
@@ -31,6 +48,15 @@ public class AppUserEntity {
 
     @Column(nullable = false)
     private OffsetDateTime createdAt = OffsetDateTime.now();
+
+    /** Soft-delete: set to non-null to disable the account. Login is blocked when deletedAt != null. */
+    @Column(name = "deleted_at")
+    private OffsetDateTime deletedAt;
+
+    @Column(name = "deleted_by")
+    private String deletedBy;
+
+    public boolean isDisabled() { return deletedAt != null; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -52,4 +78,8 @@ public class AppUserEntity {
     public void setZoneName(String zoneName) { this.zoneName = zoneName; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public OffsetDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(OffsetDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public String getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
 }

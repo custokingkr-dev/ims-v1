@@ -3,7 +3,7 @@ package com.custoking.ims.controller;
 import com.custoking.ims.audit.AuditLogEntity;
 import com.custoking.ims.audit.AuditLogRepository;
 import com.custoking.ims.common.domain.PermissionConstants;
-import com.custoking.ims.model.Role;
+import com.custoking.ims.context.TenantContext;
 import com.custoking.ims.service.UserContextService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,11 +45,12 @@ public class AuditLogController {
             @RequestParam(defaultValue = "0")   int page,
             @RequestParam(defaultValue = "50")  int size) {
 
-        var actor = userContext.requireUser(authorization);
+        userContext.requireUser(authorization);
 
-        // Non-superadmins are scoped to their own school
-        if (actor.role() != Role.SUPERADMIN) {
-            Long actorSchool = actor.branchId();
+        // Platform admins can query across all schools; school-scoped users see their own school only.
+        // School context comes from RBAC-derived TenantContext (set by TenantResolverFilter), not branchId.
+        if (!userContext.isPlatformAdmin()) {
+            Long actorSchool = TenantContext.get();
             if (actorSchool == null)
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No school context for this user");
             if (schoolId != null && !schoolId.equals(actorSchool))

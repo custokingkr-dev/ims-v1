@@ -1,9 +1,16 @@
 import { ModuleShell } from '../ui';
+import { EmptyState } from '../../../shared/components/EmptyState';
 
 export function SaErpPanel() {
   return (
-    <ModuleShell title="ERP activity" subtitle="Placeholder panel for future ERP activity analytics">
-      <div className="ck-card"><div style={{ padding: 24, color: 'var(--ink2)' }}>ERP activity panel is ready for future data wiring.</div></div>
+    <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
+      <div className="ck-card" style={{ padding: '32px 24px' }}>
+        <EmptyState
+          icon="📊"
+          message="ERP activity analytics coming soon"
+          description="This panel will surface cross-school ERP metrics — attendance trends, fee collection rates, and operational health signals."
+        />
+      </div>
     </ModuleShell>
   );
 }

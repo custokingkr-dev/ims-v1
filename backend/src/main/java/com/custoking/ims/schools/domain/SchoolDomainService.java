@@ -1,10 +1,10 @@
 package com.custoking.ims.schools.domain;
 
-import com.custoking.ims.common.domain.UserRole;
 import com.custoking.ims.entity.AppUserEntity;
 import com.custoking.ims.entity.SchoolEntity;
 import com.custoking.ims.repo.AppUserRepository;
 import com.custoking.ims.repo.SchoolRepository;
+import com.custoking.ims.repo.UserRoleAssignmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,10 +17,13 @@ public class SchoolDomainService {
 
     private final SchoolRepository schoolRepository;
     private final AppUserRepository userRepository;
+    private final UserRoleAssignmentRepository uraRepo;
 
-    public SchoolDomainService(SchoolRepository schoolRepository, AppUserRepository userRepository) {
+    public SchoolDomainService(SchoolRepository schoolRepository, AppUserRepository userRepository,
+                               UserRoleAssignmentRepository uraRepo) {
         this.schoolRepository = schoolRepository;
         this.userRepository = userRepository;
+        this.uraRepo = uraRepo;
     }
 
     public boolean isSchoolNameUnique(String name) {
@@ -42,11 +45,13 @@ public class SchoolDomainService {
     }
 
     public boolean hasActiveAdmin(Long schoolId) {
-        return userRepository.findFirstByRoleIgnoreCaseAndBranchId(UserRole.SCHOOL_ADMIN.name(), schoolId).isPresent();
+        return uraRepo.existsEffectiveRoleForSchool("ADMIN", schoolId);
     }
 
     public Optional<AppUserEntity> getSchoolAdmin(Long schoolId) {
-        return userRepository.findFirstByRoleIgnoreCaseAndBranchId(UserRole.SCHOOL_ADMIN.name(), schoolId);
+        return uraRepo.findEffectiveByRoleAndSchool("ADMIN", schoolId).stream()
+                .findFirst()
+                .map(ura -> ura.getUser());
     }
 
     public List<SchoolEntity> findActiveSchools() {

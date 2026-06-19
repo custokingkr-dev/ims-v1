@@ -7,6 +7,7 @@ import com.custoking.ims.entity.SchoolEntity;
 import com.custoking.ims.repo.AcademicYearRepository;
 import com.custoking.ims.repo.AppUserRepository;
 import com.custoking.ims.repo.SchoolRepository;
+import com.custoking.ims.service.RbacService;
 import com.custoking.ims.util.PasswordUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
     @Autowired SchoolRepository schoolRepo;
     @Autowired AcademicYearRepository yearRepo;
     @Autowired PasswordUtil passwordUtil;
+    @Autowired RbacService rbacService;
 
     private static final String ADMIN_EMAIL    = "it-admin@test.com";
     private static final String ADMIN_PASSWORD = "Test@1234";
@@ -54,7 +56,7 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
         });
 
         // Seed admin user (BCrypt hash is expensive — only compute once)
-        if (userRepo.findByEmailIgnoreCase(ADMIN_EMAIL).isEmpty()) {
+        AppUserEntity admin = userRepo.findByEmailIgnoreCase(ADMIN_EMAIL).orElseGet(() -> {
             AppUserEntity u = new AppUserEntity();
             u.setFullName("IT Admin");
             u.setEmail(ADMIN_EMAIL);
@@ -62,7 +64,14 @@ class AuthIntegrationTest extends AbstractIntegrationTest {
             u.setRole("ADMIN");
             u.setBranchId(school.getId());
             u.setBranchName(school.getName());
-            userRepo.save(u);
+            return userRepo.save(u);
+        });
+
+        // Authorization is RBAC-based (the legacy `role` field confers no permissions),
+        // so grant the ADMIN role — which carries workspace:access (V120) — otherwise
+        // permission-gated endpoints like /api/v1/dashboard return 403.
+        if (!rbacService.userHasPermission(admin.getId(), "workspace:access")) {
+            rbacService.assignSchoolRole(admin.getId(), "ADMIN", school.getId(), null);
         }
     }
 
