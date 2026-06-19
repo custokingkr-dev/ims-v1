@@ -19,6 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.expression.DefaultHttpSecurityExpressionHandler;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -67,11 +68,17 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public: auth endpoints + Cloud Run health probes only.
+                        // Actuator paths use explicit ant matchers: the default String
+                        // matcher resolves to an MvcRequestMatcher, which only matches
+                        // *exposed* actuator endpoints. An unexposed sensitive endpoint
+                        // (e.g. /actuator/env) would then slip past the rules below, be
+                        // allowed for any authenticated user, 404, and surface as a 401
+                        // on the ensuing /error dispatch instead of the intended 403.
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(
-                                "/api/v1/auth/**",
-                                "/actuator/health",
-                                "/actuator/health/liveness",
-                                "/actuator/health/readiness"
+                                AntPathRequestMatcher.antMatcher("/actuator/health"),
+                                AntPathRequestMatcher.antMatcher("/actuator/health/liveness"),
+                                AntPathRequestMatcher.antMatcher("/actuator/health/readiness")
                         ).permitAll()
                         // Swagger: require system:swagger permission (SUPERADMIN only).
                         .requestMatchers(
@@ -80,9 +87,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).access(swaggerAccess)
                         // Prometheus scraping: any authenticated service-account JWT.
-                        .requestMatchers("/actuator/prometheus").authenticated()
-                        // All other actuator endpoints: require system:actuator permission.
-                        .requestMatchers("/actuator/**").access(actuatorAccess)
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/prometheus")).authenticated()
+                        // All other actuator endpoints (exposed or not): require system:actuator.
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/actuator/**")).access(actuatorAccess)
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, res, e) ->

@@ -42,7 +42,10 @@
       "Bash(npx vitest *)",
       "Bash(cat \"c:/Users/abhis/AppData/Local/Temp/claude/c--Users-abhis-Desktop-Custoking-New-folder-ims-v1/ecac0701-60d7-4c5e-80a1-d2b6b757f65e/tasks/bpamaccqs.output\" 2>/dev/null | grep -E \"Tests run:|BUILD|FAIL\" | tail -15)",
       "Read(//c/Users/abhis/AppData/Local/Temp/claude/c--Users-abhis-Desktop-Custoking-New-folder-ims-v1/ecac0701-60d7-4c5e-80a1-d2b6b757f65e/tasks/**)",
-      "Bash(awk '{sum += $3; skip += $9} END {print \"Total passed:\", sum-skip, \"| Skipped:\", skip, \"| BUILD: last line\"}')"
+      "Bash(awk '{sum += $3; skip += $9} END {print \"Total passed:\", sum-skip, \"| Skipped:\", skip, \"| BUILD: last line\"}')",
+      "Bash(cd frontend *)",
+      "Bash(npm ls *)",
+      "Bash(echo \"exit=$?\")"
     ]
   },
   "enabledPlugins": {
