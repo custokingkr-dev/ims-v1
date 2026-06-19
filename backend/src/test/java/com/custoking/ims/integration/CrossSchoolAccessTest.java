@@ -759,16 +759,22 @@ class CrossSchoolAccessTest extends AbstractIntegrationTest {
 
     private void seedRevokedUser(SchoolEntity school) {
         AppUserEntity u = findOrCreate(REVOKED_EMAIL, "CrossTest Revoked", "ADMIN", school.getId());
-        if (!uraRepo.existsActiveAssignment(u.getId(), "ADMIN", school.getId(), null)) {
+        // Guard on the unique scope (user, role, school, zone) regardless of active state:
+        // the prior @BeforeEach leaves a *revoked* (inactive) row, which existsActiveAssignment
+        // would miss — re-assigning would then violate uk_user_role_scoped. (Match by scope
+        // columns only; the role relation is lazy and @BeforeEach has no open transaction.)
+        var existing = uraRepo.findByUser_Id(u.getId()).stream()
+                .filter(a -> school.getId().equals(a.getSchoolId()) && a.getZoneId() == null)
+                .findFirst();
+        if (existing.isEmpty()) {
             var ura = rbacService.assignSchoolRole(u.getId(), "ADMIN", school.getId(), null);
             // Immediately revoke so the user has no active permissions
             rbacService.revokeRoleAssignment(ura.getId(), null);
-        } else {
-            // Revoke any existing active assignment
-            uraRepo.findByUser_Id(u.getId()).stream()
-                    .filter(a -> a.isActive())
-                    .forEach(a -> rbacService.revokeRoleAssignment(a.getId(), null));
+        } else if (existing.get().isActive()) {
+            // Carried over as still-active from a previous seed — revoke it.
+            rbacService.revokeRoleAssignment(existing.get().getId(), null);
         }
+        // else: already revoked from a previous seed — desired end state, nothing to do.
     }
 
     private void seedExpiredUser(SchoolEntity school) {
