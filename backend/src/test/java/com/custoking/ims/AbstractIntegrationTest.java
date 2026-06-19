@@ -1,5 +1,8 @@
 package com.custoking.ims;
 
+import com.custoking.ims.security.LoginRateLimiter;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.ActiveProfiles;
@@ -41,5 +44,19 @@ public abstract class AbstractIntegrationTest {
         if (DockerClientFactory.instance().isDockerAvailable()) {
             postgres.start();
         }
+    }
+
+    @Autowired
+    private LoginRateLimiter loginRateLimiter;
+
+    /**
+     * Reset the in-memory login rate limiter before every test. All integration
+     * tests share one application context (and thus one limiter) and log in from
+     * the same client IP, so without this the 10-attempts-per-IP window is quickly
+     * exhausted and later logins get HTTP 429.
+     */
+    @BeforeEach
+    void resetLoginRateLimiter() {
+        loginRateLimiter.reset();
     }
 }

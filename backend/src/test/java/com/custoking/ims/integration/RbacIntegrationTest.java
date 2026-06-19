@@ -140,7 +140,9 @@ class RbacIntegrationTest extends AbstractIntegrationTest {
         u.setRole(role);
         u.setPasswordHash(passwordUtil.hash(PASSWORD));
         userRepo.save(u);
-        rbacService.assignRole(u.getId(), role, null);
+        // assignRole() is disabled; these permission-loading tests are scope-independent,
+        // so a platform-scoped assignment is sufficient to attach the role's permissions.
+        rbacService.assignPlatformRole(u.getId(), role, null);
     }
 
     private HttpHeaders loginAndGetHeaders(String email, String password) {
