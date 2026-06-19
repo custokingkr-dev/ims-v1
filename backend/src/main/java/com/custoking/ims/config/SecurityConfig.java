@@ -75,6 +75,12 @@ public class SecurityConfig {
                         // allowed for any authenticated user, 404, and surface as a 401
                         // on the ensuing /error dispatch instead of the intended 403.
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        // The error dispatch must be reachable: Spring Security re-runs its
+                        // chain on ERROR dispatches (CVE-2022-31692 hardening) but JwtAuthFilter,
+                        // a OncePerRequestFilter, is skipped there — so the error request is
+                        // anonymous. Without permitting /error, a legitimate 403 from a denied
+                        // request gets overwritten with a 401 when the error page is rendered.
+                        .requestMatchers(AntPathRequestMatcher.antMatcher("/error")).permitAll()
                         .requestMatchers(
                                 AntPathRequestMatcher.antMatcher("/actuator/health"),
                                 AntPathRequestMatcher.antMatcher("/actuator/health/liveness"),
