@@ -5,6 +5,7 @@ import com.custoking.ims.security.LoginRateLimiter;
 import com.custoking.ims.security.RequestCorrelationFilter;
 import com.custoking.ims.security.TenantResolverFilter;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -15,6 +16,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.DefaultHttpSecurityExpressionHandler;
 import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -44,10 +46,19 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        // The expression handler must carry the ApplicationContext, otherwise the
+        // '@rbacService' bean reference in the SpEL below cannot be resolved
+        // ("EL1057E: No bean resolver registered") and every actuator/swagger request
+        // fails authorization with a 401 — even for SUPERADMIN.
+        final var expressionHandler = new DefaultHttpSecurityExpressionHandler();
+        expressionHandler.setApplicationContext(http.getSharedObject(ApplicationContext.class));
+
         final var actuatorAccess = new WebExpressionAuthorizationManager(
                 "@rbacService.hasPermission(authentication, 'system:actuator')");
+        actuatorAccess.setExpressionHandler(expressionHandler);
         final var swaggerAccess = new WebExpressionAuthorizationManager(
                 "@rbacService.hasPermission(authentication, 'system:swagger')");
+        swaggerAccess.setExpressionHandler(expressionHandler);
 
         return http
                 .csrf(AbstractHttpConfigurer::disable)
