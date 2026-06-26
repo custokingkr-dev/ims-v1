@@ -698,3 +698,20 @@ Verified:
 
 - `tenant-school-service` Maven test suite passed: 11 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Reporting Service Controller Tests Added
+
+Completed:
+
+- Added `spring-boot-starter-test` to `reporting-service`.
+- Added `ReportingReadControllerTest` for `reporting-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered reporting read filter delegation and command-center action command delegation.
+- Covered command validation exception mapping to `400` and not-found command mapping to `404`.
+- Covered public compatibility workspace and command-center action routes.
+- Covered Pub/Sub push-token rejection, direct event envelope recording, and Pub/Sub message data decoding/idempotent skip.
+
+Verified:
+
+- `reporting-service` Maven test suite passed: 11 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
