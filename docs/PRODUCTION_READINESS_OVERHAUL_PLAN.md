@@ -597,3 +597,19 @@ Verified:
 - `billing-service` Maven test suite passed: 4 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
 - Full `scripts/invoke-microservice-tests.ps1` passed across all 13 catalogued services/frontend after adding the audit and billing tests.
+
+### 2026-06-27: Catalog Service Controller Tests Added
+
+Completed:
+
+- Added `CatalogReadControllerTest` for `catalog-service`.
+- Added the missing `spring-boot-starter-test` dependency to `catalog-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered order not-found behavior.
+- Covered command exception translation for missing school and cross-school vendor payment.
+- Covered annual-plan confirmation compatibility payload.
+
+Verified:
+
+- `catalog-service` Maven test suite passed: 5 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
