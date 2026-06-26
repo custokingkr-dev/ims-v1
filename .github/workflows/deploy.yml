@@ -31,6 +31,7 @@ env:
   WORKLOAD_IDENTITY_PROVIDER: projects/755376288593/locations/global/workloadIdentityPools/github-pool/providers/github-provider
   DEPLOY_SERVICE_ACCOUNT: github-actions-sa@custoking-ims.iam.gserviceaccount.com
   DIRECT_SMOKE_SERVICE_ACCOUNT: direct-service-smoke@custoking-ims.iam.gserviceaccount.com
+  CLOUD_BUILD_SOURCE_STAGING_DIR: gs://custoking-ims-github-deploy-source/source
 
 jobs:
   deploy:
@@ -76,6 +77,7 @@ jobs:
             --config=cloudbuild.yaml \
             --substitutions=_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION} \
             --project="${GCP_PROJECT_ID}" \
+            --gcs-source-staging-dir="${CLOUD_BUILD_SOURCE_STAGING_DIR}" \
             --async \
             --format='value(id)' \
             .)"
