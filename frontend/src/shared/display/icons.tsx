@@ -38,12 +38,13 @@ const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
 
 interface NavIconProps {
   panelKey: string;
+  fallback?: string;
   size?: number;
   strokeWidth?: number;
 }
 
-export function NavIcon({ panelKey, size = 15, strokeWidth = 1.8 }: NavIconProps) {
+export function NavIcon({ panelKey, fallback, size = 15, strokeWidth = 1.8 }: NavIconProps) {
   const Icon = PANEL_ICONS[panelKey];
-  if (!Icon) return null;
+  if (!Icon) return fallback ? <span aria-hidden>{fallback}</span> : null;
   return <Icon size={size} strokeWidth={strokeWidth} aria-hidden />;
 }

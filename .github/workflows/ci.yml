@@ -6,15 +6,8 @@ on:
   pull_request:
 
 jobs:
-
-  # ── Backend: unit + integration tests + coverage ─────────────────────────────
-  backend-test:
+  microservice-runtime-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-
-    # Testcontainers spins up its own PostgreSQL; no external service needed.
     steps:
       - uses: actions/checkout@v4
 
@@ -24,64 +17,60 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: Run tests with JaCoCo coverage
-        run: mvn -B verify -Pci
-
-      - name: Upload JaCoCo coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: jacoco-report
-          path: backend/target/site/jacoco/
-          if-no-files-found: warn
-
-  # ── DB migration smoke test ────────────────────────────────────────────────
-  db-migration-test:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: ims_migrationtest
-          POSTGRES_USER: migrator
-          POSTGRES_PASSWORD: migrator
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    defaults:
-      run:
-        working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-
-      - name: Run Flyway migrations on fresh DB
-        env:
-          SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/ims_migrationtest
-          SPRING_DATASOURCE_USERNAME: migrator
-          SPRING_DATASOURCE_PASSWORD: migrator
-          FLYWAY_URL: jdbc:postgresql://localhost:5432/ims_migrationtest
-          FLYWAY_USERNAME: migrator
-          FLYWAY_PASSWORD: migrator
+      - name: Start split-service stack
+        shell: bash
         run: |
-          mvn -B flyway:migrate \
-            -Dflyway.url="jdbc:postgresql://localhost:5432/ims_migrationtest" \
-            -Dflyway.user=migrator \
-            -Dflyway.password=migrator \
-            --no-transfer-progress
-          echo "All Flyway migrations applied successfully."
+          set -euo pipefail
 
-  # ── Frontend: type-check + build ──────────────────────────────────────────
+          wait_healthy() {
+            local service="$1"
+            local container="$2"
+            for attempt in {1..60}; do
+              status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || true)"
+              if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                echo "$service is $status"
+                return 0
+              fi
+              sleep 5
+            done
+            docker compose logs --tail=200 "$service"
+            return 1
+          }
+
+          docker compose up -d postgres
+          wait_healthy postgres custoking-postgres
+          docker compose up -d identity-service tenant-school-service student-service attendance-service fee-service catalog-service workflow-service firefighting-service notification-service reporting-service billing-service audit-service frontend api-gateway
+          wait_healthy identity-service custoking-identity-service
+          wait_healthy tenant-school-service custoking-tenant-school-service
+          wait_healthy student-service custoking-student-service
+          wait_healthy attendance-service custoking-attendance-service
+          wait_healthy fee-service custoking-fee-service
+          wait_healthy catalog-service custoking-catalog-service
+          wait_healthy workflow-service custoking-workflow-service
+          wait_healthy firefighting-service custoking-firefighting-service
+          wait_healthy notification-service custoking-notification-service
+          wait_healthy reporting-service custoking-reporting-service
+          wait_healthy billing-service custoking-billing-service
+          wait_healthy audit-service custoking-audit-service
+          wait_healthy frontend custoking-frontend
+          wait_healthy api-gateway custoking-api-gateway
+
+      - name: Verify migration boundaries
+        shell: pwsh
+        run: ./scripts/verify-microservice-migration.ps1 -RunDbAudit
+
+      - name: Smoke gateway routes
+        shell: pwsh
+        run: ./scripts/smoke-gateway-routes.ps1
+
+      - name: Smoke frontend-compatible microservice features
+        shell: pwsh
+        run: ./scripts/smoke-microservice-features.ps1 -GatewayBaseUrl http://localhost -PostgresContainer custoking-postgres -Database postgres -DbUser postgres -TimeoutSeconds 30
+
+      - name: Dump service logs on failure
+        if: failure()
+        run: docker compose logs --tail=300
+
   frontend-build:
     runs-on: ubuntu-latest
     defaults:
@@ -99,7 +88,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci --include=dev
 
-      - name: Audit frontend dependencies (fail on critical)
+      - name: Audit frontend dependencies
         run: npm audit --audit-level=critical
 
       - name: Run frontend tests
@@ -108,83 +97,170 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-  # ── OWASP dependency vulnerability scan ──────────────────────────────────
-  owasp-scan:
+  service-test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    # Run on push to main/master only (expensive, ~5 min); skip on every PR.
-    if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity-service
+            path: services/identity-service
+            tool: maven
+          - name: tenant-school-service
+            path: services/tenant-school-service
+            tool: maven
+          - name: student-service
+            path: services/student-service
+            tool: maven
+          - name: attendance-service
+            path: services/attendance-service
+            tool: maven
+          - name: fee-service
+            path: services/fee-service
+            tool: maven
+          - name: catalog-service
+            path: services/catalog-service
+            tool: maven
+          - name: workflow-service
+            path: services/workflow-service
+            tool: maven
+          - name: firefighting-service
+            path: services/firefighting-service
+            tool: maven
+          - name: reporting-service
+            path: services/reporting-service
+            tool: maven
+          - name: billing-service
+            path: services/billing-service
+            tool: maven
+          - name: audit-service
+            path: services/audit-service
+            tool: maven
+          - name: notification-service
+            path: services/notification-service
+            tool: maven
+          - name: frontend
+            path: frontend
+            tool: npm
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
+        if: matrix.tool == 'maven'
         with:
           java-version: 21
           distribution: temurin
           cache: maven
 
-      - name: Cache OWASP NVD data
-        uses: actions/cache@v4
+      - uses: actions/setup-node@v4
+        if: matrix.tool == 'npm'
         with:
-          path: ~/.m2/repository/org/owasp
-          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('backend/pom.xml') }}
-          restore-keys: owasp-nvd-${{ runner.os }}-
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: OWASP dependency-check (fail on CVSS >= 9)
+      - name: Install frontend dependencies
+        if: matrix.tool == 'npm'
+        working-directory: ${{ matrix.path }}
+        run: npm ci --include=dev
+
+      - name: Test ${{ matrix.name }}
+        working-directory: ${{ matrix.path }}
         run: |
-          mvn -B org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=9 \
-            -DsuppressionFile=.owasp-suppressions.xml \
-            --no-transfer-progress
+          if [ "${{ matrix.tool }}" = "maven" ]; then
+            mvn -B test --no-transfer-progress
+          else
+            npm test
+          fi
 
-      - name: Upload OWASP report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: owasp-report
-          path: backend/target/dependency-check-report.html
-          if-no-files-found: ignore
-
-  # ── Secret scanning with Gitleaks ─────────────────────────────────────────
   secret-scan:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history for Gitleaks
+          fetch-depth: 0
 
       - name: Gitleaks secret scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ── Docker build smoke test (no push) ─────────────────────────────────────
   docker-build:
     runs-on: ubuntu-latest
-    needs: [ backend-test, frontend-build ]
+    needs: [ frontend-build ]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity-service
+            context: ./services/identity-service
+            image: custoking-identity-service
+            build_args: ""
+          - name: tenant-school-service
+            context: ./services/tenant-school-service
+            image: custoking-tenant-school-service
+            build_args: ""
+          - name: student-service
+            context: ./services/student-service
+            image: custoking-student-service
+            build_args: ""
+          - name: attendance-service
+            context: ./services/attendance-service
+            image: custoking-attendance-service
+            build_args: ""
+          - name: fee-service
+            context: ./services/fee-service
+            image: custoking-fee-service
+            build_args: ""
+          - name: catalog-service
+            context: ./services/catalog-service
+            image: custoking-catalog-service
+            build_args: ""
+          - name: workflow-service
+            context: ./services/workflow-service
+            image: custoking-workflow-service
+            build_args: ""
+          - name: firefighting-service
+            context: ./services/firefighting-service
+            image: custoking-firefighting-service
+            build_args: ""
+          - name: reporting-service
+            context: ./services/reporting-service
+            image: custoking-reporting-service
+            build_args: ""
+          - name: billing-service
+            context: ./services/billing-service
+            image: custoking-billing-service
+            build_args: ""
+          - name: audit-service
+            context: ./services/audit-service
+            image: custoking-audit-service
+            build_args: ""
+          - name: notification-service
+            context: ./services/notification-service
+            image: custoking-notification-service
+            build_args: ""
+          - name: frontend
+            context: ./frontend
+            image: custoking-frontend
+            build_args: |
+              VITE_API_BASE_URL=/api/v1
+          - name: api-gateway
+            context: ./services/api-gateway
+            image: custoking-api-gateway
+            build_args: ""
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build backend image
+      - name: Build ${{ matrix.name }} image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: ${{ matrix.context }}
+          build-args: ${{ matrix.build_args }}
           push: false
-          tags: custoking-backend:ci
+          tags: ${{ matrix.image }}:ci
 
-      - name: Build frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          build-args: |
-            VITE_API_BASE_URL=/api/v1
-          push: false
-          tags: custoking-frontend:ci
-
-  # ── Trivy image vulnerability scan (after Docker build) ───────────────────
   trivy-scan:
     runs-on: ubuntu-latest
     needs: [ docker-build ]
@@ -193,18 +269,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build backend image for scanning
+      - name: Build API gateway image for scanning
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: ./services/api-gateway
           push: false
           load: true
-          tags: custoking-backend:scan
+          tags: custoking-api-gateway:scan
 
-      - name: Trivy scan backend image (fail on CRITICAL)
-        uses: aquasecurity/trivy-action@v0.31.0   # pinned — update to latest tag on dep-bump PRs
+      - name: Trivy scan API gateway image
+        uses: aquasecurity/trivy-action@v0.31.0
         with:
-          image-ref: custoking-backend:scan
+          image-ref: custoking-api-gateway:scan
           format: table
           exit-code: 1
           ignore-unfixed: true

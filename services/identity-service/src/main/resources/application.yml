@@ -1,0 +1,48 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-identity-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: ${IDENTITY_DB_SCHEMA:identity}
+    open-in-view: false
+  flyway:
+    enabled: true
+    url: ${FLYWAY_URL:${spring.datasource.url}}
+    user: ${FLYWAY_USERNAME:${spring.datasource.username}}
+    password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
+    schemas: ${IDENTITY_DB_SCHEMA:identity}
+    default-schema: ${IDENTITY_DB_SCHEMA:identity}
+    table: flyway_schema_history
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+app:
+  jwt-secret: ${APP_JWT_SECRET:}
+  jwt-expiration-ms: ${APP_JWT_EXPIRATION_MS:900000}
+  refresh-token-expiration-ms: ${APP_REFRESH_TOKEN_EXPIRATION_MS:604800000}
+  cookie-secure: ${APP_COOKIE_SECURE:false}
+  cookie-same-site: ${APP_COOKIE_SAME_SITE:Strict}
+
+identity:
+  db:
+    schema: ${IDENTITY_DB_SCHEMA:identity}
+  introspection-token: ${IDENTITY_INTROSPECTION_TOKEN:}

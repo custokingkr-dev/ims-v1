@@ -1,5 +1,5 @@
 // Navigation structure, panel identifiers, and static data configuration.
-// Add new panels here — nav and title map update automatically.
+// Add new panels here - nav and title map update automatically.
 
 export type WorkspaceData = any;
 
@@ -65,7 +65,7 @@ export const ADMIN_NAV_SECTIONS: Array<{
   },
 ];
 
-// OPERATIONS role: daily ops access — no finance, no user management
+// OPERATIONS role: daily ops access - no finance, no user management
 export const OPERATIONS_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;
@@ -163,10 +163,10 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   catalog: 'Catalog',
   orders: 'School Orders',
   planning: 'Annual plan',
-  'ff-dashboard': 'Urgent Procurement — Requests',
-  'ff-new': 'Urgent Procurement — New Request',
-  'ff-approvals': 'Urgent Procurement — Pending Approvals',
-  'ff-orders': 'Urgent Procurement — Placed Orders',
+  'ff-dashboard': 'Urgent Procurement - Requests',
+  'ff-new': 'Urgent Procurement - New Request',
+  'ff-approvals': 'Urgent Procurement - Pending Approvals',
+  'ff-orders': 'Urgent Procurement - Placed Orders',
   'sa-all-orders': 'All orders',
   'sa-new-order': 'New order request',
   'sa-invoices': 'Invoices',

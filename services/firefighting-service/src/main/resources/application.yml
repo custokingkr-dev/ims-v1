@@ -1,0 +1,34 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-firefighting-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    hikari:
+      data-source-properties:
+        currentSchema: ${FIREFIGHTING_DB_SCHEMA:public}
+  flyway:
+    enabled: ${FIREFIGHTING_FLYWAY_ENABLED:true}
+    schemas: ${FIREFIGHTING_DB_SCHEMA:public}
+    default-schema: ${FIREFIGHTING_DB_SCHEMA:public}
+    table: flyway_schema_history
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+firefighting:
+  read-token: ${FIREFIGHTING_READ_TOKEN:}
+  db:
+    schema: ${FIREFIGHTING_DB_SCHEMA:public}

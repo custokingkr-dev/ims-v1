@@ -1,0 +1,34 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-billing-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    hikari:
+      data-source-properties:
+        currentSchema: ${BILLING_DB_SCHEMA:public}
+  flyway:
+    enabled: ${BILLING_FLYWAY_ENABLED:true}
+    schemas: ${BILLING_DB_SCHEMA:public}
+    default-schema: ${BILLING_DB_SCHEMA:public}
+    table: flyway_schema_history
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+billing:
+  service-token: ${BILLING_SERVICE_TOKEN:}
+  db:
+    schema: ${BILLING_DB_SCHEMA:public}

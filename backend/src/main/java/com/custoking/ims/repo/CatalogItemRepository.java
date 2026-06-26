@@ -1,1 +1,0 @@
-package com.custoking.ims.repo; import com.custoking.ims.entity.CatalogItemEntity; import org.springframework.data.jpa.repository.JpaRepository; public interface CatalogItemRepository extends JpaRepository<CatalogItemEntity, Long> {}

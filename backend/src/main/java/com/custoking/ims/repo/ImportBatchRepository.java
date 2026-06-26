@@ -1,1 +1,0 @@
-package com.custoking.ims.repo; import com.custoking.ims.entity.ImportBatchEntity; import org.springframework.data.jpa.repository.JpaRepository; import java.util.Optional; public interface ImportBatchRepository extends JpaRepository<ImportBatchEntity, String> { Optional<ImportBatchEntity> findByFileToken(String fileToken); Optional<ImportBatchEntity> findByJobId(String jobId); }

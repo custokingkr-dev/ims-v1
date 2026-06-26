@@ -1,0 +1,39 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-audit-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: ${AUDIT_DB_SCHEMA:audit}
+    open-in-view: false
+  flyway:
+    enabled: true
+    url: ${FLYWAY_URL:${spring.datasource.url}}
+    user: ${FLYWAY_USERNAME:${spring.datasource.username}}
+    password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
+    schemas: ${AUDIT_DB_SCHEMA:audit}
+    default-schema: ${AUDIT_DB_SCHEMA:audit}
+    table: flyway_schema_history
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+audit:
+  ingest-token: ${AUDIT_INGEST_TOKEN:}
