@@ -67,6 +67,12 @@ gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,
 
 Cloud Build builds every service image, pushes to Artifact Registry, deploys private domain services, deploys the frontend, then deploys the API gateway with direct upstream URLs for each service.
 
+GitHub Actions stages Cloud Build source archives in `gs://custoking-ims-github-deploy-source/source`. Keep the bucket lifecycle policy applied so old source archives are removed automatically:
+
+```powershell
+gcloud storage buckets update gs://custoking-ims-github-deploy-source --lifecycle-file=deploy/gcp/github-deploy-source-bucket-lifecycle.json
+```
+
 ## Validate
 
 ```powershell
