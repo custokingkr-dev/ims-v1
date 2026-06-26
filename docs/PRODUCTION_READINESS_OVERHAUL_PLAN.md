@@ -368,3 +368,35 @@ Remaining:
 - Docker daemon was unavailable locally in this workstream, so local container E2E still needs a rerun once Docker Desktop is healthy.
 - Java service test coverage remains thin for most extracted services; current green status is still largely compile/static/smoke coverage.
 - GitHub Actions deployment should be triggered and its release evidence captured separately because `gh` CLI is not installed on this machine.
+
+### 2026-06-26: GitHub Deployment Certified
+
+Completed:
+
+- Installed/used GitHub CLI for workflow inspection and dispatch.
+- Pushed branch `microservices-boundary-foundation` with service-only cutover commits:
+  - `05348b1` - service-only microservice cutover.
+  - `98ceb3f` - GitHub deploy workflow Cloud Build polling fix.
+- Updated GitHub deploy workflow to submit Cloud Build asynchronously and poll build status instead of relying on fragile log streaming from the runner.
+- Granted `github-actions-sa@custoking-ims.iam.gserviceaccount.com` the missing GCP IAM required for direct smoke and service URL listing:
+  - `roles/run.admin`
+  - `roles/secretmanager.admin`
+  - `roles/iam.serviceAccountAdmin`
+
+Verified:
+
+- GitHub Actions deploy run `28240126402` completed successfully.
+- GitHub workflow used Workload Identity Federation and deployed commit `98ceb3f137a4022ccaac6545a163e9db70a3a1c6`.
+- Workflow steps succeeded:
+  - Cloud Build submit/poll/deploy.
+  - Direct private service smoke.
+  - Cloud Run URL inventory print.
+- Production Cloud Run inventory remains 14 services after GitHub deployment.
+- Gateway upstream audit passed after GitHub deployment with zero `custoking-backend` upstreams.
+- Role-based production gateway smoke passed after GitHub deployment: 39/39 checks, 0 failures.
+- Real-environment readiness preflight after GitHub deployment passed with 0 blockers.
+
+Remaining:
+
+- Consider replacing broad GitHub deploy IAM grants with a custom least-privilege role once the deployment process stabilizes.
+- Add GitHub-hosted artifact upload for deployment smoke/preflight evidence so every release has immutable evidence attached to the workflow run.
