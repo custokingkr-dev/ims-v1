@@ -646,3 +646,4 @@ Verified:
 
 - `attendance-service` Maven test suite passed: 5 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+- Full `scripts/invoke-microservice-tests.ps1` passed across all 13 catalogued services/frontend after adding the fee and attendance tests.
