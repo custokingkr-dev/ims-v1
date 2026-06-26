@@ -567,3 +567,17 @@ Verified:
   - `student-service`
   - `notification-service`
 - Full `scripts/verify-microservice-migration.ps1` passed with the new package-shape audit included.
+
+### 2026-06-27: Audit Service Controller Tests Added
+
+Completed:
+
+- Added `AuditIngestControllerTest` for `audit-service`.
+- Covered invalid/missing internal token rejection before persistence.
+- Covered blank action validation before persistence.
+- Covered successful audit event mapping, field trimming, default outcome, and response status.
+
+Verified:
+
+- `audit-service` Maven test suite passed: 3 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
