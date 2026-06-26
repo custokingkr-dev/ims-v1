@@ -68,12 +68,36 @@ jobs:
       - name: Submit build and deploy via Cloud Build
         shell: bash
         run: |
+          set -euo pipefail
+
           gcloud config set project "${GCP_PROJECT_ID}"
-          gcloud builds submit \
+          BUILD_ID="$(gcloud builds submit \
             --config=cloudbuild.yaml \
             --substitutions=_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION} \
             --project="${GCP_PROJECT_ID}" \
-            .
+            --async \
+            --format='value(id)' \
+            .)"
+
+          echo "Cloud Build submitted: ${BUILD_ID}"
+          for attempt in {1..120}; do
+            STATUS="$(gcloud builds describe "${BUILD_ID}" \
+              --project="${GCP_PROJECT_ID}" \
+              --format='value(status)')"
+            echo "Cloud Build ${BUILD_ID} status=${STATUS}"
+            case "${STATUS}" in
+              SUCCESS)
+                exit 0
+                ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED)
+                exit 1
+                ;;
+            esac
+            sleep 30
+          done
+
+          echo "Cloud Build ${BUILD_ID} did not finish within workflow polling window."
+          exit 1
 
       - name: Run direct service smoke
         if: ${{ github.event.inputs.run_direct_smoke != 'false' }}
