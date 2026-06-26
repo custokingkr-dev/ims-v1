@@ -1,4 +1,4 @@
-package com.custoking.ims.notificationservice.api;
+package com.custoking.ims.notificationservice.api.internal;
 
 import com.custoking.ims.notificationservice.application.NotificationInboxProcessor;
 import com.custoking.ims.notificationservice.persistence.NotificationInboxEvent;

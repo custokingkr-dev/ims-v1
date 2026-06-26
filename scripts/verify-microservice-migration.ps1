@@ -50,13 +50,17 @@ try {
         & (Join-Path $PSScriptRoot "audit-service-authorization-boundaries.ps1")
     }
 
-    Invoke-Step "service contract coverage audit" {
-        & (Join-Path $PSScriptRoot "audit-service-contract-coverage.ps1")
-    }
+Invoke-Step "service contract coverage audit" {
+    & (Join-Path $PSScriptRoot "audit-service-contract-coverage.ps1")
+}
 
-    Invoke-Step "microservice build catalog audit" {
-        & (Join-Path $PSScriptRoot "audit-microservice-build-catalog.ps1")
-    }
+Invoke-Step "service package shape audit" {
+    & (Join-Path $PSScriptRoot "audit-service-package-shape.ps1")
+}
+
+Invoke-Step "microservice build catalog audit" {
+    & (Join-Path $PSScriptRoot "audit-microservice-build-catalog.ps1")
+}
 
     Invoke-Step "microservice test catalog audit" {
         & (Join-Path $PSScriptRoot "audit-microservice-test-catalog.ps1")

@@ -1,4 +1,4 @@
-package com.custoking.ims.billingservice.api;
+package com.custoking.ims.billingservice.api.compat;
 
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import org.springframework.beans.factory.annotation.Value;

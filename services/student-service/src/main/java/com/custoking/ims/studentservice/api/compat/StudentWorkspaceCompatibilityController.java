@@ -1,4 +1,4 @@
-package com.custoking.ims.studentservice.api;
+package com.custoking.ims.studentservice.api.compat;
 
 import com.custoking.ims.studentservice.persistence.StudentReadRepository;
 import org.springframework.beans.factory.annotation.Value;

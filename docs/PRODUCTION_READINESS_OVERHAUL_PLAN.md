@@ -467,6 +467,29 @@ Verified:
 - Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
 - Real-environment readiness preflight passed with 0 blockers.
 
+### 2026-06-27: API Package Shape Normalized
+
+Completed:
+
+- Moved public compatibility controllers out of flat `api` packages into `api.compat`.
+- Moved Pub/Sub push receiver controllers into `api.internal`.
+- Added `scripts/audit-service-package-shape.ps1`.
+- Wired the package-shape audit into `scripts/verify-microservice-migration.ps1`.
+- Made the audit event DTO mapper public because compatibility code no longer shares the same package as the native audit controller.
+
+Verified:
+
+- Package-shape audit passed.
+- Targeted compile/tests passed for touched services:
+  - `audit-service`
+  - `billing-service`
+  - `catalog-service`
+  - `fee-service`
+  - `reporting-service`
+  - `student-service`
+  - `notification-service`
+- Full `scripts/verify-microservice-migration.ps1` passed with the new package-shape audit included.
+
 IAM Findings:
 
 - Attempts to replace project-level `roles/storage.admin` with `roles/storage.objectAdmin`, bucket-level `roles/storage.legacyBucketReader`, bucket-level `roles/storage.objectAdmin`, and `roles/serviceusage.serviceUsageConsumer` failed at `gcloud builds submit` source upload with access denied on `custoking-ims_cloudbuild`.
