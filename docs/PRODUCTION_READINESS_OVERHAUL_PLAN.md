@@ -647,3 +647,20 @@ Verified:
 - `attendance-service` Maven test suite passed: 5 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
 - Full `scripts/invoke-microservice-tests.ps1` passed across all 13 catalogued services/frontend after adding the fee and attendance tests.
+
+### 2026-06-27: Workflow Service Controller Tests Added
+
+Completed:
+
+- Added `WorkflowReadControllerTest` for `workflow-service`.
+- Added the missing `spring-boot-starter-test` dependency to `workflow-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered instance filter delegation.
+- Covered missing workflow instance mapping to `404`.
+- Covered repository validation exception mapping to `400`.
+- Covered legacy approve route delegation to the canonical approve path.
+
+Verified:
+
+- `workflow-service` Maven test suite passed: 5 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
