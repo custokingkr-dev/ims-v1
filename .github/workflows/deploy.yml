@@ -69,6 +69,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p deployment-evidence
 
           gcloud config set project "${GCP_PROJECT_ID}"
           BUILD_ID="$(gcloud builds submit \
@@ -80,11 +81,16 @@ jobs:
             .)"
 
           echo "Cloud Build submitted: ${BUILD_ID}"
+          echo "CLOUD_BUILD_ID=${BUILD_ID}" >> "${GITHUB_ENV}"
+          printf '%s\n' "${BUILD_ID}" > deployment-evidence/cloud-build-id.txt
           for attempt in {1..120}; do
             STATUS="$(gcloud builds describe "${BUILD_ID}" \
               --project="${GCP_PROJECT_ID}" \
               --format='value(status)')"
             echo "Cloud Build ${BUILD_ID} status=${STATUS}"
+            gcloud builds describe "${BUILD_ID}" \
+              --project="${GCP_PROJECT_ID}" \
+              --format=json > deployment-evidence/cloud-build.json
             case "${STATUS}" in
               SUCCESS)
                 exit 0
@@ -104,29 +110,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p deployment-evidence
 
-          SMOKE_SA_NAME="${DIRECT_SMOKE_SERVICE_ACCOUNT%@*}"
           if ! gcloud iam service-accounts describe "${DIRECT_SMOKE_SERVICE_ACCOUNT}" \
             --project="${GCP_PROJECT_ID}" >/dev/null 2>&1; then
-            gcloud iam service-accounts create "${SMOKE_SA_NAME}" \
-              --project="${GCP_PROJECT_ID}" \
-              --display-name="IMS direct service smoke"
+            echo "Direct smoke service account is missing: ${DIRECT_SMOKE_SERVICE_ACCOUNT}" >&2
+            echo "Run scripts/ensure-direct-service-smoke-identity.ps1 before deployment." >&2
+            exit 1
           fi
-
-          for service in custoking-catalog-service custoking-tenant-school-service; do
-            gcloud run services add-iam-policy-binding "${service}" \
-              --project="${GCP_PROJECT_ID}" \
-              --region="${GCP_REGION}" \
-              --member="serviceAccount:${DIRECT_SMOKE_SERVICE_ACCOUNT}" \
-              --role=roles/run.invoker >/dev/null
-          done
-
-          for secret in catalog-read-token tenant-school-read-token; do
-            gcloud secrets add-iam-policy-binding "${secret}" \
-              --project="${GCP_PROJECT_ID}" \
-              --member="serviceAccount:${DIRECT_SMOKE_SERVICE_ACCOUNT}" \
-              --role=roles/secretmanager.secretAccessor >/dev/null
-          done
 
           CATALOG_URL="$(gcloud run services describe custoking-catalog-service \
             --project="${GCP_PROJECT_ID}" \
@@ -156,17 +147,37 @@ jobs:
 
           gcloud run jobs replace direct-service-smoke-job.generated.yaml \
             --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}"
+            --region="${GCP_REGION}" | tee deployment-evidence/direct-smoke-job-replace.log
           gcloud run jobs execute ims-direct-service-smoke \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
-            --wait
+            --wait | tee deployment-evidence/direct-smoke-execution.log
+
+          cp direct-service-smoke-job.generated.yaml deployment-evidence/direct-service-smoke-job.generated.yaml
+          gcloud run jobs describe ims-direct-service-smoke \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --format=json > deployment-evidence/direct-service-smoke-job.json
 
       - name: Print Cloud Run URLs
         if: always()
         shell: bash
         run: |
+          mkdir -p deployment-evidence
           gcloud run services list \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
-            --format="table(metadata.name,status.url,status.latestReadyRevisionName)"
+            --format="table(metadata.name,status.url,status.latestReadyRevisionName)" \
+            | tee deployment-evidence/cloud-run-services.txt
+          gcloud run services list \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --format=json > deployment-evidence/cloud-run-services.json
+
+      - name: Upload deployment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gcp-deployment-evidence-${{ github.run_id }}
+          path: deployment-evidence/
+          if-no-files-found: warn
