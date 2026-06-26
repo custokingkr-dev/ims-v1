@@ -1,0 +1,21 @@
+title: GitHub Deploy Runtime Operator
+description: Minimal runtime permissions for the GitHub deployment workflow to inspect Cloud Run services and run the direct smoke job.
+stage: GA
+includedPermissions:
+  - iam.serviceAccounts.get
+  - resourcemanager.projects.get
+  - run.executions.get
+  - run.executions.list
+  - run.jobs.create
+  - run.jobs.get
+  - run.jobs.list
+  - run.jobs.run
+  - run.jobs.update
+  - run.operations.get
+  - run.operations.list
+  - run.services.get
+  - run.services.list
+  - run.tasks.get
+  - run.tasks.list
+  - secretmanager.secrets.get
+  - secretmanager.versions.get

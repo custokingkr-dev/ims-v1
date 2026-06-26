@@ -73,6 +73,12 @@ GitHub Actions stages Cloud Build source archives in `gs://custoking-ims-github-
 gcloud storage buckets update gs://custoking-ims-github-deploy-source --lifecycle-file=deploy/gcp/github-deploy-source-bucket-lifecycle.json
 ```
 
+GitHub Actions runtime permissions are defined by the project custom roles and bucket-scoped IAM, not broad project admin roles. Keep the runtime custom role synchronized from source:
+
+```powershell
+gcloud iam roles update githubDeployRuntimeOperator --project=custoking-ims --file=deploy/gcp/github-deploy-runtime-operator-role.yaml
+```
+
 ## Validate
 
 ```powershell
