@@ -304,12 +304,11 @@ Exit criteria:
 
 ## Immediate Next Work Order
 
-1. Fix GCP deployed gateway so service upstreams point to extracted services.
-2. Run deployed gateway smoke with real superadmin/admin tokens.
-3. Make direct smoke job parameterized.
-4. Retire `custoking-backend` only after service-only smoke passes.
-5. Replace or augment nginx gateway for Cloud Run ID-token auth.
-6. Add real test coverage to services with zero test files.
+1. Add real service-level test coverage to Java services that currently only compile.
+2. Continue Phase 6 package normalization by splitting broad controllers into clearer `api.public`, `api.internal`, and `api.compat` surfaces where risk is low.
+3. Audit and reduce remaining runtime data-boundary risks: cross-schema reads, legacy compatibility tables, and service DB privileges.
+4. Split local Docker profiles into `core`, `full`, and `infra` so local runtime does not exhaust WSL memory.
+5. Add request/correlation id propagation and structured logging checks across gateway and services.
 
 ## Progress Log
 
@@ -467,29 +466,6 @@ Verified:
 - Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
 - Real-environment readiness preflight passed with 0 blockers.
 
-### 2026-06-27: API Package Shape Normalized
-
-Completed:
-
-- Moved public compatibility controllers out of flat `api` packages into `api.compat`.
-- Moved Pub/Sub push receiver controllers into `api.internal`.
-- Added `scripts/audit-service-package-shape.ps1`.
-- Wired the package-shape audit into `scripts/verify-microservice-migration.ps1`.
-- Made the audit event DTO mapper public because compatibility code no longer shares the same package as the native audit controller.
-
-Verified:
-
-- Package-shape audit passed.
-- Targeted compile/tests passed for touched services:
-  - `audit-service`
-  - `billing-service`
-  - `catalog-service`
-  - `fee-service`
-  - `reporting-service`
-  - `student-service`
-  - `notification-service`
-- Full `scripts/verify-microservice-migration.ps1` passed with the new package-shape audit included.
-
 IAM Findings:
 
 - Attempts to replace project-level `roles/storage.admin` with `roles/storage.objectAdmin`, bucket-level `roles/storage.legacyBucketReader`, bucket-level `roles/storage.objectAdmin`, and `roles/serviceusage.serviceUsageConsumer` failed at `gcloud builds submit` source upload with access denied on `custoking-ims_cloudbuild`.
@@ -533,7 +509,7 @@ Verified:
 - Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
 - Real-environment readiness preflight passed with 0 blockers.
 
-Remaining:
+Follow-up state:
 
 - GitHub deploy IAM consolidation completed on 2026-06-27; only the two project custom roles remain on `github-actions-sa`.
 - Lifecycle retention for `gs://custoking-ims-github-deploy-source` is now tracked in `deploy/gcp/github-deploy-source-bucket-lifecycle.json` and applied to delete objects older than 14 days.
@@ -568,3 +544,26 @@ Verified:
 - Gateway upstream audit passed with zero `custoking-backend` upstreams.
 - Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
 - Real-environment readiness preflight passed with 0 blockers.
+
+### 2026-06-27: API Package Shape Normalized
+
+Completed:
+
+- Moved public compatibility controllers out of flat `api` packages into `api.compat`.
+- Moved Pub/Sub push receiver controllers into `api.internal`.
+- Added `scripts/audit-service-package-shape.ps1`.
+- Wired the package-shape audit into `scripts/verify-microservice-migration.ps1`.
+- Made the audit event DTO mapper public because compatibility code no longer shares the same package as the native audit controller.
+
+Verified:
+
+- Package-shape audit passed.
+- Targeted compile/tests passed for touched services:
+  - `audit-service`
+  - `billing-service`
+  - `catalog-service`
+  - `fee-service`
+  - `reporting-service`
+  - `student-service`
+  - `notification-service`
+- Full `scripts/verify-microservice-migration.ps1` passed with the new package-shape audit included.
