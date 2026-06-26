@@ -513,4 +513,4 @@ Verified:
 Remaining:
 
 - Consider replacing the remaining predefined GitHub deploy roles with one consolidated custom role after a full IAM permission diff.
-- Add lifecycle retention to `gs://custoking-ims-github-deploy-source` so old uploaded source archives are automatically cleaned up.
+- Lifecycle retention for `gs://custoking-ims-github-deploy-source` is now tracked in `deploy/gcp/github-deploy-source-bucket-lifecycle.json` and applied to delete objects older than 14 days.
