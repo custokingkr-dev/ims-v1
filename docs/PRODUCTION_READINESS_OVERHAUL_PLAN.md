@@ -512,5 +512,36 @@ Verified:
 
 Remaining:
 
-- Consider replacing the remaining predefined GitHub deploy roles with one consolidated custom role after a full IAM permission diff.
+- GitHub deploy IAM consolidation completed on 2026-06-27; only the two project custom roles remain on `github-actions-sa`.
 - Lifecycle retention for `gs://custoking-ims-github-deploy-source` is now tracked in `deploy/gcp/github-deploy-source-bucket-lifecycle.json` and applied to delete objects older than 14 days.
+
+### 2026-06-27: GitHub Runtime IAM Consolidated
+
+Completed:
+
+- Added tracked custom runtime role definition `deploy/gcp/github-deploy-runtime-operator-role.yaml`.
+- Created project custom role `projects/custoking-ims/roles/githubDeployRuntimeOperator`.
+- Scoped `roles/iam.serviceAccountUser` for `github-actions-sa@custoking-ims.iam.gserviceaccount.com` to only `direct-service-smoke@custoking-ims.iam.gserviceaccount.com`.
+- Removed these project-level predefined roles from `github-actions-sa`:
+  - `roles/run.developer`
+  - `roles/iam.serviceAccountUser`
+  - `roles/iam.serviceAccountViewer`
+  - `roles/logging.viewer`
+  - `roles/secretmanager.viewer`
+  - `roles/storage.objectViewer`
+
+Verified:
+
+- Current `github-actions-sa` project roles are only:
+  - `projects/custoking-ims/roles/githubDeployCloudBuildSubmitter`
+  - `projects/custoking-ims/roles/githubDeployRuntimeOperator`
+- `github-actions-sa` retains `roles/iam.serviceAccountUser` only on the direct smoke service account resource.
+- GitHub Actions deploy run `28261672885` completed successfully.
+- GitHub workflow deployed commit `3e90d21a3d85d10f7ac4f7dfb5c2860314aaa918`.
+- Cloud Build id from GitHub evidence: `3daec175-084e-489a-9f96-df89b93eb3ba`.
+- Direct service smoke passed in the GitHub workflow.
+- Deployment evidence artifact downloaded successfully.
+- Production Cloud Run inventory remains 14 services.
+- Gateway upstream audit passed with zero `custoking-backend` upstreams.
+- Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
+- Real-environment readiness preflight passed with 0 blockers.
