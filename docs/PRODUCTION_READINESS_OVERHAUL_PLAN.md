@@ -629,3 +629,20 @@ Verified:
 
 - `fee-service` Maven test suite passed: 5 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Attendance Service Controller Tests Added
+
+Completed:
+
+- Added `AttendanceReadControllerTest` for `attendance-service`.
+- Added the missing `spring-boot-starter-test` dependency to `attendance-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered read delegation with filters.
+- Covered validation exception mapping to `400`.
+- Covered cross-school section access mapping to `403`.
+- Covered submit-day request parsing and delegation.
+
+Verified:
+
+- `attendance-service` Maven test suite passed: 5 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
