@@ -681,3 +681,20 @@ Verified:
 
 - `student-service` Maven test suite passed: 7 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Tenant School Service Controller Tests Added
+
+Completed:
+
+- Added `TenantSchoolControllerTest` for `tenant-school-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered school and zone entity-to-response mapping.
+- Covered missing school and zone mapping to `404`.
+- Covered school command validation mapping to `400` and not-found command mapping to `404`.
+- Covered module entitlement request parsing, invalid date rejection, and delegation.
+- Covered school admin compatibility fallback and matching stats response.
+
+Verified:
+
+- `tenant-school-service` Maven test suite passed: 11 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
