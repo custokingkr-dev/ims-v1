@@ -581,3 +581,18 @@ Verified:
 
 - `audit-service` Maven test suite passed: 3 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Billing Service Controller Tests Added
+
+Completed:
+
+- Added `BillingInvoiceControllerTest` for `billing-service`.
+- Added the missing `spring-boot-starter-test` dependency to `billing-service`.
+- Covered invalid internal token rejection before delegation.
+- Covered invoice not-found behavior.
+- Covered create delegation and list filter delegation with a valid service token.
+
+Verified:
+
+- `billing-service` Maven test suite passed: 4 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
