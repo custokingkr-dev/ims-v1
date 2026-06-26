@@ -24,6 +24,10 @@ foreach ($service in $catalog) {
         $violations.Add("NPM test catalog entry missing package.json for $($service.Name): $($service.Path)")
     }
 
+    if ($service.Tool -eq "node" -and -not ($service.Command -contains "--test")) {
+        $violations.Add("Node test catalog entry must run node --test for $($service.Name): $($service.Path)")
+    }
+
     if ($ci -notmatch [regex]::Escape($service.Name)) {
         $violations.Add("CI service-test matrix missing service name: $($service.Name)")
     }
