@@ -596,3 +596,4 @@ Verified:
 
 - `billing-service` Maven test suite passed: 4 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+- Full `scripts/invoke-microservice-tests.ps1` passed across all 13 catalogued services/frontend after adding the audit and billing tests.
