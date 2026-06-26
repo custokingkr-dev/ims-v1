@@ -437,3 +437,43 @@ Remaining:
 
 - `github-actions-sa` still has broad `roles/storage.admin` and `roles/cloudbuild.builds.editor`; replace these with narrower storage/build permissions or a custom project role in the next IAM hardening pass.
 - Attach role-based gateway smoke/preflight artifacts directly from CI once a non-mutating production smoke credential strategy is available for GitHub-hosted runners.
+
+### 2026-06-26: GitHub Cloud Build IAM Narrowed
+
+Completed:
+
+- Created project custom role `projects/custoking-ims/roles/githubDeployCloudBuildSubmitter`.
+- Removed `roles/cloudbuild.builds.editor` from `github-actions-sa@custoking-ims.iam.gserviceaccount.com`.
+- Custom role permissions now cover only Cloud Build submit/poll plus project lookup:
+  - `cloudbuild.builds.create`
+  - `cloudbuild.builds.get`
+  - `cloudbuild.builds.list`
+  - `cloudbuild.locations.get`
+  - `cloudbuild.locations.list`
+  - `cloudbuild.operations.get`
+  - `cloudbuild.operations.list`
+  - `resourcemanager.projects.get`
+  - `serviceusage.services.use`
+
+Verified:
+
+- GitHub Actions deploy run `28254999312` completed successfully.
+- GitHub workflow deployed commit `4fe1d56e244eac225e73b56bf16d545299f140cc`.
+- Cloud Build id from GitHub evidence: `918e5cbc-f462-46cd-a3fe-55efb3a5fc00`.
+- Direct service smoke passed in the GitHub workflow.
+- Deployment evidence artifact downloaded successfully.
+- Production Cloud Run inventory remains 14 services.
+- Gateway upstream audit passed with zero `custoking-backend` upstreams.
+- Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
+- Real-environment readiness preflight passed with 0 blockers.
+
+IAM Findings:
+
+- Attempts to replace project-level `roles/storage.admin` with `roles/storage.objectAdmin`, bucket-level `roles/storage.legacyBucketReader`, bucket-level `roles/storage.objectAdmin`, and `roles/serviceusage.serviceUsageConsumer` failed at `gcloud builds submit` source upload with access denied on `custoking-ims_cloudbuild`.
+- `roles/serviceusage.serviceUsageAdmin` did not resolve that source upload failure either.
+- Current working deploy IAM for `github-actions-sa` intentionally keeps `roles/storage.admin` as a residual risk until the build source upload path is redesigned.
+
+Remaining:
+
+- Replace `gcloud builds submit .` with an explicit, controlled source upload path or GitHub-source Cloud Build trigger so `roles/storage.admin` can be removed.
+- After that redesign, retest with bucket-scoped storage permissions only and remove project-level `roles/storage.admin`.
