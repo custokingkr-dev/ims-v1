@@ -477,3 +477,40 @@ Remaining:
 
 - Replace `gcloud builds submit .` with an explicit, controlled source upload path or GitHub-source Cloud Build trigger so `roles/storage.admin` can be removed.
 - After that redesign, retest with bucket-scoped storage permissions only and remove project-level `roles/storage.admin`.
+
+### 2026-06-27: GitHub Storage Admin Removed
+
+Completed:
+
+- Created dedicated Cloud Build source staging bucket `gs://custoking-ims-github-deploy-source`.
+- Granted `github-actions-sa@custoking-ims.iam.gserviceaccount.com` bucket-scoped source upload permissions only on that bucket:
+  - `roles/storage.legacyBucketReader`
+  - `roles/storage.objectAdmin`
+- Updated `.github/workflows/deploy.yml` to run `gcloud builds submit` with:
+  - `--gcs-source-staging-dir=gs://custoking-ims-github-deploy-source/source`
+- Removed project-level `roles/storage.admin` from `github-actions-sa`.
+
+Verified:
+
+- GitHub Actions deploy run `28259158128` completed successfully without project-level Storage Admin.
+- GitHub workflow deployed commit `fef74369e1ea3455f623823623f32a46db2fbdd2`.
+- Cloud Build id from GitHub evidence: `3eaaccf1-ead1-4ff1-8186-8872d8a31482`.
+- Direct service smoke passed in the GitHub workflow.
+- Deployment evidence artifact downloaded successfully.
+- Current `github-actions-sa` project roles are:
+  - `projects/custoking-ims/roles/githubDeployCloudBuildSubmitter`
+  - `roles/iam.serviceAccountUser`
+  - `roles/iam.serviceAccountViewer`
+  - `roles/logging.viewer`
+  - `roles/run.developer`
+  - `roles/secretmanager.viewer`
+  - `roles/storage.objectViewer`
+- Production Cloud Run inventory remains 14 services.
+- Gateway upstream audit passed with zero `custoking-backend` upstreams.
+- Role-based production gateway smoke passed after this deployment: 39/39 checks, 0 failures.
+- Real-environment readiness preflight passed with 0 blockers.
+
+Remaining:
+
+- Consider replacing the remaining predefined GitHub deploy roles with one consolidated custom role after a full IAM permission diff.
+- Add lifecycle retention to `gs://custoking-ims-github-deploy-source` so old uploaded source archives are automatically cleaned up.
