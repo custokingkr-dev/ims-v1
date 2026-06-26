@@ -715,3 +715,18 @@ Verified:
 
 - `reporting-service` Maven test suite passed: 11 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Identity Service Controller Tests Added
+
+Completed:
+
+- Added `IdentityControllersTest` for `identity-service`.
+- Covered auth login refresh-cookie creation, refresh-token rejection, logout cookie clearing, and token-guarded introspection.
+- Covered RBAC token rejection, permission filter delegation, and school-role assignment delegation.
+- Covered user-directory missing-user `404` behavior and password-reset actor-field parsing.
+- Covered identity provisioning token rejection and zone-admin provisioning delegation.
+
+Verified:
+
+- `identity-service` Maven test suite passed: 12 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
