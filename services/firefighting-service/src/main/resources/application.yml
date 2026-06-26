@@ -10,11 +10,11 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:root}
     hikari:
       data-source-properties:
-        currentSchema: ${FIREFIGHTING_DB_SCHEMA:public}
+        currentSchema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
   flyway:
     enabled: ${FIREFIGHTING_FLYWAY_ENABLED:true}
-    schemas: ${FIREFIGHTING_DB_SCHEMA:public}
-    default-schema: ${FIREFIGHTING_DB_SCHEMA:public}
+    schemas: ${FIREFIGHTING_DB_SCHEMA:firefighting}
+    default-schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
     table: flyway_schema_history
 
 management:
@@ -31,4 +31,4 @@ management:
 firefighting:
   read-token: ${FIREFIGHTING_READ_TOKEN:}
   db:
-    schema: ${FIREFIGHTING_DB_SCHEMA:public}
+    schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}

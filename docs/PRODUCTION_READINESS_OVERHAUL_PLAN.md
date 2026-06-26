@@ -816,3 +816,24 @@ Verified:
 
 - `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
 - Full `scripts/verify-microservice-migration.ps1` passed with the new runtime schema dependency gate included.
+
+### 2026-06-27: Service DB Schema Defaults Removed From Public
+
+Completed:
+
+- Replaced remaining service DB schema fallback defaults from `public` to owned schemas.
+- Updated `attendance-service`, `billing-service`, `workflow-service`, `firefighting-service`, and `reporting-service` `application.yml` schema defaults.
+- Updated injected repository schema defaults for `attendance-service`, `billing-service`, and `workflow-service`.
+- Added `scripts/audit-service-schema-defaults.ps1`.
+- Wired the schema-default audit into `scripts/verify-microservice-migration.ps1`.
+
+Verified:
+
+- Static scan found no remaining `${*_DB_SCHEMA:public}` or `.db.schema:public` defaults in service Java/YAML sources.
+- Targeted affected service tests passed:
+  - `attendance-service`
+  - `billing-service`
+  - `workflow-service`
+  - `firefighting-service`
+  - `reporting-service`
+- Full `scripts/verify-microservice-migration.ps1` passed with the new schema-default audit included.

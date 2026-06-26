@@ -10,8 +10,8 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:root}
   flyway:
     enabled: ${ATTENDANCE_FLYWAY_ENABLED:true}
-    schemas: ${ATTENDANCE_DB_SCHEMA:public}
-    default-schema: ${ATTENDANCE_DB_SCHEMA:public}
+    schemas: ${ATTENDANCE_DB_SCHEMA:attendance}
+    default-schema: ${ATTENDANCE_DB_SCHEMA:attendance}
     table: flyway_schema_history
 
 management:
@@ -28,4 +28,4 @@ management:
 attendance:
   read-token: ${ATTENDANCE_READ_TOKEN:}
   db:
-    schema: ${ATTENDANCE_DB_SCHEMA:public}
+    schema: ${ATTENDANCE_DB_SCHEMA:attendance}

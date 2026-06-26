@@ -10,11 +10,11 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:root}
     hikari:
       data-source-properties:
-        currentSchema: ${BILLING_DB_SCHEMA:public}
+        currentSchema: ${BILLING_DB_SCHEMA:billing}
   flyway:
     enabled: ${BILLING_FLYWAY_ENABLED:true}
-    schemas: ${BILLING_DB_SCHEMA:public}
-    default-schema: ${BILLING_DB_SCHEMA:public}
+    schemas: ${BILLING_DB_SCHEMA:billing}
+    default-schema: ${BILLING_DB_SCHEMA:billing}
     table: flyway_schema_history
 
 management:
@@ -31,4 +31,4 @@ management:
 billing:
   service-token: ${BILLING_SERVICE_TOKEN:}
   db:
-    schema: ${BILLING_DB_SCHEMA:public}
+    schema: ${BILLING_DB_SCHEMA:billing}

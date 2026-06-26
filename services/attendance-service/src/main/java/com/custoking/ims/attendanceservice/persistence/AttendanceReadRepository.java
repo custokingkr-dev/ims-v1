@@ -23,7 +23,7 @@ public class AttendanceReadRepository {
 
     public AttendanceReadRepository(
             JdbcClient jdbc,
-            @Value("${attendance.db.schema:public}") String schema) {
+            @Value("${attendance.db.schema:attendance}") String schema) {
         this.jdbc = jdbc;
         this.dailyTable = qualifiedTable(schema, "attendance_daily");
         this.recordsTable = qualifiedTable(schema, "attendance_student_records");
