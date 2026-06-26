@@ -613,3 +613,19 @@ Verified:
 
 - `catalog-service` Maven test suite passed: 5 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Fee Service Controller Tests Added
+
+Completed:
+
+- Added `FeeReadControllerTest` for `fee-service`.
+- Added the missing `spring-boot-starter-test` dependency to `fee-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered unsupported fee-structure export format handling.
+- Covered repository validation exception mapping to `400`.
+- Covered delete-band compatibility response and payment filter delegation.
+
+Verified:
+
+- `fee-service` Maven test suite passed: 5 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
