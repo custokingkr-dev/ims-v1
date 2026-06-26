@@ -10,11 +10,11 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:root}
     hikari:
       data-source-properties:
-        currentSchema: ${WORKFLOW_DB_SCHEMA:public}
+        currentSchema: ${WORKFLOW_DB_SCHEMA:workflow}
   flyway:
     enabled: ${WORKFLOW_FLYWAY_ENABLED:true}
-    schemas: ${WORKFLOW_DB_SCHEMA:public}
-    default-schema: ${WORKFLOW_DB_SCHEMA:public}
+    schemas: ${WORKFLOW_DB_SCHEMA:workflow}
+    default-schema: ${WORKFLOW_DB_SCHEMA:workflow}
     table: flyway_schema_history
 
 management:
@@ -31,4 +31,4 @@ management:
 workflow:
   read-token: ${WORKFLOW_READ_TOKEN:}
   db:
-    schema: ${WORKFLOW_DB_SCHEMA:public}
+    schema: ${WORKFLOW_DB_SCHEMA:workflow}

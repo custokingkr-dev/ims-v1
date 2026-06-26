@@ -10,8 +10,8 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:root}
   flyway:
     enabled: ${REPORTING_FLYWAY_ENABLED:true}
-    schemas: ${REPORTING_DB_SCHEMA:public}
-    default-schema: ${REPORTING_DB_SCHEMA:public}
+    schemas: ${REPORTING_DB_SCHEMA:reporting}
+    default-schema: ${REPORTING_DB_SCHEMA:reporting}
     table: flyway_schema_history
 
 management:
@@ -34,4 +34,4 @@ reporting:
     fixed-delay-ms: ${REPORTING_EVENT_PROJECTION_FIXED_DELAY_MS:10000}
     batch-size: ${REPORTING_EVENT_PROJECTION_BATCH_SIZE:50}
   db:
-    schema: ${REPORTING_DB_SCHEMA:public}
+    schema: ${REPORTING_DB_SCHEMA:reporting}

@@ -22,7 +22,7 @@ public class WorkflowReadRepository {
 
     public WorkflowReadRepository(
             JdbcClient jdbc,
-            @Value("${workflow.db.schema:public}") String schema) {
+            @Value("${workflow.db.schema:workflow}") String schema) {
         this.jdbc = jdbc;
         this.definitionsTable = qualifiedTable(schema, "workflow_definitions");
         this.stepsTable = qualifiedTable(schema, "workflow_steps");

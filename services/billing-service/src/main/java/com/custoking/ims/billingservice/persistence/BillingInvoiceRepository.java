@@ -20,7 +20,7 @@ public class BillingInvoiceRepository {
 
     public BillingInvoiceRepository(
             JdbcClient jdbc,
-            @Value("${billing.db.schema:public}") String schema) {
+            @Value("${billing.db.schema:billing}") String schema) {
         this.jdbc = jdbc;
         this.invoiceTable = qualifiedTable(schema, "superadmin_invoices");
         this.sequenceTable = qualifiedTable(schema, "superadmin_order_seq");
