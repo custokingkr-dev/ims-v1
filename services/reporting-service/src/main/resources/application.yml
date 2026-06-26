@@ -1,0 +1,37 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-reporting-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  flyway:
+    enabled: ${REPORTING_FLYWAY_ENABLED:true}
+    schemas: ${REPORTING_DB_SCHEMA:public}
+    default-schema: ${REPORTING_DB_SCHEMA:public}
+    table: flyway_schema_history
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+reporting:
+  read-token: ${REPORTING_READ_TOKEN:}
+  pubsub:
+    push-token: ${REPORTING_PUBSUB_PUSH_TOKEN:${REPORTING_READ_TOKEN:}}
+  event-projection:
+    enabled: ${REPORTING_EVENT_PROJECTION_ENABLED:true}
+    fixed-delay-ms: ${REPORTING_EVENT_PROJECTION_FIXED_DELAY_MS:10000}
+    batch-size: ${REPORTING_EVENT_PROJECTION_BATCH_SIZE:50}
+  db:
+    schema: ${REPORTING_DB_SCHEMA:public}

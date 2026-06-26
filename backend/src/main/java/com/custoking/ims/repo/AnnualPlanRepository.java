@@ -1,1 +1,0 @@
-package com.custoking.ims.repo; import com.custoking.ims.entity.AnnualPlanEntity; import org.springframework.data.jpa.repository.JpaRepository; public interface AnnualPlanRepository extends JpaRepository<AnnualPlanEntity, Long> {}

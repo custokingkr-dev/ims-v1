@@ -182,12 +182,17 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-table th, .ck-table td { padding:10px 16px; border-bottom:1px solid var(--border); font-size:13px; text-align:left; vertical-align:top; }
 .ck-table th { font-size:10px; font-weight:700; text-transform:uppercase; color:var(--ink3); letter-spacing:.05em; background:#fbfaf8; }
 .ck-table tbody tr:last-child td { border-bottom:none; }
+.ck-table-wrap { width:100%; overflow-x:auto; }
+.ck-data-table { min-width:680px; }
+.ck-data-table td { overflow-wrap:anywhere; }
 .ck-form-body { padding:18px; }
 .ck-form-grid { display:grid; gap:12px; }
 .ck-fg-2 { grid-template-columns:1fr 1fr; }
 .ck-fg-4 { grid-template-columns:repeat(4,1fr); }
 .ck-fg-5 { grid-template-columns:repeat(5,1fr); }
 .ck-fg-6 { grid-template-columns:repeat(6,1fr); }
+.ck-timetable-grid { grid-template-columns:minmax(130px,.9fr) minmax(90px,.7fr) minmax(110px,.8fr) minmax(150px,1fr) minmax(170px,1.2fr); }
+.ck-staff-grid { grid-template-columns:minmax(170px,1.2fr) minmax(150px,1fr) minmax(140px,1fr) minmax(130px,.8fr) minmax(130px,.8fr); }
 .ck-field { display:flex; flex-direction:column; gap:4px; }
 .ck-field label { font-size:11.5px; font-weight:700; color:var(--ink2); }
 .ck-actions-inline { display:flex; gap:10px; flex-wrap:wrap; }
@@ -201,6 +206,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-btn-or { background:var(--or); color:#fff; }
 .ck-btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--ink2); }
 .ck-btn-sm { padding:5px 11px; font-size:12px; }
+.ck-icon-btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; white-space:nowrap; }
+.ck-empty-state { padding:34px 18px; min-height:150px; display:flex; align-items:center; justify-content:center; gap:14px; color:var(--ink3); text-align:left; }
+.ck-empty-state svg { color:var(--g); flex:0 0 auto; }
+.ck-empty-state strong { display:block; color:var(--ink); margin-bottom:3px; }
+.ck-empty-state span { display:block; font-size:13px; }
 /* Modal info row helper */
 .ck-info-row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; }
 .ck-info-row .ck-label { color:var(--ink3); font-size:12px; flex-shrink:0; }
@@ -253,7 +263,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-approval-actions { padding:13px 18px; border-top:1px solid var(--border); background:#fbfaf8; display:flex; gap:10px; }
 
 @media (max-width: 1100px) {
-  .ck-s4, .ck-pipeline, .ck-fg-4, .ck-fg-5, .ck-fg-6, .ck-approval-grid { grid-template-columns:repeat(2,1fr); }
+  .ck-s4, .ck-pipeline, .ck-fg-4, .ck-fg-5, .ck-fg-6, .ck-timetable-grid, .ck-staff-grid, .ck-approval-grid { grid-template-columns:repeat(2,1fr); }
   .ck-two-col { grid-template-columns:1fr; }
 }
 @media (max-width: 820px) {
@@ -261,7 +271,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   .ck-sidebar { position:static; width:auto; }
   .ck-main { margin-left:0; }
   .ck-topbar, .ck-ph { flex-wrap:wrap; }
-  .ck-fg-2, .ck-fg-4, .ck-fg-5, .ck-fg-6, .ck-s4, .ck-class-grid, .ck-catalog-grid, .ck-pipeline, .role-switch { grid-template-columns:1fr; }
+  .ck-fg-2, .ck-fg-4, .ck-fg-5, .ck-fg-6, .ck-timetable-grid, .ck-staff-grid, .ck-s4, .ck-class-grid, .ck-catalog-grid, .ck-pipeline, .role-switch { grid-template-columns:1fr; }
+  .ck-data-table { min-width:0; }
+  .ck-data-table thead { display:none; }
+  .ck-data-table tr { display:block; padding:8px 0; border-bottom:1px solid var(--border); }
+  .ck-data-table tbody tr:last-child { border-bottom:none; }
+  .ck-data-table td { display:grid; grid-template-columns:minmax(112px,38%) minmax(0,1fr); gap:10px; padding:7px 14px; border-bottom:none; align-items:start; }
+  .ck-data-table td::before { content:attr(data-label); font-size:10px; font-weight:700; text-transform:uppercase; color:var(--ink3); letter-spacing:.05em; }
+  .ck-data-table td.col-money { text-align:left; }
+  .ck-empty-state { justify-content:flex-start; align-items:flex-start; }
 }
 .ck-alert-re { background:var(--re1); border:1px solid #f5c0bc; color:var(--re); }
 .ck-student-cell { display:flex; align-items:center; gap:12px; }

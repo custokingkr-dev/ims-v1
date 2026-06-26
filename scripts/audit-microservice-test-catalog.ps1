@@ -1,0 +1,50 @@
+$ErrorActionPreference = "Stop"
+
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot "microservice-test-catalog.ps1")
+
+$catalog = @(Get-MicroserviceTestCatalog)
+$ciPath = Join-Path $repoRoot ".github/workflows/ci.yml"
+$runnerPath = Join-Path $repoRoot "scripts/invoke-microservice-tests.ps1"
+$ci = Get-Content -Raw -Path $ciPath
+$runner = Get-Content -Raw -Path $runnerPath
+$violations = New-Object System.Collections.Generic.List[string]
+
+foreach ($service in $catalog) {
+    $path = $service.Path -replace "\\", "/"
+    if (-not (Test-Path (Join-Path $repoRoot $service.Path))) {
+        $violations.Add("Test catalog path does not exist for $($service.Name): $($service.Path)")
+    }
+
+    if ($service.Tool -eq "maven" -and -not (Test-Path (Join-Path $repoRoot (Join-Path $service.Path "pom.xml")))) {
+        $violations.Add("Maven test catalog entry missing pom.xml for $($service.Name): $($service.Path)")
+    }
+
+    if ($service.Tool -eq "npm" -and -not (Test-Path (Join-Path $repoRoot (Join-Path $service.Path "package.json")))) {
+        $violations.Add("NPM test catalog entry missing package.json for $($service.Name): $($service.Path)")
+    }
+
+    if ($ci -notmatch [regex]::Escape($service.Name)) {
+        $violations.Add("CI service-test matrix missing service name: $($service.Name)")
+    }
+
+    if ($ci -notmatch [regex]::Escape($path)) {
+        $violations.Add("CI service-test matrix missing path for $($service.Name): $path")
+    }
+}
+
+if ($runner -notmatch [regex]::Escape("Get-MicroserviceTestCatalog")) {
+    $violations.Add("invoke-microservice-tests.ps1 must use the shared microservice test catalog.")
+}
+
+if ($ci -notmatch "service-test:") {
+    $violations.Add("CI missing service-test job.")
+}
+
+if ($violations.Count -gt 0) {
+    Write-Host "Microservice test catalog violations found:"
+    $violations | ForEach-Object { Write-Host "  $_" }
+    exit 1
+}
+
+Write-Host "Microservice test catalog audit passed: CI and local test runner include all catalogued services."

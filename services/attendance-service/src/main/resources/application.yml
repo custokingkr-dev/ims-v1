@@ -1,0 +1,31 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-attendance-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+  flyway:
+    enabled: ${ATTENDANCE_FLYWAY_ENABLED:true}
+    schemas: ${ATTENDANCE_DB_SCHEMA:public}
+    default-schema: ${ATTENDANCE_DB_SCHEMA:public}
+    table: flyway_schema_history
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+attendance:
+  read-token: ${ATTENDANCE_READ_TOKEN:}
+  db:
+    schema: ${ATTENDANCE_DB_SCHEMA:public}

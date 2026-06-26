@@ -36,7 +36,7 @@ export function useRbacFeature() {
     setRolesLoading(true);
     setRbacError('');
     try {
-      const data = await api.get<RoleView[]>('/api/v1/rbac/roles');
+      const data = await api.get<RoleView[]>('/rbac/roles');
       setRoles(data.data);
     } catch {
       setRbacError('Failed to load roles');
@@ -48,7 +48,7 @@ export function useRbacFeature() {
   const loadPermissions = useCallback(async () => {
     setPermsLoading(true);
     try {
-      const data = await api.get<PermissionView[]>('/api/v1/rbac/permissions');
+      const data = await api.get<PermissionView[]>('/rbac/permissions');
       setPermissions(data.data);
     } finally {
       setPermsLoading(false);
@@ -56,29 +56,29 @@ export function useRbacFeature() {
   }, []);
 
   const getUserAssignments = useCallback(async (userId: number): Promise<AssignmentView[]> => {
-    const resp = await api.get<AssignmentView[]>(`/api/v1/rbac/users/${userId}/roles`);
+    const resp = await api.get<AssignmentView[]>(`/rbac/users/${userId}/roles`);
     return resp.data;
   }, []);
 
   const getUserPermissions = useCallback(async (userId: number): Promise<string[]> => {
-    const resp = await api.get<string[]>(`/api/v1/rbac/users/${userId}/permissions`);
+    const resp = await api.get<string[]>(`/rbac/users/${userId}/permissions`);
     return resp.data;
   }, []);
 
   const assignPlatformRole = useCallback(async (userId: number, role: string) => {
-    await api.post(`/api/v1/rbac/users/${userId}/roles/platform`, { role });
+    await api.post(`/rbac/users/${userId}/roles/platform`, { role });
   }, []);
 
   const assignSchoolRole = useCallback(async (userId: number, role: string, schoolId: number) => {
-    await api.post(`/api/v1/rbac/users/${userId}/roles/school`, { role, schoolId });
+    await api.post(`/rbac/users/${userId}/roles/school`, { role, schoolId });
   }, []);
 
   const assignZoneRole = useCallback(async (userId: number, role: string, zoneId: number) => {
-    await api.post(`/api/v1/rbac/users/${userId}/roles/zone`, { role, zoneId });
+    await api.post(`/rbac/users/${userId}/roles/zone`, { role, zoneId });
   }, []);
 
   const revokeAssignment = useCallback(async (userId: number, assignmentId: number) => {
-    await api.delete(`/api/v1/rbac/users/${userId}/roles/${assignmentId}`);
+    await api.delete(`/rbac/users/${userId}/roles/${assignmentId}`);
   }, []);
 
   return {

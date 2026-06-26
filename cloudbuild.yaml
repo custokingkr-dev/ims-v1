@@ -1,55 +1,138 @@
 substitutions:
   _REGION: asia-south2
   _AR_REPO: custoking
-  _BACKEND_SERVICE: custoking-backend
-  _FRONTEND_SERVICE: custoking-frontend
-  _BACKEND_IMAGE: custoking-backend
-  _FRONTEND_IMAGE: custoking-frontend
   _COMMIT_SHA: latest
-  # Override these per environment via Cloud Build trigger substitution variables
   _DB_HOST: 10.116.0.3:5432
   _DB_NAME: custoking_ims_v1
-  _FRONTEND_ORIGIN: custoking-frontend-755376288593.asia-south2.run.app
-  _SUPERADMIN_EMAIL: superadmin@custoking.com
-  _FLYWAY_USERNAME: appuser
+  _APP_DB_USER: ims_app
+  _FLYWAY_DB_USER: appuser
+  _VPC_NETWORK: default
+  _VPC_SUBNET: default
+  _VPC_EGRESS: all-traffic
+  _FRONTEND_SERVICE: custoking-frontend
+  _API_GATEWAY_SERVICE: custoking-api-gateway
 
 steps:
   - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}', './backend']
-
-  - name: gcr.io/cloud-builders/docker
-    args: ['build', '-t', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}', './frontend']
-
-  - name: gcr.io/cloud-builders/docker
-    args: ['push', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}']
-
-  - name: gcr.io/cloud-builders/docker
-    args: ['push', 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}']
+    id: build-and-push-images
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        services=(
+          "identity-service:services/identity-service:custoking-identity-service"
+          "tenant-school-service:services/tenant-school-service:custoking-tenant-school-service"
+          "student-service:services/student-service:custoking-student-service"
+          "attendance-service:services/attendance-service:custoking-attendance-service"
+          "fee-service:services/fee-service:custoking-fee-service"
+          "catalog-service:services/catalog-service:custoking-catalog-service"
+          "workflow-service:services/workflow-service:custoking-workflow-service"
+          "firefighting-service:services/firefighting-service:custoking-firefighting-service"
+          "reporting-service:services/reporting-service:custoking-reporting-service"
+          "billing-service:services/billing-service:custoking-billing-service"
+          "audit-service:services/audit-service:custoking-audit-service"
+          "notification-service:services/notification-service:custoking-notification-service"
+          "frontend:frontend:custoking-frontend"
+          "api-gateway:services/api-gateway:custoking-api-gateway"
+        )
+        for item in "$${services[@]}"; do
+          IFS=: read -r name context image <<< "$${item}"
+          docker build -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}" "$${context}"
+          docker push "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}"
+        done
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
+    id: deploy-domain-services
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_BACKEND_SERVICE}
-      - --image=asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --set-env-vars=SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=ims_app,APP_BOOTSTRAP_USERS=false,APP_CORS_ALLOWED_ORIGINS=https://${_FRONTEND_ORIGIN},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_USERNAME},SUPERADMIN_EMAIL=${_SUPERADMIN_EMAIL}
-      - --set-secrets=SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,APP_AADHAR_SECRET=aadhar-secret:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,SUPERADMIN_PASSWORD=superadmin-password:latest
+      - -ceu
+      - |
+        common_env="SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=${_APP_DB_USER},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_DB_USER},SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=5,SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=0"
+        common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --max-instances=2 --memory=768Mi)
+
+        deploy_service() {
+          local service="$1"
+          local image="$2"
+          local env="$3"
+          local secrets="$4"
+          gcloud run deploy "$${service}" \
+            --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}" \
+            "$${common_flags[@]}" \
+            --set-env-vars="$${common_env},$${env}" \
+            --set-secrets="$${secrets}"
+        }
+
+        deploy_service custoking-identity-service custoking-identity-service "IDENTITY_DB_SCHEMA=identity,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest"
+        deploy_service custoking-tenant-school-service custoking-tenant-school-service "TENANT_SCHOOL_DB_SCHEMA=tenant_school" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
+        deploy_service custoking-student-service custoking-student-service "STUDENT_DB_SCHEMA=student" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,STUDENT_READ_TOKEN=student-read-token:latest"
+        deploy_service custoking-attendance-service custoking-attendance-service "ATTENDANCE_DB_SCHEMA=attendance" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,ATTENDANCE_READ_TOKEN=attendance-read-token:latest"
+        deploy_service custoking-fee-service custoking-fee-service "FEE_DB_SCHEMA=fee" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,FEE_READ_TOKEN=fee-read-token:latest"
+        deploy_service custoking-catalog-service custoking-catalog-service "CATALOG_DB_SCHEMA=catalog" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
+        deploy_service custoking-workflow-service custoking-workflow-service "WORKFLOW_DB_SCHEMA=workflow" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest"
+        deploy_service custoking-firefighting-service custoking-firefighting-service "FIREFIGHTING_DB_SCHEMA=firefighting" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
+        deploy_service custoking-reporting-service custoking-reporting-service "REPORTING_DB_SCHEMA=reporting" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest"
+        deploy_service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
+        deploy_service custoking-audit-service custoking-audit-service "AUDIT_DB_SCHEMA=audit" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest"
+        deploy_service custoking-notification-service custoking-notification-service "NOTIFICATION_DB_SCHEMA=notification,MSG91_DRY_RUN=true" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
+
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
-    entrypoint: gcloud
+    id: deploy-frontend-gateway
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - ${_FRONTEND_SERVICE}
-      - --image=asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=80
+      - -ceu
+      - |
+        url() {
+          gcloud run services describe "$1" --region="${_REGION}" --format='value(status.url)'
+        }
+
+        gcloud run deploy "${_FRONTEND_SERVICE}" \
+          --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-frontend:${_COMMIT_SHA}" \
+          --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2
+
+        FRONTEND_URL="$(url "${_FRONTEND_SERVICE}")"
+        IDENTITY_URL="$(url custoking-identity-service)"
+        TENANT_URL="$(url custoking-tenant-school-service)"
+        STUDENT_URL="$(url custoking-student-service)"
+        ATTENDANCE_URL="$(url custoking-attendance-service)"
+        FEE_URL="$(url custoking-fee-service)"
+        CATALOG_URL="$(url custoking-catalog-service)"
+        WORKFLOW_URL="$(url custoking-workflow-service)"
+        FIREFIGHTING_URL="$(url custoking-firefighting-service)"
+        REPORTING_URL="$(url custoking-reporting-service)"
+        BILLING_URL="$(url custoking-billing-service)"
+        AUDIT_URL="$(url custoking-audit-service)"
+        NOTIFICATION_URL="$(url custoking-notification-service)"
+
+        gcloud run deploy "${_API_GATEWAY_SERVICE}" \
+          --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-api-gateway:${_COMMIT_SHA}" \
+          --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 \
+          --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${TENANT_URL},STUDENT_UPSTREAM=$${STUDENT_URL},ATTENDANCE_UPSTREAM=$${ATTENDANCE_URL},FEE_UPSTREAM=$${FEE_URL},CATALOG_UPSTREAM=$${CATALOG_URL},WORKFLOW_UPSTREAM=$${WORKFLOW_URL},FIREFIGHTING_UPSTREAM=$${FIREFIGHTING_URL},REPORTING_UPSTREAM=$${REPORTING_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${AUDIT_URL},NOTIFICATION_UPSTREAM=$${NOTIFICATION_URL}" \
+          --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token:latest,STUDENT_SERVICE_TOKEN=student-read-token:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token:latest,FEE_SERVICE_TOKEN=fee-read-token:latest,CATALOG_SERVICE_TOKEN=catalog-read-token:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token:latest,REPORTING_SERVICE_TOKEN=reporting-read-token:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token:latest"
 
 images:
-  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_BACKEND_IMAGE}:${_COMMIT_SHA}'
-  - 'asia-south2-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_FRONTEND_IMAGE}:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-identity-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-tenant-school-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-student-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-attendance-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-fee-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-catalog-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-workflow-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-firefighting-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-reporting-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-billing-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-audit-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-notification-service:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-frontend:${_COMMIT_SHA}'
+  - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-api-gateway:${_COMMIT_SHA}'

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Check, Search, Sparkles, XCircle } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -140,14 +141,20 @@ export function CatalogPanel({ setPanel }: Props) {
       <div className="ck-ph">
         <div>
           <h1 className="ck-page-title">Catalog</h1>
-          <p className="ck-page-sub">Order directly from Custoking — uniforms, stationery, ID cards, services and more</p>
+          <p className="ck-page-sub">Order directly from Custoking - uniforms, stationery, ID cards, services and more</p>
         </div>
         <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('orders')}>View my orders →</button>
       </div>
 
       {catalogNotice && (
         <div className={`ck-alert ${catalogNotice.type === 'error' ? 'ck-alert-re' : 'ck-alert-g'}`} style={{ marginBottom: 16 }}>
-          <span>{catalogNotice.type === 'error' ? '✕' : catalogNotice.type === 'draft' ? '✦' : '✓'}</span>
+          <span>
+            {catalogNotice.type === 'error'
+              ? <XCircle size={16} strokeWidth={2} aria-hidden />
+              : catalogNotice.type === 'draft'
+                ? <Sparkles size={16} strokeWidth={2} aria-hidden />
+                : <Check size={16} strokeWidth={2} aria-hidden />}
+          </span>
           <div>{catalogNotice.msg}</div>
         </div>
       )}
@@ -155,14 +162,13 @@ export function CatalogPanel({ setPanel }: Props) {
       {activeCat === null ? (
         <>
           <div style={{ position: 'relative', marginBottom: 22 }}>
-            <input placeholder="Search catalog — uniforms, notebooks, ID cards…" value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} style={{ width: '100%', border: '1px solid var(--border2)', borderRadius: 20, padding: '10px 20px 10px 44px', fontSize: 13.5, fontFamily: 'DM Sans, sans-serif', outline: 'none', background: 'var(--white)' }} />
-            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink3)', fontSize: 15 }}>🔍</span>
+            <input placeholder="Search catalog - uniforms, notebooks, ID cards..." value={catalogSearch} onChange={(e) => setCatalogSearch(e.target.value)} style={{ width: '100%', border: '1px solid var(--border2)', borderRadius: 20, padding: '10px 20px 10px 44px', fontSize: 13.5, fontFamily: 'DM Sans, sans-serif', outline: 'none', background: 'var(--white)' }} />
+            <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink3)', display: 'flex' }}><Search size={15} strokeWidth={1.9} aria-hidden /></span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
             {CATALOG_TILES.filter((c) => !catalogSearch || `${c.name} ${c.desc}`.toLowerCase().includes(catalogSearch.toLowerCase())).map((c) => (
               <div key={c.key} onClick={() => { setActiveCat(c.key); setCatalogNotice(null); }} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', cursor: 'pointer' }}>
                 <div style={{ height: 90, background: c.headerBg, position: 'relative', overflow: 'hidden' }}>
-                  <img src={`https://source.unsplash.com/featured/400x200/?${c.imgQ}`} alt={c.name} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', position: 'absolute', inset: 0 }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                   <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38 }}>{c.emoji}</span>
                 </div>
                 <div style={{ padding: '13px 14px 14px' }}>

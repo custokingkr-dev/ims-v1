@@ -11,7 +11,7 @@ build/
 *.jar
 !gradle-wrapper.jar
 
-# Environment / secrets — never commit
+# Environment / secrets - never commit
 .env
 .env.*
 !.env.example
@@ -23,9 +23,12 @@ secrets/
 *.log
 *.tmp
 *.swp
+gcloud-proxy-test.out
+gcloud-proxy-test.err
 tilt-debug.json
 .tilt/
 .tiltbuild/
+.tools/
 
 # OS
 .DS_Store
@@ -45,10 +48,28 @@ Thumbs.db
 coverage/
 playwright-report/
 test-results/
-target/surefire-reports/
+target/
 
 # Uploads (local dev only)
 uploads/
 
 # Packaging artifacts
 custoking-ims-clean.zip
+
+# Production verification artifacts
+artifacts/
+artifacts-*.json
+artifacts-*.md
+promotion-artifacts/
+deployment-readiness-smoke.json
+production-write-smoke.json
+legacy-compatibility-audit.json
+legacy-public-retirement*.sql
+legacy-retirement-evidence.json
+cloud-run-revisions.json
+image-digests.json
+rollback-drill-evidence.json
+real-environment-readiness-preflight.json
+real-environment-readiness-preflight.md
+secret-manager-evidence*.json
+cloud-run-iam-evidence*.json

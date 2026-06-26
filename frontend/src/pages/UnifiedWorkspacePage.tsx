@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { X } from 'lucide-react';
 import {
   type PanelKey, type WorkspaceData,
   ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS, SUPERADMIN_NAV_SECTIONS, ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
@@ -252,7 +253,7 @@ export default function UnifiedWorkspacePage() {
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation menu"
           >
-            ×
+            <X size={17} strokeWidth={2} aria-hidden />
           </button>
         </div>
 
@@ -261,7 +262,7 @@ export default function UnifiedWorkspacePage() {
             <div key={section.title}>
               {section.fire ? (
                 <div className="ck-fire-header">
-                  <div className="ck-fire-label">🚨 Urgent Procurement</div>
+                  <div className="ck-fire-label">Urgent Procurement</div>
                   <div className="ck-fire-sub">Non-catalog urgent requests</div>
                 </div>
               ) : (
@@ -273,7 +274,7 @@ export default function UnifiedWorkspacePage() {
                   className={`ck-nav-item ${panel === item.key ? 'on' : ''} ${section.fire ? 'fire' : ''}`}
                   onClick={() => { setPanel(item.key); setSidebarOpen(false); }}
                 >
-                  <NavIcon panelKey={item.key} />
+                  <NavIcon panelKey={item.key} fallback={item.icon} />
                   <span>{item.label}</span>
                   {item.key === 'sa-invoices' && saInvBadge > 0 && (
                     <span style={{ marginLeft: 'auto', background: 'var(--re)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>
