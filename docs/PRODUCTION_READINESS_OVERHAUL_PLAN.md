@@ -664,3 +664,20 @@ Verified:
 
 - `workflow-service` Maven test suite passed: 5 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Student Service Controller Tests Added
+
+Completed:
+
+- Added `StudentReadControllerTest` for `student-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered list/count response assembly with filters.
+- Covered missing student mapping to `404`.
+- Covered repository validation exception mapping to `400`.
+- Covered import template download response.
+- Covered workspace compatibility create and class-section routes.
+
+Verified:
+
+- `student-service` Maven test suite passed: 7 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
