@@ -138,9 +138,12 @@ describe('<Can> permission gate', () => {
 
   describe('no permission prop', () => {
     it('renders children unconditionally (developer convenience)', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
       withPermissions([]);
       render(<Can><span>always</span></Can>);
       expect(screen.getByText('always')).toBeInTheDocument();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('[Can] No permission prop specified'));
+      warn.mockRestore();
     });
   });
 });
