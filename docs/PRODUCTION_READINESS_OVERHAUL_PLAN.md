@@ -763,3 +763,17 @@ Verified:
 
 - `api-gateway` Node test suite passed: 9 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the gateway test catalog entry.
+
+### 2026-06-27: Full Microservice Test Catalog Baseline Expanded to Gateway
+
+Completed:
+
+- Ran the full shared test catalog after adding API gateway coverage.
+- Confirmed the catalog now executes 14 entries: 12 Java services, `api-gateway`, and `frontend`.
+
+Verified:
+
+- Full `scripts/invoke-microservice-tests.ps1` passed for 14 service entries.
+- Java service controller/provider suites passed with the known Mockito dynamic-agent warning.
+- `api-gateway` Node test suite passed: 9 tests, 0 failures.
+- `frontend` Vitest suite passed: 4 test files, 53 tests.
