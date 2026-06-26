@@ -1,0 +1,54 @@
+{
+  "description": "Transitional runtime schema dependencies allowed during the microservice migration. These are architecture debt and must shrink over time.",
+  "ownedSchemas": {
+    "identity-service": "identity",
+    "tenant-school-service": "tenant_school",
+    "student-service": "student",
+    "attendance-service": "attendance",
+    "fee-service": "fee",
+    "catalog-service": "catalog",
+    "workflow-service": "workflow",
+    "firefighting-service": "firefighting",
+    "reporting-service": "reporting",
+    "billing-service": "billing",
+    "audit-service": "audit",
+    "notification-service": "notification"
+  },
+  "allowedExternalSchemas": {
+    "attendance-service": [
+      "student",
+      "tenant_school"
+    ],
+    "catalog-service": [
+      "student",
+      "tenant_school"
+    ],
+    "fee-service": [
+      "student",
+      "tenant_school"
+    ],
+    "firefighting-service": [
+      "tenant_school"
+    ],
+    "identity-service": [
+      "tenant_school"
+    ],
+    "reporting-service": [
+      "attendance",
+      "billing",
+      "catalog",
+      "fee",
+      "firefighting",
+      "notification",
+      "student",
+      "tenant_school"
+    ],
+    "student-service": [
+      "tenant_school"
+    ],
+    "tenant-school-service": [
+      "catalog",
+      "identity"
+    ]
+  }
+}
