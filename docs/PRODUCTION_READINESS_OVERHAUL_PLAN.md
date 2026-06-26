@@ -400,3 +400,40 @@ Remaining:
 
 - Consider replacing broad GitHub deploy IAM grants with a custom least-privilege role once the deployment process stabilizes.
 - Add GitHub-hosted artifact upload for deployment smoke/preflight evidence so every release has immutable evidence attached to the workflow run.
+
+### 2026-06-26: GitHub Deployment IAM Reduced And Evidence Attached
+
+Completed:
+
+- Removed per-deployment IAM mutation from `.github/workflows/deploy.yml`.
+- Direct service smoke now requires the pre-provisioned `direct-service-smoke@custoking-ims.iam.gserviceaccount.com` identity and fails fast if it is missing.
+- GitHub deploy workflow now uploads `gcp-deployment-evidence-<run_id>` with:
+  - Cloud Build id and build JSON,
+  - generated direct smoke job YAML,
+  - direct smoke job JSON,
+  - direct smoke replace/execute logs,
+  - Cloud Run service inventory in text and JSON.
+- Reduced `github-actions-sa@custoking-ims.iam.gserviceaccount.com` project roles by removing:
+  - `roles/run.admin`,
+  - `roles/secretmanager.admin`,
+  - `roles/iam.serviceAccountAdmin`.
+- Added narrower roles needed by the workflow:
+  - `roles/run.developer`,
+  - `roles/iam.serviceAccountViewer`,
+  - `roles/secretmanager.viewer`.
+
+Verified:
+
+- GitHub Actions deploy run `28246375561` completed successfully under reduced IAM.
+- GitHub workflow deployed commit `de0a74d9c406bcddeb5fc767d614dd6b237845b0`.
+- Cloud Build id from GitHub evidence: `2f8d18f5-5c3b-486e-9704-0b7033bf7811`.
+- GitHub workflow evidence artifact downloaded successfully and contains Cloud Build, direct smoke, and Cloud Run inventory evidence.
+- Production Cloud Run inventory remains 14 services.
+- Gateway upstream audit passed with zero `custoking-backend` upstreams.
+- Role-based production gateway smoke passed after the reduced-IAM GitHub deployment: 39/39 checks, 0 failures.
+- Real-environment readiness preflight after the reduced-IAM GitHub deployment passed with 0 blockers.
+
+Remaining:
+
+- `github-actions-sa` still has broad `roles/storage.admin` and `roles/cloudbuild.builds.editor`; replace these with narrower storage/build permissions or a custom project role in the next IAM hardening pass.
+- Attach role-based gateway smoke/preflight artifacts directly from CI once a non-mutating production smoke credential strategy is available for GitHub-hosted runners.
