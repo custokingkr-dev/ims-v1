@@ -58,6 +58,10 @@ Invoke-Step "service package shape audit" {
     & (Join-Path $PSScriptRoot "audit-service-package-shape.ps1")
 }
 
+Invoke-Step "runtime schema dependency baseline audit" {
+    & (Join-Path $PSScriptRoot "audit-runtime-schema-dependency-baseline.ps1")
+}
+
 Invoke-Step "microservice build catalog audit" {
     & (Join-Path $PSScriptRoot "audit-microservice-build-catalog.ps1")
 }

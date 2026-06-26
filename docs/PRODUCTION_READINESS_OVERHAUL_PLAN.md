@@ -791,3 +791,28 @@ Verified:
 - Full `scripts/invoke-microservice-tests.ps1` passed for 14 service entries.
 - Mockito dynamic-agent and JVM class-sharing warnings no longer appear in the Java service test runs.
 - Full `scripts/verify-microservice-migration.ps1` passed after the Surefire configuration change.
+
+### 2026-06-27: Runtime Schema Dependency Baseline Gate Added
+
+Completed:
+
+- Added `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` to make transitional runtime cross-service schema dependencies explicit.
+- Added `scripts/audit-runtime-schema-dependency-baseline.ps1`.
+- Wired the new audit into `scripts/verify-microservice-migration.ps1`.
+- The gate fails if a service gains a new external schema dependency or if a dependency is removed without shrinking the baseline.
+
+Current allowed transitional external schema dependencies:
+
+- `attendance-service` -> `student`, `tenant_school`
+- `catalog-service` -> `student`, `tenant_school`
+- `fee-service` -> `student`, `tenant_school`
+- `firefighting-service` -> `tenant_school`
+- `identity-service` -> `tenant_school`
+- `reporting-service` -> `attendance`, `billing`, `catalog`, `fee`, `firefighting`, `notification`, `student`, `tenant_school`
+- `student-service` -> `tenant_school`
+- `tenant-school-service` -> `catalog`, `identity`
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- Full `scripts/verify-microservice-migration.ps1` passed with the new runtime schema dependency gate included.
