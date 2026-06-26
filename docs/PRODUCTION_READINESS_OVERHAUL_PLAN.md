@@ -730,3 +730,20 @@ Verified:
 
 - `identity-service` Maven test suite passed: 12 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: Firefighting Service Controller Tests Added
+
+Completed:
+
+- Added `spring-boot-starter-test` to `firefighting-service`.
+- Added `FirefightingReadControllerTest` for `firefighting-service`.
+- Covered invalid internal token rejection before repository access.
+- Covered request list filter delegation and request creation delegation.
+- Covered request detail and quotation validation exception mapping to `400`.
+- Covered quotation list delegation.
+- Covered approval and vendor-payment command routing, including default empty request bodies.
+
+Verified:
+
+- `firefighting-service` Maven test suite passed: 8 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
