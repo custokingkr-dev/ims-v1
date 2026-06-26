@@ -1,4 +1,4 @@
-package com.custoking.ims.catalogservice.api;
+package com.custoking.ims.catalogservice.api.compat;
 
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository;
 import org.springframework.beans.factory.annotation.Value;

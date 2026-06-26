@@ -1,4 +1,4 @@
-package com.custoking.ims.reportingservice.api;
+package com.custoking.ims.reportingservice.api.compat;
 
 import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;

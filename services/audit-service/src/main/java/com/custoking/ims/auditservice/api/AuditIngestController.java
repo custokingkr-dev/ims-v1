@@ -182,7 +182,7 @@ public class AuditIngestController {
             String outcome,
             OffsetDateTime timestamp) {
 
-        static AuditEventEntry from(AuditEvent event) {
+        public static AuditEventEntry from(AuditEvent event) {
             return new AuditEventEntry(
                     event.getId(),
                     event.getAction(),

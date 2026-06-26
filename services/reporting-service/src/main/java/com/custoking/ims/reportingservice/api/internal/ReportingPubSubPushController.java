@@ -1,4 +1,4 @@
-package com.custoking.ims.reportingservice.api;
+package com.custoking.ims.reportingservice.api.internal;
 
 import com.custoking.ims.reportingservice.persistence.ReportingEventInboxRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingEventInboxRepository.ReportingEventInboxRecord;

@@ -1,5 +1,6 @@
-package com.custoking.ims.auditservice.api;
+package com.custoking.ims.auditservice.api.compat;
 
+import com.custoking.ims.auditservice.api.AuditIngestController;
 import com.custoking.ims.auditservice.persistence.AuditEvent;
 import com.custoking.ims.auditservice.persistence.AuditEventRepository;
 import jakarta.persistence.criteria.Predicate;

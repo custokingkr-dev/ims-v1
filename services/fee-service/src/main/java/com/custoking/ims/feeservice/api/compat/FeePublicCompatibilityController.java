@@ -1,4 +1,4 @@
-package com.custoking.ims.feeservice.api;
+package com.custoking.ims.feeservice.api.compat;
 
 import com.custoking.ims.feeservice.persistence.FeeReadRepository;
 import org.springframework.beans.factory.annotation.Value;
