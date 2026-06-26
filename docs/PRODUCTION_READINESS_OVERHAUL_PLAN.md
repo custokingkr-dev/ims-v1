@@ -747,3 +747,19 @@ Verified:
 
 - `firefighting-service` Maven test suite passed: 8 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed after adding the test.
+
+### 2026-06-27: API Gateway Node Tests Added
+
+Completed:
+
+- Made `services/api-gateway/server.js` import-safe by only listening when run as the main module.
+- Exported gateway route/auth/header helper functions for direct tests.
+- Added `services/api-gateway/server.test.js` using Node's built-in test runner.
+- Covered gateway health, protected route `401`, unknown API route `404`, route matching, diagnostic rewrites, auth classification, hop-header filtering, forwarding metadata, and nullable principal field normalization.
+- Added `api-gateway` to the shared microservice test catalog.
+- Updated the local test runner audit and GitHub Actions service-test matrix to run `node --test` for the gateway.
+
+Verified:
+
+- `api-gateway` Node test suite passed: 9 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after adding the gateway test catalog entry.

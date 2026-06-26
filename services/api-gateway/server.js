@@ -145,9 +145,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`custoking-api-gateway listening on ${PORT}, auth=${AUTH_MODE}, cloudRunAuth=${CLOUD_RUN_AUTH}`);
-});
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`custoking-api-gateway listening on ${PORT}, auth=${AUTH_MODE}, cloudRunAuth=${CLOUD_RUN_AUTH}`);
+  });
+}
 
 function route(service, matcher) {
   return {
@@ -358,3 +360,15 @@ function requiredEnv(name) {
 function stringOrEmpty(value) {
   return value === null || value === undefined ? '' : String(value);
 }
+
+module.exports = {
+  server,
+  routes,
+  route,
+  diagnostic,
+  requiresUserAuth,
+  outboundHeaders,
+  isRequestHopHeader,
+  isResponseHopHeader,
+  stringOrEmpty,
+};

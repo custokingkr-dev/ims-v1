@@ -139,6 +139,9 @@ jobs:
           - name: notification-service
             path: services/notification-service
             tool: maven
+          - name: api-gateway
+            path: services/api-gateway
+            tool: node
           - name: frontend
             path: frontend
             tool: npm
@@ -153,7 +156,7 @@ jobs:
           cache: maven
 
       - uses: actions/setup-node@v4
-        if: matrix.tool == 'npm'
+        if: matrix.tool == 'npm' || matrix.tool == 'node'
         with:
           node-version: 20
           cache: npm
@@ -169,6 +172,8 @@ jobs:
         run: |
           if [ "${{ matrix.tool }}" = "maven" ]; then
             mvn -B test --no-transfer-progress
+          elif [ "${{ matrix.tool }}" = "node" ]; then
+            node --test server.test.js
           else
             npm test
           fi
