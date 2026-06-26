@@ -777,3 +777,17 @@ Verified:
 - Java service controller/provider suites passed with the known Mockito dynamic-agent warning.
 - `api-gateway` Node test suite passed: 9 tests, 0 failures.
 - `frontend` Vitest suite passed: 4 test files, 53 tests.
+
+### 2026-06-27: Java Test Runtime Agent Hardening
+
+Completed:
+
+- Added explicit `maven-surefire-plugin` configuration to all 12 Java service POMs.
+- Configured Mockito as a Java agent instead of relying on runtime self-attachment.
+- Added `-Xshare:off` to the Java test argLine to remove the class-sharing warning emitted when the agent is active.
+
+Verified:
+
+- Full `scripts/invoke-microservice-tests.ps1` passed for 14 service entries.
+- Mockito dynamic-agent and JVM class-sharing warnings no longer appear in the Java service test runs.
+- Full `scripts/verify-microservice-migration.ps1` passed after the Surefire configuration change.
