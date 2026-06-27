@@ -942,3 +942,36 @@ Verified:
   behaviour and a fast endpoint asserts successful school parsing.
 - `identity-service` Maven test suite passed: 16 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed (all audits green).
+
+### 2026-06-28: Inter-Service Retry And Connection-Pool Hardening
+
+Plan: `docs/superpowers/plans/2026-06-28-production-hardening-resilience.md`.
+
+Completed:
+
+- Phase 1 — Bounded retry for idempotent tenant-school reads. The
+  `TenantSchoolClient` GET path (`school`/`zone`) now retries on transient faults
+  only (connect/read failure, upstream 502/503/504), capped at 3 attempts with a
+  200ms backoff, both tunable via `TENANT_SCHOOL_MAX_ATTEMPTS` /
+  `TENANT_SCHOOL_RETRY_BACKOFF_MS`. 4xx and 500 are never retried; POST commands
+  are never retried. Retries-exhausted propagates the upstream status (or 504 for
+  a connection fault).
+- Phase 2 — Standardized HikariCP connection-pool bounds across all 12 Spring
+  services (`maximum-pool-size`, `minimum-idle`, `connection-timeout`,
+  `validation-timeout`), tunable via `DB_POOL_MAX` / `DB_POOL_MIN` /
+  `DB_POOL_CONNECTION_TIMEOUT_MS` / `DB_POOL_VALIDATION_TIMEOUT_MS`, replacing
+  implicit framework defaults so the fleet cannot exhaust Cloud SQL connections.
+- Added `scripts/audit-service-datasource-pool.ps1`, wired into
+  `scripts/verify-microservice-migration.ps1`, asserting every datasource-owning
+  service declares the four pool bounds.
+
+Verified:
+
+- `TenantSchoolClientTest` extended with retry-then-succeed, retries-exhausted,
+  and no-retry-on-4xx cases over a real local `HttpServer`.
+- `identity-service` Maven test suite passed: 19 tests, 0 failures.
+- New datasource-pool audit passed: 12 services declare explicit pool bounds.
+- Full `scripts/invoke-microservice-tests.ps1` passed for all 14 catalogued
+  entries (12 Java services, api-gateway, frontend).
+- Full `scripts/verify-microservice-migration.ps1` passed with the new pool audit
+  included (all audits green).
