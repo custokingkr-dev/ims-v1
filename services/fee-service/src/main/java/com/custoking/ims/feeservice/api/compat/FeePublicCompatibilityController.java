@@ -178,6 +178,19 @@ public class FeePublicCompatibilityController {
                 longValue(request.get("actorId"))));
     }
 
+    @PostMapping("/api/v1/dashboard/finance/fee-defaulters/reminders")
+    public Map<String, Object> dashboardFeeReminders(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "fee:read");
+        return run(() -> fees.feeReminderRequests(
+                text(request.get("classId")),
+                text(request.get("sectionId")),
+                text(request.get("academicYearId")),
+                longValue(request.get("schoolId")),
+                longValue(request.get("actorId"))));
+    }
+
     @GetMapping(value = {"/api/v1/receipts/{paymentId}/pdf", "/api/v1/fees/receipts/{paymentId}/pdf"},
             produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> receiptByPaymentIdPdf(

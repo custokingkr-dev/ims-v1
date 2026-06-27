@@ -175,6 +175,12 @@ test('vendor-dues mark-paid routes to owning services, dashboard reads stay repo
   assert.equal(resolve('/api/v1/dashboard/vendor-dues'), 'reporting');
 });
 
+test('fee-defaulter reminders route to fee, defaulter reads stay reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/dashboard/finance/fee-defaulters/reminders'), 'fee');
+  assert.equal(resolve('/api/v1/dashboard/finance/fee-defaulters'), 'reporting');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
