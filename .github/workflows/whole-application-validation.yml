@@ -1,0 +1,156 @@
+name: GCP / Whole Application Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_local_stack:
+        description: "Run the local Docker Compose whole-stack validation."
+        required: true
+        default: true
+        type: boolean
+      run_gcp_smoke:
+        description: "Run the deployed GCP gateway whole-application smoke."
+        required: true
+        default: true
+        type: boolean
+  schedule:
+    - cron: "30 20 * * *"
+  workflow_run:
+    workflows:
+      - GCP / Deploy Frontend
+      - GCP / Deploy API Gateway
+      - GCP / Deploy All Services
+      - GCP / Deploy Custom
+      - GCP / Deploy Identity Service
+      - GCP / Deploy Tenant School Service
+      - GCP / Deploy Student Service
+      - GCP / Deploy Attendance Service
+      - GCP / Deploy Fee Service
+      - GCP / Deploy Catalog Service
+      - GCP / Deploy Workflow Service
+      - GCP / Deploy Firefighting Service
+      - GCP / Deploy Reporting Service
+      - GCP / Deploy Billing Service
+      - GCP / Deploy Audit Service
+      - GCP / Deploy Notification Service
+    types:
+      - completed
+
+env:
+  GCP_PROJECT_ID: custoking-ims
+  GCP_REGION: asia-south2
+  WORKLOAD_IDENTITY_PROVIDER: projects/755376288593/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  DEPLOY_SERVICE_ACCOUNT: github-actions-sa@custoking-ims.iam.gserviceaccount.com
+
+jobs:
+  whole-application-runtime-test:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.run_local_stack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: maven
+
+      - name: Start split-service stack
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          wait_healthy() {
+            local service="$1"
+            local container="$2"
+            for attempt in {1..60}; do
+              status="$(docker inspect --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$container" 2>/dev/null || true)"
+              if [ "$status" = "healthy" ] || [ "$status" = "running" ]; then
+                echo "$service is $status"
+                return 0
+              fi
+              sleep 5
+            done
+            docker compose logs --tail=200 "$service"
+            return 1
+          }
+
+          docker compose up -d postgres
+          wait_healthy postgres custoking-postgres
+          docker compose up -d identity-service tenant-school-service student-service attendance-service fee-service catalog-service workflow-service firefighting-service notification-service reporting-service billing-service audit-service frontend api-gateway
+          wait_healthy identity-service custoking-identity-service
+          wait_healthy tenant-school-service custoking-tenant-school-service
+          wait_healthy student-service custoking-student-service
+          wait_healthy attendance-service custoking-attendance-service
+          wait_healthy fee-service custoking-fee-service
+          wait_healthy catalog-service custoking-catalog-service
+          wait_healthy workflow-service custoking-workflow-service
+          wait_healthy firefighting-service custoking-firefighting-service
+          wait_healthy notification-service custoking-notification-service
+          wait_healthy reporting-service custoking-reporting-service
+          wait_healthy billing-service custoking-billing-service
+          wait_healthy audit-service custoking-audit-service
+          wait_healthy frontend custoking-frontend
+          wait_healthy api-gateway custoking-api-gateway
+
+      - name: Verify migration boundaries
+        shell: pwsh
+        run: ./scripts/verify-microservice-migration.ps1 -RunDbAudit
+
+      - name: Smoke gateway routes
+        shell: pwsh
+        run: ./scripts/smoke-gateway-routes.ps1
+
+      - name: Smoke frontend-compatible microservice features
+        shell: pwsh
+        run: ./scripts/smoke-microservice-features.ps1 -GatewayBaseUrl http://localhost -PostgresContainer custoking-postgres -Database postgres -DbUser postgres -TimeoutSeconds 30
+
+      - name: Dump service logs on failure
+        if: failure()
+        run: docker compose logs --tail=300
+
+  deployed-gcp-gateway-smoke:
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') || (github.event_name == 'workflow_dispatch' && inputs.run_gcp_smoke)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via Workload Identity
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOY_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Resolve deployed gateway URL
+        id: gateway
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$(gcloud run services describe custoking-api-gateway \
+            --project="${GCP_PROJECT_ID}" \
+            --region="${GCP_REGION}" \
+            --format='value(status.url)')"
+          echo "url=${url}" >> "$GITHUB_OUTPUT"
+
+      - name: Run deployed whole-application gateway smoke
+        shell: pwsh
+        run: |
+          ./scripts/invoke-production-gateway-smoke.ps1 `
+            -Project "${{ env.GCP_PROJECT_ID }}" `
+            -Region "${{ env.GCP_REGION }}" `
+            -GatewayBaseUrl "${{ steps.gateway.outputs.url }}" `
+            -Gcloud "gcloud"
+
+      - name: Upload whole-application validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: whole-application-validation-${{ github.run_id }}
+          path: artifacts/
+          if-no-files-found: warn
