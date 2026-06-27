@@ -5,7 +5,7 @@ import { usePermissions } from '../hooks/usePermissions';
 import { PageHero } from '../components/PageHero';
 
 interface ApprovalItem {
-  id: number;
+  id: string;
   invoiceNo: string;
   requestType: string;
   status: string;
@@ -18,7 +18,7 @@ export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [deciding, setDeciding] = useState<number | null>(null);
+  const [deciding, setDeciding] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -36,7 +36,7 @@ export default function ApprovalsPage() {
 
   useEffect(() => { void load(); }, []);
 
-  const decide = async (id: number, action: 'approve' | 'reject') => {
+  const decide = async (id: string, action: 'approve' | 'reject') => {
     try {
       setDeciding(id);
       setError('');

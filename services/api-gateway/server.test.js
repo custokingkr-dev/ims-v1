@@ -189,6 +189,12 @@ test('school-facing billing compatibility routes to billing without stealing fee
   assert.equal(resolve('/api/v1/payments'), 'fee');
 });
 
+test('legacy approvals inbox routes to reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/approvals'), 'reporting');
+  assert.equal(resolve('/api/v1/approvals/catalog:CK-1001/approve'), 'reporting');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
