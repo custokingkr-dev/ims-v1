@@ -75,6 +75,15 @@ test('route table sends class-section student path to student service', () => {
   assert.equal(matched.rewrite('/api/v1/classes/class-9/sections/a/students'), '/api/v1/classes/class-9/sections/a/students');
 });
 
+test('route table sends fee-structure subpaths to fee service without overmatching siblings', () => {
+  const matched = routes.find((candidate) => candidate.matches('/api/v1/fee-structure/item'));
+  const sibling = routes.find((candidate) => candidate.matches('/api/v1/fee-structurex/item'));
+
+  assert.equal(matched.service, 'fee');
+  assert.equal(matched.rewrite('/api/v1/fee-structure/item'), '/api/v1/fee-structure/item');
+  assert.equal(sibling, undefined);
+});
+
 test('diagnostic route rewrites service-prefixed path to internal api path', () => {
   const matched = routes.find((candidate) => candidate.matches('/reporting-api/v1/dashboard'));
 
