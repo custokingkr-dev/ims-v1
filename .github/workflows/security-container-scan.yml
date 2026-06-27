@@ -69,16 +69,30 @@ jobs:
     needs: [ resolve-target ]
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
 
       - name: Build image for scanning
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ needs.resolve-target.outputs.context }}
-          build-args: ${{ needs.resolve-target.outputs.build_args }}
-          push: false
-          load: true
-          tags: ${{ needs.resolve-target.outputs.image }}:scan
+        shell: bash
+        env:
+          BUILD_CONTEXT: ${{ needs.resolve-target.outputs.context }}
+          BUILD_ARGS: ${{ needs.resolve-target.outputs.build_args }}
+          IMAGE_TAG: ${{ needs.resolve-target.outputs.image }}:scan
+        run: |
+          set -euo pipefail
+          args=()
+          if [[ -n "${BUILD_ARGS}" ]]; then
+            while IFS= read -r arg; do
+              [[ -n "${arg}" ]] && args+=(--build-arg "${arg}")
+            done <<< "${BUILD_ARGS}"
+          fi
+
+          for attempt in 1 2 3; do
+            if docker build "${args[@]}" -t "${IMAGE_TAG}" "${BUILD_CONTEXT}"; then
+              exit 0
+            fi
+            echo "docker build failed on attempt ${attempt}; retrying..."
+            sleep $((attempt * 10))
+          done
+          docker build "${args[@]}" -t "${IMAGE_TAG}" "${BUILD_CONTEXT}"
 
       - name: Trivy scan image
         shell: bash
@@ -88,7 +102,7 @@ jobs:
           docker run --rm \
             -v /var/run/docker.sock:/var/run/docker.sock \
             -v "${GITHUB_WORKSPACE}/.cache/trivy:/root/.cache/" \
-            aquasec/trivy:0.63.0 image \
+            ghcr.io/aquasecurity/trivy:0.63.0 image \
             --format table \
             --exit-code 1 \
             --ignore-unfixed \
