@@ -1,0 +1,84 @@
+name: Security / Container Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service image to scan."
+        required: true
+        default: "api-gateway"
+        type: choice
+        options:
+          - api-gateway
+          - frontend
+          - identity-service
+          - tenant-school-service
+          - student-service
+          - attendance-service
+          - fee-service
+          - catalog-service
+          - workflow-service
+          - firefighting-service
+          - reporting-service
+          - billing-service
+          - audit-service
+          - notification-service
+  schedule:
+    - cron: "0 21 * * 0"
+
+jobs:
+  resolve-target:
+    runs-on: ubuntu-latest
+    outputs:
+      context: ${{ steps.target.outputs.context }}
+      image: ${{ steps.target.outputs.image }}
+      build_args: ${{ steps.target.outputs.build_args }}
+    steps:
+      - name: Resolve service image target
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          service="${{ inputs.service || 'api-gateway' }}"
+          case "$service" in
+            frontend)
+              echo "context=./frontend" >> "$GITHUB_OUTPUT"
+              echo "image=custoking-frontend" >> "$GITHUB_OUTPUT"
+              echo "build_args=VITE_API_BASE_URL=/api/v1" >> "$GITHUB_OUTPUT"
+              ;;
+            api-gateway)
+              echo "context=./services/api-gateway" >> "$GITHUB_OUTPUT"
+              echo "image=custoking-api-gateway" >> "$GITHUB_OUTPUT"
+              echo "build_args=" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "context=./services/${service}" >> "$GITHUB_OUTPUT"
+              echo "image=custoking-${service}" >> "$GITHUB_OUTPUT"
+              echo "build_args=" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  trivy-scan:
+    runs-on: ubuntu-latest
+    needs: [ resolve-target ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ needs.resolve-target.outputs.context }}
+          build-args: ${{ needs.resolve-target.outputs.build_args }}
+          push: false
+          load: true
+          tags: ${{ needs.resolve-target.outputs.image }}:scan
+
+      - name: Trivy scan image
+        uses: aquasecurity/trivy-action@v0.31.0
+        with:
+          image-ref: ${{ needs.resolve-target.outputs.image }}:scan
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL

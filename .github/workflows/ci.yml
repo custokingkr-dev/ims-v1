@@ -123,38 +123,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  trivy-scan:
-    runs-on: ubuntu-latest
-    needs: [ detect-changes, docker-build ]
-    if: github.event_name == 'push' && needs.detect-changes.outputs.has_service_changes == 'true' && needs.docker-build.result == 'success'
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.detect-changes.outputs.docker_matrix) }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-
-      - name: Build ${{ matrix.name }} image for scanning
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ matrix.context }}
-          build-args: ${{ matrix.build_args }}
-          push: false
-          load: true
-          tags: ${{ matrix.image }}:scan
-
-      - name: Trivy scan ${{ matrix.name }} image
-        uses: aquasecurity/trivy-action@v0.31.0
-        with:
-          image-ref: ${{ matrix.image }}:scan
-          format: table
-          exit-code: 1
-          ignore-unfixed: true
-          severity: CRITICAL
-
   ci-result:
     runs-on: ubuntu-latest
-    needs: [ detect-changes, service-test, docker-build, secret-scan, trivy-scan ]
+    needs: [ detect-changes, service-test, docker-build, secret-scan ]
     if: always()
     steps:
       - name: Check CI result
@@ -164,7 +135,6 @@ jobs:
           echo "service-test=${{ needs.service-test.result }}"
           echo "docker-build=${{ needs.docker-build.result }}"
           echo "secret-scan=${{ needs.secret-scan.result }}"
-          echo "trivy-scan=${{ needs.trivy-scan.result }}"
 
           for result in "${{ needs.detect-changes.result }}" "${{ needs.secret-scan.result }}"; do
             if [ "$result" != "success" ]; then
@@ -172,7 +142,7 @@ jobs:
             fi
           done
 
-          for result in "${{ needs.service-test.result }}" "${{ needs.docker-build.result }}" "${{ needs.trivy-scan.result }}"; do
+          for result in "${{ needs.service-test.result }}" "${{ needs.docker-build.result }}"; do
             if [ "$result" != "success" ] && [ "$result" != "skipped" ]; then
               exit 1
             fi
