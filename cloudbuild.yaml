@@ -97,9 +97,15 @@ steps:
           gcloud run services describe "$1" --region="${_REGION}" --format='value(status.url)'
         }
 
+        CURRENT_GATEWAY_URL="$(gcloud run services describe "${_API_GATEWAY_SERVICE}" --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
+        if [ -z "$${CURRENT_GATEWAY_URL}" ]; then
+          CURRENT_GATEWAY_URL="http://api-gateway:80"
+        fi
+
         gcloud run deploy "${_FRONTEND_SERVICE}" \
           --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-frontend:${_COMMIT_SHA}" \
-          --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2
+          --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2 \
+          --set-env-vars="API_UPSTREAM=$${CURRENT_GATEWAY_URL}"
 
         FRONTEND_URL="$(url "${_FRONTEND_SERVICE}")"
         IDENTITY_URL="$(url custoking-identity-service)"
@@ -120,6 +126,11 @@ steps:
           --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 \
           --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${TENANT_URL},STUDENT_UPSTREAM=$${STUDENT_URL},ATTENDANCE_UPSTREAM=$${ATTENDANCE_URL},FEE_UPSTREAM=$${FEE_URL},CATALOG_UPSTREAM=$${CATALOG_URL},WORKFLOW_UPSTREAM=$${WORKFLOW_URL},FIREFIGHTING_UPSTREAM=$${FIREFIGHTING_URL},REPORTING_UPSTREAM=$${REPORTING_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${AUDIT_URL},NOTIFICATION_UPSTREAM=$${NOTIFICATION_URL}" \
           --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token:latest,STUDENT_SERVICE_TOKEN=student-read-token:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token:latest,FEE_SERVICE_TOKEN=fee-read-token:latest,CATALOG_SERVICE_TOKEN=catalog-read-token:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token:latest,REPORTING_SERVICE_TOKEN=reporting-read-token:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token:latest"
+
+        GATEWAY_URL="$(url "${_API_GATEWAY_SERVICE}")"
+        gcloud run services update "${_FRONTEND_SERVICE}" \
+          --region="${_REGION}" \
+          --set-env-vars="API_UPSTREAM=$${GATEWAY_URL}"
 
 images:
   - '${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-identity-service:${_COMMIT_SHA}'
