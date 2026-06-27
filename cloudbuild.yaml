@@ -112,10 +112,14 @@ steps:
             --set-secrets="$${secrets}"
         }
 
-        deploy_service identity-service custoking-identity-service custoking-identity-service "IDENTITY_DB_SCHEMA=identity,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=ims-app-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest"
         deploy_service tenant-school-service custoking-tenant-school-service custoking-tenant-school-service "TENANT_SCHOOL_DB_SCHEMA=tenant_school" \
           "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=ims-app-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
+        TENANT_SCHOOL_URL="$(gcloud run services describe custoking-tenant-school-service --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
+        if [ -z "$${TENANT_SCHOOL_URL}" ]; then
+          TENANT_SCHOOL_URL="http://tenant-school-service:8080"
+        fi
+        deploy_service identity-service custoking-identity-service custoking-identity-service "IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
+          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=ims-app-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
         deploy_service student-service custoking-student-service custoking-student-service "STUDENT_DB_SCHEMA=student" \
           "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=ims-app-password:latest,STUDENT_READ_TOKEN=student-read-token:latest"
         deploy_service attendance-service custoking-attendance-service custoking-attendance-service "ATTENDANCE_DB_SCHEMA=attendance" \
