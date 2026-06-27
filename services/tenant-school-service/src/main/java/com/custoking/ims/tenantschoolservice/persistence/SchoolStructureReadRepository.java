@@ -120,14 +120,13 @@ public class SchoolStructureReadRepository {
         return jdbc.sql("""
                         SELECT s.id, s.name, s.short_code, s.city, s.active, s.created_at,
                                admin.email AS admin_email,
-                               COALESCE(COUNT(co.id), 0) AS orders_ytd,
-                               COALESCE(SUM(co.total_amount), 0) AS gmv_ytd
+                               0 AS orders_ytd,
+                               0 AS gmv_ytd
                         FROM tenant_school.schools s
                         LEFT JOIN identity.app_users admin
                                ON admin.branch_id = s.id
                               AND UPPER(admin.role) = 'ADMIN'
                               AND admin.deleted_at IS NULL
-                        LEFT JOIN catalog.catalog_orders co ON co.school_id = s.id
                         GROUP BY s.id, s.name, s.short_code, s.city, s.active, s.created_at, admin.email
                         ORDER BY s.name
                         """)

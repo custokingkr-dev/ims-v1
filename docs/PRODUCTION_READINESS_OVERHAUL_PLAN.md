@@ -837,3 +837,21 @@ Verified:
   - `firefighting-service`
   - `reporting-service`
 - Full `scripts/verify-microservice-migration.ps1` passed with the new schema-default audit included.
+
+### 2026-06-27: Data Boundary And Local Runtime Cleanup
+
+Completed:
+
+- Removed the `tenant-school-service` runtime read of `catalog.catalog_orders` from superadmin school stats.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `tenant-school-service -> catalog` is no longer allowed.
+- Added `scripts/audit-legacy-public-retirement-readiness.ps1` to verify that legacy public-table mapping and archive-first retirement SQL generation remain usable without a live database.
+- Added `scripts/audit-compose-profiles.ps1` and wired it into the migration verifier.
+- Split local Docker runtime into `core` and `full` profiles, and removed the gateway dependency on the entire service graph so local operators can avoid starting every JVM.
+
+Verified:
+
+- `docker compose --profile core config --quiet` passed.
+- `docker compose --profile full config --quiet` passed.
+- `tenant-school-service` Maven tests passed: 11 tests, 0 failures.
+- `api-gateway` Node tests passed: 10 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed with the new audits included.

@@ -1,6 +1,6 @@
 # Custoking IMS
 
-Custoking IMS is a multi-tenant school operations platform. The repository is now organized as a split-service system: a React frontend, an nginx API gateway, and domain microservices deployed to Cloud Run.
+Custoking IMS is a multi-tenant school operations platform. The repository is now organized as a split-service system: a React frontend, a programmable API gateway, and domain microservices deployed to Cloud Run.
 
 ## Architecture
 
@@ -55,16 +55,28 @@ npm ci
 npm run dev
 ```
 
-Full local split-service stack:
+Low-memory local stack for login, school/student, attendance, fees, frontend, and gateway:
 
 ```powershell
-docker compose up --build
+docker compose --profile core up -d --build
 ```
 
-The compose topology has explicit memory limits for local stability. To reclaim WSL memory after stopping services:
+Full local split-service stack for complete migration smoke testing:
 
 ```powershell
-docker compose stop
+docker compose --profile full up -d --build
+```
+
+Infrastructure-only database startup:
+
+```powershell
+docker compose up -d postgres
+```
+
+The compose topology has explicit memory limits and profiles for local stability. The `api-gateway` does not use `depends_on` for every service; health and smoke scripts are responsible for readiness checks. To reclaim WSL memory after stopping services:
+
+```powershell
+docker compose --profile full stop
 wsl --shutdown
 ```
 
@@ -98,6 +110,8 @@ Static and migration guardrails:
 powershell -ExecutionPolicy Bypass -File scripts\audit-microservice-runtime-boundaries.ps1
 powershell -ExecutionPolicy Bypass -File scripts\audit-microservice-db-boundaries.ps1
 powershell -ExecutionPolicy Bypass -File scripts\audit-legacy-compatibility-cloudsql.ps1
+powershell -ExecutionPolicy Bypass -File scripts\audit-compose-profiles.ps1
+powershell -ExecutionPolicy Bypass -File scripts\audit-legacy-public-retirement-readiness.ps1
 ```
 
 Production direct private-service smoke:
@@ -162,3 +176,5 @@ Never commit `.env`, production smoke tokens, MSG91 auth keys, or generated evid
 The monolithic public domain tables have been retired in production after compatibility audit. Runtime code must not read or write retired public domain tables. Already-applied historical Flyway migrations may still contain backfill SQL from public tables; do not edit those files without a Flyway repair/baseline plan.
 
 Forward migrations should be used for every post-split database change.
+
+Before retiring legacy public tables in any environment, run the compatibility audit, generate archive-first SQL, review it, and only enable `-IncludeDropStatements` during an approved cleanup window.

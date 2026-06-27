@@ -20,6 +20,7 @@ services:
       retries: 20
 
   audit-service:
+    profiles: ["full"]
     build:
       context: ./services/audit-service
     container_name: custoking-audit-service
@@ -45,6 +46,7 @@ services:
         condition: service_healthy
 
   identity-service:
+    profiles: ["core", "full"]
     build:
       context: ./services/identity-service
     container_name: custoking-identity-service
@@ -72,6 +74,7 @@ services:
         condition: service_healthy
 
   tenant-school-service:
+    profiles: ["core", "full"]
     build:
       context: ./services/tenant-school-service
     container_name: custoking-tenant-school-service
@@ -94,6 +97,7 @@ services:
         condition: service_healthy
 
   student-service:
+    profiles: ["core", "full"]
     build:
       context: ./services/student-service
     container_name: custoking-student-service
@@ -116,6 +120,7 @@ services:
         condition: service_healthy
 
   attendance-service:
+    profiles: ["core", "full"]
     build:
       context: ./services/attendance-service
     container_name: custoking-attendance-service
@@ -138,6 +143,7 @@ services:
         condition: service_healthy
 
   fee-service:
+    profiles: ["core", "full"]
     build:
       context: ./services/fee-service
     container_name: custoking-fee-service
@@ -160,6 +166,7 @@ services:
         condition: service_healthy
 
   catalog-service:
+    profiles: ["full"]
     build:
       context: ./services/catalog-service
     container_name: custoking-catalog-service
@@ -182,6 +189,7 @@ services:
         condition: service_healthy
 
   workflow-service:
+    profiles: ["full"]
     build:
       context: ./services/workflow-service
     container_name: custoking-workflow-service
@@ -204,6 +212,7 @@ services:
         condition: service_healthy
 
   firefighting-service:
+    profiles: ["full"]
     build:
       context: ./services/firefighting-service
     container_name: custoking-firefighting-service
@@ -226,6 +235,7 @@ services:
         condition: service_healthy
 
   reporting-service:
+    profiles: ["full"]
     build:
       context: ./services/reporting-service
     container_name: custoking-reporting-service
@@ -249,6 +259,7 @@ services:
         condition: service_healthy
 
   billing-service:
+    profiles: ["full"]
     build:
       context: ./services/billing-service
     container_name: custoking-billing-service
@@ -271,6 +282,7 @@ services:
         condition: service_healthy
 
   notification-service:
+    profiles: ["full"]
     build:
       context: ./services/notification-service
     container_name: custoking-notification-service
@@ -304,6 +316,7 @@ services:
         condition: service_healthy
 
   frontend:
+    profiles: ["core", "full"]
     build:
       context: ./frontend
       args:
@@ -314,6 +327,7 @@ services:
     mem_reservation: 64m
 
   api-gateway:
+    profiles: ["core", "full"]
     build:
       context: ./services/api-gateway
     container_name: custoking-api-gateway
@@ -337,33 +351,6 @@ services:
       GATEWAY_CLOUD_RUN_AUTH: never
     ports:
       - "80:80"
-    depends_on:
-      frontend:
-        condition: service_healthy
-      notification-service:
-        condition: service_healthy
-      audit-service:
-        condition: service_healthy
-      identity-service:
-        condition: service_healthy
-      tenant-school-service:
-        condition: service_healthy
-      student-service:
-        condition: service_healthy
-      attendance-service:
-        condition: service_healthy
-      fee-service:
-        condition: service_healthy
-      catalog-service:
-        condition: service_healthy
-      workflow-service:
-        condition: service_healthy
-      firefighting-service:
-        condition: service_healthy
-      reporting-service:
-        condition: service_healthy
-      billing-service:
-        condition: service_healthy
 
 volumes:
   postgres_data:

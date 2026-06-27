@@ -46,6 +46,10 @@ try {
         & (Join-Path $PSScriptRoot "audit-deployment-boundaries.ps1")
     }
 
+    Invoke-Step "compose profile audit" {
+        & (Join-Path $PSScriptRoot "audit-compose-profiles.ps1")
+    }
+
     Invoke-Step "service authorization boundary audit" {
         & (Join-Path $PSScriptRoot "audit-service-authorization-boundaries.ps1")
     }
@@ -64,6 +68,10 @@ Invoke-Step "runtime schema dependency baseline audit" {
 
 Invoke-Step "service schema default audit" {
     & (Join-Path $PSScriptRoot "audit-service-schema-defaults.ps1")
+}
+
+Invoke-Step "legacy public retirement readiness audit" {
+    & (Join-Path $PSScriptRoot "audit-legacy-public-retirement-readiness.ps1")
 }
 
 Invoke-Step "microservice build catalog audit" {
