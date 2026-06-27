@@ -135,6 +135,14 @@ test('stringOrEmpty normalizes nullable principal fields', () => {
   assert.equal(stringOrEmpty(4), '4');
 });
 
+test('school admin + operations-user route to identity, not tenant', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/schools/12/admin'), 'identity');
+  assert.equal(resolve('/api/v1/schools/12/operations-user'), 'identity');
+  assert.equal(resolve('/api/v1/schools/12/modules'), 'tenant'); // unchanged
+  assert.equal(resolve('/api/v1/schools'), 'tenant');            // unchanged
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
