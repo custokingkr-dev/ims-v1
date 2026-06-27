@@ -53,4 +53,13 @@ class FirefightingPublicCompatibilityControllerTest {
                     assertThat(response.getReason()).isEqualTo("School not found");
                 });
     }
+
+    @Test
+    void markVendorPaidDelegatesToRepository() {
+        Map<String, Object> request = Map.of("schoolId", 4L, "notes", "paid offline");
+        when(repo.markVendorPaid("FF-1", request)).thenReturn(Map.of("code", "FF-1", "vendorPaid", true));
+
+        assertThat(controller.markVendorPaid("tok", "FF-1", request)).containsEntry("vendorPaid", true);
+        verify(repo).markVendorPaid("FF-1", request);
+    }
 }

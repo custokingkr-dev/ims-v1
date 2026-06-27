@@ -4,6 +4,7 @@ import com.custoking.ims.firefightingservice.persistence.FirefightingReadReposit
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -32,6 +33,15 @@ public class FirefightingPublicCompatibilityController {
             @RequestBody Map<String, Object> request) {
         requireToken(token);
         return run(() -> firefighting.createRequest(request));
+    }
+
+    @PostMapping("/api/v1/dashboard/vendor-dues/firefighting/{code}/mark-paid")
+    public Map<String, Object> markVendorPaid(
+            @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
+            @PathVariable String code,
+            @RequestBody(required = false) Map<String, Object> request) {
+        requireToken(token);
+        return run(() -> firefighting.markVendorPaid(code, request == null ? Map.of() : request));
     }
 
     private void requireToken(String token) {
