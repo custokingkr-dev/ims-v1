@@ -81,15 +81,16 @@ jobs:
           tags: ${{ needs.resolve-target.outputs.image }}:scan
 
       - name: Trivy scan image
-        uses: aquasecurity/trivy-action@v0.31.0
-        env:
-          # Authenticate the action's GitHub API calls (version resolve + binary
-          # download). Without this, shared runner IPs hit the 60 req/hr
-          # unauthenticated rate limit and install.sh aborts before scanning.
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          image-ref: ${{ needs.resolve-target.outputs.image }}:scan
-          format: table
-          exit-code: 1
-          ignore-unfixed: true
-          severity: CRITICAL
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${GITHUB_WORKSPACE}/.cache/trivy"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${GITHUB_WORKSPACE}/.cache/trivy:/root/.cache/" \
+            aquasec/trivy:0.63.0 image \
+            --format table \
+            --exit-code 1 \
+            --ignore-unfixed \
+            --severity CRITICAL \
+            "${{ needs.resolve-target.outputs.image }}:scan"
