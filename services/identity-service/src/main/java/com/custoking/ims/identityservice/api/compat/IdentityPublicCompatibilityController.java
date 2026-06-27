@@ -33,7 +33,7 @@ public class IdentityPublicCompatibilityController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
             @RequestBody Map<String, Object> body) {
-        requireToken(token);
+        requireToken(token, "identity:write");
         return run(() -> users.provisionSchoolUser(schoolId, "ADMIN", body));
     }
 
@@ -43,7 +43,7 @@ public class IdentityPublicCompatibilityController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
             @RequestBody Map<String, Object> body) {
-        requireToken(token);
+        requireToken(token, "identity:write");
         return run(() -> users.provisionSchoolUser(schoolId, "OPERATIONS", body));
     }
 
@@ -53,12 +53,12 @@ public class IdentityPublicCompatibilityController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long zoneId,
             @RequestBody Map<String, Object> body) {
-        requireToken(token);
+        requireToken(token, "identity:write");
         return run(() -> users.provisionZoneAdmin(zoneId, body));
     }
 
-    private void requireToken(String token) {
-        if (!StringUtils.hasText(serviceToken) || !serviceToken.equals(token)) {
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(serviceToken) || !serviceToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid identity service token");
         }
     }

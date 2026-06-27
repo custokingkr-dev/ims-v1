@@ -29,7 +29,7 @@ public class TenantSchoolPublicCompatibilityController {
     public Map<String, Object> addStaffFromWorkspace(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
-        requireToken(token);
+        requireToken(token, "tenant-school:write");
         Long schoolId = longValue(request.get("schoolId"));
         if (schoolId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
@@ -46,7 +46,7 @@ public class TenantSchoolPublicCompatibilityController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestHeader(value = "X-Authenticated-School-Id", required = false) String authenticatedSchoolId,
             @RequestBody Map<String, Object> request) {
-        requireToken(token);
+        requireToken(token, "tenant-school:write");
         Long schoolId = longValue(request.get("schoolId"));
         if (schoolId == null) {
             schoolId = longValue(authenticatedSchoolId);
@@ -61,8 +61,8 @@ public class TenantSchoolPublicCompatibilityController {
         }
     }
 
-    private void requireToken(String token) {
-        if (!StringUtils.hasText(readToken) || !readToken.equals(token)) {
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid tenant-school service token");
         }
     }
