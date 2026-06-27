@@ -806,7 +806,6 @@ Current allowed transitional external schema dependencies:
 - `attendance-service` -> `student`, `tenant_school`
 - `catalog-service` -> `student`, `tenant_school`
 - `fee-service` -> `student`, `tenant_school`
-- `identity-service` -> `tenant_school`
 - `reporting-service` -> `attendance`, `billing`, `catalog`, `fee`, `firefighting`, `notification`, `student`, `tenant_school`
 - `student-service` -> `tenant_school`
 
@@ -899,4 +898,22 @@ Verified:
 
 - `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
 - `firefighting-service` Maven test suite passed.
+- Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
+
+### 2026-06-28: Identity Tenant-School SQL Dependency Removed
+
+Completed:
+
+- Removed identity runtime SQL reads from `tenant_school.schools` and `tenant_school.zones`.
+- Removed identity runtime SQL writes to `tenant_school.zone_admin_assignments`.
+- Added a tenant-school-owned internal API for zone admin assignment and retirement.
+- Added an identity `TenantSchoolClient` that calls tenant-school over HTTP using the existing internal token and optional Cloud Run ID-token support.
+- Wired local Compose and Cloud Build so identity receives tenant-school URL/token configuration.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `identity-service -> tenant_school` is no longer an allowed transitional dependency.
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- `identity-service` Maven test suite passed.
+- `tenant-school-service` Maven test suite passed.
 - Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.

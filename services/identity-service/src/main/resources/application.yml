@@ -46,3 +46,7 @@ identity:
   db:
     schema: ${IDENTITY_DB_SCHEMA:identity}
   introspection-token: ${IDENTITY_INTROSPECTION_TOKEN:}
+  tenant-school:
+    base-url: ${TENANT_SCHOOL_BASE_URL:}
+    token: ${TENANT_SCHOOL_READ_TOKEN:}
+    cloud-run-auth: ${TENANT_SCHOOL_CLOUD_RUN_AUTH:auto}
