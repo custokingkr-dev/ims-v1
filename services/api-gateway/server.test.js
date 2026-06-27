@@ -162,6 +162,12 @@ test('workspace firefighting routes to firefighting, not reporting', () => {
   assert.equal(resolve('/api/v1/workspace'), 'reporting');
 });
 
+test('workspace staff routes to tenant, not reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/workspace/staff'), 'tenant');
+  assert.equal(resolve('/api/v1/workspace'), 'reporting');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
