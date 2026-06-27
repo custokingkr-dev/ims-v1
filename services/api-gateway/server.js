@@ -157,7 +157,8 @@ function route(service, matcher) {
     rewritePrefix: null,
     matches(pathname) {
       if (matcher instanceof RegExp) return matcher.test(pathname);
-      return pathname === matcher || (matcher.endsWith('/') && pathname.startsWith(matcher));
+      return pathname === matcher
+        || pathname.startsWith(matcher.endsWith('/') ? matcher : `${matcher}/`);
     },
     rewrite(pathname) {
       return pathname;
