@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +50,19 @@ public class StudentWorkspaceCompatibilityController {
             @RequestParam(defaultValue = "500") int limit) {
         requireToken(token, "student:read");
         return students.list(schoolId, classId, sectionId, limit);
+    }
+
+    @PutMapping("/api/v1/student-review-items/{itemId}")
+    public Map<String, Object> updateReviewItem(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable String itemId,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "student:write");
+        try {
+            return students.updateReviewItem(itemId, request);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
     }
 
     private void requireToken(String token, String requiredScope) {

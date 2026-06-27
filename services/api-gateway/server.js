@@ -69,6 +69,7 @@ const routes = [
   route('student', '/api/v1/students/'),
   route('student', '/api/v1/students'),
   route('student', '/api/v1/workspace/students'),
+  route('student', '/api/v1/student-review-items/'),
   route('fee', '/api/v1/workspace/fees/'),
   route('reporting', '/api/v1/workspace/'),
   route('reporting', '/api/v1/workspace'),

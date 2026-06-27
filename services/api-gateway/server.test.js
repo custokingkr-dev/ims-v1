@@ -143,6 +143,11 @@ test('school admin + operations-user route to identity, not tenant', () => {
   assert.equal(resolve('/api/v1/schools'), 'tenant');            // unchanged
 });
 
+test('student-review-items routes to student', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/student-review-items/RV-9'), 'student');
+});
+
 test('zone admin routes to identity, zone reads stay tenant', () => {
   const resolve = (p) => routes.find((r) => r.matches(p))?.service;
   assert.equal(resolve('/api/v1/zones/12/admin'), 'identity');
