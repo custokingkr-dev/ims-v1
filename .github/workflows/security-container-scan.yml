@@ -26,6 +26,12 @@ on:
   schedule:
     - cron: "0 21 * * 0"
 
+# Least privilege: the GITHUB_TOKEN handed to the third-party trivy-action only
+# needs to authenticate read API calls (raise the rate limit / pull the vuln DB).
+# Pin to read-only so a compromised action cannot use the token to write.
+permissions:
+  contents: read
+
 jobs:
   resolve-target:
     runs-on: ubuntu-latest
