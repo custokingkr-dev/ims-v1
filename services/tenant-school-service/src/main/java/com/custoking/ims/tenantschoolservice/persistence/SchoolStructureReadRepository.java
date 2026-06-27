@@ -87,11 +87,10 @@ public class SchoolStructureReadRepository {
     public List<ZoneAdminRow> zoneAdmins(Long zoneId, Boolean active) {
         StringBuilder sql = new StringBuilder("""
                 SELECT zaa.id, zaa.zone_id, z.name AS zone_name, z.code AS zone_code,
-                       zaa.user_id, u.full_name, u.email, u.active AS user_active,
+                       zaa.user_id, '' AS full_name, '' AS email, zaa.active AS user_active,
                        zaa.active, zaa.assigned_at, zaa.assigned_by
                 FROM tenant_school.zone_admin_assignments zaa
                 JOIN tenant_school.zones z ON z.id = zaa.zone_id
-                JOIN identity.app_users u ON u.id = zaa.user_id
                 WHERE zaa.zone_id = :zoneId
                 """);
         if (active != null) sql.append(" AND zaa.active = :active");
@@ -119,15 +118,10 @@ public class SchoolStructureReadRepository {
     public List<SuperadminSchoolStatsRow> schoolStats() {
         return jdbc.sql("""
                         SELECT s.id, s.name, s.short_code, s.city, s.active, s.created_at,
-                               admin.email AS admin_email,
+                               '' AS admin_email,
                                0 AS orders_ytd,
                                0 AS gmv_ytd
                         FROM tenant_school.schools s
-                        LEFT JOIN identity.app_users admin
-                               ON admin.branch_id = s.id
-                              AND UPPER(admin.role) = 'ADMIN'
-                              AND admin.deleted_at IS NULL
-                        GROUP BY s.id, s.name, s.short_code, s.city, s.active, s.created_at, admin.email
                         ORDER BY s.name
                         """)
                 .query((rs, rowNum) -> new SuperadminSchoolStatsRow(

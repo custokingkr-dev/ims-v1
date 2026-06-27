@@ -45,9 +45,6 @@
     ],
     "student-service": [
       "tenant_school"
-    ],
-    "tenant-school-service": [
-      "identity"
     ]
   }
 }
