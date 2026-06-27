@@ -6,7 +6,9 @@ import { usePermissions } from '../hooks/usePermissions';
 import { X } from 'lucide-react';
 import {
   type PanelKey, type WorkspaceData,
-  ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS, SUPERADMIN_NAV_SECTIONS, ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
+  ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
+  SUPERADMIN_NAV_SECTIONS, TEACHER_NAV_SECTIONS, VIEWER_NAV_SECTIONS,
+  ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
 } from './workspace/config';
 import { NavIcon } from '../shared/display/icons';
 import { HomePanel } from './workspace/panels/HomePanel';
@@ -39,17 +41,25 @@ export default function UnifiedWorkspacePage() {
   const navigate = useNavigate();
   const { can } = usePermissions();
 
-  // Derived scope flags — permission-based, not role-name-based.
-  const isPlatformAdmin = can('platform:admin');
-  const isZoneAdmin = can('zone:manage') && !isPlatformAdmin;
-  const isOperations = !can('fee:collect') && !isPlatformAdmin && !isZoneAdmin;
+  const role = user?.role;
+  const isPlatformAdmin = role === 'SUPERADMIN' || can('platform:admin');
+  const isZoneAdmin = !isPlatformAdmin && (role === 'ZONE_ADMIN' || can('zone:manage'));
+  const isOperations = role === 'OPERATIONS';
+  const isAccountant = role === 'ACCOUNTANT';
+  const isTeacher = role === 'TEACHER';
+  const isViewer = role === 'VIEWER';
+  const defaultPanel: PanelKey = isPlatformAdmin
+    ? 'orders'
+    : isZoneAdmin
+      ? 'za-overview'
+      : isOperations || isTeacher || isViewer || isAccountant
+        ? 'home'
+        : 'catalog';
 
   // ── Core workspace state ────────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [workspaceError, setWorkspaceError] = useState('');
-  const [panel, setPanel] = useState<PanelKey>(
-    isPlatformAdmin ? 'orders' : isZoneAdmin ? 'za-overview' : isOperations ? 'home' : 'catalog'
-  );
+  const [panel, setPanel] = useState<PanelKey>(defaultPanel);
 
   // ffEditingCode: passed into FirefightingNewPanel when opening a draft from the dashboard.
   const [ffEditingCode, setFfEditingCode] = useState<string | null>(null);
@@ -202,11 +212,24 @@ export default function UnifiedWorkspacePage() {
       ? ZONE_ADMIN_NAV_SECTIONS
       : isOperations
         ? OPERATIONS_NAV_SECTIONS
-        : ADMIN_NAV_SECTIONS;
+        : isAccountant
+          ? ACCOUNTANT_NAV_SECTIONS
+          : isTeacher
+            ? TEACHER_NAV_SECTIONS
+            : isViewer
+              ? VIEWER_NAV_SECTIONS
+              : ADMIN_NAV_SECTIONS;
+  const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
 
   const isFire = panel.startsWith('ff-');
   // liveOrders is a PageResponse envelope; fall back to workspace snapshot for first render
   const orderRows: any[] = (liveOrders?.content) ?? workspace?.orders ?? [];
+
+  useEffect(() => {
+    if (!allowedPanelKeys.includes(panel)) {
+      setPanel(defaultPanel);
+    }
+  }, [allowedPanelKeys.join('|'), defaultPanel, panel]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!workspace && workspaceError) {
@@ -295,7 +318,7 @@ export default function UnifiedWorkspacePage() {
             </div>
             <div>
               <div className="ck-user-name">{user?.fullName ?? user?.email}</div>
-              <div className="ck-user-meta">{isPlatformAdmin ? 'Platform Admin' : isOperations ? 'Operations User' : 'School Admin'}</div>
+              <div className="ck-user-meta">{role?.replace('_', ' ') ?? 'User'}</div>
             </div>
           </div>
           <div className="ck-badge-row" style={{ marginTop: 10 }}>

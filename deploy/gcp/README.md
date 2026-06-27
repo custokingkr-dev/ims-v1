@@ -57,15 +57,17 @@ GitHub Actions:
 1. Open **Actions -> Deploy to GCP**.
 2. Select environment.
 3. Leave `commit_sha` empty to deploy the workflow SHA, or provide a tag.
-4. Keep direct smoke enabled for production.
+4. Select `deploy_services`. The default is `frontend`, which builds and deploys only that service.
+5. Select `all` only when an approved full fleet rollout is required.
+6. Keep direct smoke enabled for production full/API/domain-service deploys.
 
 Manual Cloud Build:
 
 ```powershell
-gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2 --project=custoking-ims .
+gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2,_DEPLOY_SERVICES=frontend --project=custoking-ims .
 ```
 
-Cloud Build builds every service image, pushes to Artifact Registry, deploys private domain services, deploys the frontend, then deploys the API gateway with direct upstream URLs for each service.
+Cloud Build builds and deploys only the selected service by default. Use `_DEPLOY_SERVICES=all` for the previous full rollout behavior, or pass a comma-separated list such as `_DEPLOY_SERVICES=frontend,api-gateway` for a small coordinated release. When `api-gateway` is selected, Cloud Build resolves the currently deployed service URLs and rewires the gateway upstreams.
 
 GitHub Actions stages Cloud Build source archives in `gs://custoking-ims-github-deploy-source/source`. Keep the bucket lifecycle policy applied so old source archives are removed automatically:
 

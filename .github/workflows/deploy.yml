@@ -15,8 +15,29 @@ on:
         description: "Image tag to deploy. Defaults to the workflow commit SHA."
         required: false
         type: string
+      deploy_services:
+        description: "Service to build/deploy. Use all for the previous full rollout."
+        required: true
+        default: "frontend"
+        type: choice
+        options:
+          - frontend
+          - api-gateway
+          - identity-service
+          - tenant-school-service
+          - student-service
+          - attendance-service
+          - fee-service
+          - catalog-service
+          - workflow-service
+          - firefighting-service
+          - reporting-service
+          - billing-service
+          - audit-service
+          - notification-service
+          - all
       run_direct_smoke:
-        description: "Run private Cloud Run direct service smoke after deploy."
+        description: "Run private Cloud Run direct service smoke after all/API/domain deploys."
         required: true
         default: true
         type: boolean
@@ -75,7 +96,7 @@ jobs:
           gcloud config set project "${GCP_PROJECT_ID}"
           BUILD_ID="$(gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION} \
+            --substitutions=_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION},_DEPLOY_SERVICES=${{ github.event.inputs.deploy_services || 'frontend' }} \
             --project="${GCP_PROJECT_ID}" \
             --gcs-source-staging-dir="${CLOUD_BUILD_SOURCE_STAGING_DIR}" \
             --async \
@@ -108,7 +129,7 @@ jobs:
           exit 1
 
       - name: Run direct service smoke
-        if: ${{ github.event.inputs.run_direct_smoke != 'false' }}
+        if: ${{ github.event.inputs.run_direct_smoke != 'false' && github.event.inputs.deploy_services != 'frontend' }}
         shell: bash
         run: |
           set -euo pipefail

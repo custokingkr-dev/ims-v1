@@ -127,6 +127,10 @@ $env:TILT_COMPOSE_PROFILE='core'
 tilt up
 ```
 
+`tilt up` also runs the `local-dev-users` setup resource. It creates or refreshes one
+local login per role and prints the credentials in Tilt logs. See
+[docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md#tilt) for the full credential table.
+
 For a complete setup guide, use [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md).
 
 ## Verification
@@ -184,15 +188,16 @@ GitHub Actions deployment:
 1. Open **Actions -> Deploy to GCP**.
 2. Choose `production` or `staging`.
 3. Leave `commit_sha` empty to deploy the workflow commit, or provide an image tag.
-4. Keep `run_direct_smoke` enabled for production.
+4. Choose `deploy_services`; default `frontend` deploys one service only.
+5. Choose `all` only for an approved full fleet rollout.
 
 Manual Cloud Build deployment:
 
 ```powershell
-gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2 --project=custoking-ims .
+gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2,_DEPLOY_SERVICES=frontend --project=custoking-ims .
 ```
 
-Cloud Build builds all service images, pushes to Artifact Registry, deploys Cloud Run services, and wires Secret Manager values.
+Cloud Build builds and deploys the selected service. Use `_DEPLOY_SERVICES=all` for the previous all-service rollout.
 
 ## Secrets
 

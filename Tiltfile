@@ -44,6 +44,13 @@ dc_resource(
     links=['http://localhost:8087/actuator/health'],
 )
 
+local_resource(
+    'local-dev-users',
+    cmd='powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\ensure-local-dev-users.ps1',
+    resource_deps=['identity-service', 'tenant-school-service'],
+    labels=['setup'],
+)
+
 full_only_services = {
     'notification-service': 'http://localhost:8081/actuator/health',
     'audit-service': 'http://localhost:8082/actuator/health',
@@ -78,7 +85,7 @@ dc_resource(
     resource_deps=[],
 )
 
-gateway_deps = ['frontend', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service']
+gateway_deps = ['local-dev-users', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service']
 if profile == 'full':
     gateway_deps += full_only_service_names
 

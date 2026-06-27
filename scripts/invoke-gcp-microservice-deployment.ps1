@@ -3,6 +3,7 @@ param(
     [string]$Region = "asia-south2",
     [string]$Repository = "custoking",
     [string]$CommitSha,
+    [string]$DeployServices = "frontend",
     [string]$ArtifactDirectory = "artifacts/gcp-deployment",
     [string]$GcloudPath = "gcloud",
     [string]$DirectSmokeServiceAccount,
@@ -89,7 +90,7 @@ if (-not $SkipCloudBuild) {
         & $GcloudPath config set project $ProjectId | Out-Host
         & $GcloudPath builds submit `
             "--config=cloudbuild.yaml" `
-            "--substitutions=_COMMIT_SHA=$CommitSha,_REGION=$Region,_AR_REPO=$Repository" `
+            "--substitutions=_COMMIT_SHA=$CommitSha,_REGION=$Region,_AR_REPO=$Repository,_DEPLOY_SERVICES=$DeployServices" `
             "--project=$ProjectId" `
             "."
     }
