@@ -52,3 +52,5 @@ identity:
     cloud-run-auth: ${TENANT_SCHOOL_CLOUD_RUN_AUTH:auto}
     connect-timeout-ms: ${TENANT_SCHOOL_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${TENANT_SCHOOL_READ_TIMEOUT_MS:5000}
+    max-attempts: ${TENANT_SCHOOL_MAX_ATTEMPTS:3}
+    retry-backoff-ms: ${TENANT_SCHOOL_RETRY_BACKOFF_MS:200}
