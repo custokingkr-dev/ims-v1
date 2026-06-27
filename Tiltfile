@@ -1,22 +1,12 @@
-docker_compose('docker-compose.yml', profiles=['full'])
+profile = os.getenv('TILT_COMPOSE_PROFILE', 'full')
+if profile not in ['core', 'full']:
+    fail("profile must be 'core' or 'full'")
+
+docker_compose('docker-compose.yml', profiles=[profile])
 
 dc_resource(
     'postgres',
     labels=['infra'],
-)
-
-dc_resource(
-    'notification-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8081/actuator/health'],
-)
-
-dc_resource(
-    'audit-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8082/actuator/health'],
 )
 
 dc_resource(
@@ -54,40 +44,33 @@ dc_resource(
     links=['http://localhost:8087/actuator/health'],
 )
 
-dc_resource(
+full_only_services = {
+    'notification-service': 'http://localhost:8081/actuator/health',
+    'audit-service': 'http://localhost:8082/actuator/health',
+    'catalog-service': 'http://localhost:8088/actuator/health',
+    'workflow-service': 'http://localhost:8089/actuator/health',
+    'firefighting-service': 'http://localhost:8090/actuator/health',
+    'reporting-service': 'http://localhost:8091/actuator/health',
+    'billing-service': 'http://localhost:8092/actuator/health',
+}
+full_only_service_names = [
+    'notification-service',
+    'audit-service',
     'catalog-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8088/actuator/health'],
-)
-
-dc_resource(
     'workflow-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8089/actuator/health'],
-)
-
-dc_resource(
     'firefighting-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8090/actuator/health'],
-)
-
-dc_resource(
     'reporting-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8091/actuator/health'],
-)
-
-dc_resource(
     'billing-service',
-    labels=['app', 'microservice'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8092/actuator/health'],
-)
+]
+
+if profile == 'full':
+    for name in full_only_service_names:
+        dc_resource(
+            name,
+            labels=['app', 'microservice'],
+            resource_deps=['postgres'],
+            links=[full_only_services[name]],
+        )
 
 dc_resource(
     'frontend',
@@ -95,9 +78,13 @@ dc_resource(
     resource_deps=[],
 )
 
+gateway_deps = ['frontend', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service']
+if profile == 'full':
+    gateway_deps += full_only_service_names
+
 dc_resource(
     'api-gateway',
     labels=['app', 'gateway'],
-    resource_deps=['frontend', 'notification-service', 'audit-service', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service', 'catalog-service', 'workflow-service', 'firefighting-service', 'reporting-service', 'billing-service'],
+    resource_deps=gateway_deps,
     links=['http://localhost'],
 )
