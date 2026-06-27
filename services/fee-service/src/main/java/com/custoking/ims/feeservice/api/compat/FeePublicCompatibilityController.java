@@ -178,7 +178,8 @@ public class FeePublicCompatibilityController {
                 longValue(request.get("actorId"))));
     }
 
-    @GetMapping(value = "/api/v1/receipts/{paymentId}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    @GetMapping(value = {"/api/v1/receipts/{paymentId}/pdf", "/api/v1/fees/receipts/{paymentId}/pdf"},
+            produces = MediaType.APPLICATION_PDF_VALUE)
     public ResponseEntity<byte[]> receiptByPaymentIdPdf(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String paymentId) {
