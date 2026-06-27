@@ -104,8 +104,8 @@ public class FirefightingReadRepository {
     @Transactional
     public Map<String, Object> createRequest(Map<String, Object> request) {
         Long schoolId = longValue(request.get("schoolId"), null);
-        if (schoolId == null || !schoolExists(schoolId)) {
-            throw new IllegalArgumentException("School not found");
+        if (schoolId == null) {
+            throw new IllegalArgumentException("schoolId is required");
         }
         String code = nextCode();
         String category = str(request.get("category"), "Other");
@@ -347,14 +347,6 @@ public class FirefightingReadRepository {
                 .query(Integer.class)
                 .single();
         return String.format("FF-%03d", (max == null ? 2 : max) + 1);
-    }
-
-    private boolean schoolExists(Long schoolId) {
-        Long count = jdbc.sql("SELECT COUNT(*) FROM tenant_school.schools WHERE id = :schoolId")
-                .param("schoolId", schoolId)
-                .query(Long.class)
-                .single();
-        return count != null && count > 0;
     }
 
     private Map<String, Object> detailRow(String code) {
