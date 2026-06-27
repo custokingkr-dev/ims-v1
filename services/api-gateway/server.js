@@ -92,6 +92,7 @@ const routes = [
   route('notification', '/api/v1/notifications/'),
   route('catalog', /^\/api\/v1\/dashboard\/vendor-dues\/catalog-orders\/[^/]+\/mark-paid$/),
   route('firefighting', /^\/api\/v1\/dashboard\/vendor-dues\/firefighting\/[^/]+\/mark-paid$/),
+  route('fee', '/api/v1/dashboard/finance/fee-defaulters/reminders'),
   route('reporting', '/api/v1/dashboard/'),
   route('reporting', '/api/v1/dashboard'),
   route('reporting', '/api/v1/command-centre/'),
