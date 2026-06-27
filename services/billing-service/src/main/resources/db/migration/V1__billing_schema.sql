@@ -24,16 +24,26 @@ CREATE TABLE IF NOT EXISTS superadmin_order_seq (
     PRIMARY KEY (id)
 );
 
-INSERT INTO superadmin_invoices
-    (id, order_ref, school, school_id, description, qty, rate, amount,
-     gst_amount, total, status, issued_at, due_at, notes, created_at)
-SELECT
-    id, order_ref, school, school_id, description, qty, rate, amount,
-    gst_amount, total, status, issued_at, due_at, notes, created_at
-FROM public.superadmin_invoices
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.superadmin_invoices') IS NOT NULL THEN
+    INSERT INTO superadmin_invoices
+        (id, order_ref, school, school_id, description, qty, rate, amount,
+         gst_amount, total, status, issued_at, due_at, notes, created_at)
+    SELECT
+        id, order_ref, school, school_id, description, qty, rate, amount,
+        gst_amount, total, status, issued_at, due_at, notes, created_at
+    FROM public.superadmin_invoices
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO superadmin_order_seq (id, order_seq, invoice_seq)
-SELECT id, order_seq, invoice_seq
-FROM public.superadmin_order_seq
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.superadmin_order_seq') IS NOT NULL THEN
+    INSERT INTO superadmin_order_seq (id, order_seq, invoice_seq)
+    SELECT id, order_seq, invoice_seq
+    FROM public.superadmin_order_seq
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;

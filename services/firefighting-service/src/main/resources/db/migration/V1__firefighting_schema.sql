@@ -26,9 +26,7 @@ CREATE TABLE IF NOT EXISTS firefighting_requests (
     vendor_paid_at          TIMESTAMPTZ,
     vendor_paid_by          BIGINT,
     vendor_payment_notes    TEXT,
-    PRIMARY KEY (code),
-    CONSTRAINT fk_ff_request_school FOREIGN KEY (school_id) REFERENCES public.schools (id),
-    CONSTRAINT fk_ff_vendor_paid_by FOREIGN KEY (vendor_paid_by) REFERENCES public.app_users (id)
+    PRIMARY KEY (code)
 );
 
 CREATE TABLE IF NOT EXISTS ff_quotations (
@@ -54,26 +52,36 @@ CREATE INDEX IF NOT EXISTS idx_ff_requests_school_created ON firefighting_reques
 CREATE INDEX IF NOT EXISTS idx_ff_requests_vendor_unpaid ON firefighting_requests (school_id, status) WHERE vendor_paid_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_ff_quotations_request ON ff_quotations (request_id);
 
-INSERT INTO firefighting_requests
-    (code, title, category, urgency, required_by_date, estimated_budget,
-     description, reference_file_url, raised_by, status, bursar_note,
-     principal_note, bursar_approved_at, principal_approved_at, rejected_by,
-     rejected_reason, custoking_criteria_json, winner_vendor, winner_amount,
-     created_at, school_id, version, created_by, updated_by, vendor_paid_at,
-     vendor_paid_by, vendor_payment_notes)
-SELECT code, title, category, urgency, required_by_date, estimated_budget,
-       description, reference_file_url, raised_by, status, bursar_note,
-       principal_note, bursar_approved_at, principal_approved_at, rejected_by,
-       rejected_reason, custoking_criteria_json, winner_vendor, winner_amount,
-       created_at, school_id, version, created_by, updated_by, vendor_paid_at,
-       vendor_paid_by, vendor_payment_notes
-FROM public.firefighting_requests
-ON CONFLICT (code) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.firefighting_requests') IS NOT NULL THEN
+    INSERT INTO firefighting_requests
+        (code, title, category, urgency, required_by_date, estimated_budget,
+         description, reference_file_url, raised_by, status, bursar_note,
+         principal_note, bursar_approved_at, principal_approved_at, rejected_by,
+         rejected_reason, custoking_criteria_json, winner_vendor, winner_amount,
+         created_at, school_id, version, created_by, updated_by, vendor_paid_at,
+         vendor_paid_by, vendor_payment_notes)
+    SELECT code, title, category, urgency, required_by_date, estimated_budget,
+           description, reference_file_url, raised_by, status, bursar_note,
+           principal_note, bursar_approved_at, principal_approved_at, rejected_by,
+           rejected_reason, custoking_criteria_json, winner_vendor, winner_amount,
+           created_at, school_id, version, created_by, updated_by, vendor_paid_at,
+           vendor_paid_by, vendor_payment_notes
+    FROM public.firefighting_requests
+    ON CONFLICT (code) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO ff_quotations
-    (id, vendor_name, amount, delivery_timeline, notes, document_url,
-     is_custoking, is_recommended, created_at, request_id)
-SELECT id, vendor_name, amount, delivery_timeline, notes, document_url,
-       is_custoking, is_recommended, created_at, request_id
-FROM public.ff_quotations
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.ff_quotations') IS NOT NULL THEN
+    INSERT INTO ff_quotations
+        (id, vendor_name, amount, delivery_timeline, notes, document_url,
+         is_custoking, is_recommended, created_at, request_id)
+    SELECT id, vendor_name, amount, delivery_timeline, notes, document_url,
+           is_custoking, is_recommended, created_at, request_id
+    FROM public.ff_quotations
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;

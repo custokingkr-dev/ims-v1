@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS fee_bands (
     active_schedules_csv TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
-    academic_year_id VARCHAR(255) NOT NULL REFERENCES public.academic_years(id)
+    academic_year_id VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS fee_items (
@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS fee_assignments (
     assigned_at TIMESTAMPTZ,
     updated_by BIGINT,
     updated_at TIMESTAMPTZ,
-    student_id BIGINT NOT NULL REFERENCES public.students(id),
+    student_id BIGINT NOT NULL,
     band_id VARCHAR(255) NOT NULL REFERENCES fee_bands(id),
-    academic_year_id VARCHAR(255) NOT NULL REFERENCES public.academic_years(id),
+    academic_year_id VARCHAR(255) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT uk_fee_assignment_student_year UNIQUE (student_id, academic_year_id),
     CONSTRAINT chk_fee_net_payable_non_negative CHECK (net_payable >= 0)
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS payment_records (
     recorded_by BIGINT,
     receipt_number VARCHAR(255),
     created_at TIMESTAMPTZ,
-    student_id BIGINT NOT NULL REFERENCES public.students(id),
+    student_id BIGINT NOT NULL,
     assignment_id VARCHAR(255) REFERENCES fee_assignments(id),
     version BIGINT NOT NULL DEFAULT 0,
     created_by VARCHAR(255)
@@ -65,34 +65,54 @@ CREATE INDEX IF NOT EXISTS idx_payment_records_receipt ON payment_records(receip
 CREATE INDEX IF NOT EXISTS idx_payment_records_assignment ON payment_records(assignment_id);
 CREATE INDEX IF NOT EXISTS idx_payments_paid_at ON payment_records(paid_at DESC);
 
-INSERT INTO fee_bands
-    (id, name, class_from, class_to, discount, active_schedules_csv,
-     created_at, updated_at, academic_year_id)
-SELECT id, name, class_from, class_to, discount, active_schedules_csv,
-       created_at, updated_at, academic_year_id
-FROM public.fee_bands
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.fee_bands') IS NOT NULL THEN
+    INSERT INTO fee_bands
+        (id, name, class_from, class_to, discount, active_schedules_csv,
+         created_at, updated_at, academic_year_id)
+    SELECT id, name, class_from, class_to, discount, active_schedules_csv,
+           created_at, updated_at, academic_year_id
+    FROM public.fee_bands
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO fee_items
-    (id, name, frequency, amount, created_at, updated_at, band_id)
-SELECT id, name, frequency, amount, created_at, updated_at, band_id
-FROM public.fee_items
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.fee_items') IS NOT NULL THEN
+    INSERT INTO fee_items
+        (id, name, frequency, amount, created_at, updated_at, band_id)
+    SELECT id, name, frequency, amount, created_at, updated_at, band_id
+    FROM public.fee_items
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO fee_assignments
-    (id, schedule, band_discount, manual_discount, surcharge, net_payable,
-     paid_amount, assigned_by, assigned_at, updated_by, updated_at, student_id,
-     band_id, academic_year_id, version)
-SELECT id, schedule, band_discount, manual_discount, surcharge, net_payable,
-       paid_amount, assigned_by, assigned_at, updated_by, updated_at, student_id,
-       band_id, academic_year_id, version
-FROM public.fee_assignments
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.fee_assignments') IS NOT NULL THEN
+    INSERT INTO fee_assignments
+        (id, schedule, band_discount, manual_discount, surcharge, net_payable,
+         paid_amount, assigned_by, assigned_at, updated_by, updated_at, student_id,
+         band_id, academic_year_id, version)
+    SELECT id, schedule, band_discount, manual_discount, surcharge, net_payable,
+           paid_amount, assigned_by, assigned_at, updated_by, updated_at, student_id,
+           band_id, academic_year_id, version
+    FROM public.fee_assignments
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO payment_records
-    (id, amount, mode, notes, paid_at, recorded_by, receipt_number, created_at,
-     student_id, assignment_id, version, created_by)
-SELECT id, amount, mode, notes, paid_at, recorded_by, receipt_number, created_at,
-       student_id, assignment_id, version, created_by
-FROM public.payment_records
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.payment_records') IS NOT NULL THEN
+    INSERT INTO payment_records
+        (id, amount, mode, notes, paid_at, recorded_by, receipt_number, created_at,
+         student_id, assignment_id, version, created_by)
+    SELECT id, amount, mode, notes, paid_at, recorded_by, receipt_number, created_at,
+           student_id, assignment_id, version, created_by
+    FROM public.payment_records
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;

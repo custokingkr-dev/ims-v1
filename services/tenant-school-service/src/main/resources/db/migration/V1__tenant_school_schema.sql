@@ -126,99 +126,144 @@ CREATE INDEX IF NOT EXISTS idx_tenant_zone_admin_assignments_zone_id ON tenant_s
 CREATE INDEX IF NOT EXISTS idx_tenant_sme_school ON tenant_school.school_module_entitlements (school_id);
 CREATE INDEX IF NOT EXISTS idx_tenant_sme_school_code ON tenant_school.school_module_entitlements (school_id, module_code) WHERE enabled = TRUE;
 
-INSERT INTO tenant_school.academic_years (id, label, active)
-SELECT id, label, active FROM public.academic_years
-ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, active = EXCLUDED.active;
+DO $$
+BEGIN
+    IF to_regclass('public.academic_years') IS NOT NULL THEN
+    INSERT INTO tenant_school.academic_years (id, label, active)
+    SELECT id, label, active FROM public.academic_years
+    ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label, active = EXCLUDED.active;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.schools (
-    id, name, short_code, city, state, contact_email, contact_phone, active,
-    configured_class_count, configured_section_count, created_at
-)
-SELECT id, name, short_code, city, state, contact_email, contact_phone, active,
-       configured_class_count, configured_section_count, created_at
-FROM public.schools
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    short_code = EXCLUDED.short_code,
-    city = EXCLUDED.city,
-    state = EXCLUDED.state,
-    contact_email = EXCLUDED.contact_email,
-    contact_phone = EXCLUDED.contact_phone,
-    active = EXCLUDED.active,
-    configured_class_count = EXCLUDED.configured_class_count,
-    configured_section_count = EXCLUDED.configured_section_count,
-    created_at = EXCLUDED.created_at;
+DO $$
+BEGIN
+    IF to_regclass('public.schools') IS NOT NULL THEN
+    INSERT INTO tenant_school.schools (
+        id, name, short_code, city, state, contact_email, contact_phone, active,
+        configured_class_count, configured_section_count, created_at
+    )
+    SELECT id, name, short_code, city, state, contact_email, contact_phone, active,
+           configured_class_count, configured_section_count, created_at
+    FROM public.schools
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        short_code = EXCLUDED.short_code,
+        city = EXCLUDED.city,
+        state = EXCLUDED.state,
+        contact_email = EXCLUDED.contact_email,
+        contact_phone = EXCLUDED.contact_phone,
+        active = EXCLUDED.active,
+        configured_class_count = EXCLUDED.configured_class_count,
+        configured_section_count = EXCLUDED.configured_section_count,
+        created_at = EXCLUDED.created_at;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.school_classes (id, name, sort_order)
-SELECT id, name, sort_order FROM public.school_classes
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order;
+DO $$
+BEGIN
+    IF to_regclass('public.school_classes') IS NOT NULL THEN
+    INSERT INTO tenant_school.school_classes (id, name, sort_order)
+    SELECT id, name, sort_order FROM public.school_classes
+    ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.school_sections (id, name, teacher_name, active, school_class_id, school_id)
-SELECT id, name, teacher_name, active, school_class_id, school_id FROM public.school_sections
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    teacher_name = EXCLUDED.teacher_name,
-    active = EXCLUDED.active,
-    school_class_id = EXCLUDED.school_class_id,
-    school_id = EXCLUDED.school_id;
+DO $$
+BEGIN
+    IF to_regclass('public.school_sections') IS NOT NULL THEN
+    INSERT INTO tenant_school.school_sections (id, name, teacher_name, active, school_class_id, school_id)
+    SELECT id, name, teacher_name, active, school_class_id, school_id FROM public.school_sections
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        teacher_name = EXCLUDED.teacher_name,
+        active = EXCLUDED.active,
+        school_class_id = EXCLUDED.school_class_id,
+        school_id = EXCLUDED.school_id;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.staff_members (id, name, designation, department, monthly_salary, payroll_status, school_id)
-SELECT id, name, designation, department, monthly_salary, payroll_status, school_id FROM public.staff_members
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    designation = EXCLUDED.designation,
-    department = EXCLUDED.department,
-    monthly_salary = EXCLUDED.monthly_salary,
-    payroll_status = EXCLUDED.payroll_status,
-    school_id = EXCLUDED.school_id;
+DO $$
+BEGIN
+    IF to_regclass('public.staff_members') IS NOT NULL THEN
+    INSERT INTO tenant_school.staff_members (id, name, designation, department, monthly_salary, payroll_status, school_id)
+    SELECT id, name, designation, department, monthly_salary, payroll_status, school_id FROM public.staff_members
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        designation = EXCLUDED.designation,
+        department = EXCLUDED.department,
+        monthly_salary = EXCLUDED.monthly_salary,
+        payroll_status = EXCLUDED.payroll_status,
+        school_id = EXCLUDED.school_id;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.zones (id, name, code, city, state, description, active, created_at, updated_at, created_by)
-SELECT id, name, code, city, state, description, active, created_at, updated_at, created_by FROM public.zones
-ON CONFLICT (id) DO UPDATE SET
-    name = EXCLUDED.name,
-    code = EXCLUDED.code,
-    city = EXCLUDED.city,
-    state = EXCLUDED.state,
-    description = EXCLUDED.description,
-    active = EXCLUDED.active,
-    created_at = EXCLUDED.created_at,
-    updated_at = EXCLUDED.updated_at,
-    created_by = EXCLUDED.created_by;
+DO $$
+BEGIN
+    IF to_regclass('public.zones') IS NOT NULL THEN
+    INSERT INTO tenant_school.zones (id, name, code, city, state, description, active, created_at, updated_at, created_by)
+    SELECT id, name, code, city, state, description, active, created_at, updated_at, created_by FROM public.zones
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        code = EXCLUDED.code,
+        city = EXCLUDED.city,
+        state = EXCLUDED.state,
+        description = EXCLUDED.description,
+        active = EXCLUDED.active,
+        created_at = EXCLUDED.created_at,
+        updated_at = EXCLUDED.updated_at,
+        created_by = EXCLUDED.created_by;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.zone_school_mappings (id, zone_id, school_id, active, added_at, added_by)
-SELECT id, zone_id, school_id, active, added_at, added_by FROM public.zone_school_mappings
-ON CONFLICT (id) DO UPDATE SET
-    zone_id = EXCLUDED.zone_id,
-    school_id = EXCLUDED.school_id,
-    active = EXCLUDED.active,
-    added_at = EXCLUDED.added_at,
-    added_by = EXCLUDED.added_by;
+DO $$
+BEGIN
+    IF to_regclass('public.zone_school_mappings') IS NOT NULL THEN
+    INSERT INTO tenant_school.zone_school_mappings (id, zone_id, school_id, active, added_at, added_by)
+    SELECT id, zone_id, school_id, active, added_at, added_by FROM public.zone_school_mappings
+    ON CONFLICT (id) DO UPDATE SET
+        zone_id = EXCLUDED.zone_id,
+        school_id = EXCLUDED.school_id,
+        active = EXCLUDED.active,
+        added_at = EXCLUDED.added_at,
+        added_by = EXCLUDED.added_by;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.zone_admin_assignments (id, zone_id, user_id, active, assigned_at, assigned_by)
-SELECT id, zone_id, user_id, active, assigned_at, assigned_by FROM public.zone_admin_assignments
-ON CONFLICT (id) DO UPDATE SET
-    zone_id = EXCLUDED.zone_id,
-    user_id = EXCLUDED.user_id,
-    active = EXCLUDED.active,
-    assigned_at = EXCLUDED.assigned_at,
-    assigned_by = EXCLUDED.assigned_by;
+DO $$
+BEGIN
+    IF to_regclass('public.zone_admin_assignments') IS NOT NULL THEN
+    INSERT INTO tenant_school.zone_admin_assignments (id, zone_id, user_id, active, assigned_at, assigned_by)
+    SELECT id, zone_id, user_id, active, assigned_at, assigned_by FROM public.zone_admin_assignments
+    ON CONFLICT (id) DO UPDATE SET
+        zone_id = EXCLUDED.zone_id,
+        user_id = EXCLUDED.user_id,
+        active = EXCLUDED.active,
+        assigned_at = EXCLUDED.assigned_at,
+        assigned_by = EXCLUDED.assigned_by;
+    END IF;
+END $$;
 
-INSERT INTO tenant_school.school_module_entitlements (
-    id, school_id, module_code, enabled, plan, start_date, end_date, notes, created_at, updated_at, created_by
-)
-SELECT id, school_id, module_code, enabled, plan, start_date, end_date, notes, created_at, updated_at, created_by
-FROM public.school_module_entitlements
-ON CONFLICT (id) DO UPDATE SET
-    school_id = EXCLUDED.school_id,
-    module_code = EXCLUDED.module_code,
-    enabled = EXCLUDED.enabled,
-    plan = EXCLUDED.plan,
-    start_date = EXCLUDED.start_date,
-    end_date = EXCLUDED.end_date,
-    notes = EXCLUDED.notes,
-    created_at = EXCLUDED.created_at,
-    updated_at = EXCLUDED.updated_at,
-    created_by = EXCLUDED.created_by;
+DO $$
+BEGIN
+    IF to_regclass('public.school_module_entitlements') IS NOT NULL THEN
+    INSERT INTO tenant_school.school_module_entitlements (
+        id, school_id, module_code, enabled, plan, start_date, end_date, notes, created_at, updated_at, created_by
+    )
+    SELECT id, school_id, module_code, enabled, plan, start_date, end_date, notes, created_at, updated_at, created_by
+    FROM public.school_module_entitlements
+    ON CONFLICT (id) DO UPDATE SET
+        school_id = EXCLUDED.school_id,
+        module_code = EXCLUDED.module_code,
+        enabled = EXCLUDED.enabled,
+        plan = EXCLUDED.plan,
+        start_date = EXCLUDED.start_date,
+        end_date = EXCLUDED.end_date,
+        notes = EXCLUDED.notes,
+        created_at = EXCLUDED.created_at,
+        updated_at = EXCLUDED.updated_at,
+        created_by = EXCLUDED.created_by;
+    END IF;
+END $$;
 
 SELECT setval('tenant_school.seq_schools', COALESCE((SELECT MAX(id) FROM tenant_school.schools), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('tenant_school.staff_members', 'id'), COALESCE((SELECT MAX(id) FROM tenant_school.staff_members), 0) + 1, false);
@@ -230,6 +275,10 @@ SELECT setval(pg_get_serial_sequence('tenant_school.school_module_entitlements',
 CREATE OR REPLACE FUNCTION tenant_school.sync_school_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.schools') IS NULL THEN
+        RETURN NEW;
+    END IF;
+
     INSERT INTO public.schools (
         id, name, short_code, city, state, contact_email, contact_phone, active,
         configured_class_count, configured_section_count, created_at
@@ -255,6 +304,10 @@ $$;
 CREATE OR REPLACE FUNCTION tenant_school.sync_school_section_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.school_sections') IS NULL THEN
+        RETURN NEW;
+    END IF;
+
     INSERT INTO public.school_sections (id, name, teacher_name, active, school_class_id, school_id)
     VALUES (NEW.id, NEW.name, NEW.teacher_name, NEW.active, NEW.school_class_id, NEW.school_id)
     ON CONFLICT (id) DO UPDATE SET
@@ -270,6 +323,10 @@ $$;
 CREATE OR REPLACE FUNCTION tenant_school.sync_staff_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.staff_members') IS NULL THEN
+        RETURN NEW;
+    END IF;
+
     INSERT INTO public.staff_members (id, name, designation, department, monthly_salary, payroll_status, school_id)
     VALUES (NEW.id, NEW.name, NEW.designation, NEW.department, NEW.monthly_salary, NEW.payroll_status, NEW.school_id)
     ON CONFLICT (id) DO UPDATE SET
@@ -286,6 +343,10 @@ $$;
 CREATE OR REPLACE FUNCTION tenant_school.sync_zone_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.zones') IS NULL THEN
+        RETURN NEW;
+    END IF;
+
     INSERT INTO public.zones (id, name, code, city, state, description, active, created_at, updated_at, created_by)
     VALUES (NEW.id, NEW.name, NEW.code, NEW.city, NEW.state, NEW.description, NEW.active, NEW.created_at, NEW.updated_at, NEW.created_by)
     ON CONFLICT (id) DO UPDATE SET
@@ -305,6 +366,10 @@ $$;
 CREATE OR REPLACE FUNCTION tenant_school.sync_zone_school_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.zone_school_mappings') IS NULL THEN
+        RETURN NEW;
+    END IF;
+
     INSERT INTO public.zone_school_mappings (id, zone_id, school_id, active, added_at, added_by)
     VALUES (NEW.id, NEW.zone_id, NEW.school_id, NEW.active, NEW.added_at, NEW.added_by)
     ON CONFLICT (id) DO UPDATE SET
@@ -320,6 +385,10 @@ $$;
 CREATE OR REPLACE FUNCTION tenant_school.delete_zone_school_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.zone_school_mappings') IS NULL THEN
+        RETURN OLD;
+    END IF;
+
     DELETE FROM public.zone_school_mappings WHERE id = OLD.id;
     RETURN OLD;
 END;
@@ -328,6 +397,10 @@ $$;
 CREATE OR REPLACE FUNCTION tenant_school.sync_module_entitlement_shadow()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
+    IF to_regclass('public.school_module_entitlements') IS NULL THEN
+        RETURN NEW;
+    END IF;
+
     INSERT INTO public.school_module_entitlements (
         id, school_id, module_code, enabled, plan, start_date, end_date, notes, created_at, updated_at, created_by
     ) VALUES (

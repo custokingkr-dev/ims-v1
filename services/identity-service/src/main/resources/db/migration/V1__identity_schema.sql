@@ -94,52 +94,87 @@ CREATE INDEX IF NOT EXISTS idx_identity_ura_school_active ON user_role_assignmen
 CREATE INDEX IF NOT EXISTS idx_identity_ura_zone_active ON user_role_assignments(zone_id, active) WHERE zone_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_identity_roles_name_lower ON roles(LOWER(name));
 
-INSERT INTO app_users
-    (id, full_name, email, password_hash, role, branch_id, branch_name,
-     created_at, deleted_at, deleted_by, zone_id, zone_name)
-SELECT id, full_name, email, password_hash, role, branch_id, branch_name,
-       created_at, deleted_at, deleted_by, zone_id, zone_name
-FROM public.app_users
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.app_users') IS NOT NULL THEN
+    INSERT INTO app_users
+        (id, full_name, email, password_hash, role, branch_id, branch_name,
+         created_at, deleted_at, deleted_by, zone_id, zone_name)
+    SELECT id, full_name, email, password_hash, role, branch_id, branch_name,
+           created_at, deleted_at, deleted_by, zone_id, zone_name
+    FROM public.app_users
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO auth_sessions
-    (id, access_token_hash, refresh_token_hash, created_at, expires_at, user_id)
-SELECT id, access_token_hash, refresh_token_hash, created_at, expires_at, user_id
-FROM public.auth_sessions
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.auth_sessions') IS NOT NULL THEN
+    INSERT INTO auth_sessions
+        (id, access_token_hash, refresh_token_hash, created_at, expires_at, user_id)
+    SELECT id, access_token_hash, refresh_token_hash, created_at, expires_at, user_id
+    FROM public.auth_sessions
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO roles (id, name, description, created_at)
-SELECT id, name, description, created_at
-FROM public.roles
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.roles') IS NOT NULL THEN
+    INSERT INTO roles (id, name, description, created_at)
+    SELECT id, name, description, created_at
+    FROM public.roles
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO permissions (id, code, description, created_at)
-SELECT id, code, description, created_at
-FROM public.permissions
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.permissions') IS NOT NULL THEN
+    INSERT INTO permissions (id, code, description, created_at)
+    SELECT id, code, description, created_at
+    FROM public.permissions
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT role_id, permission_id
-FROM public.role_permissions
-ON CONFLICT (role_id, permission_id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.role_permissions') IS NOT NULL THEN
+    INSERT INTO role_permissions (role_id, permission_id)
+    SELECT role_id, permission_id
+    FROM public.role_permissions
+    ON CONFLICT (role_id, permission_id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO user_role_assignments
-    (id, user_id, role_id, assigned_at, assigned_by, revoked_by, revoked_at,
-     school_id, zone_id, active, valid_from, valid_until)
-SELECT id, user_id, role_id, assigned_at, assigned_by, revoked_by, revoked_at,
-       school_id, zone_id, active, valid_from, valid_until
-FROM public.user_role_assignments
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.user_role_assignments') IS NOT NULL THEN
+    INSERT INTO user_role_assignments
+        (id, user_id, role_id, assigned_at, assigned_by, revoked_by, revoked_at,
+         school_id, zone_id, active, valid_from, valid_until)
+    SELECT id, user_id, role_id, assigned_at, assigned_by, revoked_by, revoked_at,
+           school_id, zone_id, active, valid_from, valid_until
+    FROM public.user_role_assignments
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
-INSERT INTO rbac_audit_log
-    (id, event_type, actor_user_id, actor_email, target_user_id, role_id,
-     role_name, permission_codes, school_id, zone_id, old_value, new_value,
-     ip_address, user_agent, correlation_id, created_at)
-SELECT id, event_type, actor_user_id, actor_email, target_user_id, role_id,
-       role_name, permission_codes, school_id, zone_id, old_value, new_value,
-       ip_address, user_agent, correlation_id, created_at
-FROM public.rbac_audit_log
-ON CONFLICT (id) DO NOTHING;
+DO $$
+BEGIN
+    IF to_regclass('public.rbac_audit_log') IS NOT NULL THEN
+    INSERT INTO rbac_audit_log
+        (id, event_type, actor_user_id, actor_email, target_user_id, role_id,
+         role_name, permission_codes, school_id, zone_id, old_value, new_value,
+         ip_address, user_agent, correlation_id, created_at)
+    SELECT id, event_type, actor_user_id, actor_email, target_user_id, role_id,
+           role_name, permission_codes, school_id, zone_id, old_value, new_value,
+           ip_address, user_agent, correlation_id, created_at
+    FROM public.rbac_audit_log
+    ON CONFLICT (id) DO NOTHING;
+    END IF;
+END $$;
 
 SELECT setval('seq_app_users', COALESCE((SELECT max(id) FROM app_users), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('roles', 'id'), COALESCE((SELECT max(id) FROM roles), 0) + 1, false);
