@@ -103,13 +103,12 @@ public class ZoneCommandRepository {
         return jdbc.sql("""
                 SELECT z.id, z.name, z.code, z.city, z.state, z.description, z.active,
                        COALESCE(COUNT(zsm.id), 0) AS school_count,
-                       admin.email AS admin_email
+                       '' AS admin_email
                 FROM tenant_school.zones z
                 LEFT JOIN tenant_school.zone_school_mappings zsm ON zsm.zone_id = z.id AND zsm.active = true
                 LEFT JOIN tenant_school.zone_admin_assignments zaa ON zaa.zone_id = z.id AND zaa.active = true
-                LEFT JOIN identity.app_users admin ON admin.id = zaa.user_id
                 WHERE z.id = :zoneId
-                GROUP BY z.id, z.name, z.code, z.city, z.state, z.description, z.active, admin.email
+                GROUP BY z.id, z.name, z.code, z.city, z.state, z.description, z.active
                 """)
                 .param("zoneId", zoneId)
                 .query((rs, rowNum) -> row(

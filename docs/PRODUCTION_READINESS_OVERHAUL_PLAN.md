@@ -874,3 +874,17 @@ Verified:
 - `scripts/audit-request-correlation-and-logging.ps1` passed.
 - Full `scripts/invoke-microservice-tests.ps1` passed for 14 service entries.
 - Full `scripts/verify-microservice-migration.ps1` passed with the new observability gate included.
+
+### 2026-06-27: Tenant-School Identity Runtime Dependency Removed
+
+Completed:
+
+- Removed tenant-school runtime joins to `identity.app_users` from zone admin reads, zone command responses, and superadmin school stats.
+- Tenant-school now returns tenant-owned IDs and blank display fields where identity-owned user details previously leaked through direct SQL joins.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `tenant-school-service -> identity` is no longer an allowed transitional dependency.
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- `tenant-school-service` Maven test suite passed: 16 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
