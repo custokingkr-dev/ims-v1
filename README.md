@@ -9,6 +9,7 @@ Detailed architecture docs:
 - [High-Level Architecture](docs/ARCHITECTURE-HLD.md)
 - [Low-Level Design](docs/ARCHITECTURE-LLD.md)
 - [Event Envelope Contract](docs/EVENT-ENVELOPE-CONTRACT.md)
+- [Local Setup](docs/LOCAL-SETUP.md)
 - [GCP Deployment Runbook](deploy/gcp/README.md)
 - [MSG91 Production Setup](docs/MSG91-PRODUCTION-SETUP.md)
 
@@ -114,6 +115,19 @@ pageReporting=true
 autoMemoryReclaim=gradual
 sparseVhd=true
 ```
+
+Tilt uses the same compose profiles:
+
+```powershell
+# Full split-service stack
+tilt up
+
+# Low-memory local stack
+$env:TILT_COMPOSE_PROFILE='core'
+tilt up
+```
+
+For a complete setup guide, use [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md).
 
 ## Verification
 
