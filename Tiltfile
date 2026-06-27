@@ -1,15 +1,8 @@
-docker_compose('docker-compose.yml')
+docker_compose('docker-compose.yml', profiles=['full'])
 
 dc_resource(
     'postgres',
     labels=['infra'],
-)
-
-dc_resource(
-    'backend',
-    labels=['app'],
-    resource_deps=['postgres'],
-    links=['http://localhost:8080/actuator/health'],
 )
 
 dc_resource(
@@ -105,6 +98,6 @@ dc_resource(
 dc_resource(
     'api-gateway',
     labels=['app', 'gateway'],
-    resource_deps=['frontend', 'backend', 'notification-service', 'audit-service', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service', 'catalog-service', 'workflow-service', 'firefighting-service', 'reporting-service', 'billing-service'],
+    resource_deps=['frontend', 'notification-service', 'audit-service', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service', 'catalog-service', 'workflow-service', 'firefighting-service', 'reporting-service', 'billing-service'],
     links=['http://localhost'],
 )

@@ -47,6 +47,28 @@ Prerequisites:
 - Docker Desktop with WSL2
 - Google Cloud SDK for deployment scripts
 
+### Migrating a laptop from the old monolith `master`
+
+If a machine was previously running the monolith stack (postgres + backend + frontend on
+ports 5432/8080/80), use the setup script to tear that down, switch to this branch, and
+bring the split-service stack up cleanly. It removes the orphaned `custoking-backend`
+container, wipes the stale Postgres volume by default, checks out the branch, and waits
+for every service to report healthy.
+
+```powershell
+# Windows / PowerShell
+powershell -ExecutionPolicy Bypass -File scripts\setup-from-master.ps1
+```
+
+```bash
+# macOS / Linux
+./scripts/setup-from-master.sh
+```
+
+Common flags (`-ComposeProfile`/`--profile core|full`, `-KeepData`/`--keep-data`,
+`-Force`/`--force` to auto-stash local edits, `-SkipBuild`/`--skip-build`). Pass
+`-KeepData`/`--keep-data` only if you want to retain the existing database volume.
+
 Frontend:
 
 ```powershell

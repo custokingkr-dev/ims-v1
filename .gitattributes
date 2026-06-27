@@ -1,0 +1,2 @@
+# Keep shell scripts LF so shebangs run on Linux/macOS regardless of core.autocrlf.
+*.sh text eol=lf
