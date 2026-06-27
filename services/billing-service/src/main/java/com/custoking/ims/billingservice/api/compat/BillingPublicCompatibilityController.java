@@ -3,6 +3,8 @@ package com.custoking.ims.billingservice.api.compat;
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -86,9 +88,76 @@ public class BillingPublicCompatibilityController {
         return invoice;
     }
 
+    @GetMapping("/api/v1/customers")
+    public Object customers(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
+        requireToken(token, "billing:read");
+        return invoices.customers();
+    }
+
+    @PostMapping("/api/v1/customers")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Object createCustomer(
+            @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "billing:read");
+        return run(() -> invoices.createCustomer(request));
+    }
+
+    @GetMapping("/api/v1/invoices")
+    public Object schoolInvoices(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
+        requireToken(token, "billing:read");
+        return invoices.schoolInvoices();
+    }
+
+    @PostMapping("/api/v1/invoices")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Object createSchoolInvoice(
+            @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "billing:read");
+        return run(() -> invoices.createSchoolInvoice(request));
+    }
+
+    @GetMapping(value = "/api/v1/invoices/{id}/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> schoolInvoicePdf(
+            @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
+            @PathVariable Long id) {
+        requireToken(token, "billing:read");
+        try {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(invoices.schoolInvoicePdf(id));
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage(), ex);
+        }
+    }
+
+    @GetMapping("/api/v1/billing-payments")
+    public Object billingPayments(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
+        requireToken(token, "billing:read");
+        return invoices.billingPayments();
+    }
+
+    @PostMapping("/api/v1/billing-payments")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Object createBillingPayment(
+            @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "billing:read");
+        return run(() -> invoices.createBillingPayment(request));
+    }
+
     private void requireToken(String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(serviceToken) || !serviceToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid billing service token");
+        }
+    }
+
+    private Object run(java.util.function.Supplier<Object> command) {
+        try {
+            return command.get();
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
     }
 }

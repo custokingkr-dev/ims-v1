@@ -1,5 +1,6 @@
 package com.custoking.ims.identityservice.persistence;
 
+import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,10 +17,12 @@ public class IdentityUserProvisioningRepository {
 
     private final JdbcClient jdbc;
     private final PasswordEncoder passwordEncoder;
+    private final TenantSchoolClient tenantSchool;
 
-    public IdentityUserProvisioningRepository(JdbcClient jdbc, PasswordEncoder passwordEncoder) {
+    public IdentityUserProvisioningRepository(JdbcClient jdbc, PasswordEncoder passwordEncoder, TenantSchoolClient tenantSchool) {
         this.jdbc = jdbc;
         this.passwordEncoder = passwordEncoder;
+        this.tenantSchool = tenantSchool;
     }
 
     @Transactional
@@ -29,11 +32,7 @@ public class IdentityUserProvisioningRepository {
         String email = requiredString(body, "email").toLowerCase(Locale.ROOT);
         String temporaryPassword = requiredString(body, "temporaryPassword");
         Long assignedBy = optionalLong(body.get("assignedBy"));
-        String branchName = jdbc.sql("SELECT name FROM tenant_school.schools WHERE id = :schoolId")
-                .param("schoolId", schoolId)
-                .query(String.class)
-                .optional()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "school not found"));
+        String branchName = tenantSchool.school(schoolId).name();
 
         retireSchoolUsers(schoolId, normalizedRole, assignedBy);
         Long userId = createSchoolUser(fullName, email, temporaryPassword, normalizedRole, schoolId, branchName);
@@ -54,23 +53,12 @@ public class IdentityUserProvisioningRepository {
         String email = requiredString(body, "email").toLowerCase(Locale.ROOT);
         String temporaryPassword = requiredString(body, "temporaryPassword");
         Long assignedBy = optionalLong(body.get("assignedBy"));
-        String zoneName = jdbc.sql("SELECT name FROM tenant_school.zones WHERE id = :zoneId")
-                .param("zoneId", zoneId)
-                .query(String.class)
-                .optional()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "zone not found"));
+        String zoneName = tenantSchool.zone(zoneId).name();
 
         retireZoneAdmins(zoneId, assignedBy);
         Long userId = createZoneUser(fullName, email, temporaryPassword, zoneId, zoneName);
         assignScopedRole(userId, "ZONE_ADMIN", null, zoneId, assignedBy);
-        jdbc.sql("""
-                        INSERT INTO tenant_school.zone_admin_assignments (zone_id, user_id, assigned_at, assigned_by, active)
-                        VALUES (:zoneId, :userId, now(), :assignedBy, true)
-                        """)
-                .param("zoneId", zoneId)
-                .param("userId", userId)
-                .param("assignedBy", assignedBy)
-                .update();
+        tenantSchool.assignZoneAdmin(zoneId, userId, assignedBy);
 
         return Map.of(
                 "userId", userId,
@@ -108,15 +96,7 @@ public class IdentityUserProvisioningRepository {
                 .query(Long.class)
                 .list();
         if (!userIds.isEmpty()) {
-            jdbc.sql("""
-                            UPDATE tenant_school.zone_admin_assignments
-                            SET active = false
-                            WHERE zone_id = :zoneId
-                              AND user_id IN (:userIds)
-                            """)
-                    .param("zoneId", zoneId)
-                    .param("userIds", userIds)
-                    .update();
+            tenantSchool.retireZoneAdmins(zoneId, userIds);
         }
         retireUsers(userIds, assignedBy);
     }

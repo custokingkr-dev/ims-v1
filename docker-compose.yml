@@ -67,6 +67,9 @@ services:
       APP_COOKIE_SAME_SITE: Strict
       IDENTITY_DB_SCHEMA: identity
       IDENTITY_INTROSPECTION_TOKEN: local-dev-identity-token
+      TENANT_SCHOOL_BASE_URL: http://tenant-school-service:8080
+      TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
+      TENANT_SCHOOL_CLOUD_RUN_AUTH: never
     ports:
       - "8083:8080"
     depends_on:

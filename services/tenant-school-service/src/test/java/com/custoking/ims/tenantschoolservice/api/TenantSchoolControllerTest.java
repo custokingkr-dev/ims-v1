@@ -221,6 +221,24 @@ class TenantSchoolControllerTest {
         assertThat(response.getFirst().code()).isEqualTo("NORTH");
     }
 
+    @Test
+    void assignZoneAdminDelegatesToZoneCommandRepository() {
+        Map<String, Object> request = Map.of("userId", "44", "assignedBy", "9");
+
+        controller.assignZoneAdmin("tenant-token", 7L, request);
+
+        verify(zoneCommands).assignZoneAdmin(7L, 44L, 9L);
+    }
+
+    @Test
+    void retireZoneAdminsDelegatesToZoneCommandRepository() {
+        Map<String, Object> request = Map.of("userIds", List.of("44", 45));
+
+        controller.retireZoneAdmins("tenant-token", 7L, request);
+
+        verify(zoneCommands).retireZoneAdmins(7L, List.of(44L, 45L));
+    }
+
     private SchoolEntity school(Long id, String name, String shortCode) {
         SchoolEntity school = mock(SchoolEntity.class);
         when(school.getId()).thenReturn(id);

@@ -147,6 +147,20 @@ public class CatalogPublicCompatibilityController {
         return Map.of("ok", true, "message", "Annual plan confirmed and Custoking notified");
     }
 
+    @PostMapping("/api/v1/dashboard/vendor-dues/catalog-orders/{id}/mark-paid")
+    public Map<String, Object> markCatalogVendorPaid(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @PathVariable String id,
+            @RequestBody(required = false) Map<String, Object> request) {
+        requireToken(token, "catalog:read");
+        Map<String, Object> body = request == null ? Map.of() : request;
+        Long schoolId = longValue(body.get("schoolId"));
+        Long actorId = longValue(body.get("actorId"));
+        String notes = body.get("notes") == null ? null : String.valueOf(body.get("notes"));
+        var row = catalog.markVendorPaid(id, schoolId, actorId, notes);
+        return Map.of("order", row);
+    }
+
     private void requireToken(String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid catalog service token");

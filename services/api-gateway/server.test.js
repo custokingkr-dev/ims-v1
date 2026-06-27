@@ -135,6 +135,80 @@ test('stringOrEmpty normalizes nullable principal fields', () => {
   assert.equal(stringOrEmpty(4), '4');
 });
 
+test('school admin + operations-user route to identity, not tenant', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/schools/12/admin'), 'identity');
+  assert.equal(resolve('/api/v1/schools/12/operations-user'), 'identity');
+  assert.equal(resolve('/api/v1/schools/12/modules'), 'tenant'); // unchanged
+  assert.equal(resolve('/api/v1/schools'), 'tenant');            // unchanged
+});
+
+test('student-review-items routes to student', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/student-review-items/RV-9'), 'student');
+});
+
+test('zone admin routes to identity, zone reads stay tenant', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/zones/12/admin'), 'identity');
+  assert.equal(resolve('/api/v1/zones/12/admins'), 'tenant');  // plural list must NOT be captured
+  assert.equal(resolve('/api/v1/zones'), 'tenant');
+});
+
+test('user directory routes to identity for both exact and sub-paths', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/users'), 'identity');             // exact collection path (UsersPage list)
+  assert.equal(resolve('/api/v1/users/7'), 'identity');           // detail
+  assert.equal(resolve('/api/v1/users/7/disable'), 'identity');   // command sub-path
+  assert.equal(resolve('/api/v1/users/provisioning/schools/1/users/ADMIN'), 'identity');
+});
+
+test('workspace firefighting routes to firefighting, not reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/workspace/firefighting'), 'firefighting');
+  assert.equal(resolve('/api/v1/workspace/students'), 'student');
+  assert.equal(resolve('/api/v1/workspace'), 'reporting');
+});
+
+test('workspace staff routes to tenant, not reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/workspace/staff'), 'tenant');
+  assert.equal(resolve('/api/v1/workspace'), 'reporting');
+});
+
+test('workspace timetable writes route to tenant, workspace reads stay reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/workspace/timetable'), 'tenant');
+  assert.equal(resolve('/api/v1/workspace'), 'reporting');
+});
+
+test('vendor-dues mark-paid routes to owning services, dashboard reads stay reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/dashboard/vendor-dues/catalog-orders/12/mark-paid'), 'catalog');
+  assert.equal(resolve('/api/v1/dashboard/vendor-dues/firefighting/FF-3/mark-paid'), 'firefighting');
+  assert.equal(resolve('/api/v1/dashboard/vendor-dues'), 'reporting');
+});
+
+test('fee-defaulter reminders route to fee, defaulter reads stay reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/dashboard/finance/fee-defaulters/reminders'), 'fee');
+  assert.equal(resolve('/api/v1/dashboard/finance/fee-defaulters'), 'reporting');
+});
+
+test('school-facing billing compatibility routes to billing without stealing fee payments', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/customers'), 'billing');
+  assert.equal(resolve('/api/v1/invoices/12/pdf'), 'billing');
+  assert.equal(resolve('/api/v1/billing-payments'), 'billing');
+  assert.equal(resolve('/api/v1/payments'), 'fee');
+});
+
+test('legacy approvals inbox routes to reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/approvals'), 'reporting');
+  assert.equal(resolve('/api/v1/approvals/catalog:CK-1001/approve'), 'reporting');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
