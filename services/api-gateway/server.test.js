@@ -143,6 +143,13 @@ test('school admin + operations-user route to identity, not tenant', () => {
   assert.equal(resolve('/api/v1/schools'), 'tenant');            // unchanged
 });
 
+test('zone admin routes to identity, zone reads stay tenant', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/zones/12/admin'), 'identity');
+  assert.equal(resolve('/api/v1/zones/12/admins'), 'tenant');  // plural list must NOT be captured
+  assert.equal(resolve('/api/v1/zones'), 'tenant');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
