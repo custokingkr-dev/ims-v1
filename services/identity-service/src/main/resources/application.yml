@@ -50,3 +50,5 @@ identity:
     base-url: ${TENANT_SCHOOL_BASE_URL:}
     token: ${TENANT_SCHOOL_READ_TOKEN:}
     cloud-run-auth: ${TENANT_SCHOOL_CLOUD_RUN_AUTH:auto}
+    connect-timeout-ms: ${TENANT_SCHOOL_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${TENANT_SCHOOL_READ_TIMEOUT_MS:5000}

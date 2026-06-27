@@ -917,3 +917,28 @@ Verified:
 - `identity-service` Maven test suite passed.
 - `tenant-school-service` Maven test suite passed.
 - Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
+
+### 2026-06-28: Inter-Service Call Resilience (Timeouts) Added
+
+Completed:
+
+- Added explicit connect and read timeouts to the identity -> tenant-school
+  `TenantSchoolClient` RestClient (the only Java inter-service HTTP client that
+  previously inherited unbounded timeouts), so a slow or hung tenant-school
+  service fails fast instead of pinning identity request threads.
+- Translated read timeouts (`ResourceAccessException`) on both the GET and POST
+  paths into a `504 GATEWAY_TIMEOUT` instead of leaking a raw runtime exception.
+- Made the timeouts tunable per environment via
+  `identity.tenant-school.connect-timeout-ms` (default 3000) and
+  `read-timeout-ms` (default 5000), backed by `TENANT_SCHOOL_CONNECT_TIMEOUT_MS`
+  / `TENANT_SCHOOL_READ_TIMEOUT_MS`.
+- Confirmed the external MSG91 notification provider already sets connect/read
+  timeouts, so all outbound Java HTTP clients now have bounded timeouts.
+
+Verified:
+
+- Added `TenantSchoolClientTest`, an end-to-end test that starts a real local
+  `HttpServer`: a slow endpoint asserts the `504 GATEWAY_TIMEOUT` fail-fast
+  behaviour and a fast endpoint asserts successful school parsing.
+- `identity-service` Maven test suite passed: 16 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed (all audits green).
