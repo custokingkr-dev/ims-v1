@@ -47,7 +47,6 @@
       "tenant_school"
     ],
     "tenant-school-service": [
-      "catalog",
       "identity"
     ]
   }

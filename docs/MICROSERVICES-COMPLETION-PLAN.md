@@ -125,10 +125,11 @@ Removal order:
 
 Operator flow:
 
-1. Run `scripts\audit-legacy-compatibility-state.ps1` and review `NEEDS_BACKFILL_REVIEW` or `NO_TARGET_TABLE` rows.
-2. Run domain backfills or explicit archival for any reviewed tables.
-3. Re-run with `-FailOnNeedsBackfill -OutputJson <artifact-path>` as the promotion gate.
-4. Generate a reviewable archive-first SQL plan:
+1. Run `scripts\audit-legacy-public-retirement-readiness.ps1` locally to verify the mapping and SQL generation path are usable.
+2. Run `scripts\audit-legacy-compatibility-state.ps1` and review `NEEDS_BACKFILL_REVIEW` or `NO_TARGET_TABLE` rows.
+3. Run domain backfills or explicit archival for any reviewed tables.
+4. Re-run with `-FailOnNeedsBackfill -OutputJson <artifact-path>` as the promotion gate.
+5. Generate a reviewable archive-first SQL plan:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\generate-legacy-public-retirement-sql.ps1 `
@@ -136,10 +137,10 @@ powershell -ExecutionPolicy Bypass -File scripts\generate-legacy-public-retireme
   -OutputSql legacy-public-retirement.sql
 ```
 
-5. Review the SQL with the DBA/operator. By default it creates timestamped archive snapshots in `legacy_public_archive` and leaves `DROP TABLE ... RESTRICT` statements commented.
-6. Use `-IncludeDropStatements` only during an approved destructive cleanup window after staging validation.
-7. Use `-OmitTransaction` only when a DBA wants to wrap the generated SQL in an external validation transaction.
-8. Use `-FailOnPublicRows` only when the target policy is complete removal of all mapped legacy public data, not when public tables are intentionally retained as read-only history.
+6. Review the SQL with the DBA/operator. By default it creates timestamped archive snapshots in `legacy_public_archive` and leaves `DROP TABLE ... RESTRICT` statements commented.
+7. Use `-IncludeDropStatements` only during an approved destructive cleanup window after staging validation.
+8. Use `-OmitTransaction` only when a DBA wants to wrap the generated SQL in an external validation transaction.
+9. Use `-FailOnPublicRows` only when the target policy is complete removal of all mapped legacy public data, not when public tables are intentionally retained as read-only history.
 
 ### 6. Backend Compatibility Retirement
 
