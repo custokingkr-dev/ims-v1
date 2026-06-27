@@ -96,8 +96,7 @@ CREATE TABLE IF NOT EXISTS tenant_school.zone_admin_assignments (
     assigned_by BIGINT,
     PRIMARY KEY (id),
     CONSTRAINT uk_tenant_zone_admin UNIQUE (zone_id, user_id),
-    CONSTRAINT fk_tenant_zaa_zone FOREIGN KEY (zone_id) REFERENCES tenant_school.zones (id) ON DELETE CASCADE,
-    CONSTRAINT fk_tenant_zaa_user FOREIGN KEY (user_id) REFERENCES identity.app_users (id) ON DELETE CASCADE
+    CONSTRAINT fk_tenant_zaa_zone FOREIGN KEY (zone_id) REFERENCES tenant_school.zones (id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS tenant_school.school_module_entitlements (
