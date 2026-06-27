@@ -26,6 +26,89 @@ function Invoke-Psql {
     }
 }
 
+function Ensure-E2eBaseline {
+    $sql = @"
+INSERT INTO tenant_school.academic_years (id, label, active)
+VALUES ('ay_2024_25', '2025-26', true)
+ON CONFLICT (id) DO UPDATE SET
+    label = EXCLUDED.label,
+    active = EXCLUDED.active;
+
+INSERT INTO tenant_school.schools
+    (id, name, short_code, city, state, contact_email, contact_phone, active,
+     configured_class_count, configured_section_count, created_at)
+VALUES
+    (1, 'Custoking Demo School', 'DEMO', 'Bengaluru', 'KA',
+     'demo-school@local.test', '9999999999', true, 1, 1, now())
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    short_code = EXCLUDED.short_code,
+    city = EXCLUDED.city,
+    state = EXCLUDED.state,
+    contact_email = EXCLUDED.contact_email,
+    contact_phone = EXCLUDED.contact_phone,
+    active = EXCLUDED.active,
+    configured_class_count = EXCLUDED.configured_class_count,
+    configured_section_count = EXCLUDED.configured_section_count;
+
+INSERT INTO tenant_school.school_classes (id, name, sort_order)
+VALUES ('1', '1', 1)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    sort_order = EXCLUDED.sort_order;
+
+INSERT INTO tenant_school.school_sections
+    (id, name, teacher_name, active, school_class_id, school_id)
+VALUES
+    ('1A', 'A', 'E2E Teacher', true, '1', 1)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    teacher_name = EXCLUDED.teacher_name,
+    active = EXCLUDED.active,
+    school_class_id = EXCLUDED.school_class_id,
+    school_id = EXCLUDED.school_id;
+
+INSERT INTO student.students
+    (id, admission_no, roll_no, full_name, dob, gender, father_name,
+     father_contact, phone, address, fee_status, attendance_percent,
+     imported_at, created_at, updated_at, school_id, class_id, section_id,
+     academic_year_id, version, created_by, updated_by)
+VALUES
+    (1, 'E2E-001', '1', 'E2E Student', '2015-01-01', 'NA',
+     'E2E Parent', '9999999999', '9999999999', 'E2E Address',
+     'PENDING', 100, now(), now(), now(), 1, '1', '1A',
+     'ay_2024_25', 0, 'e2e', 'e2e')
+ON CONFLICT (id) DO UPDATE SET
+    admission_no = EXCLUDED.admission_no,
+    roll_no = EXCLUDED.roll_no,
+    full_name = EXCLUDED.full_name,
+    school_id = EXCLUDED.school_id,
+    class_id = EXCLUDED.class_id,
+    section_id = EXCLUDED.section_id,
+    academic_year_id = EXCLUDED.academic_year_id,
+    deleted_at = NULL,
+    updated_at = now();
+
+INSERT INTO fee.fee_bands
+    (id, name, class_from, class_to, discount, active_schedules_csv,
+     created_at, updated_at, academic_year_id)
+VALUES
+    ('band-1-5', 'E2E Class 1-5', 1, 5, 0, 'Annual', now(), now(), 'ay_2024_25')
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    class_from = EXCLUDED.class_from,
+    class_to = EXCLUDED.class_to,
+    discount = EXCLUDED.discount,
+    active_schedules_csv = EXCLUDED.active_schedules_csv,
+    academic_year_id = EXCLUDED.academic_year_id,
+    updated_at = now();
+
+SELECT setval('tenant_school.seq_schools', COALESCE((SELECT MAX(id) FROM tenant_school.schools), 0) + 1, false);
+SELECT setval('student.seq_students', COALESCE((SELECT MAX(id) FROM student.students), 0) + 1, false);
+"@
+    Invoke-Psql $sql
+}
+
 function Ensure-E2eUsers {
     $sql = @"
 WITH super_user AS (
@@ -151,6 +234,7 @@ function Content-Json {
     $Response.Content | ConvertFrom-Json
 }
 
+Ensure-E2eBaseline
 Ensure-E2eUsers
 $superToken = Login "e2e-superadmin@local.test"
 $adminToken = Login "e2e-admin@local.test"
