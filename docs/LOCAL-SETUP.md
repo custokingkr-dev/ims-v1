@@ -129,6 +129,21 @@ On macOS/Linux:
 TILT_COMPOSE_PROFILE=core tilt up
 ```
 
+During `tilt up`, the `local-dev-users` setup resource waits for the identity and
+tenant-school schemas, then creates or refreshes one local login for each role. It also
+prints the credentials every run, so existing local databases still show the login list.
+
+| Role | Email | Password |
+| --- | --- | --- |
+| SUPERADMIN | `local-superadmin@custoking.local` | `password` |
+| ZONE_ADMIN | `local-zone-admin@custoking.local` | `password` |
+| ADMIN | `local-admin@custoking.local` | `password` |
+| SCHOOL_ADMIN | `local-school-admin@custoking.local` | `password` |
+| OPERATIONS | `local-operations@custoking.local` | `password` |
+| ACCOUNTANT | `local-accountant@custoking.local` | `password` |
+| TEACHER | `local-teacher@custoking.local` | `password` |
+| VIEWER | `local-viewer@custoking.local` | `password` |
+
 If a service list looks wrong, validate compose first:
 
 ```powershell

@@ -98,6 +98,55 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
   },
 ];
 
+export const ACCOUNTANT_NAV_SECTIONS: Array<{
+  title: string;
+  fire?: boolean;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
+}> = [
+  {
+    title: 'Finance',
+    items: [
+      { key: 'home',         label: 'Dashboard',         icon: '◼' },
+      { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'FEES' },
+      { key: 'feestructure', label: 'Fee Configuration', icon: '▦', module: 'FEES' },
+      { key: 'orders',       label: 'School Orders',     icon: '□', module: 'ORDERS' },
+    ],
+  },
+];
+
+export const TEACHER_NAV_SECTIONS: Array<{
+  title: string;
+  fire?: boolean;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
+}> = [
+  {
+    title: 'Classroom',
+    items: [
+      { key: 'home',       label: 'Dashboard',  icon: '◼' },
+      { key: 'students',   label: 'Students',   icon: '△', module: 'STUDENTS' },
+      { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ATTENDANCE' },
+      { key: 'timetable',  label: 'Timetable',  icon: '▤' },
+    ],
+  },
+];
+
+export const VIEWER_NAV_SECTIONS: Array<{
+  title: string;
+  fire?: boolean;
+  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
+}> = [
+  {
+    title: 'Read only',
+    items: [
+      { key: 'home',       label: 'Dashboard',  icon: '◼' },
+      { key: 'students',   label: 'Students',   icon: '△', module: 'STUDENTS' },
+      { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ATTENDANCE' },
+      { key: 'fees',       label: 'Fees',       icon: '₹', module: 'FEES' },
+      { key: 'orders',     label: 'Orders',     icon: '□', module: 'ORDERS' },
+    ],
+  },
+];
+
 export const ZONE_ADMIN_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;

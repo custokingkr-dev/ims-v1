@@ -325,6 +325,8 @@ services:
     restart: unless-stopped
     mem_limit: 128m
     mem_reservation: 64m
+    depends_on:
+      - api-gateway
 
   api-gateway:
     profiles: ["core", "full"]
