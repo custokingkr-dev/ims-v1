@@ -11,6 +11,8 @@ spring:
     hikari:
       maximum-pool-size: ${DB_POOL_MAX:5}
       minimum-idle: ${DB_POOL_MIN:1}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
   flyway:
     enabled: true
     url: ${FLYWAY_URL:${spring.datasource.url}}

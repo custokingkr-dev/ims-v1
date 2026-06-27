@@ -917,3 +917,61 @@ Verified:
 - `identity-service` Maven test suite passed.
 - `tenant-school-service` Maven test suite passed.
 - Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
+
+### 2026-06-28: Inter-Service Call Resilience (Timeouts) Added
+
+Completed:
+
+- Added explicit connect and read timeouts to the identity -> tenant-school
+  `TenantSchoolClient` RestClient (the only Java inter-service HTTP client that
+  previously inherited unbounded timeouts), so a slow or hung tenant-school
+  service fails fast instead of pinning identity request threads.
+- Translated read timeouts (`ResourceAccessException`) on both the GET and POST
+  paths into a `504 GATEWAY_TIMEOUT` instead of leaking a raw runtime exception.
+- Made the timeouts tunable per environment via
+  `identity.tenant-school.connect-timeout-ms` (default 3000) and
+  `read-timeout-ms` (default 5000), backed by `TENANT_SCHOOL_CONNECT_TIMEOUT_MS`
+  / `TENANT_SCHOOL_READ_TIMEOUT_MS`.
+- Confirmed the external MSG91 notification provider already sets connect/read
+  timeouts, so all outbound Java HTTP clients now have bounded timeouts.
+
+Verified:
+
+- Added `TenantSchoolClientTest`, an end-to-end test that starts a real local
+  `HttpServer`: a slow endpoint asserts the `504 GATEWAY_TIMEOUT` fail-fast
+  behaviour and a fast endpoint asserts successful school parsing.
+- `identity-service` Maven test suite passed: 16 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed (all audits green).
+
+### 2026-06-28: Inter-Service Retry And Connection-Pool Hardening
+
+Plan: `docs/superpowers/plans/2026-06-28-production-hardening-resilience.md`.
+
+Completed:
+
+- Phase 1 — Bounded retry for idempotent tenant-school reads. The
+  `TenantSchoolClient` GET path (`school`/`zone`) now retries on transient faults
+  only (connect/read failure, upstream 502/503/504), capped at 3 attempts with a
+  200ms backoff, both tunable via `TENANT_SCHOOL_MAX_ATTEMPTS` /
+  `TENANT_SCHOOL_RETRY_BACKOFF_MS`. 4xx and 500 are never retried; POST commands
+  are never retried. Retries-exhausted propagates the upstream status (or 504 for
+  a connection fault).
+- Phase 2 — Standardized HikariCP connection-pool bounds across all 12 Spring
+  services (`maximum-pool-size`, `minimum-idle`, `connection-timeout`,
+  `validation-timeout`), tunable via `DB_POOL_MAX` / `DB_POOL_MIN` /
+  `DB_POOL_CONNECTION_TIMEOUT_MS` / `DB_POOL_VALIDATION_TIMEOUT_MS`, replacing
+  implicit framework defaults so the fleet cannot exhaust Cloud SQL connections.
+- Added `scripts/audit-service-datasource-pool.ps1`, wired into
+  `scripts/verify-microservice-migration.ps1`, asserting every datasource-owning
+  service declares the four pool bounds.
+
+Verified:
+
+- `TenantSchoolClientTest` extended with retry-then-succeed, retries-exhausted,
+  and no-retry-on-4xx cases over a real local `HttpServer`.
+- `identity-service` Maven test suite passed: 19 tests, 0 failures.
+- New datasource-pool audit passed: 12 services declare explicit pool bounds.
+- Full `scripts/invoke-microservice-tests.ps1` passed for all 14 catalogued
+  entries (12 Java services, api-gateway, frontend).
+- Full `scripts/verify-microservice-migration.ps1` passed with the new pool audit
+  included (all audits green).

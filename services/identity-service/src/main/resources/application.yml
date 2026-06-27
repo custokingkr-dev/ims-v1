@@ -8,6 +8,11 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
     password: ${SPRING_DATASOURCE_PASSWORD:root}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: ${DB_POOL_MIN:1}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -50,3 +55,7 @@ identity:
     base-url: ${TENANT_SCHOOL_BASE_URL:}
     token: ${TENANT_SCHOOL_READ_TOKEN:}
     cloud-run-auth: ${TENANT_SCHOOL_CLOUD_RUN_AUTH:auto}
+    connect-timeout-ms: ${TENANT_SCHOOL_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${TENANT_SCHOOL_READ_TIMEOUT_MS:5000}
+    max-attempts: ${TENANT_SCHOOL_MAX_ATTEMPTS:3}
+    retry-backoff-ms: ${TENANT_SCHOOL_RETRY_BACKOFF_MS:200}
