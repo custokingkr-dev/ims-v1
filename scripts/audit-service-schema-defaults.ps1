@@ -4,7 +4,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $servicesRoot = Join-Path $repoRoot "services"
 $violations = New-Object System.Collections.Generic.List[string]
 
-foreach ($file in Get-ChildItem -Path $servicesRoot -Recurse -Include "application.yml", "*.java" -File) {
+foreach ($file in Get-ChildItem -Path $servicesRoot -Recurse -Include "application.yml", "*.java", "*.sql" -File) {
     $relativePath = $file.FullName.Substring($repoRoot.Path.Length + 1).Replace("\", "/")
     if ($relativePath -match '/target/') {
         continue
@@ -18,6 +18,10 @@ foreach ($file in Get-ChildItem -Path $servicesRoot -Recurse -Include "applicati
 
     if ($file.Extension -eq ".java" -and $source -match '\.db\.schema:public') {
         $violations.Add("Injected service schema must not default to public: $relativePath")
+    }
+
+    if ($file.Extension -eq ".sql" -and $source -match '\bREFERENCES\s+public\.') {
+        $violations.Add("Service migrations must not create hard foreign keys to public schema tables: $relativePath")
     }
 }
 
