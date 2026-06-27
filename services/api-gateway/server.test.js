@@ -168,6 +168,12 @@ test('workspace staff routes to tenant, not reporting', () => {
   assert.equal(resolve('/api/v1/workspace'), 'reporting');
 });
 
+test('workspace timetable writes route to tenant, workspace reads stay reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/workspace/timetable'), 'tenant');
+  assert.equal(resolve('/api/v1/workspace'), 'reporting');
+});
+
 test('vendor-dues mark-paid routes to owning services, dashboard reads stay reporting', () => {
   const resolve = (p) => routes.find((r) => r.matches(p))?.service;
   assert.equal(resolve('/api/v1/dashboard/vendor-dues/catalog-orders/12/mark-paid'), 'catalog');

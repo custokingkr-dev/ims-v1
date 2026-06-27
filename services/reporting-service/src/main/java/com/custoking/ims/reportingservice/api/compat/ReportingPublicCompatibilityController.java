@@ -68,7 +68,7 @@ public class ReportingPublicCompatibilityController {
         response.put("fees", Map.of("summary", Map.of("progressPercent", 0, "collected", 0, "outstanding", 0, "overdueCount", 0, "target", 0), "records", List.of()));
         response.put("feeStructures", List.of());
         response.put("attendance", Map.of("summary", Map.of("overallPercent", 0), "classes", List.of()));
-        response.put("timetable", List.of());
+        response.put("timetable", reporting.timetable(schoolId));
         response.put("staff", List.of());
         response.put("catalog", List.of());
         response.put("orders", List.of());
