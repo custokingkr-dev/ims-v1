@@ -155,6 +155,14 @@ test('zone admin routes to identity, zone reads stay tenant', () => {
   assert.equal(resolve('/api/v1/zones'), 'tenant');
 });
 
+test('user directory routes to identity for both exact and sub-paths', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/users'), 'identity');             // exact collection path (UsersPage list)
+  assert.equal(resolve('/api/v1/users/7'), 'identity');           // detail
+  assert.equal(resolve('/api/v1/users/7/disable'), 'identity');   // command sub-path
+  assert.equal(resolve('/api/v1/users/provisioning/schools/1/users/ADMIN'), 'identity');
+});
+
 test('workspace firefighting routes to firefighting, not reporting', () => {
   const resolve = (p) => routes.find((r) => r.matches(p))?.service;
   assert.equal(resolve('/api/v1/workspace/firefighting'), 'firefighting');

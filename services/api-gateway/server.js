@@ -57,7 +57,7 @@ const routes = [
   route('student', /^\/api\/v1\/classes\/[^/]+\/sections\/[^/]+\/students$/),
   route('identity', '/api/v1/auth/'),
   route('identity', '/api/v1/rbac/'),
-  route('identity', '/api/v1/users/'),
+  route('identity', '/api/v1/users'),
   route('identity', /^\/api\/v1\/schools\/[^/]+\/(admin|operations-user)$/),
   route('identity', /^\/api\/v1\/zones\/[^/]+\/admin$/),
   route('tenant', '/api/v1/classes/'),
