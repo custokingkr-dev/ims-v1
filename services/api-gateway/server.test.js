@@ -181,6 +181,14 @@ test('fee-defaulter reminders route to fee, defaulter reads stay reporting', () 
   assert.equal(resolve('/api/v1/dashboard/finance/fee-defaulters'), 'reporting');
 });
 
+test('school-facing billing compatibility routes to billing without stealing fee payments', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/customers'), 'billing');
+  assert.equal(resolve('/api/v1/invoices/12/pdf'), 'billing');
+  assert.equal(resolve('/api/v1/billing-payments'), 'billing');
+  assert.equal(resolve('/api/v1/payments'), 'fee');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
