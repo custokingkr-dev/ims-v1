@@ -59,6 +59,19 @@ class FirefightingReadControllerTest {
     }
 
     @Test
+    void timelineDelegatesRequestCode() {
+        List<Map<String, Object>> timeline = List.of(Map.of(
+                "status", "CREATED",
+                "at", OffsetDateTime.parse("2026-06-27T00:00:00Z")));
+        when(firefighting.timeline("FF-1001")).thenReturn(timeline);
+
+        List<Map<String, Object>> response = controller.timeline("ff-token", "FF-1001");
+
+        assertThat(response).isSameAs(timeline);
+        verify(firefighting).timeline("FF-1001");
+    }
+
+    @Test
     void createDelegatesRequestBody() {
         Map<String, Object> request = Map.of("title", "Replace extinguishers", "schoolId", 4L);
         Map<String, Object> result = Map.of("code", "FF-1002", "status", "DRAFT");

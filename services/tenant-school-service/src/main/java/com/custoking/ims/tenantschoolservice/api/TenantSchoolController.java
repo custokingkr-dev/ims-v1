@@ -26,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -305,6 +306,30 @@ public class TenantSchoolController {
         return structure.zoneAdmins(id, active);
     }
 
+    @PostMapping("/zones/{id}/admins")
+    public void assignZoneAdmin(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        requireToken(token, "tenant-school:write");
+        runCommand(() -> {
+            zoneCommands.assignZoneAdmin(id, parseLong(body.get("userId")), parseLong(body.get("assignedBy")));
+            return Map.of("ok", true);
+        });
+    }
+
+    @PostMapping("/zones/{id}/admins/retire")
+    public void retireZoneAdmins(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        requireToken(token, "tenant-school:write");
+        runCommand(() -> {
+            zoneCommands.retireZoneAdmins(id, parseLongList(body.get("userIds")));
+            return Map.of("ok", true);
+        });
+    }
+
     private void requireToken(String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope" );
@@ -334,6 +359,20 @@ public class TenantSchoolController {
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid actorId: " + value);
         }
+    }
+
+    private List<Long> parseLongList(Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        if (!(value instanceof Iterable<?> iterable)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid userIds: " + value);
+        }
+        List<Long> ids = new ArrayList<>();
+        for (Object item : iterable) {
+            ids.add(parseLong(item));
+        }
+        return ids;
     }
 
     private <T> T runCommand(Command<T> command) {

@@ -25,7 +25,7 @@ export default function PaymentsPage() {
       setLoading(true);
       setError('');
       const [payRes, invRes] = await Promise.all([
-        api.get<Payment[]>('/payments'),
+        api.get<Payment[]>('/billing-payments'),
         api.get<Invoice[]>('/invoices'),
       ]);
       setPayments(payRes.data);
@@ -45,7 +45,7 @@ export default function PaymentsPage() {
     try {
       setSaving(true);
       setError('');
-      await api.post('/payments', {
+      await api.post('/billing-payments', {
         ...form,
         invoiceId: Number(form.invoiceId),
         amount: Number(form.amount),

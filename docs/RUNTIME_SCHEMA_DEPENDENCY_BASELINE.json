@@ -27,12 +27,6 @@
       "student",
       "tenant_school"
     ],
-    "firefighting-service": [
-      "tenant_school"
-    ],
-    "identity-service": [
-      "tenant_school"
-    ],
     "reporting-service": [
       "attendance",
       "billing",
@@ -45,9 +39,6 @@
     ],
     "student-service": [
       "tenant_school"
-    ],
-    "tenant-school-service": [
-      "identity"
     ]
   }
 }

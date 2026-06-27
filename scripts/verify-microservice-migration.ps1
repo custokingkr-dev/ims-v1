@@ -74,6 +74,10 @@ Invoke-Step "legacy public retirement readiness audit" {
     & (Join-Path $PSScriptRoot "audit-legacy-public-retirement-readiness.ps1")
 }
 
+Invoke-Step "request correlation and structured logging audit" {
+    & (Join-Path $PSScriptRoot "audit-request-correlation-and-logging.ps1")
+}
+
 Invoke-Step "microservice build catalog audit" {
     & (Join-Path $PSScriptRoot "audit-microservice-build-catalog.ps1")
 }

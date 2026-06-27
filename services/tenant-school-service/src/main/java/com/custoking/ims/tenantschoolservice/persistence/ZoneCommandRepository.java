@@ -99,17 +99,52 @@ public class ZoneCommandRepository {
         }
     }
 
+    @Transactional
+    public void assignZoneAdmin(Long zoneId, Long userId, Long assignedBy) {
+        requireZone(zoneId);
+        if (userId == null) {
+            throw new IllegalArgumentException("userId is required");
+        }
+        jdbc.sql("""
+                INSERT INTO tenant_school.zone_admin_assignments (zone_id, user_id, assigned_at, assigned_by, active)
+                VALUES (:zoneId, :userId, :assignedAt, :assignedBy, true)
+                ON CONFLICT (zone_id, user_id)
+                DO UPDATE SET active = true, assigned_by = EXCLUDED.assigned_by, assigned_at = EXCLUDED.assigned_at
+                """)
+                .param("zoneId", zoneId)
+                .param("userId", userId)
+                .param("assignedAt", OffsetDateTime.now())
+                .param("assignedBy", assignedBy)
+                .update();
+    }
+
+    @Transactional
+    public void retireZoneAdmins(Long zoneId, Iterable<Long> userIds) {
+        requireZone(zoneId);
+        if (!userIds.iterator().hasNext()) {
+            return;
+        }
+        jdbc.sql("""
+                UPDATE tenant_school.zone_admin_assignments
+                SET active = false
+                WHERE zone_id = :zoneId
+                  AND user_id IN (:userIds)
+                """)
+                .param("zoneId", zoneId)
+                .param("userIds", userIds)
+                .update();
+    }
+
     private Map<String, Object> zoneRow(Long zoneId) {
         return jdbc.sql("""
                 SELECT z.id, z.name, z.code, z.city, z.state, z.description, z.active,
                        COALESCE(COUNT(zsm.id), 0) AS school_count,
-                       admin.email AS admin_email
+                       '' AS admin_email
                 FROM tenant_school.zones z
                 LEFT JOIN tenant_school.zone_school_mappings zsm ON zsm.zone_id = z.id AND zsm.active = true
                 LEFT JOIN tenant_school.zone_admin_assignments zaa ON zaa.zone_id = z.id AND zaa.active = true
-                LEFT JOIN identity.app_users admin ON admin.id = zaa.user_id
                 WHERE z.id = :zoneId
-                GROUP BY z.id, z.name, z.code, z.city, z.state, z.description, z.active, admin.email
+                GROUP BY z.id, z.name, z.code, z.city, z.state, z.description, z.active
                 """)
                 .param("zoneId", zoneId)
                 .query((rs, rowNum) -> row(

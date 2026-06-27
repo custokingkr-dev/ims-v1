@@ -806,11 +806,8 @@ Current allowed transitional external schema dependencies:
 - `attendance-service` -> `student`, `tenant_school`
 - `catalog-service` -> `student`, `tenant_school`
 - `fee-service` -> `student`, `tenant_school`
-- `firefighting-service` -> `tenant_school`
-- `identity-service` -> `tenant_school`
 - `reporting-service` -> `attendance`, `billing`, `catalog`, `fee`, `firefighting`, `notification`, `student`, `tenant_school`
 - `student-service` -> `tenant_school`
-- `tenant-school-service` -> `catalog`, `identity`
 
 Verified:
 
@@ -855,3 +852,68 @@ Verified:
 - `tenant-school-service` Maven tests passed: 11 tests, 0 failures.
 - `api-gateway` Node tests passed: 10 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed with the new audits included.
+
+### 2026-06-27: Request Correlation And Structured Logging Gate Added
+
+Completed:
+
+- Added `RequestCorrelationFilter` to all 12 Spring services.
+- Each service now accepts or creates `X-Request-Id`, stores it in MDC as `requestId`, and returns it on the response.
+- Added JSON `logback-spring.xml` configuration for all Spring services using the existing logstash encoder dependency.
+- Added `scripts/audit-request-correlation-and-logging.ps1`.
+- Wired the request-correlation and structured-logging audit into `scripts/verify-microservice-migration.ps1`.
+- Updated affected CI target resolution to use the shared build/test catalogs instead of duplicating service matrix entries.
+- Updated build/test catalog audits to validate the dynamic resolver contract.
+- Fixed scoped internal-token guard calls in compatibility controllers flagged by the authorization audit.
+
+Verified:
+
+- `scripts/audit-request-correlation-and-logging.ps1` passed.
+- Full `scripts/invoke-microservice-tests.ps1` passed for 14 service entries.
+- Full `scripts/verify-microservice-migration.ps1` passed with the new observability gate included.
+
+### 2026-06-27: Tenant-School Identity Runtime Dependency Removed
+
+Completed:
+
+- Removed tenant-school runtime joins to `identity.app_users` from zone admin reads, zone command responses, and superadmin school stats.
+- Tenant-school now returns tenant-owned IDs and blank display fields where identity-owned user details previously leaked through direct SQL joins.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `tenant-school-service -> identity` is no longer an allowed transitional dependency.
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- `tenant-school-service` Maven test suite passed: 16 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
+
+### 2026-06-28: Firefighting Tenant-School Runtime Dependency Removed
+
+Completed:
+
+- Removed the `firefighting-service` runtime read of `tenant_school.schools` from firefighting request creation.
+- Firefighting request creation now validates only that `schoolId` is supplied; school ownership/existence remains a tenant-school responsibility instead of a direct cross-schema query.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `firefighting-service -> tenant_school` is no longer an allowed transitional dependency.
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- `firefighting-service` Maven test suite passed.
+- Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
+
+### 2026-06-28: Identity Tenant-School SQL Dependency Removed
+
+Completed:
+
+- Removed identity runtime SQL reads from `tenant_school.schools` and `tenant_school.zones`.
+- Removed identity runtime SQL writes to `tenant_school.zone_admin_assignments`.
+- Added a tenant-school-owned internal API for zone admin assignment and retirement.
+- Added an identity `TenantSchoolClient` that calls tenant-school over HTTP using the existing internal token and optional Cloud Run ID-token support.
+- Wired local Compose and Cloud Build so identity receives tenant-school URL/token configuration.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `identity-service -> tenant_school` is no longer an allowed transitional dependency.
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- `identity-service` Maven test suite passed.
+- `tenant-school-service` Maven test suite passed.
+- Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
