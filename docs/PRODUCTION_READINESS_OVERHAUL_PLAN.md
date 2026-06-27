@@ -806,11 +806,9 @@ Current allowed transitional external schema dependencies:
 - `attendance-service` -> `student`, `tenant_school`
 - `catalog-service` -> `student`, `tenant_school`
 - `fee-service` -> `student`, `tenant_school`
-- `firefighting-service` -> `tenant_school`
 - `identity-service` -> `tenant_school`
 - `reporting-service` -> `attendance`, `billing`, `catalog`, `fee`, `firefighting`, `notification`, `student`, `tenant_school`
 - `student-service` -> `tenant_school`
-- `tenant-school-service` -> `catalog`, `identity`
 
 Verified:
 
@@ -887,4 +885,18 @@ Verified:
 
 - `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
 - `tenant-school-service` Maven test suite passed: 16 tests, 0 failures.
+- Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
+
+### 2026-06-28: Firefighting Tenant-School Runtime Dependency Removed
+
+Completed:
+
+- Removed the `firefighting-service` runtime read of `tenant_school.schools` from firefighting request creation.
+- Firefighting request creation now validates only that `schoolId` is supplied; school ownership/existence remains a tenant-school responsibility instead of a direct cross-schema query.
+- Shrunk `docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json` so `firefighting-service -> tenant_school` is no longer an allowed transitional dependency.
+
+Verified:
+
+- `scripts/audit-runtime-schema-dependency-baseline.ps1` passed.
+- `firefighting-service` Maven test suite passed.
 - Full `scripts/verify-microservice-migration.ps1` passed after shrinking the dependency baseline.
