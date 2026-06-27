@@ -57,6 +57,18 @@ public class FirefightingReadRepository {
         return detailRow(code);
     }
 
+    public List<Map<String, Object>> timeline(String code) {
+        FirefightingRequestRow row = request(code)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+        var events = new java.util.ArrayList<Map<String, Object>>();
+        addEvent(events, "CREATED", row.createdAt());
+        addEvent(events, "BURSAR_APPROVED", row.bursarApprovedAt());
+        addEvent(events, "PRINCIPAL_APPROVED", row.principalApprovedAt());
+        addEvent(events, "VENDOR_PAID", row.vendorPaidAt());
+        events.sort(java.util.Comparator.comparing(event -> (OffsetDateTime) event.get("at")));
+        return events;
+    }
+
     public List<QuotationRow> quotations(String requestId) {
         return jdbc.sql("""
                 SELECT id, vendor_name, amount, delivery_timeline, notes, document_url,
@@ -500,6 +512,15 @@ public class FirefightingReadRepository {
         LinkedHashMap<String, Object> map = new LinkedHashMap<>();
         for (int i = 0; i < kv.length; i += 2) map.put(String.valueOf(kv[i]), kv[i + 1]);
         return map;
+    }
+
+    private void addEvent(List<Map<String, Object>> events, String status, OffsetDateTime at) {
+        if (at != null) {
+            LinkedHashMap<String, Object> event = new LinkedHashMap<>();
+            event.put("status", status);
+            event.put("at", at);
+            events.add(event);
+        }
     }
 
     public record FirefightingRequestRow(

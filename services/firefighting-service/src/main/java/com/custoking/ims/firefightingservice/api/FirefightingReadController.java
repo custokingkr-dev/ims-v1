@@ -70,6 +70,18 @@ public class FirefightingReadController {
         return execute(() -> firefighting.detail(code));
     }
 
+    @GetMapping("/requests/{code}/timeline")
+    public List<Map<String, Object>> timeline(
+            @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
+            @PathVariable String code) {
+        requireToken(token, "firefighting:read");
+        try {
+            return firefighting.timeline(code);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
     @PostMapping("/requests")
     public Map<String, Object> create(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
