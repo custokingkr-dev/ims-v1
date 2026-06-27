@@ -5,22 +5,33 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$services = @(
-  @{ name = "identity-service"; path = "services/identity-service"; tool = "maven"; context = "./services/identity-service"; image = "custoking-identity-service"; build_args = "" },
-  @{ name = "tenant-school-service"; path = "services/tenant-school-service"; tool = "maven"; context = "./services/tenant-school-service"; image = "custoking-tenant-school-service"; build_args = "" },
-  @{ name = "student-service"; path = "services/student-service"; tool = "maven"; context = "./services/student-service"; image = "custoking-student-service"; build_args = "" },
-  @{ name = "attendance-service"; path = "services/attendance-service"; tool = "maven"; context = "./services/attendance-service"; image = "custoking-attendance-service"; build_args = "" },
-  @{ name = "fee-service"; path = "services/fee-service"; tool = "maven"; context = "./services/fee-service"; image = "custoking-fee-service"; build_args = "" },
-  @{ name = "catalog-service"; path = "services/catalog-service"; tool = "maven"; context = "./services/catalog-service"; image = "custoking-catalog-service"; build_args = "" },
-  @{ name = "workflow-service"; path = "services/workflow-service"; tool = "maven"; context = "./services/workflow-service"; image = "custoking-workflow-service"; build_args = "" },
-  @{ name = "firefighting-service"; path = "services/firefighting-service"; tool = "maven"; context = "./services/firefighting-service"; image = "custoking-firefighting-service"; build_args = "" },
-  @{ name = "reporting-service"; path = "services/reporting-service"; tool = "maven"; context = "./services/reporting-service"; image = "custoking-reporting-service"; build_args = "" },
-  @{ name = "billing-service"; path = "services/billing-service"; tool = "maven"; context = "./services/billing-service"; image = "custoking-billing-service"; build_args = "" },
-  @{ name = "audit-service"; path = "services/audit-service"; tool = "maven"; context = "./services/audit-service"; image = "custoking-audit-service"; build_args = "" },
-  @{ name = "notification-service"; path = "services/notification-service"; tool = "maven"; context = "./services/notification-service"; image = "custoking-notification-service"; build_args = "" },
-  @{ name = "api-gateway"; path = "services/api-gateway"; tool = "node"; context = "./services/api-gateway"; image = "custoking-api-gateway"; build_args = "" },
-  @{ name = "frontend"; path = "frontend"; tool = "npm"; context = "./frontend"; image = "custoking-frontend"; build_args = "VITE_API_BASE_URL=/api/v1" }
-) | ForEach-Object { [pscustomobject]$_ }
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot "microservice-build-catalog.ps1")
+. (Join-Path $PSScriptRoot "microservice-test-catalog.ps1")
+
+$buildByName = @{}
+foreach ($entry in @(Get-MicroserviceBuildCatalog)) {
+  $buildByName[$entry.Name] = $entry
+}
+
+$services = @(Get-MicroserviceTestCatalog | ForEach-Object {
+  $build = $buildByName[$_.Name]
+  if (-not $build) {
+    throw "Missing build catalog entry for test target: $($_.Name)"
+  }
+  $context = $build.Context -replace "\\", "/"
+  if (-not $context.StartsWith("./")) {
+    $context = "./$context"
+  }
+  [pscustomobject]@{
+    name = $_.Name
+    path = ($_.Path -replace "\\", "/")
+    tool = $_.Tool
+    context = $context
+    image = $build.Image
+    build_args = if ($build.BuildArgs) { $build.BuildArgs -join "`n" } else { "" }
+  }
+})
 
 if (-not $BaseRef) {
   $BaseRef = "HEAD~1"

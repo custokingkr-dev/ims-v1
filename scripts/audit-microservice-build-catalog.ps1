@@ -7,30 +7,35 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $catalog = @(Get-MicroserviceBuildCatalog)
 $testCatalog = @(Get-MicroserviceTestCatalog)
 $ciPath = Join-Path $repoRoot ".github/workflows/ci.yml"
+$resolverPath = Join-Path $repoRoot "scripts/resolve-affected-ci-targets.ps1"
 $cloudBuildPath = Join-Path $repoRoot "cloudbuild.yaml"
 $verifyPath = Join-Path $repoRoot "scripts/verify-microservice-migration.ps1"
 
 $ci = Get-Content -Raw -Path $ciPath
+$resolver = Get-Content -Raw -Path $resolverPath
 $cloudBuild = Get-Content -Raw -Path $cloudBuildPath
 $verify = Get-Content -Raw -Path $verifyPath
 $violations = New-Object System.Collections.Generic.List[string]
 
+foreach ($required in @("resolve-affected-ci-targets.ps1", "service_matrix", "docker_matrix", "fromJson(needs.detect-changes.outputs.service_matrix)", "fromJson(needs.detect-changes.outputs.docker_matrix)", "matrix.context", "matrix.image")) {
+    if ($ci -notmatch [regex]::Escape($required)) {
+        $violations.Add("CI workflow missing dynamic catalog contract: $required")
+    }
+}
+
+foreach ($required in @("Get-MicroserviceBuildCatalog", "Get-MicroserviceTestCatalog", "microservice-build-catalog.ps1", "microservice-test-catalog.ps1")) {
+    if ($resolver -notmatch [regex]::Escape($required)) {
+        $violations.Add("Affected-target resolver must use shared catalogs: $required")
+    }
+}
+
 foreach ($service in $catalog) {
     $context = $service.Context
     $posixContext = $context -replace "\\", "/"
-    $ciContext = "./" + $posixContext
     $image = $service.Image
 
-    if ($ci -notmatch [regex]::Escape($ciContext)) {
-        $violations.Add("CI docker-build matrix missing context for $($service.Name): $ciContext")
-    }
-
-    if ($ci -notmatch [regex]::Escape($image)) {
-        $violations.Add("CI docker-build matrix missing image for $($service.Name): $image")
-    }
-
     if ($cloudBuild -notmatch [regex]::Escape($posixContext) -and
-        $cloudBuild -notmatch [regex]::Escape($ciContext)) {
+        $cloudBuild -notmatch [regex]::Escape("./$posixContext")) {
         $violations.Add("Cloud Build missing build context for $($service.Name): $posixContext")
     }
 
@@ -46,12 +51,6 @@ foreach ($service in $catalog) {
 
 if ($ci -notmatch "fail-fast:\s+false") {
     $violations.Add("CI docker-build matrix should keep fail-fast disabled so all service image failures are visible.")
-}
-
-foreach ($service in $testCatalog) {
-    if ($ci -notmatch [regex]::Escape($service.Name)) {
-        $violations.Add("CI service-test matrix missing service name: $($service.Name)")
-    }
 }
 
 if ($violations.Count -gt 0) {

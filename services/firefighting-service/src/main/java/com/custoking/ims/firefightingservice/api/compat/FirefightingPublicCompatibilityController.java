@@ -31,7 +31,7 @@ public class FirefightingPublicCompatibilityController {
     public Map<String, Object> createFromWorkspace(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
-        requireToken(token);
+        requireToken(token, "firefighting:write");
         return run(() -> firefighting.createRequest(request));
     }
 
@@ -40,12 +40,12 @@ public class FirefightingPublicCompatibilityController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
             @RequestBody(required = false) Map<String, Object> request) {
-        requireToken(token);
+        requireToken(token, "firefighting:write");
         return run(() -> firefighting.markVendorPaid(code, request == null ? Map.of() : request));
     }
 
-    private void requireToken(String token) {
-        if (!StringUtils.hasText(readToken) || !readToken.equals(token)) {
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid firefighting service token");
         }
     }

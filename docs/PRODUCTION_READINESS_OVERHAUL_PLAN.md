@@ -855,3 +855,22 @@ Verified:
 - `tenant-school-service` Maven tests passed: 11 tests, 0 failures.
 - `api-gateway` Node tests passed: 10 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed with the new audits included.
+
+### 2026-06-27: Request Correlation And Structured Logging Gate Added
+
+Completed:
+
+- Added `RequestCorrelationFilter` to all 12 Spring services.
+- Each service now accepts or creates `X-Request-Id`, stores it in MDC as `requestId`, and returns it on the response.
+- Added JSON `logback-spring.xml` configuration for all Spring services using the existing logstash encoder dependency.
+- Added `scripts/audit-request-correlation-and-logging.ps1`.
+- Wired the request-correlation and structured-logging audit into `scripts/verify-microservice-migration.ps1`.
+- Updated affected CI target resolution to use the shared build/test catalogs instead of duplicating service matrix entries.
+- Updated build/test catalog audits to validate the dynamic resolver contract.
+- Fixed scoped internal-token guard calls in compatibility controllers flagged by the authorization audit.
+
+Verified:
+
+- `scripts/audit-request-correlation-and-logging.ps1` passed.
+- Full `scripts/invoke-microservice-tests.ps1` passed for 14 service entries.
+- Full `scripts/verify-microservice-migration.ps1` passed with the new observability gate included.

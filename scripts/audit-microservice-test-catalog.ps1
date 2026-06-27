@@ -5,8 +5,10 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 $catalog = @(Get-MicroserviceTestCatalog)
 $ciPath = Join-Path $repoRoot ".github/workflows/ci.yml"
+$resolverPath = Join-Path $repoRoot "scripts/resolve-affected-ci-targets.ps1"
 $runnerPath = Join-Path $repoRoot "scripts/invoke-microservice-tests.ps1"
 $ci = Get-Content -Raw -Path $ciPath
+$resolver = Get-Content -Raw -Path $resolverPath
 $runner = Get-Content -Raw -Path $runnerPath
 $violations = New-Object System.Collections.Generic.List[string]
 
@@ -28,17 +30,22 @@ foreach ($service in $catalog) {
         $violations.Add("Node test catalog entry must run node --test for $($service.Name): $($service.Path)")
     }
 
-    if ($ci -notmatch [regex]::Escape($service.Name)) {
-        $violations.Add("CI service-test matrix missing service name: $($service.Name)")
-    }
-
-    if ($ci -notmatch [regex]::Escape($path)) {
-        $violations.Add("CI service-test matrix missing path for $($service.Name): $path")
-    }
 }
 
 if ($runner -notmatch [regex]::Escape("Get-MicroserviceTestCatalog")) {
     $violations.Add("invoke-microservice-tests.ps1 must use the shared microservice test catalog.")
+}
+
+foreach ($required in @("Get-MicroserviceTestCatalog", "Get-MicroserviceBuildCatalog", "service_matrix", "tool", "path")) {
+    if ($resolver -notmatch [regex]::Escape($required)) {
+        $violations.Add("resolve-affected-ci-targets.ps1 must derive service-test matrix from shared catalog: $required")
+    }
+}
+
+foreach ($required in @("fromJson(needs.detect-changes.outputs.service_matrix)", "matrix.tool", "matrix.path", "matrix.name")) {
+    if ($ci -notmatch [regex]::Escape($required)) {
+        $violations.Add("CI service-test job missing dynamic matrix contract: $required")
+    }
 }
 
 if ($ci -notmatch "service-test:") {
