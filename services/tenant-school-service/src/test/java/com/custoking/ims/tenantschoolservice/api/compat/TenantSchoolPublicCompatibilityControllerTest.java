@@ -51,4 +51,29 @@ class TenantSchoolPublicCompatibilityControllerTest {
                         .isEqualTo(HttpStatus.UNAUTHORIZED));
         verify(schools, never()).addStaff(5L, request);
     }
+
+    @Test
+    void addsTimetableUsingAuthenticatedSchoolHeader() {
+        Map<String, Object> request = Map.of(
+                "day", "Monday",
+                "period", "P1",
+                "classSection", "9-B",
+                "subject", "Math",
+                "teacher", "Asha");
+        when(schools.addTimetableEntry(eq(5L), eq(request))).thenReturn(Map.of("id", "1"));
+
+        assertThat(controller.addTimetableFromWorkspace("tok", "5", request)).containsEntry("id", "1");
+        verify(schools).addTimetableEntry(5L, request);
+    }
+
+    @Test
+    void timetableRequiresSchoolScope() {
+        Map<String, Object> request = Map.of("day", "Monday", "period", "P1", "classSection", "9-B");
+
+        assertThatThrownBy(() -> controller.addTimetableFromWorkspace("tok", null, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+        verify(schools, never()).addTimetableEntry(null, request);
+    }
 }

@@ -41,6 +41,26 @@ public class TenantSchoolPublicCompatibilityController {
         }
     }
 
+    @PostMapping("/api/v1/workspace/timetable")
+    public Map<String, Object> addTimetableFromWorkspace(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestHeader(value = "X-Authenticated-School-Id", required = false) String authenticatedSchoolId,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token);
+        Long schoolId = longValue(request.get("schoolId"));
+        if (schoolId == null) {
+            schoolId = longValue(authenticatedSchoolId);
+        }
+        if (schoolId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
+        }
+        try {
+            return schools.addTimetableEntry(schoolId, request);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
     private void requireToken(String token) {
         if (!StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid tenant-school service token");
