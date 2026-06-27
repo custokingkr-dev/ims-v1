@@ -90,6 +90,8 @@ const routes = [
   route('firefighting', '/api/v1/ff/'),
   route('audit', '/api/v1/audit-logs'),
   route('notification', '/api/v1/notifications/'),
+  route('catalog', /^\/api\/v1\/dashboard\/vendor-dues\/catalog-orders\/[^/]+\/mark-paid$/),
+  route('firefighting', /^\/api\/v1\/dashboard\/vendor-dues\/firefighting\/[^/]+\/mark-paid$/),
   route('reporting', '/api/v1/dashboard/'),
   route('reporting', '/api/v1/dashboard'),
   route('reporting', '/api/v1/command-centre/'),

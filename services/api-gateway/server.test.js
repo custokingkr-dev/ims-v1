@@ -168,6 +168,13 @@ test('workspace staff routes to tenant, not reporting', () => {
   assert.equal(resolve('/api/v1/workspace'), 'reporting');
 });
 
+test('vendor-dues mark-paid routes to owning services, dashboard reads stay reporting', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/dashboard/vendor-dues/catalog-orders/12/mark-paid'), 'catalog');
+  assert.equal(resolve('/api/v1/dashboard/vendor-dues/firefighting/FF-3/mark-paid'), 'firefighting');
+  assert.equal(resolve('/api/v1/dashboard/vendor-dues'), 'reporting');
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
