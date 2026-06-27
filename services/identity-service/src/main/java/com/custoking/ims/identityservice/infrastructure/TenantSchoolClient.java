@@ -4,9 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,11 +38,21 @@ public class TenantSchoolClient {
             RestClient.Builder restClientBuilder,
             @Value("${identity.tenant-school.base-url:}") String baseUrl,
             @Value("${identity.tenant-school.token:}") String token,
-            @Value("${identity.tenant-school.cloud-run-auth:auto}") String cloudRunAuthMode) {
+            @Value("${identity.tenant-school.cloud-run-auth:auto}") String cloudRunAuthMode,
+            @Value("${identity.tenant-school.connect-timeout-ms:3000}") int connectTimeoutMs,
+            @Value("${identity.tenant-school.read-timeout-ms:5000}") int readTimeoutMs) {
         this.baseUrl = trimTrailingSlash(baseUrl);
         this.token = token == null ? "" : token.trim();
         this.cloudRunAuthMode = cloudRunAuthMode == null ? "auto" : cloudRunAuthMode.trim().toLowerCase();
-        this.restClient = restClientBuilder.baseUrl(this.baseUrl.isBlank() ? "http://localhost" : this.baseUrl).build();
+        // Explicit connect/read timeouts so a slow or hung tenant-school service
+        // fails fast instead of pinning identity request threads indefinitely.
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Math.max(0, connectTimeoutMs));
+        requestFactory.setReadTimeout(Math.max(0, readTimeoutMs));
+        this.restClient = restClientBuilder
+                .baseUrl(this.baseUrl.isBlank() ? "http://localhost" : this.baseUrl)
+                .requestFactory(requestFactory)
+                .build();
         this.metadataClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
     }
 
@@ -76,6 +88,8 @@ public class TenantSchoolClient {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, notFoundMessage, ex);
         } catch (HttpClientErrorException ex) {
             throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getResponseBodyAsString(), ex);
+        } catch (ResourceAccessException ex) {
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "tenant-school service did not respond in time", ex);
         }
     }
 
@@ -90,6 +104,8 @@ public class TenantSchoolClient {
                     .toBodilessEntity();
         } catch (HttpClientErrorException ex) {
             throw new ResponseStatusException(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getResponseBodyAsString(), ex);
+        } catch (ResourceAccessException ex) {
+            throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "tenant-school service did not respond in time", ex);
         }
     }
 
