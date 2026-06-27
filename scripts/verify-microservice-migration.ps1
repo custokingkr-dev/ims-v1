@@ -70,6 +70,10 @@ Invoke-Step "service schema default audit" {
     & (Join-Path $PSScriptRoot "audit-service-schema-defaults.ps1")
 }
 
+Invoke-Step "service datasource pool audit" {
+    & (Join-Path $PSScriptRoot "audit-service-datasource-pool.ps1")
+}
+
 Invoke-Step "legacy public retirement readiness audit" {
     & (Join-Path $PSScriptRoot "audit-legacy-public-retirement-readiness.ps1")
 }
