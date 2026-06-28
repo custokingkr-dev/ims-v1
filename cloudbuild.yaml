@@ -5,7 +5,7 @@ substitutions:
   _DEPLOY_SERVICES: frontend
   _DB_HOST: 10.116.0.3:5432
   _DB_NAME: custoking_ims_v1
-  _APP_DB_USER: appuser
+  _APP_DB_USER: app_rt
   _FLYWAY_DB_USER: appuser
   _VPC_NETWORK: default
   _VPC_SUBNET: default
@@ -93,7 +93,7 @@ steps:
         }
 
         common_env="SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=${_APP_DB_USER},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_DB_USER},SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=5,SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=0"
-        common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --max-instances=2 --memory=768Mi)
+        common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --max-instances=2 --memory=768Mi --cpu-boost)
 
         deploy_service() {
           local selector="$1"
@@ -101,6 +101,7 @@ steps:
           local image="$3"
           local env="$4"
           local secrets="$5"
+          local extra_flags="$${6:-}"
           if ! selected "$${selector}" "$${image}"; then
             echo "Skipping $${selector}; not selected by _DEPLOY_SERVICES=${_DEPLOY_SERVICES}"
             return 0
@@ -108,38 +109,40 @@ steps:
           gcloud run deploy "$${service}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}" \
             "$${common_flags[@]}" \
+            $${extra_flags} \
             --set-env-vars="$${common_env},$${env}" \
             --set-secrets="$${secrets}"
         }
 
         deploy_service tenant-school-service custoking-tenant-school-service custoking-tenant-school-service "TENANT_SCHOOL_DB_SCHEMA=tenant_school" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
         TENANT_SCHOOL_URL="$(gcloud run services describe custoking-tenant-school-service --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
         if [ -z "$${TENANT_SCHOOL_URL}" ]; then
           TENANT_SCHOOL_URL="http://tenant-school-service:8080"
         fi
         deploy_service identity-service custoking-identity-service custoking-identity-service "IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest" \
+          "--min-instances=1"
         deploy_service student-service custoking-student-service custoking-student-service "STUDENT_DB_SCHEMA=student" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,STUDENT_READ_TOKEN=student-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,STUDENT_READ_TOKEN=student-read-token:latest"
         deploy_service attendance-service custoking-attendance-service custoking-attendance-service "ATTENDANCE_DB_SCHEMA=attendance" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,ATTENDANCE_READ_TOKEN=attendance-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,ATTENDANCE_READ_TOKEN=attendance-read-token:latest"
         deploy_service fee-service custoking-fee-service custoking-fee-service "FEE_DB_SCHEMA=fee" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,FEE_READ_TOKEN=fee-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,FEE_READ_TOKEN=fee-read-token:latest"
         deploy_service catalog-service custoking-catalog-service custoking-catalog-service "CATALOG_DB_SCHEMA=catalog" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
         deploy_service workflow-service custoking-workflow-service custoking-workflow-service "WORKFLOW_DB_SCHEMA=workflow" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest"
         deploy_service firefighting-service custoking-firefighting-service custoking-firefighting-service "FIREFIGHTING_DB_SCHEMA=firefighting" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
         deploy_service reporting-service custoking-reporting-service custoking-reporting-service "REPORTING_DB_SCHEMA=reporting" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest"
         deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
         deploy_service audit-service custoking-audit-service custoking-audit-service "AUDIT_DB_SCHEMA=audit" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest"
         deploy_service notification-service custoking-notification-service custoking-notification-service "NOTIFICATION_DB_SCHEMA=notification,MSG91_DRY_RUN=true" \
-          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy-selected-frontend-gateway
@@ -174,7 +177,7 @@ steps:
           fi
           gcloud run deploy "${_FRONTEND_SERVICE}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-frontend:${_COMMIT_SHA}" \
-            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2 \
+            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2 --cpu-boost \
             --set-env-vars="API_UPSTREAM=$${CURRENT_GATEWAY_URL}"
         else
           echo "Skipping frontend; not selected by _DEPLOY_SERVICES=${_DEPLOY_SERVICES}"
@@ -197,8 +200,8 @@ steps:
 
           gcloud run deploy "${_API_GATEWAY_SERVICE}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-api-gateway:${_COMMIT_SHA}" \
-            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 \
-            --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${TENANT_URL},STUDENT_UPSTREAM=$${STUDENT_URL},ATTENDANCE_UPSTREAM=$${ATTENDANCE_URL},FEE_UPSTREAM=$${FEE_URL},CATALOG_UPSTREAM=$${CATALOG_URL},WORKFLOW_UPSTREAM=$${WORKFLOW_URL},FIREFIGHTING_UPSTREAM=$${FIREFIGHTING_URL},REPORTING_UPSTREAM=$${REPORTING_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${AUDIT_URL},NOTIFICATION_UPSTREAM=$${NOTIFICATION_URL}" \
+            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 --cpu-boost --min-instances=1 \
+            --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,GATEWAY_CORS_ALLOWED_ORIGINS=$${FRONTEND_URL},FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${TENANT_URL},STUDENT_UPSTREAM=$${STUDENT_URL},ATTENDANCE_UPSTREAM=$${ATTENDANCE_URL},FEE_UPSTREAM=$${FEE_URL},CATALOG_UPSTREAM=$${CATALOG_URL},WORKFLOW_UPSTREAM=$${WORKFLOW_URL},FIREFIGHTING_UPSTREAM=$${FIREFIGHTING_URL},REPORTING_UPSTREAM=$${REPORTING_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${AUDIT_URL},NOTIFICATION_UPSTREAM=$${NOTIFICATION_URL}" \
             --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token:latest,STUDENT_SERVICE_TOKEN=student-read-token:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token:latest,FEE_SERVICE_TOKEN=fee-read-token:latest,CATALOG_SERVICE_TOKEN=catalog-read-token:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token:latest,REPORTING_SERVICE_TOKEN=reporting-read-token:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token:latest"
 
           GATEWAY_URL="$(url "${_API_GATEWAY_SERVICE}")"
