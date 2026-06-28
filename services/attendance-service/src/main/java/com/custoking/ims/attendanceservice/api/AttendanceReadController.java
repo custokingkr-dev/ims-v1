@@ -3,6 +3,7 @@ package com.custoking.ims.attendanceservice.api;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository.StudentAttendanceRow;
+import com.custoking.ims.attendanceservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -53,7 +54,8 @@ public class AttendanceReadController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "attendance:read");
-        return attendance.records(studentId, schoolId, date, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return attendance.records(studentId, scope, date, limit);
     }
 
     @GetMapping("/daily-summary")
@@ -62,7 +64,8 @@ public class AttendanceReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         requireToken(token, "attendance:read");
-        return execute(() -> attendance.dailySummary(date, schoolId));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.dailySummary(date, scope));
     }
 
     @GetMapping("/section-info")
@@ -72,7 +75,8 @@ public class AttendanceReadController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam String sectionId) {
         requireToken(token, "attendance:read");
-        return execute(() -> attendance.sectionInfo(date, sectionId, schoolId));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.sectionInfo(date, sectionId, scope));
     }
 
     @GetMapping("/section-register")
@@ -83,7 +87,8 @@ public class AttendanceReadController {
             @RequestParam String classId,
             @RequestParam String sectionId) {
         requireToken(token, "attendance:read");
-        return execute(() -> attendance.sectionRegister(date, classId, sectionId, schoolId));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.sectionRegister(date, classId, sectionId, scope));
     }
 
     @PutMapping("/section-register")
@@ -115,14 +120,19 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "attendance:write");
+        Long scope = applyResolvedSchool(request);
         String date = request == null ? "today" : String.valueOf(request.getOrDefault("date", "today"));
-        Long schoolId = request == null || request.get("schoolId") == null
-                ? null
-                : Long.valueOf(String.valueOf(request.get("schoolId")));
         Long actorId = request == null || request.get("actorId") == null
                 ? null
                 : Long.valueOf(String.valueOf(request.get("actorId")));
-        return execute(() -> attendance.submitAttendanceDay(date, schoolId, actorId));
+        return execute(() -> attendance.submitAttendanceDay(date, scope, actorId));
+    }
+
+    private Long applyResolvedSchool(Map<String, Object> request) {
+        Long schoolId = (request == null || request.get("schoolId") == null)
+                ? null
+                : Long.valueOf(String.valueOf(request.get("schoolId")));
+        return TenantScope.resolveSchoolId(schoolId);
     }
 
     private void requireToken(String token, String requiredScope) {

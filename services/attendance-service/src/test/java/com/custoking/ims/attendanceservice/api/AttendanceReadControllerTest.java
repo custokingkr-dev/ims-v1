@@ -1,6 +1,9 @@
 package com.custoking.ims.attendanceservice.api;
 
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
+import com.custoking.ims.attendanceservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -20,6 +23,14 @@ class AttendanceReadControllerTest {
 
     private final AttendanceReadRepository attendance = mock(AttendanceReadRepository.class);
     private final AttendanceReadController controller = new AttendanceReadController(attendance, "attendance-token");
+
+    @BeforeEach
+    void setUpSuperAdminContext() {
+        TenantContext.set(new TenantContext(1L, "superadmin@test.com", "SUPERADMIN", null, null));
+    }
+
+    @AfterEach
+    void clearContext() { TenantContext.clear(); }
 
     @Test
     void dailyRejectsInvalidTokenBeforeQuerying() {
