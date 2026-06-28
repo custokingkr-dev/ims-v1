@@ -943,6 +943,35 @@ Verified:
 - `identity-service` Maven test suite passed: 16 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed (all audits green).
 
+### 2026-06-28: Collapsed To A Single Production DB User (appuser)
+
+Consolidated the production database to a single identity, `appuser`, for both the
+application and Flyway, and decommissioned `ims_app`.
+
+Completed (repo / pipeline):
+
+- `cloudbuild.yaml`: `_APP_DB_USER=appuser` and `SPRING_DATASOURCE_PASSWORD=db-password`
+  for all 12 services (Flyway already `appuser`/`db-password`). No `ims_app` /
+  `ims-app-password` references remain in the build.
+- Removed the now-obsolete `ims_app` grant scripts (runtime DML grants are
+  unnecessary once `appuser` owns every schema).
+- Updated operational scripts/docs (`invoke-production-gateway-smoke.ps1`,
+  `audit-legacy-compatibility-cloudsql.ps1`, `secret-manager-catalog.ps1`, README,
+  runbook, tenant-isolation) to `appuser` / `db-password`.
+- Added `scripts/decommission-ims-app-user.sql` (reassign owned -> appuser, drop
+  membership, `DROP OWNED`, `DROP ROLE ims_app`) to run AFTER the appuser-only
+  pipeline is deployed.
+
+Sequencing (must hold to avoid breaking prod):
+
+1. Merge the pipeline change to `main` and deploy so every service connects as
+   `appuser` (the DB already supports this).
+2. Only then run the decommission script and delete the `ims-app-password` secret.
+
+Note: `appuser` is privileged (CREATEROLE/CREATEDB, member of cloudsqlsuperuser).
+Running the runtime as `appuser` is simpler but less least-privilege than the prior
+`ims_app`; consider stripping those role attributes as a follow-up.
+
 ### 2026-06-28: Flyway Migration User Separated From Runtime User
 
 Production deploys were failing because Flyway ran as the runtime user `ims_app`,
