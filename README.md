@@ -203,8 +203,7 @@ Cloud Build builds and deploys the selected service. Use `_DEPLOY_SERVICES=all` 
 
 Production secrets live in GCP Secret Manager. Important secrets include:
 
-- `ims-app-password`
-- `db-password`
+- `db-password` (appuser — single app + Flyway DB user)
 - `jwt-secret`
 - `aadhar-secret`
 - per-service internal tokens such as `catalog-read-token`, `tenant-school-read-token`, and `identity-introspection-token`

@@ -5,7 +5,7 @@ substitutions:
   _DEPLOY_SERVICES: frontend
   _DB_HOST: 10.116.0.3:5432
   _DB_NAME: custoking_ims_v1
-  _APP_DB_USER: ims_app
+  _APP_DB_USER: appuser
   _FLYWAY_DB_USER: appuser
   _VPC_NETWORK: default
   _VPC_SUBNET: default
@@ -113,33 +113,33 @@ steps:
         }
 
         deploy_service tenant-school-service custoking-tenant-school-service custoking-tenant-school-service "TENANT_SCHOOL_DB_SCHEMA=tenant_school" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
         TENANT_SCHOOL_URL="$(gcloud run services describe custoking-tenant-school-service --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
         if [ -z "$${TENANT_SCHOOL_URL}" ]; then
           TENANT_SCHOOL_URL="http://tenant-school-service:8080"
         fi
         deploy_service identity-service custoking-identity-service custoking-identity-service "IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest"
         deploy_service student-service custoking-student-service custoking-student-service "STUDENT_DB_SCHEMA=student" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,STUDENT_READ_TOKEN=student-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,STUDENT_READ_TOKEN=student-read-token:latest"
         deploy_service attendance-service custoking-attendance-service custoking-attendance-service "ATTENDANCE_DB_SCHEMA=attendance" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,ATTENDANCE_READ_TOKEN=attendance-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,ATTENDANCE_READ_TOKEN=attendance-read-token:latest"
         deploy_service fee-service custoking-fee-service custoking-fee-service "FEE_DB_SCHEMA=fee" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,FEE_READ_TOKEN=fee-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,FEE_READ_TOKEN=fee-read-token:latest"
         deploy_service catalog-service custoking-catalog-service custoking-catalog-service "CATALOG_DB_SCHEMA=catalog" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
         deploy_service workflow-service custoking-workflow-service custoking-workflow-service "WORKFLOW_DB_SCHEMA=workflow" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest"
         deploy_service firefighting-service custoking-firefighting-service custoking-firefighting-service "FIREFIGHTING_DB_SCHEMA=firefighting" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
         deploy_service reporting-service custoking-reporting-service custoking-reporting-service "REPORTING_DB_SCHEMA=reporting" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest"
         deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
         deploy_service audit-service custoking-audit-service custoking-audit-service "AUDIT_DB_SCHEMA=audit" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest"
         deploy_service notification-service custoking-notification-service custoking-notification-service "NOTIFICATION_DB_SCHEMA=notification,MSG91_DRY_RUN=true" \
-          "SPRING_DATASOURCE_PASSWORD=ims-app-password:latest,FLYWAY_PASSWORD=db-password:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
+          "SPRING_DATASOURCE_PASSWORD=db-password:latest,FLYWAY_PASSWORD=db-password:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy-selected-frontend-gateway
