@@ -27,4 +27,37 @@ BEGIN
   END IF;
 END$$;
 
+-- 3) For each target schema that exists, app_rt has USAGE.
+DO $$
+DECLARE s text;
+BEGIN
+  FOR s IN
+    SELECT n.nspname FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),
+      ('fee'),('catalog'),('workflow'),('firefighting'),('reporting'),
+      ('notification'),('audit'),('billing')) v(name)
+    JOIN pg_namespace n ON n.nspname=v.name
+  LOOP
+    IF NOT has_schema_privilege('app_rt', s, 'USAGE') THEN
+      RAISE EXCEPTION 'app_rt lacks USAGE on schema %', s;
+    END IF;
+  END LOOP;
+END$$;
+
+-- 4) Where target schemas contain tables, app_rt has SELECT (proxy for DML grants).
+DO $$
+DECLARE r record;
+BEGIN
+  FOR r IN
+    SELECT n.nspname, c.relname
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+    WHERE c.relkind='r'
+      AND n.nspname IN ('identity','tenant_school','student','attendance','fee','catalog',
+                        'workflow','firefighting','reporting','notification','audit','billing')
+  LOOP
+    IF NOT has_table_privilege('app_rt', format('%I.%I', r.nspname, r.relname), 'SELECT') THEN
+      RAISE EXCEPTION 'app_rt lacks SELECT on %.%', r.nspname, r.relname;
+    END IF;
+  END LOOP;
+END$$;
+
 \echo 'app_rt audit: role attribute + membership checks passed'

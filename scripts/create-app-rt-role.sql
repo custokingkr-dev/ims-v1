@@ -24,6 +24,44 @@ GRANT app_rt TO :"owner";
 RESET ROLE;
 \endif
 
+-- Grants on existing target schemas (intersection with pg_namespace keeps this re-runnable
+-- before all services have migrated, and harmless if a schema is absent).
+SELECT format('GRANT USAGE ON SCHEMA %I TO app_rt', n.nspname)
+FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),('fee'),
+             ('catalog'),('workflow'),('firefighting'),('reporting'),
+             ('notification'),('audit'),('billing')) AS s(name)
+JOIN pg_namespace n ON n.nspname = s.name
+\gexec
+
+SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA %I TO app_rt', n.nspname)
+FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),('fee'),
+             ('catalog'),('workflow'),('firefighting'),('reporting'),
+             ('notification'),('audit'),('billing')) AS s(name)
+JOIN pg_namespace n ON n.nspname = s.name
+\gexec
+
+SELECT format('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA %I TO app_rt', n.nspname)
+FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),('fee'),
+             ('catalog'),('workflow'),('firefighting'),('reporting'),
+             ('notification'),('audit'),('billing')) AS s(name)
+JOIN pg_namespace n ON n.nspname = s.name
+\gexec
+
+-- Default privileges so FUTURE owner-created objects auto-grant DML to app_rt.
+SELECT format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_rt', :'owner', n.nspname)
+FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),('fee'),
+             ('catalog'),('workflow'),('firefighting'),('reporting'),
+             ('notification'),('audit'),('billing')) AS s(name)
+JOIN pg_namespace n ON n.nspname = s.name
+\gexec
+
+SELECT format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT USAGE, SELECT ON SEQUENCES TO app_rt', :'owner', n.nspname)
+FROM (VALUES ('identity'),('tenant_school'),('student'),('attendance'),('fee'),
+             ('catalog'),('workflow'),('firefighting'),('reporting'),
+             ('notification'),('audit'),('billing')) AS s(name)
+JOIN pg_namespace n ON n.nspname = s.name
+\gexec
+
 -- Final assertions (run as owner; pg catalogs are world-readable).
 DO $$
 BEGIN
