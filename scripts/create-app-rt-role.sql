@@ -66,7 +66,7 @@ JOIN pg_namespace n ON n.nspname = s.name
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname='app_rt'
-             AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolinherit)) THEN
+             AND (rolsuper OR rolbypassrls OR rolcreaterole OR rolcreatedb OR rolinherit OR NOT rolcanlogin)) THEN
     RAISE EXCEPTION 'app_rt has forbidden attributes after creation';
   END IF;
   IF EXISTS (

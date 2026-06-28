@@ -295,9 +295,9 @@ Introduced a dedicated, unprivileged PostgreSQL runtime role `app_rt` to resolve
 
 ### What Changed
 
-- `scripts/db/create-app-rt-role.sql` — parameterized SQL that creates `app_rt` with `NOLOGIN NOCREATEROLE NOCREATEDB NOINHERIT NOBYPASSRLS`, grants `CONNECT` on the database, `USAGE` + DML (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) on all 12 domain schemas, and `USAGE` + `SELECT` on sequences. `ALTER DEFAULT PRIVILEGES` ensures future objects in each schema are automatically accessible. The script does not grant DDL or superuser-equivalent privileges.
-- `scripts/db/audit-app-rt-privileges.sql` + `scripts/audit-app-rt-privileges.ps1` — audit that verifies `app_rt` exists, has no `BYPASSRLS`, holds no `cloudsqlsuperuser` membership, has `USAGE` on all expected schemas, and is denied DDL (CREATE TABLE).
-- `scripts/ensure-app-rt-local.ps1` — idempotent local provisioner that applies `create-app-rt-role.sql` against the local Docker Postgres container and flips all 12 service `SPRING_DATASOURCE_USERNAME` values to `app_rt`.
+- `scripts/create-app-rt-role.sql` — parameterized SQL that creates `app_rt` with `LOGIN NOCREATEROLE NOCREATEDB NOINHERIT NOBYPASSRLS`, `USAGE` + DML (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) on all 12 domain schemas, and `USAGE` + `SELECT` on sequences. `ALTER DEFAULT PRIVILEGES` ensures future objects in each schema are automatically accessible. The script does not grant DDL or superuser-equivalent privileges. `app_rt` connects via the default PUBLIC CONNECT privilege; no explicit CONNECT grant is issued.
+- `scripts/audit-app-rt-privileges.sql` + `scripts/audit-app-rt-privileges.ps1` — audit that verifies `app_rt` exists, has no `BYPASSRLS`, holds no `cloudsqlsuperuser` membership, has `USAGE` on all expected schemas, and is denied DDL (CREATE TABLE).
+- `scripts/ensure-app-rt-local.ps1` — idempotent local provisioner that applies `create-app-rt-role.sql` against the local Docker Postgres container (with `owner=postgres`). The `SPRING_DATASOURCE_USERNAME` flip to `app_rt` for all 12 domain services is done in `docker-compose.yml`.
 - `docker-compose.yml` — all domain services updated to `SPRING_DATASOURCE_USERNAME: app_rt`.
 - `scripts/verify-microservice-migration.ps1` — the `app_rt runtime role privilege audit` step is now wired into the `-RunDbAudit` gate immediately after the `microservice DB boundary audit` step. The gate fails fast if `app_rt` is missing, over-privileged, or has `BYPASSRLS`.
 - `ARCHITECTURE_REVIEW.md` — resolution note added at the MT-P0-2 / single-`appuser` reconciliation point.
@@ -327,4 +327,4 @@ Introduced a dedicated, unprivileged PostgreSQL runtime role `app_rt` to resolve
 
 - PostgreSQL RLS policies on tenant-scoped tables are not yet enabled; `app_rt` is the prerequisite. RLS enablement is the next step (MT-P0-2).
 - PgBouncer transaction-mode GUC isolation (MT-P1-3) is explicitly deferred.
-- `appuser` password rotation / Flyway-only credential split in production: tracked separately under the prod cutover runbook (`scripts/ops/invoke-create-app-rt-role-cloudsql.ps1`).
+- `appuser` password rotation / Flyway-only credential split in production: tracked separately under the prod cutover runbook (`scripts/invoke-create-app-rt-role-cloudsql.ps1`).

@@ -107,4 +107,4 @@ END$$;
 
 \endif
 
-\echo 'app_rt audit: role attribute + membership checks passed'
+\echo 'app_rt audit: all checks passed'
