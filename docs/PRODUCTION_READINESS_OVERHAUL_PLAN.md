@@ -943,6 +943,25 @@ Verified:
 - `identity-service` Maven test suite passed: 16 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed (all audits green).
 
+### 2026-06-28: Hardened appuser Role Privileges
+
+After collapsing to the single `appuser` identity, reduced its privileges
+(`scripts/harden-appuser-role.sql`):
+
+- Applied `ALTER ROLE appuser NOCREATEROLE NOCREATEDB` (was CREATEROLE/CREATEDB).
+  `appuser` can no longer create/alter/drop roles or create databases.
+- Verified: `appuser` is not a superuser, owns all 12 schemas, and production
+  stayed healthy (gateway 200, all services Ready).
+
+Residual (documented limitation):
+
+- `appuser` remains a member of `cloudsqlsuperuser` (a Cloud SQL default) and
+  inherits its privileges. `REVOKE cloudsqlsuperuser` is not possible via SQL (no
+  role holds ADMIN OPTION on it). `ALTER ROLE appuser NOINHERIT` would neutralize
+  the inherited privileges but needs `postgres`/CREATEROLE and must be run before
+  stripping CREATEROLE -- left as an optional follow-up requiring the `postgres`
+  admin credential.
+
 ### 2026-06-28: Collapsed To A Single Production DB User (appuser)
 
 Consolidated the production database to a single identity, `appuser`, for both the
