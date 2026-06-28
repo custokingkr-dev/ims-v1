@@ -26,16 +26,17 @@ BEGIN
   END IF;
 END $$;
 
--- 1. Move any objects still owned by ims_app (the 5 schemas it created and their
+-- 1. Ensure appuser can act on ims_app's objects (idempotent; self-contained).
+GRANT ims_app TO appuser;
+
+-- 2. Move any objects still owned by ims_app (the 5 schemas it created and their
 --    contents) to appuser so nothing is lost.
 REASSIGN OWNED BY ims_app TO appuser;
 
--- 2. Drop the temporary role membership that let appuser manage ims_app's objects.
-REVOKE ims_app FROM appuser;
-
 -- 3. Remove every privilege/default-privilege still granted to ims_app
---    (ims_app now owns nothing).
+--    (ims_app now owns nothing). Must run while appuser is still a member of
+--    ims_app, so this comes BEFORE dropping the membership/role.
 DROP OWNED BY ims_app;
 
--- 4. Remove the role.
+-- 4. Remove the role (this also clears the appuser->ims_app membership).
 DROP ROLE ims_app;
