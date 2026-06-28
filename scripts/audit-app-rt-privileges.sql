@@ -60,4 +60,51 @@ BEGIN
   END LOOP;
 END$$;
 
+-- Live probes (require a superuser connection; set -v run_live_probes=1).
+\if :{?run_live_probes}
+
+-- 5) DDL is denied for app_rt (no CREATE privilege anywhere; PG15+ public is locked down).
+DO $$
+BEGIN
+  SET LOCAL ROLE app_rt;
+  BEGIN
+    EXECUTE 'CREATE TABLE public._app_rt_ddl_probe (x int)';
+    RESET ROLE;
+    EXECUTE 'DROP TABLE IF EXISTS public._app_rt_ddl_probe';
+    RAISE EXCEPTION 'app_rt was able to CREATE TABLE (DDL not denied)';
+  EXCEPTION WHEN insufficient_privilege THEN
+    RESET ROLE;
+    RAISE NOTICE 'OK: DDL denied for app_rt';
+  END;
+END$$;
+
+-- 6) app_rt is SUBJECT TO RLS; the table owner bypasses.
+DO $$
+DECLARE app_rt_count int; owner_count int;
+BEGIN
+  DROP TABLE IF EXISTS public._app_rt_rls_probe;
+  CREATE TABLE public._app_rt_rls_probe (tenant text NOT NULL, val int NOT NULL);
+  INSERT INTO public._app_rt_rls_probe VALUES ('A',1),('A',2),('B',3);
+  GRANT SELECT ON public._app_rt_rls_probe TO app_rt;
+  ALTER TABLE public._app_rt_rls_probe ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY _app_rt_rls_probe_pol ON public._app_rt_rls_probe USING (tenant = 'A');
+
+  SET LOCAL ROLE app_rt;
+  SELECT count(*) INTO app_rt_count FROM public._app_rt_rls_probe;
+  RESET ROLE;
+  SELECT count(*) INTO owner_count FROM public._app_rt_rls_probe;
+
+  DROP TABLE public._app_rt_rls_probe;
+
+  IF app_rt_count <> 2 THEN
+    RAISE EXCEPTION 'RLS not enforced for app_rt: saw % rows, expected 2', app_rt_count;
+  END IF;
+  IF owner_count <> 3 THEN
+    RAISE EXCEPTION 'owner unexpectedly constrained by RLS: saw % rows, expected 3', owner_count;
+  END IF;
+  RAISE NOTICE 'OK: app_rt subject to RLS (2 rows), owner bypasses (3 rows)';
+END$$;
+
+\endif
+
 \echo 'app_rt audit: role attribute + membership checks passed'
