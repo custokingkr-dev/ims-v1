@@ -13,6 +13,19 @@
 -- ims_app role). Idempotent: re-running after ims_app is gone is a no-op error on
 -- the final DROP only.
 
+-- 0. Fail-closed guard: refuse to proceed if anything is still connected as
+--    ims_app (i.e. production has NOT yet been switched to the appuser-only
+--    pipeline). This prevents dropping a role that live services still use.
+DO $$
+BEGIN
+  IF EXISTS (
+      SELECT 1 FROM pg_stat_activity
+      WHERE usename = 'ims_app' AND pid <> pg_backend_pid()
+  ) THEN
+    RAISE EXCEPTION 'Aborting decommission: active ims_app sessions exist. Deploy the appuser-only pipeline (and let old revisions drain) before running this.';
+  END IF;
+END $$;
+
 -- 1. Move any objects still owned by ims_app (the 5 schemas it created and their
 --    contents) to appuser so nothing is lost.
 REASSIGN OWNED BY ims_app TO appuser;
