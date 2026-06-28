@@ -169,7 +169,7 @@ Resolution:
 
 Important production secrets:
 
-- `ims-app-password`
+- `db-password` (appuser — single app + Flyway DB user)
 - `jwt-secret`
 - `identity-introspection-token`
 - per-service internal tokens such as `student-read-token`, `fee-read-token`, `catalog-read-token`
@@ -190,7 +190,7 @@ All existing access and refresh tokens become invalid after the signing secret c
 Database password rotation:
 
 ```sql
-ALTER USER ims_app PASSWORD '<new_password>';
+ALTER USER appuser PASSWORD '<new_password>';
 ```
 
 Then add a new Secret Manager version and redeploy the services that consume it.

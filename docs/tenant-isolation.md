@@ -89,9 +89,10 @@ request to make re-enablement straightforward.
      CREATE POLICY tenant_isolation ON <table>
        USING (school_id = current_setting('app.current_school_id')::bigint);
      ```
-2. Grant the `ims_app` DB user `SELECT / INSERT / UPDATE / DELETE` but **not** `BYPASSRLS`.
-3. Ensure `FLYWAY_USERNAME` (the migration user) has `BYPASSRLS` or is a superuser so
-   migrations can insert seed data across all tenants.
+2. Grant the application DB user (`appuser`) `SELECT / INSERT / UPDATE / DELETE`.
+3. Ensure the migration user (`FLYWAY_USERNAME` = `appuser`) owns the schemas (or has
+   `BYPASSRLS`) so migrations can insert seed data across all tenants. Note: the stack
+   currently uses a single `appuser` identity for both app and Flyway.
 4. Test with `AbstractIntegrationTest` — Testcontainers will spin up a fresh DB.
 
 **Do not re-enable RLS** until integration tests covering cross-tenant isolation

@@ -1,7 +1,6 @@
 function Get-SecretManagerCatalog {
     @(
-        [pscustomobject]@{ Name = "ims-app-password"; Purpose = "Backend application database password" }
-        [pscustomobject]@{ Name = "db-password"; Purpose = "Flyway and service database password" }
+        [pscustomobject]@{ Name = "db-password"; Purpose = "Database password for appuser (single app + Flyway DB user)" }
         [pscustomobject]@{ Name = "aadhar-secret"; Purpose = "Aadhaar data encryption/signing secret" }
         [pscustomobject]@{ Name = "jwt-secret"; Purpose = "JWT signing secret shared by backend and identity-service" }
         [pscustomobject]@{ Name = "notification-pubsub-push-token"; Purpose = "Notification Pub/Sub push defense-in-depth token" }
