@@ -5,6 +5,7 @@ import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeAssignmentR
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeBandRow;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeItemRow;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.PaymentRow;
+import com.custoking.ims.feeservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -201,9 +202,10 @@ public class FeeReadController {
             @RequestParam String classId,
             @RequestParam String sectionId,
             @RequestParam(required = false) String academicYearId,
-            @RequestParam Long schoolId) {
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return fees.feeReport(classId, sectionId, academicYearId, schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return fees.feeReport(classId, sectionId, academicYearId, scope);
     }
 
     @GetMapping("/reports/overdue")
@@ -212,9 +214,10 @@ public class FeeReadController {
             @RequestParam String classId,
             @RequestParam String sectionId,
             @RequestParam(required = false) String academicYearId,
-            @RequestParam Long schoolId) {
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return fees.feeOverdue(classId, sectionId, academicYearId, schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return fees.feeOverdue(classId, sectionId, academicYearId, scope);
     }
 
     @PostMapping("/reminders/fee")
@@ -222,6 +225,7 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:write");
+        applyResolvedSchool(request);
         return execute(() -> fees.feeReminderRequests(
                 text(request.get("classId")),
                 text(request.get("sectionId")),
@@ -234,18 +238,20 @@ public class FeeReadController {
     public Map<String, Object> feesModule(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestParam(required = false) String academicYearId,
-            @RequestParam Long schoolId) {
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return fees.feesModule(academicYearId, schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return fees.feesModule(academicYearId, scope);
     }
 
     @GetMapping("/dashboard/overdue-count")
     public Map<String, Object> feeOverdueCount(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestParam(required = false) String academicYearId,
-            @RequestParam Long schoolId) {
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return fees.feeOverdueCount(academicYearId, schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return fees.feeOverdueCount(academicYearId, scope);
     }
 
     @PostMapping("/payments")
@@ -254,6 +260,13 @@ public class FeeReadController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:write");
         return execute(() -> fees.recordPayment(request));
+    }
+
+    /** Recipe B helper: resolve and overwrite the schoolId inside a request body map. */
+    private void applyResolvedSchool(Map<String, Object> request) {
+        Long requested = request.get("schoolId") == null ? null
+                : Long.valueOf(String.valueOf(request.get("schoolId")));
+        request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 
     private void requireToken(String token, String requiredScope) {
