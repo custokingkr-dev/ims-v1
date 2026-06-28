@@ -943,6 +943,34 @@ Verified:
 - `identity-service` Maven test suite passed: 16 tests, 0 failures.
 - Full `scripts/verify-microservice-migration.ps1` passed (all audits green).
 
+### 2026-06-28: Flyway Migration User Separated From Runtime User
+
+Production deploys were failing because Flyway ran as the runtime user `ims_app`,
+which lacked DDL rights on `appuser`-owned schemas (tenant_school
+V4__school_timetable.sql -> "permission denied for schema tenant_school"). Root
+cause: `cloudbuild.yaml` conflated the app and Flyway users (both `ims_app`).
+
+Completed:
+
+- DB: `GRANT ims_app TO appuser` (scripts/grant-flyway-migration-role.sql). Schema
+  ownership is split (appuser owns 7, ims_app owns 5); membership lets `appuser`
+  run DDL on all 12 schemas via inheritance while `ims_app` stays DML-only
+  (ims_app is not made a member of appuser). Applied as appuser via an in-VPC
+  one-off Cloud Run Job.
+- Pipeline: `cloudbuild.yaml` now runs Flyway as the migration owner
+  (`_FLYWAY_DB_USER=appuser`, `FLYWAY_PASSWORD=db-password` for all 12 services);
+  the app still connects as `ims_app`/`ims-app-password`. Future DDL migrations no
+  longer need per-schema CREATE grants.
+- The earlier stop-gap (scripts/grant-flyway-ddl-schema-permissions.sql, granting
+  ims_app CREATE on appuser-owned schemas) is now superseded but left applied as
+  harmless defense-in-depth.
+
+Verified:
+
+- As appuser: `GRANT ROLE` succeeded, then `CREATE TABLE` + `DROP TABLE` in the
+  ims_app-owned `attendance` schema succeeded -- proving appuser can now migrate
+  ims_app-owned schemas. Runtime SA already reads `db-password` (no IAM change).
+
 ### 2026-06-28: Inter-Service Retry And Connection-Pool Hardening
 
 Plan: `docs/superpowers/plans/2026-06-28-production-hardening-resilience.md`.
