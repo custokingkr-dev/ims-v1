@@ -1441,6 +1441,14 @@ public class StudentReadRepository {
         return map;
     }
 
+    public Long schoolIdForReviewItem(String itemId) {
+        return jdbc.sql("SELECT school_id FROM student.student_review_items WHERE id = :itemId")
+                .param("itemId", itemId)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+    }
+
     private record ImportValidation(String status, String message, boolean valid, boolean error, boolean warning) {}
 
     private record ReviewCounts(long total, long completed, long pending, long needsCorrection, double percent) {}

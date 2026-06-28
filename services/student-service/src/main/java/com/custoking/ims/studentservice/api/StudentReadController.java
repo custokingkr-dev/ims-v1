@@ -2,6 +2,7 @@ package com.custoking.ims.studentservice.api;
 
 import com.custoking.ims.studentservice.persistence.StudentReadRepository;
 import com.custoking.ims.studentservice.persistence.StudentReadRepository.StudentRow;
+import com.custoking.ims.studentservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -44,9 +45,10 @@ public class StudentReadController {
             @RequestParam(required = false) String sectionId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
         return new StudentListResponse(
-                students.list(schoolId, classId, sectionId, limit),
-                students.count(schoolId));
+                students.list(scope, classId, sectionId, limit),
+                students.count(scope));
     }
 
     @GetMapping("/{id}")
@@ -68,7 +70,8 @@ public class StudentReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
-        return students.workspaceStudents(schoolId, className, sectionName, feeStatus, page, size);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
     }
 
     @GetMapping("/{id}/workspace")
@@ -84,6 +87,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        applyResolvedSchool(request);
         return execute(() -> students.createStudent(request));
     }
 
@@ -101,6 +105,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        applyResolvedSchool(request);
         return execute(() -> students.previewImport(request));
     }
 
@@ -116,6 +121,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        applyResolvedSchool(request);
         return execute(() -> students.confirmImport(request));
     }
 
@@ -158,6 +164,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        applyResolvedSchool(request);
         return execute(() -> students.initiateIdCardReview(request));
     }
 
@@ -166,7 +173,8 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam Long schoolId) {
         requireToken(token, "student:read");
-        return students.idCardReviewStatus(schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.idCardReviewStatus(scope);
     }
 
     @PostMapping("/reviews/full-name/initiate")
@@ -174,6 +182,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        applyResolvedSchool(request);
         return execute(() -> students.initiateFullNameVerification(request));
     }
 
@@ -182,7 +191,8 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam Long schoolId) {
         requireToken(token, "student:read");
-        return students.fullNameVerificationStatus(schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.fullNameVerificationStatus(scope);
     }
 
     @PostMapping("/reviews/items/{itemId}")
@@ -191,6 +201,8 @@ public class StudentReadController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        Long itemSchool = students.schoolIdForReviewItem(itemId);
+        TenantScope.resolveSchoolId(itemSchool);
         return execute(() -> students.updateReviewItem(itemId, request));
     }
 
@@ -200,6 +212,8 @@ public class StudentReadController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        Long itemSchool = students.schoolIdForReviewItem(itemId);
+        TenantScope.resolveSchoolId(itemSchool);
         return execute(() -> students.verifyFullName(itemId, request));
     }
 
@@ -229,7 +243,8 @@ public class StudentReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
-        return students.reviewCampaigns(schoolId, reviewType, status, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.reviewCampaigns(scope, reviewType, status, limit);
     }
 
     @GetMapping("/review-items")
@@ -240,7 +255,8 @@ public class StudentReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
-        return students.reviewItems(campaignId, schoolId, status, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.reviewItems(campaignId, scope, status, limit);
     }
 
     @GetMapping("/review-campaigns/{campaignId}/items")
@@ -254,7 +270,14 @@ public class StudentReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "student:read");
-        return students.campaignReviewItems(schoolId, campaignId, status, classId, sectionId, page, size);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.campaignReviewItems(scope, campaignId, status, classId, sectionId, page, size);
+    }
+
+    private void applyResolvedSchool(Map<String, Object> request) {
+        Long requested = request.get("schoolId") == null ? null
+                : Long.valueOf(String.valueOf(request.get("schoolId")));
+        request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 
     private void requireToken(String token, String requiredScope) {
