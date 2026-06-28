@@ -141,6 +141,13 @@ Invoke-Step "microservice build catalog audit" {
                 -Database $Database `
                 -User $DbUser
         }
+
+        Invoke-Step "app_rt runtime role privilege audit" {
+            & (Join-Path $PSScriptRoot "audit-app-rt-privileges.ps1") `
+                -PostgresContainer $PostgresContainer `
+                -Database $Database `
+                -DbUser $DbUser
+        }
     }
 
     if ($RunLegacyCompatibilityAudit) {
