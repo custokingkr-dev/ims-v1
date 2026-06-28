@@ -21,6 +21,8 @@ for (const name of [
 }
 process.env.GATEWAY_AUTH_MODE = 'enforce';
 process.env.GATEWAY_CLOUD_RUN_AUTH = 'never';
+process.env.GATEWAY_CORS_ALLOWED_ORIGINS = 'https://app.custoking.com';
+process.env.GATEWAY_MAX_BODY_BYTES = '1024';
 
 const {
   server,
@@ -30,6 +32,13 @@ const {
   isRequestHopHeader,
   isResponseHopHeader,
   stringOrEmpty,
+  setSecurityHeaders,
+  isOriginAllowed,
+  applyCors,
+  clientIp,
+  rateLimitKey,
+  checkRateLimit,
+  bodyTooLarge,
 } = require('./server');
 
 test.after(() => {
@@ -207,6 +216,118 @@ test('legacy approvals inbox routes to reporting', () => {
   const resolve = (p) => routes.find((r) => r.matches(p))?.service;
   assert.equal(resolve('/api/v1/approvals'), 'reporting');
   assert.equal(resolve('/api/v1/approvals/catalog:CK-1001/approve'), 'reporting');
+});
+
+test('security headers are present on responses', async () => {
+  const baseUrl = await listen();
+
+  const response = await fetch(`${baseUrl}/gateway-health`);
+  await response.text();
+
+  assert.match(response.headers.get('strict-transport-security') || '', /max-age=\d+/);
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+  assert.match(response.headers.get('content-security-policy') || '', /frame-ancestors 'none'/);
+});
+
+test('preflight from an allow-listed origin is approved with credentials', async () => {
+  const baseUrl = await listen();
+
+  const response = await fetch(`${baseUrl}/api/v1/students`, {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'https://app.custoking.com',
+      'access-control-request-method': 'GET',
+    },
+  });
+  await response.text();
+
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-origin'), 'https://app.custoking.com');
+  assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+  assert.notEqual(response.headers.get('access-control-allow-origin'), '*');
+});
+
+test('preflight from a disallowed origin is blocked', async () => {
+  const baseUrl = await listen();
+
+  const response = await fetch(`${baseUrl}/api/v1/students`, {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'https://evil.example.com',
+      'access-control-request-method': 'GET',
+    },
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 403);
+  assert.equal(response.headers.get('access-control-allow-origin'), null);
+  assert.deepEqual(payload, { message: 'Origin not allowed' });
+});
+
+test('oversized request body is rejected with 413 before reaching an upstream', async () => {
+  const baseUrl = await listen();
+
+  const response = await fetch(`${baseUrl}/api/v1/students`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: 'x'.repeat(2048), // exceeds GATEWAY_MAX_BODY_BYTES=1024
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 413);
+  assert.deepEqual(payload, { message: 'Payload too large' });
+});
+
+test('cors helpers classify origins against the allowlist', () => {
+  assert.equal(isOriginAllowed('https://app.custoking.com'), true);
+  assert.equal(isOriginAllowed('https://evil.example.com'), false);
+  assert.equal(isOriginAllowed(undefined), false);
+
+  const setHeaders = {};
+  const fakeRes = { setHeader: (k, v) => { setHeaders[k] = v; } };
+  assert.equal(applyCors({ headers: {} }, fakeRes), 'none');
+  assert.equal(applyCors({ headers: { origin: 'https://evil.example.com' } }, fakeRes), 'blocked');
+  assert.equal(applyCors({ headers: { origin: 'https://app.custoking.com' } }, fakeRes), 'allowed');
+  assert.equal(setHeaders['Access-Control-Allow-Origin'], 'https://app.custoking.com');
+});
+
+test('bodyTooLarge honours the configured content-length limit', () => {
+  assert.equal(bodyTooLarge({ headers: { 'content-length': '512' } }), false);
+  assert.equal(bodyTooLarge({ headers: { 'content-length': '4096' } }), true);
+  assert.equal(bodyTooLarge({ headers: {} }), false);
+});
+
+test('rate-limit key prefers bearer token, falls back to forwarded client IP', () => {
+  assert.equal(rateLimitKey({ headers: { authorization: 'Bearer abc.def' }, socket: {} }), 'tok:abc.def');
+  assert.equal(rateLimitKey({ headers: { 'x-forwarded-for': '10.0.0.5, 10.0.0.1' }, socket: {} }), 'ip:10.0.0.5');
+  assert.equal(clientIp({ headers: {}, socket: { remoteAddress: '10.0.0.9' } }), '10.0.0.9');
+});
+
+test('token-bucket limiter allows up to burst, then denies, then refills', () => {
+  const req = { headers: { authorization: 'Bearer rl-token' }, socket: {} };
+  const buckets = new Map();
+  const base = 1_000_000;
+
+  assert.equal(checkRateLimit(req, { rps: 1, burst: 2, buckets, now: base }).allowed, true);
+  assert.equal(checkRateLimit(req, { rps: 1, burst: 2, buckets, now: base }).allowed, true);
+
+  const denied = checkRateLimit(req, { rps: 1, burst: 2, buckets, now: base });
+  assert.equal(denied.allowed, false);
+  assert.ok(denied.retryAfter >= 1);
+
+  // One second later a single token has refilled.
+  assert.equal(checkRateLimit(req, { rps: 1, burst: 2, buckets, now: base + 1000 }).allowed, true);
+  assert.equal(checkRateLimit(req, { rps: 1, burst: 2, buckets, now: base + 1000 }).allowed, false);
+});
+
+test('rate limiter is disabled when rps is zero', () => {
+  const req = { headers: {}, socket: { remoteAddress: '10.0.0.1' } };
+  const buckets = new Map();
+  for (let i = 0; i < 5; i += 1) {
+    assert.equal(checkRateLimit(req, { rps: 0, burst: 0, buckets, now: 1 }).allowed, true);
+  }
 });
 
 async function listen() {
