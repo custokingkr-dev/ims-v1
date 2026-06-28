@@ -96,6 +96,7 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "attendance:write");
+        applyResolvedSchool(request);
         return execute(() -> attendance.saveSectionRegister(request));
     }
 
@@ -104,6 +105,7 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "attendance:write");
+        applyResolvedSchool(request);
         return execute(() -> attendance.saveDailyAttendance(request));
     }
 
@@ -112,6 +114,7 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "attendance:write");
+        applyResolvedSchool(request);
         return execute(() -> attendance.submitAttendanceSection(request));
     }
 
