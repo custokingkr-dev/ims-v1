@@ -953,14 +953,21 @@ After collapsing to the single `appuser` identity, reduced its privileges
 - Verified: `appuser` is not a superuser, owns all 12 schemas, and production
   stayed healthy (gateway 200, all services Ready).
 
+- Applied `ALTER ROLE appuser NOINHERIT` (run as `postgres`) so appuser no longer
+  auto-inherits cloudsqlsuperuser privileges; it keeps full access to its own data
+  via direct ownership. Verified post-change: appuser CREATE/INSERT/SELECT/ALTER/
+  DELETE/DROP on a reassigned schema (`attendance`) and reads from `tenant_school`
+  all succeed; gateway 200, all services Ready.
+
 Residual (documented limitation):
 
-- `appuser` remains a member of `cloudsqlsuperuser` (a Cloud SQL default) and
-  inherits its privileges. `REVOKE cloudsqlsuperuser` is not possible via SQL (no
-  role holds ADMIN OPTION on it). `ALTER ROLE appuser NOINHERIT` would neutralize
-  the inherited privileges but needs `postgres`/CREATEROLE and must be run before
-  stripping CREATEROLE -- left as an optional follow-up requiring the `postgres`
-  admin credential.
+- `appuser` is still a *member* of `cloudsqlsuperuser` (a Cloud SQL default). The
+  membership itself cannot be revoked via SQL -- no role holds ADMIN OPTION on
+  cloudsqlsuperuser (not even `postgres`) -- but `NOINHERIT` above neutralizes its
+  effect during normal operation.
+- The `postgres` admin password was reset transiently to apply NOINHERIT and the
+  temporary secret was deleted; `postgres` is break-glass and can be reset via
+  `gcloud sql users set-password postgres` when needed.
 
 ### 2026-06-28: Collapsed To A Single Production DB User (appuser)
 
