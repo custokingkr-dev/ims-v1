@@ -7,12 +7,14 @@ param(
 )
 $ErrorActionPreference = "Stop"
 
+$schemaReady = $false
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 while ((Get-Date) -lt $deadline) {
-    $ready = docker exec $PostgresContainer psql -U $DbUser -d $Database -t -A -c "SELECT to_regclass('identity.app_users') IS NOT NULL AND to_regclass('tenant_school.schools') IS NOT NULL;" 2>$null
-    if (($ready | Select-Object -Last 1) -eq "t") { break }
+    $checkResult = docker exec $PostgresContainer psql -U $DbUser -d $Database -t -A -c "SELECT to_regclass('identity.app_users') IS NOT NULL AND to_regclass('tenant_school.schools') IS NOT NULL;" 2>$null
+    if (($checkResult | Select-Object -Last 1) -eq "t") { $schemaReady = $true; break }
     Start-Sleep -Seconds 3
 }
+if (-not $schemaReady) { throw "Timed out after $TimeoutSeconds s waiting for identity.app_users and tenant_school.schools in $PostgresContainer." }
 
 $sqlPath = Join-Path $PSScriptRoot "create-app-rt-role.sql"
 docker cp $sqlPath "${PostgresContainer}:/tmp/create-app-rt-role.sql" | Out-Null
