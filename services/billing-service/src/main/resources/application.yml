@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: ${DB_POOL_MAX:5}
       minimum-idle: ${DB_POOL_MIN:1}
@@ -17,6 +17,9 @@ spring:
         currentSchema: ${BILLING_DB_SCHEMA:billing}
   flyway:
     enabled: ${BILLING_FLYWAY_ENABLED:true}
+    url: ${FLYWAY_URL:${spring.datasource.url}}
+    user: ${FLYWAY_USERNAME:${spring.datasource.username}}
+    password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
     schemas: ${BILLING_DB_SCHEMA:billing}
     default-schema: ${BILLING_DB_SCHEMA:billing}
     table: flyway_schema_history

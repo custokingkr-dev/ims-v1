@@ -7,7 +7,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     hikari:
       maximum-pool-size: ${DB_POOL_MAX:5}
       minimum-idle: ${DB_POOL_MIN:1}
@@ -15,6 +15,9 @@ spring:
       validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
   flyway:
     enabled: ${ATTENDANCE_FLYWAY_ENABLED:true}
+    url: ${FLYWAY_URL:${spring.datasource.url}}
+    user: ${FLYWAY_USERNAME:${spring.datasource.username}}
+    password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
     schemas: ${ATTENDANCE_DB_SCHEMA:attendance}
     default-schema: ${ATTENDANCE_DB_SCHEMA:attendance}
     table: flyway_schema_history

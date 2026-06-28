@@ -13,6 +13,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./deploy/local/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 10s
@@ -30,8 +31,8 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
@@ -56,9 +57,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       APP_JWT_SECRET: "local-dev-jwt-secret-key-32-chars-minimum"
       APP_JWT_EXPIRATION_MS: "900000"
@@ -87,9 +91,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       TENANT_SCHOOL_DB_SCHEMA: tenant_school
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
@@ -110,9 +117,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       STUDENT_DB_SCHEMA: student
       STUDENT_READ_TOKEN: local-dev-student-token
@@ -133,9 +143,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       ATTENDANCE_DB_SCHEMA: attendance
       ATTENDANCE_READ_TOKEN: local-dev-attendance-token
@@ -156,9 +169,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       FEE_DB_SCHEMA: fee
       FEE_READ_TOKEN: local-dev-fee-token
@@ -179,9 +195,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       CATALOG_READ_TOKEN: local-dev-catalog-token
       CATALOG_DB_SCHEMA: catalog
@@ -202,9 +221,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       WORKFLOW_DB_SCHEMA: workflow
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
@@ -225,9 +247,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       FIREFIGHTING_DB_SCHEMA: firefighting
       FIREFIGHTING_READ_TOKEN: local-dev-firefighting-token
@@ -248,9 +273,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       REPORTING_DB_SCHEMA: reporting
       REPORTING_READ_TOKEN: local-dev-reporting-token
@@ -272,9 +300,12 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
+      FLYWAY_USERNAME: postgres
+      FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       BILLING_DB_SCHEMA: billing
       BILLING_SERVICE_TOKEN: local-dev-billing-token
@@ -295,8 +326,8 @@ services:
     environment:
       JAVA_OPTS: "-Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_DATASOURCE_USERNAME: app_rt
+      SPRING_DATASOURCE_PASSWORD: app_rt
       SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
