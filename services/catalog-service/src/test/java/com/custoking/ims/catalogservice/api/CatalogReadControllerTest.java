@@ -2,11 +2,14 @@ package com.custoking.ims.catalogservice.api;
 
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.CatalogOrderRow;
+import com.custoking.ims.catalogservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -21,6 +24,9 @@ class CatalogReadControllerTest {
 
     private final CatalogReadRepository catalog = mock(CatalogReadRepository.class);
     private final CatalogReadController controller = new CatalogReadController(catalog, "catalog-token");
+
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
 
     @Test
     void itemsRejectsInvalidTokenBeforeQuerying() {
@@ -44,7 +50,10 @@ class CatalogReadControllerTest {
 
     @Test
     void createOrderMapsMissingSchoolToNotFound() {
-        Map<String, Object> request = Map.of("schoolId", 999L, "category", "STATIONERY");
+        // Set SUPERADMIN context so resolveSchoolId(999L) passes through to the repo call
+        TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
+
+        Map<String, Object> request = new HashMap<>(Map.of("schoolId", 999L, "category", "STATIONERY"));
         when(catalog.createOrder(request)).thenThrow(new IllegalArgumentException("School not found"));
 
         assertThatThrownBy(() -> controller.createOrder("catalog-token", request))
@@ -58,7 +67,10 @@ class CatalogReadControllerTest {
 
     @Test
     void markVendorPaidMapsCrossSchoolAccessToForbidden() {
-        Map<String, Object> request = Map.of("schoolId", 5L, "actorId", 9L, "notes", "paid offline");
+        // Set SUPERADMIN context so resolveSchoolId(5L) passes through to the repo call
+        TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
+
+        Map<String, Object> request = new HashMap<>(Map.of("schoolId", 5L, "actorId", 9L, "notes", "paid offline"));
         when(catalog.markVendorPaid("CK-1001", 5L, 9L, "paid offline"))
                 .thenThrow(new SecurityException("Cross-school access denied"));
 
