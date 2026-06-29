@@ -1,6 +1,8 @@
 package com.custoking.ims.firefightingservice.api.compat;
 
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
+import com.custoking.ims.firefightingservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -9,6 +11,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,8 +23,12 @@ class FirefightingPublicCompatibilityControllerTest {
     private final FirefightingPublicCompatibilityController controller =
             new FirefightingPublicCompatibilityController(repo, "tok");
 
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void workspaceCreateDelegatesToCreateRequest() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("title", "Extinguisher", "schoolId", 4L);
         when(repo.createRequest(request)).thenReturn(Map.of("code", "FF-1"));
 
@@ -42,8 +49,9 @@ class FirefightingPublicCompatibilityControllerTest {
 
     @Test
     void workspaceCreateMapsValidationFailureToBadRequest() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("title", "Extinguisher");
-        when(repo.createRequest(request)).thenThrow(new IllegalArgumentException("School not found"));
+        when(repo.createRequest(any())).thenThrow(new IllegalArgumentException("School not found"));
 
         assertThatThrownBy(() -> controller.createFromWorkspace("tok", request))
                 .isInstanceOf(ResponseStatusException.class)

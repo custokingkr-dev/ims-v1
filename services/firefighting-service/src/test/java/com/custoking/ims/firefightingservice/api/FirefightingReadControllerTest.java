@@ -3,6 +3,8 @@ package com.custoking.ims.firefightingservice.api;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
+import com.custoking.ims.firefightingservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,6 +26,9 @@ class FirefightingReadControllerTest {
     private final FirefightingReadRepository firefighting = mock(FirefightingReadRepository.class);
     private final FirefightingReadController controller = new FirefightingReadController(firefighting, "ff-token");
 
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void requestsRejectsInvalidTokenBeforeQuerying() {
         assertThatThrownBy(() -> controller.requests("wrong-token", 4L, "DRAFT", 25))
@@ -36,6 +41,7 @@ class FirefightingReadControllerTest {
 
     @Test
     void requestsDelegatesFiltersWithValidToken() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         FirefightingRequestRow row = requestRow("FF-1001", "Urgent repair");
         when(firefighting.requests(4L, "PENDING", 25)).thenReturn(List.of(row));
 
@@ -73,6 +79,7 @@ class FirefightingReadControllerTest {
 
     @Test
     void createDelegatesRequestBody() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("title", "Replace extinguishers", "schoolId", 4L);
         Map<String, Object> result = Map.of("code", "FF-1002", "status", "DRAFT");
         when(firefighting.createRequest(request)).thenReturn(result);
