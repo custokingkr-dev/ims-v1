@@ -264,8 +264,16 @@ public class FeeReadController {
 
     /** Recipe B helper: resolve and overwrite the schoolId inside a request body map. */
     private void applyResolvedSchool(Map<String, Object> request) {
-        Long requested = request.get("schoolId") == null ? null
-                : Long.valueOf(String.valueOf(request.get("schoolId")));
+        Long requested;
+        if (request.get("schoolId") == null) {
+            requested = null;
+        } else {
+            try {
+                requested = Long.valueOf(String.valueOf(request.get("schoolId")));
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
+            }
+        }
         request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 

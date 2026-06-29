@@ -132,9 +132,16 @@ public class AttendanceReadController {
     }
 
     private Long applyResolvedSchool(Map<String, Object> request) {
-        Long schoolId = (request == null || request.get("schoolId") == null)
-                ? null
-                : Long.valueOf(String.valueOf(request.get("schoolId")));
+        Long schoolId;
+        if (request == null || request.get("schoolId") == null) {
+            schoolId = null;
+        } else {
+            try {
+                schoolId = Long.valueOf(String.valueOf(request.get("schoolId")));
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
+            }
+        }
         return TenantScope.resolveSchoolId(schoolId);
     }
 

@@ -10,9 +10,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 
+import org.springframework.http.MediaType;
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class StudentTenantScopingTest {
@@ -58,5 +61,16 @@ class StudentTenantScopingTest {
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
         verify(repo).list(eq(99L), any(), any(), anyInt());
+    }
+
+    @Test
+    void malformedSchoolId_inRequestBody_returns400() throws Exception {
+        mvc.perform(post("/api/v1/students")
+                        .header("X-Student-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":\"abc\"}"))
+                .andExpect(status().isBadRequest());
+        verify(repo, never()).createStudent(any());
     }
 }
