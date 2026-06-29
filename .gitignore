@@ -76,3 +76,6 @@ real-environment-readiness-preflight.json
 real-environment-readiness-preflight.md
 secret-manager-evidence*.json
 cloud-run-iam-evidence*.json
+
+# Superpowers SDD scratch (plans/specs live in docs/, not here)
+.superpowers/
