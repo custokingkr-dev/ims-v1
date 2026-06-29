@@ -1,6 +1,7 @@
 package com.custoking.ims.feeservice.api.compat;
 
 import com.custoking.ims.feeservice.persistence.FeeReadRepository;
+import com.custoking.ims.feeservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -151,7 +152,8 @@ public class FeePublicCompatibilityController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam Long schoolId) {
         requireToken(token, "fee:read");
-        return runObject(() -> fees.feeReport(classId, sectionId, academicYearId, schoolId).get("content"));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return runObject(() -> fees.feeReport(classId, sectionId, academicYearId, scope).get("content"));
     }
 
     @GetMapping("/api/v1/fees/overdue")
@@ -162,7 +164,8 @@ public class FeePublicCompatibilityController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam Long schoolId) {
         requireToken(token, "fee:read");
-        return runObject(() -> fees.feeOverdue(classId, sectionId, academicYearId, schoolId).get("content"));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return runObject(() -> fees.feeOverdue(classId, sectionId, academicYearId, scope).get("content"));
     }
 
     @PostMapping("/api/v1/fees/send-reminders")
@@ -170,11 +173,12 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
         return run(() -> fees.feeReminderRequests(
                 text(request.get("classId")),
                 text(request.get("sectionId")),
                 text(request.get("academicYearId")),
-                longValue(request.get("schoolId")),
+                scope,
                 longValue(request.get("actorId"))));
     }
 
@@ -183,11 +187,12 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
         return run(() -> fees.feeReminderRequests(
                 text(request.get("classId")),
                 text(request.get("sectionId")),
                 text(request.get("academicYearId")),
-                longValue(request.get("schoolId")),
+                scope,
                 longValue(request.get("actorId"))));
     }
 

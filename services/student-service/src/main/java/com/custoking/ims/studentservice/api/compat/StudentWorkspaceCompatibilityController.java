@@ -1,6 +1,7 @@
 package com.custoking.ims.studentservice.api.compat;
 
 import com.custoking.ims.studentservice.persistence.StudentReadRepository;
+import com.custoking.ims.studentservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -34,8 +36,10 @@ public class StudentWorkspaceCompatibilityController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:read");
+        Map<String, Object> mutableRequest = new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
         try {
-            return students.createStudent(request);
+            return students.createStudent(mutableRequest);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -49,7 +53,8 @@ public class StudentWorkspaceCompatibilityController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "500") int limit) {
         requireToken(token, "student:read");
-        return students.list(schoolId, classId, sectionId, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return students.list(scope, classId, sectionId, limit);
     }
 
     @PutMapping("/api/v1/student-review-items/{itemId}")
@@ -58,11 +63,21 @@ public class StudentWorkspaceCompatibilityController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        Long itemSchool = students.schoolIdForReviewItem(itemId);
+        Long scope = TenantScope.resolveSchoolId(itemSchool);
+        Map<String, Object> mutableRequest = new HashMap<>(request);
+        mutableRequest.put("schoolId", scope);
         try {
-            return students.updateReviewItem(itemId, request);
+            return students.updateReviewItem(itemId, mutableRequest);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
+    }
+
+    private void applyResolvedSchool(Map<String, Object> request) {
+        Long requested = request.get("schoolId") == null ? null
+                : Long.valueOf(String.valueOf(request.get("schoolId")));
+        request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 
     private void requireToken(String token, String requiredScope) {

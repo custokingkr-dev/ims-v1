@@ -95,10 +95,11 @@ class StudentReadControllerTest {
 
     @Test
     void workspaceCompatibilityCreateMapsValidationFailureToBadRequest() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         StudentWorkspaceCompatibilityController compat =
                 new StudentWorkspaceCompatibilityController(students, "student-token");
         Map<String, Object> request = Map.of("fullName", "Aarav Sharma");
-        when(students.createStudent(request)).thenThrow(new IllegalArgumentException("Admission Number is mandatory"));
+        when(students.createStudent(org.mockito.ArgumentMatchers.any())).thenThrow(new IllegalArgumentException("Admission Number is mandatory"));
 
         assertThatThrownBy(() -> compat.createFromWorkspace("student-token", request))
                 .isInstanceOf(ResponseStatusException.class)
@@ -111,6 +112,7 @@ class StudentReadControllerTest {
 
     @Test
     void workspaceCompatibilityClassSectionRouteDelegates() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         StudentWorkspaceCompatibilityController compat =
                 new StudentWorkspaceCompatibilityController(students, "student-token");
         StudentRow row = studentRow(102L, "Diya Rao");

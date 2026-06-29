@@ -2,6 +2,7 @@ package com.custoking.ims.auditservice.api.compat;
 
 import com.custoking.ims.auditservice.api.AuditIngestController;
 import com.custoking.ims.auditservice.persistence.AuditEvent;
+import com.custoking.ims.auditservice.security.TenantScope;
 import com.custoking.ims.auditservice.persistence.AuditEventRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,9 +47,10 @@ public class AuditPublicCompatibilityController {
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) Integer limit) {
         requireToken(token, "audit:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
         int safePage = Math.max(page, 0);
         int safeSize = limit == null ? Math.max(1, Math.min(size, 200)) : Math.max(1, Math.min(limit, 200));
-        var result = repository.findAll(specification(schoolId, userId, action, from, to),
+        var result = repository.findAll(specification(scope, userId, action, from, to),
                 PageRequest.of(safePage, safeSize, Sort.by("eventTimestamp").descending()));
         return new AuditIngestController.AuditEventPage(
                 result.getContent().stream().map(AuditIngestController.AuditEventEntry::from).toList(),
