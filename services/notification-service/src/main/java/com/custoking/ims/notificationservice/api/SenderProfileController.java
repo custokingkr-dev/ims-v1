@@ -85,8 +85,8 @@ public class SenderProfileController {
     }
 
     // Configure the MSG91 sender credentials for a school.
-    // User context: a school admin may only update their own school; superadmin any school;
-    // internal/system calls bypass the user-level guard.
+    // Sensitive provisioning: only a superadmin may write sender credentials, even for their own school.
+    // Internal/system calls (no user context) bypass the user-level guard.
     @PutMapping("/schools/{schoolId}")
     public SenderProfile updateSchoolProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
@@ -94,7 +94,7 @@ public class SenderProfileController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
         if (TenantContext.get().isAuthenticated()) {
-            TenantScope.resolveSchoolId(schoolId);
+            TenantScope.requireSuperAdmin();
         }
         return command(() -> profiles.upsert(schoolId, body));
     }

@@ -25,6 +25,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -199,6 +200,50 @@ class NotificationTenantScopingTest {
                 .andExpect(status().isOk());
 
         verify(senderProfiles).resolve(10L);
+    }
+
+    // --- SenderProfileController: PUT /schools/{schoolId} — superadmin-only write ---
+
+    @Test
+    void schoolAdmin_isForbiddenUpdatingOwnSchoolSenderProfile() throws Exception {
+        // Tightened: even an admin writing their own school's sender credentials is now blocked.
+        senderProfileMvc.perform(put("/api/v1/notifications/sender-profiles/schools/10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authKey\":\"key\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).upsert(any(), any());
+    }
+
+    @Test
+    void superadmin_canUpdateSchoolSenderProfile() throws Exception {
+        when(senderProfiles.upsert(eq(10L), any())).thenReturn(STUB_PROFILE);
+
+        senderProfileMvc.perform(put("/api/v1/notifications/sender-profiles/schools/10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authKey\":\"key\"}"))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).upsert(eq(10L), any());
+    }
+
+    @Test
+    void systemInternal_canUpdateSchoolSenderProfileWithoutUserContext() throws Exception {
+        // Internal provisioning path: no user context headers, system token only.
+        when(senderProfiles.upsert(eq(10L), any())).thenReturn(STUB_PROFILE);
+
+        senderProfileMvc.perform(put("/api/v1/notifications/sender-profiles/schools/10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"authKey\":\"key\"}"))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).upsert(eq(10L), any());
     }
 
     // --- SenderProfileController: platform-default endpoint blocked for non-superadmin user ---
