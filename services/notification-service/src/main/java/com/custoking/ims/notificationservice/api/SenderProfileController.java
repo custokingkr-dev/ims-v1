@@ -2,7 +2,6 @@ package com.custoking.ims.notificationservice.api;
 
 import com.custoking.ims.notificationservice.application.SenderProfile;
 import com.custoking.ims.notificationservice.persistence.SenderProfileRepository;
-import com.custoking.ims.notificationservice.security.TenantContext;
 import com.custoking.ims.notificationservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -34,102 +33,88 @@ public class SenderProfileController {
         this.statusToken = statusToken == null ? "" : statusToken.trim();
     }
 
-    // Cross-tenant: lists all sender profiles across all schools. Superadmin only (user context);
-    // internal/system calls (no user context) bypass the user-level guard.
+    // Cross-tenant: lists all sender profiles across all schools. Superadmin only.
+    // The Msg91 delivery path reads profiles in-process via SenderProfileRepository —
+    // there is NO legitimate header-less HTTP caller of this controller.
     @GetMapping
     public List<SenderProfile> list(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token) {
         requireToken(token, "notification:read");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.requireSuperAdmin();
-        }
+        TenantScope.requireSuperAdmin();
         return profiles.list(null);
     }
 
-    // Platform default sender profile. Internal delivery system resolves this without a user context;
-    // when a user is present only a superadmin may read it.
+    // Platform default sender profile. Superadmin only via HTTP.
+    // Internal delivery resolves profiles in-process — not via this HTTP endpoint.
     @GetMapping("/default")
     public SenderProfile defaultProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token) {
         requireToken(token, "notification:read");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.requireSuperAdmin();
-        }
+        TenantScope.requireSuperAdmin();
         return profiles.defaultProfile();
     }
 
-    // Platform admin: update the global default sender configuration.
-    // Internal/system calls (no user context) bypass the user-level guard.
+    // Platform admin: update the global default sender configuration. Superadmin only.
     @PutMapping("/default")
     public SenderProfile updateDefaultProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.requireSuperAdmin();
-        }
+        TenantScope.requireSuperAdmin();
         return command(() -> profiles.upsert(null, body));
     }
 
-    // System-internal: delivery system resolves the sender for a specific school without a user context.
-    // User context: a school admin may only access their own school; superadmin may access any school.
+    // School admin may only access their own school; superadmin may access any school.
+    // Guard is unconditional: a header-less HTTP caller receives 403 (fail-closed).
     @GetMapping("/schools/{schoolId}")
     public SenderProfile schoolProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId) {
         requireToken(token, "notification:read");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.resolveSchoolId(schoolId);
-        }
+        TenantScope.resolveSchoolId(schoolId);
         return profiles.resolve(schoolId);
     }
 
     // Configure the MSG91 sender credentials for a school.
-    // Sensitive provisioning: only a superadmin may write sender credentials, even for their own school.
-    // Internal/system calls (no user context) bypass the user-level guard.
+    // Sensitive provisioning: only a superadmin may write sender credentials.
+    // Guard is unconditional: header-less HTTP is denied (fail-closed).
     @PutMapping("/schools/{schoolId}")
     public SenderProfile updateSchoolProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.requireSuperAdmin();
-        }
+        TenantScope.requireSuperAdmin();
         return command(() -> profiles.upsert(schoolId, body));
     }
 
     // View onboarding sessions for a school's WhatsApp number.
-    // User context: a school admin may only view their own school; superadmin any school;
-    // internal/system calls bypass the user-level guard.
+    // School admin: own school only; superadmin: any school.
+    // Guard is unconditional: header-less HTTP is denied (fail-closed).
     @GetMapping("/schools/{schoolId}/whatsapp-onboarding")
     public List<Map<String, Object>> onboardingSessions(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId) {
         requireToken(token, "notification:read");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.resolveSchoolId(schoolId);
-        }
+        TenantScope.resolveSchoolId(schoolId);
         return profiles.onboardingSessions(schoolId);
     }
 
     // Initiate WhatsApp business account onboarding for a school.
-    // User context: a school admin may only act on their own school; superadmin any school;
-    // internal/system calls bypass the user-level guard.
+    // School admin: own school only; superadmin: any school.
+    // Guard is unconditional: header-less HTTP is denied (fail-closed).
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding")
     public Map<String, Object> requestWhatsappOnboarding(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.resolveSchoolId(schoolId);
-        }
+        TenantScope.resolveSchoolId(schoolId);
         return command(() -> profiles.requestWhatsappOnboarding(schoolId, actorId(body), body));
     }
 
-    // Ambiguous: may be called by MSG91/WhatsApp callback (no user context) or by an admin.
-    // User context: scoped to the authenticated school (superadmin bypasses); system/callback path passes through.
+    // Complete a WhatsApp onboarding session.
+    // Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding/{sessionId}/complete")
     public Map<String, Object> completeWhatsappOnboarding(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
@@ -137,14 +122,12 @@ public class SenderProfileController {
             @PathVariable UUID sessionId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.resolveSchoolId(schoolId);
-        }
+        TenantScope.resolveSchoolId(schoolId);
         return command(() -> profiles.completeWhatsappOnboarding(schoolId, sessionId, body));
     }
 
-    // Ambiguous: same reasoning as completeWhatsappOnboarding.
-    // User context: scoped to the authenticated school (superadmin bypasses); system/callback path passes through.
+    // Fail a WhatsApp onboarding session.
+    // Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding/{sessionId}/fail")
     public Map<String, Object> failWhatsappOnboarding(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
@@ -152,9 +135,7 @@ public class SenderProfileController {
             @PathVariable UUID sessionId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
-        if (TenantContext.get().isAuthenticated()) {
-            TenantScope.resolveSchoolId(schoolId);
-        }
+        TenantScope.resolveSchoolId(schoolId);
         return command(() -> profiles.failWhatsappOnboarding(schoolId, sessionId, body));
     }
 

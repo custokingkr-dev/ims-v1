@@ -35,10 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Judgment calls documented inline:
  * - NotificationLogCommandController (POST /api/v1/notifications/logs): system-internal ingestion,
  *   NOT guarded. Proven to work without a superadmin context in this test.
- * - SenderProfileController GET /default and GET /schools/{id}: system-internal resolution,
- *   guarded only when a user context is present (isAuthenticated() == true).
- * - SenderProfileController POST /schools/{id}/whatsapp-onboarding/{sessionId}/complete|fail:
- *   ambiguous (may be MSG91 webhook callback); guarded only when user context is present.
+ * - SenderProfileController: ALL guards are UNCONDITIONAL. The Msg91 delivery path reads
+ *   sender profiles in-process via SenderProfileRepository — there is no legitimate
+ *   header-less HTTP caller of this controller. A header-less HTTP request is fail-closed → 403.
  */
 class NotificationTenantScopingTest {
 
@@ -187,19 +186,17 @@ class NotificationTenantScopingTest {
         verify(senderProfiles).resolve(99L);
     }
 
-    // --- SenderProfileController: system/internal delivery path (no user headers) bypasses guard ---
+    // --- SenderProfileController: header-less HTTP is fail-closed (no longer bypasses guard) ---
 
     @Test
-    void systemInternal_canReadSchoolProfileWithoutUserContext() throws Exception {
-        // Internal delivery system: token only, no X-Authenticated-* headers.
-        // Must NOT be blocked — this is the core notification delivery path.
-        when(senderProfiles.resolve(10L)).thenReturn(STUB_PROFILE);
-
+    void headerlessHttp_isForbiddenReadingSchoolProfile() throws Exception {
+        // Guard is unconditional. The delivery path reads profiles in-process, not over HTTP.
+        // A header-less HTTP caller has no tenant identity → 403 (fail-closed).
         senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/10")
                         .header("X-Notification-Service-Token", TOKEN))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
-        verify(senderProfiles).resolve(10L);
+        verify(senderProfiles, never()).resolve(any());
     }
 
     // --- SenderProfileController: PUT /schools/{schoolId} — superadmin-only write ---
@@ -233,17 +230,16 @@ class NotificationTenantScopingTest {
     }
 
     @Test
-    void systemInternal_canUpdateSchoolSenderProfileWithoutUserContext() throws Exception {
-        // Internal provisioning path: no user context headers, system token only.
-        when(senderProfiles.upsert(eq(10L), any())).thenReturn(STUB_PROFILE);
-
+    void headerlessHttp_isForbiddenUpdatingSchoolSenderProfile() throws Exception {
+        // Guard is unconditional — requireSuperAdmin() runs for every HTTP caller.
+        // No tenant identity → 403 (fail-closed).
         senderProfileMvc.perform(put("/api/v1/notifications/sender-profiles/schools/10")
                         .header("X-Notification-Service-Token", TOKEN)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"authKey\":\"key\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
-        verify(senderProfiles).upsert(eq(10L), any());
+        verify(senderProfiles, never()).upsert(any(), any());
     }
 
     // --- SenderProfileController: platform-default endpoint blocked for non-superadmin user ---
@@ -259,17 +255,16 @@ class NotificationTenantScopingTest {
         verify(senderProfiles, never()).defaultProfile();
     }
 
-    // --- SenderProfileController: platform-default endpoint passes for system/internal calls ---
+    // --- SenderProfileController: platform-default endpoint — header-less HTTP is fail-closed ---
 
     @Test
-    void systemInternal_canReadDefaultProfileWithoutUserContext() throws Exception {
-        // Internal delivery system resolves the platform default without a user context.
-        when(senderProfiles.defaultProfile()).thenReturn(STUB_PROFILE);
-
+    void headerlessHttp_isForbiddenReadingDefaultProfile() throws Exception {
+        // Guard is unconditional — requireSuperAdmin() runs for every HTTP caller.
+        // No tenant identity → 403 (fail-closed). Delivery reads profiles in-process.
         senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/default")
                         .header("X-Notification-Service-Token", TOKEN))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
 
-        verify(senderProfiles).defaultProfile();
+        verify(senderProfiles, never()).defaultProfile();
     }
 }
