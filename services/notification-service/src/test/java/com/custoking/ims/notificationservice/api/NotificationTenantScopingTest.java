@@ -1,7 +1,9 @@
 package com.custoking.ims.notificationservice.api;
 
+import com.custoking.ims.notificationservice.application.SenderProfile;
 import com.custoking.ims.notificationservice.persistence.NotificationBroadcastCommandRepository;
 import com.custoking.ims.notificationservice.persistence.NotificationLogCommandRepository;
+import com.custoking.ims.notificationservice.persistence.SenderProfileRepository;
 import com.custoking.ims.notificationservice.security.TenantContext;
 import com.custoking.ims.notificationservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -15,6 +17,7 @@ import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -32,9 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * - NotificationLogCommandController (POST /api/v1/notifications/logs): system-internal ingestion,
  *   NOT guarded. Proven to work without a superadmin context in this test.
  * - SenderProfileController GET /default and GET /schools/{id}: system-internal resolution,
- *   NOT guarded.
+ *   guarded only when a user context is present (isAuthenticated() == true).
  * - SenderProfileController POST /schools/{id}/whatsapp-onboarding/{sessionId}/complete|fail:
- *   ambiguous (may be MSG91 webhook callback); left ungated — covered by concern note in report.
+ *   ambiguous (may be MSG91 webhook callback); guarded only when user context is present.
  */
 class NotificationTenantScopingTest {
 
@@ -44,6 +47,12 @@ class NotificationTenantScopingTest {
             mock(NotificationBroadcastCommandRepository.class);
     private final NotificationLogCommandRepository logs =
             mock(NotificationLogCommandRepository.class);
+    private final SenderProfileRepository senderProfiles =
+            mock(SenderProfileRepository.class);
+
+    private static final SenderProfile STUB_PROFILE = new SenderProfile(
+            null, 10L, "Test Profile", null, null, null, null,
+            null, null, null, null, "en", null, null, null);
 
     private final MockMvc broadcastMvc = MockMvcBuilders
             .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN))
@@ -52,6 +61,11 @@ class NotificationTenantScopingTest {
 
     private final MockMvc logMvc = MockMvcBuilders
             .standaloneSetup(new NotificationLogCommandController(logs, TOKEN))
+            .addFilters(new TenantContextFilter())
+            .build();
+
+    private final MockMvc senderProfileMvc = MockMvcBuilders
+            .standaloneSetup(new SenderProfileController(senderProfiles, TOKEN))
             .addFilters(new TenantContextFilter())
             .build();
 
@@ -127,5 +141,90 @@ class NotificationTenantScopingTest {
                 .andExpect(status().isOk());
 
         verify(logs).createRequestLog(any());
+    }
+
+    // --- SenderProfileController: cross-tenant read blocked for school admin ---
+
+    @Test
+    void schoolAdmin_isForbiddenReadingAnotherSchoolProfile() throws Exception {
+        // ADMIN for school 10 tries to read school 99's sender profile → 403
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/99")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).resolve(any());
+    }
+
+    // --- SenderProfileController: school admin may read own school profile ---
+
+    @Test
+    void schoolAdmin_canReadOwnSchoolProfile() throws Exception {
+        when(senderProfiles.resolve(10L)).thenReturn(STUB_PROFILE);
+
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).resolve(10L);
+    }
+
+    // --- SenderProfileController: superadmin may read any school profile ---
+
+    @Test
+    void superadmin_canReadAnySchoolProfile() throws Exception {
+        when(senderProfiles.resolve(99L)).thenReturn(STUB_PROFILE);
+
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/99")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).resolve(99L);
+    }
+
+    // --- SenderProfileController: system/internal delivery path (no user headers) bypasses guard ---
+
+    @Test
+    void systemInternal_canReadSchoolProfileWithoutUserContext() throws Exception {
+        // Internal delivery system: token only, no X-Authenticated-* headers.
+        // Must NOT be blocked — this is the core notification delivery path.
+        when(senderProfiles.resolve(10L)).thenReturn(STUB_PROFILE);
+
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/10")
+                        .header("X-Notification-Service-Token", TOKEN))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).resolve(10L);
+    }
+
+    // --- SenderProfileController: platform-default endpoint blocked for non-superadmin user ---
+
+    @Test
+    void schoolAdmin_isForbiddenReadingDefaultProfile() throws Exception {
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/default")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).defaultProfile();
+    }
+
+    // --- SenderProfileController: platform-default endpoint passes for system/internal calls ---
+
+    @Test
+    void systemInternal_canReadDefaultProfileWithoutUserContext() throws Exception {
+        // Internal delivery system resolves the platform default without a user context.
+        when(senderProfiles.defaultProfile()).thenReturn(STUB_PROFILE);
+
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/default")
+                        .header("X-Notification-Service-Token", TOKEN))
+                .andExpect(status().isOk());
+
+        verify(senderProfiles).defaultProfile();
     }
 }
