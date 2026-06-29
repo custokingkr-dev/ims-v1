@@ -105,4 +105,30 @@ class StudentRlsIntegrationTest {
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
         }
     }
+
+    @Test
+    void crossTenantUpdate_isNoOp() throws Exception {
+        // School A context: UPDATE targeting school B rows must silently affect 0 rows (RLS hides them).
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            int affected = st.executeUpdate("UPDATE student.students SET full_name='x' WHERE school_id=20");
+            assertEquals(0, affected, "Cross-tenant UPDATE must be a silent no-op (RLS hides target rows)");
+        }
+        // Confirm school B's row is still intact.
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        assertEquals(1, countStudents(), "School B must still see its 1 row after cross-tenant UPDATE attempt");
+    }
+
+    @Test
+    void crossTenantDelete_isNoOp() throws Exception {
+        // School A context: DELETE targeting school B rows must silently affect 0 rows (RLS hides them).
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            int affected = st.executeUpdate("DELETE FROM student.students WHERE school_id=20");
+            assertEquals(0, affected, "Cross-tenant DELETE must be a silent no-op (RLS hides target rows)");
+        }
+        // Confirm school B's row is still intact.
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        assertEquals(1, countStudents(), "School B must still see its 1 row after cross-tenant DELETE attempt");
+    }
 }

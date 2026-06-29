@@ -89,6 +89,25 @@ Check that each service's Spring context exposes a `TenantDataSourceConfig` `Bea
 
 In staging, enable `log_min_duration_statement = 0` briefly and verify that every query on an RLS-enabled table is preceded by a `SET LOCAL app.current_school_id = '...'` statement. A missing GUC set means the `TenantAwareDataSource` is not wrapping that connection pool.
 
+### 4.4 Two-role invariant (MUST be verified before every production deploy)
+
+Correct RLS enforcement requires **both** of the following env vars to be set on each Cloud Run service, and they **must be distinct**:
+
+| Env var | Required value | Role |
+|---|---|---|
+| `SPRING_DATASOURCE_USERNAME` | `app_rt` | Runtime DB user — subject to RLS policies |
+| `FLYWAY_USERNAME` | `appuser` | DDL owner — bypasses RLS, runs schema migrations |
+
+**Why both must be distinct:**
+
+- If only `SPRING_DATASOURCE_USERNAME=app_rt` is set without `FLYWAY_USERNAME=appuser`, Spring Boot defaults Flyway to the datasource URL/username (`app_rt`). Flyway will then attempt DDL (CREATE TABLE, ALTER TABLE, etc.) as `app_rt`, which lacks DDL privileges → **migration failure at startup**.
+- If `SPRING_DATASOURCE_USERNAME` is set to `appuser` or `postgres` (the table owner / a superuser), the runtime connects as the RLS-exempt owner → **RLS is silently disabled; all tenant rows are visible to all tenants**. Starting with this branch, the `RuntimeDbRoleGuard` (an `ApplicationReadyEvent` listener in each service's `security` package) catches this misconfiguration at startup: it throws `IllegalStateException` in the `prod` profile, and logs a WARN in other profiles.
+
+**Checklist:** before shipping Release 2 (§5), confirm in Cloud Run service configuration:
+- `SPRING_DATASOURCE_USERNAME` = `app_rt`
+- `FLYWAY_USERNAME` = `appuser` (explicitly set; do NOT rely on the default)
+- The two values are different
+
 ---
 
 ## 5. Two-Phase Production Rollout (Per Service)
