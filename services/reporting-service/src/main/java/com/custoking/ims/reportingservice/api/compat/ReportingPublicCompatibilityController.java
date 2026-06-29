@@ -156,8 +156,8 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "false") boolean platform) {
         requireToken(token, "reporting:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId); // superadmin returns requested unchanged
         boolean effectivePlatform = platform && TenantContext.get().isSuperAdmin();
-        Long scope = effectivePlatform ? schoolId : TenantScope.resolveSchoolId(schoolId);
         return reporting.commandCenterSummary(scope, effectivePlatform);
     }
 
