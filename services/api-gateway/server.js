@@ -345,7 +345,7 @@ async function proxyToUrl(req, res, target, requestId, service, principal) {
 function outboundHeaders(req, requestId) {
   const headers = {};
   for (const [key, value] of Object.entries(req.headers)) {
-    if (!isRequestHopHeader(key)) {
+    if (!isRequestHopHeader(key) && !isClientSpoofableHeader(key)) {
       headers[key] = Array.isArray(value) ? value.join(', ') : value;
     }
   }
@@ -353,6 +353,14 @@ function outboundHeaders(req, requestId) {
   headers['x-forwarded-for'] = appendForwardedFor(req);
   headers['x-forwarded-proto'] = req.headers['x-forwarded-proto'] || 'https';
   return headers;
+}
+
+// Headers only the gateway may set — a client-supplied value is dropped so it can
+// never be trusted by an upstream. The gateway re-injects the authenticated identity
+// (from the verified JWT principal) and the correct per-service token after this.
+function isClientSpoofableHeader(name) {
+  const n = name.toLowerCase();
+  return n.startsWith('x-authenticated-') || n.endsWith('-service-token');
 }
 
 async function addCloudRunAuthorization(headers, target) {
@@ -525,6 +533,7 @@ module.exports = {
   outboundHeaders,
   isRequestHopHeader,
   isResponseHopHeader,
+  isClientSpoofableHeader,
   stringOrEmpty,
   setSecurityHeaders,
   isOriginAllowed,
