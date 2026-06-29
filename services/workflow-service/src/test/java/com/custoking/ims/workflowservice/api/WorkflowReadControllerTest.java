@@ -1,16 +1,20 @@
 package com.custoking.ims.workflowservice.api;
 
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository;
+import com.custoking.ims.workflowservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -20,6 +24,9 @@ class WorkflowReadControllerTest {
 
     private final WorkflowReadRepository workflows = mock(WorkflowReadRepository.class);
     private final WorkflowReadController controller = new WorkflowReadController(workflows, "workflow-token");
+
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
 
     @Test
     void definitionsRejectsInvalidTokenBeforeQuerying() {
@@ -33,6 +40,7 @@ class WorkflowReadControllerTest {
 
     @Test
     void instancesDelegatesFiltersWithValidToken() {
+        TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
         when(workflows.instances(4L, "PENDING", "ORDER", 25)).thenReturn(List.of());
 
         Object response = controller.instances("workflow-token", 4L, "PENDING", "ORDER", 25);
@@ -56,8 +64,9 @@ class WorkflowReadControllerTest {
 
     @Test
     void createOrGetInstanceMapsValidationToBadRequest() {
-        Map<String, Object> request = Map.of("entityType", "ORDER");
-        when(workflows.createOrGetInstance(request)).thenThrow(new IllegalArgumentException("entityId is required"));
+        TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
+        Map<String, Object> request = new HashMap<>(Map.of("entityType", "ORDER"));
+        when(workflows.createOrGetInstance(any())).thenThrow(new IllegalArgumentException("entityId is required"));
 
         assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", request))
                 .isInstanceOf(ResponseStatusException.class)
