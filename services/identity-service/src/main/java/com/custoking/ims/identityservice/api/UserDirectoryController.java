@@ -54,6 +54,9 @@ public class UserDirectoryController {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
         }
+        // Enforce tenant scope: non-superadmin may only read users in their own school.
+        // branchId=null (platform user) resolves to the caller's own school — no exception.
+        TenantScope.resolveSchoolId(user.branchId());
         return user;
     }
 

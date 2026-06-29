@@ -2,26 +2,39 @@ package com.custoking.ims.tenantschoolservice.api.compat;
 
 import com.custoking.ims.tenantschoolservice.persistence.SchoolStructureReadRepository;
 import com.custoking.ims.tenantschoolservice.security.TenantContext;
+import com.custoking.ims.tenantschoolservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class TenantSchoolPublicCompatibilityControllerTest {
 
     private final SchoolStructureReadRepository schools = mock(SchoolStructureReadRepository.class);
     private final TenantSchoolPublicCompatibilityController controller =
             new TenantSchoolPublicCompatibilityController(schools, "tok");
+
+    /** MockMvc harness with the real TenantContextFilter for HTTP-header-driven scope tests. */
+    private final MockMvc mvc = MockMvcBuilders
+            .standaloneSetup(controller)
+            .addFilters(new TenantContextFilter())
+            .build();
 
     @AfterEach
     void cleanup() { TenantContext.clear(); }
@@ -89,5 +102,20 @@ class TenantSchoolPublicCompatibilityControllerTest {
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
         verify(schools, never()).addTimetableEntry(null, request);
+    }
+
+    // --- FIX 3: compat cross-tenant test via real TenantContextFilter ---
+
+    @Test
+    void addStaffFromWorkspace_crossTenantSchoolId_isForbidden() throws Exception {
+        // ADMIN authenticated for school 10 sends schoolId=99 in body → TenantScope rejects → 403
+        mvc.perform(post("/api/v1/workspace/staff")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":99,\"name\":\"Asha\"}"))
+                .andExpect(status().isForbidden());
+        verify(schools, never()).addStaff(eq(99L), any());
     }
 }
