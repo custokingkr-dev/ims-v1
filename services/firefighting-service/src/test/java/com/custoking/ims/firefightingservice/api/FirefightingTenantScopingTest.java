@@ -1,5 +1,6 @@
 package com.custoking.ims.firefightingservice.api;
 
+import com.custoking.ims.firefightingservice.api.compat.FirefightingPublicCompatibilityController;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.security.TenantContext;
 import com.custoking.ims.firefightingservice.security.TenantContextFilter;
@@ -23,6 +24,10 @@ class FirefightingTenantScopingTest {
     private final FirefightingReadRepository repo = mock(FirefightingReadRepository.class);
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new FirefightingReadController(repo, "tok"))
+            .addFilters(new TenantContextFilter())
+            .build();
+    private final MockMvc compatMvc = MockMvcBuilders
+            .standaloneSetup(new FirefightingPublicCompatibilityController(repo, "tok"))
             .addFilters(new TenantContextFilter())
             .build();
 
@@ -86,6 +91,61 @@ class FirefightingTenantScopingTest {
                         .content("{\"title\":\"Test\",\"schoolId\":99}"))
                 .andExpect(status().isOk());
         verify(repo).createRequest(argThat(m -> Long.valueOf(99L).equals(m.get("schoolId"))));
+    }
+
+    // ── markVendorPaid: Recipe B (cross-tenant write closure) ──────────────
+
+    @Test
+    void markVendorPaid_omittedSchoolId_scopesToAuthenticatedSchool() throws Exception {
+        when(repo.markVendorPaid(eq("FF-001"), anyMap()))
+                .thenReturn(Map.of("code", "FF-001", "status", "VENDOR_PAID"));
+        mvc.perform(post("/api/v1/ff/requests/FF-001/vendor-paid")
+                        .header("X-Firefighting-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+        // schoolId must be forced to authenticated school (10), not null/omitted
+        verify(repo).markVendorPaid(eq("FF-001"), argThat(m -> Long.valueOf(10L).equals(m.get("schoolId"))));
+    }
+
+    @Test
+    void markVendorPaid_crossTenantSchoolId_isForbidden() throws Exception {
+        mvc.perform(post("/api/v1/ff/requests/FF-001/vendor-paid")
+                        .header("X-Firefighting-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":99}"))
+                .andExpect(status().isForbidden());
+        verify(repo, never()).markVendorPaid(anyString(), anyMap());
+    }
+
+    @Test
+    void compatMarkVendorPaid_omittedSchoolId_scopesToAuthenticatedSchool() throws Exception {
+        when(repo.markVendorPaid(eq("FF-001"), anyMap()))
+                .thenReturn(Map.of("code", "FF-001", "status", "VENDOR_PAID"));
+        compatMvc.perform(post("/api/v1/dashboard/vendor-dues/firefighting/FF-001/mark-paid")
+                        .header("X-Firefighting-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+        verify(repo).markVendorPaid(eq("FF-001"), argThat(m -> Long.valueOf(10L).equals(m.get("schoolId"))));
+    }
+
+    @Test
+    void compatMarkVendorPaid_crossTenantSchoolId_isForbidden() throws Exception {
+        compatMvc.perform(post("/api/v1/dashboard/vendor-dues/firefighting/FF-001/mark-paid")
+                        .header("X-Firefighting-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":99}"))
+                .andExpect(status().isForbidden());
+        verify(repo, never()).markVendorPaid(anyString(), anyMap());
     }
 
     // ── approveCustoking: requireSuperAdmin ────────────────────────────────

@@ -45,7 +45,9 @@ public class FirefightingPublicCompatibilityController {
             @PathVariable String code,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "firefighting:write");
-        return run(() -> firefighting.markVendorPaid(code, request == null ? Map.of() : request));
+        Map<String, Object> mutableRequest = request == null ? new HashMap<>() : new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        return run(() -> firefighting.markVendorPaid(code, mutableRequest));
     }
 
     private void applyResolvedSchool(Map<String, Object> request) {

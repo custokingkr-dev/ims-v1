@@ -12,6 +12,8 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -64,10 +66,12 @@ class FirefightingPublicCompatibilityControllerTest {
 
     @Test
     void markVendorPaidDelegatesToRepository() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("schoolId", 4L, "notes", "paid offline");
-        when(repo.markVendorPaid("FF-1", request)).thenReturn(Map.of("code", "FF-1", "vendorPaid", true));
+        when(repo.markVendorPaid(eq("FF-1"), any())).thenReturn(Map.of("code", "FF-1", "vendorPaid", true));
 
         assertThat(controller.markVendorPaid("tok", "FF-1", request)).containsEntry("vendorPaid", true);
-        verify(repo).markVendorPaid("FF-1", request);
+        // applyResolvedSchool copies body to mutable map; SUPERADMIN retains requested schoolId=4
+        verify(repo).markVendorPaid(eq("FF-1"), argThat(m -> Long.valueOf(4L).equals(m.get("schoolId"))));
     }
 }
