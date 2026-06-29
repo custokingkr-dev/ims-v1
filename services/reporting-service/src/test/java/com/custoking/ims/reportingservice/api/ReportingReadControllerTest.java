@@ -6,8 +6,10 @@ import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository
 import com.custoking.ims.reportingservice.persistence.ReportingEventInboxRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingEventInboxRepository.ReportingEventInboxRecord;
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;
+import com.custoking.ims.reportingservice.security.TenantContext;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
@@ -34,8 +36,12 @@ class ReportingReadControllerTest {
     private final ReportingCommandRepository commands = mock(ReportingCommandRepository.class);
     private final ReportingReadController controller = new ReportingReadController(reporting, commands, "reporting-token");
 
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void summaryRejectsInvalidTokenBeforeQuerying() {
+        // Token check fires before TenantScope; no TenantContext needed.
         assertThatThrownBy(() -> controller.summary("wrong-token", 4L))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
@@ -46,6 +52,8 @@ class ReportingReadControllerTest {
 
     @Test
     void feeDefaultersDelegatesFiltersWithValidToken() {
+        // SUPERADMIN context so TenantScope passes through the requested schoolId.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> result = Map.of("content", List.of(), "totalElements", 0);
         when(reporting.feeDefaulters(4L, "class-9", "section-a", 30, "PENDING", 1, 25)).thenReturn(result);
 
@@ -65,6 +73,8 @@ class ReportingReadControllerTest {
 
     @Test
     void acceptActionParsesActorContextAndDelegates() {
+        // SUPERADMIN context: isSuperAdmin()=true, resolveSchoolId(4L)=4L; body superAdmin flag ignored.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         UUID actionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         Map<String, Object> request = Map.of("actorId", "9", "schoolId", 4L, "superAdmin", "true");
         Map<String, Object> result = Map.of("id", actionId, "status", "ACCEPTED");
@@ -78,6 +88,8 @@ class ReportingReadControllerTest {
 
     @Test
     void dismissActionMapsNotFoundCommandToNotFound() {
+        // ADMIN school 4 context: isSuperAdmin()=false, resolveSchoolId(4L)=4L.
+        TenantContext.set(new TenantContext(9L, "a@x", "ADMIN", 4L, null));
         UUID actionId = UUID.fromString("22222222-2222-2222-2222-222222222222");
         when(commands.dismissAction(actionId, 9L, "duplicate", 4L, false))
                 .thenThrow(new IllegalArgumentException("Action not found"));
@@ -111,6 +123,8 @@ class ReportingReadControllerTest {
 
     @Test
     void compatibilityWorkspaceBuildsLegacyPayloadFromSummary() {
+        // SUPERADMIN context so TenantScope passes through the requested schoolId.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         ReportingPublicCompatibilityController compat =
                 new ReportingPublicCompatibilityController(reporting, commands, "reporting-token");
         when(reporting.summary(4L)).thenReturn(Map.of(
@@ -135,10 +149,12 @@ class ReportingReadControllerTest {
 
     @Test
     void compatibilityAcceptActionMapsValidationFailureToBadRequest() {
+        // SUPERADMIN context: body=null → actorSchoolId=null, resolveSchoolId(null)=null, isSuperAdmin()=true.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         ReportingPublicCompatibilityController compat =
                 new ReportingPublicCompatibilityController(reporting, commands, "reporting-token");
         UUID actionId = UUID.fromString("33333333-3333-3333-3333-333333333333");
-        when(commands.acceptAction(actionId, null, null, false))
+        when(commands.acceptAction(actionId, null, null, true))
                 .thenThrow(new IllegalArgumentException("Access denied to this action"));
 
         assertThatThrownBy(() -> compat.acceptAction("reporting-token", actionId, null))
@@ -198,6 +214,8 @@ class ReportingReadControllerTest {
 
     @Test
     void lowAttendanceSectionsDelegatesDateFilter() {
+        // SUPERADMIN context so TenantScope passes through the requested schoolId.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         LocalDate date = LocalDate.parse("2026-02-02");
         Map<String, Object> result = Map.of("sections", List.of());
         when(reporting.lowAttendanceSections(4L, date)).thenReturn(result);
