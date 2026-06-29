@@ -448,7 +448,140 @@ Package map: `billing`→`billingservice`, `notification`→`notificationservice
 
 ---
 
-### Task 10: Full verification gate
+### Task 10: Guard legacy `/api/v1` compatibility controllers (all services incl. student)
+
+The `api/compat/*CompatibilityController` classes serve the live `/api/v1/**` paths the SPA actually calls (e.g. `/api/v1/workspace/students`, `/api/v1/classes/{classId}/sections/{sectionId}/students`, `/api/v1/student-review-items/{itemId}`, `/api/v1/workspace/staff`, `/api/v1/workspace/timetable`, `/api/v1/workspace/firefighting`, `/api/v1/workspace/fees/...`). They were **not** covered by Tasks 1–9 and currently take `schoolId` from a client param/body (or only *fall back* to the authenticated header) — the same BOLA hole, including write mutations. Every service already has the canonical `TenantContext`/`TenantContextFilter`/`TenantScope` (added in Tasks 1–9), so this task only wires the compat controllers.
+
+**Files:** for every service under `services/*/src/main/java/.../api/compat/`, modify each `*CompatibilityController.java` that reads `schoolId`; add/extend a `*CompatTenantScopingTest` per service that has such a controller.
+
+- [ ] **Step 1: Enumerate the compat controllers**
+
+Run: `Get-ChildItem -Recurse services -Filter *CompatibilityController.java | Select-Object FullName`
+For each, identify endpoints that obtain `schoolId` from `@RequestParam`, path var, or `@RequestBody` Map (including ones that currently do `if (schoolId == null) schoolId = authenticatedSchoolId` fallback).
+
+- [ ] **Step 2: Apply the canonical recipes (from Task 1) to each compat endpoint**
+
+- `schoolId` from param/path → `Long scope = TenantScope.resolveSchoolId(schoolId);` then use `scope`.
+- `schoolId` in a body Map → extract, `TenantScope.resolveSchoolId(requested)`, write the resolved value back into the map before delegating (the `applyResolvedSchool` pattern).
+- Item-scoped writes with no `schoolId` in the body (e.g. compat `PUT /api/v1/student-review-items/{itemId}`) → load the item's school via the repo (`schoolIdForReviewItem` already added in Task 1 for student; add the analogous lookup where another service has an item-scoped compat write) and `TenantScope.resolveSchoolId(itemSchool)`.
+- **Delete any client-trusting fallback** (`schoolId == null ⇒ use header` or `⇒ all`): replace with `resolveSchoolId`. Import `com.custoking.ims.<svc-pkg>.security.TenantScope`.
+
+Known compat controllers to cover (verify against Step 1 enumeration; do not miss any):
+- `student-service`: `StudentWorkspaceCompatibilityController` — `POST /api/v1/workspace/students` (body), `GET /api/v1/classes/{classId}/sections/{sectionId}/students` (param `schoolId`), `PUT /api/v1/student-review-items/{itemId}` (item-scoped, use `schoolIdForReviewItem`).
+- `tenant-school-service`: `TenantSchoolPublicCompatibilityController` — `POST /api/v1/workspace/staff` and `POST /api/v1/workspace/timetable` (replace the `request.get("schoolId")` + header-fallback with `resolveSchoolId`).
+- Any compat controller surfaced by Step 1 in fee/attendance/firefighting/reporting/catalog/workflow — apply the same recipes.
+
+- [ ] **Step 3: Tests**
+
+For each service with a compat controller, add a standalone-MockMvc test (mirroring `StudentTenantScopingTest`, `addFilters(new TenantContextFilter())`): tenant-A token + cross-tenant `schoolId` (param or body) → **403**; omitted → repo invoked with A; superadmin → widens. For the item-scoped compat write, assert a tenant-A caller editing another school's item → 403.
+
+- [ ] **Step 4: Run the affected services' tests**
+
+Run `./mvnw.cmd -q -f services/<svc>/pom.xml test` for each service touched. Expected: green.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/*/src/main/java/com/custoking/ims/*/api/compat services/*/src/test/java
+git commit -m "feat(compat): enforce tenant scope on legacy /api/v1 compatibility controllers"
+```
+
+---
+
+### Task 11: Gateway — strip client-supplied auth/identity headers (trust boundary)
+
+**Why:** the entire `TenantContext` model trusts the `X-Authenticated-*` request headers. That trust is only valid if a client can never set them. The gateway is the sole legitimate source, but `outboundHeaders` currently copies **all** inbound non-hop headers (including any client-supplied `x-authenticated-*` and `x-*-service-token`) and only overwrites them on authenticated routes — so on permissive/unauthenticated paths a client value could pass through. Strip them unconditionally so only gateway-injected values reach upstreams. (Primary control — private Cloud Run IAM + the per-service internal token — remains; this is defense-in-depth closing the spoofable-header class.)
+
+**Files:**
+- Modify: `services/api-gateway/server.js` (`outboundHeaders` + new `isClientSpoofableHeader`, exported)
+- Test: `services/api-gateway/server.test.js`
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `server.test.js` (import `isClientSpoofableHeader`, `outboundHeaders` are already exported/used):
+
+```javascript
+test('outbound headers strip client-supplied authenticated and service-token headers', () => {
+  const headers = outboundHeaders({
+    headers: {
+      'x-authenticated-school-id': '99',
+      'x-authenticated-role': 'SUPERADMIN',
+      'x-identity-service-token': 'forged',
+      'x-student-service-token': 'forged',
+      'content-type': 'application/json',
+      authorization: 'Bearer user-token',
+    },
+    socket: { remoteAddress: '10.0.0.2' },
+  }, 'req-1');
+
+  assert.equal(headers['x-authenticated-school-id'], undefined);
+  assert.equal(headers['x-authenticated-role'], undefined);
+  assert.equal(headers['x-identity-service-token'], undefined);
+  assert.equal(headers['x-student-service-token'], undefined);
+  // non-spoofable headers are preserved:
+  assert.equal(headers['content-type'], 'application/json');
+  assert.equal(headers.authorization, 'Bearer user-token');
+});
+
+test('isClientSpoofableHeader flags gateway-only headers', () => {
+  assert.equal(isClientSpoofableHeader('X-Authenticated-School-Id'), true);
+  assert.equal(isClientSpoofableHeader('x-authenticated-role'), true);
+  assert.equal(isClientSpoofableHeader('X-Identity-Service-Token'), true);
+  assert.equal(isClientSpoofableHeader('x-billing-service-token'), true);
+  assert.equal(isClientSpoofableHeader('content-type'), false);
+  assert.equal(isClientSpoofableHeader('x-request-id'), false);
+});
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `node --test services/api-gateway/server.test.js`
+Expected: FAIL — `isClientSpoofableHeader` is not exported/defined; the strip assertions fail (headers still present).
+
+- [ ] **Step 3: Implement the strip**
+
+In `server.js`, change the `outboundHeaders` copy guard:
+
+```javascript
+function outboundHeaders(req, requestId) {
+  const headers = {};
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (!isRequestHopHeader(key) && !isClientSpoofableHeader(key)) {
+      headers[key] = Array.isArray(value) ? value.join(', ') : value;
+    }
+  }
+  headers['x-request-id'] = requestId;
+  headers['x-forwarded-for'] = appendForwardedFor(req);
+  headers['x-forwarded-proto'] = req.headers['x-forwarded-proto'] || 'https';
+  return headers;
+}
+
+// Headers only the gateway may set — a client-supplied value is dropped so it can
+// never be trusted by an upstream. The gateway re-injects the authenticated identity
+// (from the verified JWT principal) and the correct per-service token after this.
+function isClientSpoofableHeader(name) {
+  const n = name.toLowerCase();
+  return n.startsWith('x-authenticated-') || n.endsWith('-service-token');
+}
+```
+
+Add `isClientSpoofableHeader` to the `module.exports` block.
+
+- [ ] **Step 4: Run to verify pass**
+
+Run: `node --test services/api-gateway/server.test.js`
+Expected: PASS (all tests, including the existing ones — the gateway still injects its own `x-authenticated-*`/token in `proxyToUrl`, which runs after `outboundHeaders`).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add services/api-gateway/server.js services/api-gateway/server.test.js
+git commit -m "fix(gateway): strip client-supplied X-Authenticated-* and service-token headers (tenant trust boundary)"
+```
+
+---
+
+### Task 12: Full verification gate
 
 **Files:** none (verification only).
 
@@ -485,6 +618,7 @@ git commit --allow-empty -m "chore: tenant-context verification gate green"
 - Request-scoped `TenantContext` from headers → Task 1 (`TenantContextFilter`), copied in Tasks 2–9. ✓
 - `resolveSchoolId` 3-branch rule (superadmin widen / lock / 403) → Task 1 (`TenantScope`) + tests. ✓
 - All 7 tenant-scoped services → Tasks 1–7. ✓
+- Legacy `/api/v1` compat controllers (live SPA routes) → Task 10. ✓
 - reporting client-`superAdmin` removal → Task 7. ✓
 - 5 platform services deny-cross-tenant → Tasks 8–9. ✓
 - Eliminate `schoolId==null ⇒ all` for non-superadmin → Recipe A/B (resolved value never null unless superadmin). ✓
