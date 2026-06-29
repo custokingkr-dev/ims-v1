@@ -1,6 +1,7 @@
 package com.custoking.ims.notificationservice.api;
 
 import com.custoking.ims.notificationservice.persistence.NotificationBroadcastCommandRepository;
+import com.custoking.ims.notificationservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -36,6 +37,7 @@ public class NotificationBroadcastCommandController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "notification:write");
+        TenantScope.requireSuperAdmin();
         return command(() -> broadcasts.create(body));
     }
 
@@ -46,6 +48,7 @@ public class NotificationBroadcastCommandController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "notification:read");
+        TenantScope.requireSuperAdmin();
         return broadcasts.list(schoolId, status, limit);
     }
 
@@ -55,6 +58,7 @@ public class NotificationBroadcastCommandController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "notification:write");
+        TenantScope.requireSuperAdmin();
         return command(() -> broadcasts.approve(id, actorId(body)));
     }
 
@@ -64,6 +68,7 @@ public class NotificationBroadcastCommandController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "notification:write");
+        TenantScope.requireSuperAdmin();
         return command(() -> broadcasts.send(id, actorId(body)));
     }
 
@@ -72,6 +77,7 @@ public class NotificationBroadcastCommandController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable UUID id) {
         requireToken(token, "notification:read");
+        TenantScope.requireSuperAdmin();
         return command(() -> broadcasts.deliveryStatus(id));
     }
 

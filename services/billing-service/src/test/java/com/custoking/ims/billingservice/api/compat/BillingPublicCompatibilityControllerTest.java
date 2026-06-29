@@ -3,6 +3,9 @@ package com.custoking.ims.billingservice.api.compat;
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.CustomerRow;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.PaymentRow;
+import com.custoking.ims.billingservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,6 +27,18 @@ class BillingPublicCompatibilityControllerTest {
     private final BillingInvoiceService invoices = mock(BillingInvoiceService.class);
     private final BillingPublicCompatibilityController controller =
             new BillingPublicCompatibilityController(invoices, "billing-token");
+
+    @BeforeEach
+    void setSuperAdminContext() {
+        // All compat endpoints are superadmin-only (SA billing, customers, payments).
+        // Pre-existing tests exercise token-check and delegation; they need SUPERADMIN context.
+        TenantContext.set(new TenantContext(1L, "sa@custoking.com", "SUPERADMIN", null, null));
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
 
     @Test
     void customersRejectsInvalidTokenBeforeDelegating() {
