@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
+import com.custoking.ims.identityservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -40,6 +41,7 @@ public class UserDirectoryController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        branchId = TenantScope.resolveSchoolId(branchId);
         return users.users(role, branchId, zoneId, active, limit);
     }
 

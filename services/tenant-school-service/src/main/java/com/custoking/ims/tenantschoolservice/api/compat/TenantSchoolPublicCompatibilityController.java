@@ -1,6 +1,7 @@
 package com.custoking.ims.tenantschoolservice.api.compat;
 
 import com.custoking.ims.tenantschoolservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.tenantschoolservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -30,12 +31,13 @@ public class TenantSchoolPublicCompatibilityController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
-        Long schoolId = longValue(request.get("schoolId"));
-        if (schoolId == null) {
+        // Body schoolId is the requested school; TenantScope sandboxes it to the authenticated school.
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
+        if (resolvedSchoolId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
         }
         try {
-            return schools.addStaff(schoolId, request);
+            return schools.addStaff(resolvedSchoolId, request);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -47,15 +49,15 @@ public class TenantSchoolPublicCompatibilityController {
             @RequestHeader(value = "X-Authenticated-School-Id", required = false) String authenticatedSchoolId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
-        Long schoolId = longValue(request.get("schoolId"));
-        if (schoolId == null) {
-            schoolId = longValue(authenticatedSchoolId);
-        }
-        if (schoolId == null) {
+        // Body schoolId is the requested school; TenantScope (via TenantContextFilter) resolves and sandboxes it.
+        // The explicit authenticatedSchoolId header is kept for backward-compat signature but TenantContextFilter
+        // already populated TenantContext from that header, so TenantScope.resolveSchoolId handles the fallback.
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
+        if (resolvedSchoolId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
         }
         try {
-            return schools.addTimetableEntry(schoolId, request);
+            return schools.addTimetableEntry(resolvedSchoolId, request);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }

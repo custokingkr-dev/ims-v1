@@ -2,6 +2,7 @@ package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
+import com.custoking.ims.identityservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -83,6 +84,7 @@ public class RbacReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) Long zoneId) {
         requireToken(token, "identity:read");
+        schoolId = TenantScope.resolveSchoolId(schoolId);
         return rbac.effectivePermissions(userId, schoolId, zoneId);
     }
 

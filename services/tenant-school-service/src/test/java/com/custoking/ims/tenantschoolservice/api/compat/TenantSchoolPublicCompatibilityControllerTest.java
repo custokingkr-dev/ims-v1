@@ -1,6 +1,8 @@
 package com.custoking.ims.tenantschoolservice.api.compat;
 
 import com.custoking.ims.tenantschoolservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.tenantschoolservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,8 +23,13 @@ class TenantSchoolPublicCompatibilityControllerTest {
     private final TenantSchoolPublicCompatibilityController controller =
             new TenantSchoolPublicCompatibilityController(schools, "tok");
 
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void addsStaffUsingSchoolIdFromBody() {
+        // Superadmin context; body schoolId 5 is resolved and passed through.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("schoolId", 5, "name", "Asha");
         when(schools.addStaff(eq(5L), eq(request))).thenReturn(Map.of("id", 1));
 
@@ -32,6 +39,8 @@ class TenantSchoolPublicCompatibilityControllerTest {
 
     @Test
     void rejectsMissingSchoolId() {
+        // Superadmin with no schoolId in body → resolveSchoolId(null) returns null → 400
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("name", "Asha");
 
         assertThatThrownBy(() -> controller.addStaffFromWorkspace("tok", request))
@@ -54,6 +63,9 @@ class TenantSchoolPublicCompatibilityControllerTest {
 
     @Test
     void addsTimetableUsingAuthenticatedSchoolHeader() {
+        // TenantContextFilter (in production) populates schoolId=5 from X-Authenticated-School-Id header.
+        // In direct controller tests, we set TenantContext manually; resolveSchoolId(null) returns auth school.
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 5L, null));
         Map<String, Object> request = Map.of(
                 "day", "Monday",
                 "period", "P1",
@@ -68,6 +80,8 @@ class TenantSchoolPublicCompatibilityControllerTest {
 
     @Test
     void timetableRequiresSchoolScope() {
+        // Superadmin with no schoolId in body/context → resolveSchoolId(null) returns null → 400
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("day", "Monday", "period", "P1", "classSection", "9-B");
 
         assertThatThrownBy(() -> controller.addTimetableFromWorkspace("tok", null, request))

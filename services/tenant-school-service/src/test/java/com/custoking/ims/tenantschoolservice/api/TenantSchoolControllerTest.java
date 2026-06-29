@@ -9,6 +9,8 @@ import com.custoking.ims.tenantschoolservice.persistence.SchoolStructureReadRepo
 import com.custoking.ims.tenantschoolservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.tenantschoolservice.persistence.ZoneEntity;
 import com.custoking.ims.tenantschoolservice.persistence.ZoneRepository;
+import com.custoking.ims.tenantschoolservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,6 +43,9 @@ class TenantSchoolControllerTest {
             zoneCommands,
             "tenant-token");
 
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void schoolsRejectsInvalidTokenBeforeQuerying() {
         assertThatThrownBy(() -> controller.schools("wrong-token"))
@@ -53,6 +58,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void schoolsMapsEntitiesToReadResponses() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         SchoolEntity school = school(4L, "Delhi Public School", "DPS");
         when(schools.findAllByOrderByNameAsc()).thenReturn(List.of(school));
 
@@ -66,6 +72,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void schoolReturnsNotFoundForMissingSchool() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         when(schools.findById(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.school("tenant-token", 404L))
@@ -79,6 +86,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void createSchoolMapsValidationFailureToBadRequest() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("shortCode", "DPS");
         when(structure.createSchool(request)).thenThrow(new IllegalArgumentException("name is required"));
 
@@ -93,6 +101,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void updateSchoolMapsNotFoundMessageToNotFound() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("name", "Updated School");
         when(structure.updateSchool(404L, request)).thenThrow(new IllegalArgumentException("School not found"));
 
@@ -107,6 +116,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void upsertSchoolModuleParsesRequestAndDelegates() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of(
                 "enabled", true,
                 "plan", "premium",
@@ -152,6 +162,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void upsertSchoolModuleRejectsInvalidDateBeforeRepositoryAccess() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("startDate", "01-04-2026");
 
         assertThatThrownBy(() -> controller.upsertSchoolModule("tenant-token", 4L, "reports", request))
@@ -167,6 +178,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void schoolAdminFallsBackWhenNoAdminStatsExist() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         when(structure.schoolStats()).thenReturn(List.of());
 
         Object response = controller.schoolAdmin("tenant-token", 4L);
@@ -176,6 +188,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void schoolAdminUsesMatchingStatsRow() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         when(structure.schoolStats()).thenReturn(List.of(new SuperadminSchoolStatsRow(
                 4L,
                 "Delhi Public School",
@@ -197,6 +210,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void zoneReturnsNotFoundForMissingZone() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         when(zones.findById(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.zone("tenant-token", 404L))
@@ -210,6 +224,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void zonesMapsEntitiesToReadResponses() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         ZoneEntity zone = zone(7L, "North Zone", "NORTH");
         when(zones.findAllByOrderByNameAsc()).thenReturn(List.of(zone));
 
@@ -223,6 +238,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void assignZoneAdminDelegatesToZoneCommandRepository() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("userId", "44", "assignedBy", "9");
 
         controller.assignZoneAdmin("tenant-token", 7L, request);
@@ -232,6 +248,7 @@ class TenantSchoolControllerTest {
 
     @Test
     void retireZoneAdminsDelegatesToZoneCommandRepository() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("userIds", List.of("44", 45));
 
         controller.retireZoneAdmins("tenant-token", 7L, request);
