@@ -80,12 +80,14 @@
 - **Deliverable:** DB-enforced isolation on all tenant-scoped tables; tenant GUC transaction-local.
 - **Acceptance:** as `app_rt` with GUC=A, a raw `SELECT * FROM <table>` returns only tenant A; superadmin path uses a bypass policy/role; pooler verified to not leak GUC across requests.
 - **Effort:** Med–High · **Risk:** Med (test as `app_rt`, never as owner — owner silently bypasses) · **Deps:** 1.1, 1.2.
+- **Status (2026-06-30):** done for the clean `NOT NULL` tables (student/attendance/reporting) — see `docs/superpowers/plans/2026-06-30-rls-backstop.md`. **Follow-up (now unblocked by 1.4):** extend the same RLS backstop onto the 10 tenant-key tables 1.4 just hardened — see that plan's "Follow-up — RLS extension to the Task-1.4 tables" section. Carry-forwards from 1.4's final review: (1) make attendance `school_id` fail-loud instead of defaulting to `0` before enabling RLS on `attendance_daily`; (2) execute the runbook's orphan pre-check (children of deleted sections/students) before each `enable_rls` migration; (3) add `TenantAwareDataSource` to catalog/firefighting/workflow/fee (only student/attendance/reporting have it) and bring ff/wf backfill tests up to the Flyway-driven pattern.
 
 ### Task 1.4 — NOT NULL tenant keys + tenant-leading composite indexes — `MT-P1-1`
 - **Area:** forward Flyway migrations across services.
 - **Deliverable:** backfill the 16 nullable `school_id` columns from their owning rows; `SET NOT NULL`; ensure every tenant-scoped index/PK leads with `school_id` (`(school_id, …)`).
 - **Acceptance:** no nullable tenant columns remain on scoped tables; `EXPLAIN` shows index use on tenant-filtered queries (RLS perf: ~0.3ms vs ~120ms).
 - **Effort:** Med · **Risk:** Med (online backfill on live tables) · **Deps:** 1.3.
+- **Status (2026-06-30):** done — `phase1-tenant-keys` / PR #14 (`docs/superpowers/plans/2026-06-30-tenant-keys.md`). `school_id` now `NOT NULL` + tenant-leading-indexed on the 10 in-scope tables across catalog/reporting/firefighting/workflow/attendance/fee (2 via cross-schema backfill). Runbook: `docs/MICROSERVICE-TENANT-KEY-ROLLOUT-RUNBOOK.md`. RLS extension to these tables tracked under 1.3 Follow-up.
 
 ### Task 1.5 — BOLA regression suite in CI — `MT` CI gate / `SEC-P3-1`(partial)
 - **Area:** `scripts/smoke-*` + `.github/workflows/ci.yml`; new `scripts/audit-tenant-isolation.ps1` wired into `verify-microservice-migration.ps1`.

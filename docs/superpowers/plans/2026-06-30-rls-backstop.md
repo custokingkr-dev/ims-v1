@@ -415,3 +415,27 @@ Expected: all three green, including the new RLS integration tests (which run be
 - `BeanPostProcessor` wrapping the wrong datasource → it wraps any `DataSource` bean; Flyway's datasource is internal (not a bean) so only the app pool is wrapped. If a service ever exposes a second DataSource bean, the guard `!(bean instanceof TenantAwareDataSource)` prevents double-wrap but both would be wrapped — revisit if that arises (none in scope).
 - Docker absent in some CI lane → the assumption skips the test (no false failure); CI with docker-compose runs it.
 - Deferred tables (fee/derived/nullable) have no DB backstop yet → app-layer (1.2) covers them until Task 1.4.
+
+---
+
+## Follow-up — RLS extension to the Task-1.4 (tenant-key) tables
+
+> Added 2026-06-30 after Task 1.4 (`docs/superpowers/plans/2026-06-30-tenant-keys.md`, branch `phase1-tenant-keys`, PR #14) made `school_id` `NOT NULL` + denormalized + tenant-leading-indexed on the remaining scoped tables. Those tables are now eligible for the same RLS backstop pattern this plan established. This section is the seed for that extension work — it is NOT yet implemented.
+
+**Now-eligible tables** (all have `NOT NULL school_id` after Task 1.4):
+- catalog: `catalog_orders`, `annual_plan_items`
+- reporting: `command_center_actions` (feed/inbox **stay NULLABLE** — NULL = platform-wide; still excluded)
+- firefighting: `firefighting_requests`, `ff_quotations`
+- workflow: `workflow_instances`, `workflow_actions`
+- attendance: `attendance_daily`
+- fee: `fee_assignments`, `payment_records` (`fee_bands`/`fee_items` remain global — excluded)
+
+**Per-service prerequisite — `TenantAwareDataSource`:** Tasks 1–3 of this plan added the GUC-setting `TenantAwareDataSource` + `TenantDataSourceConfig` only to **student, attendance, reporting**. attendance + reporting already have it; **catalog, firefighting, workflow, fee do NOT** and must get the copy step (Task 2 "Copy step" form) before their `enable_rls` migration ships, or `app_rt` queries return 0 rows. Each table then gets the standard `ENABLE ROW LEVEL SECURITY` + `tenant_isolation` policy migration (same USING/WITH CHECK form as Task 1 Step 6) and an `app_rt` `*RlsIntegrationTest`. Two-phase rollout per the RLS runbook (datasource release, then migration release).
+
+### Carry-forward items from the Task 1.4 final review (must be addressed by this extension)
+
+1. **[Important — fix before enabling RLS on `attendance_daily`] Fail-loud instead of defaulting `school_id` to 0.** `services/attendance-service/src/main/java/com/custoking/ims/attendanceservice/persistence/AttendanceReadRepository.java:432` binds `longNum(section.get("schoolId"), 0)` into the `attendance_daily` INSERT. The path is unreachable today (a section always has a school), but once RLS is enabled a stray `school_id = 0` row is invisible to **every** real tenant and never reconciled. Change to fail-loud (throw / `requirePositive`) when a section has no school **before** the `attendance_daily` RLS policy goes live.
+
+2. **[Pre-cutover gate] Reconcile orphaned/mis-scoped children before enabling RLS.** The two cross-schema backfills (attendance_daily ← `tenant_school.school_sections`; fee_assignments/payment_records ← `student.students`) derive `school_id` from a parent that may have been deleted/archived. Task 1.4's `SET NOT NULL` already rejects rows the backfill left NULL, so the tenant-key runbook's orphan pre-check (`docs/MICROSERVICE-TENANT-KEY-ROLLOUT-RUNBOOK.md`, "investigate orphans before Release 2") **must actually be executed**: a child whose `school_id` was backfilled from the wrong/deleted parent would be mis-scoped under RLS (visible to the wrong tenant or to none). Verify zero orphans/mis-scoped rows per table before each `enable_rls` migration.
+
+3. **[Test rigor] Bring firefighting/workflow backfill tests up to the Flyway-driven pattern.** `FirefightingTenantKeyMigrationTest.java:103` and `WorkflowTenantKeyMigrationTest.java:120` exercise their same-schema backfill via a hand-copied `UPDATE` string rather than letting Flyway run the migration (attendance/fee added a Flyway-driven guard-TRUE-path test). When this extension adds the RLS migrations/tests for those tables, follow the attendance/fee pattern so the migration's own backfill/policy is what the test proves. Low-value on its own (trivial same-schema SQL) but cheap to fold in here.
