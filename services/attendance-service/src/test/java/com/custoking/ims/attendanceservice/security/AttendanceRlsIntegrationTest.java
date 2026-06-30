@@ -144,6 +144,12 @@ class AttendanceRlsIntegrationTest {
     }
 
     @Test
+    void dailyRows_superadmin_seesAll() throws Exception {
+        TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+        assertEquals(3, countDaily());
+    }
+
+    @Test
     void dailyRows_noContext_seesNothing() throws Exception {
         TenantContext.clear();
         assertEquals(0, countDaily());
