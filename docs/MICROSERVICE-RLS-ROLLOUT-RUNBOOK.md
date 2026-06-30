@@ -256,23 +256,76 @@ Following the Task 1.4 NOT NULL denormalization (branch `phase1-tenant-keys`), R
 
 The same hazard as Phase 1.3 applies: if an `enable_rls` migration runs before all live instances have `TenantAwareDataSource` deployed, those old instances issue queries with no GUC set → USING clause evaluates to NULL → **zero rows returned for all tenant requests** (silent data-loss, not an error).
 
-**Safe prod sequence — four newly-datasourced services (catalog, firefighting, workflow, fee):**
+**Bundled-artifact constraint (catalog, firefighting, workflow, fee only):** For these four services, `TenantAwareDataSource` and the `enable_rls` migration are committed together in the **same JAR**. Because `application.yml` sets `spring.flyway.enabled: true` with no `target` pin, Flyway applies ALL pending migrations — including `enable_rls` — the moment the first new container boots. Simply deploying the new image does not split the datasource code from the migration; without an explicit Flyway gate the migration runs in Release 1, before old (pre-datasource) instances finish draining. The procedure below enforces the split via a Flyway disable/re-enable cycle.
 
-#### Release 1 — Deploy `TenantAwareDataSource` to the four new services (no schema migration)
+`attendance-service` and `reporting-service` are NOT subject to this constraint — their `TenantAwareDataSource` has been live in production since the Phase 1.3 backstop deploy. Every currently-running instance of those services already sets the GUC, so their `enable_rls` migrations (attendance `V6`, reporting `V8`) can ship in a single release with no Flyway gating.
 
-1. Build and deploy the updated image for each of catalog-service, firefighting-service, workflow-service, and fee-service. The `V…__enable_rls.sql` migration file is present in the JAR but Flyway will not run it yet (RLS is not yet enabled on those tables).
-2. Wait for a **full rolling replacement** (Cloud Run: new revision reaches 100% traffic, no old instances remain).
-3. Smoke-test each service — data must be returned normally (GUC is set harmlessly; RLS not yet active).
+---
 
-attendance-service and reporting-service already have `TenantAwareDataSource` from the Phase 1.3 deploy; they may proceed directly to Release 2.
+#### Release 1 — Deploy `TenantAwareDataSource` to the four new-datasource services with Flyway DISABLED
 
-#### Release 2 — Ship the `enable_rls` migrations
+**Applies to:** catalog-service, firefighting-service, workflow-service, fee-service only.
 
-1. Trigger redeployment (or a Flyway-only migration run) for each service. Flyway connects as `appuser` and applies `V…__enable_rls.sql`.
-2. Because ALL instances are already running `TenantAwareDataSource`, every subsequent `app_rt` query correctly sets `app.current_school_id` before hitting the now-RLS-enabled table.
-3. Smoke-test: confirm tenant A sees only tenant A rows; superadmin sees all.
+**Before deploying, set one of the following on the Cloud Run service configuration for each of the four services:**
 
-**Never ship a service's `enable_rls` migration before its datasource Release 1 is fully rolled out.**
+Option A — disable Flyway entirely for this release:
+```
+SPRING_FLYWAY_ENABLED=false
+```
+
+Option B — pin Flyway to the last pre-RLS version (prevents only the `enable_rls` migration from running while all prior migrations can still apply):
+
+| Service | Pre-RLS Flyway target | `enable_rls` migration being held back |
+|---|---|---|
+| catalog-service | `SPRING_FLYWAY_TARGET=3` | `V4__enable_rls.sql` |
+| firefighting-service | `SPRING_FLYWAY_TARGET=4` | `V5__enable_rls.sql` |
+| workflow-service | `SPRING_FLYWAY_TARGET=4` | `V5__enable_rls.sql` |
+| fee-service | `SPRING_FLYWAY_TARGET=6` | `V7__enable_rls.sql` |
+
+Spring Boot maps `SPRING_FLYWAY_ENABLED` → `spring.flyway.enabled` and `SPRING_FLYWAY_TARGET` → `spring.flyway.target` via its relaxed binding; no `application.yml` changes are needed.
+
+**Steps:**
+
+1. Set `SPRING_FLYWAY_ENABLED=false` (or the appropriate `SPRING_FLYWAY_TARGET`) on each of the four services in Cloud Run.
+2. Deploy the new JAR image. Flyway is suppressed; the bundled `enable_rls` migration does NOT run. `TenantAwareDataSource` is now active and begins setting the GUC on every connection borrow.
+3. Wait for a **full rolling replacement**: Cloud Run new revision reaches 100% traffic; no old instances remain. Verify with `gcloud run services describe <svc> --region <region>` until `latestReadyRevision == latestCreatedRevision`.
+4. Smoke-test each service — data must be returned normally (GUC is now set on all connections; RLS not yet active on these tables).
+
+No schema change occurs during Release 1 for these four services.
+
+---
+
+#### Release 2 — Re-enable Flyway and apply the `enable_rls` migrations
+
+**Run the §10.3 orphan/mis-scope pre-check BEFORE this release.**
+
+**Applies to:** catalog-service, firefighting-service, workflow-service, fee-service (Flyway gate removal) **and** attendance-service, reporting-service (single-release, no prior gating needed).
+
+**Steps (four new-datasource services):**
+
+1. Remove the `SPRING_FLYWAY_ENABLED=false` override (or remove the `SPRING_FLYWAY_TARGET` pin) from the Cloud Run service configuration.
+2. Redeploy the **same JAR** (no new build required). Flyway now runs normally and applies the previously-held `enable_rls` migration as `appuser`.
+3. Because ALL running instances are already running `TenantAwareDataSource` (installed in Release 1), every subsequent `app_rt` query correctly sets `app.current_school_id` before hitting the now-RLS-enabled table.
+4. Smoke-test: confirm tenant A sees only tenant A rows; superadmin sees all.
+
+**Steps (attendance-service, reporting-service):**
+
+These two services need only a single release — deploy the new JAR normally with no Flyway flag changes. Every currently-running instance already sets the GUC (Phase 1.3), so `V6__enable_rls.sql` (attendance) and `V8__enable_rls.sql` (reporting) are safe to apply on first boot of the new revision. Follow the same smoke-test.
+
+---
+
+**Summary table:**
+
+| Service | Release 1 | Release 2 | Reason |
+|---|---|---|---|
+| catalog-service | Deploy JAR + `SPRING_FLYWAY_ENABLED=false` (or `target=3`) | Redeploy same JAR, remove flag | Datasource + migration bundled in same JAR |
+| firefighting-service | Deploy JAR + `SPRING_FLYWAY_ENABLED=false` (or `target=4`) | Redeploy same JAR, remove flag | Datasource + migration bundled in same JAR |
+| workflow-service | Deploy JAR + `SPRING_FLYWAY_ENABLED=false` (or `target=4`) | Redeploy same JAR, remove flag | Datasource + migration bundled in same JAR |
+| fee-service | Deploy JAR + `SPRING_FLYWAY_ENABLED=false` (or `target=6`) | Redeploy same JAR, remove flag | Datasource + migration bundled in same JAR |
+| attendance-service | — (skip; single release) | Deploy JAR normally | `TenantAwareDataSource` live since Phase 1.3 |
+| reporting-service | — (skip; single release) | Deploy JAR normally | `TenantAwareDataSource` live since Phase 1.3 |
+
+**Never ship a service's `enable_rls` migration before its datasource is confirmed live on 100% of instances.**
 
 ### 10.3 Pre-Cutover Orphan / Mis-Scope Check (carry-forward #2)
 
