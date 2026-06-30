@@ -45,6 +45,12 @@ These tables already had a `school_id` column. The migration verifies zero NULLs
 > **catalog-service** and **reporting-service** are Group-A-only services (no Group-B
 > tables). Their migration applies the SET NOT NULL directly and atomically after a
 > verified-zero pre-check. No Flyway `target` staging is needed for these two.
+>
+> **workflow-service** and **firefighting-service** also apply their Group-A SET NOT NULL
+> in Release 1 (V3 does both the Group-A parent constraint and the Group-B child
+> denormalize/backfill/index in one migration). The Flyway `target=3` staging for these
+> two services exists solely to hold back V4's Group-B child SET NOT NULL until Release 2;
+> it does NOT defer the Group-A constraint — that fires in V3, inside Release 1.
 
 ### Group B — Denormalize `school_id`, backfill, index, then SET NOT NULL
 
@@ -107,7 +113,10 @@ Before any SET NOT NULL migration runs against a production database, confirm ze
 on every in-scope table. Run these queries directly on the Cloud SQL instance via `psql`
 or the Cloud SQL Studio console.
 
-### Group A — run before Release 1 (catalog and reporting) or before Release 2 (workflow and firefighting)
+### Group A — run before Release 1 (all five tables)
+
+All five Group-A SET NOT NULL constraints land in Release 1 (V3 for catalog/workflow/firefighting;
+V7 for reporting). Run these checks before deploying Release 1 for any of these services.
 
 ```sql
 -- catalog-service
@@ -117,10 +126,10 @@ SELECT count(*) FROM catalog.annual_plan_items WHERE school_id IS NULL;
 -- reporting-service
 SELECT count(*) FROM reporting.command_center_actions WHERE school_id IS NULL;
 
--- workflow-service (run after Release 1 backfill, before Release 2)
+-- workflow-service (V3 applies SET NOT NULL on workflow_instances in Release 1)
 SELECT count(*) FROM workflow.workflow_instances WHERE school_id IS NULL;
 
--- firefighting-service (run after Release 1 backfill, before Release 2)
+-- firefighting-service (V3 applies SET NOT NULL on firefighting_requests in Release 1)
 SELECT count(*) FROM firefighting.firefighting_requests WHERE school_id IS NULL;
 ```
 
@@ -188,8 +197,8 @@ catalog and reporting deploy their complete single migration now.
 
 1. Set `SPRING_FLYWAY_TARGET` per service as described in the table above.
 2. Deploy the Release 1 image for each service. Flyway will apply:
-   - firefighting: V3 (requests NOT NULL already present; ff_quotations ADD + backfill + index).
-   - workflow: V3 (instances NOT NULL already present; workflow_actions ADD + backfill + index).
+   - firefighting: V3 applies SET NOT NULL on firefighting_requests (column pre-existed; NULL pre-check required before Release 1) and adds + backfills + indexes ff_quotations.
+   - workflow: V3 applies SET NOT NULL on workflow_instances (column pre-existed; NULL pre-check required before Release 1) and adds + backfills + indexes workflow_actions.
    - attendance: V4 (attendance_daily ADD + backfill + index).
    - fee: V5 (fee_assignments + payment_records ADD + backfill + indexes).
    - catalog: V3 (atomic catalog_orders + annual_plan_items SET NOT NULL — after pre-check).
