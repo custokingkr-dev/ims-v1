@@ -71,6 +71,75 @@ class FirefightingTenantKeyMigrationTest {
         }
     }
 
+    // ── Part 2a: V3 guard TRUE-path — backfill performed BY the migration ───────
+    /**
+     * Closes the coverage gap where the existing Part-2 test runs Flyway to target('3')
+     * and then re-runs the UPDATE manually via JDBC.  That means the real guarded UPDATE
+     * inside V3 is never exercised by tests.
+     *
+     * This test seeds a firefighting_requests parent (school=10) and an ff_quotations
+     * child (no school_id column yet) BEFORE running V3, so Flyway's own execution of
+     * V3 performs the backfill UPDATE itself.
+     */
+    @Test
+    void v3_backfill_performedByMigration() throws Exception {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
+
+        try (PostgreSQLContainer<?> pg3 =
+                new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner")) {
+            pg3.start();
+
+            // Step 1: migrate to V2 — ff_quotations exists but has no school_id column yet
+            Flyway.configure()
+                    .dataSource(pg3.getJdbcUrl(), "owner", "owner")
+                    .schemas("firefighting")
+                    .defaultSchema("firefighting")
+                    .locations("classpath:db/migration")
+                    .target("2")
+                    .load()
+                    .migrate();
+
+            try (Connection c = DriverManager.getConnection(pg3.getJdbcUrl(), "owner", "owner")) {
+                // Step 2: seed a firefighting_requests parent with school_id=10
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO firefighting.firefighting_requests" +
+                        "(code, estimated_budget, school_id, version) VALUES ('REQ-GUARD', 0, 10, 0)")) {
+                    ps.executeUpdate();
+                }
+
+                // Step 3: seed an ff_quotations child — no school_id column exists yet at V2
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO firefighting.ff_quotations" +
+                        "(id, amount, is_custoking, is_recommended, request_id) " +
+                        "VALUES ('Q-GUARD', 0, false, false, 'REQ-GUARD')")) {
+                    ps.executeUpdate();
+                }
+            }
+
+            // Step 4: run V3 — adds school_id column and backfills it from the parent request
+            Flyway.configure()
+                    .dataSource(pg3.getJdbcUrl(), "owner", "owner")
+                    .schemas("firefighting")
+                    .defaultSchema("firefighting")
+                    .locations("classpath:db/migration")
+                    .target("3")
+                    .load()
+                    .migrate();
+
+            // Step 5: assert school_id was populated BY THE MIGRATION's own UPDATE,
+            // not by any hand-copied SQL in test code
+            try (Connection c = DriverManager.getConnection(pg3.getJdbcUrl(), "owner", "owner");
+                 PreparedStatement ps = c.prepareStatement(
+                         "SELECT school_id FROM firefighting.ff_quotations WHERE id = 'Q-GUARD'")) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertTrue(rs.next(), "ff_quotations row Q-GUARD must exist after V3");
+                    assertEquals(10L, rs.getLong(1),
+                            "ff_quotations.school_id must be 10 after V3 migration performed the backfill");
+                }
+            }
+        }
+    }
+
     // ── Part 2: backfill logic (fresh container, target V3) ──────────────────
     @Test
     void backfill_quotationInheritsSchoolId_fromParentRequest() throws Exception {
