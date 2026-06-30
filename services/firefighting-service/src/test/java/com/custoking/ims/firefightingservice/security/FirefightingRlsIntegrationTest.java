@@ -47,6 +47,13 @@ class FirefightingRlsIntegrationTest {
                     "('FF-001', 0, 10, 0)," +
                     "('FF-002', 0, 10, 0)," +
                     "('FF-003', 0, 20, 0)");
+
+            // Seed ff_quotations: 2 rows for school 10, 1 row for school 20 — reusing parent codes above.
+            st.execute("INSERT INTO firefighting.ff_quotations" +
+                    "(id, amount, is_custoking, is_recommended, request_id, school_id) VALUES " +
+                    "('Q-001', 1000, false, false, 'FF-001', 10)," +
+                    "('Q-002', 2000, false, true,  'FF-002', 10)," +
+                    "('Q-003', 3000, true,  false, 'FF-003', 20)");
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -75,6 +82,15 @@ class FirefightingRlsIntegrationTest {
         }
     }
 
+    private long countQuotations() throws SQLException {
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT count(*) FROM firefighting.ff_quotations")) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+
     @Test
     void schoolA_seesOnlyItsRows() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
@@ -97,6 +113,12 @@ class FirefightingRlsIntegrationTest {
     void noContext_seesNothing() throws Exception {
         TenantContext.clear();
         assertEquals(0, countRows());
+    }
+
+    @Test
+    void ffQuotations_schoolA_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        assertEquals(2, countQuotations());
     }
 
     @Test
