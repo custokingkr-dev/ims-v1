@@ -47,6 +47,13 @@ class CatalogRlsIntegrationTest {
                     "('o1','STATIONERY',1000,180,1180,10,0)," +
                     "('o2','NOTEBOOKS',2000,360,2360,10,0)," +
                     "('o3','UNIFORMS',3000,540,3540,20,0)");
+
+            // Seed annual_plan_items: 2 rows for school 10, 1 row for school 20.
+            st.execute("INSERT INTO catalog.annual_plan_items " +
+                    "(id, estimated_amount, school_id, academic_year_id) VALUES " +
+                    "('ap1', 5000, 10, 'AY-2025')," +
+                    "('ap2', 6000, 10, 'AY-2025')," +
+                    "('ap3', 7000, 20, 'AY-2025')");
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -75,6 +82,15 @@ class CatalogRlsIntegrationTest {
         }
     }
 
+    private long countAnnualPlanItems() throws SQLException {
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT count(*) FROM catalog.annual_plan_items")) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+
     @Test
     void schoolA_seesOnlyItsRows() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
@@ -97,6 +113,12 @@ class CatalogRlsIntegrationTest {
     void noContext_seesNothing() throws Exception {
         TenantContext.clear();
         assertEquals(0, countRows());
+    }
+
+    @Test
+    void annualPlanItems_schoolA_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        assertEquals(2, countAnnualPlanItems());
     }
 
     @Test
