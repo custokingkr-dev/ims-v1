@@ -73,6 +73,84 @@ class AttendanceTenantKeyMigrationTest {
         }
     }
 
+    // ── Part 3: V4 guard TRUE-path — backfill performed BY the migration ────────
+    /**
+     * Closes the coverage gap where the existing Part-2 test runs Flyway to target('4')
+     * WITHOUT tenant_school.school_sections present (guard evaluates FALSE, UPDATE is
+     * skipped), then re-runs the UPDATE manually via JDBC.  That means the real guarded
+     * UPDATE inside V4 is never exercised by tests.
+     *
+     * This test seeds tenant_school.school_sections BEFORE running V4, so the DO-block
+     * guard resolves TRUE and Flyway's own execution of V4 performs the backfill.
+     */
+    @Test
+    void v4_guard_truePath_backfill_performedByMigration() throws Exception {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
+
+        try (PostgreSQLContainer<?> pg3 =
+                new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner")) {
+            pg3.start();
+
+            // Step 1: migrate to V3 — attendance_daily exists but school_id column does NOT yet
+            Flyway.configure()
+                    .dataSource(pg3.getJdbcUrl(), "owner", "owner")
+                    .schemas("attendance")
+                    .defaultSchema("attendance")
+                    .locations("classpath:db/migration")
+                    .target("3")
+                    .load()
+                    .migrate();
+
+            try (Connection c = DriverManager.getConnection(pg3.getJdbcUrl(), "owner", "owner")) {
+                // Step 2: create tenant_school.school_sections stand-in BEFORE V4 runs,
+                // so the DO-block guard (to_regclass check) resolves TRUE during migration
+                try (Statement st = c.createStatement()) {
+                    st.execute("CREATE SCHEMA IF NOT EXISTS tenant_school");
+                    st.execute("CREATE TABLE tenant_school.school_sections " +
+                               "(id VARCHAR(255) PRIMARY KEY, school_id BIGINT)");
+                    st.execute("INSERT INTO tenant_school.school_sections(id, school_id) " +
+                               "VALUES ('sec-guard', 10)");
+                }
+
+                // Step 3: seed an attendance_daily row referencing the section above;
+                // school_id column does not exist yet (V4 adds it) so we omit it here
+                String dailyId = UUID.randomUUID().toString();
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO attendance.attendance_daily" +
+                        "(id, attendance_date, total_enrolled, present_count, absent_count," +
+                        " locked, school_class_id, section_id, academic_year_id)" +
+                        " VALUES (?, ?, 30, 25, 5, false, 'cls-guard', 'sec-guard', 'AY-2024')")) {
+                    ps.setString(1, dailyId);
+                    ps.setDate(2, java.sql.Date.valueOf(LocalDate.of(2024, 6, 1)));
+                    ps.executeUpdate();
+                }
+            }
+
+            // Step 4: run V4 — guard resolves TRUE, migration performs the backfill itself
+            Flyway.configure()
+                    .dataSource(pg3.getJdbcUrl(), "owner", "owner")
+                    .schemas("attendance")
+                    .defaultSchema("attendance")
+                    .locations("classpath:db/migration")
+                    .target("4")
+                    .load()
+                    .migrate();
+
+            // Step 5: assert school_id was populated BY THE MIGRATION's own UPDATE,
+            // not by any hand-copied SQL in test code
+            try (Connection c = DriverManager.getConnection(pg3.getJdbcUrl(), "owner", "owner");
+                 PreparedStatement ps = c.prepareStatement(
+                         "SELECT school_id FROM attendance.attendance_daily " +
+                         "WHERE section_id = 'sec-guard'")) {
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertTrue(rs.next(), "attendance_daily row must exist after V4");
+                    assertEquals(10L, rs.getLong(1),
+                            "school_id must be 10 after V4 migration performed the guarded backfill");
+                }
+            }
+        }
+    }
+
     // ── Part 2: cross-schema backfill (fresh container, target V4) ───────────
     /**
      * Verifies that the V4 backfill UPDATE correctly sets school_id on
