@@ -43,10 +43,12 @@ class AttendanceRlsIntegrationTest {
 
             // Seed attendance_daily rows first (FK parent for attendance_student_records).
             // school_id is now denormalized onto attendance_daily (V4/V5 migration).
+            // d1 + d3 → school 10 (A), d2 → school 20 (B): daily shape A=2, B=1, all=3.
             st.execute("INSERT INTO attendance.attendance_daily " +
                     "(id, attendance_date, total_enrolled, present_count, absent_count, locked, school_class_id, section_id, academic_year_id, school_id) VALUES " +
                     "('d1','2024-01-10',3,2,1,false,'c1','s1','y1',10)," +
-                    "('d2','2024-01-11',1,1,0,false,'c1','s2','y1',20)");
+                    "('d2','2024-01-11',1,1,0,false,'c1','s2','y1',20)," +
+                    "('d3','2024-01-12',2,1,1,false,'c1','s3','y1',10)");
 
             // Seed attendance_student_records: school 10 (A) x2, school 20 (B) x1 — as owner (bypasses RLS).
             st.execute("INSERT INTO attendance.attendance_student_records " +
@@ -77,6 +79,15 @@ class AttendanceRlsIntegrationTest {
         try (Connection c = appRt.getConnection();
              Statement st = c.createStatement();
              ResultSet rs = st.executeQuery("SELECT count(*) FROM attendance.attendance_student_records")) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+
+    private long countDaily() throws SQLException {
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT count(*) FROM attendance.attendance_daily")) {
             rs.next();
             return rs.getLong(1);
         }
@@ -114,6 +125,39 @@ class AttendanceRlsIntegrationTest {
                     "INSERT INTO attendance.attendance_student_records " +
                     "(id, attendance_daily_id, student_id, school_id, attendance_date, academic_year_id, class_id, section_id, status) " +
                     "VALUES ('rX','d2',999,20,'2024-01-11','y1','c1','s2','PRESENT')"));
+            assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
+        }
+    }
+
+    // ── attendance_daily RLS assertions ──────────────────────────────────────────
+
+    @Test
+    void dailyRows_schoolA_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        assertEquals(2, countDaily());
+    }
+
+    @Test
+    void dailyRows_schoolB_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        assertEquals(1, countDaily());
+    }
+
+    @Test
+    void dailyRows_noContext_seesNothing() throws Exception {
+        TenantContext.clear();
+        assertEquals(0, countDaily());
+    }
+
+    @Test
+    void withCheck_blocksCrossTenantDailyInsert() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            SQLException ex = assertThrows(SQLException.class, () -> st.execute(
+                    "INSERT INTO attendance.attendance_daily " +
+                    "(id, attendance_date, total_enrolled, present_count, absent_count, locked, " +
+                    " school_class_id, section_id, academic_year_id, school_id) " +
+                    "VALUES ('dX','2024-01-20',1,1,0,false,'c1','s9','y1',20)"));
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
         }
     }

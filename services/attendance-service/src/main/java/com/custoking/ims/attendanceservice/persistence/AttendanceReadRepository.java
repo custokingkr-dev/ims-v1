@@ -132,7 +132,7 @@ public class AttendanceReadRepository {
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
         }
-        Long sectionSchoolId = longNum(section.get("schoolId"), 0);
+        Long sectionSchoolId = requireSectionSchool(section, sectionId);
         if (schoolId != null && !schoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
@@ -194,7 +194,7 @@ public class AttendanceReadRepository {
                         "schoolId", rs.getLong("school_id")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Section not found"));
-        Long sectionSchoolId = longNum(section.get("schoolId"), 0);
+        Long sectionSchoolId = requireSectionSchool(section, sectionId);
         if (schoolId != null && sectionSchoolId != null && !schoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
@@ -225,7 +225,7 @@ public class AttendanceReadRepository {
         String academicYearId = currentAcademicYearId();
         Map<String, Object> schoolClass = classRecord(classId);
         Map<String, Object> section = sectionRecord(sectionId);
-        Long sectionSchoolId = longNum(section.get("schoolId"), 0);
+        Long sectionSchoolId = requireSectionSchool(section, sectionId);
         Long requestedSchoolId = request.containsKey("schoolId") ? longNum(request.get("schoolId"), 0) : null;
         if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
@@ -306,7 +306,7 @@ public class AttendanceReadRepository {
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
         }
-        Long sectionSchoolId = longNum(section.get("schoolId"), 0);
+        Long sectionSchoolId = requireSectionSchool(section, sectionId);
         Long requestedSchoolId = request.containsKey("schoolId") ? longNum(request.get("schoolId"), 0) : null;
         if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
@@ -383,7 +383,7 @@ public class AttendanceReadRepository {
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
         }
-        Long sectionSchoolId = longNum(section.get("schoolId"), 0);
+        Long sectionSchoolId = requireSectionSchool(section, sectionId);
         Long requestedSchoolId = request.containsKey("schoolId") ? longNum(request.get("schoolId"), 0) : null;
         if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
@@ -664,6 +664,16 @@ public class AttendanceReadRepository {
             throw new IllegalArgumentException("Invalid database identifier: " + identifier);
         }
         return identifier;
+    }
+
+    /** Package-private for unit testing; treat as private. */
+    Long requireSectionSchool(Map<String, Object> section, String sectionId) {
+        Long schoolId = longNum(section.get("schoolId"), 0);
+        if (schoolId == null || schoolId <= 0) {
+            throw new IllegalStateException(
+                    "Section " + sectionId + " has no owning school_id; cannot scope attendance");
+        }
+        return schoolId;
     }
 
     private String str(Object value, String fallback) {
