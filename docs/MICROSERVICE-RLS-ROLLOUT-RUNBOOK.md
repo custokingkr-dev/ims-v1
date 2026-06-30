@@ -223,3 +223,162 @@ Application-layer tenant enforcement (MT-P0-1) and the `app_rt` privilege model 
 - `scripts/audit-app-rt-privileges.ps1` — verify `app_rt` privilege posture (Phase 1.1 gate)
 - `scripts/verify-microservice-migration.ps1 -RunDbAudit` — full boundary + DB audit
 - `docs/ARCHITECTURE_REVIEW.md` § MT-P0-2 — principal review note on RLS backstop
+
+---
+
+## 10. RLS Extension to Task-1.4 Tables (2026-07-01)
+
+**Branch:** `phase1-rls-extension`
+
+Following the Task 1.4 NOT NULL denormalization (branch `phase1-tenant-keys`), RLS has been extended to the 10 newly-clean tenant-scoped tables across 6 services. The GUC contract, role architecture, and policy form are identical to Phase 1 (§2–§3 above).
+
+### 10.1 In-Scope Tables
+
+| Service | Schema | Tables covered | Migration |
+|---|---|---|---|
+| catalog-service | `catalog` | `catalog_orders`, `annual_plan_items` | `V4__enable_rls.sql` |
+| firefighting-service | `firefighting` | `firefighting_requests`, `ff_quotations` | `V5__enable_rls.sql` |
+| workflow-service | `workflow` | `workflow_instances`, `workflow_actions` | `V5__enable_rls.sql` |
+| fee-service | `fee` | `fee_assignments`, `payment_records` | `V7__enable_rls.sql` |
+| attendance-service | `attendance` | `attendance_daily` | `V6__enable_rls.sql` |
+| reporting-service | `reporting` | `command_center_actions` | `V8__enable_rls.sql` |
+
+**Services that NEWLY received `TenantAwareDataSource` on this branch:** catalog, firefighting, workflow, fee.
+`attendance` and `reporting` already had `TenantAwareDataSource` from the Phase 1.3 backstop work; their datasource configuration was not modified here.
+
+**Intentionally excluded (no RLS):**
+- `reporting.command_center_feed` and `reporting.reporting_event_inbox` — `school_id` is nullable (NULL = platform-wide projection); these tables are written by contextless Pub/Sub consumers and scheduled jobs. Enabling RLS would break those writers.
+- `fee.fee_bands` and `fee.fee_items` — global catalog rows, no per-tenant row scope.
+
+**Reporting gate finding:** `command_center_actions` has zero runtime INSERTs in production (only request-scoped UPDATEs + the V1 migration seed copy). RLS is safe on it; no table had to be deferred.
+
+### 10.2 Two-Phase Rollout
+
+The same hazard as Phase 1.3 applies: if an `enable_rls` migration runs before all live instances have `TenantAwareDataSource` deployed, those old instances issue queries with no GUC set → USING clause evaluates to NULL → **zero rows returned for all tenant requests** (silent data-loss, not an error).
+
+**Safe prod sequence — four newly-datasourced services (catalog, firefighting, workflow, fee):**
+
+#### Release 1 — Deploy `TenantAwareDataSource` to the four new services (no schema migration)
+
+1. Build and deploy the updated image for each of catalog-service, firefighting-service, workflow-service, and fee-service. The `V…__enable_rls.sql` migration file is present in the JAR but Flyway will not run it yet (RLS is not yet enabled on those tables).
+2. Wait for a **full rolling replacement** (Cloud Run: new revision reaches 100% traffic, no old instances remain).
+3. Smoke-test each service — data must be returned normally (GUC is set harmlessly; RLS not yet active).
+
+attendance-service and reporting-service already have `TenantAwareDataSource` from the Phase 1.3 deploy; they may proceed directly to Release 2.
+
+#### Release 2 — Ship the `enable_rls` migrations
+
+1. Trigger redeployment (or a Flyway-only migration run) for each service. Flyway connects as `appuser` and applies `V…__enable_rls.sql`.
+2. Because ALL instances are already running `TenantAwareDataSource`, every subsequent `app_rt` query correctly sets `app.current_school_id` before hitting the now-RLS-enabled table.
+3. Smoke-test: confirm tenant A sees only tenant A rows; superadmin sees all.
+
+**Never ship a service's `enable_rls` migration before its datasource Release 1 is fully rolled out.**
+
+### 10.3 Pre-Cutover Orphan / Mis-Scope Check (carry-forward #2)
+
+Before running each service's `enable_rls` migration, verify that no row has a `school_id` that disagrees with its parent's owning school. A mis-scoped row becomes visible to the **wrong tenant** under RLS.
+
+Run the following queries against the production Cloud SQL instance (each MUST return 0; investigate and repair any non-zero count before proceeding):
+
+```sql
+-- attendance_daily: school_id must match the section's owning school
+SELECT count(*) FROM attendance.attendance_daily ad
+  LEFT JOIN tenant_school.school_sections ss ON ss.id = ad.section_id
+ WHERE ad.school_id IS DISTINCT FROM ss.school_id;
+
+-- fee_assignments: school_id must match the assigned student's school
+SELECT count(*) FROM fee.fee_assignments fa
+  LEFT JOIN student.students s ON s.id = fa.student_id
+ WHERE fa.school_id IS DISTINCT FROM s.school_id;
+
+-- payment_records: school_id must match the paying student's school
+SELECT count(*) FROM fee.payment_records pr
+  LEFT JOIN student.students s ON s.id = pr.student_id
+ WHERE pr.school_id IS DISTINCT FROM s.school_id;
+```
+
+`catalog_orders`, `annual_plan_items`, `firefighting_requests`, `ff_quotations`, `workflow_instances`, `workflow_actions`, and `command_center_actions` derive `school_id` from same-schema parents or directly from the creating request context; the orphan/mis-scope risk is lower there, but a spot-check against the parent table's `school_id` column is still recommended before enabling RLS.
+
+### 10.4 Rollback
+
+RLS rollback is a **forward-only migration** (do not modify already-applied migration files). Add the next migration version in the affected service's history.
+
+#### catalog-service (`V5__disable_rls.sql`)
+
+```sql
+DROP POLICY IF EXISTS tenant_isolation ON catalog.catalog_orders;
+ALTER TABLE catalog.catalog_orders DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON catalog.annual_plan_items;
+ALTER TABLE catalog.annual_plan_items DISABLE ROW LEVEL SECURITY;
+```
+
+#### firefighting-service (`V6__disable_rls.sql`)
+
+```sql
+DROP POLICY IF EXISTS tenant_isolation ON firefighting.firefighting_requests;
+ALTER TABLE firefighting.firefighting_requests DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON firefighting.ff_quotations;
+ALTER TABLE firefighting.ff_quotations DISABLE ROW LEVEL SECURITY;
+```
+
+#### workflow-service (`V6__disable_rls.sql`)
+
+```sql
+DROP POLICY IF EXISTS tenant_isolation ON workflow.workflow_instances;
+ALTER TABLE workflow.workflow_instances DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON workflow.workflow_actions;
+ALTER TABLE workflow.workflow_actions DISABLE ROW LEVEL SECURITY;
+```
+
+#### fee-service (`V8__disable_rls.sql`)
+
+```sql
+DROP POLICY IF EXISTS tenant_isolation ON fee.fee_assignments;
+ALTER TABLE fee.fee_assignments DISABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS tenant_isolation ON fee.payment_records;
+ALTER TABLE fee.payment_records DISABLE ROW LEVEL SECURITY;
+```
+
+#### attendance-service (`V7__disable_rls.sql`)
+
+```sql
+DROP POLICY IF EXISTS tenant_isolation ON attendance.attendance_daily;
+ALTER TABLE attendance.attendance_daily DISABLE ROW LEVEL SECURITY;
+```
+
+#### reporting-service (`V9__disable_rls.sql`)
+
+```sql
+DROP POLICY IF EXISTS tenant_isolation ON reporting.command_center_actions;
+ALTER TABLE reporting.command_center_actions DISABLE ROW LEVEL SECURITY;
+```
+
+**After disabling RLS:** `app_rt` retains its DML grants and `TenantAwareDataSource` continues to set GUCs harmlessly. Application-layer tenant filtering (MT-P0-1) remains in effect. RLS is the backstop — disabling it does not remove all isolation.
+
+### 10.5 Verification
+
+Each of the 6 services ships a new `*RlsIntegrationTest` class (Testcontainers, runs as `app_rt`) proving the same five isolation assertions as Phase 1.3:
+
+| Service | Test class |
+|---|---|
+| catalog-service | `com.custoking.ims.catalogservice.security.CatalogRlsIntegrationTest` |
+| firefighting-service | `com.custoking.ims.firefightingservice.security.FirefightingRlsIntegrationTest` |
+| workflow-service | `com.custoking.ims.workflowservice.security.WorkflowRlsIntegrationTest` |
+| fee-service | `com.custoking.ims.feeservice.security.FeeRlsIntegrationTest` |
+| attendance-service | `com.custoking.ims.attendanceservice.security.AttendanceRlsIntegrationTest` |
+| reporting-service | `com.custoking.ims.reportingservice.security.ReportingCommandCenterRlsIntegrationTest` |
+
+Tests are automatically skipped if Docker is not available (`Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable())`).
+
+**Run all 6 services:**
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.11'; $env:Path="$env:JAVA_HOME\bin;$env:Path"
+powershell -ExecutionPolicy Bypass -File scripts\invoke-microservice-tests.ps1 -Services catalog-service,firefighting-service,workflow-service,fee-service,attendance-service,reporting-service
+```
+
+All six must be green including the new `*RlsIntegrationTest` classes before shipping Release 2 to production.
