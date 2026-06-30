@@ -164,11 +164,12 @@ public class FirefightingReadRepository {
         requireStatus(current, "DRAFT");
         String id = UUID.randomUUID().toString();
         String vendor = str(request.get("vendorName"), "Vendor");
+        Long schoolId = longValue(current.get("schoolId"), null);
         jdbc.sql("""
                 INSERT INTO ff_quotations(id, vendor_name, amount, delivery_timeline, notes, document_url,
-                                          is_custoking, is_recommended, created_at, request_id)
+                                          is_custoking, is_recommended, created_at, request_id, school_id)
                 VALUES (:id, :vendorName, :amount, :deliveryTimeline, :notes, :documentUrl,
-                        :isCustoking, false, :createdAt, :requestId)
+                        :isCustoking, false, :createdAt, :requestId, :schoolId)
                 """)
                 .param("id", id)
                 .param("vendorName", vendor)
@@ -179,6 +180,7 @@ public class FirefightingReadRepository {
                 .param("isCustoking", "Custoking".equalsIgnoreCase(vendor))
                 .param("createdAt", OffsetDateTime.now())
                 .param("requestId", code)
+                .param("schoolId", schoolId)
                 .update();
         return quotationMap(id);
     }
