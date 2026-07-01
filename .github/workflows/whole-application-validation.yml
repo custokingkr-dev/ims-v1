@@ -109,6 +109,7 @@ jobs:
         shell: pwsh
         run: |
           docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
+          if ($LASTEXITCODE -ne 0) { Write-Error "gateway enforce-mode recreate failed; not running the BOLA gate against a permissive gateway"; exit $LASTEXITCODE }
           ./scripts/verify-microservice-migration.ps1 -RunBolaAudit
 
       - name: Dump service logs on failure
