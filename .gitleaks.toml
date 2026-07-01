@@ -19,7 +19,11 @@ paths = [
 ]
 # Belt-and-suspenders: never treat obvious placeholder tokens as secrets,
 # even if they appear outside the example files above.
+# `*-test-jwt-secret-*` values are the ≥32-char dummy JWT secrets that
+# @SpringBootTest integration tests must supply to boot (test-only, never
+# production — real JWT secrets live in Secret Manager / gitignored .env).
 regexes = [
   '''replace_with[A-Za-z0-9_]*''',
   '''change_me[A-Za-z0-9_]*''',
+  '''[a-z-]*test-jwt-secret[-_A-Za-z0-9]*''',
 ]
