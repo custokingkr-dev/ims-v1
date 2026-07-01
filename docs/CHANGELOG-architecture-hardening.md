@@ -281,3 +281,50 @@ The custom guardrails are intentionally lighter than full Modulith verification 
 - Add login/account throttling backed by a distributed store for production.
 - Add OpenTelemetry traces and operational dashboards.
 - Revisit PostgreSQL RLS after tenant isolation integration tests are comprehensive.
+
+---
+
+Date: 2026-06-29
+Branch: phase0-stop-the-bleeding
+
+## app_rt Runtime Role Introduction (Phase 1 Task 1.1)
+
+### Summary
+
+Introduced a dedicated, unprivileged PostgreSQL runtime role `app_rt` to resolve the conflict between the single-`appuser` consolidation (previous branch) and the PostgreSQL RLS requirement identified in MT-P0-2 of the Architecture Review. This is a targeted partial reversal of the single-role consolidation: `appuser` is retained as the DDL-owning Flyway migration role; `app_rt` becomes the sole runtime connection role for all domain services.
+
+### What Changed
+
+- `scripts/create-app-rt-role.sql` — parameterized SQL that creates `app_rt` with `LOGIN NOCREATEROLE NOCREATEDB NOINHERIT NOBYPASSRLS`, `USAGE` + DML (`SELECT`, `INSERT`, `UPDATE`, `DELETE`) on all 12 domain schemas, and `USAGE` + `SELECT` on sequences. `ALTER DEFAULT PRIVILEGES` ensures future objects in each schema are automatically accessible. The script does not grant DDL or superuser-equivalent privileges. `app_rt` connects via the default PUBLIC CONNECT privilege; no explicit CONNECT grant is issued.
+- `scripts/audit-app-rt-privileges.sql` + `scripts/audit-app-rt-privileges.ps1` — audit that verifies `app_rt` exists, has no `BYPASSRLS`, holds no `cloudsqlsuperuser` membership, has `USAGE` on all expected schemas, and is denied DDL (CREATE TABLE).
+- `scripts/ensure-app-rt-local.ps1` — idempotent local provisioner that applies `create-app-rt-role.sql` against the local Docker Postgres container (with `owner=postgres`). The `SPRING_DATASOURCE_USERNAME` flip to `app_rt` for all 12 domain services is done in `docker-compose.yml`.
+- `docker-compose.yml` — all domain services updated to `SPRING_DATASOURCE_USERNAME: app_rt`.
+- `scripts/verify-microservice-migration.ps1` — the `app_rt runtime role privilege audit` step is now wired into the `-RunDbAudit` gate immediately after the `microservice DB boundary audit` step. The gate fails fast if `app_rt` is missing, over-privileged, or has `BYPASSRLS`.
+- `ARCHITECTURE_REVIEW.md` — resolution note added at the MT-P0-2 / single-`appuser` reconciliation point.
+
+### Role Attributes
+
+| Attribute | Value | Rationale |
+|---|---|---|
+| `BYPASSRLS` | `NO` | Must be subject to RLS policies — non-negotiable |
+| `SUPERUSER` | `NO` | No elevated DB-level privileges |
+| `CREATEROLE` / `CREATEDB` | `NO` | No DDL privileges |
+| `INHERIT` | `NO` | Prevents inadvertent privilege escalation via role inheritance |
+| `cloudsqlsuperuser` membership | None | Would bypass RLS on Cloud SQL — explicitly excluded |
+| DML on domain schemas | Yes (12 schemas) | All domain schemas granted `SELECT/INSERT/UPDATE/DELETE` + `USAGE` |
+| DDL (CREATE TABLE, etc.) | No | Owned by `appuser` only |
+
+### Rationale
+
+`appuser` (schema owner, `cloudsqlsuperuser` member on Cloud SQL) bypasses RLS by definition, making PostgreSQL RLS enforcement impossible while services connect as `appuser`. `app_rt` is the minimal-privilege alternative that can be subject to RLS `USING` / `WITH CHECK` policies. When RLS is enabled on tenant-scoped tables (MT-P0-2, SEC-P0-1), the application-layer `app_rt` connection enforces the policy automatically.
+
+### Verification
+
+- Positive gate: `powershell -ExecutionPolicy Bypass -File scripts\verify-microservice-migration.ps1 -RunDbAudit` — all steps pass including `app_rt runtime role privilege audit`.
+- Negative gate: `ALTER ROLE app_rt BYPASSRLS;` then re-run gate — fails at `app_rt runtime role privilege audit`; reverted to `NOBYPASSRLS` after test.
+
+### Not Changed / Deferred
+
+- PostgreSQL RLS policies on tenant-scoped tables are not yet enabled; `app_rt` is the prerequisite. RLS enablement is the next step (MT-P0-2).
+- PgBouncer transaction-mode GUC isolation (MT-P1-3) is explicitly deferred.
+- `appuser` password rotation / Flyway-only credential split in production: tracked separately under the prod cutover runbook (`scripts/invoke-create-app-rt-role-cloudsql.ps1`).

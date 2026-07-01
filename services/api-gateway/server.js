@@ -7,6 +7,33 @@ const PORT = Number(process.env.PORT || 80);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
 const CLOUD_RUN_AUTH = (process.env.GATEWAY_CLOUD_RUN_AUTH || 'auto').toLowerCase();
 
+// --- Edge security controls (Phase 0 / SEC-P0-2) ---
+// Strict CORS: an explicit origin allowlist; never `*` together with credentials.
+const CORS_ALLOWED_ORIGINS = (process.env.GATEWAY_CORS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
+const CORS_ALLOW_METHODS = process.env.GATEWAY_CORS_ALLOW_METHODS || 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
+const CORS_ALLOW_HEADERS = process.env.GATEWAY_CORS_ALLOW_HEADERS || 'Authorization,Content-Type,X-Request-ID';
+const CORS_MAX_AGE = process.env.GATEWAY_CORS_MAX_AGE || '600';
+
+// Security response headers (overridable so deployments can tune the CSP for the SPA).
+const CSP = process.env.GATEWAY_CSP
+  || "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+  + "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
+  + "frame-ancestors 'none'";
+const HSTS = process.env.GATEWAY_HSTS || 'max-age=63072000; includeSubDomains; preload';
+const REFERRER_POLICY = process.env.GATEWAY_REFERRER_POLICY || 'strict-origin-when-cross-origin';
+
+// Max request body size in bytes (0 disables the check). Default 5 MiB.
+const MAX_BODY_BYTES = Number(process.env.GATEWAY_MAX_BODY_BYTES || 5 * 1024 * 1024);
+
+// Global token-bucket rate limit, keyed by bearer token (else client IP). 0 RPS disables it.
+const RATE_LIMIT_RPS = Number(process.env.GATEWAY_RATE_LIMIT_RPS || 50);
+const RATE_LIMIT_BURST = Number(process.env.GATEWAY_RATE_LIMIT_BURST || 100);
+const RATE_LIMIT_MAX_KEYS = Number(process.env.GATEWAY_RATE_LIMIT_MAX_KEYS || 50_000);
+const rateBuckets = new Map();
+
 const upstreams = {
   frontend: envUrl('FRONTEND_UPSTREAM', 'http://frontend:80'),
   identity: envUrl('IDENTITY_UPSTREAM', 'http://identity-service:8080'),
@@ -126,8 +153,39 @@ const server = http.createServer(async (req, res) => {
     const requestId = req.headers['x-request-id'] || randomUUID();
     const parsed = new URL(req.url, 'http://gateway.local');
 
+    setSecurityHeaders(res);
+
     if (parsed.pathname === '/gateway-health') {
       sendJson(res, 200, { status: 'UP', service: 'custoking-api-gateway' });
+      return;
+    }
+
+    // CORS: reflect only allow-listed origins; answer (and gate) preflight here.
+    const corsDecision = applyCors(req, res);
+    if (req.method === 'OPTIONS' && req.headers['access-control-request-method']) {
+      if (corsDecision === 'allowed') {
+        res.setHeader('Access-Control-Allow-Methods', CORS_ALLOW_METHODS);
+        res.setHeader('Access-Control-Allow-Headers', CORS_ALLOW_HEADERS);
+        res.setHeader('Access-Control-Max-Age', CORS_MAX_AGE);
+        res.statusCode = 204;
+        res.end();
+        return;
+      }
+      sendJson(res, 403, { message: 'Origin not allowed' });
+      return;
+    }
+
+    // Global rate limit (token-bucket) before any upstream work.
+    const limit = checkRateLimit(req);
+    if (!limit.allowed) {
+      res.setHeader('Retry-After', String(limit.retryAfter));
+      sendJson(res, 429, { message: 'Too many requests' });
+      return;
+    }
+
+    // Reject oversized bodies before streaming them to an upstream.
+    if (bodyTooLarge(req)) {
+      sendJson(res, 413, { message: 'Payload too large' });
       return;
     }
 
@@ -357,6 +415,85 @@ function isResponseHopHeader(name) {
   ].includes(name.toLowerCase());
 }
 
+function setSecurityHeaders(res) {
+  res.setHeader('Strict-Transport-Security', HSTS);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', REFERRER_POLICY);
+  res.setHeader('Content-Security-Policy', CSP);
+}
+
+function isOriginAllowed(origin) {
+  return !!origin && CORS_ALLOWED_ORIGINS.includes(origin);
+}
+
+// Sets CORS response headers for allow-listed origins only.
+// Returns 'allowed' (origin on the list), 'blocked' (origin present but not listed), or 'none' (no Origin header).
+function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (!origin) return 'none';
+  if (isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+    return 'allowed';
+  }
+  return 'blocked';
+}
+
+function clientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return String(forwarded).split(',')[0].trim();
+  }
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+function rateLimitKey(req) {
+  const auth = req.headers.authorization || '';
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  if (match) return `tok:${match[1]}`;
+  return `ip:${clientIp(req)}`;
+}
+
+// Token-bucket limiter. `opts` (rps/burst/buckets/now) is for deterministic unit tests.
+function checkRateLimit(req, opts = {}) {
+  const rps = opts.rps !== undefined ? opts.rps : RATE_LIMIT_RPS;
+  const burst = opts.burst !== undefined ? opts.burst : RATE_LIMIT_BURST;
+  const buckets = opts.buckets || rateBuckets;
+  const now = opts.now !== undefined ? opts.now : Date.now();
+  if (!rps || rps <= 0) return { allowed: true };
+
+  const key = rateLimitKey(req);
+  let bucket = buckets.get(key);
+  if (!bucket) {
+    if (buckets.size >= RATE_LIMIT_MAX_KEYS) pruneRateBuckets(buckets, now);
+    bucket = { tokens: burst, last: now };
+    buckets.set(key, bucket);
+  }
+  const elapsedSeconds = Math.max(0, (now - bucket.last) / 1000);
+  bucket.tokens = Math.min(burst, bucket.tokens + elapsedSeconds * rps);
+  bucket.last = now;
+  if (bucket.tokens >= 1) {
+    bucket.tokens -= 1;
+    return { allowed: true };
+  }
+  return { allowed: false, retryAfter: Math.max(1, Math.ceil((1 - bucket.tokens) / rps)) };
+}
+
+// Drop buckets idle for >60s to bound memory under key churn (e.g. per-token keys).
+function pruneRateBuckets(buckets, now) {
+  for (const [key, bucket] of buckets) {
+    if (now - bucket.last > 60_000) buckets.delete(key);
+  }
+}
+
+function bodyTooLarge(req) {
+  if (!MAX_BODY_BYTES || MAX_BODY_BYTES <= 0) return false;
+  const length = Number(req.headers['content-length']);
+  return Number.isFinite(length) && length > MAX_BODY_BYTES;
+}
+
 function sendJson(res, status, payload) {
   res.statusCode = status;
   res.setHeader('content-type', 'application/json');
@@ -389,4 +526,11 @@ module.exports = {
   isRequestHopHeader,
   isResponseHopHeader,
   stringOrEmpty,
+  setSecurityHeaders,
+  isOriginAllowed,
+  applyCors,
+  clientIp,
+  rateLimitKey,
+  checkRateLimit,
+  bodyTooLarge,
 };
