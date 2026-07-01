@@ -10,20 +10,21 @@ title = "Custoking IMS gitleaks config"
 useDefault = true
 
 [allowlist]
-description = "Allow placeholder values in committed example env files."
+description = "Allow placeholder values in committed example env files and a documented test-only secret file."
 # Path regexes are matched against each file's path. Any *.env.example is a
 # template containing documented placeholders (e.g. APP_AADHAR_SECRET=replace_with_16plus),
 # not real credentials, so it should never be scanned for secrets.
+# The refresh-rotation @SpringBootTest supplies an inline ≥32-char DUMMY JWT
+# secret so the context boots (test-only, never production). Scope the
+# allowlist narrowly to THAT one test file rather than a repo-wide value regex,
+# so the scanner keeps full strength everywhere else.
 paths = [
   '''(^|/)\.env\.example$''',
+  '''(^|/)services/identity-service/src/test/java/com/custoking/ims/identityservice/application/IdentityAuthServiceReuseCommitIntegrationTest\.java$''',
 ]
 # Belt-and-suspenders: never treat obvious placeholder tokens as secrets,
 # even if they appear outside the example files above.
-# `*-test-jwt-secret-*` values are the ≥32-char dummy JWT secrets that
-# @SpringBootTest integration tests must supply to boot (test-only, never
-# production — real JWT secrets live in Secret Manager / gitignored .env).
 regexes = [
   '''replace_with[A-Za-z0-9_]*''',
   '''change_me[A-Za-z0-9_]*''',
-  '''[a-z-]*test-jwt-secret[-_A-Za-z0-9]*''',
 ]
