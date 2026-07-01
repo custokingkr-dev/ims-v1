@@ -13,6 +13,8 @@
 ## Global Constraints
 
 - **Harness = PowerShell against the running stack via the gateway.** Reuse the proven pattern in `scripts/smoke-microservice-features.ps1`: `POST /api/v1/auth/login {email,password}` → `$response.accessToken`; call endpoints with `Authorization: Bearer <token>`; send `X-Forwarded-For` on login (the gateway rate-limits by IP). PowerShell 5.1 syntax (no `&&`/ternary; `if/else`).
+- **The gateway MUST run in `GATEWAY_AUTH_MODE=enforce`.** This is discovered-and-required: at `services/api-gateway/server.js:194` the gateway only introspects the JWT and injects `X-Authenticated-School-Id` when `AUTH_MODE !== 'permissive'`. The local compose default is `permissive` (no tenant header → with RLS active every school-scoped query returns 0 rows → the gate can't demonstrate isolation, and even the positive baseline fails). Bring the stack (or at least the gateway) up with the committed overlay `docker-compose.bola.yml` (`GATEWAY_AUTH_MODE: enforce`): `docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway`. enforce is also the faithful prod config. Verified: in enforce mode admin-A sees its own student (200) and is denied the other tenant's (404); in permissive both return empty.
+- **Fresh-stack provisioning order (local + CI):** after `up`, run `scripts/ensure-app-rt-local.ps1` (grants `app_rt` USAGE+DML on all schemas — a fresh volume boots without these and login 500s "permission denied for schema identity") THEN `scripts/ensure-local-dev-users.ps1` (seed) THEN the gate. The gateway must be in enforce mode (overlay) before the gate runs.
 - **The gate fails closed.** A login/setup failure is an **infra error** (exit code `2`, distinct message) — never a silent pass. A detected leak or a baseline miss is a **gate failure** (exit code `1`). All probes isolated + baselines pass → exit `0`.
 - **Single source of truth for fixture ids.** The known ids the seed inserts and the gate probes MUST be identical constants: `SchoolA=1`, `SchoolB=2`, `StudentA=9000001`, `StudentB=9000002`, `OrderA='ord-bola-a'`, `OrderB='ord-bola-b'`, `FfA='ff-bola-a'`, `FfB='ff-bola-b'`. Define them in the gate script header; the seed SQL uses the same literals.
 - **Oracle (per probe type):**
@@ -364,14 +366,17 @@ if ($RunBolaAudit) {
 
 - [ ] **Step 2: Wire into CI (`.github/workflows/ci.yml`)**
 
-In the `microservice-runtime-test` job (which already boots `docker compose --profile full`), after the stack-health step and before/after the existing migration-boundary audit, add a required step:
+In the `microservice-runtime-test` job (which already boots `docker compose --profile full`), the stack must be brought up (or the gateway recreated) with the `docker-compose.bola.yml` overlay so it runs in `enforce` mode, then provisioned in order. Add a required step:
 ```yaml
       - name: BOLA tenant-isolation gate
         shell: pwsh
         run: |
+          docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
+          pwsh -File scripts/ensure-app-rt-local.ps1
           pwsh -File scripts/ensure-local-dev-users.ps1
           pwsh -File scripts/audit-tenant-isolation.ps1
 ```
+(If the job already provisions app_rt / seeds elsewhere, don't duplicate — just ensure the gateway is in enforce mode via the overlay and the gate runs after seeding. `ensure-app-rt-local.ps1` / `ensure-local-dev-users.ps1` are idempotent.)
 (Read the job's existing steps to match the runner shell — the repo uses PowerShell scripts; if the CI runner is Linux, `pwsh` is required and `ensure-local-dev-users.ps1`'s `docker exec custoking-postgres psql` path still works. Confirm the container name matches the compose service. If the job currently runs the gate via `verify-microservice-migration.ps1`, instead add `-RunBolaAudit` to that existing invocation rather than a new step — prefer reusing the verifier entrypoint.)
 
 - [ ] **Step 3: Run the verifier end-to-end with the new switch**
