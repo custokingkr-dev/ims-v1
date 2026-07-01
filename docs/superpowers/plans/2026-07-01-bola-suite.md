@@ -355,30 +355,29 @@ git commit -m "test(bola): list-param probes (marker + own-scope oracle) + cover
 
 - [ ] **Step 1: Add `-RunBolaAudit` to `verify-microservice-migration.ps1`**
 
-Read the script's existing switch handling (it already has `-RunDbAudit` / `-RunSmoke`). Add a `[switch]$RunBolaAudit` param and, mirroring how `-RunSmoke` invokes its script, a block that runs the seed then the gate and fails the verifier on non-zero:
+Read the script's existing switch handling (it already has `[switch]$RunDbAudit` at ~line 4 / `if ($RunDbAudit)` at ~137, and `[switch]$RunSmoke` ~line 6 / `if ($RunSmoke)` ~213). Add a `[switch]$RunBolaAudit` param and, mirroring those blocks, a block that provisions (idempotent) then runs the gate and fails on non-zero. The gate REQUIRES the gateway in enforce mode — the CALLER (CI step / local) brings the gateway up with the `docker-compose.bola.yml` overlay first; this block does the app_rt + seed + gate:
 ```powershell
 if ($RunBolaAudit) {
     Write-Host "== BOLA tenant-isolation gate ==" -ForegroundColor Cyan
-    & powershell -ExecutionPolicy Bypass -File "$PSScriptRoot/ensure-local-dev-users.ps1"
-    & powershell -ExecutionPolicy Bypass -File "$PSScriptRoot/audit-tenant-isolation.ps1"
+    & "$PSScriptRoot/ensure-app-rt-local.ps1"
+    & "$PSScriptRoot/ensure-local-dev-users.ps1"
+    & "$PSScriptRoot/audit-tenant-isolation.ps1"
     if ($LASTEXITCODE -ne 0) { throw "BOLA tenant-isolation gate failed (exit $LASTEXITCODE)" }
 }
 ```
-(Match the script's actual style/variable names for the failure path — read it first.)
+(Match the script's actual invocation style + failure-path convention — read it first; some blocks use `throw`, confirm.)
 
-- [ ] **Step 2: Wire into CI (`.github/workflows/ci.yml`)**
+- [ ] **Step 2: Wire into CI — `.github/workflows/whole-application-validation.yml`** (CORRECTED: there is NO `microservice-runtime-test` job in `ci.yml`; the stack-booting workflow is `whole-application-validation.yml`, whose `validate` job boots the services then runs `verify-microservice-migration.ps1 -RunDbAudit` + smokes at default/permissive gateway mode).
 
-In the `microservice-runtime-test` job (which already boots `docker compose --profile full`), the stack must be brought up (or the gateway recreated) with the `docker-compose.bola.yml` overlay so it runs in `enforce` mode, then provisioned in order. Add a required step:
+Make `-RunBolaAudit` (Step 1) self-provision: its block runs `ensure-app-rt-local.ps1` → `ensure-local-dev-users.ps1` → `audit-tenant-isolation.ps1` (idempotent), failing on non-zero. Then add ONE step to the `validate` job in `whole-application-validation.yml`, AFTER the existing "Smoke frontend-compatible microservice features" step (so recreating the gateway in enforce mode doesn't disturb the earlier permissive smokes) and before the "Dump service logs on failure" step:
 ```yaml
       - name: BOLA tenant-isolation gate
         shell: pwsh
         run: |
           docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
-          pwsh -File scripts/ensure-app-rt-local.ps1
-          pwsh -File scripts/ensure-local-dev-users.ps1
-          pwsh -File scripts/audit-tenant-isolation.ps1
+          ./scripts/verify-microservice-migration.ps1 -RunBolaAudit
 ```
-(If the job already provisions app_rt / seeds elsewhere, don't duplicate — just ensure the gateway is in enforce mode via the overlay and the gate runs after seeding. `ensure-app-rt-local.ps1` / `ensure-local-dev-users.ps1` are idempotent.)
+(The overlay recreates the gateway in `enforce` mode; `-RunBolaAudit` then provisions app_rt + seeds the two-tenant fixture + runs the gate. `custoking-postgres` is the container name the provisioning scripts expect, matching the workflow's `wait_healthy` names.)
 (Read the job's existing steps to match the runner shell — the repo uses PowerShell scripts; if the CI runner is Linux, `pwsh` is required and `ensure-local-dev-users.ps1`'s `docker exec custoking-postgres psql` path still works. Confirm the container name matches the compose service. If the job currently runs the gate via `verify-microservice-migration.ps1`, instead add `-RunBolaAudit` to that existing invocation rather than a new step — prefer reusing the verifier entrypoint.)
 
 - [ ] **Step 3: Run the verifier end-to-end with the new switch**
