@@ -1,8 +1,12 @@
 package com.custoking.ims.studentservice.api;
 
+import com.custoking.ims.studentservice.api.dto.CreateStudentRequest;
+import com.custoking.ims.studentservice.api.dto.InitiateIdCardReviewRequest;
+import com.custoking.ims.studentservice.api.dto.InitiateFullNameReviewRequest;
 import com.custoking.ims.studentservice.persistence.StudentReadRepository;
 import com.custoking.ims.studentservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.studentservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.nio.charset.StandardCharsets;
@@ -85,10 +90,34 @@ public class StudentReadController {
     @PostMapping
     public Map<String, Object> create(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateStudentRequest req) {
         requireToken(token, "student:write");
-        applyResolvedSchool(request);
-        return execute(() -> students.createStudent(request));
+        Map<String, Object> params = new HashMap<>();
+        params.put("admissionNumber", req.admissionNumber());
+        params.put("admissionNo", req.admissionNumber());
+        params.put("fullName", req.fullName());
+        params.put("schoolId", req.schoolId());
+        if (req.gradeLevel() != null) params.put("gradeLevel", req.gradeLevel());
+        if (req.className() != null) params.put("className", req.className());
+        if (req.sectionName() != null) params.put("sectionName", req.sectionName());
+        if (req.rollNo() != null) params.put("rollNo", req.rollNo());
+        if (req.boardRegistrationNumber() != null) params.put("boardRegistrationNumber", req.boardRegistrationNumber());
+        if (req.dateOfBirth() != null) params.put("dateOfBirth", req.dateOfBirth());
+        if (req.gender() != null) params.put("gender", req.gender());
+        if (req.fatherName() != null) params.put("fatherName", req.fatherName());
+        if (req.fatherContactNumber() != null) params.put("fatherContactNumber", req.fatherContactNumber());
+        if (req.fatherContact() != null) params.put("fatherContact", req.fatherContact());
+        if (req.motherName() != null) params.put("motherName", req.motherName());
+        if (req.phone() != null) params.put("phone", req.phone());
+        if (req.houseNumber() != null) params.put("houseNumber", req.houseNumber());
+        if (req.street() != null) params.put("street", req.street());
+        if (req.locality() != null) params.put("locality", req.locality());
+        if (req.city() != null) params.put("city", req.city());
+        if (req.state() != null) params.put("state", req.state());
+        if (req.pinCode() != null) params.put("pinCode", req.pinCode());
+        if (req.photoUrl() != null) params.put("photoUrl", req.photoUrl());
+        applyResolvedSchool(params);
+        return execute(() -> students.createStudent(params));
     }
 
     @PostMapping("/{id}/photo")
@@ -162,10 +191,17 @@ public class StudentReadController {
     @PostMapping("/reviews/id-card/initiate")
     public Map<String, Object> initiateIdCardReview(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody InitiateIdCardReviewRequest req) {
         requireToken(token, "student:write");
-        applyResolvedSchool(request);
-        return execute(() -> students.initiateIdCardReview(request));
+        Map<String, Object> params = new HashMap<>();
+        params.put("schoolId", req.schoolId());
+        params.put("actorId", req.actorId());
+        params.put("dueDate", req.dueDate());
+        params.put("classIds", req.classIds());
+        params.put("sectionIds", req.sectionIds());
+        params.put("assignedToUserId", req.assignedToUserId());
+        applyResolvedSchool(params);
+        return execute(() -> students.initiateIdCardReview(params));
     }
 
     @GetMapping("/reviews/id-card/status")
@@ -180,10 +216,17 @@ public class StudentReadController {
     @PostMapping("/reviews/full-name/initiate")
     public Map<String, Object> initiateFullNameVerification(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody InitiateFullNameReviewRequest req) {
         requireToken(token, "student:write");
-        applyResolvedSchool(request);
-        return execute(() -> students.initiateFullNameVerification(request));
+        Map<String, Object> params = new HashMap<>();
+        params.put("schoolId", req.schoolId());
+        params.put("actorId", req.actorId());
+        params.put("dueDate", req.dueDate());
+        params.put("verifier", req.verifier());
+        params.put("classIds", req.classIds());
+        params.put("sectionIds", req.sectionIds());
+        applyResolvedSchool(params);
+        return execute(() -> students.initiateFullNameVerification(params));
     }
 
     @GetMapping("/reviews/full-name/status")
