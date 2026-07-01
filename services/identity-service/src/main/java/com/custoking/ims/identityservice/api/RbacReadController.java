@@ -128,8 +128,8 @@ public class RbacReadController {
             @Valid @RequestBody UpdateRoleRequest req) {
         requireToken(token, "identity:write");
         Map<String, Object> body = new HashMap<>();
-        body.put("description", req.description());
-        body.put("permissions", req.permissions());
+        if (req.description() != null) body.put("description", req.description());
+        if (req.permissions() != null) body.put("permissions", req.permissions());
         body.put("actorId", req.actorId());
         return commands.updateRole(roleId, body);
     }
