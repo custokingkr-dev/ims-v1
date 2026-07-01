@@ -1,6 +1,10 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.api.dto.AssignPlatformRoleRequest;
+import com.custoking.ims.identityservice.api.dto.AssignSchoolRoleRequest;
+import com.custoking.ims.identityservice.api.dto.AssignZoneRoleRequest;
 import com.custoking.ims.identityservice.api.dto.CreateRoleRequest;
+import com.custoking.ims.identityservice.api.dto.UpdateRoleRequest;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
@@ -121,8 +125,12 @@ public class RbacReadController {
     public Object updateRole(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long roleId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody UpdateRoleRequest req) {
         requireToken(token, "identity:write");
+        Map<String, Object> body = new HashMap<>();
+        body.put("description", req.description());
+        body.put("permissions", req.permissions());
+        body.put("actorId", req.actorId());
         return commands.updateRole(roleId, body);
     }
 
@@ -130,8 +138,11 @@ public class RbacReadController {
     public Object assignPlatformRole(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long userId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody AssignPlatformRoleRequest req) {
         requireToken(token, "identity:write");
+        Map<String, Object> body = new HashMap<>();
+        body.put("role", req.role());
+        body.put("assignedBy", req.assignedBy());
         return commands.assignPlatformRole(userId, body);
     }
 
@@ -139,8 +150,12 @@ public class RbacReadController {
     public Object assignSchoolRole(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long userId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody AssignSchoolRoleRequest req) {
         requireToken(token, "identity:write");
+        Map<String, Object> body = new HashMap<>();
+        body.put("role", req.role());
+        body.put("schoolId", req.schoolId());
+        body.put("assignedBy", req.assignedBy());
         return commands.assignSchoolRole(userId, body);
     }
 
@@ -148,8 +163,12 @@ public class RbacReadController {
     public Object assignZoneRole(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long userId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody AssignZoneRoleRequest req) {
         requireToken(token, "identity:write");
+        Map<String, Object> body = new HashMap<>();
+        body.put("role", req.role());
+        body.put("zoneId", req.zoneId());
+        body.put("assignedBy", req.assignedBy());
         return commands.assignZoneRole(userId, body);
     }
 

@@ -11,6 +11,8 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,5 +60,32 @@ class RbacValidationTest {
         verify(commands).createRole(captor.capture());
         assertEquals("AUDITOR", captor.getValue().get("name"));
         assertEquals("d", captor.getValue().get("description"));
+    }
+
+    @Test
+    void assignSchoolRole_missingSchoolId_returns400() throws Exception {
+        mvc.perform(post("/api/v1/rbac/users/9/roles/school")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"role\":\"ADMIN\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.schoolId").exists());
+        verify(commands, never()).assignSchoolRole(anyLong(), anyMap());
+    }
+
+    @Test
+    void assignSchoolRole_valid_callsRepositoryWithRoleAndSchoolIdKeys() throws Exception {
+        when(commands.assignSchoolRole(anyLong(), anyMap())).thenReturn(Map.of("id", 10));
+        mvc.perform(post("/api/v1/rbac/users/9/roles/school")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"role\":\"ADMIN\",\"schoolId\":4}"))
+                .andExpect(status().isOk());
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(commands).assignSchoolRole(eq(9L), captor.capture());
+        assertNotNull(captor.getValue().get("role"));
+        assertNotNull(captor.getValue().get("schoolId"));
     }
 }
