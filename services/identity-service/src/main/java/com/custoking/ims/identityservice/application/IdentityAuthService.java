@@ -2,6 +2,7 @@ package com.custoking.ims.identityservice.application;
 
 import com.custoking.ims.identityservice.persistence.AppUserEntity;
 import com.custoking.ims.identityservice.persistence.AppUserRepository;
+import com.custoking.ims.identityservice.persistence.AuthAuditRepository;
 import com.custoking.ims.identityservice.persistence.AuthSessionEntity;
 import com.custoking.ims.identityservice.persistence.AuthSessionRepository;
 import com.custoking.ims.identityservice.persistence.RbacLookupRepository;
@@ -33,17 +34,20 @@ public class IdentityAuthService {
     private final RbacLookupRepository rbac;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final AuthAuditRepository authAudit;
 
     public IdentityAuthService(AppUserRepository users,
                                AuthSessionRepository sessions,
                                RbacLookupRepository rbac,
                                PasswordEncoder passwordEncoder,
-                               JwtService jwtService) {
+                               JwtService jwtService,
+                               AuthAuditRepository authAudit) {
         this.users = users;
         this.sessions = sessions;
         this.rbac = rbac;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.authAudit = authAudit;
     }
 
     public LoginResult login(LoginRequest request) {
@@ -53,7 +57,7 @@ public class IdentityAuthService {
             throw unauthorized("Invalid email or password");
         }
         sessions.deleteByExpiresAtBefore(OffsetDateTime.now(ZoneOffset.UTC));
-        return issueSession(user, null);
+        return issueSession(user, UUID.randomUUID().toString());
     }
 
     public LoginResult refresh(String rawRefreshToken) {
@@ -69,25 +73,35 @@ public class IdentityAuthService {
             throw unauthorized("Invalid refresh token");
         }
         AuthSessionEntity session = sessions.findByRefreshTokenHash(tokenDigest(rawRefreshToken))
-                .orElseThrow(() -> unauthorized("Refresh token was already used or revoked"));
+                .orElseThrow(() -> unauthorized("Invalid refresh token"));
+
+        // Reuse detection: a replay of a retired/revoked token is a theft signal.
+        if (!AuthSessionEntity.ACTIVE.equals(session.getStatus())) {
+            sessions.revokeFamily(session.getFamilyId());
+            authAudit.recordRefreshTokenReuse(session.getUser().getId(), email, session.getFamilyId());
+            throw unauthorized("Refresh token reuse detected - session revoked");
+        }
         if (session.getExpiresAt().isBefore(OffsetDateTime.now(ZoneOffset.UTC))) {
-            sessions.delete(session);
             throw unauthorized("Refresh token expired");
         }
         AppUserEntity user = users.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> unauthorized("Invalid refresh token"));
         if (!Objects.equals(session.getUser().getId(), user.getId())) {
-            sessions.delete(session);
             throw unauthorized("Invalid refresh token");
         }
-        return issueSession(user, session);
+        // Rotate: retire the presented token, issue a new one in the same family.
+        session.setStatus(AuthSessionEntity.ROTATED);
+        session.setRotatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        sessions.save(session);
+        return issueSession(user, session.getFamilyId());
     }
 
     public void logout(String rawRefreshToken) {
         if (rawRefreshToken == null || rawRefreshToken.isBlank()) {
             return;
         }
-        sessions.findByRefreshTokenHash(tokenDigest(rawRefreshToken)).ifPresent(sessions::delete);
+        sessions.findByRefreshTokenHash(tokenDigest(rawRefreshToken))
+                .ifPresent(s -> sessions.revokeFamily(s.getFamilyId()));
     }
 
     @Transactional(readOnly = true)
@@ -109,15 +123,15 @@ public class IdentityAuthService {
         }
     }
 
-    private LoginResult issueSession(AppUserEntity user, AuthSessionEntity existingSession) {
+    private LoginResult issueSession(AppUserEntity user, String familyId) {
         AuthenticatedUserSnapshot snapshot = snapshot(user);
         String accessToken = jwtService.generateAccessToken(snapshot);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
-        AuthSessionEntity session = existingSession == null ? new AuthSessionEntity() : existingSession;
-        if (session.getId() == null) {
-            session.setId(UUID.randomUUID().toString());
-            session.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        }
+        AuthSessionEntity session = new AuthSessionEntity();
+        session.setId(UUID.randomUUID().toString());
+        session.setCreatedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        session.setFamilyId(familyId);
+        session.setStatus(AuthSessionEntity.ACTIVE);
         session.setUser(user);
         session.setAccessTokenHash(tokenDigest(accessToken));
         session.setRefreshTokenHash(tokenDigest(refreshToken));
