@@ -225,8 +225,9 @@ public class AttendanceReadRepository {
         String academicYearId = currentAcademicYearId();
         Map<String, Object> schoolClass = classRecord(classId);
         Map<String, Object> section = sectionRecord(sectionId);
+        Long sectionSchoolId = longNum(section.get("schoolId"), 0);
         Long requestedSchoolId = request.containsKey("schoolId") ? longNum(request.get("schoolId"), 0) : null;
-        if (requestedSchoolId != null && !requestedSchoolId.equals(longNum(section.get("schoolId"), 0))) {
+        if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
         int total = (int) longNum(request.get("totalEnrolled"), countStudents(sectionId));
@@ -268,9 +269,9 @@ public class AttendanceReadRepository {
             jdbc.sql("""
                     INSERT INTO %s(id, attendance_date, total_enrolled, present_count, absent_count,
                                                  recorded_by, recorded_at, updated_by, updated_at, locked,
-                                                 school_class_id, section_id, academic_year_id)
+                                                 school_class_id, section_id, academic_year_id, school_id)
                     VALUES (:id, :date, :total, :present, :absent, :actorId, :recordedAt, :actorId,
-                            :updatedAt, false, :classId, :sectionId, :academicYearId)
+                            :updatedAt, false, :classId, :sectionId, :academicYearId, :schoolId)
                     """.formatted(dailyTable))
                     .param("id", id)
                     .param("date", date)
@@ -283,6 +284,7 @@ public class AttendanceReadRepository {
                     .param("classId", classId)
                     .param("sectionId", sectionId)
                     .param("academicYearId", academicYearId)
+                    .param("schoolId", sectionSchoolId)
                     .update();
         }
         return row(
@@ -316,7 +318,7 @@ public class AttendanceReadRepository {
         List<Map<String, Object>> records = records(request.get("records"));
         int total = (int) countStudents(sectionId);
         int submittedPresent = (int) records.stream().filter(row -> "PRESENT".equals(str(row.get("status"), ""))).count();
-        String dailyId = upsertDaily(date, classId, sectionId, academicYearId, total, submittedPresent, actorId, false);
+        String dailyId = upsertDaily(date, classId, sectionId, academicYearId, total, submittedPresent, actorId, false, sectionSchoolId);
         OffsetDateTime now = OffsetDateTime.now();
         for (Map<String, Object> record : records) {
             Long studentId = longNum(record.get("studentId"), 0);
@@ -367,7 +369,7 @@ public class AttendanceReadRepository {
                 .query(Long.class)
                 .single()
                 .longValue();
-        upsertDaily(date, classId, sectionId, academicYearId, total, persistedPresent, actorId, false);
+        upsertDaily(date, classId, sectionId, academicYearId, total, persistedPresent, actorId, false, sectionSchoolId);
         return sectionRegister(date, classId, sectionId, sectionSchoolId);
     }
 
@@ -399,7 +401,7 @@ public class AttendanceReadRepository {
                 .single()
                 .longValue();
         upsertDaily(date, classId, sectionId, academicYearId, total, present,
-                request.containsKey("actorId") ? longNum(request.get("actorId"), 0) : null, true);
+                request.containsKey("actorId") ? longNum(request.get("actorId"), 0) : null, true, sectionSchoolId);
         return sectionRegister(date, classId, sectionId, sectionSchoolId);
     }
 
@@ -554,7 +556,7 @@ public class AttendanceReadRepository {
     }
 
     private String upsertDaily(LocalDate date, String classId, String sectionId, String academicYearId,
-                               int total, int present, Long actorId, boolean locked) {
+                               int total, int present, Long actorId, boolean locked, Long schoolId) {
         OffsetDateTime now = OffsetDateTime.now();
         String id = dailyRecord(date, sectionId, academicYearId) == null
                 ? UUID.randomUUID().toString()
@@ -562,9 +564,9 @@ public class AttendanceReadRepository {
         jdbc.sql("""
                 INSERT INTO %s(id, attendance_date, total_enrolled, present_count, absent_count,
                                recorded_by, recorded_at, updated_by, updated_at, locked,
-                               school_class_id, section_id, academic_year_id)
+                               school_class_id, section_id, academic_year_id, school_id)
                 VALUES (:id, :date, :total, :present, :absent, :actorId, :recordedAt, :actorId,
-                        :updatedAt, :locked, :classId, :sectionId, :academicYearId)
+                        :updatedAt, :locked, :classId, :sectionId, :academicYearId, :schoolId)
                 ON CONFLICT (attendance_date, section_id, academic_year_id) DO UPDATE SET
                     total_enrolled = EXCLUDED.total_enrolled,
                     present_count = EXCLUDED.present_count,
@@ -585,6 +587,7 @@ public class AttendanceReadRepository {
                 .param("classId", classId)
                 .param("sectionId", sectionId)
                 .param("academicYearId", academicYearId)
+                .param("schoolId", schoolId)
                 .update();
         return jdbc.sql("""
                 SELECT id FROM %s

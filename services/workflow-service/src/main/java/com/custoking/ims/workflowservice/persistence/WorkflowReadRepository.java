@@ -126,7 +126,7 @@ public class WorkflowReadRepository {
         if (!"PENDING".equals(instance.get("status"))) {
             throw new IllegalArgumentException("Workflow is not in PENDING state");
         }
-        recordAction(instanceId, 0, "SUBMIT", request);
+        recordAction(instanceId, 0, "SUBMIT", request, longValue(instance.get("schoolId"), null));
         jdbc.sql("UPDATE " + instancesTable + " SET current_step = 1, status = 'IN_PROGRESS' WHERE id = :id")
                 .param("id", instanceId)
                 .update();
@@ -140,7 +140,7 @@ public class WorkflowReadRepository {
             throw new IllegalArgumentException("Workflow is not IN_PROGRESS");
         }
         int currentStep = intValue(instance.get("currentStep"), 0);
-        recordAction(instanceId, currentStep, "APPROVE", request);
+        recordAction(instanceId, currentStep, "APPROVE", request, longValue(instance.get("schoolId"), null));
         int maxStep = jdbc.sql("SELECT COALESCE(MAX(step_order), 0) FROM " + stepsTable + " WHERE definition_id = :definitionId")
                 .param("definitionId", instance.get("definitionId"))
                 .query(Integer.class)
@@ -165,21 +165,21 @@ public class WorkflowReadRepository {
         if (!"IN_PROGRESS".equals(instance.get("status"))) {
             throw new IllegalArgumentException("Workflow is not IN_PROGRESS");
         }
-        recordAction(instanceId, intValue(instance.get("currentStep"), 0), "REJECT", request);
+        recordAction(instanceId, intValue(instance.get("currentStep"), 0), "REJECT", request, longValue(instance.get("schoolId"), null));
         return finish(instanceId, "REJECTED");
     }
 
     @Transactional
     public Map<String, Object> cancel(Long instanceId, Map<String, Object> request) {
         Map<String, Object> instance = instanceMap(instanceId);
-        recordAction(instanceId, intValue(instance.get("currentStep"), 0), "CANCEL", request);
+        recordAction(instanceId, intValue(instance.get("currentStep"), 0), "CANCEL", request, longValue(instance.get("schoolId"), null));
         return finish(instanceId, "CANCELLED");
     }
 
     @Transactional
     public Map<String, Object> complete(Long instanceId, Map<String, Object> request) {
         Map<String, Object> instance = instanceMap(instanceId);
-        recordAction(instanceId, intValue(instance.get("currentStep"), 0), "COMPLETE", request);
+        recordAction(instanceId, intValue(instance.get("currentStep"), 0), "COMPLETE", request, longValue(instance.get("schoolId"), null));
         return finish(instanceId, "COMPLETED");
     }
 
@@ -222,10 +222,10 @@ public class WorkflowReadRepository {
                 "version", rs.getLong("version"));
     }
 
-    private void recordAction(Long instanceId, int stepOrder, String action, Map<String, Object> request) {
+    private void recordAction(Long instanceId, int stepOrder, String action, Map<String, Object> request, Long schoolId) {
         jdbc.sql("""
-                INSERT INTO %s(instance_id, step_order, action, actor_id, actor_email, notes)
-                VALUES (:instanceId, :stepOrder, :action, :actorId, :actorEmail, :notes)
+                INSERT INTO %s(instance_id, step_order, action, actor_id, actor_email, notes, school_id)
+                VALUES (:instanceId, :stepOrder, :action, :actorId, :actorEmail, :notes, :schoolId)
                 """.formatted(actionsTable))
                 .param("instanceId", instanceId)
                 .param("stepOrder", stepOrder)
@@ -233,6 +233,7 @@ public class WorkflowReadRepository {
                 .param("actorId", longValue(request.get("actorId"), null))
                 .param("actorEmail", textOrNull(request.get("actorEmail")))
                 .param("notes", textOrNull(request.get("notes")))
+                .param("schoolId", schoolId)
                 .update();
     }
 

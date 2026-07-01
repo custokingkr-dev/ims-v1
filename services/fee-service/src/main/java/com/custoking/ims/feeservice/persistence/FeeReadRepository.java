@@ -489,9 +489,11 @@ public class FeeReadRepository {
             jdbc.sql("""
                     INSERT INTO fee.fee_assignments(id, schedule, band_discount, manual_discount, surcharge,
                                                 net_payable, paid_amount, assigned_by, assigned_at,
-                                                updated_by, updated_at, student_id, band_id, academic_year_id, version)
+                                                updated_by, updated_at, student_id, band_id, academic_year_id, version,
+                                                school_id)
                     VALUES (:id, :schedule, :bandDiscount, :manualDiscount, :surcharge, :netPayable, 0,
-                            :actorId, :assignedAt, :actorId, :updatedAt, :studentId, :bandId, :academicYearId, 0)
+                            :actorId, :assignedAt, :actorId, :updatedAt, :studentId, :bandId, :academicYearId, 0,
+                            :schoolId)
                     """)
                     .param("id", assignmentId)
                     .param("schedule", schedule)
@@ -505,6 +507,7 @@ public class FeeReadRepository {
                     .param("studentId", studentId)
                     .param("bandId", bandId)
                     .param("academicYearId", academicYearId)
+                    .param("schoolId", schoolId)
                     .update();
         }
         updateStudentFeeStatus(studentId, assignmentId);
@@ -559,9 +562,9 @@ public class FeeReadRepository {
 
         jdbc.sql("""
                 INSERT INTO fee.payment_records(id, amount, mode, notes, paid_at, recorded_by, receipt_number,
-                                            created_at, student_id, assignment_id, version)
+                                            created_at, student_id, assignment_id, version, school_id)
                 VALUES (:id, :amount, :mode, :notes, :paidAt, :recordedBy, :receiptNumber,
-                        :createdAt, :studentId, :assignmentId, 0)
+                        :createdAt, :studentId, :assignmentId, 0, :schoolId)
                 """)
                 .param("id", paymentId)
                 .param("amount", amount)
@@ -573,6 +576,7 @@ public class FeeReadRepository {
                 .param("createdAt", now)
                 .param("studentId", studentId)
                 .param("assignmentId", assignmentId)
+                .param("schoolId", schoolId)
                 .update();
 
         jdbc.sql("""

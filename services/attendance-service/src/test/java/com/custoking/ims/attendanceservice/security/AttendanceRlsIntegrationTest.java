@@ -42,11 +42,11 @@ class AttendanceRlsIntegrationTest {
             st.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA attendance TO app_rt");
 
             // Seed attendance_daily rows first (FK parent for attendance_student_records).
-            // attendance_daily has no school_id — one shared row per date/section/year combo.
+            // school_id is now denormalized onto attendance_daily (V4/V5 migration).
             st.execute("INSERT INTO attendance.attendance_daily " +
-                    "(id, attendance_date, total_enrolled, present_count, absent_count, locked, school_class_id, section_id, academic_year_id) VALUES " +
-                    "('d1','2024-01-10',3,2,1,false,'c1','s1','y1')," +
-                    "('d2','2024-01-11',1,1,0,false,'c1','s2','y1')");
+                    "(id, attendance_date, total_enrolled, present_count, absent_count, locked, school_class_id, section_id, academic_year_id, school_id) VALUES " +
+                    "('d1','2024-01-10',3,2,1,false,'c1','s1','y1',10)," +
+                    "('d2','2024-01-11',1,1,0,false,'c1','s2','y1',20)");
 
             // Seed attendance_student_records: school 10 (A) x2, school 20 (B) x1 — as owner (bypasses RLS).
             st.execute("INSERT INTO attendance.attendance_student_records " +
