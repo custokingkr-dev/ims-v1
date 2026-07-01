@@ -1,5 +1,6 @@
 package com.custoking.ims.feeservice.api;
 
+import com.custoking.ims.feeservice.api.dto.CreateBandRequest;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,10 +47,11 @@ class FeeReadControllerTest {
 
     @Test
     void createBandMapsRepositoryValidationToBadRequest() {
-        Map<String, Object> request = Map.of("classFrom", 5, "classTo", 1);
-        when(fees.createBand(request)).thenThrow(new IllegalArgumentException("Class to must be >= class from"));
+        // DTO with name present but invalid class range — repo throws IllegalArgumentException
+        CreateBandRequest req = new CreateBandRequest("General", 5, 1, null, null);
+        when(fees.createBand(anyMap())).thenThrow(new IllegalArgumentException("Class to must be >= class from"));
 
-        assertThatThrownBy(() -> controller.createBand("fee-token", request))
+        assertThatThrownBy(() -> controller.createBand("fee-token", req))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;

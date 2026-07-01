@@ -1,11 +1,16 @@
 package com.custoking.ims.feeservice.api;
 
+import com.custoking.ims.feeservice.api.dto.AssignFeePlanRequest;
+import com.custoking.ims.feeservice.api.dto.CreateBandRequest;
+import com.custoking.ims.feeservice.api.dto.CreateItemRequest;
+import com.custoking.ims.feeservice.api.dto.RecordPaymentRequest;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeAssignmentRow;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeBandRow;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeItemRow;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.PaymentRow;
 import com.custoking.ims.feeservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -90,9 +96,15 @@ public class FeeReadController {
     @PostMapping("/bands")
     public Map<String, Object> createBand(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateBandRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.createBand(request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("name", req.name());
+        if (req.classFrom() != null) body.put("classFrom", req.classFrom());
+        if (req.classTo() != null) body.put("classTo", req.classTo());
+        if (req.schedules() != null) body.put("schedules", req.schedules());
+        if (req.discount() != null) body.put("discount", req.discount());
+        return execute(() -> fees.createBand(body));
     }
 
     @PutMapping("/bands/{id}")
@@ -127,9 +139,14 @@ public class FeeReadController {
     @PostMapping("/items")
     public Map<String, Object> createItem(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateItemRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.createItem(request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("bandId", req.bandId());
+        body.put("name", req.name());
+        if (req.frequency() != null) body.put("frequency", req.frequency());
+        if (req.amount() != null) body.put("amount", req.amount());
+        return execute(() -> fees.createItem(body));
     }
 
     @PutMapping("/items/{id}")
@@ -165,9 +182,19 @@ public class FeeReadController {
     @PostMapping("/assignments")
     public Map<String, Object> assignFeePlan(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody AssignFeePlanRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.assignFeePlan(request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("studentId", req.studentId());
+        body.put("bandId", req.bandId());
+        body.put("schedule", req.schedule());
+        // bandDiscount uses containsKey in repo — only put when explicitly sent
+        if (req.bandDiscount() != null) body.put("bandDiscount", req.bandDiscount());
+        if (req.manualDiscount() != null) body.put("manualDiscount", req.manualDiscount());
+        if (req.surcharge() != null) body.put("surcharge", req.surcharge());
+        // actorId uses containsKey in repo — only put when explicitly sent
+        if (req.actorId() != null) body.put("actorId", req.actorId());
+        return execute(() -> fees.assignFeePlan(body));
     }
 
     @GetMapping("/payments")
@@ -257,9 +284,17 @@ public class FeeReadController {
     @PostMapping("/payments")
     public Map<String, Object> recordPayment(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody RecordPaymentRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.recordPayment(request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("studentId", req.studentId());
+        body.put("amount", req.amount());
+        if (req.paidAt() != null) body.put("paidAt", req.paidAt());
+        if (req.mode() != null) body.put("mode", req.mode());
+        if (req.notes() != null) body.put("notes", req.notes());
+        // actorId uses containsKey in repo — only put when explicitly sent
+        if (req.actorId() != null) body.put("actorId", req.actorId());
+        return execute(() -> fees.recordPayment(body));
     }
 
     /** Recipe B helper: resolve and overwrite the schoolId inside a request body map. */
