@@ -14,9 +14,14 @@ $SchoolA = 1; $SchoolB = 2
 $StudentA = 9000001; $StudentB = 9000002
 $OrderA = 'ord-bola-a'; $OrderB = 'ord-bola-b'
 $FfA = 'ff-bola-a'; $FfB = 'ff-bola-b'
+$WfA = 'wf-bola-a'; $WfB = 'wf-bola-b'
 
 $loginIp = "127.0.0.$([int](Get-Date -Format 'ss') + 20)"
 $failures = New-Object System.Collections.Generic.List[string]
+# Two honest counts: probes with real teeth (detail-by-id + marker-list) vs advisory
+# own-scope equivalence probes on aggregate endpoints (no teeth without differential seed data).
+$teethProbes = 0
+$advisoryProbes = 0
 $probeCount = 0
 
 function Login {
@@ -88,7 +93,7 @@ $detailProbes = @(
     @{ Key = 'firefighting:request-detail'; Path = "/api/v1/ff/requests/${FfB}?schoolId=${SchoolB}"; Marker = $FfB }
 )
 foreach ($p in $detailProbes) {
-    $script:probeCount++
+    $script:teethProbes++
     $r = Invoke-Api GET $p.Path $tokenA
     if ($r.Status -eq 403 -or $r.Status -eq 404) { Pass "$($p.Key) denied ($($r.Status))" }
     elseif ($r.Status -eq 200 -and (Body-ContainsId $r.Body $p.Marker)) { Add-Failure "$($p.Key): admin-A read school-B object $($p.Marker) (HTTP 200)" }
@@ -102,10 +107,11 @@ Write-Host "List probes (admin-A passes ?schoolId=$SchoolB):"
 $listMarker = @(
     @{ Key = 'student:list';            X = "/api/v1/students?schoolId=${SchoolB}&page=0&size=50";  Marker = $StudentB },
     @{ Key = 'catalog:orders';          X = "/api/v1/supply/orders?schoolId=${SchoolB}";            Marker = $OrderB },
-    @{ Key = 'firefighting:requests';   X = "/api/v1/ff/requests?schoolId=${SchoolB}";             Marker = $FfB }
+    @{ Key = 'firefighting:requests';   X = "/api/v1/ff/requests?schoolId=${SchoolB}";             Marker = $FfB },
+    @{ Key = 'workflow:pending';        X = "/api/v1/workflows/pending?schoolId=${SchoolB}";        Marker = $WfB }
 )
 foreach ($p in $listMarker) {
-    $script:probeCount++
+    $script:teethProbes++
     $r = Invoke-Api GET $p.X $tokenA
     if ($r.Status -eq 0 -or $r.Status -ge 500) { Add-Failure "$($p.Key): probe inconclusive - unexpected status $($r.Status)" }
     elseif ($r.Status -eq 403) { Pass "$($p.Key) denied (403)" }
@@ -113,35 +119,38 @@ foreach ($p in $listMarker) {
     else { Pass "$($p.Key) no B marker" }
 }
 
-# own-scope-equivalence: cross-tenant param must return same data as own-scope (server must ignore client schoolId)
+# own-scope-equivalence (ADVISORY): cross-tenant param must return same data as own-scope
+# (server must ignore client schoolId). These aggregate endpoints have no per-school marker
+# rows seeded, so they cannot prove isolation by themselves - they are equivalence checks only.
 $listOwnScope = @(
     @{ Key = 'attendance:daily-summary'; A = "/api/v1/attendance/daily-summary?schoolId=${SchoolA}&date=2026-02-02";   X = "/api/v1/attendance/daily-summary?schoolId=${SchoolB}&date=2026-02-02" },
-    @{ Key = 'fee:classes';              A = "/api/v1/classes?schoolId=${SchoolA}";                                     X = "/api/v1/classes?schoolId=${SchoolB}" },
     @{ Key = 'fee:report';               A = "/api/v1/fees/report?schoolId=${SchoolA}&classId=1&sectionId=1A";         X = "/api/v1/fees/report?schoolId=${SchoolB}&classId=1&sectionId=1A" },
     @{ Key = 'catalog:annual-plan';      A = "/api/v1/supply/annual-plan?schoolId=${SchoolA}";                         X = "/api/v1/supply/annual-plan?schoolId=${SchoolB}" },
-    @{ Key = 'workflow:pending';         A = "/api/v1/workflows/pending?schoolId=${SchoolA}";                          X = "/api/v1/workflows/pending?schoolId=${SchoolB}" },
     @{ Key = 'firefighting:stats';       A = "/api/v1/ff/requests/stats?schoolId=${SchoolA}";                          X = "/api/v1/ff/requests/stats?schoolId=${SchoolB}" },
     @{ Key = 'workspace:dashboard';      A = "/api/v1/dashboard?schoolId=${SchoolA}";                                  X = "/api/v1/dashboard?schoolId=${SchoolB}" }
 )
 foreach ($p in $listOwnScope) {
-    $script:probeCount++
+    $script:advisoryProbes++
     $rx = Invoke-Api GET $p.X $tokenA
     if ($rx.Status -eq 0 -or $rx.Status -ge 500) { Add-Failure "$($p.Key): probe inconclusive - unexpected status $($rx.Status)"; continue }
-    if ($rx.Status -eq 403) { Pass "$($p.Key) denied (403)"; continue }
+    # Any deny/not-found/bad-request on the cross-tenant call means B data was NOT served -> Pass.
+    if ($rx.Status -eq 403 -or $rx.Status -eq 404 -or $rx.Status -eq 400 -or $rx.Status -eq 401) { Pass "$($p.Key) denied ($($rx.Status))"; continue }
     $ra = Invoke-Api GET $p.A $tokenA
     if ($ra.Status -eq 0 -or $ra.Status -ge 500) { Add-Failure "$($p.Key): own-scope reference call inconclusive - status $($ra.Status)"; continue }
     $jx = if ($rx.Body) { $rx.Body | ConvertTo-Json -Depth 12 -Compress } else { '' }
     $ja = if ($ra.Body) { $ra.Body | ConvertTo-Json -Depth 12 -Compress } else { '' }
-    if ((Body-ContainsId $rx.Body $StudentB) -or (Body-ContainsId $rx.Body $OrderB) -or (Body-ContainsId $rx.Body $FfB)) {
+    # Only flag when X returns 200 carrying a B marker, or a genuinely differing (non-error) body.
+    if ((Body-ContainsId $rx.Body $StudentB) -or (Body-ContainsId $rx.Body $OrderB) -or (Body-ContainsId $rx.Body $FfB) -or (Body-ContainsId $rx.Body $WfB)) {
         Add-Failure "$($p.Key): admin-A's ?schoolId=${SchoolB} response carried a school-B marker"
     } elseif ($jx -ne $ja) {
         Add-Failure "$($p.Key): ?schoolId=${SchoolB} differs from own ?schoolId=${SchoolA} (client param widened scope)"
     } else { Pass "$($p.Key) == own-scope" }
 }
 
-$excluded = @('supply/catalog-categories (catalog-wide)', 'fee-structure (catalog-wide)', 'students/import/template (static)', 'rbac/* zones/* schools/* (superadmin-only)')
+$excluded = @('classes (global - no school_id)', 'supply/catalog-categories (catalog-wide)', 'fee-structure (catalog-wide)', 'students/import/template (static)', 'rbac/* zones/* schools/* (superadmin-only)')
+$probeCount = $teethProbes + $advisoryProbes
 Write-Host ""
-Write-Host "Coverage: $probeCount probes across detail + list vectors." -ForegroundColor Cyan
+Write-Host "Coverage: $teethProbes teeth-backed probes (detail + marker-list) + $advisoryProbes advisory equivalence probes (aggregate endpoints, no teeth without differential seed data)." -ForegroundColor Cyan
 Write-Host "Excluded (non-tenant-scoped, by design): $($excluded -join '; ')" -ForegroundColor DarkGray
 if ($failures.Count -gt 0) {
     Write-Host "BOLA gate FAILED - $($failures.Count) cross-tenant leak(s):" -ForegroundColor Red

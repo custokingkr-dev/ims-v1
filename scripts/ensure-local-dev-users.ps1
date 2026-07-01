@@ -321,6 +321,16 @@ VALUES
     ('ff-bola-b', 0, 2, now())
 ON CONFLICT (code) DO UPDATE SET school_id = EXCLUDED.school_id;
 
+-- BOLA probe targets: one known PENDING workflow instance per school. school_id is NOT NULL.
+-- workflow_instances.id is BIGSERIAL, so the marker (wf-bola-a/wf-bola-b) is carried in entity_id,
+-- which surfaces in the /api/v1/workflows/pending response body for the marker-backed gate.
+INSERT INTO workflow.workflow_instances (id, definition_id, entity_type, entity_id, school_id, current_step, status, initiated_at, version)
+VALUES
+    (9100001, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-a', 1, 0, 'PENDING', now(), 0),
+    (9100002, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-b', 2, 0, 'PENDING', now(), 0)
+ON CONFLICT (id) DO UPDATE SET school_id = EXCLUDED.school_id, status = 'PENDING', entity_id = EXCLUDED.entity_id;
+SELECT setval(pg_get_serial_sequence('workflow.workflow_instances', 'id'), COALESCE((SELECT max(id) FROM workflow.workflow_instances), 0) + 1, false);
+
 SELECT setval('seq_app_users', COALESCE((SELECT max(id) FROM identity.app_users), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('identity.roles', 'id'), COALESCE((SELECT max(id) FROM identity.roles), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('identity.permissions', 'id'), COALESCE((SELECT max(id) FROM identity.permissions), 0) + 1, false);
