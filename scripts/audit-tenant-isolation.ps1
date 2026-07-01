@@ -96,4 +96,56 @@ foreach ($p in $detailProbes) {
     else { Pass "$($p.Key) no B data (status $($r.Status))" }
 }
 
-if ($failures.Count) { exit 1 } else { Write-Host 'detail probes isolated'; exit 0 }
+
+Write-Host "List probes (admin-A passes ?schoolId=$SchoolB):"
+# marker-backed: a seeded school-B row must NOT appear in admin-A's cross-tenant list
+$listMarker = @(
+    @{ Key = 'student:list';            A = "/api/v1/students?schoolId=${SchoolA}&page=0&size=50";  X = "/api/v1/students?schoolId=${SchoolB}&page=0&size=50";  Marker = $StudentB },
+    @{ Key = 'catalog:orders';          A = "/api/v1/supply/orders?schoolId=${SchoolA}";            X = "/api/v1/supply/orders?schoolId=${SchoolB}";            Marker = $OrderB },
+    @{ Key = 'firefighting:requests';   A = "/api/v1/ff/requests?schoolId=${SchoolA}";             X = "/api/v1/ff/requests?schoolId=${SchoolB}";             Marker = $FfB }
+)
+foreach ($p in $listMarker) {
+    $script:probeCount++
+    $r = Invoke-Api GET $p.X $tokenA
+    if ($r.Status -eq 0 -or $r.Status -ge 500) { Add-Failure "$($p.Key): probe inconclusive - unexpected status $($r.Status)" }
+    elseif ($r.Status -eq 403) { Pass "$($p.Key) denied (403)" }
+    elseif (Body-ContainsId $r.Body $p.Marker) { Add-Failure "$($p.Key): admin-A's ?schoolId=${SchoolB} list contained school-B marker $($p.Marker)" }
+    else { Pass "$($p.Key) no B marker" }
+}
+
+# own-scope-equivalence: cross-tenant param must return same data as own-scope (server must ignore client schoolId)
+$listOwnScope = @(
+    @{ Key = 'attendance:daily-summary'; A = "/api/v1/attendance/daily-summary?schoolId=${SchoolA}&date=2026-02-02";   X = "/api/v1/attendance/daily-summary?schoolId=${SchoolB}&date=2026-02-02" },
+    @{ Key = 'fee:classes';              A = "/api/v1/classes?schoolId=${SchoolA}";                                     X = "/api/v1/classes?schoolId=${SchoolB}" },
+    @{ Key = 'fee:report';               A = "/api/v1/fees/report?schoolId=${SchoolA}&classId=1&sectionId=1A";         X = "/api/v1/fees/report?schoolId=${SchoolB}&classId=1&sectionId=1A" },
+    @{ Key = 'catalog:annual-plan';      A = "/api/v1/supply/annual-plan?schoolId=${SchoolA}";                         X = "/api/v1/supply/annual-plan?schoolId=${SchoolB}" },
+    @{ Key = 'workflow:pending';         A = "/api/v1/workflows/pending?schoolId=${SchoolA}";                          X = "/api/v1/workflows/pending?schoolId=${SchoolB}" },
+    @{ Key = 'firefighting:stats';       A = "/api/v1/ff/requests/stats?schoolId=${SchoolA}";                          X = "/api/v1/ff/requests/stats?schoolId=${SchoolB}" },
+    @{ Key = 'workspace:dashboard';      A = "/api/v1/dashboard?schoolId=${SchoolA}";                                  X = "/api/v1/dashboard?schoolId=${SchoolB}" }
+)
+foreach ($p in $listOwnScope) {
+    $script:probeCount++
+    $rx = Invoke-Api GET $p.X $tokenA
+    if ($rx.Status -eq 0 -or $rx.Status -ge 500) { Add-Failure "$($p.Key): probe inconclusive - unexpected status $($rx.Status)"; continue }
+    if ($rx.Status -eq 403) { Pass "$($p.Key) denied (403)"; continue }
+    $ra = Invoke-Api GET $p.A $tokenA
+    $jx = if ($rx.Body) { $rx.Body | ConvertTo-Json -Depth 12 -Compress } else { '' }
+    $ja = if ($ra.Body) { $ra.Body | ConvertTo-Json -Depth 12 -Compress } else { '' }
+    if ((Body-ContainsId $rx.Body $StudentB) -or (Body-ContainsId $rx.Body $OrderB) -or (Body-ContainsId $rx.Body $FfB)) {
+        Add-Failure "$($p.Key): admin-A's ?schoolId=${SchoolB} response carried a school-B marker"
+    } elseif ($jx -ne $ja) {
+        Add-Failure "$($p.Key): ?schoolId=${SchoolB} differs from own ?schoolId=${SchoolA} (client param widened scope)"
+    } else { Pass "$($p.Key) == own-scope" }
+}
+
+$excluded = @('supply/catalog-categories (catalog-wide)', 'fee-structure (catalog-wide)', 'students/import/template (static)', 'rbac/* zones/* schools/* (superadmin-only)')
+Write-Host ""
+Write-Host "Coverage: $probeCount probes across detail + list vectors." -ForegroundColor Cyan
+Write-Host "Excluded (non-tenant-scoped, by design): $($excluded -join '; ')" -ForegroundColor DarkGray
+if ($failures.Count -gt 0) {
+    Write-Host "BOLA gate FAILED - $($failures.Count) cross-tenant leak(s):" -ForegroundColor Red
+    $failures | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+    exit 1
+}
+Write-Host "BOLA gate PASSED - no cross-tenant leaks across $probeCount probes." -ForegroundColor Green
+exit 0
