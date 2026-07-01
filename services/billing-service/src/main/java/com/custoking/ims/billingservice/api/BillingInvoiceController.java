@@ -1,6 +1,7 @@
 package com.custoking.ims.billingservice.api;
 
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
+import com.custoking.ims.billingservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -39,6 +40,7 @@ public class BillingInvoiceController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.list(schoolId, status, limit);
     }
 
@@ -46,6 +48,7 @@ public class BillingInvoiceController {
     public Object stats(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.stats();
     }
 
@@ -54,6 +57,7 @@ public class BillingInvoiceController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         var invoice = invoices.byId(id);
         if (invoice == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
@@ -66,6 +70,7 @@ public class BillingInvoiceController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable String orderRef) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         var invoice = invoices.byOrderRef(orderRef);
         if (invoice == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
@@ -79,6 +84,7 @@ public class BillingInvoiceController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:write");
+        TenantScope.requireSuperAdmin();
         return invoices.create(request);
     }
 
@@ -88,6 +94,7 @@ public class BillingInvoiceController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:write");
+        TenantScope.requireSuperAdmin();
         var invoice = invoices.update(id, request);
         if (invoice == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");

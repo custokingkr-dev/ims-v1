@@ -1,19 +1,28 @@
 package com.custoking.ims.tenantschoolservice.api.compat;
 
 import com.custoking.ims.tenantschoolservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.tenantschoolservice.security.TenantContext;
+import com.custoking.ims.tenantschoolservice.security.TenantContextFilter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class TenantSchoolPublicCompatibilityControllerTest {
 
@@ -21,8 +30,19 @@ class TenantSchoolPublicCompatibilityControllerTest {
     private final TenantSchoolPublicCompatibilityController controller =
             new TenantSchoolPublicCompatibilityController(schools, "tok");
 
+    /** MockMvc harness with the real TenantContextFilter for HTTP-header-driven scope tests. */
+    private final MockMvc mvc = MockMvcBuilders
+            .standaloneSetup(controller)
+            .addFilters(new TenantContextFilter())
+            .build();
+
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void addsStaffUsingSchoolIdFromBody() {
+        // Superadmin context; body schoolId 5 is resolved and passed through.
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("schoolId", 5, "name", "Asha");
         when(schools.addStaff(eq(5L), eq(request))).thenReturn(Map.of("id", 1));
 
@@ -32,6 +52,8 @@ class TenantSchoolPublicCompatibilityControllerTest {
 
     @Test
     void rejectsMissingSchoolId() {
+        // Superadmin with no schoolId in body → resolveSchoolId(null) returns null → 400
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("name", "Asha");
 
         assertThatThrownBy(() -> controller.addStaffFromWorkspace("tok", request))
@@ -54,6 +76,9 @@ class TenantSchoolPublicCompatibilityControllerTest {
 
     @Test
     void addsTimetableUsingAuthenticatedSchoolHeader() {
+        // TenantContextFilter (in production) populates schoolId=5 from X-Authenticated-School-Id header.
+        // In direct controller tests, we set TenantContext manually; resolveSchoolId(null) returns auth school.
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 5L, null));
         Map<String, Object> request = Map.of(
                 "day", "Monday",
                 "period", "P1",
@@ -68,6 +93,8 @@ class TenantSchoolPublicCompatibilityControllerTest {
 
     @Test
     void timetableRequiresSchoolScope() {
+        // Superadmin with no schoolId in body/context → resolveSchoolId(null) returns null → 400
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("day", "Monday", "period", "P1", "classSection", "9-B");
 
         assertThatThrownBy(() -> controller.addTimetableFromWorkspace("tok", null, request))
@@ -75,5 +102,20 @@ class TenantSchoolPublicCompatibilityControllerTest {
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
         verify(schools, never()).addTimetableEntry(null, request);
+    }
+
+    // --- FIX 3: compat cross-tenant test via real TenantContextFilter ---
+
+    @Test
+    void addStaffFromWorkspace_crossTenantSchoolId_isForbidden() throws Exception {
+        // ADMIN authenticated for school 10 sends schoolId=99 in body → TenantScope rejects → 403
+        mvc.perform(post("/api/v1/workspace/staff")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":99,\"name\":\"Asha\"}"))
+                .andExpect(status().isForbidden());
+        verify(schools, never()).addStaff(eq(99L), any());
     }
 }

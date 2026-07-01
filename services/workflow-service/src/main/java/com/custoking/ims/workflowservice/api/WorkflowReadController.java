@@ -5,6 +5,7 @@ import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository.Work
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository.WorkflowDefinitionRow;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository.WorkflowInstanceRow;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository.WorkflowStepRow;
+import com.custoking.ims.workflowservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,7 +61,8 @@ public class WorkflowReadController {
             @RequestParam(required = false) String entityType,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "workflow:read");
-        return workflows.instances(schoolId, status, entityType, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return workflows.instances(scope, status, entityType, limit);
     }
 
     @GetMapping("/pending")
@@ -68,7 +71,8 @@ public class WorkflowReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "workflow:read");
-        return workflows.pending(schoolId, limit);
+        Long pendingScope = TenantScope.resolveSchoolId(schoolId);
+        return workflows.pending(pendingScope, limit);
     }
 
     @GetMapping("/instances/{id}")
@@ -85,7 +89,23 @@ public class WorkflowReadController {
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "workflow:write");
-        return execute(() -> workflows.createOrGetInstance(request));
+        Map<String, Object> mutableRequest = new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        return execute(() -> workflows.createOrGetInstance(mutableRequest));
+    }
+
+    private void applyResolvedSchool(Map<String, Object> request) {
+        Long requested;
+        if (request.get("schoolId") == null) {
+            requested = null;
+        } else {
+            try {
+                requested = Long.valueOf(String.valueOf(request.get("schoolId")));
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
+            }
+        }
+        request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 
     @PostMapping("/instances/{id}/submit")

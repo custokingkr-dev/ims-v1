@@ -2,6 +2,8 @@ package com.custoking.ims.reportingservice.api.compat;
 
 import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;
+import com.custoking.ims.reportingservice.security.TenantContext;
+import com.custoking.ims.reportingservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -42,7 +44,7 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.summary(schoolId);
+        return reporting.summary(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/api/v1/workspace")
@@ -50,7 +52,8 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        Map<String, Object> summary = reporting.summary(schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        Map<String, Object> summary = reporting.summary(scope);
         LinkedHashMap<String, Object> response = new LinkedHashMap<>();
         response.put("school", Map.of("name", "Custoking School", "meta", "Service workspace", "students", number(summary.get("students")), "sections", number(summary.get("sections"))));
         response.put("dashboard", Map.of(
@@ -68,7 +71,7 @@ public class ReportingPublicCompatibilityController {
         response.put("fees", Map.of("summary", Map.of("progressPercent", 0, "collected", 0, "outstanding", 0, "overdueCount", 0, "target", 0), "records", List.of()));
         response.put("feeStructures", List.of());
         response.put("attendance", Map.of("summary", Map.of("overallPercent", 0), "classes", List.of()));
-        response.put("timetable", reporting.timetable(schoolId));
+        response.put("timetable", reporting.timetable(scope));
         response.put("staff", List.of());
         response.put("catalog", List.of());
         response.put("orders", List.of());
@@ -83,7 +86,7 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.dashboardCommandCenter(schoolId);
+        return reporting.dashboardCommandCenter(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/api/v1/dashboard/vendor-dues")
@@ -91,7 +94,7 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.vendorDues(schoolId);
+        return reporting.vendorDues(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/api/v1/dashboard/reorder-signals")
@@ -99,7 +102,7 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.reorderSignals(schoolId);
+        return reporting.reorderSignals(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/api/v1/dashboard/attendance/low-sections")
@@ -108,7 +111,7 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         requireToken(token, "reporting:read");
-        return reporting.lowAttendanceSections(schoolId, date);
+        return reporting.lowAttendanceSections(TenantScope.resolveSchoolId(schoolId), date);
     }
 
     @GetMapping("/api/v1/dashboard/attendance/sections/{sectionId}/low-students")
@@ -117,7 +120,7 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) Long schoolId,
             @PathVariable String sectionId) {
         requireToken(token, "reporting:read");
-        return reporting.lowAttendanceStudents(schoolId, sectionId);
+        return reporting.lowAttendanceStudents(TenantScope.resolveSchoolId(schoolId), sectionId);
     }
 
     @GetMapping("/api/v1/dashboard/finance/fee-defaulters")
@@ -131,7 +134,7 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "reporting:read");
-        return reporting.feeDefaulters(schoolId, classId, sectionId, daysOverdue, reminderStatus, page, size);
+        return reporting.feeDefaulters(TenantScope.resolveSchoolId(schoolId), classId, sectionId, daysOverdue, reminderStatus, page, size);
     }
 
     @GetMapping("/api/v1/dashboard/events/class-photography/payment-status")
@@ -144,7 +147,7 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "reporting:read");
-        return reporting.classPhotographyPaymentStatus(schoolId, classId, sectionId, status, page, size);
+        return reporting.classPhotographyPaymentStatus(TenantScope.resolveSchoolId(schoolId), classId, sectionId, status, page, size);
     }
 
     @GetMapping("/api/v1/command-centre/summary")
@@ -153,7 +156,9 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "false") boolean platform) {
         requireToken(token, "reporting:read");
-        return reporting.commandCenterSummary(schoolId, platform);
+        Long scope = TenantScope.resolveSchoolId(schoolId); // superadmin returns requested unchanged
+        boolean effectivePlatform = platform && TenantContext.get().isSuperAdmin();
+        return reporting.commandCenterSummary(scope, effectivePlatform);
     }
 
     @GetMapping("/api/v1/command-centre/actions")
@@ -163,7 +168,7 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.actions(schoolId, status, limit);
+        return reporting.actions(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
     @PostMapping("/api/v1/command-centre/actions/{id}/accept")
@@ -172,7 +177,9 @@ public class ReportingPublicCompatibilityController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "reporting:read");
-        return command(() -> commands.acceptAction(id, actorId(body), actorSchoolId(body), superAdmin(body)));
+        boolean superAdmin = TenantContext.get().isSuperAdmin();
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
+        return command(() -> commands.acceptAction(id, actorId(body), resolvedSchoolId, superAdmin));
     }
 
     @PostMapping("/api/v1/command-centre/actions/{id}/dismiss")
@@ -181,7 +188,9 @@ public class ReportingPublicCompatibilityController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "reporting:read");
-        return command(() -> commands.dismissAction(id, actorId(body), reason(body), actorSchoolId(body), superAdmin(body)));
+        boolean superAdmin = TenantContext.get().isSuperAdmin();
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
+        return command(() -> commands.dismissAction(id, actorId(body), reason(body), resolvedSchoolId, superAdmin));
     }
 
     @GetMapping("/api/v1/command-centre/feed")
@@ -191,7 +200,7 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) String module,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.feed(schoolId, module, limit);
+        return reporting.feed(TenantScope.resolveSchoolId(schoolId), module, limit);
     }
 
     @GetMapping("/api/v1/command-centre/brief")
@@ -199,7 +208,7 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.commandCenterSummary(schoolId, false);
+        return reporting.commandCenterSummary(TenantScope.resolveSchoolId(schoolId), false);
     }
 
     private void requireToken(String token, String requiredScope) {
@@ -235,10 +244,6 @@ public class ReportingPublicCompatibilityController {
         Object value = body.get(key);
         if (value instanceof Number number) return number.longValue();
         return Long.parseLong(String.valueOf(value));
-    }
-
-    private boolean superAdmin(Map<String, Object> body) {
-        return body != null && Boolean.parseBoolean(String.valueOf(body.getOrDefault("superAdmin", false)));
     }
 
     private String reason(Map<String, Object> body) {

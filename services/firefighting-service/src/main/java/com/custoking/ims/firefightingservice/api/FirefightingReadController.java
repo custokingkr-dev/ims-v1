@@ -3,6 +3,7 @@ package com.custoking.ims.firefightingservice.api;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
+import com.custoking.ims.firefightingservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +44,8 @@ public class FirefightingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "firefighting:read");
-        return firefighting.requests(schoolId, status, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return firefighting.requests(scope, status, limit);
     }
 
     @GetMapping("/requests/pending-approvals")
@@ -51,7 +54,8 @@ public class FirefightingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "firefighting:read");
-        return firefighting.pending(schoolId, limit);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return firefighting.pending(scope, limit);
     }
 
     @GetMapping("/requests/stats")
@@ -59,7 +63,8 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "firefighting:read");
-        return firefighting.stats(schoolId);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return firefighting.stats(scope);
     }
 
     @GetMapping("/requests/{code}")
@@ -87,7 +92,9 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.createRequest(request));
+        Map<String, Object> mutableRequest = new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        return execute(() -> firefighting.createRequest(mutableRequest));
     }
 
     @PatchMapping("/requests/{code}")
@@ -166,6 +173,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:write");
+        TenantScope.requireSuperAdmin();
         return execute(() -> firefighting.approveCustoking(code));
     }
 
@@ -192,7 +200,23 @@ public class FirefightingReadController {
             @PathVariable String code,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.markVendorPaid(code, request == null ? Map.of() : request));
+        Map<String, Object> mutableRequest = request == null ? new HashMap<>() : new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        return execute(() -> firefighting.markVendorPaid(code, mutableRequest));
+    }
+
+    private void applyResolvedSchool(Map<String, Object> request) {
+        Long requested;
+        if (request.get("schoolId") == null) {
+            requested = null;
+        } else {
+            try {
+                requested = Long.valueOf(String.valueOf(request.get("schoolId")));
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
+            }
+        }
+        request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 
     private void requireToken(String token, String requiredScope) {

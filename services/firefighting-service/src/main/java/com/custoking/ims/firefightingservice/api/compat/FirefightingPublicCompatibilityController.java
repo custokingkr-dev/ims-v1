@@ -1,6 +1,7 @@
 package com.custoking.ims.firefightingservice.api.compat;
 
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
+import com.custoking.ims.firefightingservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -32,7 +34,9 @@ public class FirefightingPublicCompatibilityController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "firefighting:write");
-        return run(() -> firefighting.createRequest(request));
+        Map<String, Object> mutableRequest = new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        return run(() -> firefighting.createRequest(mutableRequest));
     }
 
     @PostMapping("/api/v1/dashboard/vendor-dues/firefighting/{code}/mark-paid")
@@ -41,7 +45,23 @@ public class FirefightingPublicCompatibilityController {
             @PathVariable String code,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "firefighting:write");
-        return run(() -> firefighting.markVendorPaid(code, request == null ? Map.of() : request));
+        Map<String, Object> mutableRequest = request == null ? new HashMap<>() : new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        return run(() -> firefighting.markVendorPaid(code, mutableRequest));
+    }
+
+    private void applyResolvedSchool(Map<String, Object> request) {
+        Long requested;
+        if (request.get("schoolId") == null) {
+            requested = null;
+        } else {
+            try {
+                requested = Long.valueOf(String.valueOf(request.get("schoolId")));
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
+            }
+        }
+        request.put("schoolId", TenantScope.resolveSchoolId(requested));
     }
 
     private void requireToken(String token, String requiredScope) {

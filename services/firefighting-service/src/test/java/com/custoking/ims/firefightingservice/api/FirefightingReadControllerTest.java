@@ -3,6 +3,8 @@ package com.custoking.ims.firefightingservice.api;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
+import com.custoking.ims.firefightingservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,6 +16,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -23,6 +28,9 @@ class FirefightingReadControllerTest {
 
     private final FirefightingReadRepository firefighting = mock(FirefightingReadRepository.class);
     private final FirefightingReadController controller = new FirefightingReadController(firefighting, "ff-token");
+
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
 
     @Test
     void requestsRejectsInvalidTokenBeforeQuerying() {
@@ -36,6 +44,7 @@ class FirefightingReadControllerTest {
 
     @Test
     void requestsDelegatesFiltersWithValidToken() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         FirefightingRequestRow row = requestRow("FF-1001", "Urgent repair");
         when(firefighting.requests(4L, "PENDING", 25)).thenReturn(List.of(row));
 
@@ -73,6 +82,7 @@ class FirefightingReadControllerTest {
 
     @Test
     void createDelegatesRequestBody() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> request = Map.of("title", "Replace extinguishers", "schoolId", 4L);
         Map<String, Object> result = Map.of("code", "FF-1002", "status", "DRAFT");
         when(firefighting.createRequest(request)).thenReturn(result);
@@ -132,14 +142,17 @@ class FirefightingReadControllerTest {
 
     @Test
     void markVendorPaidDelegatesProvidedBody() {
-        Map<String, Object> request = Map.of("actorId", 9L, "notes", "paid by bank transfer");
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> result = Map.of("code", "FF-1001", "vendorPaid", true);
-        when(firefighting.markVendorPaid("FF-1001", request)).thenReturn(result);
+        when(firefighting.markVendorPaid(eq("FF-1001"), anyMap())).thenReturn(result);
 
-        Map<String, Object> response = controller.markVendorPaid("ff-token", "FF-1001", request);
+        Map<String, Object> response = controller.markVendorPaid("ff-token", "FF-1001",
+                Map.of("actorId", 9L, "notes", "paid by bank transfer"));
 
         assertThat(response).isSameAs(result);
-        verify(firefighting).markVendorPaid("FF-1001", request);
+        // applyResolvedSchool injects schoolId into the body; verify actorId still present
+        verify(firefighting).markVendorPaid(eq("FF-1001"),
+                argThat(m -> Long.valueOf(9L).equals(m.get("actorId")) && m.containsKey("schoolId")));
     }
 
     private FirefightingRequestRow requestRow(String code, String title) {

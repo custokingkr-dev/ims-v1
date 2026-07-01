@@ -2,11 +2,14 @@ package com.custoking.ims.catalogservice.api.compat;
 
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.CatalogOrderRow;
+import com.custoking.ims.catalogservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,10 +25,16 @@ class CatalogPublicCompatibilityControllerTest {
     private final CatalogPublicCompatibilityController controller =
             new CatalogPublicCompatibilityController(repo, "tok");
 
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
+
     @Test
     void markPaidDelegatesToRepository() {
+        // Set SUPERADMIN context so resolveSchoolId(1L) passes through to the repo call
+        TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
+
         CatalogOrderRow row = order("12");
-        Map<String, Object> request = Map.of("schoolId", 1, "actorId", 9L, "notes", "paid offline");
+        Map<String, Object> request = new HashMap<>(Map.of("schoolId", 1, "actorId", 9L, "notes", "paid offline"));
         when(repo.markVendorPaid("12", 1L, 9L, "paid offline")).thenReturn(row);
 
         assertThat(controller.markCatalogVendorPaid("tok", "12", request)).containsEntry("order", row);

@@ -31,6 +31,7 @@ const {
   outboundHeaders,
   isRequestHopHeader,
   isResponseHopHeader,
+  isClientSpoofableHeader,
   stringOrEmpty,
   setSecurityHeaders,
   isOriginAllowed,
@@ -328,6 +329,37 @@ test('rate limiter is disabled when rps is zero', () => {
   for (let i = 0; i < 5; i += 1) {
     assert.equal(checkRateLimit(req, { rps: 0, burst: 0, buckets, now: 1 }).allowed, true);
   }
+});
+
+test('outbound headers strip client-supplied authenticated and service-token headers', () => {
+  const headers = outboundHeaders({
+    headers: {
+      'x-authenticated-school-id': '99',
+      'x-authenticated-role': 'SUPERADMIN',
+      'x-identity-service-token': 'forged',
+      'x-student-service-token': 'forged',
+      'content-type': 'application/json',
+      authorization: 'Bearer user-token',
+    },
+    socket: { remoteAddress: '10.0.0.2' },
+  }, 'req-1');
+
+  assert.equal(headers['x-authenticated-school-id'], undefined);
+  assert.equal(headers['x-authenticated-role'], undefined);
+  assert.equal(headers['x-identity-service-token'], undefined);
+  assert.equal(headers['x-student-service-token'], undefined);
+  // non-spoofable headers are preserved:
+  assert.equal(headers['content-type'], 'application/json');
+  assert.equal(headers.authorization, 'Bearer user-token');
+});
+
+test('isClientSpoofableHeader flags gateway-only headers', () => {
+  assert.equal(isClientSpoofableHeader('X-Authenticated-School-Id'), true);
+  assert.equal(isClientSpoofableHeader('x-authenticated-role'), true);
+  assert.equal(isClientSpoofableHeader('X-Identity-Service-Token'), true);
+  assert.equal(isClientSpoofableHeader('x-billing-service-token'), true);
+  assert.equal(isClientSpoofableHeader('content-type'), false);
+  assert.equal(isClientSpoofableHeader('x-request-id'), false);
 });
 
 async function listen() {

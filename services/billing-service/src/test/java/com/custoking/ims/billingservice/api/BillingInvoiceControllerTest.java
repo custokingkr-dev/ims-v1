@@ -2,6 +2,9 @@ package com.custoking.ims.billingservice.api;
 
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.InvoiceRow;
+import com.custoking.ims.billingservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,6 +24,19 @@ class BillingInvoiceControllerTest {
 
     private final BillingInvoiceService invoices = mock(BillingInvoiceService.class);
     private final BillingInvoiceController controller = new BillingInvoiceController(invoices, "billing-token");
+
+    @BeforeEach
+    void setSuperAdminContext() {
+        // All endpoints in BillingInvoiceController are superadmin-only (/sa/ paths).
+        // Pre-existing tests exercise the token-check and service delegation; they need a
+        // SUPERADMIN TenantContext so the gate passes before reaching those assertions.
+        TenantContext.set(new TenantContext(1L, "sa@custoking.com", "SUPERADMIN", null, null));
+    }
+
+    @AfterEach
+    void clearTenantContext() {
+        TenantContext.clear();
+    }
 
     @Test
     void listRejectsInvalidTokenBeforeDelegating() {

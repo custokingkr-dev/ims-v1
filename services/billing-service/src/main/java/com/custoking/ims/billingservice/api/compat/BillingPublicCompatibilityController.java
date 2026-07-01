@@ -1,6 +1,7 @@
 package com.custoking.ims.billingservice.api.compat;
 
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
+import com.custoking.ims.billingservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,12 +40,14 @@ public class BillingPublicCompatibilityController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.list(schoolId, status, limit);
     }
 
     @GetMapping("/api/v1/sa/invoices/stats")
     public Object stats(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.stats();
     }
 
@@ -53,6 +56,7 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable String orderRef) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         Object invoice = invoices.byOrderRef(orderRef);
         if (invoice == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
         return invoice;
@@ -63,6 +67,7 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         Object invoice = invoices.byId(id);
         if (invoice == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
         return invoice;
@@ -74,6 +79,7 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.create(request);
     }
 
@@ -83,14 +89,17 @@ public class BillingPublicCompatibilityController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         Object invoice = invoices.update(id, request);
         if (invoice == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
         return invoice;
     }
 
+    // /api/v1/customers — Custoking-managed B2B customer records; platform admin only.
     @GetMapping("/api/v1/customers")
     public Object customers(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.customers();
     }
 
@@ -100,12 +109,18 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return run(() -> invoices.createCustomer(request));
     }
 
+    // /api/v1/invoices — school-level billing invoices. Judgment call: schoolInvoices() takes no
+    // schoolId parameter so it cannot be scoped via resolveSchoolId without a service-layer change.
+    // Treating as superadmin-only for now; a future task should add school-id scoping if schools
+    // need self-service access to their own Custoking invoices.
     @GetMapping("/api/v1/invoices")
     public Object schoolInvoices(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.schoolInvoices();
     }
 
@@ -115,6 +130,7 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return run(() -> invoices.createSchoolInvoice(request));
     }
 
@@ -123,6 +139,7 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         try {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
@@ -132,9 +149,11 @@ public class BillingPublicCompatibilityController {
         }
     }
 
+    // /api/v1/billing-payments — Custoking B2B payment records; platform admin only.
     @GetMapping("/api/v1/billing-payments")
     public Object billingPayments(@RequestHeader(value = "X-Billing-Service-Token", required = false) String token) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return invoices.billingPayments();
     }
 
@@ -144,6 +163,7 @@ public class BillingPublicCompatibilityController {
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "billing:read");
+        TenantScope.requireSuperAdmin();
         return run(() -> invoices.createBillingPayment(request));
     }
 

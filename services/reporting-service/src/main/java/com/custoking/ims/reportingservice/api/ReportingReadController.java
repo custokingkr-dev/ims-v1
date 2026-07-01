@@ -2,6 +2,8 @@ package com.custoking.ims.reportingservice.api;
 
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository;
+import com.custoking.ims.reportingservice.security.TenantContext;
+import com.custoking.ims.reportingservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -42,7 +44,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.summary(schoolId);
+        return reporting.summary(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/vendor-dues")
@@ -50,7 +52,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.vendorDues(schoolId);
+        return reporting.vendorDues(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/reorder-signals")
@@ -58,7 +60,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.reorderSignals(schoolId);
+        return reporting.reorderSignals(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/dashboard-command-center")
@@ -66,7 +68,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.dashboardCommandCenter(schoolId);
+        return reporting.dashboardCommandCenter(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/low-attendance/sections")
@@ -75,7 +77,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         requireToken(token, "reporting:read");
-        return reporting.lowAttendanceSections(schoolId, date);
+        return reporting.lowAttendanceSections(TenantScope.resolveSchoolId(schoolId), date);
     }
 
     @GetMapping("/low-attendance/sections/{sectionId}/students")
@@ -84,7 +86,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @PathVariable String sectionId) {
         requireToken(token, "reporting:read");
-        return reporting.lowAttendanceStudents(schoolId, sectionId);
+        return reporting.lowAttendanceStudents(TenantScope.resolveSchoolId(schoolId), sectionId);
     }
 
     @GetMapping("/fee-defaulters")
@@ -98,7 +100,7 @@ public class ReportingReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "reporting:read");
-        return reporting.feeDefaulters(schoolId, classId, sectionId, daysOverdue, reminderStatus, page, size);
+        return reporting.feeDefaulters(TenantScope.resolveSchoolId(schoolId), classId, sectionId, daysOverdue, reminderStatus, page, size);
     }
 
     @GetMapping("/command-center/feed")
@@ -108,7 +110,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String module,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.feed(schoolId, module, limit);
+        return reporting.feed(TenantScope.resolveSchoolId(schoolId), module, limit);
     }
 
     @GetMapping("/command-center/actions")
@@ -118,7 +120,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.actions(schoolId, status, limit);
+        return reporting.actions(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
     @GetMapping("/command-center/summary")
@@ -127,7 +129,9 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "false") boolean platform) {
         requireToken(token, "reporting:read");
-        return reporting.commandCenterSummary(schoolId, platform);
+        Long scope = TenantScope.resolveSchoolId(schoolId); // superadmin returns requested unchanged
+        boolean effectivePlatform = platform && TenantContext.get().isSuperAdmin();
+        return reporting.commandCenterSummary(scope, effectivePlatform);
     }
 
     @PostMapping("/command-center/actions/{id}/accept")
@@ -136,7 +140,9 @@ public class ReportingReadController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.acceptAction(id, actorId(body), actorSchoolId(body), superAdmin(body)));
+        boolean superAdmin = TenantContext.get().isSuperAdmin();
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
+        return command(() -> commands.acceptAction(id, actorId(body), resolvedSchoolId, superAdmin));
     }
 
     @PostMapping("/command-center/actions/{id}/dismiss")
@@ -145,12 +151,14 @@ public class ReportingReadController {
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "reporting:write");
+        boolean superAdmin = TenantContext.get().isSuperAdmin();
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
         return command(() -> commands.dismissAction(
                 id,
                 actorId(body),
                 body == null ? null : String.valueOf(body.getOrDefault("reason", "")),
-                actorSchoolId(body),
-                superAdmin(body)));
+                resolvedSchoolId,
+                superAdmin));
     }
 
     @PostMapping("/command-center/feed")
@@ -184,7 +192,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.invoices(schoolId, status, limit);
+        return reporting.invoices(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
     @GetMapping("/invoices/stats")
@@ -192,7 +200,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
-        return reporting.invoiceStats(schoolId);
+        return reporting.invoiceStats(TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/academic-events")
@@ -202,7 +210,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.academicEvents(schoolId, status, limit);
+        return reporting.academicEvents(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
     @GetMapping("/event-contributions")
@@ -212,7 +220,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.eventContributions(eventId, schoolId, limit);
+        return reporting.eventContributions(eventId, TenantScope.resolveSchoolId(schoolId), limit);
     }
 
     @GetMapping("/class-photography/payment-status")
@@ -225,7 +233,7 @@ public class ReportingReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "reporting:read");
-        return reporting.classPhotographyPaymentStatus(schoolId, classId, sectionId, status, page, size);
+        return reporting.classPhotographyPaymentStatus(TenantScope.resolveSchoolId(schoolId), classId, sectionId, status, page, size);
     }
 
     @GetMapping("/broadcasts")
@@ -235,7 +243,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
-        return reporting.broadcasts(schoolId, status, limit);
+        return reporting.broadcasts(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
     private void requireToken(String token, String requiredScope) {
@@ -275,12 +283,7 @@ public class ReportingReadController {
         return Long.parseLong(String.valueOf(value));
     }
 
-    private boolean superAdmin(Map<String, Object> body) {
-        return body != null && Boolean.parseBoolean(String.valueOf(body.getOrDefault("superAdmin", false)));
-    }
-
     private interface Command {
         Map<String, Object> run();
     }
 }
-

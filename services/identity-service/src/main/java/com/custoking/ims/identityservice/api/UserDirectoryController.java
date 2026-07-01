@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
+import com.custoking.ims.identityservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -40,6 +41,7 @@ public class UserDirectoryController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        branchId = TenantScope.resolveSchoolId(branchId);
         return users.users(role, branchId, zoneId, active, limit);
     }
 
@@ -52,6 +54,9 @@ public class UserDirectoryController {
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
         }
+        // Enforce tenant scope: non-superadmin may only read users in their own school.
+        // branchId=null (platform user) resolves to the caller's own school — no exception.
+        TenantScope.resolveSchoolId(user.branchId());
         return user;
     }
 

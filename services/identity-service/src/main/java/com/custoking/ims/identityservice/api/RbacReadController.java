@@ -2,6 +2,8 @@ package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
+import com.custoking.ims.identityservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -83,6 +85,8 @@ public class RbacReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) Long zoneId) {
         requireToken(token, "identity:read");
+        schoolId = TenantScope.resolveSchoolId(schoolId);
+        zoneId = resolveZoneId(zoneId);
         return rbac.effectivePermissions(userId, schoolId, zoneId);
     }
 
@@ -149,6 +153,14 @@ public class RbacReadController {
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
         commands.revokeAssignment(userId, assignmentId, body);
+    }
+
+    private Long resolveZoneId(Long requested) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin()) return requested;
+        if (requested == null) return null;
+        if (requested.equals(ctx.zoneId())) return requested;
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "cross-zone access denied");
     }
 
     private void requireToken(String token, String requiredScope) {

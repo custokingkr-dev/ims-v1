@@ -2,6 +2,7 @@ package com.custoking.ims.auditservice.api;
 
 import com.custoking.ims.auditservice.persistence.AuditEvent;
 import com.custoking.ims.auditservice.persistence.AuditEventRepository;
+import com.custoking.ims.auditservice.security.TenantScope;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,6 +85,7 @@ public class AuditIngestController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size) {
         requireToken(token, "audit:read");
+        schoolId = TenantScope.resolveSchoolId(schoolId);
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(1, Math.min(size, 200));
         PageRequest pageable = PageRequest.of(safePage, safeSize, Sort.by("eventTimestamp").descending());

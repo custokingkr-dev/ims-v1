@@ -9,6 +9,8 @@ import com.custoking.ims.identityservice.persistence.IdentityUserProvisioningRep
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class IdentityControllersTest {
+
+    @AfterEach
+    void cleanup() { TenantContext.clear(); }
 
     @Test
     void loginDelegatesAndSetsRefreshCookie() {
@@ -118,6 +123,7 @@ class IdentityControllersTest {
 
     @Test
     void rbacUserPermissionsDelegatesFilters() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         RbacReadRepository rbac = mock(RbacReadRepository.class);
         RbacReadController controller = new RbacReadController(rbac, mock(RbacCommandRepository.class), "identity-token");
         when(rbac.effectivePermissions(9L, 4L, 2L)).thenReturn(List.of("STUDENTS_READ"));
