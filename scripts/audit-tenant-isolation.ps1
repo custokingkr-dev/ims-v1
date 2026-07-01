@@ -92,6 +92,7 @@ foreach ($p in $detailProbes) {
     $r = Invoke-Api GET $p.Path $tokenA
     if ($r.Status -eq 403 -or $r.Status -eq 404) { Pass "$($p.Key) denied ($($r.Status))" }
     elseif ($r.Status -eq 200 -and (Body-ContainsId $r.Body $p.Marker)) { Add-Failure "$($p.Key): admin-A read school-B object $($p.Marker) (HTTP 200)" }
+    elseif ($r.Status -eq 0 -or $r.Status -ge 500) { Add-Failure "$($p.Key): probe inconclusive - unexpected status $($r.Status) (connection error or server fault)" }
     else { Pass "$($p.Key) no B data (status $($r.Status))" }
 }
 
