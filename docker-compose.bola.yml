@@ -1,0 +1,11 @@
+# Overlay for the BOLA tenant-isolation gate: the gateway MUST run in `enforce`
+# mode so it introspects the JWT and injects X-Authenticated-School-Id (the tenant
+# trust boundary the gate proves). In `permissive` mode (the default local overlay)
+# no tenant header is forwarded, so with RLS active every school-scoped query
+# returns 0 rows and the gate cannot demonstrate isolation.
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
+services:
+  api-gateway:
+    environment:
+      GATEWAY_AUTH_MODE: enforce

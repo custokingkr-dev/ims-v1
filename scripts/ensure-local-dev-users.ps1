@@ -61,12 +61,38 @@ ON CONFLICT (id) DO UPDATE SET
     configured_class_count = EXCLUDED.configured_class_count,
     configured_section_count = EXCLUDED.configured_section_count;
 
+INSERT INTO tenant_school.schools
+    (id, name, short_code, city, state, contact_email, contact_phone, active,
+     configured_class_count, configured_section_count, created_at)
+VALUES
+    (2, 'Local Demo School Two', 'LOCAL2', 'Bengaluru', 'KA',
+     'local-demo-school-two@custoking.local', '9999999998', true, 1, 1, now())
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    short_code = EXCLUDED.short_code,
+    city = EXCLUDED.city,
+    state = EXCLUDED.state,
+    contact_email = EXCLUDED.contact_email,
+    contact_phone = EXCLUDED.contact_phone,
+    active = EXCLUDED.active,
+    configured_class_count = EXCLUDED.configured_class_count,
+    configured_section_count = EXCLUDED.configured_section_count;
+
 INSERT INTO tenant_school.school_classes (id, name, sort_order)
 VALUES ('1', '1', 1)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order;
 
 INSERT INTO tenant_school.school_sections (id, name, teacher_name, active, school_class_id, school_id)
 VALUES ('1A', 'A', 'Local Teacher', true, '1', 1)
+ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    teacher_name = EXCLUDED.teacher_name,
+    active = EXCLUDED.active,
+    school_class_id = EXCLUDED.school_class_id,
+    school_id = EXCLUDED.school_id;
+
+INSERT INTO tenant_school.school_sections (id, name, teacher_name, active, school_class_id, school_id)
+VALUES ('2A', 'A', 'Local Teacher Two', true, '1', 2)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     teacher_name = EXCLUDED.teacher_name,
@@ -225,6 +251,7 @@ WITH dev_users(full_name, email, role_name, school_id, school_name, zone_id, zon
         ('Local Superadmin', 'local-superadmin@custoking.local', 'SUPERADMIN', NULL::bigint, NULL::varchar, NULL::bigint, NULL::varchar),
         ('Local Zone Admin', 'local-zone-admin@custoking.local', 'ZONE_ADMIN', NULL::bigint, NULL::varchar, 1::bigint, 'Local Zone'::varchar),
         ('Local Admin', 'local-admin@custoking.local', 'ADMIN', 1::bigint, 'Local Demo School'::varchar, NULL::bigint, NULL::varchar),
+        ('Local Admin Two', 'local-admin2@custoking.local', 'ADMIN', 2::bigint, 'Local Demo School Two'::varchar, NULL::bigint, NULL::varchar),
         ('Local School Admin', 'local-school-admin@custoking.local', 'SCHOOL_ADMIN', 1::bigint, 'Local Demo School'::varchar, NULL::bigint, NULL::varchar),
         ('Local Operations', 'local-operations@custoking.local', 'OPERATIONS', 1::bigint, 'Local Demo School'::varchar, NULL::bigint, NULL::varchar),
         ('Local Accountant', 'local-accountant@custoking.local', 'ACCOUNTANT', 1::bigint, 'Local Demo School'::varchar, NULL::bigint, NULL::varchar),
@@ -268,6 +295,42 @@ FROM identity.app_users u
 WHERE u.email = 'local-zone-admin@custoking.local'
 ON CONFLICT (zone_id, user_id) DO UPDATE SET active = true, assigned_at = now();
 
+-- BOLA probe targets: one known student per school (mandatory for cross-tenant gate).
+INSERT INTO student.students (id, admission_no, full_name, school_id, class_id, section_id, academic_year_id)
+VALUES
+    (9000001, 'BOLA-A-001', 'BOLA Student A', 1, '1', '1A', 'local_2026'),
+    (9000002, 'BOLA-B-001', 'BOLA Student B', 2, '1', '2A', 'local_2026')
+ON CONFLICT (id) DO UPDATE SET
+    school_id    = EXCLUDED.school_id,
+    section_id   = EXCLUDED.section_id,
+    admission_no = EXCLUDED.admission_no,
+    full_name    = EXCLUDED.full_name;
+SELECT setval('student.seq_students', COALESCE((SELECT max(id) FROM student.students), 0) + 1, false);
+
+-- BOLA probe targets: one known catalog order per school.
+INSERT INTO catalog.catalog_orders (id, category, subtotal, gst, total_amount, school_id, created_at)
+VALUES
+    ('ord-bola-a', 'NOTEBOOK', 0, 0, 0, 1, now()),
+    ('ord-bola-b', 'NOTEBOOK', 0, 0, 0, 2, now())
+ON CONFLICT (id) DO UPDATE SET school_id = EXCLUDED.school_id;
+
+-- BOLA probe targets: one known firefighting request per school.
+INSERT INTO firefighting.firefighting_requests (code, estimated_budget, school_id, created_at)
+VALUES
+    ('ff-bola-a', 0, 1, now()),
+    ('ff-bola-b', 0, 2, now())
+ON CONFLICT (code) DO UPDATE SET school_id = EXCLUDED.school_id;
+
+-- BOLA probe targets: one known PENDING workflow instance per school. school_id is NOT NULL.
+-- workflow_instances.id is BIGSERIAL, so the marker (wf-bola-a/wf-bola-b) is carried in entity_id,
+-- which surfaces in the /api/v1/workflows/pending response body for the marker-backed gate.
+INSERT INTO workflow.workflow_instances (id, definition_id, entity_type, entity_id, school_id, current_step, status, initiated_at, version)
+VALUES
+    (9100001, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-a', 1, 0, 'PENDING', now(), 0),
+    (9100002, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-b', 2, 0, 'PENDING', now(), 0)
+ON CONFLICT (id) DO UPDATE SET school_id = EXCLUDED.school_id, status = 'PENDING', entity_id = EXCLUDED.entity_id;
+SELECT setval(pg_get_serial_sequence('workflow.workflow_instances', 'id'), COALESCE((SELECT max(id) FROM workflow.workflow_instances), 0) + 1, false);
+
 SELECT setval('seq_app_users', COALESCE((SELECT max(id) FROM identity.app_users), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('identity.roles', 'id'), COALESCE((SELECT max(id) FROM identity.roles), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('identity.permissions', 'id'), COALESCE((SELECT max(id) FROM identity.permissions), 0) + 1, false);
@@ -289,6 +352,7 @@ Write-Host ("{0,-16} {1,-42} {2}" -f "----", "-----", "--------")
     @("SUPERADMIN", "local-superadmin@custoking.local"),
     @("ZONE_ADMIN", "local-zone-admin@custoking.local"),
     @("ADMIN", "local-admin@custoking.local"),
+    @("ADMIN", "local-admin2@custoking.local"),
     @("SCHOOL_ADMIN", "local-school-admin@custoking.local"),
     @("OPERATIONS", "local-operations@custoking.local"),
     @("ACCOUNTANT", "local-accountant@custoking.local"),

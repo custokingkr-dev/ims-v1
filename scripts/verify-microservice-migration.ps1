@@ -4,6 +4,7 @@ param(
     [switch]$RunDbAudit,
     [switch]$RunLegacyCompatibilityAudit,
     [switch]$RunSmoke,
+    [switch]$RunBolaAudit,
     [string[]]$BuildServices,
     [string[]]$TestServices,
     [string]$GatewayBaseUrl = "http://localhost",
@@ -220,6 +221,19 @@ Invoke-Step "microservice build catalog audit" {
                 -TimeoutSeconds $TimeoutSeconds
         }
 
+    }
+
+    if ($RunBolaAudit) {
+        Write-Host "== BOLA tenant-isolation gate ==" -ForegroundColor Cyan
+        Invoke-Step "BOLA: provision app_rt runtime role" {
+            & "$PSScriptRoot/ensure-app-rt-local.ps1"
+        }
+        Invoke-Step "BOLA: seed tenant fixture + dev users" {
+            & "$PSScriptRoot/ensure-local-dev-users.ps1"
+        }
+        Invoke-Step "BOLA: tenant-isolation audit gate" {
+            & "$PSScriptRoot/audit-tenant-isolation.ps1"
+        }
     }
 
     Write-Host ""
