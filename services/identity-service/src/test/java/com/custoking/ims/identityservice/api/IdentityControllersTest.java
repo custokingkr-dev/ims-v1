@@ -1,5 +1,7 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.api.dto.AssignSchoolRoleRequest;
+import com.custoking.ims.identityservice.api.dto.PasswordResetRequest;
 import com.custoking.ims.identityservice.application.IdentityAuthService;
 import com.custoking.ims.identityservice.application.IdentityAuthService.AuthResponse;
 import com.custoking.ims.identityservice.application.IdentityAuthService.IntrospectionResponse;
@@ -12,6 +14,7 @@ import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository
 import com.custoking.ims.identityservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -22,6 +25,8 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -138,14 +143,18 @@ class IdentityControllersTest {
     void rbacAssignSchoolRoleDelegatesBody() {
         RbacCommandRepository commands = mock(RbacCommandRepository.class);
         RbacReadController controller = new RbacReadController(mock(RbacReadRepository.class), commands, "identity-token");
-        Map<String, Object> request = Map.of("roleId", 3L, "schoolId", 4L, "actorUserId", 1L);
         Map<String, Object> result = Map.of("id", 44L);
-        when(commands.assignSchoolRole(9L, request)).thenReturn(result);
+        when(commands.assignSchoolRole(eq(9L), anyMap())).thenReturn(result);
 
-        Object response = controller.assignSchoolRole("identity-token", 9L, request);
+        AssignSchoolRoleRequest req = new AssignSchoolRoleRequest("ADMIN", 4L, 1L);
+        Object response = controller.assignSchoolRole("identity-token", 9L, req);
 
         assertThat(response).isSameAs(result);
-        verify(commands).assignSchoolRole(9L, request);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(commands).assignSchoolRole(eq(9L), captor.capture());
+        assertThat(captor.getValue()).containsKey("role");
+        assertThat(captor.getValue()).containsKey("schoolId");
     }
 
     @Test
@@ -168,10 +177,8 @@ class IdentityControllersTest {
         UserDirectoryReadRepository users = mock(UserDirectoryReadRepository.class);
         UserDirectoryController controller = new UserDirectoryController(users, "identity-token");
 
-        controller.resetPassword(
-                "identity-token",
-                9L,
-                Map.of("password", "new-password", "actorId", "1", "actorEmail", " owner@custoking.com "));
+        PasswordResetRequest req = new PasswordResetRequest("new-password", 1L, "owner@custoking.com");
+        controller.resetPassword("identity-token", 9L, req);
 
         verify(users).resetPassword(9L, "new-password", 1L, "owner@custoking.com");
     }

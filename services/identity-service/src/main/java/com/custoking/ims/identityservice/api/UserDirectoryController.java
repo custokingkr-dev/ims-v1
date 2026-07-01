@@ -1,7 +1,9 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.api.dto.PasswordResetRequest;
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
 import com.custoking.ims.identityservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -65,9 +67,9 @@ public class UserDirectoryController {
     public void resetPassword(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody PasswordResetRequest req) {
         requireToken(token, "identity:write");
-        users.resetPassword(id, text(body, "password"), longValue(body, "actorId"), text(body, "actorEmail"));
+        users.resetPassword(id, req.password(), req.actorId(), req.actorEmail());
     }
 
     @PostMapping("/{id}/disable")
