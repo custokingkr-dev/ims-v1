@@ -14,9 +14,11 @@ public class AuthAuditRepository {
     }
 
     public void recordRefreshTokenReuse(Long userId, String email, String familyId) {
+        // correlation_id (VARCHAR 100) stores the family_id so the audit row is
+        // self-describing and does not misuse the permission_codes text field.
         jdbc.sql("""
                 INSERT INTO identity.rbac_audit_log
-                    (event_type, actor_user_id, actor_email, permission_codes, created_at)
+                    (event_type, actor_user_id, actor_email, correlation_id, created_at)
                 VALUES
                     ('REFRESH_TOKEN_REUSE_DETECTED', :userId, :email, :familyId, now())
                 """)

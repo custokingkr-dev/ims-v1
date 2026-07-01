@@ -60,6 +60,7 @@ public class IdentityAuthService {
         return issueSession(user, UUID.randomUUID().toString());
     }
 
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     public LoginResult refresh(String rawRefreshToken) {
         String email;
         try {
@@ -77,8 +78,13 @@ public class IdentityAuthService {
 
         // Reuse detection: a replay of a retired/revoked token is a theft signal.
         if (!AuthSessionEntity.ACTIVE.equals(session.getStatus())) {
-            sessions.revokeFamily(session.getFamilyId());
-            authAudit.recordRefreshTokenReuse(session.getUser().getId(), email, session.getFamilyId());
+            // Capture user data eagerly BEFORE revokeFamily, which calls
+            // @Modifying(clearAutomatically = true) and detaches the proxy.
+            Long ownerId      = session.getUser().getId();
+            String ownerEmail = session.getUser().getEmail();
+            String familyId   = session.getFamilyId();
+            sessions.revokeFamily(familyId);
+            authAudit.recordRefreshTokenReuse(ownerId, ownerEmail, familyId);
             throw unauthorized("Refresh token reuse detected - session revoked");
         }
         if (session.getExpiresAt().isBefore(OffsetDateTime.now(ZoneOffset.UTC))) {
