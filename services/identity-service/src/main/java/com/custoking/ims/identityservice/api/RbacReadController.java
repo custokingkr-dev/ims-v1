@@ -1,9 +1,11 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.api.dto.CreateRoleRequest;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
 import com.custoking.ims.identityservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -104,8 +107,13 @@ public class RbacReadController {
     @ResponseStatus(HttpStatus.CREATED)
     public Object createRole(
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody CreateRoleRequest req) {
         requireToken(token, "identity:write");
+        Map<String, Object> body = new HashMap<>();
+        body.put("name", req.name());
+        body.put("description", req.description());
+        body.put("permissions", req.permissions());
+        body.put("actorId", req.actorId());
         return commands.createRole(body);
     }
 
