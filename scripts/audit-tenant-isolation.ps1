@@ -100,9 +100,9 @@ foreach ($p in $detailProbes) {
 Write-Host "List probes (admin-A passes ?schoolId=$SchoolB):"
 # marker-backed: a seeded school-B row must NOT appear in admin-A's cross-tenant list
 $listMarker = @(
-    @{ Key = 'student:list';            A = "/api/v1/students?schoolId=${SchoolA}&page=0&size=50";  X = "/api/v1/students?schoolId=${SchoolB}&page=0&size=50";  Marker = $StudentB },
-    @{ Key = 'catalog:orders';          A = "/api/v1/supply/orders?schoolId=${SchoolA}";            X = "/api/v1/supply/orders?schoolId=${SchoolB}";            Marker = $OrderB },
-    @{ Key = 'firefighting:requests';   A = "/api/v1/ff/requests?schoolId=${SchoolA}";             X = "/api/v1/ff/requests?schoolId=${SchoolB}";             Marker = $FfB }
+    @{ Key = 'student:list';            X = "/api/v1/students?schoolId=${SchoolB}&page=0&size=50";  Marker = $StudentB },
+    @{ Key = 'catalog:orders';          X = "/api/v1/supply/orders?schoolId=${SchoolB}";            Marker = $OrderB },
+    @{ Key = 'firefighting:requests';   X = "/api/v1/ff/requests?schoolId=${SchoolB}";             Marker = $FfB }
 )
 foreach ($p in $listMarker) {
     $script:probeCount++
@@ -129,6 +129,7 @@ foreach ($p in $listOwnScope) {
     if ($rx.Status -eq 0 -or $rx.Status -ge 500) { Add-Failure "$($p.Key): probe inconclusive - unexpected status $($rx.Status)"; continue }
     if ($rx.Status -eq 403) { Pass "$($p.Key) denied (403)"; continue }
     $ra = Invoke-Api GET $p.A $tokenA
+    if ($ra.Status -eq 0 -or $ra.Status -ge 500) { Add-Failure "$($p.Key): own-scope reference call inconclusive - status $($ra.Status)"; continue }
     $jx = if ($rx.Body) { $rx.Body | ConvertTo-Json -Depth 12 -Compress } else { '' }
     $ja = if ($ra.Body) { $ra.Body | ConvertTo-Json -Depth 12 -Compress } else { '' }
     if ((Body-ContainsId $rx.Body $StudentB) -or (Body-ContainsId $rx.Body $OrderB) -or (Body-ContainsId $rx.Body $FfB)) {
