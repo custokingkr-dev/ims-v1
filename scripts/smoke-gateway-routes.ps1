@@ -44,6 +44,11 @@ $failures = @()
 foreach ($route in $routes) {
     $path = $route.Path
     $expectedStatuses = $route.Statuses
+    # Under GATEWAY_AUTH_MODE=enforce (required once RLS is enabled — permissive no longer
+    # injects the tenant context, so RLS returns 0 rows), the gateway rejects unauthenticated
+    # requests to auth-gated service routes with 401. A 401 still proves the route is wired and
+    # protected, so accept it for the *-api/ service routes (not the public /gateway-health).
+    if ($path -match '-api/') { $expectedStatuses = @($expectedStatuses) + 401 }
     $uri = "$GatewayBaseUrl$path"
     try {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $uri -TimeoutSec $TimeoutSeconds

@@ -93,24 +93,34 @@ jobs:
           wait_healthy frontend custoking-frontend
           wait_healthy api-gateway custoking-api-gateway
 
+      - name: Enable enforce mode + provision app_rt/seed (required once RLS is enabled)
+        shell: pwsh
+        run: |
+          # Post-RLS (Phase 1) the stack requires GATEWAY_AUTH_MODE=enforce: the gateway must
+          # introspect the JWT and inject X-Authenticated-School-Id, or RLS returns 0 rows for
+          # every school-scoped query. Recreate the gateway with the enforce overlay, then grant
+          # app_rt schema access and seed the two-tenant fixture (idempotent). All subsequent
+          # smokes + the BOLA gate then run against the real (enforce) configuration.
+          docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
+          if ($LASTEXITCODE -ne 0) { Write-Error "gateway enforce-mode recreate failed"; exit $LASTEXITCODE }
+          ./scripts/ensure-app-rt-local.ps1
+          ./scripts/ensure-local-dev-users.ps1
+
       - name: Verify migration boundaries
         shell: pwsh
         run: ./scripts/verify-microservice-migration.ps1 -RunDbAudit
 
-      - name: Smoke gateway routes
+      - name: Smoke gateway routes (enforce)
         shell: pwsh
         run: ./scripts/smoke-gateway-routes.ps1
 
-      - name: Smoke frontend-compatible microservice features
+      - name: Smoke frontend-compatible microservice features (enforce)
         shell: pwsh
         run: ./scripts/smoke-microservice-features.ps1 -GatewayBaseUrl http://localhost -PostgresContainer custoking-postgres -Database postgres -DbUser postgres -TimeoutSeconds 30
 
       - name: BOLA tenant-isolation gate
         shell: pwsh
-        run: |
-          docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
-          if ($LASTEXITCODE -ne 0) { Write-Error "gateway enforce-mode recreate failed; not running the BOLA gate against a permissive gateway"; exit $LASTEXITCODE }
-          ./scripts/verify-microservice-migration.ps1 -RunBolaAudit
+        run: ./scripts/audit-tenant-isolation.ps1
 
       - name: Dump service logs on failure
         if: failure()
