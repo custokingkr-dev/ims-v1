@@ -94,6 +94,7 @@
 - **Deliverable:** automated test that, with a tenant-A token, asserts 403/empty for tenant-B ids on every list/detail endpoint.
 - **Acceptance:** suite fails if any endpoint leaks; gate is required for merge.
 - **Effort:** Med · **Risk:** Low · **Deps:** 1.2, 1.3.
+- **Status (2026-07-01): done** — `phase1-bola` / `docs/superpowers/plans/2026-07-01-bola-suite.md`. `scripts/audit-tenant-isolation.ps1` implements a two-school seeded fixture, positive baseline, and 13 cross-tenant probes (detail-by-id + list-with-param) across students, catalog orders, firefighting requests, and workflow instances. Gate is wired into `verify-microservice-migration.ps1` via `-RunBolaAudit` and runs in `whole-application-validation.yml` CI (gateway in enforce mode via `docker-compose.bola.yml`). **Gate found NO leaks across all covered endpoints.** The **Phase 1 gate is now met**: BOLA suite green (Task 1.5) AND RLS blocks cross-tenant queries on all NOT NULL `school_id` tables (Task 1.3 + 1.4 extension, branch `phase1-rls-extension`).
 
 ### Task 1.6 — Refresh-token rotation + reuse detection — `SEC-P1-1` **[EXPAND]**
 - **Area:** identity-service: refresh-token store (family id), rotate-on-use, reuse → invalidate family; keep access ~15 min.

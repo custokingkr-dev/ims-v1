@@ -105,6 +105,12 @@ jobs:
         shell: pwsh
         run: ./scripts/smoke-microservice-features.ps1 -GatewayBaseUrl http://localhost -PostgresContainer custoking-postgres -Database postgres -DbUser postgres -TimeoutSeconds 30
 
+      - name: BOLA tenant-isolation gate
+        shell: pwsh
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.bola.yml up -d --force-recreate api-gateway
+          ./scripts/verify-microservice-migration.ps1 -RunBolaAudit
+
       - name: Dump service logs on failure
         if: failure()
         run: docker compose logs --tail=300
