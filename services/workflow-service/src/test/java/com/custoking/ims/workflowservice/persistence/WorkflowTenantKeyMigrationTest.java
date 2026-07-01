@@ -83,6 +83,82 @@ class WorkflowTenantKeyMigrationTest {
         }
     }
 
+    // ── Part 2a: V3 guard TRUE-path — backfill performed BY the migration ───────
+    /**
+     * Closes the coverage gap where the existing Part-2 test runs Flyway to target('3')
+     * and then re-runs the UPDATE manually via JDBC.  That means the real guarded UPDATE
+     * inside V3 is never exercised by tests.
+     *
+     * This test seeds a workflow_instances parent (school=10) and a workflow_actions
+     * child (no school_id column yet) BEFORE running V3, so Flyway's own execution of
+     * V3 performs the backfill UPDATE itself.
+     */
+    @Test
+    void v3_backfill_performedByMigration() throws Exception {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
+
+        try (PostgreSQLContainer<?> pg3 =
+                new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner")) {
+            pg3.start();
+
+            // Step 1: migrate to V2 — workflow_actions exists but has no school_id column yet
+            Flyway.configure()
+                    .dataSource(pg3.getJdbcUrl(), "owner", "owner")
+                    .schemas("workflow")
+                    .defaultSchema("workflow")
+                    .locations("classpath:db/migration")
+                    .target("2")
+                    .load()
+                    .migrate();
+
+            long instanceId;
+            try (Connection c = DriverManager.getConnection(pg3.getJdbcUrl(), "owner", "owner")) {
+                // Step 2: seed a workflow_instances parent with school_id=10
+                // SUPPLY_ORDER_DEFAULT is seeded by V1 migration.
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO workflow.workflow_instances" +
+                        "(definition_id, entity_type, entity_id, school_id) " +
+                        "VALUES ('SUPPLY_ORDER_DEFAULT', 'ORDER', 'ORD-GUARD', 10) RETURNING id")) {
+                    try (ResultSet rs = ps.executeQuery()) {
+                        assertTrue(rs.next(), "Instance insert must return id");
+                        instanceId = rs.getLong(1);
+                    }
+                }
+
+                // Step 3: seed a workflow_actions child — no school_id column exists yet at V2
+                try (PreparedStatement ps = c.prepareStatement(
+                        "INSERT INTO workflow.workflow_actions" +
+                        "(instance_id, step_order, action) VALUES (?, 0, 'SUBMIT')")) {
+                    ps.setLong(1, instanceId);
+                    ps.executeUpdate();
+                }
+            }
+
+            // Step 4: run V3 — adds school_id column and backfills it from the parent instance
+            Flyway.configure()
+                    .dataSource(pg3.getJdbcUrl(), "owner", "owner")
+                    .schemas("workflow")
+                    .defaultSchema("workflow")
+                    .locations("classpath:db/migration")
+                    .target("3")
+                    .load()
+                    .migrate();
+
+            // Step 5: assert school_id was populated BY THE MIGRATION's own UPDATE,
+            // not by any hand-copied SQL in test code
+            try (Connection c = DriverManager.getConnection(pg3.getJdbcUrl(), "owner", "owner");
+                 PreparedStatement ps = c.prepareStatement(
+                         "SELECT school_id FROM workflow.workflow_actions WHERE instance_id = ?")) {
+                ps.setLong(1, instanceId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    assertTrue(rs.next(), "workflow_actions row must exist after V3");
+                    assertEquals(10L, rs.getLong(1),
+                            "workflow_actions.school_id must be 10 after V3 migration performed the backfill");
+                }
+            }
+        }
+    }
+
     // ── Part 2: backfill logic (fresh container, target V3) ──────────────────
     @Test
     void backfill_actionInheritsSchoolId_fromParentInstance() throws Exception {
