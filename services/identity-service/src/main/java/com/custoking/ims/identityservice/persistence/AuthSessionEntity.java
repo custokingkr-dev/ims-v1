@@ -31,6 +31,19 @@ public class AuthSessionEntity {
     @Column(nullable = false)
     private OffsetDateTime expiresAt;
 
+    public static final String ACTIVE = "ACTIVE";
+    public static final String ROTATED = "ROTATED";
+    public static final String REVOKED = "REVOKED";
+
+    @Column(name = "family_id", nullable = false, length = 64)
+    private String familyId;
+
+    @Column(nullable = false, length = 16)
+    private String status;
+
+    @Column(name = "rotated_at")
+    private OffsetDateTime rotatedAt;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public AppUserEntity getUser() { return user; }
@@ -43,4 +56,10 @@ public class AuthSessionEntity {
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
     public OffsetDateTime getExpiresAt() { return expiresAt; }
     public void setExpiresAt(OffsetDateTime expiresAt) { this.expiresAt = expiresAt; }
+    public String getFamilyId() { return familyId; }
+    public void setFamilyId(String familyId) { this.familyId = familyId; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public OffsetDateTime getRotatedAt() { return rotatedAt; }
+    public void setRotatedAt(OffsetDateTime rotatedAt) { this.rotatedAt = rotatedAt; }
 }
