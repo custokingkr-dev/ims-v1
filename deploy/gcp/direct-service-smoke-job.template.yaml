@@ -45,13 +45,24 @@ spec:
                           raise RuntimeError("identity token missing")
                       return token
 
+                  # Direct calls bypass the gateway, so they must inject the authenticated
+                  # context the gateway normally supplies (post-Phase-1 TenantContext requires
+                  # it; without it the service scopes to no tenant and returns 403). This is a
+                  # trusted internal smoke (IAM + service token), acting as SUPERADMIN.
+                  auth_ctx = {
+                      "X-Authenticated-User-Id": "0",
+                      "X-Authenticated-Email": "direct-service-smoke@custoking.local",
+                      "X-Authenticated-Role": "SUPERADMIN",
+                  }
                   catalog_headers = {
                       "Authorization": "Bearer " + identity_token(CATALOG_URL),
                       "X-Catalog-Service-Token": os.environ["CATALOG_TOKEN"],
+                      **auth_ctx,
                   }
                   tenant_headers = {
                       "Authorization": "Bearer " + identity_token(TENANT_URL),
                       "X-Tenant-School-Token": os.environ["TENANT_TOKEN"],
+                      **auth_ctx,
                   }
 
                   status, payload = request(f"{CATALOG_URL}/api/v1/catalog/annual-plan?schoolId={SCHOOL_ID}", catalog_headers)
