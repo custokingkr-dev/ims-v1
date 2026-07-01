@@ -107,6 +107,7 @@
 - **Area:** replace `Map<String,Object>` bodies with validated DTOs across services (start with write endpoints).
 - **Acceptance:** invalid payloads → 400 with field errors; controller tests assert validation.
 - **Effort:** Med · **Risk:** Low · **Deps:** none (parallelizable). **[EXPAND per service]**
+- **Status (2026-07-01): identity pilot done** — `phase1-input-validation` / `docs/superpowers/plans/2026-07-01-input-validation-dtos.md`. Identity-service RBAC write endpoints (createRole, updateRole, assign platform/school/zone role) + password-reset now use `@Valid` DTO records (`CreateRoleRequest`, `UpdateRoleRequest`, `AssignPlatformRoleRequest`, `AssignSchoolRoleRequest`, `AssignZoneRoleRequest`, `ResetPasswordRequest`). A per-service `ValidationExceptionHandler` (`@RestControllerAdvice`) returns `{message:"Validation failed", fieldErrors:{field:msg}}` on 400. Boundary-only change: repos and service layer are unchanged; the DTOs rebuild the same `Map` keys the repos already read. Remaining identity endpoints + the other ~11 services replicate the pattern (rolling / **[EXPAND per service]**).
 
 ---
 
