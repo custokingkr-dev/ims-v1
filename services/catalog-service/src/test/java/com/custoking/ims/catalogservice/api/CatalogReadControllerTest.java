@@ -1,5 +1,6 @@
 package com.custoking.ims.catalogservice.api;
 
+import com.custoking.ims.catalogservice.api.dto.CreateCatalogOrderRequest;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.CatalogOrderRow;
 import com.custoking.ims.catalogservice.security.TenantContext;
@@ -15,6 +16,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -53,10 +55,11 @@ class CatalogReadControllerTest {
         // Set SUPERADMIN context so resolveSchoolId(999L) passes through to the repo call
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
 
-        Map<String, Object> request = new HashMap<>(Map.of("schoolId", 999L, "category", "STATIONERY"));
-        when(catalog.createOrder(request)).thenThrow(new IllegalArgumentException("School not found"));
+        CreateCatalogOrderRequest dto = new CreateCatalogOrderRequest(
+                "STATIONERY", 999L, null, null, null, null, null, null, null);
+        when(catalog.createOrder(any())).thenThrow(new IllegalArgumentException("School not found"));
 
-        assertThatThrownBy(() -> controller.createOrder("catalog-token", request))
+        assertThatThrownBy(() -> controller.createOrder("catalog-token", dto))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
