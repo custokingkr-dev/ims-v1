@@ -2,6 +2,7 @@ package com.custoking.ims.firefightingservice.api;
 
 import com.custoking.ims.firefightingservice.api.dto.CreateFirefightingRequestRequest;
 import com.custoking.ims.firefightingservice.api.dto.CreateQuotationRequest;
+import com.custoking.ims.firefightingservice.api.dto.VendorPaidRequest;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
@@ -151,12 +152,12 @@ class FirefightingReadControllerTest {
         when(firefighting.markVendorPaid(eq("FF-1001"), anyMap())).thenReturn(result);
 
         Map<String, Object> response = controller.markVendorPaid("ff-token", "FF-1001",
-                Map.of("actorId", 9L, "notes", "paid by bank transfer"));
+                new VendorPaidRequest(null, 9L, "paid by bank transfer"));
 
         assertThat(response).isSameAs(result);
-        // applyResolvedSchool injects schoolId into the body; verify actorId still present
+        // applyResolvedSchool injects schoolId into the body; verify paidBy still present
         verify(firefighting).markVendorPaid(eq("FF-1001"),
-                argThat(m -> Long.valueOf(9L).equals(m.get("actorId")) && m.containsKey("schoolId")));
+                argThat(m -> Long.valueOf(9L).equals(m.get("paidBy")) && m.containsKey("schoolId")));
     }
 
     private FirefightingRequestRow requestRow(String code, String title) {
