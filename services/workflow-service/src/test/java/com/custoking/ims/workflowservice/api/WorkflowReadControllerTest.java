@@ -1,6 +1,7 @@
 package com.custoking.ims.workflowservice.api;
 
 import com.custoking.ims.workflowservice.api.dto.CreateInstanceRequest;
+import com.custoking.ims.workflowservice.api.dto.WorkflowActionRequest;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository;
 import com.custoking.ims.workflowservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -80,13 +81,16 @@ class WorkflowReadControllerTest {
 
     @Test
     void approveLegacyDelegatesToCanonicalApproveRoute() {
-        Map<String, Object> request = Map.of("actorId", 9L, "notes", "approved");
+        // Build DTO (actorId=9, actorEmail=null, notes="approved")
+        WorkflowActionRequest req = new WorkflowActionRequest(9L, null, "approved");
+        // toActionMap will produce {actorId=9L, notes="approved"} — null fields are omitted
+        Map<String, Object> expectedActionMap = Map.of("actorId", 9L, "notes", "approved");
         Map<String, Object> result = Map.of("id", 1001L, "status", "APPROVED");
-        when(workflows.approve(1001L, request)).thenReturn(result);
+        when(workflows.approve(1001L, expectedActionMap)).thenReturn(result);
 
-        Object response = controller.approveLegacy("workflow-token", 1001L, request);
+        Object response = controller.approveLegacy("workflow-token", 1001L, req);
 
         assertThat(response).isSameAs(result);
-        verify(workflows).approve(1001L, request);
+        verify(workflows).approve(1001L, expectedActionMap);
     }
 }

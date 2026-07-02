@@ -117,8 +117,31 @@ class CatalogValidationTest {
         assertEquals("IDCARDS", body.get("category"));
         assertTrue(!body.containsKey("subtotal"), "subtotal should be absent when not sent");
         assertTrue(!body.containsKey("notes"), "notes should be absent when not sent");
+        assertTrue(!body.containsKey("orderData"), "orderData should be absent when not sent");
         // SUPERADMIN with no requested schoolId -> resolveSchoolId(null) returns null
         assertNull(body.get("schoolId"), "schoolId should be null when SUPERADMIN sends no schoolId");
+    }
+
+    @Test
+    void createOrder_withOrderData_forwardsNestedMap() throws Exception {
+        CatalogOrderRow stubOrder = stubOrderRow("CK-1004");
+        when(catalog.createOrder(any())).thenReturn(stubOrder);
+
+        mvc.perform(post("/api/v1/catalog/orders")
+                        .header("X-Catalog-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"category\":\"UNIFORM\",\"orderData\":{\"classGroup\":\"Grade 5\",\"logoOnUniform\":\"yes\"}}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(catalog).createOrder(captor.capture());
+        Map<String, Object> body = captor.getValue();
+        assertTrue(body.containsKey("orderData"), "orderData key must be present when sent");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> forwarded = (Map<String, Object>) body.get("orderData");
+        assertEquals("Grade 5", forwarded.get("classGroup"));
+        assertEquals("yes", forwarded.get("logoOnUniform"));
     }
 
     // ── POST /annual-plan/items ───────────────────────────────────────────────

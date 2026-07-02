@@ -9,11 +9,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import com.custoking.ims.reportingservice.security.TenantContext;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -259,5 +264,61 @@ class ReportingValidationTest {
         assertEquals("event-1", captor.getValue().get("eventId"));
         assertEquals(4L, captor.getValue().get("schoolId"));
         assertNull(captor.getValue().get("studentIds"), "studentIds key must be absent when not sent");
+    }
+
+    // ─── POST /command-center/actions/{id}/accept ────────────────────────────────
+
+    @Test
+    void acceptAction_negativeActorId_returns400() throws Exception {
+        String id = "11111111-1111-1111-1111-111111111111";
+        mvc.perform(post("/api/v1/reporting/command-center/actions/{id}/accept", id)
+                        .header("X-Reporting-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\": -1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.actorId").exists());
+        verifyNoInteractions(commands);
+    }
+
+    @Test
+    void dismissAction_negativeActorId_returns400() throws Exception {
+        String id = "11111111-1111-1111-1111-111111111111";
+        mvc.perform(post("/api/v1/reporting/command-center/actions/{id}/dismiss", id)
+                        .header("X-Reporting-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\": -1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.actorId").exists());
+        verifyNoInteractions(commands);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void acceptAction_validBody_callsRepo() throws Exception {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        UUID id = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        when(commands.acceptAction(eq(id), eq(9L), eq(4L), eq(true)))
+                .thenReturn(Map.of("id", id.toString(), "status", "ACCEPTED"));
+        mvc.perform(post("/api/v1/reporting/command-center/actions/{id}/accept", id)
+                        .header("X-Reporting-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\": 9, \"schoolId\": 4}"))
+                .andExpect(status().isOk());
+        verify(commands).acceptAction(eq(id), eq(9L), eq(4L), eq(true));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void acceptAction_nullBody_works() throws Exception {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        UUID id = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        when(commands.acceptAction(eq(id), eq(null), eq(null), eq(true)))
+                .thenReturn(Map.of("id", id.toString(), "status", "ACCEPTED"));
+        mvc.perform(post("/api/v1/reporting/command-center/actions/{id}/accept", id)
+                        .header("X-Reporting-Service-Token", VALID_TOKEN))
+                .andExpect(status().isOk());
+        verify(commands).acceptAction(eq(id), eq(null), eq(null), eq(true));
     }
 }

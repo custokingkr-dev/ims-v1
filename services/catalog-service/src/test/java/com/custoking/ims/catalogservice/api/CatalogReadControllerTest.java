@@ -56,7 +56,7 @@ class CatalogReadControllerTest {
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
 
         CreateCatalogOrderRequest dto = new CreateCatalogOrderRequest(
-                "STATIONERY", 999L, null, null, null, null, null, null, null, null, null, null, null);
+                "STATIONERY", 999L, null, null, null, null, null, null, null, null, null, null, null, null);
         when(catalog.createOrder(any())).thenThrow(new IllegalArgumentException("School not found"));
 
         assertThatThrownBy(() -> controller.createOrder("catalog-token", dto))

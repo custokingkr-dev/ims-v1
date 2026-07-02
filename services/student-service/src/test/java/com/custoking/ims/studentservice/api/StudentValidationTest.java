@@ -9,10 +9,12 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -100,6 +102,89 @@ class StudentValidationTest {
         assertEquals(4L, captured.get("schoolId"));
         assertEquals("B", captured.get("sectionName"));
         assertEquals("Male", captured.get("gender"));
+    }
+
+    // --- POST /{id}/photo ---
+
+    @Test
+    void attachPhoto_missingPhotoUrl_returns400() throws Exception {
+        mvc.perform(post("/api/v1/students/42/photo")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.photoUrl").exists());
+        verify(repo, never()).attachPhoto(anyLong(), anyMap());
+    }
+
+    @Test
+    void attachPhoto_valid_callsRepositoryWithPhotoUrl() throws Exception {
+        when(repo.attachPhoto(anyLong(), anyMap())).thenReturn(Map.of("id", 42L));
+        mvc.perform(post("/api/v1/students/42/photo")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"photoUrl\":\"https://cdn.example.com/photo.jpg\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).attachPhoto(eq(42L), captor.capture());
+        assertEquals("https://cdn.example.com/photo.jpg", captor.getValue().get("photoUrl"));
+    }
+
+    // --- POST /imports/preview ---
+
+    @Test
+    void previewImport_valid_callsRepositoryWithRowsAndSchoolId() throws Exception {
+        when(repo.previewImport(anyMap())).thenReturn(Map.of("validCount", 1));
+        mvc.perform(post("/api/v1/students/imports/preview")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"schoolId\":4,\"rows\":[{\"Name\":\"Aarav\",\"Class\":\"9\"}]}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).previewImport(captor.capture());
+        Map<String, Object> captured = captor.getValue();
+        assertEquals(4L, captured.get("schoolId"));
+        assertNotNull(captured.get("rows"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) captured.get("rows");
+        assertEquals(1, rows.size());
+        assertEquals("Aarav", rows.get(0).get("Name"));
+    }
+
+    // --- POST /imports/confirm ---
+
+    @Test
+    void confirmImport_missingFileToken_returns400() throws Exception {
+        mvc.perform(post("/api/v1/students/imports/confirm")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"schoolId\":4}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.fileToken").exists());
+        verify(repo, never()).confirmImport(anyMap());
+    }
+
+    @Test
+    void confirmImport_valid_callsRepositoryWithFileTokenAndSchoolId() throws Exception {
+        when(repo.confirmImport(anyMap())).thenReturn(Map.of("inserted", 1));
+        mvc.perform(post("/api/v1/students/imports/confirm")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"fileToken\":\"tok-abc-123\",\"schoolId\":4}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).confirmImport(captor.capture());
+        Map<String, Object> captured = captor.getValue();
+        assertEquals("tok-abc-123", captured.get("fileToken"));
+        assertEquals(4L, captured.get("schoolId"));
     }
 
     // --- POST /reviews/id-card/initiate ---

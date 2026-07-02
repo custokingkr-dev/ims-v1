@@ -1,6 +1,7 @@
 package com.custoking.ims.workflowservice.api;
 
 import com.custoking.ims.workflowservice.api.dto.CreateInstanceRequest;
+import com.custoking.ims.workflowservice.api.dto.WorkflowActionRequest;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository.WorkflowActionRow;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository.WorkflowDefinitionRow;
@@ -104,69 +105,79 @@ public class WorkflowReadController {
     public Map<String, Object> submit(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
-        return execute(() -> workflows.submit(id, request == null ? Map.of() : request));
+        return execute(() -> workflows.submit(id, toActionMap(req)));
     }
 
     @PostMapping("/{id}/submit")
     public Map<String, Object> submitLegacy(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
-        return submit(token, id, request);
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
+        return submit(token, id, req);
     }
 
     @PostMapping("/instances/{id}/approve")
     public Map<String, Object> approve(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
-        return execute(() -> workflows.approve(id, request == null ? Map.of() : request));
+        return execute(() -> workflows.approve(id, toActionMap(req)));
     }
 
     @PostMapping("/{id}/approve")
     public Map<String, Object> approveLegacy(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
-        return approve(token, id, request);
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
+        return approve(token, id, req);
     }
 
     @PostMapping("/instances/{id}/reject")
     public Map<String, Object> reject(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
-        return execute(() -> workflows.reject(id, request == null ? Map.of() : request));
+        return execute(() -> workflows.reject(id, toActionMap(req)));
     }
 
     @PostMapping("/{id}/reject")
     public Map<String, Object> rejectLegacy(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
-        return reject(token, id, request);
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
+        return reject(token, id, req);
     }
 
     @PostMapping("/instances/{id}/cancel")
     public Map<String, Object> cancel(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
-        return execute(() -> workflows.cancel(id, request == null ? Map.of() : request));
+        return execute(() -> workflows.cancel(id, toActionMap(req)));
     }
 
     @PostMapping("/instances/{id}/complete")
     public Map<String, Object> complete(
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
-        return execute(() -> workflows.complete(id, request == null ? Map.of() : request));
+        return execute(() -> workflows.complete(id, toActionMap(req)));
+    }
+
+    /** Converts a (possibly null) WorkflowActionRequest into the map the repository expects. */
+    private Map<String, Object> toActionMap(WorkflowActionRequest req) {
+        if (req == null) return Map.of();
+        Map<String, Object> m = new HashMap<>();
+        if (req.actorId()    != null) m.put("actorId",    req.actorId());
+        if (req.actorEmail() != null) m.put("actorEmail", req.actorEmail());
+        if (req.notes()      != null) m.put("notes",      req.notes());
+        return m;
     }
 
     @GetMapping("/{instanceId}/actions")

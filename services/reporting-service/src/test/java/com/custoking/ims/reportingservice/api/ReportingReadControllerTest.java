@@ -8,6 +8,7 @@ import com.custoking.ims.reportingservice.persistence.ReportingEventInboxReposit
 import com.custoking.ims.reportingservice.persistence.ReportingEventInboxRepository.ReportingEventInboxRecord;
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;
 import com.custoking.ims.reportingservice.security.TenantContext;
+import com.custoking.ims.reportingservice.api.dto.CommandCenterActionRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -78,7 +79,7 @@ class ReportingReadControllerTest {
         // SUPERADMIN context: isSuperAdmin()=true, resolveSchoolId(4L)=4L; body superAdmin flag ignored.
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         UUID actionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        Map<String, Object> request = Map.of("actorId", "9", "schoolId", 4L, "superAdmin", "true");
+        CommandCenterActionRequest request = new CommandCenterActionRequest(9L, 4L, null);
         Map<String, Object> result = Map.of("id", actionId, "status", "ACCEPTED");
         when(commands.acceptAction(actionId, 9L, 4L, true)).thenReturn(result);
 
@@ -99,7 +100,7 @@ class ReportingReadControllerTest {
         assertThatThrownBy(() -> controller.dismissAction(
                 "reporting-token",
                 actionId,
-                Map.of("actorId", 9L, "schoolId", 4L, "reason", "duplicate")))
+                new CommandCenterActionRequest(9L, 4L, "duplicate")))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
@@ -264,3 +265,4 @@ class ReportingReadControllerTest {
                 """.formatted(data));
     }
 }
+

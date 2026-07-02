@@ -2,6 +2,7 @@ package com.custoking.ims.reportingservice.api;
 
 import com.custoking.ims.reportingservice.api.dto.EventContributionReminderRequest;
 import com.custoking.ims.reportingservice.api.dto.EventContributionReminderTargetsRequest;
+import com.custoking.ims.reportingservice.api.dto.CommandCenterActionRequest;
 import com.custoking.ims.reportingservice.api.dto.RecordFeedRequest;
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository;
@@ -142,25 +143,25 @@ public class ReportingReadController {
     public Map<String, Object> acceptAction(
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @PathVariable UUID id,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @Valid @RequestBody(required = false) CommandCenterActionRequest body) {
         requireToken(token, "reporting:write");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
-        Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
-        return command(() -> commands.acceptAction(id, actorId(body), resolvedSchoolId, superAdmin));
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(body == null ? null : body.schoolId());
+        return command(() -> commands.acceptAction(id, body == null ? null : body.actorId(), resolvedSchoolId, superAdmin));
     }
 
     @PostMapping("/command-center/actions/{id}/dismiss")
     public Map<String, Object> dismissAction(
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @PathVariable UUID id,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @Valid @RequestBody(required = false) CommandCenterActionRequest body) {
         requireToken(token, "reporting:write");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
-        Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(body == null ? null : body.schoolId());
         return command(() -> commands.dismissAction(
                 id,
-                actorId(body),
-                body == null ? null : String.valueOf(body.getOrDefault("reason", "")),
+                body == null ? null : body.actorId(),
+                body == null ? null : (body.reason() == null ? "" : body.reason()),
                 resolvedSchoolId,
                 superAdmin));
     }
@@ -269,25 +270,9 @@ public class ReportingReadController {
         }
     }
 
-    private Long actorId(Map<String, Object> body) {
-        if (body == null || body.get("actorId") == null || String.valueOf(body.get("actorId")).isBlank()) {
-            return null;
-        }
-        Object value = body.get("actorId");
-        if (value instanceof Number number) return number.longValue();
-        return Long.parseLong(String.valueOf(value));
-    }
-
-    private Long actorSchoolId(Map<String, Object> body) {
-        if (body == null || body.get("schoolId") == null || String.valueOf(body.get("schoolId")).isBlank()) {
-            return null;
-        }
-        Object value = body.get("schoolId");
-        if (value instanceof Number number) return number.longValue();
-        return Long.parseLong(String.valueOf(value));
-    }
 
     private interface Command {
         Map<String, Object> run();
     }
 }
+

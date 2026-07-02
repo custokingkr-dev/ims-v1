@@ -1,7 +1,13 @@
 package com.custoking.ims.firefightingservice.api;
 
+import com.custoking.ims.firefightingservice.api.dto.ApproveNoteRequest;
+import com.custoking.ims.firefightingservice.api.dto.ApprovePrincipalRequest;
 import com.custoking.ims.firefightingservice.api.dto.CreateFirefightingRequestRequest;
 import com.custoking.ims.firefightingservice.api.dto.CreateQuotationRequest;
+import com.custoking.ims.firefightingservice.api.dto.RejectRequest;
+import com.custoking.ims.firefightingservice.api.dto.UpdateFirefightingRequestRequest;
+import com.custoking.ims.firefightingservice.api.dto.UpdateQuotationRequest;
+import com.custoking.ims.firefightingservice.api.dto.VendorPaidRequest;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
@@ -115,9 +121,18 @@ public class FirefightingReadController {
     public Map<String, Object> update(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateFirefightingRequestRequest req) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.updateRequest(code, request));
+        // Null-gate every put to preserve containsKey partial-update semantics in the repo.
+        Map<String, Object> body = new HashMap<>();
+        if (req.title() != null) body.put("title", req.title());
+        if (req.category() != null) body.put("category", req.category());
+        if (req.urgency() != null) body.put("urgency", req.urgency());
+        if (req.requiredByDate() != null) body.put("requiredByDate", req.requiredByDate());
+        if (req.estimatedBudget() != null) body.put("estimatedBudget", req.estimatedBudget());
+        if (req.description() != null) body.put("description", req.description());
+        if (req.actorEmail() != null) body.put("actorEmail", req.actorEmail());
+        return execute(() -> firefighting.updateRequest(code, body));
     }
 
     @GetMapping("/requests/{code}/quotations")
@@ -148,9 +163,16 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
             @PathVariable String quotationId,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateQuotationRequest req) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.updateQuotation(code, quotationId, request));
+        // Null-gate every put to preserve containsKey partial-update semantics in the repo.
+        Map<String, Object> body = new HashMap<>();
+        if (req.vendorName() != null) body.put("vendorName", req.vendorName());
+        if (req.amount() != null) body.put("amount", req.amount());
+        if (req.deliveryTimeline() != null) body.put("deliveryTimeline", req.deliveryTimeline());
+        if (req.notes() != null) body.put("notes", req.notes());
+        if (req.documentUrl() != null) body.put("documentUrl", req.documentUrl());
+        return execute(() -> firefighting.updateQuotation(code, quotationId, body));
     }
 
     @DeleteMapping("/requests/{code}/quotations/{quotationId}")
@@ -174,18 +196,23 @@ public class FirefightingReadController {
     public Map<String, Object> approveBursar(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) ApproveNoteRequest req) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.approveBursar(code, request == null ? Map.of() : request));
+        Map<String, Object> body = new HashMap<>();
+        if (req != null && req.note() != null) body.put("note", req.note());
+        return execute(() -> firefighting.approveBursar(code, body));
     }
 
     @PostMapping("/requests/{code}/approve-principal")
     public Map<String, Object> approvePrincipal(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) ApprovePrincipalRequest req) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.approvePrincipal(code, request == null ? Map.of() : request));
+        Map<String, Object> body = new HashMap<>();
+        if (req != null && req.selectedQuotationId() != null) body.put("selectedQuotationId", req.selectedQuotationId());
+        if (req != null && req.note() != null) body.put("note", req.note());
+        return execute(() -> firefighting.approvePrincipal(code, body));
     }
 
     @PostMapping("/requests/{code}/approve-custoking")
@@ -201,9 +228,14 @@ public class FirefightingReadController {
     public Map<String, Object> reject(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) RejectRequest req) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.reject(code, request == null ? Map.of() : request));
+        Map<String, Object> body = new HashMap<>();
+        if (req != null && req.rejectedBy() != null) body.put("rejectedBy", req.rejectedBy());
+        if (req != null && req.actorName() != null) body.put("actorName", req.actorName());
+        if (req != null && req.reason() != null) body.put("reason", req.reason());
+        if (req != null && req.rejectedReason() != null) body.put("rejectedReason", req.rejectedReason());
+        return execute(() -> firefighting.reject(code, body));
     }
 
     @PatchMapping("/requests/{code}/fulfill")
@@ -218,11 +250,14 @@ public class FirefightingReadController {
     public Map<String, Object> markVendorPaid(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) VendorPaidRequest req) {
         requireToken(token, "firefighting:write");
-        Map<String, Object> mutableRequest = request == null ? new HashMap<>() : new HashMap<>(request);
-        applyResolvedSchool(mutableRequest);
-        return execute(() -> firefighting.markVendorPaid(code, mutableRequest));
+        Map<String, Object> body = new HashMap<>();
+        if (req != null && req.schoolId() != null) body.put("schoolId", req.schoolId());
+        if (req != null && req.paidBy() != null) body.put("paidBy", req.paidBy());
+        if (req != null && req.notes() != null) body.put("notes", req.notes());
+        applyResolvedSchool(body);
+        return execute(() -> firefighting.markVendorPaid(code, body));
     }
 
     private void applyResolvedSchool(Map<String, Object> request) {

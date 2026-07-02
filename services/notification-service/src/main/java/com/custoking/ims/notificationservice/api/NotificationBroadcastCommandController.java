@@ -1,5 +1,6 @@
 package com.custoking.ims.notificationservice.api;
 
+import com.custoking.ims.notificationservice.api.dto.BroadcastActionRequest;
 import com.custoking.ims.notificationservice.api.dto.CreateBroadcastRequest;
 import com.custoking.ims.notificationservice.persistence.NotificationBroadcastCommandRepository;
 import com.custoking.ims.notificationservice.security.TenantScope;
@@ -65,24 +66,34 @@ public class NotificationBroadcastCommandController {
         return broadcasts.list(schoolId, status, limit);
     }
 
+    /**
+     * CONVERTED: optional body with optional actorId. Body may be absent entirely (required=false),
+     * in which case req is null and actorId is null. @Positive on actorId fires only when present.
+     * No @NotNull/@NotBlank — actorId is optional (null means action taken without a recorded actor).
+     */
     @PostMapping("/{id}/approve")
     public Map<String, Object> approve(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable UUID id,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @Valid @RequestBody(required = false) BroadcastActionRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
-        return command(() -> broadcasts.approve(id, actorId(body)));
+        Long actorId = req != null ? req.actorId() : null;
+        return command(() -> broadcasts.approve(id, actorId));
     }
 
+    /**
+     * CONVERTED: same optional-body semantics as /{id}/approve. Shared BroadcastActionRequest DTO.
+     */
     @PostMapping("/{id}/send")
     public Map<String, Object> send(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable UUID id,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @Valid @RequestBody(required = false) BroadcastActionRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
-        return command(() -> broadcasts.send(id, actorId(body)));
+        Long actorId = req != null ? req.actorId() : null;
+        return command(() -> broadcasts.send(id, actorId));
     }
 
     @GetMapping("/{id}/delivery-status")
@@ -111,17 +122,6 @@ public class NotificationBroadcastCommandController {
             HttpStatus status = message.toLowerCase().contains("not found") ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
             throw new ResponseStatusException(status, message, ex);
         }
-    }
-
-    private Long actorId(Map<String, Object> body) {
-        if (body == null || body.get("actorId") == null || String.valueOf(body.get("actorId")).isBlank()) {
-            return null;
-        }
-        Object value = body.get("actorId");
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.parseLong(String.valueOf(value));
     }
 
     private interface Command {

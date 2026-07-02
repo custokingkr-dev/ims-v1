@@ -296,4 +296,43 @@ class AttendanceValidationTest {
         verify(attendance).submitAttendanceSection(captor.capture());
         assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
     }
+
+    // ─── Fix A: bad date string maps to 400 (not 500) ───────────────────────
+
+    @Test
+    void dailyEntry_badDateString_returns400NotServerError() throws Exception {
+        // Repo runs LocalDate.parse(...) on the "date" value and throws DateTimeParseException.
+        when(attendance.saveDailyAttendance(anyMap()))
+                .thenThrow(new java.time.format.DateTimeParseException("bad", "not-a-date", 0));
+        mvc.perform(post("/api/v1/attendance/daily-entry")
+                        .header("X-Attendance-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"classId\":\"cls-1\",\"sectionId\":\"sec-1\",\"date\":\"not-a-date\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ─── Fix B: POST /submit-day validated DTO (all optional, format-only) ──
+
+    @Test
+    void submitDay_validPartialBody_delegatesOnlySentValues() throws Exception {
+        when(attendance.submitAttendanceDay("2026-06-30", null, null)).thenReturn(Map.of("ok", true));
+        mvc.perform(post("/api/v1/attendance/submit-day")
+                        .header("X-Attendance-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"date\":\"2026-06-30\"}"))
+                .andExpect(status().isOk());
+        verify(attendance).submitAttendanceDay("2026-06-30", null, null);
+    }
+
+    @Test
+    void submitDay_negativeActorId_returns400AndRepoNeverCalled() throws Exception {
+        mvc.perform(post("/api/v1/attendance/submit-day")
+                        .header("X-Attendance-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\":-5}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.actorId").exists());
+        verifyNoInteractions(attendance);
+    }
 }

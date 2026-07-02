@@ -3,7 +3,10 @@ package com.custoking.ims.feeservice.api;
 import com.custoking.ims.feeservice.api.dto.AssignFeePlanRequest;
 import com.custoking.ims.feeservice.api.dto.CreateBandRequest;
 import com.custoking.ims.feeservice.api.dto.CreateItemRequest;
+import com.custoking.ims.feeservice.api.dto.PatchBandRequest;
 import com.custoking.ims.feeservice.api.dto.RecordPaymentRequest;
+import com.custoking.ims.feeservice.api.dto.UpdateBandRequest;
+import com.custoking.ims.feeservice.api.dto.UpdateItemRequest;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeAssignmentRow;
 import com.custoking.ims.feeservice.persistence.FeeReadRepository.FeeBandRow;
@@ -111,18 +114,31 @@ public class FeeReadController {
     public Map<String, Object> updateBand(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateBandRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.updateBand(id, request));
+        Map<String, Object> body = new HashMap<>();
+        // name is not containsKey-gated in repo (textOrDefault falls back to current), omit when null
+        if (req.name() != null) body.put("name", req.name());
+        // classFrom, classTo, discount are containsKey-gated — only put when explicitly sent
+        if (req.classFrom() != null) body.put("classFrom", req.classFrom());
+        if (req.classTo() != null) body.put("classTo", req.classTo());
+        if (req.schedules() != null) body.put("schedules", req.schedules());
+        if (req.discount() != null) body.put("discount", req.discount());
+        return execute(() -> fees.updateBand(id, body));
     }
 
     @PatchMapping("/bands/{id}")
     public Map<String, Object> patchBand(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody PatchBandRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.patchBand(id, request));
+        Map<String, Object> body = new HashMap<>();
+        // discount and bandDiscount are containsKey-gated (repo checks OR of both keys)
+        if (req.discount() != null) body.put("discount", req.discount());
+        if (req.bandDiscount() != null) body.put("bandDiscount", req.bandDiscount());
+        if (req.schedules() != null) body.put("schedules", req.schedules());
+        return execute(() -> fees.patchBand(id, body));
     }
 
     @DeleteMapping("/bands/{id}")
@@ -153,9 +169,16 @@ public class FeeReadController {
     public Map<String, Object> updateItem(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateItemRequest req) {
         requireToken(token, "fee:write");
-        return execute(() -> fees.updateItem(id, request));
+        Map<String, Object> body = new HashMap<>();
+        // All item fields are containsKey-gated in repo — only put when explicitly sent
+        // itemName takes priority over name (firstPresent prefers itemName)
+        if (req.itemName() != null) body.put("itemName", req.itemName());
+        if (req.name() != null) body.put("name", req.name());
+        if (req.frequency() != null) body.put("frequency", req.frequency());
+        if (req.amount() != null) body.put("amount", req.amount());
+        return execute(() -> fees.updateItem(id, body));
     }
 
     @DeleteMapping("/items/{id}")
