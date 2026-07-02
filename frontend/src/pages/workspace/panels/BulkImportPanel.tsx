@@ -90,8 +90,13 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       }
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
       setBulkImportFileName(file.name);
-      const res = await api.post('/students/import/preview', { rows });
-      setBulkImportPreview(res.data as typeof bulkImportPreview);
+      setSaving('previewing');
+      try {
+        const res = await api.post('/students/import/preview', { rows });
+        setBulkImportPreview(res.data as typeof bulkImportPreview);
+      } finally {
+        setSaving('');
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not parse and preview this file.');
       setBulkImportError(msg);
@@ -106,13 +111,18 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   };
 
   const downloadImportTemplate = async () => {
-    const res = await api.get('/students/import/template', { responseType: 'blob' });
-    const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'student-import-template.xlsx';
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      const res = await api.get('/students/import/template', { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'student-import-template.xlsx';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not download template.');
+      setBulkImportError(msg);
+    }
   };
 
   const confirmBulkImport = async () => {
@@ -122,16 +132,23 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       setBulkImportToast(null);
       const confirmRes = await api.post<{ jobId?: string }>('/students/import/confirm', { fileToken: bulkImportPreview.fileToken });
       const jobId = (confirmRes.data as { jobId?: string })?.jobId;
-      let done = false;
-      let finalStatus: { done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null = null;
-      while (!done && jobId) {
-        const statusRes = await api.get<{ done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null>(`/students/import/status/${encodeURIComponent(jobId)}`);
-        finalStatus = statusRes.data;
-        setBulkImportProgress(finalStatus);
-        done = Boolean(finalStatus?.done);
-        if (!done) await new Promise((resolve) => setTimeout(resolve, 500));
+      if (!jobId) {
+        // Backend returned a synchronous inline result — no job polling needed
+        const inlineResult = confirmRes.data as { inserted?: number; skipped?: number; skippedRows?: { rowNumber: number; reason: string }[] };
+        setBulkImportProgress({ done: true, inserted: inlineResult.inserted, skipped: inlineResult.skipped, skippedRows: inlineResult.skippedRows });
+        setBulkImportToast({ type: 'success', message: `${inlineResult.inserted ?? 0} students imported. ${inlineResult.skipped ?? 0} rows skipped.` });
+      } else {
+        let done = false;
+        let finalStatus: { done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null = null;
+        while (!done) {
+          const statusRes = await api.get<{ done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null>(`/students/import/status/${encodeURIComponent(jobId)}`);
+          finalStatus = statusRes.data;
+          setBulkImportProgress(finalStatus);
+          done = Boolean(finalStatus?.done);
+          if (!done) await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        setBulkImportToast({ type: 'success', message: `${finalStatus?.inserted || 0} students imported successfully. ${finalStatus?.skipped || 0} rows skipped due to errors.` });
       }
-      setBulkImportToast({ type: 'success', message: `${finalStatus?.inserted || 0} students imported successfully. ${finalStatus?.skipped || 0} rows skipped due to errors.` });
       await onRefresh();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Import failed.');
@@ -154,6 +171,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
         </div>
         {bulkImportFileName ? <div className="ck-iz-file">Selected file: {bulkImportFileName}</div> : null}
       </div>
+      {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
       {bulkImportError ? <div className="ck-alert ck-alert-r" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportError}</div></div> : null}
       {bulkImportWarning ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportWarning}</div></div> : null}
       {bulkImportToast ? <div className={`ck-alert ${bulkImportToast.type === 'success' ? 'ck-alert-g' : 'ck-alert-r'}`} style={{ marginTop: 16 }}><span>{bulkImportToast.type === 'success' ? '✓' : '!'}</span><div>{bulkImportToast.message}</div></div> : null}

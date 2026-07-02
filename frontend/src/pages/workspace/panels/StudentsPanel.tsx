@@ -25,17 +25,21 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentDetail, setStudentDetail] = useState<any | null>(null);
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [studentModalLoading, setStudentModalLoading] = useState(false);
-  const [photoFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [studentsError, setStudentsError] = useState<string | null>(null);
+  const [studentDetailLimited, setStudentDetailLimited] = useState(false);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage) => {
     try {
       setStudentsLoading(true);
+      setStudentsError(null);
       const params: Record<string, any> = { page, size: PAGE_SIZE };
       if (filters.className !== 'All') params.class = filters.className;
       if (filters.sectionName !== 'All') params.section = filters.sectionName;
       if (filters.feeStatus !== 'All') params.feeStatus = filters.feeStatus;
       const res = await api.get('/students', { params: { ...params, ...(schoolScopedParams || {}) } });
       setStudentsView(res.data);
+    } catch {
+      setStudentsError('Failed to load students. Please try again.');
     } finally {
       setStudentsLoading(false);
     }
@@ -59,6 +63,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   }, []);
 
   const openStudentModal = async (student: any) => {
+    setStudentDetailLimited(false);
     try {
       setStudentModalOpen(true);
       setStudentModalLoading(true);
@@ -66,6 +71,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setStudentDetail(res.data);
     } catch {
       setStudentDetail(student);
+      setStudentDetailLimited(true);
     } finally {
       setStudentModalLoading(false);
     }
@@ -98,10 +104,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           </>
         }
       >
-        {photoFeedback ? (
-          <div className={`ck-alert ${photoFeedback.type === 'success' ? 'ck-alert-g' : 'ck-alert-re'}`}>
-            <span>{photoFeedback.type === 'success' ? '✓' : '!'}</span>
-            <div>{photoFeedback.message}</div>
+        {studentsError ? (
+          <div className="ck-alert ck-alert-r">
+            <span>!</span>
+            <div>{studentsError}</div>
           </div>
         ) : null}
 
@@ -188,11 +194,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <td>
                         <div className="ck-student-cell">
                           {student.photoUrl
-                            ? <img src={student.photoUrl} alt={student.name} className="ck-student-avatar" />
-                            : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(student.name)}</div>
+                            ? <img src={student.photoUrl} alt={student.fullName} className="ck-student-avatar" />
+                            : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(student.fullName)}</div>
                           }
                           <div>
-                            <div className="tb">{student.name}</div>
+                            <div className="tb">{student.fullName}</div>
                             <div className="ts">{student.classSection} · {student.academicYear}</div>
                           </div>
                         </div>
@@ -272,6 +278,12 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 <div className="ts">Loading student details…</div>
               ) : (
                 <div className="ck-student-modal-grid">
+                  {studentDetailLimited && (
+                    <div className="ck-alert ck-alert-am">
+                      <span>!</span>
+                      <div>Showing limited data — full student details could not be loaded.</div>
+                    </div>
+                  )}
                   <div className="ck-student-modal-hero">
                     {studentDetail.photoUrl
                       ? <img src={studentDetail.photoUrl} alt={studentDetail.name} className="ck-student-avatar ck-student-avatar-lg" />

@@ -122,11 +122,15 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
     ];
     if (!boolFields.includes(field)) return;
     const patch: Record<string, boolean> = { [field]: !item[field] };
+    // Optimistic update: flip the checkbox immediately for snappy UX
+    setItems(prev => prev.map(i => i.itemId === item.itemId ? { ...i, [field]: !item[field] } : i));
     try {
       const updated = await updateReviewItem(item.itemId, patch);
       setItems(prev => prev.map(i => i.itemId === updated.itemId ? updated : i));
     } catch {
-      // silent optimistic failure
+      // Revert optimistic update and surface the error
+      setItems(prev => prev.map(i => i.itemId === item.itemId ? item : i));
+      setError('Failed to save checklist update. Please try again.');
     }
   };
 
@@ -301,7 +305,7 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
       setItems(r.content);
       setTotalElements(r.totalElements);
     } catch {
-      // silent
+      setError('Failed to load student review items.');
     }
   }, []);
 
