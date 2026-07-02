@@ -27,13 +27,26 @@ export function TimetablePanel({ workspace, onRefresh }: Props) {
     teacher: '',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const rows = (workspace.timetable || []) as TimetableRow[];
 
   const submit = async () => {
+    if (!form.subject.trim() || !form.teacher.trim()) {
+      setError('Subject and teacher are required.');
+      return;
+    }
+    setError('');
     try {
       setSaving(true);
       await api.post('/workspace/timetable', form);
       await onRefresh();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Failed to save timetable entry';
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -81,6 +94,13 @@ export function TimetablePanel({ workspace, onRefresh }: Props) {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}>
+          <span>!</span>
+          <div>{error}</div>
+        </div>
+      )}
 
       <div className="ck-card">
         <div className="ck-card-h">
