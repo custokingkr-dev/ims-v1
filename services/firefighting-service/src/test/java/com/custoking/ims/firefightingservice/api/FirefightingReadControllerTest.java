@@ -1,5 +1,7 @@
 package com.custoking.ims.firefightingservice.api;
 
+import com.custoking.ims.firefightingservice.api.dto.CreateFirefightingRequestRequest;
+import com.custoking.ims.firefightingservice.api.dto.CreateQuotationRequest;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
@@ -83,14 +85,16 @@ class FirefightingReadControllerTest {
     @Test
     void createDelegatesRequestBody() {
         TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
-        Map<String, Object> request = Map.of("title", "Replace extinguishers", "schoolId", 4L);
+        CreateFirefightingRequestRequest req = new CreateFirefightingRequestRequest(
+                "Replace extinguishers", null, null, null, null, 4L, null, null, null, null, null);
         Map<String, Object> result = Map.of("code", "FF-1002", "status", "DRAFT");
-        when(firefighting.createRequest(request)).thenReturn(result);
+        when(firefighting.createRequest(anyMap())).thenReturn(result);
 
-        Map<String, Object> response = controller.create("ff-token", request);
+        Map<String, Object> response = controller.create("ff-token", req);
 
         assertThat(response).isSameAs(result);
-        verify(firefighting).createRequest(request);
+        verify(firefighting).createRequest(argThat(m ->
+                "Replace extinguishers".equals(m.get("title")) && Long.valueOf(4L).equals(m.get("schoolId"))));
     }
 
     @Test
@@ -116,16 +120,16 @@ class FirefightingReadControllerTest {
 
     @Test
     void addQuotationMapsValidationFailureToBadRequest() {
-        Map<String, Object> request = Map.of("amount", 120000L);
-        when(firefighting.addQuotation("FF-1001", request))
-                .thenThrow(new IllegalArgumentException("vendorName is required"));
+        CreateQuotationRequest req = new CreateQuotationRequest("Vendor A", 120000L, null, null, null);
+        when(firefighting.addQuotation(eq("FF-1001"), anyMap()))
+                .thenThrow(new IllegalArgumentException("Request not found"));
 
-        assertThatThrownBy(() -> controller.addQuotation("ff-token", "FF-1001", request))
+        assertThatThrownBy(() -> controller.addQuotation("ff-token", "FF-1001", req))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(response.getReason()).isEqualTo("vendorName is required");
+                    assertThat(response.getReason()).isEqualTo("Request not found");
                 });
     }
 
