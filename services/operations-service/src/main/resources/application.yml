@@ -1,0 +1,45 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-operations-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: ${DB_POOL_MIN:1}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
+      data-source-properties:
+        currentSchema: ${OPERATIONS_DB_SCHEMA:workflow,firefighting}
+  flyway:
+    enabled: false
+
+flyway:
+  url: ${FLYWAY_URL:${spring.datasource.url}}
+  user: ${FLYWAY_USERNAME:${spring.datasource.username}}
+  password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+workflow:
+  read-token: ${WORKFLOW_READ_TOKEN:}
+  db:
+    schema: ${WORKFLOW_DB_SCHEMA:workflow}
+
+firefighting:
+  read-token: ${FIREFIGHTING_READ_TOKEN:}
+  db:
+    schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
