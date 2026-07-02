@@ -119,7 +119,7 @@ class FirefightingReadControllerTest {
     }
 
     @Test
-    void addQuotationMapsValidationFailureToBadRequest() {
+    void addQuotation_repoIllegalArgument_mapsToBadRequest() {
         CreateQuotationRequest req = new CreateQuotationRequest("Vendor A", 120000L, null, null, null);
         when(firefighting.addQuotation(eq("FF-1001"), anyMap()))
                 .thenThrow(new IllegalArgumentException("Request not found"));

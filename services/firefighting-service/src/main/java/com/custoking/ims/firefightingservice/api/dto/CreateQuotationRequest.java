@@ -11,6 +11,7 @@ import jakarta.validation.constraints.NotBlank;
  * the repo (addQuotation reads current.get("schoolId")).
  */
 public record CreateQuotationRequest(
+        // @NotBlank: intentional tightening — repo previously defaulted to placeholder "Vendor"; a real value is required.
         @NotBlank(message = "Vendor name is required") String vendorName,
         Long amount,
         String deliveryTimeline,

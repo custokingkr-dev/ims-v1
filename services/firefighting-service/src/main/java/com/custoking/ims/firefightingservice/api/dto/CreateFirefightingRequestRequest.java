@@ -13,6 +13,7 @@ import jakarta.validation.constraints.NotBlank;
  * controller mapping.
  */
 public record CreateFirefightingRequestRequest(
+        // @NotBlank: intentional tightening — repo previously defaulted to placeholder "Request"; a real value is required.
         @NotBlank(message = "Title is required") String title,
         String category,
         String urgency,
