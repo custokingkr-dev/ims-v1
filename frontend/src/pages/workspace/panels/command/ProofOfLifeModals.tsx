@@ -1,18 +1,37 @@
 /**
- * ProofOfLifeModals — isolated proof-of-life (POL) flows for the Command Centre.
+ * ProofOfLifeModals — command-centre action modals.
  *
- * Each modal simulates a real admin workflow with meaningful UI, but does NOT
- * write to the backend. All state changes are local (React state + toast only).
- *
- * Every modal footer carries a "Proof of life · no server write" note so
- * reviewers can distinguish real from simulated actions at a glance.
+ * Wired modals call real backend endpoints; unlinked stubs carry a
+ * "Proof of life · no server write" footer so reviewers can distinguish them.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../../components/Modal';
 import type { CommandCentreCard } from './commandCentreTypes';
 import type { PolCode } from './commandCentreTypes';
 import type { WorkspaceData } from '../../../../types/workspace';
+
+import {
+  sendFeeReminders,
+  fetchFeeDefaulters,
+  sendPhotographyPaymentReminders,
+  fetchClassPhotographyPaymentStatus,
+  fetchLowAttendanceSections,
+  fetchLowAttendanceStudents,
+  sendMeetingInvites,
+  fetchVendorDues,
+  markCatalogOrderVendorPaid,
+  markFirefightingVendorPaid,
+  initiateIdCardReview,
+  initiateFullNameVerification,
+} from '../../../../api/dashboardCommandCenterApi';
+
+import type {
+  SendFeeRemindersResult,
+  LowAttendanceSectionItem,
+  VendorDueItem,
+  ClassPhotographyPaymentStatusResponse,
+} from '../../../../types/dashboardCommandCenter';
 
 export interface PolModalProps {
   polCode: PolCode;
@@ -23,9 +42,10 @@ export interface PolModalProps {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared footer note
+// Shared helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Shown on stubs that are not yet wired to a backend endpoint. */
 function PolNote() {
   return (
     <span style={{ flex: 1, fontSize: 11, color: 'var(--ink3)', marginRight: 'auto' }}>
@@ -34,34 +54,83 @@ function PolNote() {
   );
 }
 
+/** Inline error banner shown inside a modal (never closes on error). */
+function InlineError({ msg }: { msg: string | null }) {
+  if (!msg) return null;
+  return (
+    <div style={{
+      background: '#fdecea',
+      border: '1px solid #f5c6c4',
+      borderRadius: 6,
+      padding: '8px 12px',
+      fontSize: 12,
+      color: 'var(--re, #c0312b)',
+      marginTop: 4,
+    }}>
+      {msg}
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
-// FEE_REMINDER — queue fee reminders for overdue families
+// FEE_REMINDER — queue fee reminders for overdue families  [WIRED]
+// endpoint: POST /dashboard/finance/fee-defaulters/reminders
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FeeReminderModal({ card, onClose, showToast }: PolModalProps) {
-  const [sent, setSent] = useState(false);
+  const [studentIds, setStudentIds] = useState<number[]>([]);
+  const [loadingIds, setLoadingIds] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<SendFeeRemindersResult | null>(null);
   const count = card.count ?? 0;
 
-  function handleLaunch() {
-    setSent(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: `Fee reminders queued for ${count} families` });
+  // Fetch up to 500 defaulters on open to collect student IDs for the batch send.
+  useEffect(() => {
+    fetchFeeDefaulters({ size: 500 })
+      .then(res => setStudentIds(res.items.map(i => i.studentId)))
+      .catch(() => { /* non-fatal: fall back to empty list */ })
+      .finally(() => setLoadingIds(false));
+  }, []);
+
+  async function handleLaunch() {
+    setSending(true);
+    setError(null);
+    try {
+      const res = await sendFeeReminders({
+        studentIds,
+        channel: 'ALL',
+        message: 'Fee payment reminder — please clear your outstanding dues at the earliest.',
+      });
+      setResult(res);
+      showToast({ ok: true, txt: `Fee reminders sent to ${res.sentCount} families` });
       onClose();
-    }, 800);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to send reminders — please try again.');
+      setSending(false);
+    }
   }
+
+  const busy = loadingIds || sending;
+  const canSend = !busy && studentIds.length > 0;
 
   return (
     <Modal
       title="Send Fee Reminders"
       subtitle={`${count} students with overdue fees`}
       onClose={onClose}
-      disabled={sent}
+      disabled={busy}
       footer={
         <>
-          <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={sent}>Cancel</button>
-          <button className="ck-btn ck-btn-g" onClick={handleLaunch} disabled={sent}>
-            {sent ? 'Queuing…' : `Launch reminder run · ${count} families`}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={busy}>Cancel</button>
+          <button className="ck-btn ck-btn-g" onClick={handleLaunch} disabled={!canSend || sending}>
+            {loadingIds
+              ? 'Loading…'
+              : sending
+              ? 'Sending…'
+              : result
+              ? `Sent to ${result.sentCount}`
+              : `Launch reminder run · ${studentIds.length || count} families`}
           </button>
         </>
       }
@@ -88,13 +157,14 @@ function FeeReminderModal({ card, onClose, showToast }: PolModalProps) {
         <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--b3, #c5d8ff)' }}>
           Historical data shows 3× faster recovery when reminders are sent before 6 PM on the overdue date.
         </div>
+        <InlineError msg={error} />
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FEE_DOWNLOAD — export term collection summary
+// FEE_DOWNLOAD — export term collection summary  [no endpoint — deferred]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FeeDownloadModal({ workspace, onClose, showToast }: PolModalProps) {
@@ -160,69 +230,81 @@ function FeeDownloadModal({ workspace, onClose, showToast }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROFILE_UPLOAD — batch photo upload stub
+// PROFILE_UPLOAD — initiate full-name verification campaign  [WIRED]
+// endpoint: POST /dashboard/student-lifecycle/full-name-verification/initiate
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ProfileUploadModal({ card, onClose, showToast }: PolModalProps) {
-  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleUpload() {
-    setUploading(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Photo upload initiated — processing in background' });
+  async function handleUpload() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await initiateFullNameVerification({ verifier: 'BOTH' });
+      showToast({ ok: true, txt: `Full-name verification campaign started — ${res.totalStudents} students` });
       onClose();
-    }, 900);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to initiate verification — please try again.');
+      setSubmitting(false);
+    }
   }
 
   return (
     <Modal
-      title="Upload Student Photos"
-      subtitle={`Batch upload for ${card.count ?? 23} incomplete profiles`}
+      title="Initiate Full-Name Verification"
+      subtitle={`Verify names for ${card.count ?? 0} student profiles`}
       onClose={onClose}
-      disabled={uploading}
+      disabled={submitting}
       footer={
         <>
-          <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={uploading}>Cancel</button>
-          <button className="ck-btn ck-btn-b" onClick={handleUpload} disabled={uploading}>
-            {uploading ? 'Initiating…' : 'Start upload'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={submitting}>Cancel</button>
+          <button className="ck-btn ck-btn-b" onClick={handleUpload} disabled={submitting}>
+            {submitting ? 'Initiating…' : 'Start verification campaign'}
           </button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '32px 16px', textAlign: 'center', color: 'var(--ink3)', fontSize: 13 }}>
-          <div style={{ fontSize: 28, marginBottom: 8 }}>📷</div>
-          <div>Drag &amp; drop photos here, or click to browse</div>
-          <div style={{ fontSize: 11, marginTop: 6 }}>JPEG or PNG · max 2 MB per photo · named by admission number</div>
+        <div className="ck-info-row">
+          <span className="ck-label">Verifier</span>
+          <span className="ck-value">Teacher &amp; Parent (BOTH)</span>
         </div>
         <div className="ck-info-row">
-          <span className="ck-label">Missing photos</span>
-          <span className="ck-value" style={{ color: 'var(--am)' }}>{card.count ?? 23} students</span>
+          <span className="ck-label">Scope</span>
+          <span className="ck-value">All students · all sections</span>
         </div>
-        <div className="ck-info-row">
-          <span className="ck-label">Naming format</span>
-          <span className="ck-value">ADMISSION_NO.jpg — e.g. 2024-0042.jpg</span>
+        <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--b3, #c5d8ff)' }}>
+          Once initiated, teachers and parents will receive requests to verify and correct student full names. Review progress in the Students panel.
         </div>
+        <InlineError msg={error} />
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROMOTION_REVIEW — initiate year-end promotion session
+// PROMOTION_REVIEW — initiate ID card review campaign  [WIRED]
+// endpoint: POST /dashboard/student-lifecycle/id-card-review/initiate
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PromotionReviewModal({ card, onClose, showToast }: PolModalProps) {
   const [started, setStarted] = useState(false);
-  const total = card.count ?? 412;
+  const [error, setError] = useState<string | null>(null);
+  const total = card.count ?? 0;
 
-  function handleBegin() {
+  async function handleBegin() {
     setStarted(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Promotion review session started — check Students panel' });
+    setError(null);
+    try {
+      const res = await initiateIdCardReview({});
+      showToast({ ok: true, txt: `ID card review started — ${res.totalStudents} students in campaign` });
       onClose();
-    }, 900);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to start review session — please try again.');
+      setStarted(false);
+    }
   }
 
   return (
@@ -233,10 +315,9 @@ function PromotionReviewModal({ card, onClose, showToast }: PolModalProps) {
       disabled={started}
       footer={
         <>
-          <PolNote />
           <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={started}>Cancel</button>
           <button className="ck-btn ck-btn-b" onClick={handleBegin} disabled={started}>
-            {started ? 'Opening session…' : 'Begin review session'}
+            {started ? 'Initiating…' : 'Begin review session'}
           </button>
         </>
       }
@@ -247,23 +328,24 @@ function PromotionReviewModal({ card, onClose, showToast }: PolModalProps) {
           <span className="ck-value" style={{ color: 'var(--g)' }}>{total}</span>
         </div>
         <div className="ck-info-row">
-          <span className="ck-label">Exceptions requiring review</span>
-          <span className="ck-value" style={{ color: 'var(--am)' }}>8 students</span>
+          <span className="ck-label">Campaign type</span>
+          <span className="ck-value">ID card data review · all sections</span>
         </div>
         <div className="ck-info-row">
           <span className="ck-label">Promotion criteria</span>
           <span className="ck-value">≥75% attendance · pass in core subjects · no pending dues</span>
         </div>
         <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', border: '1px solid var(--b3, #c5d8ff)' }}>
-          Once all exceptions are reviewed, you can bulk-promote the eligible batch with one click.
+          Once started, teachers can review each student's ID card data. Progress is visible in the Students panel.
         </div>
+        <InlineError msg={error} />
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROMOTION_EXCEPTIONS — review students that can't be auto-promoted
+// PROMOTION_EXCEPTIONS — hardcoded fixture  [no real endpoint — deferred]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function PromotionExceptionsModal({ onClose, showToast }: PolModalProps) {
@@ -313,7 +395,7 @@ function PromotionExceptionsModal({ onClose, showToast }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ORDER_VALUE — show submitted order breakdown
+// ORDER_VALUE — show submitted order breakdown  [read-only view; no action]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OrderValueModal({ workspace, onClose }: PolModalProps) {
@@ -358,7 +440,7 @@ function OrderValueModal({ workspace, onClose }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ORDER_FOLLOWUP — schedule vendor follow-up email
+// ORDER_FOLLOWUP — schedule vendor follow-up  [no endpoint — deferred]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OrderFollowupModal({ workspace, onClose, showToast }: PolModalProps) {
@@ -407,7 +489,7 @@ function OrderFollowupModal({ workspace, onClose, showToast }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ORDER_ESCALATE — escalate to Custoking ops
+// ORDER_ESCALATE — escalate to Custoking ops  [no endpoint — deferred]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OrderEscalateModal({ onClose, showToast }: PolModalProps) {
@@ -455,7 +537,82 @@ function OrderEscalateModal({ onClose, showToast }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FF_QUOTATION_ADD — upload quotation for an open request
+// ORDER_VENDOR_PAID — mark catalog orders as vendor-paid  [WIRED]
+// endpoint: POST /dashboard/vendor-dues/catalog-orders/{id}/mark-paid
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OrderVendorPaidModal({ onClose, showToast }: PolModalProps) {
+  const [items, setItems] = useState<VendorDueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchVendorDues()
+      .then(res => setItems(res.items.filter(i => i.sourceType === 'CATALOG_ORDER')))
+      .catch(() => setError('Failed to load vendor dues — please close and retry.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleMarkPaid(orderId: string) {
+    setMarkingId(orderId);
+    setError(null);
+    try {
+      await markCatalogOrderVendorPaid(orderId);
+      setItems(prev => prev.filter(i => i.id !== orderId));
+      showToast({ ok: true, txt: 'Order marked as vendor-paid' });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to mark order as paid — please try again.');
+    } finally {
+      setMarkingId(null);
+    }
+  }
+
+  return (
+    <Modal
+      title="Mark Catalog Orders Vendor-Paid"
+      subtitle={loading ? 'Loading…' : `${items.length} order${items.length !== 1 ? 's' : ''} with vendor payment due`}
+      onClose={onClose}
+      footer={
+        <>
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Close</button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {loading && <div style={{ color: 'var(--ink3)', fontSize: 13 }}>Loading vendor dues…</div>}
+        {!loading && items.length === 0 && !error && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No catalog orders with pending vendor payment.</div>
+        )}
+        {items.map(item => (
+          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{item.title}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                {item.category}{item.vendorName ? ` · ${item.vendorName}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--g)', fontWeight: 600, marginTop: 2 }}>
+                ₹{(item.amountPaise / 100).toLocaleString('en-IN')}
+              </div>
+            </div>
+            <button
+              className="ck-btn ck-btn-g"
+              style={{ fontSize: 12, padding: '5px 12px' }}
+              onClick={() => handleMarkPaid(item.id)}
+              disabled={markingId === item.id}
+            >
+              {markingId === item.id ? 'Marking…' : 'Mark Paid'}
+            </button>
+          </div>
+        ))}
+        <InlineError msg={error} />
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FF_QUOTATION_ADD — upload quotation for an open request  [no endpoint — deferred]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FfQuotationAddModal({ workspace, onClose, showToast }: PolModalProps) {
@@ -518,7 +675,7 @@ function FfQuotationAddModal({ workspace, onClose, showToast }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FF_QUOTATION_VIEW — view quotations for in-review requests
+// FF_QUOTATION_VIEW — view quotations for in-review requests  [read-only view]
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FfQuotationViewModal({ workspace, onClose }: PolModalProps) {
@@ -565,59 +722,208 @@ function FfQuotationViewModal({ workspace, onClose }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ATTENDANCE_SECTIONS — list sections that haven't marked attendance
+// FF_VENDOR_PAID — mark firefighting requests as vendor-paid  [WIRED]
+// endpoint: POST /dashboard/vendor-dues/firefighting/{code}/mark-paid
+// Type note: VendorDueItem.id is assumed to carry the FF request code for
+// FIREFIGHTING items — this matches the markFirefightingVendorPaid(code) param.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AttendanceSectionsModal({ onClose }: PolModalProps) {
-  const sections = [
-    { name: '8-A',  teacher: 'Ms. Priya Rao',    since: '9:15 AM' },
-    { name: '9-C',  teacher: 'Mr. Kiran Mehta',   since: '9:20 AM' },
-    { name: '10-B', teacher: 'Ms. Sunita Gupta',  since: '9:10 AM' },
-    { name: '11-A', teacher: 'Mr. Rahul Das',     since: '9:05 AM' },
-  ];
+function FfVendorPaidModal({ onClose, showToast }: PolModalProps) {
+  const [items, setItems] = useState<VendorDueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [markingId, setMarkingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchVendorDues()
+      .then(res => setItems(res.items.filter(i => i.sourceType === 'FIREFIGHTING')))
+      .catch(() => setError('Failed to load vendor dues — please close and retry.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleMarkPaid(code: string) {
+    setMarkingId(code);
+    setError(null);
+    try {
+      await markFirefightingVendorPaid(code);
+      setItems(prev => prev.filter(i => i.id !== code));
+      showToast({ ok: true, txt: 'Firefighting request marked as vendor-paid' });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to mark as paid — please try again.');
+    } finally {
+      setMarkingId(null);
+    }
+  }
 
   return (
     <Modal
-      title="Sections Pending Attendance"
-      subtitle="Classes that have not marked today's attendance"
+      title="Mark FF Requests Vendor-Paid"
+      subtitle={loading ? 'Loading…' : `${items.length} request${items.length !== 1 ? 's' : ''} with vendor payment due`}
       onClose={onClose}
       footer={
         <>
-          <PolNote />
           <button className="ck-btn ck-btn-ghost" onClick={onClose}>Close</button>
         </>
       }
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {sections.map(s => (
-          <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {loading && <div style={{ color: 'var(--ink3)', fontSize: 13 }}>Loading vendor dues…</div>}
+        {!loading && items.length === 0 && !error && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No firefighting requests with pending vendor payment.</div>
+        )}
+        {items.map(item => (
+          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>Section {s.name}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.teacher}</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{item.title}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                {item.category}{item.vendorName ? ` · ${item.vendorName}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--g)', fontWeight: 600, marginTop: 2 }}>
+                ₹{(item.amountPaise / 100).toLocaleString('en-IN')}
+              </div>
             </div>
-            <span style={{ fontSize: 11, color: 'var(--am)', fontWeight: 500 }}>Pending since {s.since}</span>
+            <button
+              className="ck-btn ck-btn-g"
+              style={{ fontSize: 12, padding: '5px 12px' }}
+              onClick={() => handleMarkPaid(item.id)}
+              disabled={markingId === item.id}
+            >
+              {markingId === item.id ? 'Marking…' : 'Mark Paid'}
+            </button>
           </div>
         ))}
-        <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 4 }}>
-          Go to the Attendance panel to mark or send a reminder to the class teacher.
-        </div>
+        <InlineError msg={error} />
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ATTENDANCE_LOW — low-attendance section breakdown
+// ATTENDANCE_SECTIONS — sections with low attendance + per-section invite  [WIRED]
+// data: GET /dashboard/attendance/low-sections
+// action: GET /dashboard/attendance/sections/{id}/low-students
+//         POST /dashboard/attendance/meeting-invites
 // ─────────────────────────────────────────────────────────────────────────────
 
-function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
+function AttendanceSectionsModal({ onClose, showToast }: PolModalProps) {
+  const [sections, setSections] = useState<LowAttendanceSectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sendingSection, setSendingSection] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLowAttendanceSections()
+      .then(res => setSections(res.sections))
+      .catch(() => setError('Failed to load attendance data — please close and retry.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSendInvites(sectionId: string) {
+    setSendingSection(sectionId);
+    setError(null);
+    try {
+      const students = await fetchLowAttendanceStudents(sectionId);
+      const result = await sendMeetingInvites({
+        studentIds: students.map(s => s.studentId),
+        channel: 'ALL',
+        message: 'Please attend a meeting regarding attendance concerns.',
+      });
+      showToast({ ok: true, txt: `Meeting invites sent to ${result.sentCount} parents` });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to send invites — please try again.');
+    } finally {
+      setSendingSection(null);
+    }
+  }
+
+  return (
+    <Modal
+      title="Sections with Low Attendance"
+      subtitle="Classes below the attendance threshold today"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Close</button>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {loading && <div style={{ color: 'var(--ink3)', fontSize: 13 }}>Loading attendance data…</div>}
+        {!loading && sections.length === 0 && !error && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No sections below attendance threshold today.</div>
+        )}
+        {sections.map(s => (
+          <div key={s.sectionId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{s.className} {s.sectionName}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                {s.presentCount}/{s.totalEnrolled} present · {s.studentsBelowThreshold} below threshold
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>
+                {s.attendancePct.toFixed(1)}%
+              </span>
+              <button
+                className="ck-btn ck-btn-b"
+                style={{ fontSize: 11, padding: '4px 10px' }}
+                onClick={() => handleSendInvites(s.sectionId)}
+                disabled={sendingSection === s.sectionId}
+              >
+                {sendingSection === s.sectionId ? 'Sending…' : 'Invite'}
+              </button>
+            </div>
+          </div>
+        ))}
+        <InlineError msg={error} />
+        {!loading && sections.length > 0 && (
+          <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 4 }}>
+            "Invite" sends meeting invites to parents of low-attendance students in that section.
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ATTENDANCE_LOW — low-attendance breakdown + per-section meeting invite  [WIRED]
+// data: GET /dashboard/attendance/low-sections
+// action: GET /dashboard/attendance/sections/{id}/low-students
+//         POST /dashboard/attendance/meeting-invites
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AttendanceLowModal({ workspace, onClose, showToast }: PolModalProps) {
+  const [sections, setSections] = useState<LowAttendanceSectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sendingSection, setSendingSection] = useState<string | null>(null);
   const pct = workspace.dashboard.attendancePercent ?? 0;
 
-  const lowSections = [
-    { name: '11-B', pct: 72, students: 38, teacher: 'Mr. Anil Kumar' },
-    { name: '10-A', pct: 76, students: 42, teacher: 'Ms. Divya Nair' },
-    { name: '8-C',  pct: 78, students: 35, teacher: 'Mr. Suresh Pillai' },
-  ];
+  useEffect(() => {
+    fetchLowAttendanceSections()
+      .then(res => setSections(res.sections))
+      .catch(() => setError('Failed to load attendance data — please close and retry.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleScheduleMeeting(sectionId: string) {
+    setSendingSection(sectionId);
+    setError(null);
+    try {
+      const students = await fetchLowAttendanceStudents(sectionId);
+      const result = await sendMeetingInvites({
+        studentIds: students.map(s => s.studentId),
+        channel: 'ALL',
+        message: 'Please attend a meeting regarding low attendance concerns.',
+      });
+      showToast({ ok: true, txt: `Meeting invites sent to ${result.sentCount} parents` });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to schedule meeting — please try again.');
+    } finally {
+      setSendingSection(null);
+    }
+  }
 
   return (
     <Modal
@@ -626,79 +932,139 @@ function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
       onClose={onClose}
       footer={
         <>
-          <PolNote />
           <button className="ck-btn ck-btn-ghost" onClick={onClose}>Close</button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ background: '#fff8e1', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: '#7a5500', border: '1px solid #ffe082' }}>
-          School attendance today is {pct}%. Sections below 80% are highlighted in red.
+          School attendance today is {pct}%. Sections below threshold are shown below.
         </div>
-        {lowSections.map(s => (
-          <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        {loading && <div style={{ color: 'var(--ink3)', fontSize: 13 }}>Loading…</div>}
+        {!loading && sections.length === 0 && !error && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No sections below attendance threshold today.</div>
+        )}
+        {sections.map(s => (
+          <div key={s.sectionId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>Section {s.name} · {s.teacher}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.students} students enrolled</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{s.className} {s.sectionName}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>
+                {s.totalEnrolled} enrolled · {s.studentsBelowThreshold} below threshold
+              </div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: s.pct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>{s.pct}%</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>
+                {s.attendancePct.toFixed(1)}%
+              </span>
+              <button
+                className="ck-btn ck-btn-am"
+                style={{ fontSize: 11, padding: '4px 10px' }}
+                onClick={() => handleScheduleMeeting(s.sectionId)}
+                disabled={sendingSection === s.sectionId}
+              >
+                {sendingSection === s.sectionId ? 'Sending…' : 'Meeting'}
+              </button>
+            </div>
           </div>
         ))}
+        <InlineError msg={error} />
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PARENT_NOTIFY — queue absence notifications to parents
+// PARENT_NOTIFY — photography payment reminders  [WIRED]
+// data: GET /dashboard/events/class-photography/payment-status
+// action: POST /dashboard/events/{eventId}/payment-reminders
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ParentNotifyModal({ workspace, onClose, showToast }: PolModalProps) {
+function ParentNotifyModal({ onClose, showToast }: PolModalProps) {
+  const [photoStatus, setPhotoStatus] = useState<ClassPhotographyPaymentStatusResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
-  const pct = workspace.dashboard.attendancePercent ?? 0;
-  const total = workspace.dashboard.students ?? 0;
-  const absent = Math.round(total * (1 - pct / 100));
+  const [error, setError] = useState<string | null>(null);
 
-  function handleSend() {
+  useEffect(() => {
+    fetchClassPhotographyPaymentStatus({ size: 500 })
+      .then(res => setPhotoStatus(res))
+      .catch(() => setError('Failed to load photography payment status — please close and retry.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleSend() {
+    if (!photoStatus?.eventId) return;
+    const pendingIds = photoStatus.students
+      .filter(s => s.status !== 'PAID')
+      .map(s => s.studentId);
     setSending(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: `Attendance notifications queued for ${absent} parents` });
+    setError(null);
+    try {
+      const res = await sendPhotographyPaymentReminders(photoStatus.eventId, {
+        studentIds: pendingIds,
+        channel: 'ALL',
+        message: 'Photography payment reminder — please complete your payment at the earliest.',
+      });
+      showToast({ ok: true, txt: `Photography payment reminders sent to ${res.sentCount} families` });
       onClose();
-    }, 900);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to send reminders — please try again.');
+      setSending(false);
+    }
   }
+
+  const pendingCount = photoStatus?.students.filter(s => s.status !== 'PAID').length ?? 0;
+  const hasEvent = !!photoStatus?.eventId;
+  const busy = loading || sending;
 
   return (
     <Modal
-      title="Notify Parents — Absent Students"
-      subtitle={`${absent} students absent today`}
+      title="Photography Payment Reminders"
+      subtitle={loading ? 'Loading…' : `${pendingCount} families with pending photography payment`}
       onClose={onClose}
-      disabled={sending}
+      disabled={busy}
       footer={
         <>
-          <PolNote />
           <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={sending}>Cancel</button>
-          <button className="ck-btn ck-btn-am" onClick={handleSend} disabled={sending}>
-            {sending ? 'Queueing…' : `Send to ${absent} parents`}
+          <button
+            className="ck-btn ck-btn-am"
+            onClick={handleSend}
+            disabled={busy || !hasEvent || pendingCount === 0}
+          >
+            {loading ? 'Loading…' : sending ? 'Sending…' : `Send to ${pendingCount} families`}
           </button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div className="ck-info-row">
-          <span className="ck-label">Today's attendance</span>
-          <span className="ck-value" style={{ color: 'var(--am)' }}>{pct}%</span>
-        </div>
-        <div className="ck-info-row">
-          <span className="ck-label">Absent students</span>
-          <span className="ck-value" style={{ color: 'var(--re)' }}>{absent}</span>
-        </div>
-        <div className="ck-info-row">
-          <span className="ck-label">Channels</span>
-          <span className="ck-value">SMS · WhatsApp</span>
-        </div>
-        <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--border)' }}>
-          <b>Preview:</b> "Dear Parent, [Student Name] was marked absent today ({new Date().toLocaleDateString('en-IN')}). Please contact the school if this is an error. — {workspace.school.name}"
-        </div>
+        {!loading && !hasEvent && !error && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No active photography event found.</div>
+        )}
+        {photoStatus && (
+          <>
+            <div className="ck-info-row">
+              <span className="ck-label">Event</span>
+              <span className="ck-value">{photoStatus.title ?? 'Class Photography'}</span>
+            </div>
+            <div className="ck-info-row">
+              <span className="ck-label">Collected</span>
+              <span className="ck-value" style={{ color: 'var(--g)' }}>
+                ₹{(photoStatus.collectedAmount / 100).toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="ck-info-row">
+              <span className="ck-label">Pending</span>
+              <span className="ck-value" style={{ color: 'var(--am)' }}>
+                ₹{(photoStatus.pendingAmount / 100).toLocaleString('en-IN')}
+              </span>
+            </div>
+            <div className="ck-info-row">
+              <span className="ck-label">Channels</span>
+              <span className="ck-value">SMS · WhatsApp</span>
+            </div>
+          </>
+        )}
+        <InlineError msg={error} />
       </div>
     </Modal>
   );
@@ -718,8 +1084,10 @@ export function ProofOfLifeModal(props: PolModalProps) {
     case 'ORDER_VALUE':            return <OrderValueModal {...props} />;
     case 'ORDER_FOLLOWUP':         return <OrderFollowupModal {...props} />;
     case 'ORDER_ESCALATE':         return <OrderEscalateModal {...props} />;
+    case 'ORDER_VENDOR_PAID':      return <OrderVendorPaidModal {...props} />;
     case 'FF_QUOTATION_ADD':       return <FfQuotationAddModal {...props} />;
     case 'FF_QUOTATION_VIEW':      return <FfQuotationViewModal {...props} />;
+    case 'FF_VENDOR_PAID':         return <FfVendorPaidModal {...props} />;
     case 'ATTENDANCE_SECTIONS':    return <AttendanceSectionsModal {...props} />;
     case 'ATTENDANCE_LOW':         return <AttendanceLowModal {...props} />;
     case 'PARENT_NOTIFY':          return <ParentNotifyModal {...props} />;
