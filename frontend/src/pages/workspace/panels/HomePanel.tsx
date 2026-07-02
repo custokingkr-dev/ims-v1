@@ -21,9 +21,8 @@ import { Stat } from '../ui';
 import { Modal } from '../../../components/Modal';
 import { usePermissions } from '../../../hooks/usePermissions';
 import api from '../../../services/api';
-import type { WorkspaceData, SuggestedAction, Broadcast, BroadcastStatus, ActionModule, ActionUrgency, DeliveryChannel } from '../../../types/workspace';
+import type { WorkspaceData, Broadcast, BroadcastStatus, ActionModule, ActionUrgency, DeliveryChannel } from '../../../types/workspace';
 import type { PanelKey } from '../config';
-import { MOCK_SUGGESTIONS, MOCK_BROADCASTS } from './command/fixtures';
 import type { CommandCentreCard, PolCode } from './command/commandCentreTypes';
 import { deriveCommandCentreCards, panelForCard } from './command/commandCentreUtils';
 import { ProofOfLifeModal } from './command/ProofOfLifeModals';
@@ -112,15 +111,6 @@ const CHANNEL_ICON: Record<string, string> = {
   SMS: '✉', WhatsApp: '◍', Email: '@', Push: '◔',
 };
 
-const SEED_FEED: FeedItem[] = [
-  { module: 'firefighting', txt: 'FF-2025-014 quotation received — SLA 38 min', t: 'now' },
-  { module: 'fees',         txt: '₹4.2L collected · 18 UPI auto-debits posted', t: '2m' },
-  { module: 'supply',       txt: 'ORD-2025-338 submitted by Greenwood admin', t: '6m' },
-  { module: 'fees',         txt: '32 reminders delivered · 14 parents opened', t: '11m' },
-  { module: 'attendance',   txt: 'Grade-11 attendance dipped below 88%', t: '18m' },
-  { module: 'students',     txt: '46 students cleared re-section gate', t: '24m' },
-  { module: 'supply',       txt: 'Vendor quote in for lab consumables', t: '31m' },
-];
 
 type FilterKey = 'all' | ActionModule;
 const FILTER_KEYS: FilterKey[] = ['all', 'fees', 'students', 'supply', 'firefighting', 'attendance'];
@@ -275,7 +265,7 @@ interface KpiDef {
   delta: number;
   deltaInvertBad: boolean; // true = higher delta is bad (e.g. defaulters)
   module: ActionModule;
-  spark: number[];
+  spark: number[] | null;
   panelKey: PanelKey;
 }
 
@@ -285,7 +275,7 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
       id: 'students', label: 'Total Students',
       value: String(d.students), unit: '', sub: `${d.sections} sections`,
       delta: 3, deltaInvertBad: false, module: 'students',
-      spark: [80, 82, 81, 83, 85, 84, 86, 87, 88, 90],
+      spark: null,
       panelKey: 'students',
     },
     {
@@ -293,7 +283,7 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
       value: `${d.attendancePercent}`, unit: '%',
       sub: `${d.attendancePresent} / ${d.students} present`,
       delta: -2.1, deltaInvertBad: false, module: 'attendance',
-      spark: [92, 91, 93, 90, 89, 88, 90, 91, 90, d.attendancePercent],
+      spark: null,
       panelKey: 'attendance',
     },
     {
@@ -301,7 +291,7 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
       value: `₹${d.feeCollectedLakh}L`, unit: '',
       sub: `of ₹${d.feeTargetLakh}L this term`,
       delta: 12.4, deltaInvertBad: false, module: 'fees',
-      spark: [30, 40, 35, 50, 60, 55, 70, 80, 75, 90],
+      spark: null,
       panelKey: 'fees',
     },
     {
@@ -309,7 +299,7 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
       value: String(d.firefightingActive), unit: '',
       sub: `${d.pendingApprovals} need approval`,
       delta: d.pendingApprovals, deltaInvertBad: true, module: 'firefighting',
-      spark: [4, 5, 5, 6, 7, 7, 8, 9, d.firefightingActive, d.firefightingActive + 1],
+      spark: null,
       panelKey: 'ff-dashboard',
     },
   ];
@@ -415,7 +405,7 @@ function PulseKpis({
           >
             <div className="ck-command-kpi-top">
               <span className="ck-command-kpi-label">{k.label}</span>
-              <Sparkline data={k.spark} color={SPARK_COLORS[k.module]} />
+              {k.spark && k.spark.length >= 2 && <Sparkline data={k.spark} color={SPARK_COLORS[k.module]} />}
             </div>
             <div className="ck-command-kpi-value-row">
               <span className="ck-command-kpi-value">{k.value}</span>
@@ -1027,7 +1017,7 @@ export function HomePanel({ workspace, setPanel }: Props) {
       .catch(() => {
         if (!cancelled) {
           const derived = deriveCommandCentreCards(workspace);
-          setActions(derived.length > 0 ? derived : (MOCK_SUGGESTIONS as CommandCentreCard[]));
+          setActions(derived);
         }
       });
     return () => { cancelled = true; };
@@ -1039,7 +1029,7 @@ export function HomePanel({ workspace, setPanel }: Props) {
     let cancelled = false;
     api.get<BackendBroadcast[]>('/notifications/broadcasts')
       .then(r => { if (!cancelled) setBroadcasts(r.data.map(mapBackendBroadcast)); })
-      .catch(() => { if (!cancelled) setBroadcasts(MOCK_BROADCASTS); });
+      .catch(() => { if (!cancelled) setBroadcasts([]); });
     return () => { cancelled = true; };
   }, []);
 
@@ -1052,7 +1042,7 @@ export function HomePanel({ workspace, setPanel }: Props) {
   }, []);
 
   // Feed — initial fetch from backend, then poll every 15s for new items
-  const [feed, setFeed] = useState<FeedItem[]>(SEED_FEED);
+  const [feed, setFeed] = useState<FeedItem[]>([]);
   const [pollKey, setPollKey] = useState(0);
   const seenFeedIds = useRef<Set<string>>(new Set());
 
@@ -1070,7 +1060,7 @@ export function HomePanel({ workspace, setPanel }: Props) {
         mapped.forEach(f => seenFeedIds.current.add(f._id));
         setFeed(mapped.map(({ _id: _, ...rest }) => rest));
       })
-      .catch(() => { /* keep SEED_FEED */ });
+      .catch(() => { /* feed stays empty on error */ });
     return () => { cancelled = true; };
   }, []);
 
@@ -1152,14 +1142,28 @@ export function HomePanel({ workspace, setPanel }: Props) {
       : x));
     setFeed(f => [{ module: b.module, txt: `Broadcast sent · ${b.title}`, t: 'now' }, ...f.slice(0, 8)]);
     showToast({ ok: true, txt: `Broadcast queued to ${b.channels.join(' · ')}` });
-    api.post(`/notifications/broadcasts/${b.id}/send`).catch(() => { /* optimistic kept */ });
+    api.post(`/notifications/broadcasts/${b.id}/send`).catch(() => {
+      // Revert optimistic update on failure
+      setBroadcasts(prev => prev.map(x => x.id === b.id
+        ? { ...x, status: 'scheduled' as BroadcastStatus }
+        : x));
+      showToast({ ok: false, txt: 'Failed to send broadcast — please retry' });
+    });
   }, [showToast]);
 
   const handleApproveBroadcast = useCallback((b: Broadcast) => {
+    // Optimistic update
     setBroadcasts(prev => prev.map(x => x.id === b.id
       ? { ...x, status: 'scheduled' as BroadcastStatus, whenShort: 'scheduled', note: 'Approved and scheduled.' }
       : x));
     showToast({ ok: true, txt: 'Broadcast approved and scheduled' });
+    api.post(`/notifications/broadcasts/${b.id}/approve`).catch(() => {
+      // Revert optimistic update on failure
+      setBroadcasts(prev => prev.map(x => x.id === b.id
+        ? { ...x, status: 'draft' as BroadcastStatus, whenShort: 'draft', note: b.note }
+        : x));
+      showToast({ ok: false, txt: 'Failed to approve broadcast — please retry' });
+    });
   }, [showToast]);
 
   const handleBroadcastCreated = useCallback((b: Broadcast) => {
