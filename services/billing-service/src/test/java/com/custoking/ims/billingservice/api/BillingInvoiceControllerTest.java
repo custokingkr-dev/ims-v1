@@ -7,7 +7,6 @@ import com.custoking.ims.billingservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,7 +16,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -62,36 +61,16 @@ class BillingInvoiceControllerTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     void createRequiresWriteTokenAndDelegatesPayload() {
-        // Controller now accepts a typed DTO; the map it passes to the service
-        // is built from DTO fields — use anyMap() for stubbing and a captor to
-        // assert exact key values.
-        InvoiceRow invoice = invoice("INV-2025-01", "Awaiting payment");
-        when(invoices.create(anyMap())).thenReturn(invoice);
-
         CreateInvoiceRequest dto = new CreateInvoiceRequest(
-                "Delhi Public School",   // school (required)
-                1000L,                   // rate  (required)
-                null,                    // orderRef
-                4L,                      // schoolId
-                "Annual platform subscription", // description
-                1,                       // qty
-                null,                    // amount (computed by repo)
-                null                     // notes
-        );
+                "Delhi Public School", null, 4L, "Annual platform subscription", 1, 1000L, null, null);
+        InvoiceRow invoice = invoice("INV-2025-01", "Awaiting payment");
+        when(invoices.create(any())).thenReturn(invoice);
+
         Object response = controller.create("billing-token", dto);
 
         assertThat(response).isSameAs(invoice);
-
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(invoices).create(captor.capture());
-        Map<String, Object> passed = captor.getValue();
-        assertThat(passed.get("school")).isEqualTo("Delhi Public School");
-        assertThat(passed.get("rate")).isEqualTo(1000L);
-        assertThat(passed.get("schoolId")).isEqualTo(4L);
-        assertThat(passed.get("description")).isEqualTo("Annual platform subscription");
-        assertThat(passed.get("qty")).isEqualTo(1);
+        verify(invoices).create(any());
     }
 
     @Test

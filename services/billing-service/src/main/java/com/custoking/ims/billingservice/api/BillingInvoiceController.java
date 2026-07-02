@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -88,16 +88,16 @@ public class BillingInvoiceController {
             @Valid @RequestBody CreateInvoiceRequest dto) {
         requireToken(token, "billing:write");
         TenantScope.requireSuperAdmin();
-        Map<String, Object> request = new LinkedHashMap<>();
-        request.put("school", dto.school());
-        request.put("rate", dto.rate());
-        request.put("orderRef", dto.orderRef());
-        request.put("schoolId", dto.schoolId());
-        request.put("description", dto.description());
-        request.put("qty", dto.qty());
-        request.put("amount", dto.amount());
-        request.put("notes", dto.notes());
-        return invoices.create(request);
+        Map<String, Object> body = new HashMap<>();
+        body.put("school", dto.school());
+        if (dto.orderRef() != null) body.put("orderRef", dto.orderRef());
+        if (dto.schoolId() != null) body.put("schoolId", dto.schoolId());
+        if (dto.description() != null) body.put("description", dto.description());
+        if (dto.qty() != null) body.put("qty", dto.qty());
+        if (dto.rate() != null) body.put("rate", dto.rate());
+        if (dto.amount() != null) body.put("amount", dto.amount());
+        if (dto.notes() != null) body.put("notes", dto.notes());
+        return invoices.create(body);
     }
 
     @PatchMapping("/{id}")
