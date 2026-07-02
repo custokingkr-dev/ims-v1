@@ -38,13 +38,21 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   const [feeAssignError, setFeeAssignError] = useState('');
 
   const discountTimers = useRef<Record<string, number>>({});
+  const feeToastTimerRef = useRef<number | null>(null);
+
+  const showFeeToast = (message: string) => {
+    setFeeStructureToast(message);
+    if (feeToastTimerRef.current) window.clearTimeout(feeToastTimerRef.current);
+    feeToastTimerRef.current = window.setTimeout(() => setFeeStructureToast(''), 4000);
+  };
 
   const loadFeeClasses = async () => {
     try {
       const res = await api.get('/classes', { params: schoolScopedParams });
       setFeeClasses(res.data || []);
-    } catch {
+    } catch (err: unknown) {
       setFeeClasses([]);
+      setFeeStructureError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load classes.'));
     }
   };
 
@@ -119,13 +127,18 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   };
 
   const exportFeeStructurePdf = async () => {
-    const res = await api.get('/fee-structure/export', { params: { academicYearId: feeStructureData.academicYearId || 'ay_2024_25', format: 'pdf' }, responseType: 'blob' });
-    const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'fee-structure.pdf';
-    link.click();
-    URL.revokeObjectURL(url);
+    try {
+      setFeeStructureError('');
+      const res = await api.get('/fee-structure/export', { params: { academicYearId: feeStructureData.academicYearId || 'ay_2024_25', format: 'pdf' }, responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'fee-structure.pdf';
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setFeeStructureError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not export fee structure PDF.'));
+    }
   };
 
   const addFeeStructureItem = async () => {
@@ -136,9 +149,9 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving('fee-structure-add');
       setFeeStructureError('');
-      await api.post('/fee-structure/item', { bandId: feeItemForm.bandId, itemName: feeItemForm.itemName, frequency: feeItemForm.frequency, amount: Number(feeItemForm.amount) });
+      await api.post('/fee-structure/item', { bandId: feeItemForm.bandId, itemName: feeItemForm.itemName, frequency: feeItemForm.frequency, amount: Math.round(Number(feeItemForm.amount) * 100) });
       const bandName = feeStructureData.bands.find((band: any) => band.id === feeItemForm.bandId)?.name || 'band';
-      setFeeStructureToast(`Item added to ${bandName}.`);
+      showFeeToast(`Item added to ${bandName}.`);
       setShowFeeItemForm(false);
       setFeeItemForm((prev) => ({ ...prev, itemName: '', amount: '' }));
       await loadFeeStructure();
@@ -158,9 +171,9 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       await api.put(`/fee-structure/item/${encodeURIComponent(editingFeeItem.id)}`, {
         itemName: editingFeeItem.name,
         frequency: editingFeeItem.frequency,
-        amount: Number(editingFeeItem.amount || 0),
+        amount: Math.round(Number(editingFeeItem.amount || 0) * 100),
       });
-      setFeeStructureToast(`Updated ${editingFeeItem.name}.`);
+      showFeeToast(`Updated ${editingFeeItem.name}.`);
       setEditingFeeItem(null);
       await loadFeeStructure();
       await onRefresh();
@@ -175,7 +188,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving(`fee-structure-remove-${itemId}`);
       await api.delete(`/fee-structure/item/${encodeURIComponent(itemId)}`);
-      setFeeStructureToast('Item removed.');
+      showFeeToast('Item removed.');
       setConfirmRemoveFeeItemId('');
       await loadFeeStructure();
       await onRefresh();
@@ -194,7 +207,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       setSaving('fee-band-add');
       setFeeStructureError('');
       await api.post('/fee-structure/band', { name: bandForm.name, classFrom: Number(bandForm.classFrom), classTo: Number(bandForm.classTo), discount: Number(bandForm.discount || 0), schedules: bandForm.schedules });
-      setFeeStructureToast(`Band '${bandForm.name}' created.`);
+      showFeeToast(`Band '${bandForm.name}' created.`);
       setShowBandForm(false);
       setBandForm({ name: '', classFrom: '1', classTo: '5', discount: '0', schedules: ['Annual'] });
       await loadFeeStructure();
@@ -218,7 +231,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       setSaving(`fee-band-edit-${band.id}`);
       setFeeStructureError('');
       await api.put(`/fee-structure/band/${encodeURIComponent(band.id)}`, { name: nextName, classFrom: nextClassFrom, classTo: nextClassTo, discount: nextDiscount, schedules });
-      setFeeStructureToast(`Updated ${nextName}.`);
+      showFeeToast(`Updated ${nextName}.`);
       setEditingBandId('');
       await loadFeeStructure();
     } catch (err: unknown) {
@@ -232,7 +245,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving(`fee-band-remove-${bandId}`);
       await api.delete(`/fee-structure/band/${encodeURIComponent(bandId)}`);
-      setFeeStructureToast('Band deleted.');
+      showFeeToast('Band deleted.');
       setConfirmDeleteBandId('');
       await loadFeeStructure();
     } catch (err: unknown) {
@@ -252,7 +265,10 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       const res = await api.get(`/classes/${encodeURIComponent(classId)}/sections`, { params: schoolScopedParams });
       setAssignOptions((prev: any) => ({ ...prev, sections: res.data || [], students: [] }));
-    } catch { setAssignOptions({ sections: [], students: [] }); }
+    } catch (err: unknown) {
+      setAssignOptions({ sections: [], students: [] });
+      setFeeAssignError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load sections.'));
+    }
   };
 
   const handleAssignSectionChange = async (sectionId: string) => {
@@ -265,7 +281,10 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       const res = await api.get(`/classes/${encodeURIComponent(assignSelection.classId)}/sections/${encodeURIComponent(sectionId)}/students`, { params: schoolScopedParams });
       setAssignOptions((prev: any) => ({ ...prev, students: res.data || [] }));
-    } catch { setAssignOptions((prev: any) => ({ ...prev, students: [] })); }
+    } catch (err: unknown) {
+      setAssignOptions((prev: any) => ({ ...prev, students: [] }));
+      setFeeAssignError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load students.'));
+    }
   };
 
   const handleAssignStudentChange = async (studentId: string) => {
@@ -318,7 +337,11 @@ export function FeeStructurePanel({ onRefresh }: Props) {
         academicYearId: feeStructureData.academicYearId,
         assignedBy: user?.userId || user?.email || 'current-user',
       });
-      setFeeStructureToast('Fee plan assigned successfully');
+      showFeeToast('Fee plan assigned successfully');
+      setAssignSelection({ classId: '', sectionId: '', studentId: '' });
+      setAssignOptions({ sections: [], students: [] });
+      setFeeAssignForm({ studentId: '', bandId: '', paymentSchedule: '', bandDiscount: '0', manualDiscount: '0', surcharge: '2' });
+      setFeeAssignHint('');
       await onRefresh();
     } catch (err: unknown) {
       setFeeAssignError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not assign fee plan.'));

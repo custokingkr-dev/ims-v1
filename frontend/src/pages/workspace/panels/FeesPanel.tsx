@@ -38,6 +38,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
 
   const [reminderSaving, setReminderSaving] = useState(false);
   const [reminderNotice, setReminderNotice] = useState('');
+  const [reminderError, setReminderError] = useState('');
 
   const paymentTimerRef = useRef<number | null>(null);
 
@@ -108,9 +109,14 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   };
 
   const openReceiptPdf = async (paymentId: string) => {
-    const res = await api.get(`/fees/receipts/${encodeURIComponent(paymentId)}/pdf`, { responseType: 'blob' });
-    const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-    window.open(url, '_blank', 'noopener,noreferrer');
+    try {
+      setPaymentError('');
+      const res = await api.get(`/fees/receipts/${encodeURIComponent(paymentId)}/pdf`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err: unknown) {
+      setPaymentError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not open receipt PDF.'));
+    }
   };
 
   const handlePaymentClassChange = async (classId: string) => {
@@ -138,7 +144,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
     const selected = paymentOptions.students.find((row: any) => String(row.id) === studentId);
     setPaymentDuePreview(selected || null);
     setPaymentError('');
-    setPaymentForm((prev) => ({ ...prev, studentId, studentName: selected?.name || '', amount: selected ? String(selected.dueAmount || '') : '' }));
+    setPaymentForm((prev) => ({ ...prev, studentId, studentName: selected?.name || '', amount: selected ? String(Math.round(Number(selected.dueAmount || 0) / 100)) : '' }));
   };
 
   const handleReportClassChange = async (classId: string) => {
@@ -190,8 +196,10 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   };
 
   const handleSendReminders = async () => {
+    setReminderNotice('');
+    setReminderError('');
     if (!(feeFilters.className && feeFilters.sectionName)) {
-      setReminderNotice('Select a class and section before sending reminders.');
+      setReminderError('Select a class and section before sending reminders.');
       return;
     }
     try {
@@ -199,11 +207,11 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
       const res = await api.post('/fees/send-reminders', { classId: feeFilters.className, sectionId: feeFilters.sectionName });
       const queued = Number(res.data?.queued || overdueRows.length || 0);
       setReminderNotice(`Reminders queued for ${queued} overdue students.`);
+      window.setTimeout(() => setReminderNotice(''), 4000);
     } catch (err: unknown) {
-      setReminderNotice((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not queue reminders.'));
+      setReminderError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not queue reminders.'));
     } finally {
       setReminderSaving(false);
-      window.setTimeout(() => setReminderNotice(''), 4000);
     }
   };
 
@@ -271,6 +279,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
       <div className="ck-panel-stack">
         {feeLoadError ? <div className="ck-alert ck-alert-am"><span>!</span><div>{feeLoadError}</div></div> : null}
         {reminderNotice ? <div className="ck-alert ck-alert-g"><span>✓</span><div>{reminderNotice}</div></div> : null}
+        {reminderError ? <div className="ck-alert ck-alert-re"><span>!</span><div>{reminderError}</div></div> : null}
 
         <div className="ck-card ck-progress-card">
           <div className="ck-progress-wrap">
@@ -417,6 +426,8 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
             <div className="ck-import-zone" style={{ margin: 16 }}><div className="iz-title">Select a class and section to load fee reports</div></div>
           ) : reportLoading ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>Loading records…</div>
+          ) : !safeReportRows.length ? (
+            <div className="ck-import-zone" style={{ margin: 16 }}><div className="iz-title">No records for this section</div></div>
           ) : (
             <table className="ck-table">
               <thead>
