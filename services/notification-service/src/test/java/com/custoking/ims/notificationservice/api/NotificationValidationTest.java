@@ -120,6 +120,19 @@ class NotificationValidationTest {
     }
 
     @Test
+    void createBroadcast_blankMessage_returns400WithFieldError() throws Exception {
+        broadcastMvc.perform(post("/api/v1/notifications/broadcasts")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"title\":\"Announcement\",\"message\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.message").exists());
+        verifyNoInteractions(broadcasts);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void createBroadcast_valid_callsRepoWithTitleAndMessage() throws Exception {
         when(broadcasts.create(anyMap())).thenReturn(Map.of("id", UUID.randomUUID()));
@@ -215,6 +228,18 @@ class NotificationValidationTest {
     }
 
     @Test
+    void createLog_blankNotificationType_returns400WithFieldError() throws Exception {
+        logMvc.perform(post("/api/v1/notifications/logs")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .contentType("application/json")
+                        .content("{\"channel\":\"SMS\",\"notificationType\":\"\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.notificationType").exists());
+        verifyNoInteractions(logs);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void createLog_valid_callsRepoWithChannelAndType() throws Exception {
         when(logs.createRequestLog(anyMap())).thenReturn(Map.of("id", "log-123"));
@@ -270,6 +295,7 @@ class NotificationValidationTest {
 
     @Test
     void completeOnboarding_blankIntegratedNumber_returns400WithFieldError() throws Exception {
+        // Need a valid tenant context (resolveSchoolId call)
         senderProfileMvc.perform(post("/api/v1/notifications/sender-profiles/schools/10/whatsapp-onboarding/"
                         + UUID.randomUUID() + "/complete")
                         .header("X-Notification-Service-Token", TOKEN)
