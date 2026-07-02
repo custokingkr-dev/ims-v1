@@ -1,18 +1,19 @@
 /**
  * ProofOfLifeModals — isolated proof-of-life (POL) flows for the Command Centre.
  *
- * Each modal simulates a real admin workflow with meaningful UI, but does NOT
- * write to the backend. All state changes are local (React state + toast only).
- *
- * Every modal footer carries a "Proof of life · no server write" note so
- * reviewers can distinguish real from simulated actions at a glance.
+ * Read-only data is fetched from real GETs where available. Action buttons that
+ * have no working backend endpoint are rendered as permanently disabled rather
+ * than faking success. Every modal footer carries a "Proof of life · no server
+ * write" note so reviewers can distinguish real from simulated actions at a glance.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../../components/Modal';
 import type { CommandCentreCard } from './commandCentreTypes';
 import type { PolCode } from './commandCentreTypes';
 import type { WorkspaceData } from '../../../../types/workspace';
+import { fetchLowAttendanceSections } from '../../../../api/dashboardCommandCenterApi';
+import type { LowAttendanceSectionItem } from '../../../../types/dashboardCommandCenter';
 
 export interface PolModalProps {
   polCode: PolCode;
@@ -36,32 +37,24 @@ function PolNote() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FEE_REMINDER — queue fee reminders for overdue families
+// Action disabled: /dashboard/finance/fee-defaulters/reminders requires
+// class/section context not available in PolModalProps — no valid send possible.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FeeReminderModal({ card, onClose, showToast }: PolModalProps) {
-  const [sent, setSent] = useState(false);
+function FeeReminderModal({ card, onClose }: PolModalProps) {
   const count = card.count ?? 0;
-
-  function handleLaunch() {
-    setSent(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: `Fee reminders queued for ${count} families` });
-      onClose();
-    }, 800);
-  }
 
   return (
     <Modal
       title="Send Fee Reminders"
       subtitle={`${count} students with overdue fees`}
       onClose={onClose}
-      disabled={sent}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={sent}>Cancel</button>
-          <button className="ck-btn ck-btn-g" onClick={handleLaunch} disabled={sent}>
-            {sent ? 'Queuing…' : `Launch reminder run · ${count} families`}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-g" disabled title="Coming soon">
+            Launch reminder run · {count} families
           </button>
         </>
       }
@@ -88,6 +81,7 @@ function FeeReminderModal({ card, onClose, showToast }: PolModalProps) {
         <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--b3, #c5d8ff)' }}>
           Historical data shows 3× faster recovery when reminders are sent before 6 PM on the overdue date.
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
@@ -95,34 +89,25 @@ function FeeReminderModal({ card, onClose, showToast }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FEE_DOWNLOAD — export term collection summary
+// Action disabled: no fee-summary PDF export endpoint exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FeeDownloadModal({ workspace, onClose, showToast }: PolModalProps) {
-  const [exporting, setExporting] = useState(false);
+function FeeDownloadModal({ workspace, onClose }: PolModalProps) {
   const collected = workspace.fees?.summary?.collected ?? 0;
   const outstanding = workspace.fees?.summary?.outstanding ?? 0;
   const overdueCount = workspace.fees?.summary?.overdueCount ?? workspace.dashboard.feeOverdueCount ?? 0;
-
-  function handleExport() {
-    setExporting(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Fee summary export queued — check Downloads' });
-      onClose();
-    }, 900);
-  }
 
   return (
     <Modal
       title="Download Fee Summary"
       subtitle="Term-to-date collection report"
       onClose={onClose}
-      disabled={exporting}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={exporting}>Cancel</button>
-          <button className="ck-btn ck-btn-g" onClick={handleExport} disabled={exporting}>
-            {exporting ? 'Preparing export…' : 'Export PDF'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-g" disabled title="Coming soon">
+            Export PDF
           </button>
         </>
       }
@@ -154,6 +139,7 @@ function FeeDownloadModal({ workspace, onClose, showToast }: PolModalProps) {
           <span className="ck-label">Export format</span>
           <span className="ck-value">PDF · class-wise breakdown · payment mode split</span>
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
@@ -161,31 +147,21 @@ function FeeDownloadModal({ workspace, onClose, showToast }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROFILE_UPLOAD — batch photo upload stub
+// Action disabled: no batch photo upload endpoint exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ProfileUploadModal({ card, onClose, showToast }: PolModalProps) {
-  const [uploading, setUploading] = useState(false);
-
-  function handleUpload() {
-    setUploading(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Photo upload initiated — processing in background' });
-      onClose();
-    }, 900);
-  }
-
+function ProfileUploadModal({ card, onClose }: PolModalProps) {
   return (
     <Modal
       title="Upload Student Photos"
       subtitle={`Batch upload for ${card.count ?? 23} incomplete profiles`}
       onClose={onClose}
-      disabled={uploading}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={uploading}>Cancel</button>
-          <button className="ck-btn ck-btn-b" onClick={handleUpload} disabled={uploading}>
-            {uploading ? 'Initiating…' : 'Start upload'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-b" disabled title="Coming soon">
+            Start upload
           </button>
         </>
       }
@@ -204,6 +180,7 @@ function ProfileUploadModal({ card, onClose, showToast }: PolModalProps) {
           <span className="ck-label">Naming format</span>
           <span className="ck-value">ADMISSION_NO.jpg — e.g. 2024-0042.jpg</span>
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
@@ -211,32 +188,24 @@ function ProfileUploadModal({ card, onClose, showToast }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMOTION_REVIEW — initiate year-end promotion session
+// Action disabled: lifecycle-initiate endpoints are not reachable from
+// PolModalProps (no campaignId / schoolId context).
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PromotionReviewModal({ card, onClose, showToast }: PolModalProps) {
-  const [started, setStarted] = useState(false);
+function PromotionReviewModal({ card, onClose }: PolModalProps) {
   const total = card.count ?? 412;
-
-  function handleBegin() {
-    setStarted(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Promotion review session started — check Students panel' });
-      onClose();
-    }, 900);
-  }
 
   return (
     <Modal
       title="Year-End Promotion Review"
       subtitle={`${total} students eligible for promotion`}
       onClose={onClose}
-      disabled={started}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={started}>Cancel</button>
-          <button className="ck-btn ck-btn-b" onClick={handleBegin} disabled={started}>
-            {started ? 'Opening session…' : 'Begin review session'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-b" disabled title="Coming soon">
+            Begin review session
           </button>
         </>
       }
@@ -247,16 +216,13 @@ function PromotionReviewModal({ card, onClose, showToast }: PolModalProps) {
           <span className="ck-value" style={{ color: 'var(--g)' }}>{total}</span>
         </div>
         <div className="ck-info-row">
-          <span className="ck-label">Exceptions requiring review</span>
-          <span className="ck-value" style={{ color: 'var(--am)' }}>8 students</span>
-        </div>
-        <div className="ck-info-row">
           <span className="ck-label">Promotion criteria</span>
           <span className="ck-value">≥75% attendance · pass in core subjects · no pending dues</span>
         </div>
         <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', border: '1px solid var(--b3, #c5d8ff)' }}>
           Once all exceptions are reviewed, you can bulk-promote the eligible batch with one click.
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
@@ -264,56 +230,37 @@ function PromotionReviewModal({ card, onClose, showToast }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROMOTION_EXCEPTIONS — review students that can't be auto-promoted
+// Data: no GET endpoint for exception details — honest empty state shown.
+// Action disabled: no valid backend action available from this context.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PromotionExceptionsModal({ onClose, showToast }: PolModalProps) {
-  const [noted, setNoted] = useState(false);
-
-  const exceptions = [
-    { name: 'Aarav Sharma',  cls: '9-A',  reason: 'Attendance 68% · below threshold' },
-    { name: 'Priya Patel',   cls: '8-B',  reason: 'Pending ₹12,000 dues' },
-    { name: 'Rohan Gupta',   cls: '7-C',  reason: 'Failed Mathematics — needs re-exam' },
-  ];
-
-  function handleNote() {
-    setNoted(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Exceptions flagged for class teacher review' });
-      onClose();
-    }, 700);
-  }
-
+function PromotionExceptionsModal({ onClose }: PolModalProps) {
   return (
     <Modal
       title="Promotion Exceptions"
       subtitle="Students who cannot be auto-promoted"
       onClose={onClose}
-      disabled={noted}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={noted}>Close</button>
-          <button className="ck-btn ck-btn-b" onClick={handleNote} disabled={noted}>
-            {noted ? 'Noting…' : 'Flag for class teacher review'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Close</button>
+          <button className="ck-btn ck-btn-b" disabled title="Coming soon">
+            Flag for class teacher review
           </button>
         </>
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {exceptions.map(ex => (
-          <div key={ex.name} style={{ padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
-            <div style={{ fontWeight: 600, fontSize: 13 }}>{ex.name} <span style={{ color: 'var(--ink3)', fontWeight: 400 }}>· {ex.cls}</span></div>
-            <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{ex.reason}</div>
-          </div>
-        ))}
-        <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 4 }}>Showing 3 of 8. Open the Students panel to see all.</div>
+        <div style={{ color: 'var(--ink3)', fontSize: 13, padding: '12px 0' }}>
+          Promotion exception details are not available yet. Open the Students panel to review exceptions manually.
+        </div>
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ORDER_VALUE — show submitted order breakdown
+// ORDER_VALUE — show submitted order breakdown (read-only, workspace data)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function OrderValueModal({ workspace, onClose }: PolModalProps) {
@@ -359,32 +306,23 @@ function OrderValueModal({ workspace, onClose }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER_FOLLOWUP — schedule vendor follow-up email
+// Action disabled: no vendor follow-up email endpoint exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function OrderFollowupModal({ workspace, onClose, showToast }: PolModalProps) {
-  const [sending, setSending] = useState(false);
+function OrderFollowupModal({ workspace, onClose }: PolModalProps) {
   const approved = workspace.orders?.filter(o => o.status === 'APPROVED') ?? [];
-
-  function handleSend() {
-    setSending(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: `Follow-up scheduled for ${approved.length} vendor${approved.length !== 1 ? 's' : ''}` });
-      onClose();
-    }, 900);
-  }
 
   return (
     <Modal
       title="Follow Up with Vendor"
       subtitle={`${approved.length} approved order${approved.length !== 1 ? 's' : ''} not yet fulfilled`}
       onClose={onClose}
-      disabled={sending}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={sending}>Cancel</button>
-          <button className="ck-btn ck-btn-b" onClick={handleSend} disabled={sending}>
-            {sending ? 'Scheduling…' : 'Send follow-up emails'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-b" disabled title="Coming soon">
+            Send follow-up emails
           </button>
         </>
       }
@@ -401,6 +339,7 @@ function OrderFollowupModal({ workspace, onClose, showToast }: PolModalProps) {
         <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--border)' }}>
           <b>Preview:</b> "Dear Vendor, this is a follow-up for order [REF]. Kindly confirm the dispatch date. Our expected delivery window per SLA is [DATE]. — Custoking Supply Team"
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
@@ -408,31 +347,21 @@ function OrderFollowupModal({ workspace, onClose, showToast }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER_ESCALATE — escalate to Custoking ops
+// Action disabled: no escalation endpoint exists.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function OrderEscalateModal({ onClose, showToast }: PolModalProps) {
-  const [escalating, setEscalating] = useState(false);
-
-  function handleEscalate() {
-    setEscalating(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Order escalated to Custoking supply team' });
-      onClose();
-    }, 800);
-  }
-
+function OrderEscalateModal({ onClose }: PolModalProps) {
   return (
     <Modal
       title="Escalate Delayed Order"
       subtitle="Notify Custoking supply operations team"
       onClose={onClose}
-      disabled={escalating}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={escalating}>Cancel</button>
-          <button className="ck-btn ck-btn-re" onClick={handleEscalate} disabled={escalating}>
-            {escalating ? 'Escalating…' : 'Escalate to Custoking ops'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-re" disabled title="Coming soon">
+            Escalate to Custoking ops
           </button>
         </>
       }
@@ -449,6 +378,7 @@ function OrderEscalateModal({ onClose, showToast }: PolModalProps) {
         <div style={{ background: '#fdecea', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--re, #c0312b)', border: '1px solid var(--re2, #f5c6c4)' }}>
           Use only after the standard follow-up has gone unanswered for 48h.
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
@@ -456,32 +386,24 @@ function OrderEscalateModal({ onClose, showToast }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FF_QUOTATION_ADD — upload quotation for an open request
+// Action disabled: submitting requires a request code selected at runtime;
+// no schoolId/context available in PolModalProps to call the endpoint safely.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FfQuotationAddModal({ workspace, onClose, showToast }: PolModalProps) {
-  const [uploading, setUploading] = useState(false);
+function FfQuotationAddModal({ workspace, onClose }: PolModalProps) {
   const openReqs = workspace.firefighting?.requests?.filter(r => r.status === 'OPEN') ?? [];
-
-  function handleSave() {
-    setUploading(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: 'Quotation saved as draft — request moved to In Review' });
-      onClose();
-    }, 900);
-  }
 
   return (
     <Modal
       title="Add Quotation"
       subtitle={`${openReqs.length} open request${openReqs.length !== 1 ? 's' : ''} awaiting quotation`}
       onClose={onClose}
-      disabled={uploading}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={uploading}>Cancel</button>
-          <button className="ck-btn ck-btn-re" onClick={handleSave} disabled={uploading}>
-            {uploading ? 'Saving…' : 'Save quotation as draft'}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-re" disabled title="Coming soon">
+            Save quotation as draft
           </button>
         </>
       }
@@ -512,13 +434,14 @@ function FfQuotationAddModal({ workspace, onClose, showToast }: PolModalProps) {
         <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '20px 16px', textAlign: 'center', color: 'var(--ink3)', fontSize: 12 }}>
           📎 Attach quotation document (PDF / image)
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// FF_QUOTATION_VIEW — view quotations for in-review requests
+// FF_QUOTATION_VIEW — view quotations for in-review requests (read-only)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FfQuotationViewModal({ workspace, onClose }: PolModalProps) {
@@ -565,21 +488,33 @@ function FfQuotationViewModal({ workspace, onClose }: PolModalProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ATTENDANCE_SECTIONS — list sections that haven't marked attendance
+// ATTENDANCE_SECTIONS — sections with low attendance (real data via GET)
+// Data source: fetchLowAttendanceSections() → LowAttendanceSectionItem[]
+// Fields used: sectionId, className, sectionName, presentCount, totalEnrolled, attendancePct
+// No write action in this modal.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AttendanceSectionsModal({ onClose }: PolModalProps) {
-  const sections = [
-    { name: '8-A',  teacher: 'Ms. Priya Rao',    since: '9:15 AM' },
-    { name: '9-C',  teacher: 'Mr. Kiran Mehta',   since: '9:20 AM' },
-    { name: '10-B', teacher: 'Ms. Sunita Gupta',  since: '9:10 AM' },
-    { name: '11-A', teacher: 'Mr. Rahul Das',     since: '9:05 AM' },
-  ];
+  const [sections, setSections] = useState<LowAttendanceSectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLowAttendanceSections()
+      .then(res => {
+        setSections(res.sections);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Could not load attendance data.');
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <Modal
-      title="Sections Pending Attendance"
-      subtitle="Classes that have not marked today's attendance"
+      title="Sections with Low Attendance"
+      subtitle="Sections below the attendance threshold today"
       onClose={onClose}
       footer={
         <>
@@ -589,35 +524,60 @@ function AttendanceSectionsModal({ onClose }: PolModalProps) {
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {loading && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>Loading…</div>
+        )}
+        {error && (
+          <div style={{ color: 'var(--re)', fontSize: 13 }}>{error}</div>
+        )}
+        {!loading && !error && sections.length === 0 && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No sections with low attendance today.</div>
+        )}
         {sections.map(s => (
-          <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+          <div key={s.sectionId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>Section {s.name}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.teacher}</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{s.className} – {s.sectionName}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.presentCount} / {s.totalEnrolled} present</div>
             </div>
-            <span style={{ fontSize: 11, color: 'var(--am)', fontWeight: 500 }}>Pending since {s.since}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>
+              {s.attendancePct}%
+            </span>
           </div>
         ))}
-        <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 4 }}>
-          Go to the Attendance panel to mark or send a reminder to the class teacher.
-        </div>
+        {!loading && (
+          <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 4 }}>
+            Go to the Attendance panel to view details or send reminders.
+          </div>
+        )}
       </div>
     </Modal>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ATTENDANCE_LOW — low-attendance section breakdown
+// ATTENDANCE_LOW — low-attendance section breakdown (real data via GET)
+// Data source: fetchLowAttendanceSections() → LowAttendanceSectionItem[]
+// Fields used: sectionId, className, sectionName, presentCount, totalEnrolled, attendancePct
+// No write action in this modal.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
   const pct = workspace.dashboard.attendancePercent ?? 0;
+  const [sections, setSections] = useState<LowAttendanceSectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const lowSections = [
-    { name: '11-B', pct: 72, students: 38, teacher: 'Mr. Anil Kumar' },
-    { name: '10-A', pct: 76, students: 42, teacher: 'Ms. Divya Nair' },
-    { name: '8-C',  pct: 78, students: 35, teacher: 'Mr. Suresh Pillai' },
-  ];
+  useEffect(() => {
+    fetchLowAttendanceSections()
+      .then(res => {
+        setSections(res.sections);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError('Could not load attendance data.');
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <Modal
@@ -635,13 +595,27 @@ function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
         <div style={{ background: '#fff8e1', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: '#7a5500', border: '1px solid #ffe082' }}>
           School attendance today is {pct}%. Sections below 80% are highlighted in red.
         </div>
-        {lowSections.map(s => (
-          <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
+        {loading && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>Loading…</div>
+        )}
+        {error && (
+          <div style={{ color: 'var(--re)', fontSize: 13 }}>{error}</div>
+        )}
+        {!loading && !error && sections.length === 0 && (
+          <div style={{ color: 'var(--ink3)', fontSize: 13 }}>No sections with low attendance today.</div>
+        )}
+        {sections.map(s => (
+          <div key={s.sectionId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderRadius: 6, background: 'var(--bg2)', border: '1px solid var(--border)' }}>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>Section {s.name} · {s.teacher}</div>
-              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.students} students enrolled</div>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>
+                {s.className} – {s.sectionName}
+                <span style={{ color: 'var(--ink3)', fontWeight: 400, fontSize: 12 }}> · {s.totalEnrolled} enrolled</span>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.presentCount} / {s.totalEnrolled} present</div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: s.pct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>{s.pct}%</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>
+              {s.attendancePct}%
+            </span>
           </div>
         ))}
       </div>
@@ -651,34 +625,26 @@ function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PARENT_NOTIFY — queue absence notifications to parents
+// Action disabled: POST /dashboard/attendance/meeting-invites has no backend
+// handler (404) — endpoint must be built before this can be wired.
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ParentNotifyModal({ workspace, onClose, showToast }: PolModalProps) {
-  const [sending, setSending] = useState(false);
+function ParentNotifyModal({ workspace, onClose }: PolModalProps) {
   const pct = workspace.dashboard.attendancePercent ?? 0;
   const total = workspace.dashboard.students ?? 0;
   const absent = Math.round(total * (1 - pct / 100));
-
-  function handleSend() {
-    setSending(true);
-    setTimeout(() => {
-      showToast({ ok: true, txt: `Attendance notifications queued for ${absent} parents` });
-      onClose();
-    }, 900);
-  }
 
   return (
     <Modal
       title="Notify Parents — Absent Students"
       subtitle={`${absent} students absent today`}
       onClose={onClose}
-      disabled={sending}
       footer={
         <>
           <PolNote />
-          <button className="ck-btn ck-btn-ghost" onClick={onClose} disabled={sending}>Cancel</button>
-          <button className="ck-btn ck-btn-am" onClick={handleSend} disabled={sending}>
-            {sending ? 'Queueing…' : `Send to ${absent} parents`}
+          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
+          <button className="ck-btn ck-btn-am" disabled title="Coming soon">
+            Send to {absent} parents
           </button>
         </>
       }
@@ -699,6 +665,7 @@ function ParentNotifyModal({ workspace, onClose, showToast }: PolModalProps) {
         <div style={{ background: 'var(--bg2)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--border)' }}>
           <b>Preview:</b> "Dear Parent, [Student Name] was marked absent today ({new Date().toLocaleDateString('en-IN')}). Please contact the school if this is an error. — {workspace.school.name}"
         </div>
+        <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
       </div>
     </Modal>
   );
