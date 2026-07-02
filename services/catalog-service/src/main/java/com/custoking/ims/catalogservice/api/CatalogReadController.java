@@ -105,6 +105,7 @@ public class CatalogReadController {
         if (dto.orderId() != null) body.put("orderId", dto.orderId());
         if (dto.amount() != null) body.put("amount", dto.amount());
         if (dto.items() != null) body.put("items", dto.items());
+        if (dto.orderData() != null) body.put("orderData", dto.orderData());
         applyResolvedSchool(body);
         return runCommand(() -> catalog.createOrder(body));
     }
