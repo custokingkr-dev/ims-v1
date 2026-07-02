@@ -97,7 +97,7 @@ class StudentValidationTest {
         assertEquals("ADM-001", captured.get("admissionNumber"));
         assertEquals("ADM-001", captured.get("admissionNo"));
         assertEquals("Aarav Sharma", captured.get("fullName"));
-        assertNotNull(captured.get("schoolId"));
+        assertEquals(4L, captured.get("schoolId"));
         assertEquals("B", captured.get("sectionName"));
         assertEquals("Male", captured.get("gender"));
     }
@@ -118,7 +118,7 @@ class StudentValidationTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).initiateIdCardReview(captor.capture());
         Map<String, Object> captured = captor.getValue();
-        assertNotNull(captured.get("schoolId"));
+        assertEquals(4L, captured.get("schoolId"));
         assertEquals(10L, captured.get("actorId"));
         assertEquals("2026-08-01", captured.get("dueDate"));
         assertNotNull(captured.get("classIds"));
@@ -126,14 +126,17 @@ class StudentValidationTest {
     }
 
     @Test
-    void initiateIdCardReview_noSchoolId_superadminPassesNullToRepo() throws Exception {
-        when(repo.initiateIdCardReview(anyMap())).thenReturn(Map.of("campaignId", "c2"));
+    void initiateIdCardReview_noSchoolId_superadmin_returns400() throws Exception {
+        // TenantScope passes null schoolId through for SUPERADMIN, but the real repository
+        // rejects it via requireLong(null, "schoolId is required") → IllegalArgumentException.
+        // The controller's execute() wrapper maps IllegalArgumentException → 400 BAD_REQUEST.
+        when(repo.initiateIdCardReview(anyMap()))
+                .thenThrow(new IllegalArgumentException("schoolId is required"));
         mvc.perform(post("/api/v1/students/reviews/id-card/initiate")
                         .header("X-Student-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
                         .content("{\"actorId\":10}"))
-                .andExpect(status().isOk());
-        // repo is called (SUPERADMIN with null schoolId is allowed by TenantScope)
+                .andExpect(status().isBadRequest());
         verify(repo).initiateIdCardReview(anyMap());
     }
 
@@ -153,20 +156,24 @@ class StudentValidationTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).initiateFullNameVerification(captor.capture());
         Map<String, Object> captured = captor.getValue();
-        assertNotNull(captured.get("schoolId"));
+        assertEquals(4L, captured.get("schoolId"));
         assertEquals(10L, captured.get("actorId"));
         assertEquals("PARENT", captured.get("verifier"));
         assertNotNull(captured.get("classIds"));
     }
 
     @Test
-    void initiateFullNameReview_noSchoolId_superadminPassesNullToRepo() throws Exception {
-        when(repo.initiateFullNameVerification(anyMap())).thenReturn(Map.of("campaignId", "c4"));
+    void initiateFullNameReview_noSchoolId_superadmin_returns400() throws Exception {
+        // TenantScope passes null schoolId through for SUPERADMIN, but the real repository
+        // rejects it via requireLong(null, "schoolId is required") → IllegalArgumentException.
+        // The controller's execute() wrapper maps IllegalArgumentException → 400 BAD_REQUEST.
+        when(repo.initiateFullNameVerification(anyMap()))
+                .thenThrow(new IllegalArgumentException("schoolId is required"));
         mvc.perform(post("/api/v1/students/reviews/full-name/initiate")
                         .header("X-Student-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
                         .content("{\"verifier\":\"TEACHER\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isBadRequest());
         verify(repo).initiateFullNameVerification(anyMap());
     }
 }
