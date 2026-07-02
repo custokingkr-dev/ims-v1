@@ -77,11 +77,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   };
 
-  const handleEditStudent = (student: any) => {
-    setStudentModalOpen(false);
-    setPanel('addstudent');
-  };
-
   function feeStatusClass(status: string): string {
     switch ((status ?? '').toLowerCase()) {
       case 'paid':    return 'sg spaid';
@@ -331,9 +326,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => setStudentModalOpen(false)}>Close</button>
-              {studentDetail ? (
-                <button className="ck-btn ck-btn-g" onClick={() => handleEditStudent(studentDetail)}>Edit Student</button>
-              ) : null}
             </div>
           </div>
         </div>
