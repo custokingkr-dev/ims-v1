@@ -1,5 +1,7 @@
 package com.custoking.ims.catalogservice.api;
 
+import com.custoking.ims.catalogservice.api.dto.CreateAnnualPlanItemRequest;
+import com.custoking.ims.catalogservice.api.dto.CreateCatalogOrderRequest;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.AnnualPlanEntryRow;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.AnnualPlanItemRow;
@@ -8,6 +10,7 @@ import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.Catalo
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.PendingCatalogOrderRow;
 import com.custoking.ims.catalogservice.persistence.CatalogReadRepository.SupplyOrderRow;
 import com.custoking.ims.catalogservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -22,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -85,10 +89,24 @@ public class CatalogReadController {
     @PostMapping("/orders")
     public CatalogOrderRow createOrder(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateCatalogOrderRequest dto) {
         requireToken(token, "catalog:write");
-        applyResolvedSchool(request);
-        return runCommand(() -> catalog.createOrder(request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("schoolId", dto.schoolId());
+        body.put("category", dto.category());
+        if (dto.subtotal() != null) body.put("subtotal", dto.subtotal());
+        if (dto.gst() != null) body.put("gst", dto.gst());
+        if (dto.totalAmount() != null) body.put("totalAmount", dto.totalAmount());
+        if (dto.status() != null) body.put("status", dto.status());
+        if (dto.notes() != null) body.put("notes", dto.notes());
+        if (dto.actorId() != null) body.put("actorId", dto.actorId());
+        if (dto.requiredByDate() != null) body.put("requiredByDate", dto.requiredByDate());
+        if (dto.id() != null) body.put("id", dto.id());
+        if (dto.orderId() != null) body.put("orderId", dto.orderId());
+        if (dto.amount() != null) body.put("amount", dto.amount());
+        if (dto.items() != null) body.put("items", dto.items());
+        applyResolvedSchool(body);
+        return runCommand(() -> catalog.createOrder(body));
     }
 
     @PostMapping("/orders/{id}/place")
@@ -191,10 +209,20 @@ public class CatalogReadController {
     public AnnualPlanItemRow saveAnnualPlanItem(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam Long schoolId,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateAnnualPlanItemRequest dto) {
         requireToken(token, "catalog:write");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        return runCommand(() -> catalog.saveAnnualPlanItem(scope, request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("category", dto.category());
+        if (dto.id() != null) body.put("id", dto.id());
+        if (dto.termName() != null) body.put("termName", dto.termName());
+        if (dto.description() != null) body.put("description", dto.description());
+        if (dto.quantity() != null) body.put("quantity", dto.quantity());
+        if (dto.estimatedAmount() != null) body.put("estimatedAmount", dto.estimatedAmount());
+        if (dto.status() != null) body.put("status", dto.status());
+        if (dto.term() != null) body.put("term", dto.term());
+        if (dto.amount() != null) body.put("amount", dto.amount());
+        return runCommand(() -> catalog.saveAnnualPlanItem(scope, body));
     }
 
     @PostMapping("/annual-plan/confirm")
