@@ -1,8 +1,11 @@
 package com.custoking.ims.studentservice.api;
 
+import com.custoking.ims.studentservice.api.dto.AttachPhotoRequest;
+import com.custoking.ims.studentservice.api.dto.ConfirmImportRequest;
 import com.custoking.ims.studentservice.api.dto.CreateStudentRequest;
 import com.custoking.ims.studentservice.api.dto.InitiateIdCardReviewRequest;
 import com.custoking.ims.studentservice.api.dto.InitiateFullNameReviewRequest;
+import com.custoking.ims.studentservice.api.dto.PreviewImportRequest;
 import com.custoking.ims.studentservice.persistence.StudentReadRepository;
 import com.custoking.ims.studentservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.studentservice.security.TenantScope;
@@ -124,41 +127,49 @@ public class StudentReadController {
     public Map<String, Object> attachPhoto(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody AttachPhotoRequest req) {
         requireToken(token, "student:write");
-        return execute(() -> students.attachPhoto(id, request));
+        Map<String, Object> params = new HashMap<>();
+        params.put("photoUrl", req.photoUrl());
+        return execute(() -> students.attachPhoto(id, params));
     }
 
     @PostMapping("/imports/preview")
     public Map<String, Object> previewImport(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody PreviewImportRequest req) {
         requireToken(token, "student:write");
-        applyResolvedSchool(request);
-        return execute(() -> students.previewImport(request));
+        Map<String, Object> params = new HashMap<>();
+        if (req.schoolId() != null) params.put("schoolId", req.schoolId());
+        if (req.rows() != null) params.put("rows", req.rows());
+        applyResolvedSchool(params);
+        return execute(() -> students.previewImport(params));
     }
 
     @PostMapping("/import/preview")
     public Map<String, Object> previewLegacyImport(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
-        return previewImport(token, request);
+            @Valid @RequestBody PreviewImportRequest req) {
+        return previewImport(token, req);
     }
 
     @PostMapping("/imports/confirm")
     public Map<String, Object> confirmImport(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody ConfirmImportRequest req) {
         requireToken(token, "student:write");
-        applyResolvedSchool(request);
-        return execute(() -> students.confirmImport(request));
+        Map<String, Object> params = new HashMap<>();
+        params.put("fileToken", req.fileToken());
+        if (req.schoolId() != null) params.put("schoolId", req.schoolId());
+        applyResolvedSchool(params);
+        return execute(() -> students.confirmImport(params));
     }
 
     @PostMapping("/import/confirm")
     public Map<String, Object> confirmLegacyImport(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
-        return confirmImport(token, request);
+            @Valid @RequestBody ConfirmImportRequest req) {
+        return confirmImport(token, req);
     }
 
     @GetMapping("/imports/status/{jobId}")
