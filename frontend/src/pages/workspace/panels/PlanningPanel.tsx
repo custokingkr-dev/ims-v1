@@ -3,6 +3,13 @@ import { ModuleShell } from '../ui';
 import { Modal } from '../../../components/Modal';
 import type { WorkspaceData, PanelKey } from '../../workspace/config';
 import { formatMoney } from '../utils';
+import api from '../../../services/api';
+
+/** Parse display amount strings like "₹1,80,000" → 180000. Returns 0 on non-numeric. */
+function parseAmountStr(s: string): number {
+  const n = parseInt(s.replace(/[₹,\s]/g, ''), 10);
+  return isNaN(n) ? 0 : n;
+}
 
 type TabKey = 'all' | 'student' | 'events' | 'office' | 'exams' | 'ff' | 'pkg';
 type BarFilter = 'all' | 'supply' | 'school' | 'event' | 'exam' | 'ff';
@@ -132,6 +139,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
   const [barFilter, setBarFilter] = useState<BarFilter>('all');
   const [modal, setModal] = useState<ModalData | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
 
   const studentCount = workspace.school?.students ?? workspace.dashboard?.students ?? '—';
 
@@ -158,6 +166,53 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
     setTimeout(() => setToast(null), 3500);
   }
 
+  /** POST a single item to the annual plan. schoolId is resolved server-side from the JWT. */
+  async function addPlanItem(category: string, description: string, estimatedAmount: number): Promise<void> {
+    setPlanBusy(true);
+    try {
+      await api.post('/supply/annual-plan/items', { category, description, estimatedAmount });
+      showToast(`"${category}" added to annual plan.`);
+    } catch {
+      showToast('Could not add to plan — please try again.');
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
+  /** POST all AI suggestions as annual-plan items in parallel. */
+  async function addAllSuggestions(): Promise<void> {
+    setPlanBusy(true);
+    try {
+      await Promise.all(
+        AI_SUGGESTIONS.map(s =>
+          api.post('/supply/annual-plan/items', {
+            category: s.label,
+            description: s.sub,
+            estimatedAmount: parseAmountStr(s.budget),
+          })
+        )
+      );
+      showToast('All 4 suggestions added to annual plan.');
+    } catch {
+      showToast('Could not accept all suggestions — please try again.');
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
+  /** POST /supply/annual-plan/confirm — lock the plan and notify Custoking. */
+  async function confirmPlan(): Promise<void> {
+    setPlanBusy(true);
+    try {
+      await api.post('/supply/annual-plan/confirm');
+      showToast('Annual plan confirmed and Custoking notified.');
+    } catch {
+      showToast('Could not confirm plan — please try again.');
+    } finally {
+      setPlanBusy(false);
+    }
+  }
+
   const show = (tab: TabKey) => activeTab === 'all' || activeTab === tab;
 
   const TABS: [TabKey, React.ReactNode][] = [
@@ -179,8 +234,8 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
           <button className="ck-btn ck-btn-ghost" onClick={() => setModal({ title: 'Export PDF', desc: 'The full annual plan will be exported as a PDF with all items, events, and supply configurations.', amount: '—', type: 'supply', deadline: '—' })}>
             Export PDF
           </button>
-          <button className="ck-btn ck-btn-g" onClick={() => showToast('Plan saved. All items confirmed for 2025–26.')}>
-            Save plan
+          <button className="ck-btn ck-btn-g" disabled={planBusy} onClick={confirmPlan}>
+            {planBusy ? 'Saving…' : 'Save plan'}
           </button>
         </>
       }
@@ -223,7 +278,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
               <p>Based on 2 years of supply orders and firefighting requests — lab equipment raised urgently twice, uniforms placed every April. Accept all to pre-fill your annual plan. Schools that plan annually save 12% vs ad-hoc ordering.</p>
             </div>
             <div className="ap-ib-actions">
-              <button className="ap-ib-btn ap-ib-btn-w" onClick={() => showToast('All 4 suggestions accepted and added to plan.')}>Accept all 4</button>
+              <button className="ap-ib-btn ap-ib-btn-w" disabled={planBusy} onClick={addAllSuggestions}>{planBusy ? 'Adding…' : 'Accept all 4'}</button>
               <button className="ap-ib-btn ap-ib-btn-outline" onClick={() => setActiveTab('ff')}>Review each →</button>
             </div>
           </div>
@@ -350,7 +405,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
                 <div className="ap-sec-sub">Term 1 order window — 3 items not yet ordered</div>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="ap-btn ap-btn-ghost" onClick={() => setModal({ title: 'Bulk confirm all', desc: 'This will lock in quantities for all class-level orders and submit them to the Custoking catalog for processing.', amount: '₹7,82,000', type: 'supply', deadline: 'May 20' })}>Confirm all classes</button>
+                <button className="ap-btn ap-btn-ghost" disabled={planBusy} onClick={confirmPlan}>{planBusy ? 'Confirming…' : 'Confirm all classes'}</button>
                 <button className="ap-btn ap-btn-g" onClick={() => setPanel?.('catalog')}>+ Add item</button>
               </div>
             </div>
@@ -416,7 +471,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
                   ))}
                 </div>
                 <div className="ap-is-footer">
-                  <button className="ap-btn ap-btn-g" style={{ flex: 1, padding: 8 }} onClick={() => showToast('All suggestions accepted and added to plan.')}>Accept all</button>
+                  <button className="ap-btn ap-btn-g" style={{ flex: 1, padding: 8 }} disabled={planBusy} onClick={addAllSuggestions}>{planBusy ? 'Adding…' : 'Accept all'}</button>
                   <button className="ap-btn ap-btn-ghost" style={{ flex: 1, padding: 8 }} onClick={() => showToast('Review mode opens each suggestion individually.')}>Review each</button>
                 </div>
               </div>
@@ -656,7 +711,17 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
           footer={
             <>
               <button className="ck-btn ck-btn-ghost" onClick={() => setModal(null)}>Close</button>
-              <button className="ck-btn ck-btn-g" onClick={() => { showToast('Added to plan. Opening catalog…'); setModal(null); setPanel?.('catalog'); }}>Add to plan & order</button>
+              <button
+                className="ck-btn ck-btn-g"
+                disabled={planBusy}
+                onClick={async () => {
+                  if (modal) {
+                    await addPlanItem(modal.title, modal.desc, parseAmountStr(modal.amount));
+                  }
+                  setModal(null);
+                  setPanel?.('catalog');
+                }}
+              >{planBusy ? 'Adding…' : 'Add to plan & order'}</button>
             </>
           }
         >
