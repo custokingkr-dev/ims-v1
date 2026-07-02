@@ -1,5 +1,8 @@
 package com.custoking.ims.attendanceservice.api;
 
+import com.custoking.ims.attendanceservice.api.dto.DailyEntryRequest;
+import com.custoking.ims.attendanceservice.api.dto.SaveSectionRegisterRequest;
+import com.custoking.ims.attendanceservice.api.dto.SubmitSectionRequest;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.attendanceservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -104,12 +107,10 @@ class AttendanceReadControllerTest {
     @SuppressWarnings("unchecked")
     void saveSectionRegister_schoolIdPresentInMap_nonSuperadmin() {
         TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
-        Map<String, Object> request = new HashMap<>();
-        request.put("schoolId", 7L);
-        request.put("date", "2026-02-02");
+        SaveSectionRegisterRequest body = new SaveSectionRegisterRequest("C1", "S1", "2026-02-02", null, 7L, null);
         when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
 
-        controller.saveSectionRegister("attendance-token", request);
+        controller.saveSectionRegister("attendance-token", body);
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveSectionRegister(captor.capture());
@@ -120,11 +121,10 @@ class AttendanceReadControllerTest {
     @SuppressWarnings("unchecked")
     void saveSectionRegister_schoolIdAbsentNotAdded_superadmin() {
         // @BeforeEach sets SUPERADMIN context
-        Map<String, Object> request = new HashMap<>();
-        request.put("date", "2026-02-02");
+        SaveSectionRegisterRequest body = new SaveSectionRegisterRequest("C1", "S1", "2026-02-02", null, null, null);
         when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
 
-        controller.saveSectionRegister("attendance-token", request);
+        controller.saveSectionRegister("attendance-token", body);
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveSectionRegister(captor.capture());
@@ -137,12 +137,10 @@ class AttendanceReadControllerTest {
     @SuppressWarnings("unchecked")
     void dailyEntry_schoolIdPresentInMap_nonSuperadmin() {
         TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
-        Map<String, Object> request = new HashMap<>();
-        request.put("schoolId", 7L);
-        request.put("date", "2026-02-02");
+        DailyEntryRequest body = new DailyEntryRequest("C1", "S1", "2026-02-02", null, null, null, 7L);
         when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
 
-        controller.dailyEntry("attendance-token", request);
+        controller.dailyEntry("attendance-token", body);
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveDailyAttendance(captor.capture());
@@ -153,11 +151,10 @@ class AttendanceReadControllerTest {
     @SuppressWarnings("unchecked")
     void dailyEntry_schoolIdAbsentNotAdded_superadmin() {
         // @BeforeEach sets SUPERADMIN context
-        Map<String, Object> request = new HashMap<>();
-        request.put("date", "2026-02-02");
+        DailyEntryRequest body = new DailyEntryRequest("C1", "S1", "2026-02-02", null, null, null, null);
         when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
 
-        controller.dailyEntry("attendance-token", request);
+        controller.dailyEntry("attendance-token", body);
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveDailyAttendance(captor.capture());
@@ -170,12 +167,10 @@ class AttendanceReadControllerTest {
     @SuppressWarnings("unchecked")
     void submitSection_schoolIdPresentInMap_nonSuperadmin() {
         TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
-        Map<String, Object> request = new HashMap<>();
-        request.put("schoolId", 7L);
-        request.put("date", "2026-02-02");
+        SubmitSectionRequest body = new SubmitSectionRequest("C1", "S1", "2026-02-02", null, 7L);
         when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
 
-        controller.submitSection("attendance-token", request);
+        controller.submitSection("attendance-token", body);
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).submitAttendanceSection(captor.capture());
@@ -186,11 +181,10 @@ class AttendanceReadControllerTest {
     @SuppressWarnings("unchecked")
     void submitSection_schoolIdAbsentNotAdded_superadmin() {
         // @BeforeEach sets SUPERADMIN context
-        Map<String, Object> request = new HashMap<>();
-        request.put("date", "2026-02-02");
+        SubmitSectionRequest body = new SubmitSectionRequest("C1", "S1", "2026-02-02", null, null);
         when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
 
-        controller.submitSection("attendance-token", request);
+        controller.submitSection("attendance-token", body);
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).submitAttendanceSection(captor.capture());
