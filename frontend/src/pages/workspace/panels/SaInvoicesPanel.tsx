@@ -119,7 +119,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                       <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
                       {String(row.status).toLowerCase().includes('awaiting')
                         ? <button className="ck-btn ck-btn-ghost" onClick={() => setToast(`Invoice ${row.id} resent to ${row.school}`)}>Resend</button>
-                        : <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download</button>}
+                        : <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download</button>}
                     </td>
                   </tr>
                 ))}
@@ -165,7 +165,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download PDF</button>
+              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {saInvExistingId && !saInvEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setSaInvEditing(true)}>Edit invoice</button> : null}
               {saInvExistingId && saInvEditing ? <button className="ck-btn ck-btn-ghost" disabled={saInvSaving} onClick={saveSaInvoiceEdit}>{saInvSaving ? 'Saving…' : 'Save changes'}</button> : null}
               <button className="ck-btn ck-btn-g" disabled={saInvSaving} onClick={sendSaInvoice}>{saInvSaving ? 'Sending…' : 'Send to school'}</button>

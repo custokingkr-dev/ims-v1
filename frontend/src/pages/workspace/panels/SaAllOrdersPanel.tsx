@@ -264,7 +264,7 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>
               <button className="ck-btn ck-btn-ghost" onClick={() => setToast(`WhatsApp notification sent to ${detailOrder?.schoolName || detailOrder?.school || 'school'}`)}>WhatsApp school</button>
-              <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download order sheet</button>
+              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download order sheet</button>
               <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>
             </div>
           </div>
@@ -308,7 +308,7 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" onClick={() => setToast('Download coming soon — feature in development')}>Download PDF</button>
+              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {invExistingId && !invEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setInvEditing(true)}>Edit invoice</button> : null}
               {invExistingId && invEditing ? <button className="ck-btn ck-btn-ghost" disabled={invSaving} onClick={saveInvEdit}>{invSaving ? 'Saving…' : 'Save changes'}</button> : null}
               <button className="ck-btn ck-btn-g" disabled={invSaving} onClick={sendInvoice}>{invSaving ? 'Sending…' : 'Send to school'}</button>

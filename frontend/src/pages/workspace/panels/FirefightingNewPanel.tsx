@@ -49,7 +49,22 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
   const [ffError, setFfError] = useState('');
   const [ffDraftSaving, setFfDraftSaving] = useState(false);
   const [ffExistingQuotes, setFfExistingQuotes] = useState<ExistingQuote[]>([]);
+  const [deletingQuoteId, setDeletingQuoteId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  const deleteExistingQuote = async (quoteId: string | undefined) => {
+    if (!editingCode || !quoteId) return;
+    setDeletingQuoteId(quoteId);
+    setFfError('');
+    try {
+      await api.delete(`/ff/requests/${editingCode}/quotations/${quoteId}`);
+      setFfExistingQuotes((prev) => prev.filter((x) => x.id !== quoteId));
+    } catch (err) {
+      setFfError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Could not delete quotation.');
+    } finally {
+      setDeletingQuoteId(null);
+    }
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -222,6 +237,9 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
                     <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{q.amount ? `₹${formatMoney(Number(q.amount))}` : '—'}{q.deliveryTimeline ? ` · ${q.deliveryTimeline}` : ''}{q.documentUrl ? ` · 📄 ${q.documentUrl}` : ''}</div>
                   </div>
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--g)', background: '#fff', padding: '2px 8px', borderRadius: 5 }}>✓ Saved</span>
+                  {q.id ? (
+                    <button className="ck-btn ck-btn-ghost" disabled={deletingQuoteId === q.id} onClick={() => deleteExistingQuote(q.id)} title="Remove this quotation">{deletingQuoteId === q.id ? '…' : 'Delete'}</button>
+                  ) : null}
                 </div>
               ))}
               <div style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--ink3)', margin: '16px 0 10px' }}>Add more quotations</div>
