@@ -66,7 +66,7 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
       }
     >
       {error && <div className="ck-alert ck-alert-re" style={{ marginBottom: 12 }}>{error}</div>}
-      {notice && <div className="ck-alert ck-alert-ok" style={{ marginBottom: 12 }}>{notice}</div>}
+      {notice && <div className="ck-alert ck-alert-g" style={{ marginBottom: 12 }}>{notice}</div>}
       <div className="ck-card ck-compact-form-card" style={{ marginBottom: 16 }}>
         <div className="ck-card-h">
           <div className="ck-card-t">New staff member</div>

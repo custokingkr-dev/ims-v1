@@ -282,12 +282,12 @@ export default function SchoolManagementPage() {
                   <td>{school.operationsEmail || '—'}</td>
                   <td><span className="badge">{school.active ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {can('school:admin_manage') && (
+                    {can('school:update') && (
                       <button className="ck-btn ck-btn-ghost" onClick={() => openAdminModal(school)}>
                         {school.adminEmail ? 'Reset Admin' : 'Add Admin'}
                       </button>
                     )}
-                    {can('school:admin_manage') && (
+                    {can('school:update') && (
                       <button className="ck-btn ck-btn-ghost" onClick={() => openOpsModal(school)}>
                         {school.operationsEmail ? 'Reset Ops' : 'Add Ops'}
                       </button>

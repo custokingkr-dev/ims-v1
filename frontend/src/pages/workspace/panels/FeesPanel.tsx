@@ -144,7 +144,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
     const selected = paymentOptions.students.find((row: any) => String(row.id) === studentId);
     setPaymentDuePreview(selected || null);
     setPaymentError('');
-    setPaymentForm((prev) => ({ ...prev, studentId, studentName: selected?.name || '', amount: selected ? String(Math.round(Number(selected.dueAmount || 0) / 100)) : '' }));
+    setPaymentForm((prev) => ({ ...prev, studentId, studentName: selected?.name || '', amount: selected ? String(Math.floor(Number(selected.dueAmount || 0) / 100)) : '' }));
   };
 
   const handleReportClassChange = async (classId: string) => {
