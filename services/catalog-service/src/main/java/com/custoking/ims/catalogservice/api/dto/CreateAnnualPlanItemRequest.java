@@ -9,5 +9,8 @@ public record CreateAnnualPlanItemRequest(
         String description,
         String quantity,
         Long estimatedAmount,
-        String status) {
+        String status,
+        // Legacy alias keys that the repo reads via firstPresent(...)
+        String term,
+        Long amount) {
 }

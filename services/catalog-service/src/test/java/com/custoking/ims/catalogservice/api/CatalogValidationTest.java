@@ -11,11 +11,11 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -80,7 +80,7 @@ class CatalogValidationTest {
         mvc.perform(post("/api/v1/catalog/orders")
                         .header("X-Catalog-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"category\":\"STATIONERY\",\"schoolId\":4,\"subtotal\":1000,\"gst\":120,\"totalAmount\":1120,\"notes\":\"test order\"}"))
+                        .content("{\"category\":\"STATIONERY\",\"schoolId\":4,\"subtotal\":1000,\"gst\":120,\"totalAmount\":1120,\"notes\":\"test order\",\"actorId\":7,\"status\":\"DRAFT\",\"requiredByDate\":\"2026-12-31\"}"))
                 .andExpect(status().isOk());
 
         @SuppressWarnings("unchecked")
@@ -94,6 +94,9 @@ class CatalogValidationTest {
         assertEquals("test order", body.get("notes"));
         // schoolId resolved through applyResolvedSchool (SUPERADMIN context passes 4L through)
         assertEquals(4L, ((Number) body.get("schoolId")).longValue());
+        assertEquals(7L, ((Number) body.get("actorId")).longValue());
+        assertEquals("DRAFT", body.get("status"));
+        assertEquals("2026-12-31", body.get("requiredByDate"));
     }
 
     @Test
@@ -114,6 +117,8 @@ class CatalogValidationTest {
         assertEquals("IDCARDS", body.get("category"));
         assertTrue(!body.containsKey("subtotal"), "subtotal should be absent when not sent");
         assertTrue(!body.containsKey("notes"), "notes should be absent when not sent");
+        // SUPERADMIN with no requested schoolId -> resolveSchoolId(null) returns null
+        assertNull(body.get("schoolId"), "schoolId should be null when SUPERADMIN sends no schoolId");
     }
 
     // ── POST /annual-plan/items ───────────────────────────────────────────────
@@ -153,7 +158,7 @@ class CatalogValidationTest {
                         .header("X-Catalog-Service-Token", VALID_TOKEN)
                         .param("schoolId", "4")
                         .contentType("application/json")
-                        .content("{\"category\":\"NOTEBOOKS\",\"termName\":\"Term 1\",\"description\":\"Ruled notebooks\",\"quantity\":\"200 units\",\"estimatedAmount\":5000}"))
+                        .content("{\"category\":\"NOTEBOOKS\",\"termName\":\"Term 1\",\"description\":\"Ruled notebooks\",\"quantity\":\"200 units\",\"estimatedAmount\":5000,\"id\":\"plan-item-1\",\"status\":\"PLANNED\"}"))
                 .andExpect(status().isOk());
 
         @SuppressWarnings("unchecked")
@@ -169,6 +174,8 @@ class CatalogValidationTest {
         assertEquals("Ruled notebooks", body.get("description"));
         assertEquals("200 units", body.get("quantity"));
         assertEquals(5000L, ((Number) body.get("estimatedAmount")).longValue());
+        assertEquals("plan-item-1", body.get("id"));
+        assertEquals("PLANNED", body.get("status"));
     }
 
     @Test
@@ -190,6 +197,64 @@ class CatalogValidationTest {
         assertEquals("STATIONERY", body.get("category"));
         assertTrue(!body.containsKey("termName"), "termName should be absent when not sent");
         assertTrue(!body.containsKey("estimatedAmount"), "estimatedAmount should be absent when not sent");
+    }
+
+    // ── Cross-tenant guard ────────────────────────────────────────────────────
+
+    @Test
+    void createOrder_nonSuperadminCrossTenant_returns403() throws Exception {
+        // Override setUp's SUPERADMIN context with a school-scoped ADMIN
+        TenantContext.set(new TenantContext(null, null, "ADMIN", 1L, null));
+
+        // POST an order targeting a different school (schoolId=2 != authed schoolId=1)
+        // applyResolvedSchool -> TenantScope.resolveSchoolId(2L) throws FORBIDDEN
+        mvc.perform(post("/api/v1/catalog/orders")
+                        .header("X-Catalog-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"category\":\"STATIONERY\",\"schoolId\":2}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(catalog);
+    }
+
+    // ── Alias field pass-through tests ────────────────────────────────────────
+
+    @Test
+    void createOrder_amountAliasWithoutSubtotal_putsAmountKey() throws Exception {
+        CatalogOrderRow stubOrder = stubOrderRow("CK-1003");
+        when(catalog.createOrder(any())).thenReturn(stubOrder);
+
+        mvc.perform(post("/api/v1/catalog/orders")
+                        .header("X-Catalog-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"category\":\"STATIONERY\",\"amount\":500}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(catalog).createOrder(captor.capture());
+        Map<String, Object> body = captor.getValue();
+        assertEquals(500L, ((Number) body.get("amount")).longValue());
+        assertTrue(!body.containsKey("subtotal"), "subtotal should be absent when only amount alias is sent");
+    }
+
+    @Test
+    void saveAnnualPlanItem_termAlias_putsTermKey() throws Exception {
+        AnnualPlanItemRow stubItem = stubAnnualPlanItemRow();
+        when(catalog.saveAnnualPlanItem(anyLong(), any())).thenReturn(stubItem);
+
+        mvc.perform(post("/api/v1/catalog/annual-plan/items")
+                        .header("X-Catalog-Service-Token", VALID_TOKEN)
+                        .param("schoolId", "4")
+                        .contentType("application/json")
+                        .content("{\"category\":\"NOTEBOOKS\",\"term\":\"Term 2\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> bodyCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(catalog).saveAnnualPlanItem(anyLong(), bodyCaptor.capture());
+        Map<String, Object> body = bodyCaptor.getValue();
+        assertEquals("Term 2", body.get("term"));
+        assertTrue(!body.containsKey("termName"), "termName should be absent when only term alias is sent");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -11,5 +11,10 @@ public record CreateCatalogOrderRequest(
         String status,
         String notes,
         Long actorId,
-        String requiredByDate) {
+        String requiredByDate,
+        // Legacy alias keys that the repo reads via firstPresent(...)
+        String id,
+        String orderId,
+        Long amount,
+        String items) {
 }
