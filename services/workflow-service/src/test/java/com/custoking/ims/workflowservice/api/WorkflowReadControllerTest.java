@@ -1,5 +1,6 @@
 package com.custoking.ims.workflowservice.api;
 
+import com.custoking.ims.workflowservice.api.dto.CreateInstanceRequest;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository;
 import com.custoking.ims.workflowservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -7,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -65,15 +65,16 @@ class WorkflowReadControllerTest {
     @Test
     void createOrGetInstanceMapsValidationToBadRequest() {
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
-        Map<String, Object> request = new HashMap<>(Map.of("entityType", "ORDER"));
-        when(workflows.createOrGetInstance(any())).thenThrow(new IllegalArgumentException("entityId is required"));
+        // Simulate repo rejecting a partial create (definitionId missing on new entity)
+        CreateInstanceRequest req = new CreateInstanceRequest("ORDER", "order-99", null, null, null);
+        when(workflows.createOrGetInstance(any())).thenThrow(new IllegalArgumentException("definitionId is required"));
 
-        assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", request))
+        assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", req))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(response.getReason()).isEqualTo("entityId is required");
+                    assertThat(response.getReason()).isEqualTo("definitionId is required");
                 });
     }
 

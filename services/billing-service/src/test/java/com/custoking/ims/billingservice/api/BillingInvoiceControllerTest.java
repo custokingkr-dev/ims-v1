@@ -1,5 +1,6 @@
 package com.custoking.ims.billingservice.api;
 
+import com.custoking.ims.billingservice.api.dto.CreateInvoiceRequest;
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.InvoiceRow;
 import com.custoking.ims.billingservice.security.TenantContext;
@@ -15,6 +16,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -60,19 +62,15 @@ class BillingInvoiceControllerTest {
 
     @Test
     void createRequiresWriteTokenAndDelegatesPayload() {
-        Map<String, Object> request = Map.of(
-                "schoolId", 4L,
-                "school", "Delhi Public School",
-                "description", "Annual platform subscription",
-                "qty", 1,
-                "rate", 1000);
+        CreateInvoiceRequest dto = new CreateInvoiceRequest(
+                "Delhi Public School", null, 4L, "Annual platform subscription", 1, 1000L, null, null);
         InvoiceRow invoice = invoice("INV-2025-01", "Awaiting payment");
-        when(invoices.create(request)).thenReturn(invoice);
+        when(invoices.create(any())).thenReturn(invoice);
 
-        Object response = controller.create("billing-token", request);
+        Object response = controller.create("billing-token", dto);
 
         assertThat(response).isSameAs(invoice);
-        verify(invoices).create(request);
+        verify(invoices).create(any());
     }
 
     @Test

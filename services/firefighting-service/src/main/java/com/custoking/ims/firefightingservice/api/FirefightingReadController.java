@@ -1,14 +1,17 @@
 package com.custoking.ims.firefightingservice.api;
 
+import com.custoking.ims.firefightingservice.api.dto.CreateFirefightingRequestRequest;
+import com.custoking.ims.firefightingservice.api.dto.CreateQuotationRequest;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.firefightingservice.persistence.FirefightingReadRepository.QuotationRow;
 import com.custoking.ims.firefightingservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -90,11 +93,22 @@ public class FirefightingReadController {
     @PostMapping("/requests")
     public Map<String, Object> create(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateFirefightingRequestRequest req) {
         requireToken(token, "firefighting:write");
-        Map<String, Object> mutableRequest = new HashMap<>(request);
-        applyResolvedSchool(mutableRequest);
-        return execute(() -> firefighting.createRequest(mutableRequest));
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", req.title());
+        if (req.category() != null) body.put("category", req.category());
+        if (req.urgency() != null) body.put("urgency", req.urgency());
+        if (req.requiredByDate() != null) body.put("requiredByDate", req.requiredByDate());
+        if (req.estimatedBudget() != null) body.put("estimatedBudget", req.estimatedBudget());
+        if (req.schoolId() != null) body.put("schoolId", req.schoolId());
+        if (req.description() != null) body.put("description", req.description());
+        if (req.summary() != null) body.put("summary", req.summary());
+        if (req.referenceFileUrl() != null) body.put("referenceFileUrl", req.referenceFileUrl());
+        if (req.actorId() != null) body.put("actorId", req.actorId());
+        if (req.actorEmail() != null) body.put("actorEmail", req.actorEmail());
+        applyResolvedSchool(body);
+        return execute(() -> firefighting.createRequest(body));
     }
 
     @PatchMapping("/requests/{code}")
@@ -118,9 +132,15 @@ public class FirefightingReadController {
     public Map<String, Object> addQuotation(
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateQuotationRequest req) {
         requireToken(token, "firefighting:write");
-        return execute(() -> firefighting.addQuotation(code, request));
+        Map<String, Object> body = new HashMap<>();
+        body.put("vendorName", req.vendorName());
+        if (req.amount() != null) body.put("amount", req.amount());
+        if (req.deliveryTimeline() != null) body.put("deliveryTimeline", req.deliveryTimeline());
+        if (req.notes() != null) body.put("notes", req.notes());
+        if (req.documentUrl() != null) body.put("documentUrl", req.documentUrl());
+        return execute(() -> firefighting.addQuotation(code, body));
     }
 
     @PatchMapping("/requests/{code}/quotations/{quotationId}")

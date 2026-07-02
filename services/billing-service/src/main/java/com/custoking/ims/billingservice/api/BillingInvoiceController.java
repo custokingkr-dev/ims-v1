@@ -1,7 +1,9 @@
 package com.custoking.ims.billingservice.api;
 
+import com.custoking.ims.billingservice.api.dto.CreateInvoiceRequest;
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import com.custoking.ims.billingservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -82,10 +85,19 @@ public class BillingInvoiceController {
     @ResponseStatus(HttpStatus.CREATED)
     public Object create(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody CreateInvoiceRequest dto) {
         requireToken(token, "billing:write");
         TenantScope.requireSuperAdmin();
-        return invoices.create(request);
+        Map<String, Object> body = new HashMap<>();
+        body.put("school", dto.school());
+        if (dto.orderRef() != null) body.put("orderRef", dto.orderRef());
+        if (dto.schoolId() != null) body.put("schoolId", dto.schoolId());
+        if (dto.description() != null) body.put("description", dto.description());
+        if (dto.qty() != null) body.put("qty", dto.qty());
+        if (dto.rate() != null) body.put("rate", dto.rate());
+        if (dto.amount() != null) body.put("amount", dto.amount());
+        if (dto.notes() != null) body.put("notes", dto.notes());
+        return invoices.create(body);
     }
 
     @PatchMapping("/{id}")

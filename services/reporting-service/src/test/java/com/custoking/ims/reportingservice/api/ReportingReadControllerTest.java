@@ -1,6 +1,7 @@
 package com.custoking.ims.reportingservice.api;
 
 import com.custoking.ims.reportingservice.api.compat.ReportingPublicCompatibilityController;
+import com.custoking.ims.reportingservice.api.dto.EventContributionReminderTargetsRequest;
 import com.custoking.ims.reportingservice.api.internal.ReportingPubSubPushController;
 import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingEventInboxRepository;
@@ -25,6 +26,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.InstanceOfAssertFactories.MAP;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -107,17 +109,20 @@ class ReportingReadControllerTest {
     }
 
     @Test
-    void reminderTargetsMapsValidationFailureToBadRequest() {
-        Map<String, Object> request = Map.of("schoolId", 4L);
-        when(commands.eventPaymentReminderTargets(request))
-                .thenThrow(new IllegalArgumentException("eventId is required"));
+    void reminderTargets_repoBusinessLogicException_mapsToBadRequest() {
+        // eventId and schoolId are valid; repo throws a business-logic BAD_REQUEST (e.g. ACTIVE check).
+        // The DTO pre-validates required fields, so repo-level IllegalArgumentException still maps → 400.
+        EventContributionReminderTargetsRequest req =
+                new EventContributionReminderTargetsRequest("event-1", 4L, null);
+        when(commands.eventPaymentReminderTargets(anyMap()))
+                .thenThrow(new IllegalArgumentException("Reminders can only be sent for ACTIVE events"));
 
-        assertThatThrownBy(() -> controller.eventPaymentReminderTargets("reporting-token", request))
+        assertThatThrownBy(() -> controller.eventPaymentReminderTargets("reporting-token", req))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(response.getReason()).isEqualTo("eventId is required");
+                    assertThat(response.getReason()).isEqualTo("Reminders can only be sent for ACTIVE events");
                 });
     }
 

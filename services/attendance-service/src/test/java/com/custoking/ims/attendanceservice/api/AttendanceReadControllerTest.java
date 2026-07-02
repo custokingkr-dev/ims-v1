@@ -1,19 +1,25 @@
 package com.custoking.ims.attendanceservice.api;
 
+import com.custoking.ims.attendanceservice.api.dto.DailyEntryRequest;
+import com.custoking.ims.attendanceservice.api.dto.SaveSectionRegisterRequest;
+import com.custoking.ims.attendanceservice.api.dto.SubmitSectionRequest;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.attendanceservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -93,5 +99,95 @@ class AttendanceReadControllerTest {
 
         assertThat(response).isSameAs(result);
         verify(attendance).submitAttendanceDay("2026-02-02", 4L, 9L);
+    }
+
+    // --- schoolId containsKey coverage: PUT /section-register ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void saveSectionRegister_schoolIdPresentInMap_nonSuperadmin() {
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        SaveSectionRegisterRequest body = new SaveSectionRegisterRequest("C1", "S1", "2026-02-02", null, 7L, null);
+        when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
+
+        controller.saveSectionRegister("attendance-token", body);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveSectionRegister(captor.capture());
+        assertThat(captor.getValue().get("schoolId")).isEqualTo(7L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void saveSectionRegister_schoolIdAbsentNotAdded_superadmin() {
+        // @BeforeEach sets SUPERADMIN context
+        SaveSectionRegisterRequest body = new SaveSectionRegisterRequest("C1", "S1", "2026-02-02", null, null, null);
+        when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
+
+        controller.saveSectionRegister("attendance-token", body);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveSectionRegister(captor.capture());
+        assertThat(captor.getValue()).doesNotContainKey("schoolId");
+    }
+
+    // --- schoolId containsKey coverage: POST /daily-entry ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void dailyEntry_schoolIdPresentInMap_nonSuperadmin() {
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        DailyEntryRequest body = new DailyEntryRequest("C1", "S1", "2026-02-02", null, null, null, 7L);
+        when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
+
+        controller.dailyEntry("attendance-token", body);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveDailyAttendance(captor.capture());
+        assertThat(captor.getValue().get("schoolId")).isEqualTo(7L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void dailyEntry_schoolIdAbsentNotAdded_superadmin() {
+        // @BeforeEach sets SUPERADMIN context
+        DailyEntryRequest body = new DailyEntryRequest("C1", "S1", "2026-02-02", null, null, null, null);
+        when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
+
+        controller.dailyEntry("attendance-token", body);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveDailyAttendance(captor.capture());
+        assertThat(captor.getValue()).doesNotContainKey("schoolId");
+    }
+
+    // --- schoolId containsKey coverage: POST /submit-section ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void submitSection_schoolIdPresentInMap_nonSuperadmin() {
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        SubmitSectionRequest body = new SubmitSectionRequest("C1", "S1", "2026-02-02", null, 7L);
+        when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
+
+        controller.submitSection("attendance-token", body);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).submitAttendanceSection(captor.capture());
+        assertThat(captor.getValue().get("schoolId")).isEqualTo(7L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void submitSection_schoolIdAbsentNotAdded_superadmin() {
+        // @BeforeEach sets SUPERADMIN context
+        SubmitSectionRequest body = new SubmitSectionRequest("C1", "S1", "2026-02-02", null, null);
+        when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
+
+        controller.submitSection("attendance-token", body);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).submitAttendanceSection(captor.capture());
+        assertThat(captor.getValue()).doesNotContainKey("schoolId");
     }
 }

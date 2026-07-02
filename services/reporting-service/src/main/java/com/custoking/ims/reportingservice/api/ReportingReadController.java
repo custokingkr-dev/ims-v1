@@ -1,9 +1,13 @@
 package com.custoking.ims.reportingservice.api;
 
+import com.custoking.ims.reportingservice.api.dto.EventContributionReminderRequest;
+import com.custoking.ims.reportingservice.api.dto.EventContributionReminderTargetsRequest;
+import com.custoking.ims.reportingservice.api.dto.RecordFeedRequest;
 import com.custoking.ims.reportingservice.persistence.ReportingReadRepository;
 import com.custoking.ims.reportingservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.reportingservice.security.TenantContext;
 import com.custoking.ims.reportingservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -164,25 +168,25 @@ public class ReportingReadController {
     @PostMapping("/command-center/feed")
     public Map<String, Object> recordFeed(
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody RecordFeedRequest body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.recordFeed(body));
+        return command(() -> commands.recordFeed(body.toMap()));
     }
 
     @PostMapping("/event-contributions/reminders")
     public Map<String, Object> markEventContributionReminders(
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody EventContributionReminderRequest body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.markEventContributionReminders(body));
+        return command(() -> commands.markEventContributionReminders(body.toMap()));
     }
 
     @PostMapping("/event-contributions/reminder-targets")
     public Map<String, Object> eventPaymentReminderTargets(
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody EventContributionReminderTargetsRequest body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.eventPaymentReminderTargets(body));
+        return command(() -> commands.eventPaymentReminderTargets(body.toMap()));
     }
 
     @GetMapping("/invoices")
