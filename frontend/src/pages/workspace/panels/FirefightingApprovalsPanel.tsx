@@ -55,11 +55,14 @@ interface Props {
 export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props) {
   const [ffApprovalDetails, setFfApprovalDetails] = useState<FirefightingRequest[]>([]);
   const [ffApprovalLoading, setFfApprovalLoading] = useState(false);
+  const [ffApprovalLoadError, setFfApprovalLoadError] = useState('');
   const [ffApprovalNotes, setFfApprovalNotes] = useState<Record<string, string>>({});
+  const [approving, setApproving] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<FirefightingRequest | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
   const [rejectSaving, setRejectSaving] = useState(false);
 
   useEffect(() => {
@@ -70,13 +73,22 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
 
   const loadFfApprovalDetails = async () => {
     const pending = pendingRequests.filter((r) => ['AWAITING_BURSAR', 'AWAITING_PRINCIPAL'].includes(r.status));
-    if (!pending.length) { setFfApprovalDetails([]); return; }
+    if (!pending.length) { setFfApprovalDetails([]); setFfApprovalLoadError(''); return; }
     setFfApprovalLoading(true);
+    setFfApprovalLoadError('');
     try {
-      const details = await Promise.all(
-        pending.map((r) => api.get<FirefightingRequest>(`/ff/requests/${r.code}`).then((res) => res.data).catch(() => null))
+      const results = await Promise.all(
+        pending.map((r) =>
+          api.get<FirefightingRequest>(`/ff/requests/${r.code}`)
+            .then((res) => ({ code: r.code, data: res.data }))
+            .catch(() => ({ code: r.code, data: null }))
+        )
       );
-      setFfApprovalDetails(details.filter(Boolean) as FirefightingRequest[]);
+      const failed = results.filter((r) => r.data === null).map((r) => r.code);
+      setFfApprovalDetails(results.filter((r) => r.data !== null).map((r) => r.data) as FirefightingRequest[]);
+      if (failed.length) {
+        setFfApprovalLoadError(`Could not load details for request(s): ${failed.join(', ')}. They may still be approved or rejected below once details load.`);
+      }
     } finally {
       setFfApprovalLoading(false);
     }
@@ -87,6 +99,7 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
   const approveFfRequest = async (req: FirefightingRequest, chainPrincipal = false) => {
     const note = ffApprovalNotes[req.code] || '';
     const qid = ffApprovalNotes[`${req.code}_qid`] || (req.quotations?.[0]?.id || '');
+    setApproving((a) => ({ ...a, [req.code]: true }));
     try {
       if (req.status === 'AWAITING_BURSAR') {
         await api.post(`/ff/requests/${req.code}/approve-bursar`, { note });
@@ -101,6 +114,8 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Approval failed';
       setToast(msg);
+    } finally {
+      setApproving((a) => ({ ...a, [req.code]: false }));
     }
   };
 
@@ -112,6 +127,8 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
 
   const confirmReject = async () => {
     if (!rejectTarget) return;
+    if (!rejectReason.trim()) { setRejectError('Rejection reason is required'); return; }
+    setRejectError('');
     setRejectSaving(true);
     try {
       await api.post(`/ff/requests/${rejectTarget.code}/reject`, { reason: rejectReason });
@@ -123,7 +140,7 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Rejection failed';
       setToast(msg);
-      setRejectModalOpen(false);
+      // Do NOT close the modal on error — keep context so the user can retry.
     } finally {
       setRejectSaving(false);
     }
@@ -133,6 +150,7 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
     <>
       <ModuleShell title="Urgent Procurement — Approval Queue" subtitle="Approve or reject procurement requests — Finance Review first, then Admin Approval">
         {ffApprovalLoading && <div className="ck-card" style={{ padding: 20, textAlign: 'center', color: 'var(--ink3)' }}>Loading approval requests…</div>}
+        {ffApprovalLoadError && <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}><span>⚠</span><div>{ffApprovalLoadError}</div></div>}
         {!ffApprovalLoading && ffApprovalDetails.length === 0 && <div className="ck-card" style={{ padding: 20, textAlign: 'center', color: 'var(--ink3)' }}>No pending approvals.</div>}
         {ffApprovalDetails.map((req) => (
           <div key={req.code} className="ck-form-card" style={{ marginBottom: 14 }}>
@@ -190,12 +208,12 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
             <div style={{ display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg)', flexWrap: 'wrap' }}>
               {req.status === 'AWAITING_BURSAR' && (
                 <>
-                  <button className="ck-btn ck-btn-g" onClick={() => void approveFfRequest(req, false)}>✓ Approve — Finance Review</button>
-                  <button className="ck-btn" style={{ background: 'var(--b1)', color: 'var(--b)', border: '1px solid var(--b)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => void approveFfRequest(req, true)}>✓ Approve — Admin Approval</button>
+                  <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req, false)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Finance Review'}</button>
+                  <button className="ck-btn" style={{ background: 'var(--b1)', color: 'var(--b)', border: '1px solid var(--b)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: approving[req.code] ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: approving[req.code] ? 0.6 : 1 }} disabled={approving[req.code]} onClick={() => void approveFfRequest(req, true)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Admin Approval'}</button>
                 </>
               )}
               {req.status === 'AWAITING_PRINCIPAL' && (
-                <button className="ck-btn ck-btn-g" onClick={() => void approveFfRequest(req)}>✓ Approve — Admin Approval</button>
+                <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Admin Approval'}</button>
               )}
               <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid #f5c0bc', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }} onClick={() => openRejectModal(req)}>Reject</button>
             </div>
@@ -214,10 +232,11 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
               <div style={{ marginBottom: 14, fontSize: 13.5, color: 'var(--ink2)' }}>
                 Rejecting <strong>{rejectTarget.title}</strong> <span style={{ fontFamily: 'monospace', fontSize: 12 }}>({rejectTarget.code})</span>
               </div>
+              {rejectError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 10 }}><span>✕</span><div>{rejectError}</div></div>}
               <Field label="Reason for rejection">
                 <textarea
                   value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
+                  onChange={(e) => { setRejectReason(e.target.value); if (rejectError) setRejectError(''); }}
                   placeholder="Provide a reason — this appears in the audit log and is visible to the requester"
                   style={{ minHeight: 80 }}
                 />

@@ -20,10 +20,13 @@ interface Props {
 
 export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh }: Props) {
   const [saFfRequests, setSaFfRequests] = useState<FirefightingRequest[]>([]);
+  const [saFfLoading, setSaFfLoading] = useState(false);
+  const [saFfError, setSaFfError] = useState('');
   const [ffTrackOpen, setFfTrackOpen] = useState(false);
   const [ffTrackRequest, setFfTrackRequest] = useState<FirefightingRequest | null>(null);
   const [ffTimeline, setFfTimeline] = useState<FfTrackItem[]>([]);
   const [ffTimelineLoading, setFfTimelineLoading] = useState(false);
+  const [ffTimelineError, setFfTimelineError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,22 +37,27 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
 
   useEffect(() => {
     if (!isSuperAdmin) return;
+    setSaFfLoading(true);
+    setSaFfError('');
     // PageResponse envelope → extract content; size=200 for the full orders list
     api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } })
       .then((res) => setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []))
-      .catch(() => setSaFfRequests([]));
+      .catch(() => { setSaFfRequests([]); setSaFfError('Failed to load orders. Please refresh to try again.'); })
+      .finally(() => setSaFfLoading(false));
   }, [isSuperAdmin]);
 
   const openFfTrack = async (req: FirefightingRequest) => {
     setFfTrackRequest(req);
     setFfTrackOpen(true);
     setFfTimeline([]);
+    setFfTimelineError(false);
     setFfTimelineLoading(true);
     try {
       const res = await api.get<FfTrackItem[]>(`/ff/requests/${req.code}/timeline`);
       setFfTimeline(res.data || []);
     } catch {
       setFfTimeline([]);
+      setFfTimelineError(true);
     } finally {
       setFfTimelineLoading(false);
     }
@@ -92,6 +100,8 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
         title={isSuperAdmin ? 'Urgent Procurement — Fulfilment Tracking' : 'Urgent Procurement — Placed Orders'}
         subtitle={isSuperAdmin ? 'Approve for Custoking fulfilment and mark orders as delivered' : 'Urgent procurement requests approved and fulfilled by Custoking'}
       >
+        {saFfLoading && <div style={{ padding: '10px 0', color: 'var(--ink3)', fontSize: 13 }}>Loading orders…</div>}
+        {saFfError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{saFfError}</div></div>}
         {isSuperAdmin && (
           <div className="ck-alert ck-alert-b" style={{ marginBottom: 18 }}>
             <span>ℹ</span>
@@ -149,7 +159,9 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
               <button className="ck-modal-x" onClick={() => setFfTrackOpen(false)}>×</button>
             </div>
             <div className="ck-modal-body">
-              {ffTimelineLoading ? <div style={{ textAlign: 'center', color: 'var(--ink3)', padding: 20 }}>Loading timeline…</div> : (
+              {ffTimelineLoading ? <div style={{ textAlign: 'center', color: 'var(--ink3)', padding: 20 }}>Loading timeline…</div>
+              : ffTimelineError ? <div className="ck-alert ck-alert-re"><span>✕</span><div>Failed to load timeline. Please close and try again.</div></div>
+              : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {ffTimeline.map((item, i) => (
                     <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: i < ffTimeline.length - 1 ? 20 : 0, position: 'relative' }}>
