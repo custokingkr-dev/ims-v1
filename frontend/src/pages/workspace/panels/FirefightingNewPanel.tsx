@@ -253,6 +253,9 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
                   <input type="file" id={`ff-file-${idx}`} accept=".pdf,.jpg,.jpeg,.png" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) setFfQuote(idx, 'documentUrl', file.name); }} />
                   {q.documentUrl ? (<><div style={{ fontSize: 24, color: 'var(--g)', marginBottom: 6 }}>✓</div><div style={{ fontWeight: 600, color: 'var(--g)', fontSize: 13.5 }}>{q.documentUrl} uploaded</div><div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 4 }}>Tap to replace</div></>) : (<><div style={{ fontSize: 24, color: 'var(--ink3)', marginBottom: 6 }}>⬆</div><div style={{ fontSize: 13, color: 'var(--ink2)', fontWeight: 500 }}>Upload quotation document</div><div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 3 }}>PDF, JPG or PNG · optional</div></>)}
                 </div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink3)', marginTop: -10, marginBottom: 16 }}>
+                  Note: document upload is coming soon — only the file name is recorded for now.
+                </div>
                 <div className="ck-form-grid ck-fg-3" style={{ marginBottom: 10 }}>
                   <Field label="Vendor name *"><input value={q.vendorName} onChange={(e) => setFfQuote(idx, 'vendorName', e.target.value)} placeholder="Vendor / supplier name" /></Field>
                   <Field label="Quoted amount (₹) *"><input type="number" value={q.amount} onChange={(e) => setFfQuote(idx, 'amount', e.target.value)} placeholder="Total quote amount" /></Field>

@@ -11,6 +11,7 @@ import {
   ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
 } from './workspace/config';
 import { NavIcon } from '../shared/display/icons';
+import { ModuleShell } from './workspace/ui';
 import { HomePanel } from './workspace/panels/HomePanel';
 import { StudentsPanel } from './workspace/panels/StudentsPanel';
 import { FeesPanel } from './workspace/panels/FeesPanel';
@@ -386,6 +387,19 @@ export default function UnifiedWorkspacePage() {
           {panel === 'timetable' && workspace && <TimetablePanel workspace={workspace} onRefresh={refresh} />}
 
           {panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
+
+          {(panel === 'za-overview' || panel === 'za-schools') && (
+            <ModuleShell
+              title={panel === 'za-overview' ? 'Zone overview' : 'Zone schools'}
+              subtitle="Zone-admin dashboard is coming soon."
+            >
+              <div className="ck-card">
+                <div style={{ padding: 24, color: 'var(--ink2)' }}>
+                  Zone admin dashboard is coming soon. This view is not built yet — check back later.
+                </div>
+              </div>
+            </ModuleShell>
+          )}
 
           {panel === 'catalog' && <CatalogPanel setPanel={setPanel} />}
 
