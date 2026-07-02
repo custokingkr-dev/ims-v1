@@ -65,13 +65,25 @@ class FeeValidationTest {
     }
 
     @Test
+    void createBand_missingSchedules_returns400WithFieldError() throws Exception {
+        mvc.perform(post("/api/v1/fees/bands")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"name\":\"General\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.schedules").exists());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     void createBand_valid_callsRepoWithNameKey() throws Exception {
         when(fees.createBand(anyMap())).thenReturn(Map.of("id", "band-1"));
         mvc.perform(post("/api/v1/fees/bands")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"name\":\"General\",\"classFrom\":1,\"classTo\":10,\"discount\":5.0}"))
+                        .content("{\"name\":\"General\",\"classFrom\":1,\"classTo\":10,\"schedules\":[\"Annual\",\"Monthly\"],\"discount\":5.0}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).createBand(captor.capture());
@@ -205,6 +217,35 @@ class FeeValidationTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).assignFeePlan(captor.capture());
         assertFalse(captor.getValue().containsKey("bandDiscount"), "bandDiscount key must NOT be present when not sent");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assignFeePlan_withActorId_putsActorIdKey() throws Exception {
+        when(fees.assignFeePlan(anyMap())).thenReturn(Map.of("ok", true));
+        mvc.perform(post("/api/v1/fees/assignments")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"studentId\":1001,\"bandId\":\"band-1\",\"schedule\":\"Annual\",\"actorId\":42}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).assignFeePlan(captor.capture());
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must be present when sent");
+        assertEquals(42L, captor.getValue().get("actorId"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assignFeePlan_withoutActorId_doesNotPutActorIdKey() throws Exception {
+        when(fees.assignFeePlan(anyMap())).thenReturn(Map.of("ok", true));
+        mvc.perform(post("/api/v1/fees/assignments")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"studentId\":1001,\"bandId\":\"band-1\",\"schedule\":\"Annual\"}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).assignFeePlan(captor.capture());
+        assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
     }
 
     // ─── POST /payments ──────────────────────────────────────────────────────

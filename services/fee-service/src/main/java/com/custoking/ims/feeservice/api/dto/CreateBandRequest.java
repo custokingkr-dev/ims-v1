@@ -1,6 +1,7 @@
 package com.custoking.ims.feeservice.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 /**
  * DTO for POST /bands.
@@ -10,6 +11,6 @@ public record CreateBandRequest(
         @NotBlank(message = "Band name is required") String name,
         Integer classFrom,
         Integer classTo,
-        Object schedules,
+        @NotNull(message = "At least one schedule is required") Object schedules,
         Double discount
 ) {}
