@@ -18,9 +18,11 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -333,6 +335,68 @@ class NotificationValidationTest {
                 .andExpect(status().isOk());
 
         verify(broadcasts).approve(eq(id), eq(5L));
+    }
+
+    @Test
+    void sendBroadcast_validActorId_callsRepoWithActorId() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(broadcasts.send(eq(id), eq(5L))).thenReturn(Map.of("id", id, "status", "SENT"));
+
+        broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/send")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"actorId\":5}"))
+                .andExpect(status().isOk());
+
+        verify(broadcasts).send(eq(id), eq(5L));
+    }
+
+    @Test
+    void approveBroadcast_noBody_callsRepoWithNullActorId() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(broadcasts.approve(eq(id), isNull())).thenReturn(Map.of("id", id, "status", "SCHEDULED"));
+
+        broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/approve")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+
+        verify(broadcasts).approve(eq(id), isNull());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void requestWhatsappOnboarding_forwardsActorIdAsRequestedByParamNotBodyKey() throws Exception {
+        when(senderProfiles.requestWhatsappOnboarding(eq(4L), eq(9L), anyMap()))
+                .thenReturn(Map.of("sessionId", UUID.randomUUID()));
+
+        senderProfileMvc.perform(post("/api/v1/notifications/sender-profiles/schools/4/whatsapp-onboarding")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"actorId\":9,\"schoolName\":\"Demo\",\"contactEmail\":\"a@b.com\"}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(senderProfiles).requestWhatsappOnboarding(eq(4L), eq(9L), captor.capture());
+        assertEquals("Demo", captor.getValue().get("schoolName"));
+        assertEquals("a@b.com", captor.getValue().get("contactEmail"));
+        assertFalse(captor.getValue().containsKey("actorId"),
+                "actorId is forwarded as the requestedBy parameter, not a body-map key");
+    }
+
+    @Test
+    void requestWhatsappOnboarding_invalidContactEmail_returns400() throws Exception {
+        senderProfileMvc.perform(post("/api/v1/notifications/sender-profiles/schools/4/whatsapp-onboarding")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"contactEmail\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.contactEmail").exists());
+
+        verify(senderProfiles, never()).requestWhatsappOnboarding(anyLong(), any(), anyMap());
     }
 
     @Test

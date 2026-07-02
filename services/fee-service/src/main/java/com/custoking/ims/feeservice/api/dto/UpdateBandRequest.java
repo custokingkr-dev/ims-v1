@@ -1,6 +1,5 @@
 package com.custoking.ims.feeservice.api.dto;
 
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
@@ -17,8 +16,8 @@ import java.util.List;
  */
 public record UpdateBandRequest(
         @Size(max = 255, message = "Band name must be at most 255 characters") String name,
-        @Min(value = 1, message = "classFrom must be at least 1") Integer classFrom,
-        @Min(value = 1, message = "classTo must be at least 1") Integer classTo,
+        Integer classFrom,
+        Integer classTo,
         List<String> schedules,
         @PositiveOrZero(message = "discount must be zero or positive") Double discount
 ) {}

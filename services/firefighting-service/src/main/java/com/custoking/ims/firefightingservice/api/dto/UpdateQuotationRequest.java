@@ -1,6 +1,6 @@
 package com.custoking.ims.firefightingservice.api.dto;
 
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -16,7 +16,7 @@ import jakarta.validation.constraints.Size;
  */
 public record UpdateQuotationRequest(
         String vendorName,
-        @Positive(message = "amount must be positive")
+        @PositiveOrZero(message = "amount must be zero or positive")
         Long amount,
         String deliveryTimeline,
         @Size(max = 2000, message = "notes must be 2000 characters or fewer")

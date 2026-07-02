@@ -1,6 +1,6 @@
 package com.custoking.ims.firefightingservice.api.dto;
 
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -22,7 +22,7 @@ public record UpdateFirefightingRequestRequest(
         String category,
         String urgency,
         String requiredByDate,
-        @Positive(message = "estimatedBudget must be positive")
+        @PositiveOrZero(message = "estimatedBudget must be zero or positive")
         Long estimatedBudget,
         @Size(max = 2000, message = "description must be 2000 characters or fewer")
         String description,

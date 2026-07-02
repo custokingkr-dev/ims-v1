@@ -12,9 +12,12 @@ import jakarta.validation.constraints.Size;
  *
  * <p><b>Known limitation (deferred):</b> JSON null (e.g. {@code "notes": null}) is
  * indistinguishable from field-absent at the DTO level — both deserialise to Java null,
- * so neither puts the key in the forwarded map. Callers who need to explicitly clear
- * {@code notes} (or {@code description}) to database-null must send {@code "notes": ""}
- * (empty string), which the repository's {@code trimToNull} converts to null.
+ * so neither puts the key in the forwarded map (the column keeps its current value).
+ * Only {@code notes} can be cleared to database-null by sending {@code "notes": ""}
+ * (empty string), which the repository's {@code trimToNull} converts to null. Note that
+ * {@code description} and {@code school} do NOT use {@code trimToNull}, so sending
+ * {@code ""} for those stores an empty string (not null); there is no way to clear them
+ * to null via this endpoint.
  */
 public record UpdateInvoiceRequest(
         @Size(max = 500) String description,

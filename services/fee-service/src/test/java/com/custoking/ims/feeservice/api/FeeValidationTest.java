@@ -266,15 +266,19 @@ class FeeValidationTest {
     }
 
     @Test
-    void updateBand_negativeClassFrom_returns400WithFieldError() throws Exception {
+    @SuppressWarnings("unchecked")
+    void updateBand_zeroClassFrom_isAcceptedAndForwarded() throws Exception {
+        // classFrom has no lower-bound constraint (the repo has no lower bound either;
+        // classFrom=0 is a legitimate pre-KG band). Confirm it is accepted, not 400'd.
+        when(fees.updateBand(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
         mvc.perform(put("/api/v1/fees/bands/band-1")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"classFrom\":-1}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.classFrom").exists());
-        verifyNoInteractions(fees);
+                        .content("{\"classFrom\":0}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).updateBand(anyString(), captor.capture());
+        assertEquals(0, captor.getValue().get("classFrom"));
     }
 
     @Test
@@ -351,6 +355,22 @@ class FeeValidationTest {
         assertTrue(captor.getValue().containsKey("discount"), "discount key must be present when sent");
         assertEquals(5.0, captor.getValue().get("discount"));
         assertFalse(captor.getValue().containsKey("bandDiscount"), "bandDiscount must be absent when not sent");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void patchBand_withBandDiscount_putsBandDiscountKey() throws Exception {
+        when(fees.patchBand(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(patch("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"bandDiscount\":7.5}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).patchBand(anyString(), captor.capture());
+        assertTrue(captor.getValue().containsKey("bandDiscount"), "bandDiscount key must be present when sent");
+        assertEquals(7.5, captor.getValue().get("bandDiscount"));
+        assertFalse(captor.getValue().containsKey("discount"), "discount must be absent when only bandDiscount sent");
     }
 
     @Test
