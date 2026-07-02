@@ -19,7 +19,6 @@ const S = {
   showPassword: 'Show password',
   hidePassword: 'Hide password',
   capsLock: 'Caps Lock is on.',
-  trustDevice: 'Trust this device for 30 days',
   submit: 'Sign in',
   submitting: 'Signing in…',
   footerMfa: "You'll be asked to verify with your authenticator next.",
@@ -126,7 +125,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [trustDevice, setTrustDevice] = useState(false);
   const [capsLockOn, setCapsLockOn] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -283,18 +281,6 @@ export default function LoginPage() {
                 )}
               </div>
 
-              {/* Trust device */}
-              {/* TODO: pass trustDevice to login() once AuthContext.login accepts an options param */}
-              <label className="checkbox-row">
-                <input
-                  type="checkbox"
-                  checked={trustDevice}
-                  onChange={e => setTrustDevice(e.target.checked)}
-                  disabled={loading}
-                />
-                <span>{S.trustDevice}</span>
-              </label>
-
               {/* Form-level error */}
               {formError && (
                 <div role="alert" aria-live="polite" className="form-error">
@@ -308,12 +294,11 @@ export default function LoginPage() {
                 {loading ? S.submitting : S.submit}
               </button>
 
-              {/* Forgot — after submit for correct tab order */}
-              {/* TODO: wire to a real forgot-password flow */}
+              {/* Forgot — not yet built; non-interactive text, not a dead link */}
               <div style={{ textAlign: 'center' }}>
-                <a href="#" className="forgot-link" onClick={e => e.preventDefault()}>
+                <span className="forgot-link" title="Coming soon" aria-disabled="true">
                   {S.forgotPassword}
-                </a>
+                </span>
               </div>
 
             </div>
@@ -362,12 +347,12 @@ export default function LoginPage() {
         </form>
 
         {/* ── 12. Legal row — below the card ─────────────────────────────── */}
-        {/* TODO: wire to real Terms / Privacy / Security pages */}
+        {/* Terms / Privacy / Security pages not yet built; non-interactive text, not dead links */}
         <div className="legal-row">
           <span>{S.copyright}</span>
-          <a href="#" onClick={e => e.preventDefault()}>{S.terms}</a>
-          <a href="#" onClick={e => e.preventDefault()}>{S.privacy}</a>
-          <a href="#" onClick={e => e.preventDefault()}>{S.security}</a>
+          <span title="Coming soon" aria-disabled="true">{S.terms}</span>
+          <span title="Coming soon" aria-disabled="true">{S.privacy}</span>
+          <span title="Coming soon" aria-disabled="true">{S.security}</span>
         </div>
       </div>
     </div>

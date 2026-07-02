@@ -231,7 +231,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
       subtitle={`Map your full-year supply requirements by term — lock in pricing early`}
       actions={
         <>
-          <button className="ck-btn ck-btn-ghost" onClick={() => setModal({ title: 'Export PDF', desc: 'The full annual plan will be exported as a PDF with all items, events, and supply configurations.', amount: '—', type: 'supply', deadline: '—' })}>
+          <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">
             Export PDF
           </button>
           <button className="ck-btn ck-btn-g" disabled={planBusy} onClick={confirmPlan}>

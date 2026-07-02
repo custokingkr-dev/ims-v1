@@ -135,9 +135,11 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
   };
 
   const sendInvoice = async () => {
+    // Note: resend is not wired here — there is no resend endpoint. This only
+    // handles first-time invoice creation (invExistingId is falsy); the button
+    // is disabled once an invoice already exists (see "Resend" below).
     setInvSaving(true); setInvError('');
     try {
-      if (invExistingId) { setToast(`Resending invoice to ${invData.school}`); return; }
       const amount = Number(invData.qty || 0) * Number(invData.rate || 0);
       const res = await api.post('/sa/invoices', { orderRef: invData.orderRef, school: invData.school, schoolId: invData.schoolId ?? null, description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), amount, notes: invData.notes || '' });
       setInvExistingId(res.data.id); setInvData({ ...res.data });
@@ -263,7 +265,7 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>
-              <button className="ck-btn ck-btn-ghost" onClick={() => setToast(`WhatsApp notification sent to ${detailOrder?.schoolName || detailOrder?.school || 'school'}`)}>WhatsApp school</button>
+              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">WhatsApp school</button>
               <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download order sheet</button>
               <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>
             </div>
@@ -311,7 +313,9 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
               <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {invExistingId && !invEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setInvEditing(true)}>Edit invoice</button> : null}
               {invExistingId && invEditing ? <button className="ck-btn ck-btn-ghost" disabled={invSaving} onClick={saveInvEdit}>{invSaving ? 'Saving…' : 'Save changes'}</button> : null}
-              <button className="ck-btn ck-btn-g" disabled={invSaving} onClick={sendInvoice}>{invSaving ? 'Sending…' : 'Send to school'}</button>
+              {invExistingId
+                ? <button className="ck-btn ck-btn-g" disabled title="Coming soon">Resend to school</button>
+                : <button className="ck-btn ck-btn-g" disabled={invSaving} onClick={sendInvoice}>{invSaving ? 'Sending…' : 'Send to school'}</button>}
             </div>
           </div>
         </div>

@@ -59,9 +59,11 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
   };
 
   const sendSaInvoice = async () => {
+    // Note: resend is not wired here — there is no resend endpoint. This only
+    // handles first-time invoice creation (saInvExistingId is falsy); the button
+    // is disabled once an invoice already exists (see "Resend" below).
     setSaInvSaving(true); setSaInvError('');
     try {
-      if (saInvExistingId) { setToast(`Resending invoice to ${saInvData.school}`); return; }
       const amount = Number(saInvData.qty || 0) * Number(saInvData.rate || 0);
       const res = await api.post('/sa/invoices', { orderRef: saInvData.orderRef, school: saInvData.school, schoolId: saInvData.schoolId ?? null, description: saInvData.description, qty: Number(saInvData.qty || 0), rate: Number(saInvData.rate || 0), amount, notes: saInvData.notes || '' });
       setSaInvExistingId(res.data.id); setSaInvData({ ...res.data });
@@ -118,7 +120,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td style={{ display: 'flex', gap: 8 }}>
                       <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
                       {String(row.status).toLowerCase().includes('awaiting')
-                        ? <button className="ck-btn ck-btn-ghost" onClick={() => setToast(`Invoice ${row.id} resent to ${row.school}`)}>Resend</button>
+                        ? <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Resend</button>
                         : <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download</button>}
                     </td>
                   </tr>
@@ -168,7 +170,9 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
               <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {saInvExistingId && !saInvEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setSaInvEditing(true)}>Edit invoice</button> : null}
               {saInvExistingId && saInvEditing ? <button className="ck-btn ck-btn-ghost" disabled={saInvSaving} onClick={saveSaInvoiceEdit}>{saInvSaving ? 'Saving…' : 'Save changes'}</button> : null}
-              <button className="ck-btn ck-btn-g" disabled={saInvSaving} onClick={sendSaInvoice}>{saInvSaving ? 'Sending…' : 'Send to school'}</button>
+              {saInvExistingId
+                ? <button className="ck-btn ck-btn-g" disabled title="Coming soon">Resend to school</button>
+                : <button className="ck-btn ck-btn-g" disabled={saInvSaving} onClick={sendSaInvoice}>{saInvSaving ? 'Sending…' : 'Send to school'}</button>}
             </div>
           </div>
         </div>
