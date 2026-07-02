@@ -2,6 +2,7 @@ package com.custoking.ims.attendanceservice.api;
 
 import com.custoking.ims.attendanceservice.api.dto.DailyEntryRequest;
 import com.custoking.ims.attendanceservice.api.dto.SaveSectionRegisterRequest;
+import com.custoking.ims.attendanceservice.api.dto.SubmitDayRequest;
 import com.custoking.ims.attendanceservice.api.dto.SubmitSectionRequest;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.attendanceservice.security.TenantContext;
@@ -91,7 +92,7 @@ class AttendanceReadControllerTest {
 
     @Test
     void submitDayParsesRequestAndDelegates() {
-        Map<String, Object> request = Map.of("date", "2026-02-02", "schoolId", 4L, "actorId", 9L);
+        SubmitDayRequest request = new SubmitDayRequest("2026-02-02", 9L, 4L);
         Map<String, Object> result = Map.of("ok", true, "submitted", 3);
         when(attendance.submitAttendanceDay("2026-02-02", 4L, 9L)).thenReturn(result);
 
@@ -99,6 +100,17 @@ class AttendanceReadControllerTest {
 
         assertThat(response).isSameAs(result);
         verify(attendance).submitAttendanceDay("2026-02-02", 4L, 9L);
+    }
+
+    @Test
+    void submitDayNullBodyDelegatesWithDefaults() {
+        Map<String, Object> result = Map.of("ok", true);
+        when(attendance.submitAttendanceDay("today", null, null)).thenReturn(result);
+
+        Object response = controller.submitDay("attendance-token", null);
+
+        assertThat(response).isSameAs(result);
+        verify(attendance).submitAttendanceDay("today", null, null);
     }
 
     // --- schoolId containsKey coverage: PUT /section-register ---

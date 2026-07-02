@@ -2,6 +2,7 @@ package com.custoking.ims.attendanceservice.api;
 
 import com.custoking.ims.attendanceservice.api.dto.DailyEntryRequest;
 import com.custoking.ims.attendanceservice.api.dto.SaveSectionRegisterRequest;
+import com.custoking.ims.attendanceservice.api.dto.SubmitDayRequest;
 import com.custoking.ims.attendanceservice.api.dto.SubmitSectionRequest;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -150,33 +152,19 @@ public class AttendanceReadController {
         return execute(() -> attendance.submitAttendanceSection(request));
     }
 
-    // ─── POST /submit-day — optional body, no required fields; SKIPPED ───────
+    // ─── POST /submit-day — optional body, all fields optional, format-only ──
 
     @PostMapping("/submit-day")
     public Map<String, Object> submitDay(
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
-            @RequestBody(required = false) Map<String, Object> request) {
+            @Valid @RequestBody(required = false) SubmitDayRequest body) {
         requireToken(token, "attendance:write");
-        Long scope = applyResolvedSchool(request);
-        String date = request == null ? "today" : String.valueOf(request.getOrDefault("date", "today"));
-        Long actorId = request == null || request.get("actorId") == null
-                ? null
-                : Long.valueOf(String.valueOf(request.get("actorId")));
+        // required=false → body may be null; behave as an empty request in that case.
+        SubmitDayRequest request = body == null ? new SubmitDayRequest(null, null, null) : body;
+        Long scope = TenantScope.resolveSchoolId(request.schoolId());
+        String date = request.date() == null ? "today" : request.date();
+        Long actorId = request.actorId();
         return execute(() -> attendance.submitAttendanceDay(date, scope, actorId));
-    }
-
-    private Long applyResolvedSchool(Map<String, Object> request) {
-        Long schoolId;
-        if (request == null || request.get("schoolId") == null) {
-            schoolId = null;
-        } else {
-            try {
-                schoolId = Long.valueOf(String.valueOf(request.get("schoolId")));
-            } catch (NumberFormatException ex) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
-            }
-        }
-        return TenantScope.resolveSchoolId(schoolId);
     }
 
     private void requireToken(String token, String requiredScope) {
@@ -191,6 +179,8 @@ public class AttendanceReadController {
     private Map<String, Object> execute(Command command) {
         try {
             return command.run();
+        } catch (DateTimeParseException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date: " + ex.getParsedString(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         } catch (SecurityException ex) {
