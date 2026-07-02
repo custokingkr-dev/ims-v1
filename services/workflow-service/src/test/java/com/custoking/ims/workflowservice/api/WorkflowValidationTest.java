@@ -12,7 +12,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -142,5 +144,81 @@ class WorkflowValidationTest {
         assertTrue(body.containsKey("schoolId"));
         // Fix 3: TenantScope.resolveSchoolId(42L) = 42L for SUPERADMIN
         assertEquals(42L, body.get("schoolId"));
+    }
+
+    // --- Action endpoints (submit / approve / reject / cancel / complete) ---
+
+    /**
+     * Format-invalid field when present: negative actorId → 400 with fieldErrors.actorId.
+     * Repository must never be called.
+     */
+    @Test
+    void submitAction_negativeActorId_returns400WithFieldError() throws Exception {
+        mvc.perform(post("/api/v1/workflows/instances/99/submit")
+                        .header("X-Workflow-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\":-5,\"actorEmail\":\"actor@example.com\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.actorId").exists());
+        verify(repo, never()).submit(anyLong(), anyMap());
+    }
+
+    /**
+     * Format-invalid field when present: malformed e-mail → 400 with fieldErrors.actorEmail.
+     * Repository must never be called.
+     */
+    @Test
+    void submitAction_invalidEmail_returns400WithFieldError() throws Exception {
+        mvc.perform(post("/api/v1/workflows/instances/99/submit")
+                        .header("X-Workflow-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\":7,\"actorEmail\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.actorEmail").exists());
+        verify(repo, never()).submit(anyLong(), anyMap());
+    }
+
+    /**
+     * Valid action body: repo is called and receives exactly the supplied keys.
+     * Omitted fields must not appear in the map passed to the repository.
+     */
+    @Test
+    void submitAction_validBody_callsRepoWithOnlySentKeys() throws Exception {
+        when(repo.submit(anyLong(), anyMap())).thenReturn(Map.of("id", 99L, "status", "IN_PROGRESS"));
+
+        mvc.perform(post("/api/v1/workflows/instances/99/submit")
+                        .header("X-Workflow-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"actorId\":7,\"notes\":\"Submitting now\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).submit(eq(99L), captor.capture());
+        Map<String, Object> actionMap = captor.getValue();
+        assertEquals(7L, actionMap.get("actorId"));
+        assertEquals("Submitting now", actionMap.get("notes"));
+        // actorEmail was not sent — must not be in the map
+        assertFalse(actionMap.containsKey("actorEmail"));
+    }
+
+    /**
+     * Null body (no Content-Type, no body): endpoint must still succeed and repo must be
+     * called with an empty map (not throw NPE).
+     */
+    @Test
+    void submitAction_nullBody_callsRepoWithEmptyMap() throws Exception {
+        when(repo.submit(anyLong(), anyMap())).thenReturn(Map.of("id", 99L, "status", "PENDING"));
+
+        mvc.perform(post("/api/v1/workflows/instances/99/submit")
+                        .header("X-Workflow-Service-Token", VALID_TOKEN))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).submit(eq(99L), captor.capture());
+        assertTrue(captor.getValue().isEmpty());
     }
 }
