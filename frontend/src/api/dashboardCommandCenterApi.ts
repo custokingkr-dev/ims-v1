@@ -127,7 +127,7 @@ export async function fetchCampaignItems(
   params: CampaignItemsParams
 ): Promise<PageResponse<ReviewItemDetail>> {
   const res = await api.get<PageResponse<ReviewItemDetail>>(
-    `/student-review-campaigns/${campaignId}/items`,
+    `/students/review-campaigns/${campaignId}/items`,
     { params }
   );
   return res.data;

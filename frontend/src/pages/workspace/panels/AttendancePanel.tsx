@@ -62,8 +62,13 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
         nonWorkingDay: false,
         date: dateValue,
       });
-    } catch (err) {
-      console.error('Failed to load attendance summary', err);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
+            'Failed to load attendance summary';
+      setError(msg);
     } finally {
       setSummaryLoading(false);
     }
@@ -95,6 +100,7 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
           date: currentDate,
           classId: section.classId,
           sectionId: section.sectionId,
+          ...(schoolScopedParams || {}),
         },
       });
 
@@ -207,14 +213,14 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
         classId: selectedSection.classId,
         sectionId: selectedSection.sectionId,
         records: recordsToSave,
+        ...(schoolScopedParams || {}),
       });
 
-      setToast('Attendance saved successfully');
-
-      // Reload drawer and summary
+      // Reload drawer first (openSectionDrawer resets toast at its start), then set toast
       await openSectionDrawer(selectedSection);
       await loadAttendanceSummary(currentDate);
       await onRefresh();
+      setToast('Attendance saved successfully');
     } catch (err: unknown) {
       const msg =
         err instanceof Error
@@ -256,12 +262,14 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
           status: r.status as 'PRESENT' | 'ABSENT',
           remarks: r.remarks || '',
         })),
+        ...(schoolScopedParams || {}),
       });
 
       await api.post('/attendance/submit-section', {
         date: currentDate,
         classId: selectedSection.classId,
         sectionId: selectedSection.sectionId,
+        ...(schoolScopedParams || {}),
       });
 
       setToast('Section attendance locked');
@@ -291,7 +299,7 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
       setError('');
       setToast('');
 
-      await api.post('/attendance/submit-day', { date: currentDate });
+      await api.post('/attendance/submit-day', { date: currentDate, ...(schoolScopedParams || {}) });
       setToast(`Submitted attendance for ${attendanceSummary.dateLabel}`);
 
       await loadAttendanceSummary(currentDate);
@@ -377,6 +385,11 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
         </div>
       ) : (
         <div className="ck-class-grid" style={{ marginBottom: 16 }}>
+          {(attendanceSummary.sections || []).length === 0 ? (
+            <div style={{ gridColumn: '1/-1', padding: '32px 0', textAlign: 'center', color: 'var(--ink3)' }}>
+              No sections found for this date.
+            </div>
+          ) : null}
           {(attendanceSummary.sections || []).map((section, idx) => {
             const pct = section.presentPercent ?? 0;
             const statusClass = section.status === 'Submitted' ? 'sapproved' : section.status === 'Saved' ? 'spending' : 'sneutral';

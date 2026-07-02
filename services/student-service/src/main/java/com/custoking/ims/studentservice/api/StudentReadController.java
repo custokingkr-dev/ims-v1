@@ -317,7 +317,9 @@ public class StudentReadController {
     public Map<String, Object> campaignReviewItems(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable String campaignId,
-            @RequestParam Long schoolId,
+            // Optional + resolved from JWT scope for admins (consistent with the sibling
+            // /review-campaigns and /review-items endpoints); required=true previously 400'd every call.
+            @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String classId,
             @RequestParam(required = false) String sectionId,

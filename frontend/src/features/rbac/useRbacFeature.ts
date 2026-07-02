@@ -50,6 +50,8 @@ export function useRbacFeature() {
     try {
       const data = await api.get<PermissionView[]>('/rbac/permissions');
       setPermissions(data.data);
+    } catch {
+      setRbacError('Failed to load permissions');
     } finally {
       setPermsLoading(false);
     }

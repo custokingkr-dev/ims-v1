@@ -16,11 +16,12 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
   const [notice, setNotice] = useState('');
   const [eventItems, setEventItems] = useState<Array<{ type: string; qty: string; notes: string }>>([]);
   const [schoolOptions, setSchoolOptions] = useState<any[]>([]);
+  const [schoolLoadError, setSchoolLoadError] = useState('');
 
   useEffect(() => {
     api.get('/sa/schools')
       .then((res) => setSchoolOptions(Array.isArray(res.data) ? res.data : []))
-      .catch(() => setSchoolOptions([]));
+      .catch(() => { setSchoolOptions([]); setSchoolLoadError('Failed to load school list. Please refresh the page.'); });
   }, []);
 
   const categoryMeta = SA_NEW_ORDER_CATEGORIES.find((item) => item.key === activeCat) || null;
@@ -104,6 +105,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
                   <option value="">Select school</option>
                   {schoolOptions.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
+                {schoolLoadError && <div style={{ fontSize: 12, color: 'var(--re)', marginTop: 4 }}>{schoolLoadError}</div>}
               </Field>
               <Field label="Notes">
                 <input value={form.notes || ''} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" />

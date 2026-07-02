@@ -96,7 +96,12 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
   };
 
   const acceptOrder = async (orderId: string) => {
-    try { await api.patch(`/sa/orders/${orderId}/status`, { status: 'IN_PROGRESS' }); await load(); } catch {}
+    try {
+      await api.patch(`/sa/orders/${orderId}/status`, { status: 'IN_PROGRESS' });
+      await load();
+    } catch (e: any) {
+      setError(e?.response?.data?.message || 'Failed to accept order. Please try again.');
+    }
   };
 
   const openInvoiceFromOrder = async (orderId: string, school: string, schoolId: number | null, valuePaise: number) => {
@@ -112,10 +117,19 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
         setInvData({ orderRef: orderId, school, schoolId, description: orderId, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: today, dueAt: due });
         setInvExistingId(null);
       }
-    } catch {
-      const gstAmount = Math.round(valuePaise * 0.12);
-      setInvData({ orderRef: orderId, school, schoolId, description: orderId, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: todayIso(), dueAt: new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10) });
-      setInvExistingId(null);
+    } catch (e: any) {
+      if (e?.response?.status === 404) {
+        // No existing invoice — open new-invoice form
+        const today = todayIso();
+        const due = new Date(Date.now() + 14 * 864e5).toISOString().slice(0, 10);
+        const gstAmount = Math.round(valuePaise * 0.12);
+        setInvData({ orderRef: orderId, school, schoolId, description: orderId, qty: 1, rate: valuePaise, amount: valuePaise, gstAmount, total: valuePaise + gstAmount, status: 'Awaiting payment', issuedAt: today, dueAt: due });
+        setInvExistingId(null);
+      } else {
+        // Non-404 error (network failure, 500, etc.) — abort to avoid duplicate-invoice risk
+        setError(e?.response?.data?.message || 'Failed to check for existing invoice. Please try again to avoid creating a duplicate.');
+        return;
+      }
     }
     setInvOpen(true);
   };

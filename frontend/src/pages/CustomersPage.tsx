@@ -9,6 +9,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ code: '', name: '', email: '', phone: '', gstin: '', addressLine: '' });
 
@@ -30,9 +31,18 @@ export default function CustomersPage() {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    setFormError('');
+    // Client-side required-field validation
+    if (!form.code.trim()) { setFormError('Customer code is required.'); return; }
+    if (!form.name.trim()) { setFormError('Customer name is required.'); return; }
+    // branchId guard: superadmins have no implicit branchId — block rather than silently default to school 1
+    if (!user?.branchId) {
+      setFormError('A school (branch) must be selected before creating a customer. Contact your administrator if this option is unavailable.');
+      return;
+    }
     try {
       setSaving(true);
-      await api.post('/customers', { ...form, branchId: user?.branchId || 1, active: true });
+      await api.post('/customers', { ...form, branchId: user.branchId, active: true });
       setForm({ code: '', name: '', email: '', phone: '', gstin: '', addressLine: '' });
       void load();
     } catch (err: unknown) {
@@ -55,6 +65,7 @@ export default function CustomersPage() {
       <div className="two-col">
         <form className="card" onSubmit={submit}>
           <div className="section-head"><div><h3>Create customer</h3><p className="section-copy">Add a new customer profile for invoicing and collections.</p></div></div>
+          {formError && <p className="ck-alert ck-alert-re">{formError}</p>}
           <input placeholder="Customer code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} />
           <input placeholder="Customer name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           <input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
@@ -69,7 +80,11 @@ export default function CustomersPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead><tr><th>Code</th><th>Name</th><th>Branch</th><th>Email</th></tr></thead>
-                <tbody>{customers.map(c => <tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.branchName}</td><td>{c.email || '-'}</td></tr>)}</tbody>
+                <tbody>
+                  {customers.length === 0
+                    ? <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ink3)', padding: '16px 0' }}>No customers found.</td></tr>
+                    : customers.map(c => <tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.branchName}</td><td>{c.email || '-'}</td></tr>)}
+                </tbody>
               </table>
             </div>
           )}

@@ -22,18 +22,21 @@ interface Props {
 export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPanel, onOpenFfDraft }: Props) {
   const [saFfRequests, setSaFfRequests] = useState<FirefightingRequest[]>([]);
   const [saFfLoading, setSaFfLoading] = useState(false);
+  const [saFfError, setSaFfError] = useState('');
   const [ffTrackOpen, setFfTrackOpen] = useState(false);
   const [ffTrackRequest, setFfTrackRequest] = useState<FirefightingRequest | null>(null);
   const [ffTimeline, setFfTimeline] = useState<FfTrackItem[]>([]);
   const [ffTimelineLoading, setFfTimelineLoading] = useState(false);
+  const [ffTimelineError, setFfTimelineError] = useState(false);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
     setSaFfLoading(true);
     // size=200: pipeline board needs all cards visible at once; PageResponse envelope → extract content
+    setSaFfError('');
     api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } })
       .then((res) => setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []))
-      .catch(() => setSaFfRequests([]))
+      .catch(() => { setSaFfRequests([]); setSaFfError('Failed to load requests. Please refresh to try again.'); })
       .finally(() => setSaFfLoading(false));
   }, [isSuperAdmin]);
 
@@ -41,12 +44,14 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
     setFfTrackRequest(req);
     setFfTrackOpen(true);
     setFfTimeline([]);
+    setFfTimelineError(false);
     setFfTimelineLoading(true);
     try {
       const res = await api.get<FfTrackItem[]>(`/ff/requests/${req.code}/timeline`);
       setFfTimeline(res.data || []);
     } catch {
       setFfTimeline([]);
+      setFfTimelineError(true);
     } finally {
       setFfTimelineLoading(false);
     }
@@ -85,11 +90,13 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
     { label: 'Quotes submitted', statuses: ['AWAITING_BURSAR', 'AWAITING_PRINCIPAL'], tone: 'am' },
     { label: 'Approved', statuses: ['APPROVED', 'CUSTOKING_APPROVED'], tone: 'b' },
     { label: 'Fulfilled', statuses: ['FULFILLED'], tone: 'g' },
+    { label: 'Rejected', statuses: ['REJECTED'], tone: 're' },
   ];
 
   return (
     <>
       <ModuleShell title="Urgent Procurement — Request Dashboard" subtitle="Non-catalog urgent procurement — transparent 3-stage approval workflow" actions={!isSuperAdmin ? <button className="ck-btn ck-btn-or" onClick={() => setPanel('ff-new')}>+ New Urgent Request</button> : undefined}>
+        {saFfError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{saFfError}</div></div>}
         <div className="ck-stats ck-s4">
           <Stat label="Total requests" value={totalReqs} sub="This academic year" pill={`${awaitingCount > 0 ? awaitingCount + ' active' : 'None active'}`} tone="orange" onClick={() => {}} />
           <Stat label="Awaiting approval" value={awaitingCount} sub="Quotes submitted" pill={awaitingCount > 0 ? 'Action needed' : 'All clear'} tone={awaitingCount > 0 ? 'orange' : 'green'} onClick={() => setPanel('ff-approvals')} />
@@ -164,6 +171,8 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
                     </div>
                   ))}
                 </div>
+              ) : ffTimelineError ? (
+                <div className="ck-alert ck-alert-re"><span>✕</span><div>Failed to load timeline. Please close and try again.</div></div>
               ) : (
                 <div className="ck-timeline">
                   {ffTimeline.map((item, i) => (

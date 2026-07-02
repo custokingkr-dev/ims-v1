@@ -98,7 +98,7 @@ export default function PaymentsPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead><tr><th>Invoice</th><th>Amount</th><th>Mode</th><th>Date</th><th>By</th></tr></thead>
-                <tbody>{payments.map(p => <tr key={p.id}><td>{p.invoiceNo}</td><td>₹ {p.amount}</td><td>{p.paymentMode}</td><td>{p.paymentDate}</td><td>{p.receivedBy}</td></tr>)}</tbody>
+                <tbody>{payments.length ? payments.map(p => <tr key={p.id}><td>{p.invoiceNo}</td><td>₹ {p.amount}</td><td>{p.paymentMode}</td><td>{p.paymentDate}</td><td>{p.receivedBy}</td></tr>) : <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink3)' }}>No payments recorded yet</td></tr>}</tbody>
               </table>
             </div>
           )}

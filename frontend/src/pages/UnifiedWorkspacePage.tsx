@@ -86,6 +86,7 @@ export default function UnifiedWorkspacePage() {
   const [approvalNotice, setApprovalNotice] = useState<{ type: string; msg: string } | null>(null);
   const [rejectModalOrderId, setRejectModalOrderId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [designApprovingSaving, setDesignApprovingSaving] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // ── Workspace data loader ───────────────────────────────────────────────────
@@ -117,8 +118,9 @@ export default function UnifiedWorkspacePage() {
       setLiveOrders(ordRes.data);
       setOrdersPage(page);
       setLiveOrderStats(statsRes.data);
-    } catch {}
-    finally { setOrdersLoading(false); }
+    } catch (e: any) {
+      setCatalogNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to load orders.' });
+    } finally { setOrdersLoading(false); }
   };
 
   const loadPendingApprovalOrders = async () => {
@@ -167,6 +169,8 @@ export default function UnifiedWorkspacePage() {
   };
 
   const markDesignApproved = async (orderId: string) => {
+    if (designApprovingSaving === orderId) return;
+    setDesignApprovingSaving(orderId);
     try {
       await api.post(`/supply/orders/${orderId}/design-approved`);
       setCatalogNotice({ type: 'success', msg: `Order ${orderId} marked design approved and moved to superadmin review.` });
@@ -174,6 +178,8 @@ export default function UnifiedWorkspacePage() {
       if (isPlatformAdmin) await loadPendingApprovalOrders();
     } catch (e: any) {
       setCatalogNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to update design status.' });
+    } finally {
+      setDesignApprovingSaving('');
     }
   };
 
@@ -198,7 +204,10 @@ export default function UnifiedWorkspacePage() {
   }, [isPlatformAdmin, panel]);
 
   useEffect(() => {
-    if (panel === 'orders') loadLiveOrders();
+    if (panel === 'orders') {
+      loadLiveOrders();
+      if (isPlatformAdmin) loadPendingApprovalOrders();
+    }
   }, [panel]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
@@ -423,17 +432,22 @@ export default function UnifiedWorkspacePage() {
               onNewOrder={() => setPanel('catalog')}
               onMarkDesignApproved={markDesignApproved}
               onReorder={async (row) => {
-                await api.post('/supply/orders', {
-                  category: row.category,
-                  orderData: row.orderData || JSON.stringify({ title: row.description || row.category }),
-                  subtotal: row.subtotal || 0,
-                  gst: row.gst || 0,
-                  totalAmount: row.totalAmount || 0,
-                  requiredByDate: row.requiredByDate || null,
-                  status: 'DRAFT',
-                  ...(schoolScopedParams || {}),
-                });
-                loadLiveOrders(0);
+                try {
+                  await api.post('/supply/orders', {
+                    category: row.category,
+                    orderData: row.orderData || JSON.stringify({ title: row.description || row.category }),
+                    subtotal: row.subtotal || 0,
+                    gst: row.gst || 0,
+                    totalAmount: row.totalAmount || 0,
+                    requiredByDate: row.requiredByDate || null,
+                    status: 'DRAFT',
+                    ...(schoolScopedParams || {}),
+                  });
+                  setCatalogNotice({ type: 'success', msg: 'Reorder placed as draft.' });
+                  loadLiveOrders(0);
+                } catch (e: any) {
+                  setCatalogNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to place reorder.' });
+                }
               }}
             />
           )}

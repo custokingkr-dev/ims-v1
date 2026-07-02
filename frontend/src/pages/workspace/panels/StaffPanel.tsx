@@ -19,25 +19,36 @@ type StaffRow = {
   monthlySalary: number;
 };
 
+const INITIAL_FORM = {
+  name: '',
+  designation: '',
+  department: '',
+  monthlySalary: '42000',
+  payrollStatus: 'Pending',
+};
+
 export function StaffPanel({ workspace, onRefresh }: Props) {
-  const [form, setForm] = useState({
-    name: '',
-    designation: '',
-    department: '',
-    monthlySalary: '42000',
-    payrollStatus: 'Pending',
-  });
+  const [form, setForm] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const rows = (workspace.staff || []) as StaffRow[];
   const pendingPayroll = rows
     .filter((row) => row.payrollStatus !== 'Processed')
     .reduce((sum, row) => sum + Number(row.monthlySalary || 0), 0);
 
   const submit = async () => {
+    setError('');
+    setNotice('');
     try {
       setSaving(true);
       await api.post('/workspace/staff', form);
       await onRefresh();
+      setForm(INITIAL_FORM);
+      setNotice('Staff member added successfully.');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e?.response?.data?.message || e?.message || 'Failed to add staff member.');
     } finally {
       setSaving(false);
     }
@@ -54,6 +65,8 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
         </button>
       }
     >
+      {error && <div className="ck-alert ck-alert-re" style={{ marginBottom: 12 }}>{error}</div>}
+      {notice && <div className="ck-alert ck-alert-g" style={{ marginBottom: 12 }}>{notice}</div>}
       <div className="ck-card ck-compact-form-card" style={{ marginBottom: 16 }}>
         <div className="ck-card-h">
           <div className="ck-card-t">New staff member</div>

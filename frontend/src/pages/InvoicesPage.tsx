@@ -113,6 +113,7 @@ export default function InvoicesPage() {
               <input type="number" value={item.quantity} onChange={(e) => { const items = [...form.items]; items[index] = { ...items[index], quantity: Number(e.target.value) }; setForm({ ...form, items }); }} />
               <input type="number" value={item.unitPrice} onChange={(e) => { const items = [...form.items]; items[index] = { ...items[index], unitPrice: Number(e.target.value) }; setForm({ ...form, items }); }} />
               <input type="number" value={item.taxRate} onChange={(e) => { const items = [...form.items]; items[index] = { ...items[index], taxRate: Number(e.target.value) }; setForm({ ...form, items }); }} />
+              <button type="button" className="secondary" disabled={form.items.length <= 1} onClick={() => { const items = form.items.filter((_, i) => i !== index); setForm({ ...form, items }); }}>Remove</button>
             </div>
           ))}
           <div className="actions-inline">
@@ -127,7 +128,7 @@ export default function InvoicesPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead><tr><th>No</th><th>Customer</th><th>Total</th><th>Status</th><th>PDF</th></tr></thead>
-                <tbody>{invoices.map(inv => (
+                <tbody>{invoices.length ? invoices.map(inv => (
                   <tr key={inv.id}>
                     <td>{inv.invoiceNo}</td>
                     <td>{inv.customerName}</td>
@@ -135,7 +136,7 @@ export default function InvoicesPage() {
                     <td><span className={`status-pill ${String(inv.status).toLowerCase()}`}>{inv.status}</span></td>
                     <td><button type="button" className="secondary" onClick={() => void downloadPdf(inv.id, inv.invoiceNo)}>Download</button></td>
                   </tr>
-                ))}</tbody>
+                )) : <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink3)' }}>No invoices yet</td></tr>}</tbody>
               </table>
             </div>
           )}
