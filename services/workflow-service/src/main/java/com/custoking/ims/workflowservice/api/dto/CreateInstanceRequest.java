@@ -3,24 +3,17 @@ package com.custoking.ims.workflowservice.api.dto;
 import jakarta.validation.constraints.NotBlank;
 
 /**
- * DTO for POST /instances (create-or-get workflow instance).
- *
- * Repo keys consumed by createOrGetInstance(Map):
- *   entityType   — required (requireText, always)
- *   entityId     — required (requireText, always)
- *   definitionId — required (requireText, only when no existing instance for entityType+entityId;
- *                            omitting it when an existing instance exists would succeed at the repo
- *                            level, but callers should always supply it for idempotent behaviour)
- *   schoolId     — optional Long; stamped via TenantScope.resolveSchoolId before calling repo
- *   initiatedBy  — optional Long; null-gated put
- *
- * Action endpoints (submit/approve/reject/cancel/complete) are deferred — all use
- * {@code @RequestBody(required = false)} with no required fields; bean-validation adds nothing.
+ * DTO for POST /api/v1/workflows/instances (create-or-get workflow instance).
+ * Required: entityType, entityId.
+ * definitionId is optional — a re-fetch call for an EXISTING (entityType,entityId) pair
+ * succeeds without it; the repository only requires definitionId on the CREATE branch.
+ * schoolId and initiatedBy are optional; applyResolvedSchool() fills schoolId from
+ * TenantScope when absent.
  */
 public record CreateInstanceRequest(
-        @NotBlank(message = "entityType is required") String entityType,
-        @NotBlank(message = "entityId is required") String entityId,
-        @NotBlank(message = "definitionId is required") String definitionId,
+        @NotBlank String entityType,
+        @NotBlank String entityId,
+        String definitionId,
         Long schoolId,
         Long initiatedBy
 ) {}

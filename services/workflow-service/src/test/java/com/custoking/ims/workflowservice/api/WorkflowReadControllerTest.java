@@ -63,20 +63,18 @@ class WorkflowReadControllerTest {
     }
 
     @Test
-    void createOrGetInstanceMapsIllegalArgumentToBadRequest() {
-        // Verifies the execute() catch block: if the repo throws IllegalArgumentException
-        // (e.g. definition not found after DTO fields are valid), the controller wraps it as 400.
+    void createOrGetInstanceMapsValidationToBadRequest() {
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
-        CreateInstanceRequest req = new CreateInstanceRequest("ORDER", "order-42", "wf-def-1", null, null);
-        when(workflows.createOrGetInstance(any())).thenThrow(
-                new IllegalArgumentException("Workflow definition not found: wf-def-1"));
+        // Simulate repo rejecting a partial create (definitionId missing on new entity)
+        CreateInstanceRequest req = new CreateInstanceRequest("ORDER", "order-99", null, null, null);
+        when(workflows.createOrGetInstance(any())).thenThrow(new IllegalArgumentException("definitionId is required"));
 
         assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", req))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(response.getReason()).isEqualTo("Workflow definition not found: wf-def-1");
+                    assertThat(response.getReason()).isEqualTo("definitionId is required");
                 });
     }
 

@@ -94,9 +94,9 @@ public class WorkflowReadController {
         Map<String, Object> body = new HashMap<>();
         body.put("entityType", req.entityType());
         body.put("entityId", req.entityId());
-        body.put("definitionId", req.definitionId());
-        body.put("schoolId", TenantScope.resolveSchoolId(req.schoolId()));
+        if (req.definitionId() != null) body.put("definitionId", req.definitionId());
         if (req.initiatedBy() != null) body.put("initiatedBy", req.initiatedBy());
+        body.put("schoolId", TenantScope.resolveSchoolId(req.schoolId()));
         return execute(() -> workflows.createOrGetInstance(body));
     }
 

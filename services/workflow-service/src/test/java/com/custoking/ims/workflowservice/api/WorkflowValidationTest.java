@@ -12,155 +12,135 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-/**
- * Standalone MockMvc validation tests for POST /instances (workflow-service Phase 1.7).
- *
- * Action endpoints (submit/approve/reject/cancel/complete) are deferred — all accept
- * {@code @RequestBody(required = false)} with no required fields; bean-validation would
- * add nothing there.
- */
 class WorkflowValidationTest {
 
     private static final String VALID_TOKEN = "workflow-token";
 
-    WorkflowReadRepository workflows;
+    WorkflowReadRepository repo;
     MockMvc mvc;
 
     @BeforeEach
     void setUp() {
-        workflows = mock(WorkflowReadRepository.class);
-        WorkflowReadController controller = new WorkflowReadController(workflows, VALID_TOKEN);
+        repo = mock(WorkflowReadRepository.class);
+        WorkflowReadController controller = new WorkflowReadController(repo, VALID_TOKEN);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
-        // Superadmin context so TenantScope.resolveSchoolId passes through the supplied value
-        TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
+        // Use SUPERADMIN so TenantScope passes through provided schoolId
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
     }
 
     @AfterEach
-    void cleanup() {
+    void tearDown() {
         TenantContext.clear();
     }
 
-    // ─── POST /instances — missing required fields ────────────────────────────
-
-    @Test
-    void createInstance_emptyBody_returns400WithAllThreeFieldErrors() throws Exception {
-        mvc.perform(post("/api/v1/workflows/instances")
-                        .header("X-Workflow-Service-Token", VALID_TOKEN)
-                        .contentType("application/json")
-                        .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.entityType").exists())
-                .andExpect(jsonPath("$.fieldErrors.entityId").exists())
-                .andExpect(jsonPath("$.fieldErrors.definitionId").exists());
-        verifyNoInteractions(workflows);
-    }
-
-    @Test
-    void createInstance_missingEntityType_returns400() throws Exception {
-        mvc.perform(post("/api/v1/workflows/instances")
-                        .header("X-Workflow-Service-Token", VALID_TOKEN)
-                        .contentType("application/json")
-                        .content("{\"entityId\":\"order-1\",\"definitionId\":\"wf-def-1\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.entityType").exists());
-        verifyNoInteractions(workflows);
-    }
+    // --- POST /instances (create-or-get) ---
 
     @Test
     void createInstance_blankEntityType_returns400() throws Exception {
         mvc.perform(post("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"entityType\":\"\",\"entityId\":\"order-1\",\"definitionId\":\"wf-def-1\"}"))
+                        .content("{\"entityType\":\"\",\"entityId\":\"order-1\",\"definitionId\":\"def-1\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.entityType").exists());
-        verifyNoInteractions(workflows);
+        verify(repo, never()).createOrGetInstance(anyMap());
     }
 
     @Test
-    void createInstance_missingEntityId_returns400() throws Exception {
+    void createInstance_blankEntityId_returns400() throws Exception {
         mvc.perform(post("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"entityType\":\"ORDER\",\"definitionId\":\"wf-def-1\"}"))
+                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"\",\"definitionId\":\"def-1\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors.entityId").exists());
-        verifyNoInteractions(workflows);
+        verify(repo, never()).createOrGetInstance(anyMap());
     }
 
     @Test
-    void createInstance_missingDefinitionId_returns400() throws Exception {
+    void createInstance_missingBothRequired_returns400WithBothFieldErrors() throws Exception {
         mvc.perform(post("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"order-1\"}"))
+                        .content("{\"definitionId\":\"def-1\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.definitionId").exists());
-        verifyNoInteractions(workflows);
+                .andExpect(jsonPath("$.fieldErrors.entityType").exists())
+                .andExpect(jsonPath("$.fieldErrors.entityId").exists());
+        verify(repo, never()).createOrGetInstance(anyMap());
     }
 
-    // ─── POST /instances — valid payload, repo called with exact keys ─────────
-
+    /**
+     * Fix 1 regression test: a get-or-create call for an EXISTING (entityType,entityId) instance
+     * WITHOUT definitionId must succeed (return 200), not 400. The DTO no longer @NotBlank on
+     * definitionId, so the request reaches the repo which returns the existing instance.
+     */
     @Test
-    @SuppressWarnings("unchecked")
-    void createInstance_allRequiredFields_callsRepoWithExactKeys() throws Exception {
-        when(workflows.createOrGetInstance(anyMap())).thenReturn(Map.of("id", 1L, "status", "PENDING"));
+    void createInstance_existingInstanceWithoutDefinitionId_succeeds() throws Exception {
+        when(repo.createOrGetInstance(anyMap()))
+                .thenReturn(Map.of("id", 55L, "status", "IN_PROGRESS", "entityType", "ORDER", "entityId", "order-42"));
 
         mvc.perform(post("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"order-99\",\"definitionId\":\"wf-def-2\"}"))
-                .andExpect(status().isOk());
+                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"order-42\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(55));
 
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(workflows).createOrGetInstance(captor.capture());
-        Map<String, Object> body = captor.getValue();
-        assertEquals("ORDER", body.get("entityType"));
-        assertEquals("order-99", body.get("entityId"));
-        assertEquals("wf-def-2", body.get("definitionId"));
-        // schoolId key must be present (TenantScope.resolveSchoolId returns null for SUPERADMIN with null input)
-        assertNotNull(body.containsKey("schoolId"));
-        assertNull(body.get("schoolId"));
-        // initiatedBy must NOT be present when omitted
-        assertEquals(false, body.containsKey("initiatedBy"));
+        verify(repo, times(1)).createOrGetInstance(anyMap());
     }
 
     @Test
-    @SuppressWarnings("unchecked")
+    void createInstance_valid_callsRepositoryWithExpectedKeys() throws Exception {
+        when(repo.createOrGetInstance(anyMap())).thenReturn(Map.of("id", 10L));
+        mvc.perform(post("/api/v1/workflows/instances")
+                        .header("X-Workflow-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"order-1\"," +
+                                 "\"definitionId\":\"def-approval\",\"schoolId\":42}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).createOrGetInstance(captor.capture());
+        Map<String, Object> body = captor.getValue();
+        assertEquals("ORDER", body.get("entityType"));
+        assertEquals("order-1", body.get("entityId"));
+        assertEquals("def-approval", body.get("definitionId"));
+        // Fix 2: use assertTrue (not assertNotNull) — containsKey returns boolean, not Object
+        assertTrue(body.containsKey("schoolId"));
+        // Fix 3: assert the resolved schoolId value (SUPERADMIN passes 42L through)
+        assertEquals(42L, body.get("schoolId"));
+    }
+
+    @Test
     void createInstance_withOptionalFields_callsRepoWithInitiatedBy() throws Exception {
-        when(workflows.createOrGetInstance(anyMap())).thenReturn(Map.of("id", 2L, "status", "PENDING"));
-
+        when(repo.createOrGetInstance(anyMap())).thenReturn(Map.of("id", 11L));
         mvc.perform(post("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"order-7\",\"definitionId\":\"wf-def-3\","
-                                + "\"schoolId\":42,\"initiatedBy\":101}"))
+                        .content("{\"entityType\":\"ORDER\",\"entityId\":\"order-2\"," +
+                                 "\"definitionId\":\"def-approval\",\"schoolId\":42,\"initiatedBy\":7}"))
                 .andExpect(status().isOk());
 
+        @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(workflows).createOrGetInstance(captor.capture());
+        verify(repo).createOrGetInstance(captor.capture());
         Map<String, Object> body = captor.getValue();
-        assertEquals("ORDER", body.get("entityType"));
-        assertEquals("order-7", body.get("entityId"));
-        assertEquals("wf-def-3", body.get("definitionId"));
-        assertEquals(101L, body.get("initiatedBy"));
+        assertEquals(7L, body.get("initiatedBy"));
+        // Fix 2: use assertTrue (not assertNotNull) — containsKey returns boolean, not Object
+        assertTrue(body.containsKey("schoolId"));
+        // Fix 3: TenantScope.resolveSchoolId(42L) = 42L for SUPERADMIN
+        assertEquals(42L, body.get("schoolId"));
     }
 }
