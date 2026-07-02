@@ -1,7 +1,9 @@
 package com.custoking.ims.notificationservice.api;
 
+import com.custoking.ims.notificationservice.api.dto.CreateBroadcastRequest;
 import com.custoking.ims.notificationservice.persistence.NotificationBroadcastCommandRepository;
 import com.custoking.ims.notificationservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,12 +35,22 @@ public class NotificationBroadcastCommandController {
         this.statusToken = statusToken == null ? "" : statusToken.trim();
     }
 
+    /** CONVERTED: required fields title + message validated before repo call. */
     @PostMapping
     public Map<String, Object> create(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody CreateBroadcastRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
+        Map<String, Object> body = new HashMap<>();
+        body.put("title", req.title());
+        body.put("message", req.message());
+        if (req.schoolId() != null) body.put("schoolId", req.schoolId());
+        if (req.module() != null) body.put("module", req.module());
+        if (req.audienceType() != null) body.put("audienceType", req.audienceType());
+        if (req.channels() != null) body.put("channels", req.channels());
+        if (req.scheduledAt() != null) body.put("scheduledAt", req.scheduledAt());
+        if (req.createdBy() != null) body.put("createdBy", req.createdBy());
         return command(() -> broadcasts.create(body));
     }
 

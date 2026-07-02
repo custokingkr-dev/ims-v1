@@ -1,8 +1,10 @@
 package com.custoking.ims.notificationservice.api;
 
+import com.custoking.ims.notificationservice.api.dto.CompleteWhatsappOnboardingRequest;
 import com.custoking.ims.notificationservice.application.SenderProfile;
 import com.custoking.ims.notificationservice.persistence.SenderProfileRepository;
 import com.custoking.ims.notificationservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -113,16 +116,35 @@ public class SenderProfileController {
         return command(() -> profiles.requestWhatsappOnboarding(schoolId, actorId(body), body));
     }
 
-    // Complete a WhatsApp onboarding session.
-    // Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+    /**
+     * CONVERTED: integratedNumber is required (no fallback in repo). All other fields optional.
+     * The built map is forwarded to the repo which also calls upsert() with the sender-profile
+     * fields — optional fields are only put when non-null.
+     * Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+     */
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding/{sessionId}/complete")
     public Map<String, Object> completeWhatsappOnboarding(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
             @PathVariable UUID sessionId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody CompleteWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
         TenantScope.resolveSchoolId(schoolId);
+        Map<String, Object> body = new HashMap<>();
+        body.put("integratedNumber", req.integratedNumber());
+        if (req.providerReference() != null) body.put("providerReference", req.providerReference());
+        if (req.profileName() != null) body.put("profileName", req.profileName());
+        if (req.emailFromName() != null) body.put("emailFromName", req.emailFromName());
+        if (req.emailFromAddress() != null) body.put("emailFromAddress", req.emailFromAddress());
+        if (req.emailDomain() != null) body.put("emailDomain", req.emailDomain());
+        if (req.emailReplyTo() != null) body.put("emailReplyTo", req.emailReplyTo());
+        if (req.whatsappDisplayName() != null) body.put("whatsappDisplayName", req.whatsappDisplayName());
+        if (req.whatsappTemplateNamespace() != null) body.put("whatsappTemplateNamespace", req.whatsappTemplateNamespace());
+        if (req.whatsappDefaultTemplateName() != null) body.put("whatsappDefaultTemplateName", req.whatsappDefaultTemplateName());
+        if (req.whatsappLanguageCode() != null) body.put("whatsappLanguageCode", req.whatsappLanguageCode());
+        if (req.msg91SmsFlowId() != null) body.put("msg91SmsFlowId", req.msg91SmsFlowId());
+        if (req.msg91OtpTemplateId() != null) body.put("msg91OtpTemplateId", req.msg91OtpTemplateId());
+        if (req.msg91EmailTemplateId() != null) body.put("msg91EmailTemplateId", req.msg91EmailTemplateId());
         return command(() -> profiles.completeWhatsappOnboarding(schoolId, sessionId, body));
     }
 

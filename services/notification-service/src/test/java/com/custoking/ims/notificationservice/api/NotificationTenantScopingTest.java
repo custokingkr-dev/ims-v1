@@ -121,7 +121,7 @@ class NotificationTenantScopingTest {
                         .header("X-Notification-Service-Token", TOKEN)
                         // No X-Authenticated-Role — simulating a system-to-system call
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"eventType\":\"FEE_PAYMENT\",\"schoolId\":10}"))
+                        .content("{\"channel\":\"SMS\",\"notificationType\":\"FEE_PAYMENT\",\"schoolId\":10}"))
                 .andExpect(status().isOk());
 
         verify(logs).createRequestLog(any());
@@ -137,7 +137,7 @@ class NotificationTenantScopingTest {
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "5")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"eventType\":\"ATTENDANCE\",\"schoolId\":5}"))
+                        .content("{\"channel\":\"SMS\",\"notificationType\":\"ATTENDANCE\",\"schoolId\":5}"))
                 .andExpect(status().isOk());
 
         verify(logs).createRequestLog(any());
