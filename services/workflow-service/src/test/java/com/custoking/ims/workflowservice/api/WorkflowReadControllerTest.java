@@ -1,5 +1,6 @@
 package com.custoking.ims.workflowservice.api;
 
+import com.custoking.ims.workflowservice.api.dto.CreateInstanceRequest;
 import com.custoking.ims.workflowservice.persistence.WorkflowReadRepository;
 import com.custoking.ims.workflowservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -7,7 +8,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,17 +63,20 @@ class WorkflowReadControllerTest {
     }
 
     @Test
-    void createOrGetInstanceMapsValidationToBadRequest() {
+    void createOrGetInstanceMapsIllegalArgumentToBadRequest() {
+        // Verifies the execute() catch block: if the repo throws IllegalArgumentException
+        // (e.g. definition not found after DTO fields are valid), the controller wraps it as 400.
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
-        Map<String, Object> request = new HashMap<>(Map.of("entityType", "ORDER"));
-        when(workflows.createOrGetInstance(any())).thenThrow(new IllegalArgumentException("entityId is required"));
+        CreateInstanceRequest req = new CreateInstanceRequest("ORDER", "order-42", "wf-def-1", null, null);
+        when(workflows.createOrGetInstance(any())).thenThrow(
+                new IllegalArgumentException("Workflow definition not found: wf-def-1"));
 
-        assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", request))
+        assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", req))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException response = (ResponseStatusException) error;
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                    assertThat(response.getReason()).isEqualTo("entityId is required");
+                    assertThat(response.getReason()).isEqualTo("Workflow definition not found: wf-def-1");
                 });
     }
 
