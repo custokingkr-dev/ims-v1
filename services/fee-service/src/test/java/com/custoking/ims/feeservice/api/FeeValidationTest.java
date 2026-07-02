@@ -14,11 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -246,6 +249,192 @@ class FeeValidationTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).assignFeePlan(captor.capture());
         assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
+    }
+
+    // ─── PUT /bands/{id} ─────────────────────────────────────────────────────
+
+    @Test
+    void updateBand_negativeDiscount_returns400WithFieldError() throws Exception {
+        mvc.perform(put("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"discount\":-5.0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.discount").exists());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
+    void updateBand_negativeClassFrom_returns400WithFieldError() throws Exception {
+        mvc.perform(put("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"classFrom\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.classFrom").exists());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateBand_onlyNameSent_omitsContainKeyGatedFields() throws Exception {
+        when(fees.updateBand(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(put("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"name\":\"Updated Name\"}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).updateBand(anyString(), captor.capture());
+        assertEquals("Updated Name", captor.getValue().get("name"));
+        assertFalse(captor.getValue().containsKey("classFrom"), "classFrom must be absent when not sent");
+        assertFalse(captor.getValue().containsKey("classTo"), "classTo must be absent when not sent");
+        assertFalse(captor.getValue().containsKey("discount"), "discount must be absent when not sent");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateBand_withDiscount_putsDiscountKey() throws Exception {
+        when(fees.updateBand(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(put("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"name\":\"General\",\"classFrom\":1,\"classTo\":10,\"discount\":10.0}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).updateBand(anyString(), captor.capture());
+        assertTrue(captor.getValue().containsKey("classFrom"), "classFrom key must be present when sent");
+        assertEquals(1, captor.getValue().get("classFrom"));
+        assertTrue(captor.getValue().containsKey("discount"), "discount key must be present when sent");
+        assertEquals(10.0, captor.getValue().get("discount"));
+    }
+
+    // ─── PATCH /bands/{id} ───────────────────────────────────────────────────
+
+    @Test
+    void patchBand_negativeDiscount_returns400WithFieldError() throws Exception {
+        mvc.perform(patch("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"discount\":-1.0}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.discount").exists());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
+    void patchBand_negativeBandDiscount_returns400WithFieldError() throws Exception {
+        mvc.perform(patch("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"bandDiscount\":-2.5}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.bandDiscount").exists());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void patchBand_withDiscount_putsDiscountKey() throws Exception {
+        when(fees.patchBand(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(patch("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"discount\":5.0}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).patchBand(anyString(), captor.capture());
+        assertTrue(captor.getValue().containsKey("discount"), "discount key must be present when sent");
+        assertEquals(5.0, captor.getValue().get("discount"));
+        assertFalse(captor.getValue().containsKey("bandDiscount"), "bandDiscount must be absent when not sent");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void patchBand_withoutDiscountOrBandDiscount_neitherKeyPresent() throws Exception {
+        when(fees.patchBand(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(patch("/api/v1/fees/bands/band-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"schedules\":[\"Annual\"]}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).patchBand(anyString(), captor.capture());
+        assertFalse(captor.getValue().containsKey("discount"), "discount must be absent when not sent");
+        assertFalse(captor.getValue().containsKey("bandDiscount"), "bandDiscount must be absent when not sent");
+        assertTrue(captor.getValue().containsKey("schedules"), "schedules key must be present when sent");
+    }
+
+    // ─── PUT /items/{id} ─────────────────────────────────────────────────────
+
+    @Test
+    void updateItem_negativeAmount_returns400WithFieldError() throws Exception {
+        mvc.perform(put("/api/v1/fees/items/item-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"amount\":-100}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.amount").exists());
+        verifyNoInteractions(fees);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateItem_onlyFrequencySent_omitsNameAndAmountKeys() throws Exception {
+        when(fees.updateItem(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(put("/api/v1/fees/items/item-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"frequency\":\"Quarterly\"}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).updateItem(anyString(), captor.capture());
+        assertTrue(captor.getValue().containsKey("frequency"), "frequency must be present when sent");
+        assertEquals("Quarterly", captor.getValue().get("frequency"));
+        assertFalse(captor.getValue().containsKey("name"), "name must be absent when not sent");
+        assertFalse(captor.getValue().containsKey("itemName"), "itemName must be absent when not sent");
+        assertFalse(captor.getValue().containsKey("amount"), "amount must be absent when not sent");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateItem_withItemName_putsItemNameKey() throws Exception {
+        when(fees.updateItem(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(put("/api/v1/fees/items/item-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"itemName\":\"Tuition Fee\",\"amount\":50000}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).updateItem(anyString(), captor.capture());
+        assertTrue(captor.getValue().containsKey("itemName"), "itemName key must be present when sent");
+        assertEquals("Tuition Fee", captor.getValue().get("itemName"));
+        assertTrue(captor.getValue().containsKey("amount"), "amount key must be present when sent");
+        assertEquals(50000L, captor.getValue().get("amount"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateItem_multiField_allSentKeysPresent() throws Exception {
+        when(fees.updateItem(anyString(), anyMap())).thenReturn(Map.of("id", "band-1"));
+        mvc.perform(put("/api/v1/fees/items/item-1")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"name\":\"Lab Fee\",\"frequency\":\"Monthly\",\"amount\":1000}"))
+                .andExpect(status().isOk());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(fees).updateItem(anyString(), captor.capture());
+        assertTrue(captor.getValue().containsKey("name"));
+        assertEquals("Lab Fee", captor.getValue().get("name"));
+        assertTrue(captor.getValue().containsKey("frequency"));
+        assertEquals("Monthly", captor.getValue().get("frequency"));
+        assertTrue(captor.getValue().containsKey("amount"));
+        assertEquals(1000L, captor.getValue().get("amount"));
     }
 
     // ─── POST /payments ──────────────────────────────────────────────────────
