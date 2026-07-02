@@ -45,6 +45,7 @@ class ReportingValidationTest {
     // schoolId is explicitly nullable — feed rows do not require a tenant.
 
     @Test
+    @SuppressWarnings("unchecked")
     void recordFeed_emptyBody_returns200AndCallsRepo() throws Exception {
         when(commands.recordFeed(anyMap())).thenReturn(Map.of("id", "feed-1"));
         mvc.perform(post("/api/v1/reporting/command-center/feed")
@@ -52,7 +53,19 @@ class ReportingValidationTest {
                         .contentType("application/json")
                         .content("{}"))
                 .andExpect(status().isOk());
-        verify(commands).recordFeed(anyMap());
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(commands).recordFeed(captor.capture());
+        Map<String, Object> map = captor.getValue();
+        // RecordFeedRequest.toMap() puts all keys unconditionally; empty body → all values null
+        assertNull(map.get("module"), "module must be null when not sent");
+        assertNull(map.get("eventType"), "eventType must be null when not sent");
+        assertNull(map.get("title"), "title must be null when not sent");
+        assertNull(map.get("message"), "message must be null when not sent");
+        assertNull(map.get("severity"), "severity must be null when not sent");
+        assertNull(map.get("entityType"), "entityType must be null when not sent");
+        assertNull(map.get("entityId"), "entityId must be null when not sent");
+        assertNull(map.get("actorUserId"), "actorUserId must be null when not sent");
+        assertNull(map.get("schoolId"), "schoolId must be null when not sent");
     }
 
     @Test

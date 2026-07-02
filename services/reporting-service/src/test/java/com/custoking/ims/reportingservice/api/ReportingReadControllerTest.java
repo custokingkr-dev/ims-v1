@@ -109,7 +109,7 @@ class ReportingReadControllerTest {
     }
 
     @Test
-    void reminderTargetsMapsValidationFailureToBadRequest() {
+    void reminderTargets_repoBusinessLogicException_mapsToBadRequest() {
         // eventId and schoolId are valid; repo throws a business-logic BAD_REQUEST (e.g. ACTIVE check).
         // The DTO pre-validates required fields, so repo-level IllegalArgumentException still maps → 400.
         EventContributionReminderTargetsRequest req =
