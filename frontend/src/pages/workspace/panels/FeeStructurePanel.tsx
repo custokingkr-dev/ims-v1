@@ -149,7 +149,8 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving('fee-structure-add');
       setFeeStructureError('');
-      await api.post('/fee-structure/item', { bandId: feeItemForm.bandId, itemName: feeItemForm.itemName, frequency: feeItemForm.frequency, amount: Math.round(Number(feeItemForm.amount) * 100) });
+      // Send rupees; the backend's toPaise() converts to paise (multiplies by 100 for values <=100k).
+      await api.post('/fee-structure/item', { bandId: feeItemForm.bandId, itemName: feeItemForm.itemName, frequency: feeItemForm.frequency, amount: Number(feeItemForm.amount) });
       const bandName = feeStructureData.bands.find((band: any) => band.id === feeItemForm.bandId)?.name || 'band';
       showFeeToast(`Item added to ${bandName}.`);
       setShowFeeItemForm(false);
@@ -171,7 +172,8 @@ export function FeeStructurePanel({ onRefresh }: Props) {
       await api.put(`/fee-structure/item/${encodeURIComponent(editingFeeItem.id)}`, {
         itemName: editingFeeItem.name,
         frequency: editingFeeItem.frequency,
-        amount: Math.round(Number(editingFeeItem.amount || 0) * 100),
+        // Send rupees; the backend's toPaise() converts to paise.
+        amount: Number(editingFeeItem.amount || 0),
       });
       showFeeToast(`Updated ${editingFeeItem.name}.`);
       setEditingFeeItem(null);
