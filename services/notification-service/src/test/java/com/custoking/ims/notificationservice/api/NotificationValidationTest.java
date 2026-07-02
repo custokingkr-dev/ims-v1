@@ -28,7 +28,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -274,6 +276,78 @@ class NotificationValidationTest {
         assertTrue(!captor.getValue().containsKey("schoolId"), "schoolId must not be present when omitted");
         assertTrue(!captor.getValue().containsKey("studentId"), "studentId must not be present when omitted");
         assertTrue(!captor.getValue().containsKey("sentBy"), "sentBy must not be present when omitted");
+    }
+
+    // ─── PUT /notifications/sender-profiles/default (partial upsert) ────────────
+
+    @Test
+    void updateDefaultProfile_invalidEmail_returns400WithFieldError() throws Exception {
+        senderProfileMvc.perform(put("/api/v1/notifications/sender-profiles/default")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"emailFromAddress\":\"not-an-email\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.emailFromAddress").exists());
+        verify(senderProfiles, never()).upsert(any(), anyMap());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void updateDefaultProfile_validPartial_callsRepoWithOnlySentKeys() throws Exception {
+        when(senderProfiles.upsert(isNull(), anyMap())).thenReturn(
+                new SenderProfile(null, null, "Test Profile", null, "test@example.com",
+                        null, null, null, null, null, null, null, null, null, null));
+
+        senderProfileMvc.perform(put("/api/v1/notifications/sender-profiles/default")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"profileName\":\"Test Profile\",\"emailFromAddress\":\"test@example.com\"}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(senderProfiles).upsert(isNull(), captor.capture());
+        assertEquals("Test Profile", captor.getValue().get("profileName"));
+        assertEquals("test@example.com", captor.getValue().get("emailFromAddress"));
+        assertTrue(!captor.getValue().containsKey("emailFromName"),
+                "emailFromName must not be present when omitted");
+        assertTrue(!captor.getValue().containsKey("msg91SmsFlowId"),
+                "msg91SmsFlowId must not be present when omitted");
+    }
+
+    // ─── POST /notifications/broadcasts/{id}/approve (broadcast action) ──────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void approveBroadcast_validActorId_callsRepoWithActorId() throws Exception {
+        UUID id = UUID.randomUUID();
+        when(broadcasts.approve(eq(id), eq(5L))).thenReturn(Map.of("id", id, "status", "SCHEDULED"));
+
+        broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/approve")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"actorId\":5}"))
+                .andExpect(status().isOk());
+
+        verify(broadcasts).approve(eq(id), eq(5L));
+    }
+
+    @Test
+    void approveBroadcast_negativeActorId_returns400WithFieldError() throws Exception {
+        UUID id = UUID.randomUUID();
+
+        broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/approve")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType("application/json")
+                        .content("{\"actorId\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.actorId").exists());
+        verify(broadcasts, never()).approve(any(), any());
     }
 
     // ─── POST /notifications/sender-profiles/schools/{schoolId}/whatsapp-onboarding/{sessionId}/complete ──

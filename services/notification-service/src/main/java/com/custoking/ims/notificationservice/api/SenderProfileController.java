@@ -1,6 +1,9 @@
 package com.custoking.ims.notificationservice.api;
 
 import com.custoking.ims.notificationservice.api.dto.CompleteWhatsappOnboardingRequest;
+import com.custoking.ims.notificationservice.api.dto.FailWhatsappOnboardingRequest;
+import com.custoking.ims.notificationservice.api.dto.SenderProfileUpsertRequest;
+import com.custoking.ims.notificationservice.api.dto.StartWhatsappOnboardingRequest;
 import com.custoking.ims.notificationservice.application.SenderProfile;
 import com.custoking.ims.notificationservice.persistence.SenderProfileRepository;
 import com.custoking.ims.notificationservice.security.TenantScope;
@@ -57,14 +60,19 @@ public class SenderProfileController {
         return profiles.defaultProfile();
     }
 
-    // Platform admin: update the global default sender configuration. Superadmin only.
+    /**
+     * CONVERTED: partial-upsert (all fields optional). Only non-null fields are put into the map;
+     * absent fields fall back to the existing stored value, then to the repo's hard-coded defaults.
+     * FORMAT-ONLY constraints (@Email, @Size) fire only when a field is present.
+     * Guard is unconditional: requireSuperAdmin enforces scope for any HTTP caller.
+     */
     @PutMapping("/default")
     public SenderProfile updateDefaultProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody SenderProfileUpsertRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
-        return command(() -> profiles.upsert(null, body));
+        return command(() -> profiles.upsert(null, senderProfileMap(req)));
     }
 
     // School admin may only access their own school; superadmin may access any school.
@@ -78,17 +86,19 @@ public class SenderProfileController {
         return profiles.resolve(schoolId);
     }
 
-    // Configure the MSG91 sender credentials for a school.
-    // Sensitive provisioning: only a superadmin may write sender credentials.
-    // Guard is unconditional: header-less HTTP is denied (fail-closed).
+    /**
+     * CONVERTED: partial-upsert (all fields optional). Same semantics as PUT /default.
+     * Sensitive provisioning: only a superadmin may write sender credentials.
+     * Guard is unconditional: requireSuperAdmin enforces scope for any HTTP caller.
+     */
     @PutMapping("/schools/{schoolId}")
     public SenderProfile updateSchoolProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody SenderProfileUpsertRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
-        return command(() -> profiles.upsert(schoolId, body));
+        return command(() -> profiles.upsert(schoolId, senderProfileMap(req)));
     }
 
     // View onboarding sessions for a school's WhatsApp number.
@@ -103,17 +113,29 @@ public class SenderProfileController {
         return profiles.onboardingSessions(schoolId);
     }
 
-    // Initiate WhatsApp business account onboarding for a school.
-    // School admin: own school only; superadmin: any school.
-    // Guard is unconditional: header-less HTTP is denied (fail-closed).
+    /**
+     * CONVERTED: all fields optional — the repo inserts NULLs for any absent body field.
+     * actorId is extracted from the DTO and forwarded as the requestedBy parameter directly
+     * (not via the body map). All other fields are null-gated into the body map.
+     * FORMAT-ONLY constraints (@Email, @Size, @Positive) fire only when a field is present.
+     * Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+     */
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding")
     public Map<String, Object> requestWhatsappOnboarding(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody StartWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
         TenantScope.resolveSchoolId(schoolId);
-        return command(() -> profiles.requestWhatsappOnboarding(schoolId, actorId(body), body));
+        Map<String, Object> body = new HashMap<>();
+        if (req.schoolName() != null) body.put("schoolName", req.schoolName());
+        if (req.contactName() != null) body.put("contactName", req.contactName());
+        if (req.contactEmail() != null) body.put("contactEmail", req.contactEmail());
+        if (req.contactMobile() != null) body.put("contactMobile", req.contactMobile());
+        if (req.desiredDisplayName() != null) body.put("desiredDisplayName", req.desiredDisplayName());
+        if (req.desiredPhoneNumber() != null) body.put("desiredPhoneNumber", req.desiredPhoneNumber());
+        if (req.notes() != null) body.put("notes", req.notes());
+        return command(() -> profiles.requestWhatsappOnboarding(schoolId, req.actorId(), body));
     }
 
     /**
@@ -148,16 +170,22 @@ public class SenderProfileController {
         return command(() -> profiles.completeWhatsappOnboarding(schoolId, sessionId, body));
     }
 
-    // Fail a WhatsApp onboarding session.
-    // Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+    /**
+     * CONVERTED: failureReason has a DEFAULT fallback in the repo ("Onboarding failed"),
+     * so both fields are optional. Null-gating preserves fallback behaviour when a key is absent.
+     * Guard is unconditional: resolveSchoolId enforces tenant scope for any HTTP caller.
+     */
     @PostMapping("/schools/{schoolId}/whatsapp-onboarding/{sessionId}/fail")
     public Map<String, Object> failWhatsappOnboarding(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId,
             @PathVariable UUID sessionId,
-            @RequestBody Map<String, Object> body) {
+            @Valid @RequestBody FailWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
         TenantScope.resolveSchoolId(schoolId);
+        Map<String, Object> body = new HashMap<>();
+        if (req.failureReason() != null) body.put("failureReason", req.failureReason());
+        if (req.providerReference() != null) body.put("providerReference", req.providerReference());
         return command(() -> profiles.failWhatsappOnboarding(schoolId, sessionId, body));
     }
 
@@ -179,15 +207,23 @@ public class SenderProfileController {
         }
     }
 
-    private Long actorId(Map<String, Object> body) {
-        if (body == null || body.get("actorId") == null || String.valueOf(body.get("actorId")).isBlank()) {
-            return null;
-        }
-        Object value = body.get("actorId");
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.parseLong(String.valueOf(value));
+    /** Builds the body map for upsert(), null-gating every field to preserve partial-upsert semantics. */
+    private static Map<String, Object> senderProfileMap(SenderProfileUpsertRequest req) {
+        Map<String, Object> body = new HashMap<>();
+        if (req.profileName() != null) body.put("profileName", req.profileName());
+        if (req.emailFromName() != null) body.put("emailFromName", req.emailFromName());
+        if (req.emailFromAddress() != null) body.put("emailFromAddress", req.emailFromAddress());
+        if (req.emailDomain() != null) body.put("emailDomain", req.emailDomain());
+        if (req.emailReplyTo() != null) body.put("emailReplyTo", req.emailReplyTo());
+        if (req.whatsappIntegratedNumber() != null) body.put("whatsappIntegratedNumber", req.whatsappIntegratedNumber());
+        if (req.whatsappDisplayName() != null) body.put("whatsappDisplayName", req.whatsappDisplayName());
+        if (req.whatsappTemplateNamespace() != null) body.put("whatsappTemplateNamespace", req.whatsappTemplateNamespace());
+        if (req.whatsappDefaultTemplateName() != null) body.put("whatsappDefaultTemplateName", req.whatsappDefaultTemplateName());
+        if (req.whatsappLanguageCode() != null) body.put("whatsappLanguageCode", req.whatsappLanguageCode());
+        if (req.msg91SmsFlowId() != null) body.put("msg91SmsFlowId", req.msg91SmsFlowId());
+        if (req.msg91OtpTemplateId() != null) body.put("msg91OtpTemplateId", req.msg91OtpTemplateId());
+        if (req.msg91EmailTemplateId() != null) body.put("msg91EmailTemplateId", req.msg91EmailTemplateId());
+        return body;
     }
 
     private interface Command<T> {
