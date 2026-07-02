@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import api from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 
 type ZoneRow = {
@@ -18,7 +17,6 @@ const defaultZoneForm = { name: '', code: '', city: '', state: '', description: 
 const defaultAdminForm = { fullName: '', email: '', temporaryPassword: 'Welcome@123' };
 
 export default function ZoneManagementPage() {
-  const { user } = useAuth();
   const { can } = usePermissions();
   const [zones, setZones] = useState<ZoneRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,8 +28,6 @@ export default function ZoneManagementPage() {
   const [adminForm, setAdminForm] = useState(defaultAdminForm);
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-
-  if (!can('platform:admin')) return <Navigate to="/dashboard" replace />;
 
   function load() {
     setLoading(true);
@@ -46,8 +42,11 @@ export default function ZoneManagementPage() {
 
   useEffect(() => { load(); }, []);
 
+  if (!can('platform:admin')) return <Navigate to="/dashboard" replace />;
+
   async function createZone(e: React.FormEvent) {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
       await api.post('/zones', zoneForm);
@@ -55,8 +54,9 @@ export default function ZoneManagementPage() {
       setShowZoneModal(false);
       setZoneForm(defaultZoneForm);
       load();
-    } catch {
-      setError('Failed to create zone');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e?.response?.data?.message || e?.message || 'Failed to create zone');
     } finally {
       setSaving(false);
     }
@@ -65,6 +65,7 @@ export default function ZoneManagementPage() {
   async function createAdmin(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedZoneId) return;
+    setError('');
     setSaving(true);
     try {
       await api.post(`/zones/${selectedZoneId}/admin`, adminForm);
@@ -72,8 +73,9 @@ export default function ZoneManagementPage() {
       setShowAdminModal(false);
       setAdminForm(defaultAdminForm);
       load();
-    } catch {
-      setError('Failed to set zone admin');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e?.response?.data?.message || e?.message || 'Failed to set zone admin');
     } finally {
       setSaving(false);
     }
@@ -105,6 +107,9 @@ export default function ZoneManagementPage() {
             </tr>
           </thead>
           <tbody>
+            {zones.length === 0 && (
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>No zones created yet.</td></tr>
+            )}
             {zones.map(z => (
               <tr key={z.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: '0.75rem' }}>{z.name}</td>

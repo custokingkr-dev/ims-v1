@@ -125,8 +125,10 @@ export default function SchoolManagementPage() {
         map[e.moduleCode] = e.enabled;
       }
       setCurrentEntitlements(map);
-    } catch {
-      setCurrentEntitlements(Object.fromEntries(ALL_MODULES.map((m) => [m.code, false])));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Could not load module entitlements. Please try again.');
+      setShowModulesModal(false);
+      setSelectedSchool(null);
     } finally {
       setModulesLoading(false);
     }
@@ -233,7 +235,9 @@ export default function SchoolManagementPage() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <span className="badge">{schools.length} schools</span>
             <span className="badge">{activeCount} active</span>
-            <button onClick={() => { setNotice(''); setShowSchoolModal(true); }} className="ck-btn ck-btn-g">Add School</button>
+            {can('school:create') && (
+              <button onClick={() => { setNotice(''); setShowSchoolModal(true); }} className="ck-btn ck-btn-g">Add School</button>
+            )}
             <Link to="/dashboard" className="ck-btn ck-btn-ghost">Back to Dashboard</Link>
           </div>
         </div>
@@ -278,15 +282,21 @@ export default function SchoolManagementPage() {
                   <td>{school.operationsEmail || '—'}</td>
                   <td><span className="badge">{school.active ? 'Active' : 'Inactive'}</span></td>
                   <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button className="ck-btn ck-btn-ghost" onClick={() => openAdminModal(school)}>
-                      {school.adminEmail ? 'Reset Admin' : 'Add Admin'}
-                    </button>
-                    <button className="ck-btn ck-btn-ghost" onClick={() => openOpsModal(school)}>
-                      {school.operationsEmail ? 'Reset Ops' : 'Add Ops'}
-                    </button>
-                    <button className="ck-btn ck-btn-ghost" onClick={() => openModulesModal(school)}>
-                      Modules
-                    </button>
+                    {can('school:admin_manage') && (
+                      <button className="ck-btn ck-btn-ghost" onClick={() => openAdminModal(school)}>
+                        {school.adminEmail ? 'Reset Admin' : 'Add Admin'}
+                      </button>
+                    )}
+                    {can('school:admin_manage') && (
+                      <button className="ck-btn ck-btn-ghost" onClick={() => openOpsModal(school)}>
+                        {school.operationsEmail ? 'Reset Ops' : 'Add Ops'}
+                      </button>
+                    )}
+                    {can('school:update') && (
+                      <button className="ck-btn ck-btn-ghost" onClick={() => openModulesModal(school)}>
+                        Modules
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -41,7 +41,7 @@ export default function ApprovalsPage() {
       setDeciding(id);
       setError('');
       await api.post(`/approvals/${id}/${action}`, { decisionNote: `Reviewed by ${user?.fullName}` });
-      void load();
+      await load();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Action failed.';
       setError(msg);
@@ -68,6 +68,9 @@ export default function ApprovalsPage() {
             <table className="table">
               <thead><tr><th>Invoice</th><th>Type</th><th>Status</th><th>Reason</th><th>Actions</th></tr></thead>
               <tbody>
+                {approvals.length === 0 && (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>No approvals pending.</td></tr>
+                )}
                 {approvals.map((a) => (
                   <tr key={a.id}>
                     <td>{a.invoiceNo}</td>
