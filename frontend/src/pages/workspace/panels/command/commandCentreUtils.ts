@@ -2,13 +2,13 @@ import type { WorkspaceData } from '../../../../types/workspace';
 import type { CommandCentreCard } from './commandCentreTypes';
 
 /**
- * Derives up to 10 Command Centre cards from live workspace data.
+ * Derives Command Centre cards from live workspace data.
  *
  * Data precedence per card:
  *   1. Specific nested workspace field (fees.summary, firefighting.requests, orders)
  *   2. workspace.dashboard aggregate counters
- *   3. Fixed-fixture fallback (for data the workspace payload never carries, e.g. profile
- *      completeness counts, promotion readiness, section-level attendance gaps)
+ *   Cards are omitted when the workspace payload does not carry the required count
+ *   (profile completeness, promotion readiness, per-section attendance gaps).
  *
  * Cards are sorted: critical → high → medium → low.
  * Cards whose count/condition evaluates to zero are omitted rather than shown empty.
@@ -77,41 +77,10 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
   });
 
   // ── 3. Incomplete Student Profiles ────────────────────────────────────────
-  // Workspace does not carry profile-completeness counts — use fixed fixture.
-  cards.push({
-    id: 'cc-student-profiles',
-    module: 'students',
-    urgency: 'medium',
-    confidence: 82,
-    code: 'STU-PROFILES',
-    title: '23 student profiles are incomplete',
-    why: 'Missing Aadhaar, DOB, or photo on 23 records. Incomplete profiles block fee-waiver processing and government grants.',
-    impact: 'Compliance · 23 profiles',
-    state: 'Incomplete → Resolved',
-    cta: 'Complete profiles',
-    count: 23,
-    cta2: 'Upload photos',
-    cta2PolCode: 'PROFILE_UPLOAD',
-  });
+  // Workspace does not carry profile-completeness counts — card omitted (no real source).
 
   // ── 4. Year-end Promotion Review ──────────────────────────────────────────
-  // Workspace does not carry promotion-readiness data — use fixed fixture.
-  cards.push({
-    id: 'cc-student-promotion',
-    module: 'students',
-    urgency: 'low',
-    confidence: 79,
-    code: 'STU-PROMOTION',
-    title: 'Year-end promotion review is ready',
-    why: '412 students are eligible for promotion. 8 require exception review before the batch can be promoted.',
-    impact: 'Academic year transition · 412 students',
-    state: 'Pending review',
-    cta: 'Start promotion review',
-    count: 412,
-    primaryPolCode: 'PROMOTION_REVIEW',
-    cta2: 'Review exceptions',
-    cta2PolCode: 'PROMOTION_EXCEPTIONS',
-  });
+  // Workspace does not carry promotion-readiness data — card omitted (no real source).
 
   // ── 5. Supply Orders Awaiting Approval ────────────────────────────────────
   const submittedOrders = ws.orders?.filter(o => o.status === 'SUBMITTED') ?? [];
@@ -206,22 +175,7 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
   }
 
   // ── 9. Attendance Not Marked Today ────────────────────────────────────────
-  // Workspace does not carry per-section attendance gap data — use fixture.
-  cards.push({
-    id: 'cc-attendance-pending',
-    module: 'attendance',
-    urgency: 'high',
-    confidence: 90,
-    code: 'ATT-PENDING',
-    title: '4 sections haven\'t marked attendance today',
-    why: '4 class sections have not yet submitted today\'s attendance. Incomplete data skews school-level metrics and parent notifications.',
-    impact: '4 sections pending · today',
-    state: 'Pending → Marked',
-    cta: 'Take attendance',
-    count: 4,
-    cta2: 'View pending sections',
-    cta2PolCode: 'ATTENDANCE_SECTIONS',
-  });
+  // Workspace does not carry per-section attendance gap data — card omitted (no real source).
 
   // ── 10. Low Attendance Alert (conditional) ────────────────────────────────
   const attendancePct = ws.dashboard.attendancePercent ?? 100;

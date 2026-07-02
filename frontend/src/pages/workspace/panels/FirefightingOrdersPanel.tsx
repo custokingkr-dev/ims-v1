@@ -4,6 +4,7 @@ import { ModuleShell } from '../ui';
 import { formatMoney } from '../utils';
 import type { FirefightingRequest } from '../../../types/workspace';
 import { getDisplayStatus } from '../../../shared/display/status';
+import { markFirefightingVendorPaid } from '../../../api/dashboardCommandCenterApi';
 
 interface FfTrackItem {
   state: string;
@@ -28,6 +29,7 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
   const [ffTimelineLoading, setFfTimelineLoading] = useState(false);
   const [ffTimelineError, setFfTimelineError] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [vendorPaidLoading, setVendorPaidLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -91,6 +93,26 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
     }
   };
 
+  const handleMarkVendorPaid = async (req: FirefightingRequest) => {
+    const note = window.prompt('Payment note / paid by (optional — press OK to skip, Cancel to abort):');
+    if (note === null) return; // user cancelled
+    setVendorPaidLoading(req.code);
+    try {
+      await markFirefightingVendorPaid(req.code, note ? { notes: note } : undefined);
+      if (isSuperAdmin) {
+        const res = await api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } });
+        setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []);
+      }
+      await onRefresh();
+      setToast('Vendor payment recorded');
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to mark vendor as paid';
+      setToast(msg);
+    } finally {
+      setVendorPaidLoading(null);
+    }
+  };
+
   const allReqs = isSuperAdmin ? saFfRequests : adminRequests;
   const displayRows = allReqs.filter((r) => ['FULFILLED', 'APPROVED', 'CUSTOKING_APPROVED'].includes(r.status));
 
@@ -135,6 +157,7 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
                     <td>
                       {row.status === 'APPROVED' && <button className="ck-btn ck-btn-or" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void approveFfCustoking(row)}>Move to Fulfilment</button>}
                       {row.status === 'CUSTOKING_APPROVED' && <button className="ck-btn ck-btn-g" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void fulfillFfRequest(row)}>Mark as Delivered</button>}
+                      {row.status === 'FULFILLED' && <button className="ck-btn ck-btn-b" style={{ fontSize: 11, padding: '5px 12px' }} disabled={vendorPaidLoading === row.code} onClick={() => void handleMarkVendorPaid(row)}>{vendorPaidLoading === row.code ? 'Saving…' : 'Mark Vendor Paid'}</button>}
                     </td>
                   )}
                 </tr>

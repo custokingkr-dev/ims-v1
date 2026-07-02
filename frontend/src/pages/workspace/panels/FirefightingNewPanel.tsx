@@ -95,7 +95,15 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
           description: ffForm.summary,
         });
       } else {
-        await api.post('/workspace/firefighting', { ...ffForm, status: 'draft' });
+        const draftRes = await api.post<{ code: string }>('/workspace/firefighting', ffForm);
+        const draftCode = draftRes.data.code;
+        const draftQuotes = ffForm.quotations.filter(q => q.vendorName.trim());
+        for (const q of draftQuotes) {
+          await api.post(`/ff/requests/${draftCode}/quotations`, {
+            vendorName: q.vendorName, amount: q.amount ? Number(q.amount) : 0,
+            deliveryTimeline: q.deliveryTimeline, notes: q.notes, documentUrl: q.documentUrl,
+          });
+        }
       }
       await onRefresh();
       setPanel('ff-dashboard');
@@ -127,7 +135,16 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
         }
         await api.post(`/ff/requests/${editingCode}/submit`);
       } else {
-        await api.post('/workspace/firefighting', ffForm);
+        const createRes = await api.post<{ code: string }>('/workspace/firefighting', ffForm);
+        const newCode = createRes.data.code;
+        const newQuotes = ffForm.quotations.filter(q => q.vendorName.trim());
+        for (const q of newQuotes) {
+          await api.post(`/ff/requests/${newCode}/quotations`, {
+            vendorName: q.vendorName, amount: q.amount ? Number(q.amount) : 0,
+            deliveryTimeline: q.deliveryTimeline, notes: q.notes, documentUrl: q.documentUrl,
+          });
+        }
+        await api.post(`/ff/requests/${newCode}/submit`);
       }
       await onRefresh();
       setPanel('ff-dashboard');
