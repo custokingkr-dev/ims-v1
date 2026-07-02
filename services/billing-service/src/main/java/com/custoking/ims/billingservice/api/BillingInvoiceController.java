@@ -1,6 +1,7 @@
 package com.custoking.ims.billingservice.api;
 
 import com.custoking.ims.billingservice.api.dto.CreateInvoiceRequest;
+import com.custoking.ims.billingservice.api.dto.UpdateInvoiceRequest;
 import com.custoking.ims.billingservice.application.BillingInvoiceService;
 import com.custoking.ims.billingservice.security.TenantScope;
 import jakarta.validation.Valid;
@@ -104,10 +105,19 @@ public class BillingInvoiceController {
     public Object update(
             @RequestHeader(value = "X-Billing-Service-Token", required = false) String token,
             @PathVariable String id,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody UpdateInvoiceRequest dto) {
         requireToken(token, "billing:write");
         TenantScope.requireSuperAdmin();
-        var invoice = invoices.update(id, request);
+        // Null-gate every field: absent field = key not in map = repo keeps existing value.
+        // Mirrors the containsKey semantics in BillingInvoiceRepository.update().
+        Map<String, Object> body = new HashMap<>();
+        if (dto.description() != null) body.put("description", dto.description());
+        if (dto.qty() != null)         body.put("qty",         dto.qty());
+        if (dto.rate() != null)        body.put("rate",        dto.rate());
+        if (dto.school() != null)      body.put("school",      dto.school());
+        if (dto.status() != null)      body.put("status",      dto.status());
+        if (dto.notes() != null)       body.put("notes",       dto.notes());
+        var invoice = invoices.update(id, body);
         if (invoice == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "invoice not found");
         }

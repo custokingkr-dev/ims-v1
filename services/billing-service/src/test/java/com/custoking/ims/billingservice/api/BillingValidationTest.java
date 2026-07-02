@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -146,6 +147,44 @@ class BillingValidationTest {
         verify(invoices).create(captor.capture());
         // rate=0 is a valid long; controller must forward it as 0, not reject it.
         assertEquals(0L, ((Number) captor.getValue().get("rate")).longValue());
+    }
+
+    // ── PATCH /billing/sa/invoices/{id} — format-invalid field when present ──
+
+    @Test
+    void updateInvoice_negativeQty_returns400WithFieldError() throws Exception {
+        mvc.perform(patch("/api/v1/billing/sa/invoices/INV-2025-01")
+                        .header("X-Billing-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"qty\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.fieldErrors.qty").exists());
+        verifyNoInteractions(invoices);
+    }
+
+    // ── PATCH /billing/sa/invoices/{id} — partial update (single field) ──────
+
+    @Test
+    void updateInvoice_statusOnly_callsRepoWithOnlyStatusKey() throws Exception {
+        when(invoices.update(any(), any())).thenReturn(stubInvoiceRow("INV-2025-01"));
+
+        mvc.perform(patch("/api/v1/billing/sa/invoices/INV-2025-01")
+                        .header("X-Billing-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"status\":\"Paid\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(invoices).update(any(), captor.capture());
+        Map<String, Object> body = captor.getValue();
+        assertEquals("Paid", body.get("status"));
+        assertFalse(body.containsKey("description"), "description must be absent — repo should keep existing value");
+        assertFalse(body.containsKey("qty"),         "qty must be absent — repo should keep existing value");
+        assertFalse(body.containsKey("rate"),        "rate must be absent — repo should keep existing value");
+        assertFalse(body.containsKey("school"),      "school must be absent — repo should keep existing value");
+        assertFalse(body.containsKey("notes"),       "notes must be absent — repo should keep existing value");
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
