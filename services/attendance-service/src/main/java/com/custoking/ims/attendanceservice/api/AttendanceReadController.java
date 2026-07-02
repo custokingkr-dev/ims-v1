@@ -1,9 +1,13 @@
 package com.custoking.ims.attendanceservice.api;
 
+import com.custoking.ims.attendanceservice.api.dto.DailyEntryRequest;
+import com.custoking.ims.attendanceservice.api.dto.SaveSectionRegisterRequest;
+import com.custoking.ims.attendanceservice.api.dto.SubmitSectionRequest;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
 import com.custoking.ims.attendanceservice.persistence.AttendanceReadRepository.StudentAttendanceRow;
 import com.custoking.ims.attendanceservice.security.TenantScope;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -91,32 +96,61 @@ public class AttendanceReadController {
         return execute(() -> attendance.sectionRegister(date, classId, sectionId, scope));
     }
 
+    // ─── PUT /section-register ───────────────────────────────────────────────
+
     @PutMapping("/section-register")
     public Map<String, Object> saveSectionRegister(
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody SaveSectionRegisterRequest body) {
         requireToken(token, "attendance:write");
-        applyResolvedSchool(request);
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(body.schoolId());
+        Map<String, Object> request = new HashMap<>();
+        request.put("classId", body.classId());
+        request.put("sectionId", body.sectionId());
+        if (body.date() != null) request.put("date", body.date());
+        if (body.actorId() != null) request.put("actorId", body.actorId());
+        if (resolvedSchoolId != null) request.put("schoolId", resolvedSchoolId);
+        if (body.records() != null) request.put("records", body.records());
         return execute(() -> attendance.saveSectionRegister(request));
     }
+
+    // ─── POST /daily-entry ───────────────────────────────────────────────────
 
     @PostMapping("/daily-entry")
     public Map<String, Object> dailyEntry(
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody DailyEntryRequest body) {
         requireToken(token, "attendance:write");
-        applyResolvedSchool(request);
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(body.schoolId());
+        Map<String, Object> request = new HashMap<>();
+        request.put("classId", body.classId());
+        request.put("sectionId", body.sectionId());
+        if (body.date() != null) request.put("date", body.date());
+        if (body.totalEnrolled() != null) request.put("totalEnrolled", body.totalEnrolled());
+        if (body.presentCount() != null) request.put("presentCount", body.presentCount());
+        if (body.actorId() != null) request.put("actorId", body.actorId());
+        if (resolvedSchoolId != null) request.put("schoolId", resolvedSchoolId);
         return execute(() -> attendance.saveDailyAttendance(request));
     }
+
+    // ─── POST /submit-section ────────────────────────────────────────────────
 
     @PostMapping("/submit-section")
     public Map<String, Object> submitSection(
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
-            @RequestBody Map<String, Object> request) {
+            @Valid @RequestBody SubmitSectionRequest body) {
         requireToken(token, "attendance:write");
-        applyResolvedSchool(request);
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(body.schoolId());
+        Map<String, Object> request = new HashMap<>();
+        request.put("classId", body.classId());
+        request.put("sectionId", body.sectionId());
+        if (body.date() != null) request.put("date", body.date());
+        if (body.actorId() != null) request.put("actorId", body.actorId());
+        if (resolvedSchoolId != null) request.put("schoolId", resolvedSchoolId);
         return execute(() -> attendance.submitAttendanceSection(request));
     }
+
+    // ─── POST /submit-day — optional body, no required fields; SKIPPED ───────
 
     @PostMapping("/submit-day")
     public Map<String, Object> submitDay(
@@ -168,4 +202,3 @@ public class AttendanceReadController {
         Map<String, Object> run();
     }
 }
-
