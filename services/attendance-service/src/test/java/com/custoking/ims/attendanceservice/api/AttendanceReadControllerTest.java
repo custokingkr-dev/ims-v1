@@ -5,15 +5,18 @@ import com.custoking.ims.attendanceservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -93,5 +96,104 @@ class AttendanceReadControllerTest {
 
         assertThat(response).isSameAs(result);
         verify(attendance).submitAttendanceDay("2026-02-02", 4L, 9L);
+    }
+
+    // --- schoolId containsKey coverage: PUT /section-register ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void saveSectionRegister_schoolIdPresentInMap_nonSuperadmin() {
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        Map<String, Object> request = new HashMap<>();
+        request.put("schoolId", 7L);
+        request.put("date", "2026-02-02");
+        when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
+
+        controller.saveSectionRegister("attendance-token", request);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveSectionRegister(captor.capture());
+        assertThat(captor.getValue().get("schoolId")).isEqualTo(7L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void saveSectionRegister_schoolIdAbsentNotAdded_superadmin() {
+        // @BeforeEach sets SUPERADMIN context
+        Map<String, Object> request = new HashMap<>();
+        request.put("date", "2026-02-02");
+        when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
+
+        controller.saveSectionRegister("attendance-token", request);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveSectionRegister(captor.capture());
+        assertThat(captor.getValue()).doesNotContainKey("schoolId");
+    }
+
+    // --- schoolId containsKey coverage: POST /daily-entry ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void dailyEntry_schoolIdPresentInMap_nonSuperadmin() {
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        Map<String, Object> request = new HashMap<>();
+        request.put("schoolId", 7L);
+        request.put("date", "2026-02-02");
+        when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
+
+        controller.dailyEntry("attendance-token", request);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveDailyAttendance(captor.capture());
+        assertThat(captor.getValue().get("schoolId")).isEqualTo(7L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void dailyEntry_schoolIdAbsentNotAdded_superadmin() {
+        // @BeforeEach sets SUPERADMIN context
+        Map<String, Object> request = new HashMap<>();
+        request.put("date", "2026-02-02");
+        when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
+
+        controller.dailyEntry("attendance-token", request);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).saveDailyAttendance(captor.capture());
+        assertThat(captor.getValue()).doesNotContainKey("schoolId");
+    }
+
+    // --- schoolId containsKey coverage: POST /submit-section ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void submitSection_schoolIdPresentInMap_nonSuperadmin() {
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        Map<String, Object> request = new HashMap<>();
+        request.put("schoolId", 7L);
+        request.put("date", "2026-02-02");
+        when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
+
+        controller.submitSection("attendance-token", request);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).submitAttendanceSection(captor.capture());
+        assertThat(captor.getValue().get("schoolId")).isEqualTo(7L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void submitSection_schoolIdAbsentNotAdded_superadmin() {
+        // @BeforeEach sets SUPERADMIN context
+        Map<String, Object> request = new HashMap<>();
+        request.put("date", "2026-02-02");
+        when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
+
+        controller.submitSection("attendance-token", request);
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(attendance).submitAttendanceSection(captor.capture());
+        assertThat(captor.getValue()).doesNotContainKey("schoolId");
     }
 }
