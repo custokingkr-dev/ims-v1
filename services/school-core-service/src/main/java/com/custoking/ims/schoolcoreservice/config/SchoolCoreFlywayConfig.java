@@ -24,12 +24,15 @@ public class SchoolCoreFlywayConfig {
     // migration datasource needs only a tiny pool. Default Hikari (max 10, min-idle 10)
     // would hold ~10 idle connections per schema forever after migrating — 5 schemas here,
     // which exhausts Cloud SQL's connection limit alongside the other services (SQLState 53300).
+    // Pool size must be >=2: Flyway holds a lock connection while acquiring a second for the
+    // migration itself, so max-1 deadlocks (request timed out, total=1 active=1). min-idle=0
+    // means the pool drains back to ~0 connections once migration completes.
     private DataSource migrationDs(String url, String user, String pass) {
         HikariDataSource ds = new HikariDataSource();
         ds.setJdbcUrl(url);
         ds.setUsername(user);
         ds.setPassword(pass);
-        ds.setMaximumPoolSize(1);
+        ds.setMaximumPoolSize(3);
         ds.setMinimumIdle(0);
         ds.setIdleTimeout(10000);
         ds.setPoolName("flyway-migration");
