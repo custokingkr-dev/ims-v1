@@ -2,8 +2,8 @@ package com.custoking.ims.platformservice.api.internal;
 
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository.ReportingEventInboxRecord;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
