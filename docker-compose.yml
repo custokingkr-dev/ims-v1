@@ -20,32 +20,6 @@ services:
       timeout: 5s
       retries: 20
 
-  audit-service:
-    profiles: ["full"]
-    build:
-      context: ./services/audit-service
-    container_name: custoking-audit-service
-    restart: unless-stopped
-    mem_limit: 768m
-    mem_reservation: 384m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      AUDIT_DB_SCHEMA: audit
-      AUDIT_INGEST_TOKEN: local-dev-audit-ingest-token
-    ports:
-      - "8082:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   identity-service:
     profiles: ["core", "full"]
     build:
@@ -237,11 +211,11 @@ services:
       postgres:
         condition: service_healthy
 
-  reporting-service:
+  platform-service:
     profiles: ["full"]
     build:
-      context: ./services/reporting-service
-    container_name: custoking-reporting-service
+      context: ./services/platform-service
+    container_name: custoking-platform-service
     restart: unless-stopped
     mem_limit: 768m
     mem_reservation: 384m
@@ -255,9 +229,19 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
-      REPORTING_DB_SCHEMA: reporting
+      PLATFORM_DB_SCHEMA: "reporting,notification,audit"
       REPORTING_READ_TOKEN: local-dev-reporting-token
       REPORTING_PUBSUB_PUSH_TOKEN: local-dev-reporting-token
+      AUDIT_INGEST_TOKEN: local-dev-audit-ingest-token
+      NOTIFICATION_DELIVERY_PROVIDER: msg91
+      MSG91_DRY_RUN: "${MSG91_DRY_RUN:-true}"
+      MSG91_AUTH_KEY: "${MSG91_AUTH_KEY:-}"
+      MSG91_TIMEOUT: "${MSG91_TIMEOUT:-10s}"
+      MSG91_EMAIL_DOMAIN: "${MSG91_EMAIL_DOMAIN:-custoking.com}"
+      NOTIFICATION_INBOX_RETRY_ENABLED: "true"
+      NOTIFICATION_INBOX_RETRY_FIXED_DELAY_MS: "5000"
+      NOTIFICATION_PUBSUB_PUSH_TOKEN: local-dev-notification-token
+      NOTIFICATION_STATUS_TOKEN: local-dev-notification-status-token
     ports:
       - "8091:8080"
     depends_on:
@@ -286,40 +270,6 @@ services:
       BILLING_SERVICE_TOKEN: local-dev-billing-token
     ports:
       - "8092:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  notification-service:
-    profiles: ["full"]
-    build:
-      context: ./services/notification-service
-    container_name: custoking-notification-service
-    restart: unless-stopped
-    mem_limit: 768m
-    mem_reservation: 384m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx512m -XX:MaxMetaspaceSize=160m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      NOTIFICATION_DB_SCHEMA: notification
-      NOTIFICATION_DELIVERY_PROVIDER: msg91
-      MSG91_DRY_RUN: "${MSG91_DRY_RUN:-true}"
-      MSG91_AUTH_KEY: "${MSG91_AUTH_KEY:-}"
-      MSG91_TIMEOUT: "${MSG91_TIMEOUT:-10s}"
-      MSG91_EMAIL_DOMAIN: "${MSG91_EMAIL_DOMAIN:-custoking.com}"
-      NOTIFICATION_INBOX_RETRY_ENABLED: "true"
-      NOTIFICATION_INBOX_RETRY_FIXED_DELAY_MS: "5000"
-      NOTIFICATION_PUBSUB_PUSH_TOKEN: local-dev-notification-token
-      NOTIFICATION_STATUS_TOKEN: local-dev-notification-status-token
-    ports:
-      - "8081:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -359,6 +309,10 @@ services:
       # Phase 2: workflow + firefighting are served by the merged operations-service.
       WORKFLOW_UPSTREAM: http://operations-service:8080
       FIREFIGHTING_UPSTREAM: http://operations-service:8080
+      # Phase 2: reporting + notification + audit are served by the merged platform-service.
+      REPORTING_UPSTREAM: http://platform-service:8080
+      NOTIFICATION_UPSTREAM: http://platform-service:8080
+      AUDIT_UPSTREAM: http://platform-service:8080
       REPORTING_SERVICE_TOKEN: local-dev-reporting-token
       BILLING_SERVICE_TOKEN: local-dev-billing-token
       GATEWAY_AUTH_MODE: permissive

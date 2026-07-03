@@ -3,8 +3,8 @@ set -eu
 
 : "${PORT:=80}"
 : "${FRONTEND_UPSTREAM:=http://frontend:80}"
-: "${NOTIFICATION_UPSTREAM:=http://notification-service:8080}"
-: "${AUDIT_UPSTREAM:=http://audit-service:8080}"
+: "${NOTIFICATION_UPSTREAM:=http://platform-service:8080}"
+: "${AUDIT_UPSTREAM:=http://platform-service:8080}"
 : "${IDENTITY_UPSTREAM:=http://identity-service:8080}"
 : "${TENANT_SCHOOL_UPSTREAM:=http://tenant-school-service:8080}"
 : "${STUDENT_UPSTREAM:=http://student-service:8080}"
@@ -13,7 +13,7 @@ set -eu
 : "${CATALOG_UPSTREAM:=http://catalog-service:8080}"
 : "${WORKFLOW_UPSTREAM:=http://operations-service:8080}"
 : "${FIREFIGHTING_UPSTREAM:=http://operations-service:8080}"
-: "${REPORTING_UPSTREAM:=http://reporting-service:8080}"
+: "${REPORTING_UPSTREAM:=http://platform-service:8080}"
 : "${BILLING_UPSTREAM:=http://billing-service:8080}"
 require_token() {
   name="$1"

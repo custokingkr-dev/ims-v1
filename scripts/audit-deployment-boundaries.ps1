@@ -29,10 +29,11 @@ $services = @(
     # Phase 2: workflow + firefighting route groups are both served by the merged operations-service.
     @{ Key = "WORKFLOW"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "WORKFLOW_UPSTREAM"; Token = "WORKFLOW_SERVICE_TOKEN" },
     @{ Key = "FIREFIGHTING"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "FIREFIGHTING_UPSTREAM"; Token = "FIREFIGHTING_SERVICE_TOKEN" },
-    @{ Key = "REPORTING"; Name = "custoking-reporting-service"; Context = "services/reporting-service"; Upstream = "REPORTING_UPSTREAM"; Token = "REPORTING_SERVICE_TOKEN" },
+    # Phase 2: reporting + notification + audit route groups are all served by the merged platform-service.
+    @{ Key = "REPORTING"; Name = "custoking-platform-service"; Context = "services/platform-service"; Upstream = "REPORTING_UPSTREAM"; Token = "REPORTING_SERVICE_TOKEN" },
     @{ Key = "BILLING"; Name = "custoking-billing-service"; Context = "services/billing-service"; Upstream = "BILLING_UPSTREAM"; Token = "BILLING_SERVICE_TOKEN" },
-    @{ Key = "AUDIT"; Name = "custoking-audit-service"; Context = "services/audit-service"; Upstream = "AUDIT_UPSTREAM"; Token = "AUDIT_SERVICE_TOKEN" },
-    @{ Key = "NOTIFICATION"; Name = "custoking-notification-service"; Context = "services/notification-service"; Upstream = "NOTIFICATION_UPSTREAM"; Token = "NOTIFICATION_SERVICE_TOKEN" }
+    @{ Key = "AUDIT"; Name = "custoking-platform-service"; Context = "services/platform-service"; Upstream = "AUDIT_UPSTREAM"; Token = "AUDIT_SERVICE_TOKEN" },
+    @{ Key = "NOTIFICATION"; Name = "custoking-platform-service"; Context = "services/platform-service"; Upstream = "NOTIFICATION_UPSTREAM"; Token = "NOTIFICATION_SERVICE_TOKEN" }
 )
 
 foreach ($retired in @("custoking-backend", "_BACKEND_SERVICE", "_BACKEND_IMAGE", "BACKEND_UPSTREAM", "./backend", "backend:")) {

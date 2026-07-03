@@ -77,7 +77,7 @@ jobs:
 
           docker compose up -d postgres
           wait_healthy postgres custoking-postgres
-          docker compose up -d identity-service tenant-school-service student-service attendance-service fee-service catalog-service operations-service notification-service reporting-service billing-service audit-service frontend api-gateway
+          docker compose up -d identity-service tenant-school-service student-service attendance-service fee-service catalog-service operations-service platform-service billing-service frontend api-gateway
           wait_healthy identity-service custoking-identity-service
           wait_healthy tenant-school-service custoking-tenant-school-service
           wait_healthy student-service custoking-student-service
@@ -85,10 +85,8 @@ jobs:
           wait_healthy fee-service custoking-fee-service
           wait_healthy catalog-service custoking-catalog-service
           wait_healthy operations-service custoking-operations-service
-          wait_healthy notification-service custoking-notification-service
-          wait_healthy reporting-service custoking-reporting-service
+          wait_healthy platform-service custoking-platform-service
           wait_healthy billing-service custoking-billing-service
-          wait_healthy audit-service custoking-audit-service
           wait_healthy frontend custoking-frontend
           wait_healthy api-gateway custoking-api-gateway
 

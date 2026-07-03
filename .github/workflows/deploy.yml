@@ -48,10 +48,8 @@ on:
           - fee-service
           - catalog-service
           - operations-service
-          - reporting-service
+          - platform-service
           - billing-service
-          - audit-service
-          - notification-service
           - all
       run_direct_smoke:
         description: "Run private Cloud Run direct service smoke after all/API/domain deploys."

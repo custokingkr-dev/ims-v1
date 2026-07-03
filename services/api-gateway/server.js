@@ -45,10 +45,11 @@ const upstreams = {
   // Phase 2: workflow + firefighting are served by the merged operations-service.
   workflow: envUrl('WORKFLOW_UPSTREAM', 'http://operations-service:8080'),
   firefighting: envUrl('FIREFIGHTING_UPSTREAM', 'http://operations-service:8080'),
-  reporting: envUrl('REPORTING_UPSTREAM', 'http://reporting-service:8080'),
+  // Phase 2: reporting + notification + audit are served by the merged platform-service.
+  reporting: envUrl('REPORTING_UPSTREAM', 'http://platform-service:8080'),
   billing: envUrl('BILLING_UPSTREAM', 'http://billing-service:8080'),
-  audit: envUrl('AUDIT_UPSTREAM', 'http://audit-service:8080'),
-  notification: envUrl('NOTIFICATION_UPSTREAM', 'http://notification-service:8080'),
+  audit: envUrl('AUDIT_UPSTREAM', 'http://platform-service:8080'),
+  notification: envUrl('NOTIFICATION_UPSTREAM', 'http://platform-service:8080'),
 };
 
 const serviceTokens = {
