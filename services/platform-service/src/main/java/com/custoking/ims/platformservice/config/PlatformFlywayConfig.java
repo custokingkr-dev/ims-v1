@@ -22,12 +22,14 @@ public class PlatformFlywayConfig {
 
     // One-shot, sequential migrations need only a tiny pool; default Hikari (max 10, min-idle 10)
     // would hold idle connections per schema forever after migrating and exhaust Cloud SQL (53300).
+    // Pool must allow >=2: Flyway holds a lock connection while acquiring a second for the
+    // migration, so max-1 deadlocks. min-idle=0 drains the pool back to ~0 after migrating.
     private DataSource migrationDs(String url, String user, String pass) {
         HikariDataSource ds = new HikariDataSource();
         ds.setJdbcUrl(url);
         ds.setUsername(user);
         ds.setPassword(pass);
-        ds.setMaximumPoolSize(1);
+        ds.setMaximumPoolSize(3);
         ds.setMinimumIdle(0);
         ds.setIdleTimeout(10000);
         ds.setPoolName("flyway-migration");
