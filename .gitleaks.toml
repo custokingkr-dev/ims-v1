@@ -24,7 +24,12 @@ paths = [
 ]
 # Belt-and-suspenders: never treat obvious placeholder tokens as secrets,
 # even if they appear outside the example files above.
+# The last entry is the self-describing, test-only JWT secret used by the gateway
+# local-JWT-verification tests (server.test.js, JwtServiceTest.java) and quoted in
+# their plan doc. Allowlisting the exact literal keeps the scanner at full strength
+# on the rest of those files (unlike a path allowlist).
 regexes = [
   '''replace_with[A-Za-z0-9_]*''',
   '''change_me[A-Za-z0-9_]*''',
+  '''test-jwt-secret-at-least-32-characters-long''',
 ]
