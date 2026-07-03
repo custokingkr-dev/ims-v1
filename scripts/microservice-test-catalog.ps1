@@ -1,11 +1,7 @@
 function Get-MicroserviceTestCatalog {
     return @(
         @{ Name = "identity-service"; Path = "services/identity-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
-        @{ Name = "tenant-school-service"; Path = "services/tenant-school-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
-        @{ Name = "student-service"; Path = "services/student-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
-        @{ Name = "attendance-service"; Path = "services/attendance-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
-        @{ Name = "fee-service"; Path = "services/fee-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
-        @{ Name = "catalog-service"; Path = "services/catalog-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
+        @{ Name = "school-core-service"; Path = "services/school-core-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
         @{ Name = "operations-service"; Path = "services/operations-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
         @{ Name = "platform-service"; Path = "services/platform-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },
         @{ Name = "billing-service"; Path = "services/billing-service"; Tool = "maven"; Command = @("mvn", "-B", "test", "--no-transfer-progress") },

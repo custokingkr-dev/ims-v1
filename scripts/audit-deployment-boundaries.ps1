@@ -21,11 +21,11 @@ $violations = New-Object System.Collections.Generic.List[string]
 
 $services = @(
     @{ Key = "IDENTITY"; Name = "custoking-identity-service"; Context = "services/identity-service"; Upstream = "IDENTITY_UPSTREAM"; Token = "IDENTITY_SERVICE_TOKEN" },
-    @{ Key = "TENANT_SCHOOL"; Name = "custoking-tenant-school-service"; Context = "services/tenant-school-service"; Upstream = "TENANT_SCHOOL_UPSTREAM"; Token = "TENANT_SCHOOL_SERVICE_TOKEN" },
-    @{ Key = "STUDENT"; Name = "custoking-student-service"; Context = "services/student-service"; Upstream = "STUDENT_UPSTREAM"; Token = "STUDENT_SERVICE_TOKEN" },
-    @{ Key = "ATTENDANCE"; Name = "custoking-attendance-service"; Context = "services/attendance-service"; Upstream = "ATTENDANCE_UPSTREAM"; Token = "ATTENDANCE_SERVICE_TOKEN" },
-    @{ Key = "FEE"; Name = "custoking-fee-service"; Context = "services/fee-service"; Upstream = "FEE_UPSTREAM"; Token = "FEE_SERVICE_TOKEN" },
-    @{ Key = "CATALOG"; Name = "custoking-catalog-service"; Context = "services/catalog-service"; Upstream = "CATALOG_UPSTREAM"; Token = "CATALOG_SERVICE_TOKEN" },
+    @{ Key = "TENANT_SCHOOL"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "TENANT_SCHOOL_UPSTREAM"; Token = "TENANT_SCHOOL_SERVICE_TOKEN" },
+    @{ Key = "STUDENT"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "STUDENT_UPSTREAM"; Token = "STUDENT_SERVICE_TOKEN" },
+    @{ Key = "ATTENDANCE"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "ATTENDANCE_UPSTREAM"; Token = "ATTENDANCE_SERVICE_TOKEN" },
+    @{ Key = "FEE"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "FEE_UPSTREAM"; Token = "FEE_SERVICE_TOKEN" },
+    @{ Key = "CATALOG"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "CATALOG_UPSTREAM"; Token = "CATALOG_SERVICE_TOKEN" },
     # Phase 2: workflow + firefighting route groups are both served by the merged operations-service.
     @{ Key = "WORKFLOW"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "WORKFLOW_UPSTREAM"; Token = "WORKFLOW_SERVICE_TOKEN" },
     @{ Key = "FIREFIGHTING"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "FIREFIGHTING_UPSTREAM"; Token = "FIREFIGHTING_SERVICE_TOKEN" },

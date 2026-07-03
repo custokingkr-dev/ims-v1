@@ -37,11 +37,11 @@ const rateBuckets = new Map();
 const upstreams = {
   frontend: envUrl('FRONTEND_UPSTREAM', 'http://frontend:80'),
   identity: envUrl('IDENTITY_UPSTREAM', 'http://identity-service:8080'),
-  tenant: envUrl('TENANT_SCHOOL_UPSTREAM', 'http://tenant-school-service:8080'),
-  student: envUrl('STUDENT_UPSTREAM', 'http://student-service:8080'),
-  attendance: envUrl('ATTENDANCE_UPSTREAM', 'http://attendance-service:8080'),
-  fee: envUrl('FEE_UPSTREAM', 'http://fee-service:8080'),
-  catalog: envUrl('CATALOG_UPSTREAM', 'http://catalog-service:8080'),
+  tenant: envUrl('TENANT_SCHOOL_UPSTREAM', 'http://school-core-service:8080'),
+  student: envUrl('STUDENT_UPSTREAM', 'http://school-core-service:8080'),
+  attendance: envUrl('ATTENDANCE_UPSTREAM', 'http://school-core-service:8080'),
+  fee: envUrl('FEE_UPSTREAM', 'http://school-core-service:8080'),
+  catalog: envUrl('CATALOG_UPSTREAM', 'http://school-core-service:8080'),
   // Phase 2: workflow + firefighting are served by the merged operations-service.
   workflow: envUrl('WORKFLOW_UPSTREAM', 'http://operations-service:8080'),
   firefighting: envUrl('FIREFIGHTING_UPSTREAM', 'http://operations-service:8080'),

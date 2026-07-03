@@ -12,11 +12,7 @@ on:
           - api-gateway
           - frontend
           - identity-service
-          - tenant-school-service
-          - student-service
-          - attendance-service
-          - fee-service
-          - catalog-service
+          - school-core-service
           - operations-service
           - platform-service
           - billing-service

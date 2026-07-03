@@ -45,7 +45,7 @@ services:
       APP_COOKIE_SAME_SITE: Strict
       IDENTITY_DB_SCHEMA: identity
       IDENTITY_INTROSPECTION_TOKEN: local-dev-identity-token
-      TENANT_SCHOOL_BASE_URL: http://tenant-school-service:8080
+      TENANT_SCHOOL_BASE_URL: http://school-core-service:8080
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
       TENANT_SCHOOL_CLOUD_RUN_AUTH: never
     ports:
@@ -54,135 +54,36 @@ services:
       postgres:
         condition: service_healthy
 
-  tenant-school-service:
+  school-core-service:
     profiles: ["core", "full"]
     build:
-      context: ./services/tenant-school-service
-    container_name: custoking-tenant-school-service
+      context: ./services/school-core-service
+    container_name: custoking-school-core-service
     restart: unless-stopped
-    mem_limit: 640m
-    mem_reservation: 320m
+    mem_limit: 900m
+    mem_reservation: 400m
     environment:
-      JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
+      JAVA_OPTS: "-Xms160m -Xmx560m -XX:MaxMetaspaceSize=192m"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: app_rt
       SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
-      TENANT_SCHOOL_DB_SCHEMA: tenant_school
+      SCHOOLCORE_DB_SCHEMA: "tenant_school,student,attendance,fee,catalog"
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
+      STUDENT_READ_TOKEN: local-dev-student-token
+      ATTENDANCE_READ_TOKEN: local-dev-attendance-token
+      FEE_READ_TOKEN: local-dev-fee-token
+      CATALOG_READ_TOKEN: local-dev-catalog-token
     ports:
       - "8084:8080"
     depends_on:
       postgres:
         condition: service_healthy
 
-  student-service:
-    profiles: ["core", "full"]
-    build:
-      context: ./services/student-service
-    container_name: custoking-student-service
-    restart: unless-stopped
-    mem_limit: 640m
-    mem_reservation: 320m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      STUDENT_DB_SCHEMA: student
-      STUDENT_READ_TOKEN: local-dev-student-token
-    ports:
-      - "8085:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  attendance-service:
-    profiles: ["core", "full"]
-    build:
-      context: ./services/attendance-service
-    container_name: custoking-attendance-service
-    restart: unless-stopped
-    mem_limit: 640m
-    mem_reservation: 320m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      ATTENDANCE_DB_SCHEMA: attendance
-      ATTENDANCE_READ_TOKEN: local-dev-attendance-token
-    ports:
-      - "8086:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  fee-service:
-    profiles: ["core", "full"]
-    build:
-      context: ./services/fee-service
-    container_name: custoking-fee-service
-    restart: unless-stopped
-    mem_limit: 640m
-    mem_reservation: 320m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      FEE_DB_SCHEMA: fee
-      FEE_READ_TOKEN: local-dev-fee-token
-    ports:
-      - "8087:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  catalog-service:
-    profiles: ["full"]
-    build:
-      context: ./services/catalog-service
-    container_name: custoking-catalog-service
-    restart: unless-stopped
-    mem_limit: 640m
-    mem_reservation: 320m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      CATALOG_READ_TOKEN: local-dev-catalog-token
-      CATALOG_DB_SCHEMA: catalog
-    ports:
-      - "8088:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
 
   operations-service:
     profiles: ["full"]
