@@ -24,6 +24,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- Spring Boot 4.0 split RestClientAutoConfiguration (which supplies the
+             RestClient.Builder bean TenantSchoolClient depends on) out of
+             spring-boot-starter-web into its own module. Under 3.5.x this bean was
+             provided transitively; add the module explicitly to restore it. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
@@ -70,6 +78,18 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <!-- Spring Boot 4.0 split Flyway autoconfiguration (FlywayAutoConfiguration,
+             which auto-runs migrations on startup and wires the EntityManagerFactory
+             to depend on it) out of spring-boot-autoconfigure into its own module.
+             Depending on flyway-core alone (as under 3.5.x) no longer triggers
+             autoconfiguration, so Hibernate's ddl-auto=validate now runs before
+             Flyway ever migrates the schema. Add the autoconfiguration module
+             explicitly to restore the prior "Flyway runs before Hibernate validates"
+             behavior. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
