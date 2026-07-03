@@ -55,8 +55,7 @@ full_only_services = {
     'notification-service': 'http://localhost:8081/actuator/health',
     'audit-service': 'http://localhost:8082/actuator/health',
     'catalog-service': 'http://localhost:8088/actuator/health',
-    'workflow-service': 'http://localhost:8089/actuator/health',
-    'firefighting-service': 'http://localhost:8090/actuator/health',
+    'operations-service': 'http://localhost:8089/actuator/health',
     'reporting-service': 'http://localhost:8091/actuator/health',
     'billing-service': 'http://localhost:8092/actuator/health',
 }
@@ -64,8 +63,7 @@ full_only_service_names = [
     'notification-service',
     'audit-service',
     'catalog-service',
-    'workflow-service',
-    'firefighting-service',
+    'operations-service',
     'reporting-service',
     'billing-service',
 ]

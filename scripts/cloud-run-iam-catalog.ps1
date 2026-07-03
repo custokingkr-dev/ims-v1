@@ -6,8 +6,7 @@ function Get-CloudRunIamCatalog {
         [pscustomobject]@{ Name = "attendance-service"; CloudRunService = "custoking-attendance-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "fee-service"; CloudRunService = "custoking-fee-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "catalog-service"; CloudRunService = "custoking-catalog-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
-        [pscustomobject]@{ Name = "workflow-service"; CloudRunService = "custoking-workflow-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
-        [pscustomobject]@{ Name = "firefighting-service"; CloudRunService = "custoking-firefighting-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
+        [pscustomobject]@{ Name = "operations-service"; CloudRunService = "custoking-operations-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "reporting-service"; CloudRunService = "custoking-reporting-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "billing-service"; CloudRunService = "custoking-billing-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "audit-service"; CloudRunService = "custoking-audit-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }

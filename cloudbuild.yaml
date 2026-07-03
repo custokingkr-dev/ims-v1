@@ -27,8 +27,7 @@ steps:
           "attendance-service:services/attendance-service:custoking-attendance-service"
           "fee-service:services/fee-service:custoking-fee-service"
           "catalog-service:services/catalog-service:custoking-catalog-service"
-          "workflow-service:services/workflow-service:custoking-workflow-service"
-          "firefighting-service:services/firefighting-service:custoking-firefighting-service"
+          "operations-service:services/operations-service:custoking-operations-service"
           "reporting-service:services/reporting-service:custoking-reporting-service"
           "billing-service:services/billing-service:custoking-billing-service"
           "audit-service:services/audit-service:custoking-audit-service"
@@ -131,10 +130,11 @@ steps:
           "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,FEE_READ_TOKEN=fee-read-token:latest"
         deploy_service catalog-service custoking-catalog-service custoking-catalog-service "CATALOG_DB_SCHEMA=catalog" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
-        deploy_service workflow-service custoking-workflow-service custoking-workflow-service "WORKFLOW_DB_SCHEMA=workflow" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest"
-        deploy_service firefighting-service custoking-firefighting-service custoking-firefighting-service "FIREFIGHTING_DB_SCHEMA=firefighting" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
+        # operations-service = workflow + firefighting (Phase 2 merge). Owns both schemas
+        # (OPERATIONS_DB_SCHEMA defaults to "workflow,firefighting" in application.yml — not set
+        # here because a comma in a --set-env-vars value would be mis-parsed). Accepts both tokens.
+        deploy_service operations-service custoking-operations-service custoking-operations-service "OPERATIONS_MERGED=true" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
         deploy_service reporting-service custoking-reporting-service custoking-reporting-service "REPORTING_DB_SCHEMA=reporting" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest"
         deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing" \
@@ -191,8 +191,7 @@ steps:
           ATTENDANCE_URL="$(url custoking-attendance-service)"
           FEE_URL="$(url custoking-fee-service)"
           CATALOG_URL="$(url custoking-catalog-service)"
-          WORKFLOW_URL="$(url custoking-workflow-service)"
-          FIREFIGHTING_URL="$(url custoking-firefighting-service)"
+          OPERATIONS_URL="$(url custoking-operations-service)"
           REPORTING_URL="$(url custoking-reporting-service)"
           BILLING_URL="$(url custoking-billing-service)"
           AUDIT_URL="$(url custoking-audit-service)"
@@ -201,7 +200,7 @@ steps:
           gcloud run deploy "${_API_GATEWAY_SERVICE}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-api-gateway:${_COMMIT_SHA}" \
             --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 --cpu-boost --min-instances=1 \
-            --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,GATEWAY_CORS_ALLOWED_ORIGINS=$${FRONTEND_URL},FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${TENANT_URL},STUDENT_UPSTREAM=$${STUDENT_URL},ATTENDANCE_UPSTREAM=$${ATTENDANCE_URL},FEE_UPSTREAM=$${FEE_URL},CATALOG_UPSTREAM=$${CATALOG_URL},WORKFLOW_UPSTREAM=$${WORKFLOW_URL},FIREFIGHTING_UPSTREAM=$${FIREFIGHTING_URL},REPORTING_UPSTREAM=$${REPORTING_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${AUDIT_URL},NOTIFICATION_UPSTREAM=$${NOTIFICATION_URL}" \
+            --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,GATEWAY_CORS_ALLOWED_ORIGINS=$${FRONTEND_URL},FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${TENANT_URL},STUDENT_UPSTREAM=$${STUDENT_URL},ATTENDANCE_UPSTREAM=$${ATTENDANCE_URL},FEE_UPSTREAM=$${FEE_URL},CATALOG_UPSTREAM=$${CATALOG_URL},WORKFLOW_UPSTREAM=$${OPERATIONS_URL},FIREFIGHTING_UPSTREAM=$${OPERATIONS_URL},REPORTING_UPSTREAM=$${REPORTING_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${AUDIT_URL},NOTIFICATION_UPSTREAM=$${NOTIFICATION_URL}" \
             --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token:latest,STUDENT_SERVICE_TOKEN=student-read-token:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token:latest,FEE_SERVICE_TOKEN=fee-read-token:latest,CATALOG_SERVICE_TOKEN=catalog-read-token:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token:latest,REPORTING_SERVICE_TOKEN=reporting-read-token:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token:latest"
 
           GATEWAY_URL="$(url "${_API_GATEWAY_SERVICE}")"
