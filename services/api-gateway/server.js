@@ -2,7 +2,7 @@
 
 const http = require('http');
 const crypto = require('crypto');
-const { randomUUID } = require('crypto');
+const { randomUUID } = crypto;
 
 const PORT = Number(process.env.PORT || 80);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
@@ -292,6 +292,7 @@ function verifyJwtLocally(token, secret, nowSeconds) {
   // Enforce HS512 only — rejects "none" and algorithm-confusion attacks.
   if (!header || header.alg !== 'HS512') return null;
   const expected = crypto.createHmac('sha512', secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
+  // base64url signatures are ASCII, so comparing the encoded text byte-for-byte is equivalent to comparing raw bytes.
   const provided = Buffer.from(sigB64);
   const expectedBuf = Buffer.from(expected);
   if (provided.length !== expectedBuf.length) return null;
@@ -320,7 +321,7 @@ function principalFromClaims(claims) {
 async function authenticate(req, requestId, opts = {}) {
   const localVerify = opts.localVerify !== undefined ? opts.localVerify : LOCAL_JWT_VERIFY;
   const secret = opts.secret !== undefined ? opts.secret : APP_JWT_SECRET;
-  const introspectFn = opts.introspect || introspect;
+  const introspectFn = opts.introspect !== undefined ? opts.introspect : introspect;
   const now = opts.now !== undefined ? opts.now : Math.floor(Date.now() / 1000);
 
   const auth = req.headers.authorization || '';

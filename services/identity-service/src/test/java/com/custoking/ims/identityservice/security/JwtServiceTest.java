@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JwtServiceTest {
 
@@ -49,6 +48,6 @@ class JwtServiceTest {
         assertEquals("refresh", claims.get("type"));
         assertNull(claims.get("uid"));
         assertNull(claims.get("sid"));
-        assertTrue(claims.get("ver") == null);
+        assertNull(claims.get("ver"));
     }
 }

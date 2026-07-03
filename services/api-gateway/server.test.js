@@ -414,6 +414,13 @@ test('verifyJwtLocally rejects a malformed token', () => {
   assert.equal(verifyJwtLocally('not-a-token', JWT_SECRET, NOW), null);
 });
 
+test('verifyJwtLocally rejects a 3-segment token whose payload is not valid JSON', () => {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS512', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from('not-json-at-all').toString('base64url');
+  const sig = crypto.createHmac('sha512', JWT_SECRET).update(`${header}.${payload}`).digest('base64url');
+  assert.equal(verifyJwtLocally(`${header}.${payload}.${sig}`, JWT_SECRET, NOW), null);
+});
+
 test('principalFromClaims maps an enriched claim set', () => {
   assert.deepEqual(principalFromClaims(enrichedClaims), {
     userId: 42, email: 'a@b.com', role: 'ADMIN', branchId: 7, zoneId: 3,
