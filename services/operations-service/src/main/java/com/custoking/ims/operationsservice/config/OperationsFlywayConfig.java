@@ -2,7 +2,7 @@ package com.custoking.ims.operationsservice.config;
 
 import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.jdbc.DataSourceBuilder;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
@@ -20,8 +20,18 @@ import javax.sql.DataSource;
 @Configuration
 public class OperationsFlywayConfig {
 
+    // One-shot, sequential migrations need only a tiny pool; default Hikari (max 10, min-idle 10)
+    // would hold idle connections per schema forever after migrating and exhaust Cloud SQL (53300).
     private DataSource migrationDs(String url, String user, String pass) {
-        return DataSourceBuilder.create().url(url).username(user).password(pass).build();
+        HikariDataSource ds = new HikariDataSource();
+        ds.setJdbcUrl(url);
+        ds.setUsername(user);
+        ds.setPassword(pass);
+        ds.setMaximumPoolSize(1);
+        ds.setMinimumIdle(0);
+        ds.setIdleTimeout(10000);
+        ds.setPoolName("flyway-migration");
+        return ds;
     }
 
     @Bean(initMethod = "migrate")

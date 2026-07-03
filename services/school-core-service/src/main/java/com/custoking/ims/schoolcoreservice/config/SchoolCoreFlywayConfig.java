@@ -1,8 +1,8 @@
 package com.custoking.ims.schoolcoreservice.config;
 
+import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
@@ -20,8 +20,20 @@ import javax.sql.DataSource;
 @Configuration
 public class SchoolCoreFlywayConfig {
 
+    // Migrations are one-shot and run sequentially (@DependsOn chain), so each per-schema
+    // migration datasource needs only a tiny pool. Default Hikari (max 10, min-idle 10)
+    // would hold ~10 idle connections per schema forever after migrating — 5 schemas here,
+    // which exhausts Cloud SQL's connection limit alongside the other services (SQLState 53300).
     private DataSource migrationDs(String url, String user, String pass) {
-        return DataSourceBuilder.create().url(url).username(user).password(pass).build();
+        HikariDataSource ds = new HikariDataSource();
+        ds.setJdbcUrl(url);
+        ds.setUsername(user);
+        ds.setPassword(pass);
+        ds.setMaximumPoolSize(1);
+        ds.setMinimumIdle(0);
+        ds.setIdleTimeout(10000);
+        ds.setPoolName("flyway-migration");
+        return ds;
     }
 
     @Bean(initMethod = "migrate")
