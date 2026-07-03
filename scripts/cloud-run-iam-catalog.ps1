@@ -7,10 +7,8 @@ function Get-CloudRunIamCatalog {
         [pscustomobject]@{ Name = "fee-service"; CloudRunService = "custoking-fee-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "catalog-service"; CloudRunService = "custoking-catalog-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
         [pscustomobject]@{ Name = "operations-service"; CloudRunService = "custoking-operations-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
-        [pscustomobject]@{ Name = "reporting-service"; CloudRunService = "custoking-reporting-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
+        [pscustomobject]@{ Name = "platform-service"; CloudRunService = "custoking-platform-service"; Exposure = "private"; RequiredInvokers = @("api-gateway", "pubsubPush") }
         [pscustomobject]@{ Name = "billing-service"; CloudRunService = "custoking-billing-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
-        [pscustomobject]@{ Name = "audit-service"; CloudRunService = "custoking-audit-service"; Exposure = "private"; RequiredInvokers = @("api-gateway") }
-        [pscustomobject]@{ Name = "notification-service"; CloudRunService = "custoking-notification-service"; Exposure = "private"; RequiredInvokers = @("api-gateway", "pubsubPush") }
         [pscustomobject]@{ Name = "frontend"; CloudRunService = "custoking-frontend"; Exposure = "public"; RequiredInvokers = @("allUsers") }
         [pscustomobject]@{ Name = "api-gateway"; CloudRunService = "custoking-api-gateway"; Exposure = "public"; RequiredInvokers = @("allUsers") }
     )

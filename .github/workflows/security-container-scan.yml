@@ -18,10 +18,8 @@ on:
           - fee-service
           - catalog-service
           - operations-service
-          - reporting-service
+          - platform-service
           - billing-service
-          - audit-service
-          - notification-service
   schedule:
     - cron: "0 21 * * 0"
 

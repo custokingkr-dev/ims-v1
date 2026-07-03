@@ -1,9 +1,0 @@
-target
-.mvn
-mvnw
-mvnw.cmd
-*.iml
-.idea
-.settings
-.classpath
-.project

@@ -21,8 +21,8 @@ $compose = Read-RequiredFile $ComposeFile
 $cloudBuild = Read-RequiredFile $CloudBuildFile
 
 $serviceContracts = @(
-    @{ Service = "notification-service"; Header = "X-Notification-Service-Token"; Secret = "notification-status-token"; Env = "NOTIFICATION_SERVICE_TOKEN" },
-    @{ Service = "audit-service"; Header = "X-Audit-Service-Token"; Secret = "audit-ingest-token"; Env = "AUDIT_SERVICE_TOKEN" },
+    @{ Service = "platform-service"; Header = "X-Notification-Service-Token"; Secret = "notification-status-token"; Env = "NOTIFICATION_SERVICE_TOKEN" },
+    @{ Service = "platform-service"; Header = "X-Audit-Service-Token"; Secret = "audit-ingest-token"; Env = "AUDIT_SERVICE_TOKEN" },
     @{ Service = "identity-service"; Header = "X-Identity-Service-Token"; Secret = "identity-introspection-token"; Env = "IDENTITY_SERVICE_TOKEN" },
     @{ Service = "tenant-school-service"; Header = "X-Tenant-School-Token"; Secret = "tenant-school-read-token"; Env = "TENANT_SCHOOL_SERVICE_TOKEN" },
     @{ Service = "student-service"; Header = "X-Student-Service-Token"; Secret = "student-read-token"; Env = "STUDENT_SERVICE_TOKEN" },
@@ -32,7 +32,7 @@ $serviceContracts = @(
     # Phase 2: both token/header pairs are validated by the merged operations-service (accepts both).
     @{ Service = "operations-service"; Header = "X-Workflow-Service-Token"; Secret = "workflow-read-token"; Env = "WORKFLOW_SERVICE_TOKEN" },
     @{ Service = "operations-service"; Header = "X-Firefighting-Service-Token"; Secret = "firefighting-read-token"; Env = "FIREFIGHTING_SERVICE_TOKEN" },
-    @{ Service = "reporting-service"; Header = "X-Reporting-Service-Token"; Secret = "reporting-read-token"; Env = "REPORTING_SERVICE_TOKEN" },
+    @{ Service = "platform-service"; Header = "X-Reporting-Service-Token"; Secret = "reporting-read-token"; Env = "REPORTING_SERVICE_TOKEN" },
     @{ Service = "billing-service"; Header = "X-Billing-Service-Token"; Secret = "billing-service-token"; Env = "BILLING_SERVICE_TOKEN" }
 )
 

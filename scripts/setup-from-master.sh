@@ -67,10 +67,8 @@ FULL_CONTAINERS=(
     "custoking-fee-service:8087"
     "custoking-catalog-service:8088"
     "custoking-operations-service:8089"
-    "custoking-reporting-service:8091"
+        "custoking-platform-service:8091"
     "custoking-billing-service:8092"
-    "custoking-notification-service:8081"
-    "custoking-audit-service:8082"
     "custoking-api-gateway:80"
 )
 CORE_CONTAINERS=(
