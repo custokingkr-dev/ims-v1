@@ -8,6 +8,12 @@ const PORT = Number(process.env.PORT || 80);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
 const CLOUD_RUN_AUTH = (process.env.GATEWAY_CLOUD_RUN_AUTH || 'auto').toLowerCase();
 
+// Task 2.3: verify the access token locally instead of introspecting per request.
+// 'disabled' forces pure introspection (instant rollback lever, no redeploy).
+const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'enabled').toLowerCase() !== 'disabled';
+const APP_JWT_SECRET = process.env.APP_JWT_SECRET || '';
+let warnedMissingJwtSecret = false;
+
 // --- Edge security controls (Phase 0 / SEC-P0-2) ---
 // Strict CORS: an explicit origin allowlist; never `*` together with credentials.
 const CORS_ALLOWED_ORIGINS = (process.env.GATEWAY_CORS_ALLOWED_ORIGINS || '')
@@ -195,7 +201,7 @@ const server = http.createServer(async (req, res) => {
     const matched = routes.find((candidate) => candidate.matches(parsed.pathname));
     if (matched) {
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
-        const principal = await introspect(req, requestId);
+        const principal = await authenticate(req, requestId);
         if (!principal) {
           sendJson(res, 401, { message: 'Unauthorized' });
           return;
@@ -306,6 +312,33 @@ function principalFromClaims(claims) {
     branchId: claims.sid ?? null,
     zoneId: claims.zid ?? null,
   };
+}
+
+// Resolve the caller's principal. Prefers local HS512 verification; falls back to
+// introspection for un-enriched legacy tokens or when local verify is off/misconfigured.
+// `opts` overrides are for deterministic unit tests.
+async function authenticate(req, requestId, opts = {}) {
+  const localVerify = opts.localVerify !== undefined ? opts.localVerify : LOCAL_JWT_VERIFY;
+  const secret = opts.secret !== undefined ? opts.secret : APP_JWT_SECRET;
+  const introspectFn = opts.introspect || introspect;
+  const now = opts.now !== undefined ? opts.now : Math.floor(Date.now() / 1000);
+
+  const auth = req.headers.authorization || '';
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!match) return null;
+
+  if (localVerify && secret) {
+    const claims = verifyJwtLocally(match[1], secret, now);
+    if (!claims) return null; // bad signature / expired / wrong alg → 401, no fallback
+    const principal = principalFromClaims(claims);
+    if (principal) return principal; // enriched token → no network call
+    return introspectFn(req, requestId); // valid but un-enriched → fall back
+  }
+  if (localVerify && !secret && !warnedMissingJwtSecret) {
+    warnedMissingJwtSecret = true;
+    console.warn('gateway.localjwt: GATEWAY_LOCAL_JWT_VERIFY enabled but APP_JWT_SECRET unset; using introspection');
+  }
+  return introspectFn(req, requestId);
 }
 
 async function introspect(req, requestId) {
@@ -587,4 +620,5 @@ module.exports = {
   bodyTooLarge,
   verifyJwtLocally,
   principalFromClaims,
+  authenticate,
 };

@@ -43,6 +43,7 @@ const {
   bodyTooLarge,
   verifyJwtLocally,
   principalFromClaims,
+  authenticate,
 } = require('./server');
 
 test.after(() => {
@@ -428,6 +429,67 @@ test('principalFromClaims yields null branchId/zoneId when sid/zid absent', () =
   const p = principalFromClaims({ sub: 's@b.com', role: 'SUPERADMIN', uid: 1, ver: 2 });
   assert.equal(p.branchId, null);
   assert.equal(p.zoneId, null);
+});
+
+// --- authenticate() dispatch (Task 2.3) ---
+
+function reqWithToken(token) {
+  return { headers: token ? { authorization: `Bearer ${token}` } : {} };
+}
+
+test('authenticate uses local claims for an enriched token and does NOT introspect', async () => {
+  let calls = 0;
+  const introspectStub = async () => { calls += 1; return { userId: 999 }; };
+  const token = signHS512(enrichedClaims, JWT_SECRET);
+  const principal = await authenticate(reqWithToken(token), 'req-1', {
+    localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+  });
+  assert.equal(calls, 0);
+  assert.equal(principal.userId, 42);
+  assert.equal(principal.branchId, 7);
+});
+
+test('authenticate falls back to introspection for a valid un-enriched token', async () => {
+  let calls = 0;
+  const introspectStub = async () => { calls += 1; return { userId: 5, branchId: 8 }; };
+  const legacy = signHS512({ sub: 'a@b.com', role: 'ADMIN', exp: NOW + 900 }, JWT_SECRET);
+  const principal = await authenticate(reqWithToken(legacy), 'req-2', {
+    localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+  });
+  assert.equal(calls, 1);
+  assert.equal(principal.userId, 5);
+});
+
+test('authenticate returns null (no introspection) for a bad-signature token', async () => {
+  let calls = 0;
+  const introspectStub = async () => { calls += 1; return { userId: 1 }; };
+  const bad = `${signHS512(enrichedClaims, JWT_SECRET).slice(0, -2)}xx`;
+  const principal = await authenticate(reqWithToken(bad), 'req-3', {
+    localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+  });
+  assert.equal(calls, 0);
+  assert.equal(principal, null);
+});
+
+test('authenticate always introspects when local verify is disabled', async () => {
+  let calls = 0;
+  const introspectStub = async () => { calls += 1; return { userId: 77 }; };
+  const token = signHS512(enrichedClaims, JWT_SECRET);
+  const principal = await authenticate(reqWithToken(token), 'req-4', {
+    localVerify: false, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+  });
+  assert.equal(calls, 1);
+  assert.equal(principal.userId, 77);
+});
+
+test('authenticate returns null and does not introspect when no bearer token is present', async () => {
+  let calls = 0;
+  const introspectStub = async () => { calls += 1; return { userId: 1 }; };
+  const principal = await authenticate(reqWithToken(null), 'req-5', {
+    localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+  });
+  assert.equal(calls, 0);
+  assert.equal(principal, null);
 });
 
 async function listen() {
