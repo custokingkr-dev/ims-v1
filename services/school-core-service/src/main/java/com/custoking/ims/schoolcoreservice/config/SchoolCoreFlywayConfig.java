@@ -33,7 +33,9 @@ public class SchoolCoreFlywayConfig {
                 .schemas("tenant_school")
                 .defaultSchema("tenant_school")
                 .locations("classpath:db/migration/tenant_school")
-                .table("flyway_schema_history")
+                // The original tenant-school-service used this non-default history table name;
+                // it must match so Flyway finds the already-applied migrations in prod.
+                .table("flyway_schema_history_tenant_school")
                 .load();
     }
 
