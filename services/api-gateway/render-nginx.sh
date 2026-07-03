@@ -11,8 +11,8 @@ set -eu
 : "${ATTENDANCE_UPSTREAM:=http://attendance-service:8080}"
 : "${FEE_UPSTREAM:=http://fee-service:8080}"
 : "${CATALOG_UPSTREAM:=http://catalog-service:8080}"
-: "${WORKFLOW_UPSTREAM:=http://workflow-service:8080}"
-: "${FIREFIGHTING_UPSTREAM:=http://firefighting-service:8080}"
+: "${WORKFLOW_UPSTREAM:=http://operations-service:8080}"
+: "${FIREFIGHTING_UPSTREAM:=http://operations-service:8080}"
 : "${REPORTING_UPSTREAM:=http://reporting-service:8080}"
 : "${BILLING_UPSTREAM:=http://billing-service:8080}"
 require_token() {

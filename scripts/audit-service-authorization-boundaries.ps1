@@ -29,8 +29,9 @@ $serviceContracts = @(
     @{ Service = "attendance-service"; Header = "X-Attendance-Service-Token"; Secret = "attendance-read-token"; Env = "ATTENDANCE_SERVICE_TOKEN" },
     @{ Service = "fee-service"; Header = "X-Fee-Service-Token"; Secret = "fee-read-token"; Env = "FEE_SERVICE_TOKEN" },
     @{ Service = "catalog-service"; Header = "X-Catalog-Service-Token"; Secret = "catalog-read-token"; Env = "CATALOG_SERVICE_TOKEN" },
-    @{ Service = "workflow-service"; Header = "X-Workflow-Service-Token"; Secret = "workflow-read-token"; Env = "WORKFLOW_SERVICE_TOKEN" },
-    @{ Service = "firefighting-service"; Header = "X-Firefighting-Service-Token"; Secret = "firefighting-read-token"; Env = "FIREFIGHTING_SERVICE_TOKEN" },
+    # Phase 2: both token/header pairs are validated by the merged operations-service (accepts both).
+    @{ Service = "operations-service"; Header = "X-Workflow-Service-Token"; Secret = "workflow-read-token"; Env = "WORKFLOW_SERVICE_TOKEN" },
+    @{ Service = "operations-service"; Header = "X-Firefighting-Service-Token"; Secret = "firefighting-read-token"; Env = "FIREFIGHTING_SERVICE_TOKEN" },
     @{ Service = "reporting-service"; Header = "X-Reporting-Service-Token"; Secret = "reporting-read-token"; Env = "REPORTING_SERVICE_TOKEN" },
     @{ Service = "billing-service"; Header = "X-Billing-Service-Token"; Secret = "billing-service-token"; Env = "BILLING_SERVICE_TOKEN" }
 )

@@ -47,8 +47,7 @@ on:
           - attendance-service
           - fee-service
           - catalog-service
-          - workflow-service
-          - firefighting-service
+          - operations-service
           - reporting-service
           - billing-service
           - audit-service

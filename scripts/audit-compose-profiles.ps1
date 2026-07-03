@@ -24,8 +24,7 @@ $coreServices = @(
 $fullOnlyServices = @(
     "audit-service",
     "catalog-service",
-    "workflow-service",
-    "firefighting-service",
+    "operations-service",
     "reporting-service",
     "billing-service",
     "notification-service"

@@ -26,8 +26,9 @@ $services = @(
     @{ Key = "ATTENDANCE"; Name = "custoking-attendance-service"; Context = "services/attendance-service"; Upstream = "ATTENDANCE_UPSTREAM"; Token = "ATTENDANCE_SERVICE_TOKEN" },
     @{ Key = "FEE"; Name = "custoking-fee-service"; Context = "services/fee-service"; Upstream = "FEE_UPSTREAM"; Token = "FEE_SERVICE_TOKEN" },
     @{ Key = "CATALOG"; Name = "custoking-catalog-service"; Context = "services/catalog-service"; Upstream = "CATALOG_UPSTREAM"; Token = "CATALOG_SERVICE_TOKEN" },
-    @{ Key = "WORKFLOW"; Name = "custoking-workflow-service"; Context = "services/workflow-service"; Upstream = "WORKFLOW_UPSTREAM"; Token = "WORKFLOW_SERVICE_TOKEN" },
-    @{ Key = "FIREFIGHTING"; Name = "custoking-firefighting-service"; Context = "services/firefighting-service"; Upstream = "FIREFIGHTING_UPSTREAM"; Token = "FIREFIGHTING_SERVICE_TOKEN" },
+    # Phase 2: workflow + firefighting route groups are both served by the merged operations-service.
+    @{ Key = "WORKFLOW"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "WORKFLOW_UPSTREAM"; Token = "WORKFLOW_SERVICE_TOKEN" },
+    @{ Key = "FIREFIGHTING"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "FIREFIGHTING_UPSTREAM"; Token = "FIREFIGHTING_SERVICE_TOKEN" },
     @{ Key = "REPORTING"; Name = "custoking-reporting-service"; Context = "services/reporting-service"; Upstream = "REPORTING_UPSTREAM"; Token = "REPORTING_SERVICE_TOKEN" },
     @{ Key = "BILLING"; Name = "custoking-billing-service"; Context = "services/billing-service"; Upstream = "BILLING_UPSTREAM"; Token = "BILLING_SERVICE_TOKEN" },
     @{ Key = "AUDIT"; Name = "custoking-audit-service"; Context = "services/audit-service"; Upstream = "AUDIT_UPSTREAM"; Token = "AUDIT_SERVICE_TOKEN" },

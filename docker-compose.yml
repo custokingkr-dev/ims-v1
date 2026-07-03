@@ -210,11 +210,11 @@ services:
       postgres:
         condition: service_healthy
 
-  workflow-service:
+  operations-service:
     profiles: ["full"]
     build:
-      context: ./services/workflow-service
-    container_name: custoking-workflow-service
+      context: ./services/operations-service
+    container_name: custoking-operations-service
     restart: unless-stopped
     mem_limit: 640m
     mem_reservation: 320m
@@ -228,36 +228,11 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
-      WORKFLOW_DB_SCHEMA: workflow
+      OPERATIONS_DB_SCHEMA: "workflow,firefighting"
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
-    ports:
-      - "8089:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  firefighting-service:
-    profiles: ["full"]
-    build:
-      context: ./services/firefighting-service
-    container_name: custoking-firefighting-service
-    restart: unless-stopped
-    mem_limit: 640m
-    mem_reservation: 320m
-    environment:
-      JAVA_OPTS: "-Xms128m -Xmx384m -XX:MaxMetaspaceSize=144m"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
-      SPRING_DATASOURCE_USERNAME: app_rt
-      SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
-      FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
-      FLYWAY_USERNAME: postgres
-      FLYWAY_PASSWORD: root
-      SPRING_PROFILES_ACTIVE: prod
-      FIREFIGHTING_DB_SCHEMA: firefighting
       FIREFIGHTING_READ_TOKEN: local-dev-firefighting-token
     ports:
-      - "8090:8080"
+      - "8089:8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -381,6 +356,9 @@ services:
       CATALOG_SERVICE_TOKEN: local-dev-catalog-token
       WORKFLOW_SERVICE_TOKEN: local-dev-workflow-token
       FIREFIGHTING_SERVICE_TOKEN: local-dev-firefighting-token
+      # Phase 2: workflow + firefighting are served by the merged operations-service.
+      WORKFLOW_UPSTREAM: http://operations-service:8080
+      FIREFIGHTING_UPSTREAM: http://operations-service:8080
       REPORTING_SERVICE_TOKEN: local-dev-reporting-token
       BILLING_SERVICE_TOKEN: local-dev-billing-token
       GATEWAY_AUTH_MODE: permissive

@@ -42,8 +42,9 @@ const upstreams = {
   attendance: envUrl('ATTENDANCE_UPSTREAM', 'http://attendance-service:8080'),
   fee: envUrl('FEE_UPSTREAM', 'http://fee-service:8080'),
   catalog: envUrl('CATALOG_UPSTREAM', 'http://catalog-service:8080'),
-  workflow: envUrl('WORKFLOW_UPSTREAM', 'http://workflow-service:8080'),
-  firefighting: envUrl('FIREFIGHTING_UPSTREAM', 'http://firefighting-service:8080'),
+  // Phase 2: workflow + firefighting are served by the merged operations-service.
+  workflow: envUrl('WORKFLOW_UPSTREAM', 'http://operations-service:8080'),
+  firefighting: envUrl('FIREFIGHTING_UPSTREAM', 'http://operations-service:8080'),
   reporting: envUrl('REPORTING_UPSTREAM', 'http://reporting-service:8080'),
   billing: envUrl('BILLING_UPSTREAM', 'http://billing-service:8080'),
   audit: envUrl('AUDIT_UPSTREAM', 'http://audit-service:8080'),
