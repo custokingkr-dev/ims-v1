@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.16</version>
+        <version>4.0.7</version>
         <relativePath/>
     </parent>
 
@@ -23,6 +23,14 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- Spring Boot 4.0 split RestClientAutoConfiguration (which supplies the
+             RestClient.Builder bean TenantSchoolClient depends on) out of
+             spring-boot-starter-web into its own module. Under 3.5.x this bean was
+             provided transitively; add the module explicitly to restore it. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -57,10 +65,31 @@
             <version>0.12.5</version>
             <scope>runtime</scope>
         </dependency>
+        <!-- SB 4.0's BOM only manages Jackson 3 (tools.jackson); jjwt-jackson needs
+             Jackson 2 (com.fasterxml.jackson). Pin explicitly so the two majors'
+             coexistence on the classpath is deliberate, not an accident of whatever
+             version jjwt-jackson happens to transitively pull in. -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.18.2</version>
+        </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <!-- Spring Boot 4.0 split Flyway autoconfiguration (FlywayAutoConfiguration,
+             which auto-runs migrations on startup and wires the EntityManagerFactory
+             to depend on it) out of spring-boot-autoconfigure into its own module.
+             Depending on flyway-core alone (as under 3.5.x) no longer triggers
+             autoconfiguration, so Hibernate's ddl-auto=validate now runs before
+             Flyway ever migrates the schema. Add the autoconfiguration module
+             explicitly to restore the prior "Flyway runs before Hibernate validates"
+             behavior. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-flyway</artifactId>
         </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -82,12 +111,12 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
+            <artifactId>testcontainers-junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
