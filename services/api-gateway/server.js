@@ -1,11 +1,18 @@
 'use strict';
 
 const http = require('http');
-const { randomUUID } = require('crypto');
+const crypto = require('crypto');
+const { randomUUID } = crypto;
 
 const PORT = Number(process.env.PORT || 80);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
 const CLOUD_RUN_AUTH = (process.env.GATEWAY_CLOUD_RUN_AUTH || 'auto').toLowerCase();
+
+// Task 2.3: verify the access token locally instead of introspecting per request.
+// 'disabled' forces pure introspection (instant rollback lever, no redeploy).
+const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'enabled').toLowerCase() !== 'disabled';
+const APP_JWT_SECRET = process.env.APP_JWT_SECRET || '';
+let warnedMissingJwtSecret = false;
 
 // --- Edge security controls (Phase 0 / SEC-P0-2) ---
 // Strict CORS: an explicit origin allowlist; never `*` together with credentials.
@@ -194,7 +201,7 @@ const server = http.createServer(async (req, res) => {
     const matched = routes.find((candidate) => candidate.matches(parsed.pathname));
     if (matched) {
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
-        const principal = await introspect(req, requestId);
+        const principal = await authenticate(req, requestId);
         if (!principal) {
           sendJson(res, 401, { message: 'Unauthorized' });
           return;
@@ -265,6 +272,74 @@ function requiresUserAuth(pathname) {
     '/api/v1/auth/refresh',
     '/api/v1/auth/logout',
   ].some((publicPath) => pathname === publicPath || pathname.startsWith(`${publicPath}/`));
+}
+
+// Verify an HS512 JWT locally with the shared secret — no network call.
+// Returns the decoded claims, or null on any failure. `nowSeconds` is injectable for tests.
+function verifyJwtLocally(token, secret, nowSeconds) {
+  if (typeof token !== 'string' || typeof secret !== 'string' || !secret) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, sigB64] = parts;
+  let header;
+  let payload;
+  try {
+    header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+    payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+  // Enforce HS512 only — rejects "none" and algorithm-confusion attacks.
+  if (!header || header.alg !== 'HS512') return null;
+  const expected = crypto.createHmac('sha512', secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
+  // base64url signatures are ASCII, so comparing the encoded text byte-for-byte is equivalent to comparing raw bytes.
+  const provided = Buffer.from(sigB64);
+  const expectedBuf = Buffer.from(expected);
+  if (provided.length !== expectedBuf.length) return null;
+  if (!crypto.timingSafeEqual(provided, expectedBuf)) return null;
+  if (typeof payload.exp === 'number' && nowSeconds >= payload.exp) return null;
+  if (typeof payload.nbf === 'number' && nowSeconds < payload.nbf) return null;
+  return payload;
+}
+
+// Map verified JWT claims to the same principal shape introspect() returns.
+// Returns null for un-enriched tokens (ver < 2) so the caller falls back to introspection.
+function principalFromClaims(claims) {
+  if (!claims || typeof claims.ver !== 'number' || claims.ver < 2) return null;
+  return {
+    userId: claims.uid ?? null,
+    email: claims.sub ?? null,
+    role: claims.role ?? null,
+    branchId: claims.sid ?? null,
+    zoneId: claims.zid ?? null,
+  };
+}
+
+// Resolve the caller's principal. Prefers local HS512 verification; falls back to
+// introspection for un-enriched legacy tokens or when local verify is off/misconfigured.
+// `opts` overrides are for deterministic unit tests.
+async function authenticate(req, requestId, opts = {}) {
+  const localVerify = opts.localVerify !== undefined ? opts.localVerify : LOCAL_JWT_VERIFY;
+  const secret = opts.secret !== undefined ? opts.secret : APP_JWT_SECRET;
+  const introspectFn = opts.introspect !== undefined ? opts.introspect : introspect;
+  const now = opts.now !== undefined ? opts.now : Math.floor(Date.now() / 1000);
+
+  const auth = req.headers.authorization || '';
+  const match = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!match) return null;
+
+  if (localVerify && secret) {
+    const claims = verifyJwtLocally(match[1], secret, now);
+    if (!claims) return null; // bad signature / expired / wrong alg → 401, no fallback
+    const principal = principalFromClaims(claims);
+    if (principal) return principal; // enriched token → no network call
+    return introspectFn(req, requestId); // valid but un-enriched → fall back
+  }
+  if (localVerify && !secret && !warnedMissingJwtSecret) {
+    warnedMissingJwtSecret = true;
+    console.warn('gateway.localjwt: GATEWAY_LOCAL_JWT_VERIFY enabled but APP_JWT_SECRET unset; using introspection');
+  }
+  return introspectFn(req, requestId);
 }
 
 async function introspect(req, requestId) {
@@ -544,4 +619,7 @@ module.exports = {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  verifyJwtLocally,
+  principalFromClaims,
+  authenticate,
 };

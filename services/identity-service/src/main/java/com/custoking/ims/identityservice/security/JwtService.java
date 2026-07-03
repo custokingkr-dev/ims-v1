@@ -36,6 +36,14 @@ public class JwtService {
     public String generateAccessToken(AuthenticatedUserSnapshot user) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.role());
+        claims.put("uid", user.id());
+        if (user.branchId() != null) {
+            claims.put("sid", user.branchId());
+        }
+        if (user.zoneId() != null) {
+            claims.put("zid", user.zoneId());
+        }
+        claims.put("ver", 2);
         return token(user.email(), claims, expirationMs);
     }
 
