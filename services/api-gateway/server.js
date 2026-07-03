@@ -1,6 +1,7 @@
 'use strict';
 
 const http = require('http');
+const crypto = require('crypto');
 const { randomUUID } = require('crypto');
 
 const PORT = Number(process.env.PORT || 80);
@@ -265,6 +266,46 @@ function requiresUserAuth(pathname) {
     '/api/v1/auth/refresh',
     '/api/v1/auth/logout',
   ].some((publicPath) => pathname === publicPath || pathname.startsWith(`${publicPath}/`));
+}
+
+// Verify an HS512 JWT locally with the shared secret — no network call.
+// Returns the decoded claims, or null on any failure. `nowSeconds` is injectable for tests.
+function verifyJwtLocally(token, secret, nowSeconds) {
+  if (typeof token !== 'string' || typeof secret !== 'string' || !secret) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [headerB64, payloadB64, sigB64] = parts;
+  let header;
+  let payload;
+  try {
+    header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
+    payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+  // Enforce HS512 only — rejects "none" and algorithm-confusion attacks.
+  if (!header || header.alg !== 'HS512') return null;
+  const expected = crypto.createHmac('sha512', secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
+  const provided = Buffer.from(sigB64);
+  const expectedBuf = Buffer.from(expected);
+  if (provided.length !== expectedBuf.length) return null;
+  if (!crypto.timingSafeEqual(provided, expectedBuf)) return null;
+  if (typeof payload.exp === 'number' && nowSeconds >= payload.exp) return null;
+  if (typeof payload.nbf === 'number' && nowSeconds < payload.nbf) return null;
+  return payload;
+}
+
+// Map verified JWT claims to the same principal shape introspect() returns.
+// Returns null for un-enriched tokens (ver < 2) so the caller falls back to introspection.
+function principalFromClaims(claims) {
+  if (!claims || typeof claims.ver !== 'number' || claims.ver < 2) return null;
+  return {
+    userId: claims.uid ?? null,
+    email: claims.sub ?? null,
+    role: claims.role ?? null,
+    branchId: claims.sid ?? null,
+    zoneId: claims.zid ?? null,
+  };
 }
 
 async function introspect(req, requestId) {
@@ -544,4 +585,6 @@ module.exports = {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  verifyJwtLocally,
+  principalFromClaims,
 };

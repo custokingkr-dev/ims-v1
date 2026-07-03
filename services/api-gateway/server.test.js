@@ -2,6 +2,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
 for (const name of [
   'IDENTITY_SERVICE_TOKEN',
@@ -40,6 +41,8 @@ const {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  verifyJwtLocally,
+  principalFromClaims,
 } = require('./server');
 
 test.after(() => {
@@ -360,6 +363,71 @@ test('isClientSpoofableHeader flags gateway-only headers', () => {
   assert.equal(isClientSpoofableHeader('x-billing-service-token'), true);
   assert.equal(isClientSpoofableHeader('content-type'), false);
   assert.equal(isClientSpoofableHeader('x-request-id'), false);
+});
+
+// --- Local JWT verification (Task 2.3) ---
+
+function signHS512(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
+  const h = Buffer.from(JSON.stringify(header)).toString('base64url');
+  const p = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = crypto.createHmac('sha512', secret).update(`${h}.${p}`).digest('base64url');
+  return `${h}.${p}.${sig}`;
+}
+
+const JWT_SECRET = 'test-jwt-secret-at-least-32-characters-long';
+const NOW = 1_000_000;
+const enrichedClaims = { sub: 'a@b.com', role: 'ADMIN', uid: 42, sid: 7, zid: 3, ver: 2, exp: NOW + 900 };
+
+test('verifyJwtLocally accepts a valid enriched HS512 token', () => {
+  const token = signHS512(enrichedClaims, JWT_SECRET);
+  const claims = verifyJwtLocally(token, JWT_SECRET, NOW);
+  assert.equal(claims.uid, 42);
+  assert.equal(claims.ver, 2);
+});
+
+test('verifyJwtLocally rejects a tampered signature', () => {
+  const token = signHS512(enrichedClaims, JWT_SECRET);
+  const tampered = `${token.slice(0, -2)}xx`;
+  assert.equal(verifyJwtLocally(tampered, JWT_SECRET, NOW), null);
+});
+
+test('verifyJwtLocally rejects a token signed with a different secret', () => {
+  const token = signHS512(enrichedClaims, 'some-other-secret-key-32-characters-x');
+  assert.equal(verifyJwtLocally(token, JWT_SECRET, NOW), null);
+});
+
+test('verifyJwtLocally rejects an expired token', () => {
+  const token = signHS512({ ...enrichedClaims, exp: NOW - 1 }, JWT_SECRET);
+  assert.equal(verifyJwtLocally(token, JWT_SECRET, NOW), null);
+});
+
+test('verifyJwtLocally rejects alg none and alg RS256', () => {
+  const none = signHS512(enrichedClaims, JWT_SECRET, { alg: 'none', typ: 'JWT' });
+  const rs = signHS512(enrichedClaims, JWT_SECRET, { alg: 'RS256', typ: 'JWT' });
+  assert.equal(verifyJwtLocally(none, JWT_SECRET, NOW), null);
+  assert.equal(verifyJwtLocally(rs, JWT_SECRET, NOW), null);
+});
+
+test('verifyJwtLocally rejects a malformed token', () => {
+  assert.equal(verifyJwtLocally('a.b', JWT_SECRET, NOW), null);
+  assert.equal(verifyJwtLocally('not-a-token', JWT_SECRET, NOW), null);
+});
+
+test('principalFromClaims maps an enriched claim set', () => {
+  assert.deepEqual(principalFromClaims(enrichedClaims), {
+    userId: 42, email: 'a@b.com', role: 'ADMIN', branchId: 7, zoneId: 3,
+  });
+});
+
+test('principalFromClaims returns null for un-enriched (ver<2 / absent) claims', () => {
+  assert.equal(principalFromClaims({ sub: 'a@b.com', role: 'ADMIN' }), null);
+  assert.equal(principalFromClaims({ ...enrichedClaims, ver: 1 }), null);
+});
+
+test('principalFromClaims yields null branchId/zoneId when sid/zid absent', () => {
+  const p = principalFromClaims({ sub: 's@b.com', role: 'SUPERADMIN', uid: 1, ver: 2 });
+  assert.equal(p.branchId, null);
+  assert.equal(p.zoneId, null);
 });
 
 async function listen() {
