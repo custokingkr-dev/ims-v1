@@ -4,8 +4,8 @@ import com.custoking.ims.platformservice.persistence.NotificationInboxEvent;
 import com.custoking.ims.platformservice.persistence.NotificationInboxRepository;
 import com.custoking.ims.platformservice.persistence.NotificationDeliveryAttempt;
 import com.custoking.ims.platformservice.persistence.NotificationDeliveryAttemptRepository;
-import org.springframework.boot.actuate.health.Health;
-import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;

@@ -1,7 +1,7 @@
 package com.custoking.ims.platformservice.infrastructure;
 
 import com.custoking.ims.platformservice.application.NotificationDeliveryRequest;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
 

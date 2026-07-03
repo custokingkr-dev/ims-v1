@@ -4,8 +4,8 @@ import com.custoking.ims.platformservice.application.NotificationDeliveryProvide
 import com.custoking.ims.platformservice.application.NotificationDeliveryRequest;
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,7 +17,6 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -66,7 +65,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         }
     }
 
-    Object bodyFor(NotificationDeliveryRequest request) throws com.fasterxml.jackson.core.JsonProcessingException {
+    Object bodyFor(NotificationDeliveryRequest request) {
         JsonNode payload = objectMapper.readTree(request.payload());
         Channel channel = Channel.from(request.channel());
         SenderProfile senderProfile = senderProfile(payload);
@@ -231,9 +230,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         Map<String, Object> variables = new LinkedHashMap<>();
         JsonNode variableNode = payload.get("variables");
         if (variableNode != null && variableNode.isObject()) {
-            Iterator<Map.Entry<String, JsonNode>> fields = variableNode.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
+            for (Map.Entry<String, JsonNode> field : variableNode.properties()) {
                 variables.put(field.getKey(), objectMapper.convertValue(field.getValue(), Object.class));
             }
         }

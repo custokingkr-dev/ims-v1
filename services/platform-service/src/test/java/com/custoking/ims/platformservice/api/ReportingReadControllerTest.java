@@ -9,8 +9,8 @@ import com.custoking.ims.platformservice.persistence.ReportingEventInboxReposito
 import com.custoking.ims.platformservice.persistence.ReportingReadRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.api.dto.CommandCenterActionRequest;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
