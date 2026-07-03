@@ -42,11 +42,7 @@ on:
           - frontend
           - api-gateway
           - identity-service
-          - tenant-school-service
-          - student-service
-          - attendance-service
-          - fee-service
-          - catalog-service
+          - school-core-service
           - operations-service
           - platform-service
           - billing-service
@@ -157,11 +153,12 @@ jobs:
             exit 1
           fi
 
-          CATALOG_URL="$(gcloud run services describe custoking-catalog-service \
+          # Phase 2: catalog + tenant-school domains now live in school-core-service.
+          CATALOG_URL="$(gcloud run services describe custoking-school-core-service \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
             --format='value(status.url)')"
-          TENANT_URL="$(gcloud run services describe custoking-tenant-school-service \
+          TENANT_URL="$(gcloud run services describe custoking-school-core-service \
             --project="${GCP_PROJECT_ID}" \
             --region="${GCP_REGION}" \
             --format='value(status.url)')"

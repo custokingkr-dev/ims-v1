@@ -51,11 +51,7 @@ function Require-Command([string]$Name) {
 $serviceHealth = [ordered]@{
     "custoking-postgres"               = $null
     "custoking-identity-service"       = 8083
-    "custoking-tenant-school-service"  = 8084
-    "custoking-student-service"        = 8085
-    "custoking-attendance-service"     = 8086
-    "custoking-fee-service"            = 8087
-    "custoking-catalog-service"        = 8088
+        "custoking-school-core-service"   = 8084
     "custoking-operations-service"     = 8089
         "custoking-platform-service"     = 8091
     "custoking-billing-service"        = 8092
@@ -65,10 +61,6 @@ $serviceHealth = [ordered]@{
 $coreContainers = @(
     "custoking-postgres",
     "custoking-identity-service",
-    "custoking-tenant-school-service",
-    "custoking-student-service",
-    "custoking-attendance-service",
-    "custoking-fee-service",
     "custoking-api-gateway"
 )
 

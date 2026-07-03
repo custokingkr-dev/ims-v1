@@ -50,11 +50,11 @@ if (-not (Test-Path -LiteralPath $outputDirectory)) {
     New-Item -ItemType Directory -Path $outputDirectory | Out-Null
 }
 
-$catalogUrl = Invoke-GcloudValue run services describe custoking-catalog-service `
+$catalogUrl = Invoke-GcloudValue run services describe custoking-school-core-service `
     "--project=$ProjectId" `
     "--region=$Region" `
     "--format=value(status.url)"
-$tenantUrl = Invoke-GcloudValue run services describe custoking-tenant-school-service `
+$tenantUrl = Invoke-GcloudValue run services describe custoking-school-core-service `
     "--project=$ProjectId" `
     "--region=$Region" `
     "--format=value(status.url)"

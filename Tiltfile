@@ -17,28 +17,25 @@ dc_resource(
 )
 
 dc_resource(
-    'tenant-school-service',
+        'school-core-service',
     labels=['app', 'microservice'],
     resource_deps=['postgres'],
     links=['http://localhost:8084/actuator/health'],
 )
 
 dc_resource(
-    'student-service',
     labels=['app', 'microservice'],
     resource_deps=['postgres'],
     links=['http://localhost:8085/actuator/health'],
 )
 
 dc_resource(
-    'attendance-service',
     labels=['app', 'microservice'],
     resource_deps=['postgres'],
     links=['http://localhost:8086/actuator/health'],
 )
 
 dc_resource(
-    'fee-service',
     labels=['app', 'microservice'],
     resource_deps=['postgres'],
     links=['http://localhost:8087/actuator/health'],
@@ -47,19 +44,18 @@ dc_resource(
 local_resource(
     'local-dev-users',
     cmd='powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\ensure-local-dev-users.ps1',
-    resource_deps=['identity-service', 'tenant-school-service'],
+    resource_deps=['identity-service', 'school-core-service'],
     labels=['setup'],
 )
 
 full_only_services = {
     'platform-service': 'http://localhost:8091/actuator/health',
-    'catalog-service': 'http://localhost:8088/actuator/health',
+    'school-core-service': 'http://localhost:8084/actuator/health',
     'operations-service': 'http://localhost:8089/actuator/health',
     'billing-service': 'http://localhost:8092/actuator/health',
 }
 full_only_service_names = [
         'platform-service',
-    'catalog-service',
     'operations-service',
     'billing-service',
 ]
@@ -79,7 +75,7 @@ dc_resource(
     resource_deps=[],
 )
 
-gateway_deps = ['local-dev-users', 'identity-service', 'tenant-school-service', 'student-service', 'attendance-service', 'fee-service']
+gateway_deps = ['local-dev-users', 'identity-service', 'school-core-service']
 if profile == 'full':
     gateway_deps += full_only_service_names
 

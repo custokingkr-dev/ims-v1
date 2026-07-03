@@ -13,17 +13,13 @@ $violations = New-Object System.Collections.Generic.List[string]
 
 $coreServices = @(
     "identity-service",
-    "tenant-school-service",
-    "student-service",
-    "attendance-service",
-    "fee-service",
+    "school-core-service",
     "frontend",
     "api-gateway"
 )
 
 $fullOnlyServices = @(
     "platform-service",
-    "catalog-service",
     "operations-service",
     "billing-service",
 )

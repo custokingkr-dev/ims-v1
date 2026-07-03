@@ -59,7 +59,7 @@ if (-not $serviceAccountExists) {
     Start-Sleep -Seconds 10
 }
 
-foreach ($service in @("custoking-catalog-service", "custoking-tenant-school-service")) {
+foreach ($service in @("custoking-school-core-service")) {
     Invoke-GcloudWithRetry -CommandArgs @(
         "run", "services", "add-iam-policy-binding", $service,
         "--project=$ProjectId",

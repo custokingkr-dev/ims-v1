@@ -61,11 +61,7 @@ step() { printf '\n==> %s\n' "$1"; }
 FULL_CONTAINERS=(
     "custoking-postgres:"
     "custoking-identity-service:8083"
-    "custoking-tenant-school-service:8084"
-    "custoking-student-service:8085"
-    "custoking-attendance-service:8086"
-    "custoking-fee-service:8087"
-    "custoking-catalog-service:8088"
+        "custoking-school-core-service:8084"
     "custoking-operations-service:8089"
         "custoking-platform-service:8091"
     "custoking-billing-service:8092"
@@ -74,10 +70,6 @@ FULL_CONTAINERS=(
 CORE_CONTAINERS=(
     "custoking-postgres:"
     "custoking-identity-service:8083"
-    "custoking-tenant-school-service:8084"
-    "custoking-student-service:8085"
-    "custoking-attendance-service:8086"
-    "custoking-fee-service:8087"
     "custoking-api-gateway:80"
 )
 

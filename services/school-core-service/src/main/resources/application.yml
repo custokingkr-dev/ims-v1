@@ -1,0 +1,62 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: custoking-school-core-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:5}
+      minimum-idle: ${DB_POOL_MIN:1}
+      connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
+      validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
+      data-source-properties:
+        currentSchema: ${SCHOOLCORE_DB_SCHEMA:tenant_school,student,attendance,fee,catalog}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: false
+
+flyway:
+  url: ${FLYWAY_URL:${spring.datasource.url}}
+  user: ${FLYWAY_USERNAME:${spring.datasource.username}}
+  password: ${FLYWAY_PASSWORD:${spring.datasource.password}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+
+tenant-school:
+  read-token: ${TENANT_SCHOOL_READ_TOKEN:}
+
+student:
+  read-token: ${STUDENT_READ_TOKEN:}
+  db:
+    schema: ${STUDENT_DB_SCHEMA:student}
+
+attendance:
+  read-token: ${ATTENDANCE_READ_TOKEN:}
+  db:
+    schema: ${ATTENDANCE_DB_SCHEMA:attendance}
+
+fee:
+  read-token: ${FEE_READ_TOKEN:}
+  db:
+    schema: ${FEE_DB_SCHEMA:fee}
+
+catalog:
+  read-token: ${CATALOG_READ_TOKEN:}
+  db:
+    schema: ${CATALOG_DB_SCHEMA:catalog}
