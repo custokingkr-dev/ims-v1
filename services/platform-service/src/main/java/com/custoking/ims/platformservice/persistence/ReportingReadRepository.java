@@ -76,16 +76,16 @@ public class ReportingReadRepository {
     public Map<String, Object> invoiceStats(Long schoolId) {
         if (schoolId == null) {
             return Map.of(
-                    "sentThisMonth", count("SELECT count(*) FROM billing.superadmin_invoices"),
-                    "paid", count("SELECT count(*) FROM billing.superadmin_invoices WHERE LOWER(status) = 'paid'"),
-                    "pending", count("SELECT count(*) FROM billing.superadmin_invoices WHERE LOWER(status) = 'awaiting payment'"),
-                    "totalInvoiced", countAmount("SELECT COALESCE(SUM(total), 0) FROM billing.superadmin_invoices"));
+                    "sentThisMonth", count("SELECT count(*) FROM reporting.billing_invoice_read"),
+                    "paid", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE LOWER(status) = 'paid'"),
+                    "pending", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE LOWER(status) = 'awaiting payment'"),
+                    "totalInvoiced", countAmount("SELECT COALESCE(SUM(total), 0) FROM reporting.billing_invoice_read"));
         }
         return Map.of(
-                "sentThisMonth", count("SELECT count(*) FROM billing.superadmin_invoices WHERE school_id = :schoolId", schoolId),
-                "paid", count("SELECT count(*) FROM billing.superadmin_invoices WHERE school_id = :schoolId AND LOWER(status) = 'paid'", schoolId),
-                "pending", count("SELECT count(*) FROM billing.superadmin_invoices WHERE school_id = :schoolId AND LOWER(status) = 'awaiting payment'", schoolId),
-                "totalInvoiced", countAmount("SELECT COALESCE(SUM(total), 0) FROM billing.superadmin_invoices WHERE school_id = :schoolId", schoolId));
+                "sentThisMonth", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE school_id = :schoolId", schoolId),
+                "paid", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE school_id = :schoolId AND LOWER(status) = 'paid'", schoolId),
+                "pending", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE school_id = :schoolId AND LOWER(status) = 'awaiting payment'", schoolId),
+                "totalInvoiced", countAmount("SELECT COALESCE(SUM(total), 0) FROM reporting.billing_invoice_read WHERE school_id = :schoolId", schoolId));
     }
 
     public List<AcademicEventRow> academicEvents(Long schoolId, String status, int limit) {
@@ -251,14 +251,14 @@ public class ReportingReadRepository {
             return Map.of(
                     "openActions", count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN'"),
                     "feedItems", count("SELECT count(*) FROM reporting.command_center_feed"),
-                    "invoices", count("SELECT count(*) FROM billing.superadmin_invoices"),
+                    "invoices", count("SELECT count(*) FROM reporting.billing_invoice_read"),
                     "academicEvents", count("SELECT count(*) FROM reporting.academic_events"),
                     "broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts"));
         }
         return Map.of(
                 "openActions", count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN' AND school_id = :schoolId", schoolId),
                 "feedItems", count("SELECT count(*) FROM reporting.command_center_feed WHERE school_id = :schoolId", schoolId),
-                "invoices", count("SELECT count(*) FROM billing.superadmin_invoices WHERE school_id = :schoolId", schoolId),
+                "invoices", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE school_id = :schoolId", schoolId),
                 "academicEvents", count("SELECT count(*) FROM reporting.academic_events WHERE school_id = :schoolId", schoolId),
                 "broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts WHERE school_id = :schoolId", schoolId));
     }
