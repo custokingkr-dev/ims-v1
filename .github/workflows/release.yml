@@ -31,6 +31,9 @@ concurrency:
 jobs:
   deploy-dev:
     name: Build + deploy DEV
+    # Skip cleanly until the GCP project is bootstrapped (the GCP_PROJECT_ID repo
+    # Variable is set). Prevents failing deploy runs on every push to main pre-setup.
+    if: ${{ vars.GCP_PROJECT_ID != '' }}
     uses: ./.github/workflows/deploy.yml
     with:
       environment: dev
@@ -43,6 +46,7 @@ jobs:
   promote-prod:
     name: Promote same image to PROD (gated)
     needs: deploy-dev
+    if: ${{ vars.GCP_PROJECT_ID != '' }}
     uses: ./.github/workflows/deploy.yml
     with:
       environment: prod
