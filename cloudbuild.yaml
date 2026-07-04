@@ -129,7 +129,7 @@ steps:
         # to avoid a comma in --set-env-vars). Accepts all three domains' tokens; keeps MSG91.
         deploy_service platform-service custoking-platform-service custoking-platform-service "MSG91_DRY_RUN=true" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
-        deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing" \
+        deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC=ims-reporting-events-v1,BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
