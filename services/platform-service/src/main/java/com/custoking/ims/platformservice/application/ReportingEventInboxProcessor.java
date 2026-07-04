@@ -1,12 +1,16 @@
 package com.custoking.ims.platformservice.application;
 
+import com.custoking.ims.platformservice.persistence.BillingInvoiceReadRepository;
 import com.custoking.ims.platformservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Locale;
 
@@ -15,17 +19,24 @@ import java.util.Locale;
 public class ReportingEventInboxProcessor {
 
     private static final String SOURCE_TYPE = "EVENT_INBOX";
+    private static final String BILLING_INVOICE_UPSERTED = "billing.invoice-upserted.v1";
 
     private final ReportingEventInboxRepository inbox;
     private final ReportingCommandRepository commands;
+    private final BillingInvoiceReadRepository billingInvoiceRead;
+    private final ObjectMapper objectMapper;
     private final int batchSize;
 
     public ReportingEventInboxProcessor(
             ReportingEventInboxRepository inbox,
             ReportingCommandRepository commands,
+            BillingInvoiceReadRepository billingInvoiceRead,
+            ObjectMapper objectMapper,
             @Value("${reporting.event-projection.batch-size:50}") int batchSize) {
         this.inbox = inbox;
         this.commands = commands;
+        this.billingInvoiceRead = billingInvoiceRead;
+        this.objectMapper = objectMapper;
         this.batchSize = batchSize;
     }
 
@@ -41,6 +52,9 @@ public class ReportingEventInboxProcessor {
                 if (!commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
                     commands.recordProjectedFeed(toFeedCommand(event));
                 }
+                if (BILLING_INVOICE_UPSERTED.equals(event.eventType())) {
+                    projectBillingInvoice(event);
+                }
                 inbox.markProcessed(event.eventId());
                 processed++;
             } catch (RuntimeException ex) {
@@ -48,6 +62,74 @@ public class ReportingEventInboxProcessor {
             }
         }
         return processed;
+    }
+
+    private void projectBillingInvoice(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+        JsonNode payload = readPayload(event.payload());
+        String id = textOrNull(payload, "id");
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        String orderRef = textOrNull(payload, "orderRef");
+        String school = textOrNull(payload, "school");
+        Long schoolId = longOrNull(payload, "schoolId");
+        String description = textOrNull(payload, "description");
+        Integer qty = intOrNull(payload, "qty");
+        Long rate = longOrNull(payload, "rate");
+        Long amount = longOrNull(payload, "amount");
+        Long gstAmount = longOrNull(payload, "gstAmount");
+        String status = textOrNull(payload, "status");
+        BigDecimal total = decimalOrNull(payload, "total");
+        String issuedAt = textOrNull(payload, "issuedAt");
+        String dueAt = textOrNull(payload, "dueAt");
+        String notes = textOrNull(payload, "notes");
+        OffsetDateTime createdAt = offsetDateTimeOrNull(payload, "createdAt");
+        OffsetDateTime occurredAt = event.occurredAt() != null ? event.occurredAt() : event.receivedAt();
+        billingInvoiceRead.upsert(id, orderRef, school, schoolId, description, qty, rate, amount, gstAmount,
+                total, status, issuedAt, dueAt, notes, createdAt, occurredAt);
+    }
+
+    private JsonNode readPayload(String payload) {
+        if (payload == null || payload.isBlank()) {
+            return objectMapper.nullNode();
+        }
+        return objectMapper.readTree(payload);
+    }
+
+    private String textOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        return value == null || value.isNull() ? null : value.asText();
+    }
+
+    private Long longOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        if (value.isNumber()) return value.longValue();
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : Long.valueOf(text);
+    }
+
+    private BigDecimal decimalOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        if (value.isNumber()) return value.decimalValue();
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : new BigDecimal(text);
+    }
+
+    private Integer intOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        if (value.isNumber()) return value.intValue();
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : Integer.valueOf(text);
+    }
+
+    private OffsetDateTime offsetDateTimeOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : OffsetDateTime.parse(text);
     }
 
     private ReportingCommandRepository.ProjectedFeedCommand toFeedCommand(

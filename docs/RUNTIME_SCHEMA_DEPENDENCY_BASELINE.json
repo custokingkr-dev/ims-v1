@@ -29,7 +29,6 @@
     ],
     "reporting-service": [
       "attendance",
-      "billing",
       "catalog",
       "fee",
       "firefighting",

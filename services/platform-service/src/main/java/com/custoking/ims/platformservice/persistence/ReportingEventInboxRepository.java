@@ -32,7 +32,7 @@ public class ReportingEventInboxRepository {
     public List<ReportingEventInboxProjectionRow> findReceivedForProjection(int batchSize) {
         return jdbc.sql("""
                         SELECT event_id, event_type, aggregate_type, aggregate_id,
-                               school_id, actor_user_id, occurred_at, received_at
+                               school_id, actor_user_id, occurred_at, received_at, payload
                         FROM reporting.reporting_event_inbox
                         WHERE status = 'RECEIVED'
                         ORDER BY received_at ASC
@@ -47,7 +47,8 @@ public class ReportingEventInboxRepository {
                         rs.getObject("school_id", Long.class),
                         rs.getObject("actor_user_id", Long.class),
                         rs.getObject("occurred_at", OffsetDateTime.class),
-                        rs.getObject("received_at", OffsetDateTime.class)))
+                        rs.getObject("received_at", OffsetDateTime.class),
+                        rs.getString("payload")))
                 .list();
     }
 
@@ -131,7 +132,8 @@ public class ReportingEventInboxRepository {
             Long schoolId,
             Long actorUserId,
             OffsetDateTime occurredAt,
-            OffsetDateTime receivedAt
+            OffsetDateTime receivedAt,
+            String payload
     ) {
     }
 }

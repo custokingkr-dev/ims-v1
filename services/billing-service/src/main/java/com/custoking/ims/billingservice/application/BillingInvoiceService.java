@@ -1,12 +1,15 @@
 package com.custoking.ims.billingservice.application;
 
+import com.custoking.ims.billingservice.outbox.OutboxWriter;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.CustomerRow;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.InvoiceRow;
 import com.custoking.ims.billingservice.persistence.BillingInvoiceRepository.PaymentRow;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -14,9 +17,13 @@ import java.util.Map;
 public class BillingInvoiceService {
 
     private final BillingInvoiceRepository invoices;
+    private final OutboxWriter outbox;
+    private final ObjectMapper objectMapper;
 
-    public BillingInvoiceService(BillingInvoiceRepository invoices) {
+    public BillingInvoiceService(BillingInvoiceRepository invoices, OutboxWriter outbox, ObjectMapper objectMapper) {
         this.invoices = invoices;
+        this.outbox = outbox;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -41,12 +48,45 @@ public class BillingInvoiceService {
 
     @Transactional
     public InvoiceRow create(Map<String, Object> request) {
-        return invoices.create(request);
+        InvoiceRow row = invoices.create(request);
+        appendInvoiceOutbox(row);
+        return row;
     }
 
     @Transactional
     public InvoiceRow update(String id, Map<String, Object> request) {
-        return invoices.update(id, request);
+        InvoiceRow row = invoices.update(id, request);
+        if (row != null) {
+            appendInvoiceOutbox(row);
+        }
+        return row;
+    }
+
+    private void appendInvoiceOutbox(InvoiceRow row) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", row.id());
+        payload.put("orderRef", row.orderRef());
+        payload.put("school", row.school());
+        payload.put("schoolId", row.schoolId());
+        payload.put("description", row.description());
+        payload.put("qty", row.qty());
+        payload.put("rate", row.rate());
+        payload.put("amount", row.amount());
+        payload.put("gstAmount", row.gstAmount());
+        payload.put("total", row.total());
+        payload.put("status", row.status());
+        payload.put("issuedAt", row.issuedAt());
+        payload.put("dueAt", row.dueAt());
+        payload.put("notes", row.notes());
+        payload.put("createdAt", row.createdAt());
+        String payloadJson = objectMapper.writeValueAsString(payload);
+        outbox.append(
+                "billing.invoice-upserted.v1",
+                "InvoiceUpserted:" + row.id(),
+                "SuperadminInvoice",
+                String.valueOf(row.id()),
+                row.schoolId(),
+                payloadJson);
     }
 
     @Transactional(readOnly = true)
