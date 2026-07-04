@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
+import org.springframework.boot.jpa.autoconfigure.EntityManagerFactoryDependsOnPostProcessor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,18 @@ import javax.sql.DataSource;
  */
 @Configuration
 public class SchoolCoreFlywayConfig {
+
+    /**
+     * Force JPA (entityManagerFactory) to wait for all five per-schema Flyway migrations.
+     * Spring Boot's Flyway auto-config — which normally injects this ordering — is disabled
+     * here, so on an empty database Hibernate schema validation would otherwise run before the
+     * migrations and fail with "missing table". This restores Flyway-before-JPA ordering.
+     */
+    @Bean
+    static EntityManagerFactoryDependsOnPostProcessor schoolCoreFlywayEmfDependsOn() {
+        return new EntityManagerFactoryDependsOnPostProcessor(
+                "tenantSchoolFlyway", "studentFlyway", "attendanceFlyway", "feeFlyway", "catalogFlyway");
+    }
 
     // Migrations are one-shot and run sequentially (@DependsOn chain), so each per-schema
     // migration datasource needs only a tiny pool. Default Hikari (max 10, min-idle 10)
