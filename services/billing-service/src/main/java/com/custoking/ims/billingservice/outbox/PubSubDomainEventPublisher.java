@@ -136,6 +136,8 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
         if (fromEnv != null && !fromEnv.isBlank()) {
             return fromEnv;
         }
+        // Prod sets billing.outbox.pubsub.project-id (BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID
+        // in cloudbuild), so this throw only fires on a misconfiguration.
         throw new IllegalStateException(
                 "billing.outbox.pubsub.topic-id is set but no project id is configured "
                         + "(billing.outbox.pubsub.project-id / GOOGLE_CLOUD_PROJECT / GCP_PROJECT)");
