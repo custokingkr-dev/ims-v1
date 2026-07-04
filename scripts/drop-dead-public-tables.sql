@@ -13,8 +13,11 @@ SELECT count(*) AS row_count FROM public.outbox_events;
 SELECT * FROM public.outbox_events;
 
 \echo '== DROP =='
+-- Plain DROP (no CASCADE) on purpose: both tables were verified to have no dependents,
+-- so a plain drop succeeds — and if that assumption is ever wrong, it FAILS LOUDLY on the
+-- offending dependent rather than silently cascade-dropping unexpected objects in prod.
 DROP TABLE IF EXISTS public.outbox_events;
-DROP TABLE IF EXISTS public.flyway_schema_history CASCADE;
+DROP TABLE IF EXISTS public.flyway_schema_history;
 
 \echo '== POST-DROP: remaining public base tables (the two above must be gone) =='
 SELECT table_name FROM information_schema.tables
