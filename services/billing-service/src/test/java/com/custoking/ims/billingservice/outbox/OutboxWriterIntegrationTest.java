@@ -57,9 +57,16 @@ class OutboxWriterIntegrationTest {
         // create_commitsInvoiceAndOutboxEventAtomically() asserts published_at IS
         // NULL for a freshly-written outbox row. A scheduled relay firing between
         // the write and the assertion would publish the row and flip that
-        // assertion. Push the first scheduled firing far beyond this test's
-        // lifetime.
+        // assertion.
+        //
+        // IMPORTANT: fixedDelay alone does NOT delay the FIRST firing (Spring's
+        // initialDelay defaults to 0), so the scheduled task still fires almost
+        // immediately at startup regardless of fixed-delay-ms. Set
+        // initial-delay-ms far beyond this test's lifetime so it never fires
+        // during the test; keep the large fixed-delay too as a second line of
+        // defense.
         r.add("billing.outbox.relay.fixed-delay-ms", () -> "3600000");
+        r.add("billing.outbox.relay.initial-delay-ms", () -> "3600000");
     }
 
     @Autowired BillingInvoiceService invoiceService;

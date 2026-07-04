@@ -46,7 +46,8 @@ public class OutboxRelay {
         this.batchSize = batchSize;
     }
 
-    @Scheduled(fixedDelayString = "${billing.outbox.relay.fixed-delay-ms:10000}")
+    @Scheduled(fixedDelayString = "${billing.outbox.relay.fixed-delay-ms:10000}",
+            initialDelayString = "${billing.outbox.relay.initial-delay-ms:0}")
     public void runScheduled() {
         int published = publishBatch();
         if (published > 0) {
