@@ -52,6 +52,14 @@ class OutboxWriterIntegrationTest {
         r.add("spring.flyway.url",      PG::getJdbcUrl);
         r.add("spring.flyway.user",     PG::getUsername);
         r.add("spring.flyway.password", PG::getPassword);
+        // Same scheduler race as OutboxRelayIntegrationTest: @EnableScheduling means
+        // OutboxRelay.runScheduled() is live in this context too, and
+        // create_commitsInvoiceAndOutboxEventAtomically() asserts published_at IS
+        // NULL for a freshly-written outbox row. A scheduled relay firing between
+        // the write and the assertion would publish the row and flip that
+        // assertion. Push the first scheduled firing far beyond this test's
+        // lifetime.
+        r.add("billing.outbox.relay.fixed-delay-ms", () -> "3600000");
     }
 
     @Autowired BillingInvoiceService invoiceService;

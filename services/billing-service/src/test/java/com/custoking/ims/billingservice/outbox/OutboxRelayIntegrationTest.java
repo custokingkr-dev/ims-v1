@@ -55,6 +55,14 @@ class OutboxRelayIntegrationTest {
         r.add("spring.flyway.url",      PG::getJdbcUrl);
         r.add("spring.flyway.user",     PG::getUsername);
         r.add("spring.flyway.password", PG::getPassword);
+        // billing-service runs with @EnableScheduling, so OutboxRelay.runScheduled()
+        // is registered against the app's real fixed-delay timer inside this test's
+        // Spring context too. On CI (different timing) that scheduled run can race
+        // the test's manual publishBatch() call and publish a seeded row first,
+        // making the manual call see fewer unpublished rows than expected. Push the
+        // first scheduled firing far beyond this test's lifetime so ONLY the manual
+        // publishBatch() calls below touch the outbox.
+        r.add("billing.outbox.relay.fixed-delay-ms", () -> "3600000");
     }
 
     @TestConfiguration
