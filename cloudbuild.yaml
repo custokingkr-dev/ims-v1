@@ -12,6 +12,9 @@ substitutions:
   _VPC_EGRESS: all-traffic
   _FRONTEND_SERVICE: custoking-frontend
   _API_GATEWAY_SERVICE: custoking-api-gateway
+  # Pub/Sub topic billing's transactional-outbox relay publishes invoice events to
+  # (reporting projects them). Must exist in the deploy project before billing starts.
+  _REPORTING_TOPIC: ims-reporting-events-v1
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -129,8 +132,15 @@ steps:
         # to avoid a comma in --set-env-vars). Accepts all three domains' tokens; keeps MSG91.
         deploy_service platform-service custoking-platform-service custoking-platform-service "MSG91_DRY_RUN=true" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
-        deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC=ims-reporting-events-v1,BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest"
+        # BILLING_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps this env var to
+        # billing.outbox.pubsub.topic-id, the property @ConditionalOnProperty gates the real
+        # PubSubDomainEventPublisher on. The wrong name (..._TOPIC → billing.outbox.pubsub.topic) leaves
+        # the no-op LoggingDomainEventPublisher active, so the relay silently drops events.
+        # --min-instances=1: the @Scheduled outbox relay only polls while an instance is alive; under
+        # scale-to-zero it never runs, so billing must keep one warm instance.
+        deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC},BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest" \
+          "--min-instances=1"
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy-selected-frontend-gateway

@@ -44,9 +44,12 @@ billing:
       # topic-id is intentionally NOT given a default here (not even an empty
       # string): @ConditionalOnProperty(name = "billing.outbox.pubsub.topic-id")
       # on PubSubDomainEventPublisher must see this property as ABSENT unless
-      # BILLING_OUTBOX_PUBSUB_TOPIC is actually set, so LoggingDomainEventPublisher
-      # stays the default locally/in tests. Spring's relaxed env-var binding
-      # already exposes BILLING_OUTBOX_PUBSUB_TOPIC as billing.outbox.pubsub.topic-id
-      # without needing an entry here; adding one with a `:` default would make
-      # the property "present" (empty string) and wrongly satisfy the condition.
+      # the topic is actually configured, so LoggingDomainEventPublisher stays
+      # the default locally/in tests. Spring's relaxed env-var binding exposes
+      # env var BILLING_OUTBOX_PUBSUB_TOPIC_ID as billing.outbox.pubsub.topic-id
+      # (NOTE the _ID suffix: env BILLING_OUTBOX_PUBSUB_TOPIC would bind to the
+      # DIFFERENT property billing.outbox.pubsub.topic and NOT satisfy the
+      # condition — that mismatch silently leaves the no-op publisher active).
+      # Adding an entry here with a `:` default would make the property "present"
+      # (empty string) and wrongly satisfy the condition, so we omit it.
       project-id: ${BILLING_OUTBOX_PUBSUB_PROJECT_ID:${GOOGLE_CLOUD_PROJECT:${GCP_PROJECT:}}}
