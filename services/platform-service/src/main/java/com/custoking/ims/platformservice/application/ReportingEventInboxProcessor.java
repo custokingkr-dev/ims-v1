@@ -70,11 +70,23 @@ public class ReportingEventInboxProcessor {
         if (id == null || id.isBlank()) {
             return;
         }
+        String orderRef = textOrNull(payload, "orderRef");
+        String school = textOrNull(payload, "school");
         Long schoolId = longOrNull(payload, "schoolId");
+        String description = textOrNull(payload, "description");
+        Integer qty = intOrNull(payload, "qty");
+        Long rate = longOrNull(payload, "rate");
+        Long amount = longOrNull(payload, "amount");
+        Long gstAmount = longOrNull(payload, "gstAmount");
         String status = textOrNull(payload, "status");
         BigDecimal total = decimalOrNull(payload, "total");
+        String issuedAt = textOrNull(payload, "issuedAt");
+        String dueAt = textOrNull(payload, "dueAt");
+        String notes = textOrNull(payload, "notes");
+        OffsetDateTime createdAt = offsetDateTimeOrNull(payload, "createdAt");
         OffsetDateTime occurredAt = event.occurredAt() != null ? event.occurredAt() : event.receivedAt();
-        billingInvoiceRead.upsert(id, schoolId, status, total, occurredAt);
+        billingInvoiceRead.upsert(id, orderRef, school, schoolId, description, qty, rate, amount, gstAmount,
+                total, status, issuedAt, dueAt, notes, createdAt, occurredAt);
     }
 
     private JsonNode readPayload(String payload) {
@@ -103,6 +115,21 @@ public class ReportingEventInboxProcessor {
         if (value.isNumber()) return value.decimalValue();
         String text = value.asText();
         return text == null || text.isBlank() ? null : new BigDecimal(text);
+    }
+
+    private Integer intOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        if (value.isNumber()) return value.intValue();
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : Integer.valueOf(text);
+    }
+
+    private OffsetDateTime offsetDateTimeOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : OffsetDateTime.parse(text);
     }
 
     private ReportingCommandRepository.ProjectedFeedCommand toFeedCommand(

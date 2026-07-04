@@ -210,4 +210,144 @@ class BillingInvoiceProjectionIntegrationTest {
         Map<String, Object> row = readRow(invoiceId);
         assertEquals("PAID", row.get("status"));
     }
+
+    /**
+     * Task 4b: the outbox payload was widened from {id, schoolId, status, total} to the FULL
+     * 15-column invoice shape. Proves the processor parses and stores every column, and that
+     * replaying a later event for the same invoice id updates all 15 columns via
+     * ON CONFLICT (id) DO UPDATE without duplicating the row.
+     */
+    private void feedFullEvent(String eventId, String invoiceId, Long schoolId, String status, String total) {
+        String payload = "{"
+                + "\"id\":\"" + invoiceId + "\","
+                + "\"orderRef\":\"ORD-" + invoiceId + "\","
+                + "\"school\":\"Test School\","
+                + "\"schoolId\":" + schoolId + ","
+                + "\"description\":\"Annual plan\","
+                + "\"qty\":3,"
+                + "\"rate\":100000,"
+                + "\"amount\":300000,"
+                + "\"gstAmount\":36000,"
+                + "\"total\":" + total + ","
+                + "\"status\":\"" + status + "\","
+                + "\"issuedAt\":\"2026-01-01\","
+                + "\"dueAt\":\"2026-01-15\","
+                + "\"notes\":\"first note\","
+                + "\"createdAt\":\"2026-01-01T10:00:00Z\""
+                + "}";
+        String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"billing.invoice-upserted.v1\","
+                + "\"payload\":" + payload + "}";
+        inbox.record(new ReportingEventInboxRecord(
+                eventId,
+                null,
+                "billing.invoice-upserted.v1",
+                "v1",
+                "Invoice",
+                invoiceId,
+                schoolId,
+                null,
+                Optional.of(OffsetDateTime.now()),
+                OffsetDateTime.now(),
+                envelope,
+                payload
+        ));
+    }
+
+    private Map<String, Object> readFullRow(String invoiceId) throws Exception {
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT order_ref, school, school_id, description, qty, rate, amount, gst_amount, "
+                             + "total, status, issued_at, due_at, notes, created_at "
+                             + "FROM reporting.billing_invoice_read WHERE id = ?")) {
+            ps.setString(1, invoiceId);
+            try (ResultSet rs = ps.executeQuery()) {
+                assertTrue(rs.next(), "expected a row for invoice " + invoiceId);
+                Map<String, Object> row = new LinkedHashMap<>();
+                row.put("orderRef", rs.getString("order_ref"));
+                row.put("school", rs.getString("school"));
+                row.put("schoolId", rs.getLong("school_id"));
+                row.put("description", rs.getString("description"));
+                row.put("qty", rs.getInt("qty"));
+                row.put("rate", rs.getLong("rate"));
+                row.put("amount", rs.getLong("amount"));
+                row.put("gstAmount", rs.getLong("gst_amount"));
+                row.put("total", rs.getBigDecimal("total"));
+                row.put("status", rs.getString("status"));
+                row.put("issuedAt", rs.getString("issued_at"));
+                row.put("dueAt", rs.getString("due_at"));
+                row.put("notes", rs.getString("notes"));
+                row.put("createdAt", rs.getObject("created_at", OffsetDateTime.class));
+                return row;
+            }
+        }
+    }
+
+    @Test
+    void fullInvoicePayload_projectsAllFifteenColumns() throws Exception {
+        String invoiceId = "inv-" + UUID.randomUUID();
+        feedFullEvent(UUID.randomUUID().toString(), invoiceId, 10L, "SENT", "336000");
+
+        int processed = processor.processBatch();
+
+        assertEquals(1, processed);
+        Map<String, Object> row = readFullRow(invoiceId);
+        assertEquals("ORD-" + invoiceId, row.get("orderRef"));
+        assertEquals("Test School", row.get("school"));
+        assertEquals(10L, row.get("schoolId"));
+        assertEquals("Annual plan", row.get("description"));
+        assertEquals(3, row.get("qty"));
+        assertEquals(100000L, row.get("rate"));
+        assertEquals(300000L, row.get("amount"));
+        assertEquals(36000L, row.get("gstAmount"));
+        assertEquals(0, new BigDecimal("336000").compareTo((BigDecimal) row.get("total")));
+        assertEquals("SENT", row.get("status"));
+        assertEquals("2026-01-01", row.get("issuedAt"));
+        assertEquals("2026-01-15", row.get("dueAt"));
+        assertEquals("first note", row.get("notes"));
+        assertEquals(OffsetDateTime.parse("2026-01-01T10:00:00Z"), row.get("createdAt"));
+    }
+
+    @Test
+    void fullInvoicePayload_replayedWithChangedFields_updatesAllColumns_doesNotDuplicate() throws Exception {
+        String invoiceId = "inv-" + UUID.randomUUID();
+        feedFullEvent(UUID.randomUUID().toString(), invoiceId, 10L, "SENT", "336000");
+        processor.processBatch();
+
+        // A genuinely new event (new eventId) for the SAME invoice id, with several changed fields.
+        String secondEventId = UUID.randomUUID().toString();
+        String payload = "{"
+                + "\"id\":\"" + invoiceId + "\","
+                + "\"orderRef\":\"ORD-" + invoiceId + "\","
+                + "\"school\":\"Renamed School\","
+                + "\"schoolId\":10,"
+                + "\"description\":\"Annual plan v2\","
+                + "\"qty\":5,"
+                + "\"rate\":100000,"
+                + "\"amount\":500000,"
+                + "\"gstAmount\":60000,"
+                + "\"total\":560000,"
+                + "\"status\":\"PAID\","
+                + "\"issuedAt\":\"2026-01-01\","
+                + "\"dueAt\":\"2026-01-15\","
+                + "\"notes\":\"updated note\","
+                + "\"createdAt\":\"2026-01-01T10:00:00Z\""
+                + "}";
+        String envelope = "{\"eventId\":\"" + secondEventId + "\",\"eventType\":\"billing.invoice-upserted.v1\","
+                + "\"payload\":" + payload + "}";
+        inbox.record(new ReportingEventInboxRecord(
+                secondEventId, null, "billing.invoice-upserted.v1", "v1", "Invoice", invoiceId, 10L, null,
+                Optional.of(OffsetDateTime.now()), OffsetDateTime.now(), envelope, payload));
+        processor.processBatch();
+
+        assertEquals(1, countRows(invoiceId));
+        Map<String, Object> row = readFullRow(invoiceId);
+        assertEquals("Renamed School", row.get("school"));
+        assertEquals("Annual plan v2", row.get("description"));
+        assertEquals(5, row.get("qty"));
+        assertEquals(500000L, row.get("amount"));
+        assertEquals(60000L, row.get("gstAmount"));
+        assertEquals(0, new BigDecimal("560000").compareTo((BigDecimal) row.get("total")));
+        assertEquals("PAID", row.get("status"));
+        assertEquals("updated note", row.get("notes"));
+    }
 }

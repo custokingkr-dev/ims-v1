@@ -61,7 +61,7 @@ public class ReportingReadRepository {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, order_ref, school, school_id, description, qty, rate, amount,
                        gst_amount, total, status, issued_at, due_at, notes, created_at
-                FROM billing.superadmin_invoices
+                FROM reporting.billing_invoice_read
                 WHERE 1=1
                 """);
         if (schoolId != null) sql.append(" AND school_id = :schoolId");
