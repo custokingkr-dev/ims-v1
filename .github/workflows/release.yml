@@ -1,0 +1,53 @@
+name: CD / Build once, promote dev -> prod
+
+# Continuous delivery with build-once-promote:
+#   1. On merge to main, build images tagged with the commit SHA and deploy them to DEV.
+#   2. After dev succeeds, promote the SAME image SHA to PROD (no rebuild). The prod job binds
+#      to the `prod` GitHub Environment, whose protection rules (required reviewers) hold the
+#      promotion until a human approves it — the "one-click promote" gate.
+#
+# Manual re-runs / single-service deploys still use the `GCP / Deploy` workflow directly
+# (workflow_dispatch). This workflow is the automated main-line path.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      deploy_services:
+        description: "Services to roll out (comma list or 'all')."
+        required: true
+        default: "all"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cd-release
+  cancel-in-progress: false
+
+jobs:
+  deploy-dev:
+    name: Build + deploy DEV
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev
+      commit_sha: ${{ github.sha }}
+      deploy_services: ${{ inputs.deploy_services || 'all' }}
+      run_direct_smoke: true
+      skip_build: false
+    secrets: inherit
+
+  promote-prod:
+    name: Promote same image to PROD (gated)
+    needs: deploy-dev
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: prod
+      commit_sha: ${{ github.sha }}   # exact image validated in dev — no rebuild
+      deploy_services: ${{ inputs.deploy_services || 'all' }}
+      run_direct_smoke: true
+      skip_build: true                # build-once-promote: reuse dev's image
+    secrets: inherit

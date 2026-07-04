@@ -1,44 +1,56 @@
-name: GCP / Deploy Custom
+name: GCP / Deploy
 
+# Reusable, environment-parameterized deploy engine. Builds once (or reuses an image
+# on promotion) and deploys env-suffixed Cloud Run services in the single `custoking`
+# project. Project identity comes from GitHub *variables* (Settings > Variables) so the
+# same workflow serves any project; per-environment DB config comes from the GitHub
+# Environment's variables (dev vs prod). Prod is gated by the `prod` Environment's
+# protection rules (required reviewers).
 on:
   workflow_call:
     inputs:
       environment:
-        description: "GitHub environment to deploy."
+        description: "Target environment (GitHub Environment name): dev | prod."
         required: true
         type: string
       commit_sha:
-        description: "Image tag to deploy. Defaults to the workflow commit SHA."
+        description: "Image tag to build/deploy. Defaults to the workflow commit SHA."
         required: false
         type: string
       deploy_services:
-        description: "Service to build/deploy. Use all for the previous full rollout."
+        description: "Comma list of services, or 'all'."
         required: true
         type: string
       run_direct_smoke:
-        description: "Run private Cloud Run direct service smoke after all/API/domain deploys."
+        description: "Run the private Cloud Run direct-service smoke after deploy."
         required: true
+        type: boolean
+      skip_build:
+        description: "Promotion: reuse the image already built for the same SHA (build-once-promote)."
+        required: false
+        default: false
         type: boolean
   workflow_dispatch:
     inputs:
       environment:
-        description: "GitHub environment to deploy."
+        description: "Target environment."
         required: true
-        default: "production"
+        default: "dev"
         type: choice
         options:
-          - production
-          - staging
+          - dev
+          - prod
       commit_sha:
-        description: "Image tag to deploy. Defaults to the workflow commit SHA."
+        description: "Image tag to build/deploy. Defaults to the workflow commit SHA."
         required: false
         type: string
       deploy_services:
-        description: "Service to build/deploy. Use all for the previous full rollout."
+        description: "Service to build/deploy. Use 'all' for a full rollout."
         required: true
-        default: "frontend"
+        default: "all"
         type: choice
         options:
+          - all
           - frontend
           - api-gateway
           - identity-service
@@ -46,29 +58,37 @@ on:
           - operations-service
           - platform-service
           - billing-service
-          - all
       run_direct_smoke:
-        description: "Run private Cloud Run direct service smoke after all/API/domain deploys."
+        description: "Run private Cloud Run direct service smoke after deploy."
         required: true
         default: true
         type: boolean
+      skip_build:
+        description: "Promotion: reuse the image already built for the same SHA."
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
-  group: gcp-deploy-${{ inputs.environment || 'production' }}
+  # Serialize per environment so two deploys to the same env never race.
+  group: gcp-deploy-${{ inputs.environment }}
   cancel-in-progress: false
 
 env:
-  GCP_PROJECT_ID: custoking-ims
-  GCP_REGION: asia-south2
-  WORKLOAD_IDENTITY_PROVIDER: projects/755376288593/locations/global/workloadIdentityPools/github-pool/providers/github-provider
-  DEPLOY_SERVICE_ACCOUNT: github-actions-sa@custoking-ims.iam.gserviceaccount.com
-  DIRECT_SMOKE_SERVICE_ACCOUNT: direct-service-smoke@custoking-ims.iam.gserviceaccount.com
-  CLOUD_BUILD_SOURCE_STAGING_DIR: gs://custoking-ims-github-deploy-source/source
+  # Project identity — set these as repository Variables (Settings > Secrets and variables > Actions > Variables).
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+  DEPLOY_SERVICE_ACCOUNT: ${{ vars.DEPLOY_SERVICE_ACCOUNT }}
+  DIRECT_SMOKE_SERVICE_ACCOUNT: ${{ vars.DIRECT_SMOKE_SERVICE_ACCOUNT }}
+  CLOUD_BUILD_SOURCE_STAGING_DIR: ${{ vars.CLOUD_BUILD_SOURCE_STAGING_DIR }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || 'production' }}
+    # Binds to the GitHub Environment of the same name; the `prod` Environment's protection
+    # rules (required reviewers) gate this job automatically.
+    environment: ${{ inputs.environment }}
     permissions:
       contents: read
       id-token: write
@@ -100,48 +120,51 @@ jobs:
 
       - name: Submit build and deploy via Cloud Build
         shell: bash
+        env:
+          # Per-environment DB target: set DB_HOST / DB_NAME on each GitHub Environment
+          # (dev -> custoking-db-dev private IP / custoking_dev; prod -> the prod instance).
+          ENV_NAME: ${{ inputs.environment }}
+          DB_HOST: ${{ vars.DB_HOST }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          SKIP_BUILD: ${{ inputs.skip_build }}
         run: |
           set -euo pipefail
           mkdir -p deployment-evidence
 
+          : "${GCP_PROJECT_ID:?set the GCP_PROJECT_ID repo variable}"
+          : "${DB_HOST:?set DB_HOST on the '${ENV_NAME}' GitHub Environment}"
+          : "${DB_NAME:?set DB_NAME on the '${ENV_NAME}' GitHub Environment}"
+
           gcloud config set project "${GCP_PROJECT_ID}"
           BUILD_ID="$(gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION},_DEPLOY_SERVICES=${{ inputs.deploy_services || 'frontend' }} \
+            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }} \
             --project="${GCP_PROJECT_ID}" \
             --gcs-source-staging-dir="${CLOUD_BUILD_SOURCE_STAGING_DIR}" \
             --async \
             --format='value(id)' \
             .)"
 
-          echo "Cloud Build submitted: ${BUILD_ID}"
-          echo "CLOUD_BUILD_ID=${BUILD_ID}" >> "${GITHUB_ENV}"
+          echo "Cloud Build submitted: ${BUILD_ID} (env=${ENV_NAME}, skip_build=${SKIP_BUILD})"
           printf '%s\n' "${BUILD_ID}" > deployment-evidence/cloud-build-id.txt
           for attempt in {1..120}; do
-            STATUS="$(gcloud builds describe "${BUILD_ID}" \
-              --project="${GCP_PROJECT_ID}" \
-              --format='value(status)')"
+            STATUS="$(gcloud builds describe "${BUILD_ID}" --project="${GCP_PROJECT_ID}" --format='value(status)')"
             echo "Cloud Build ${BUILD_ID} status=${STATUS}"
-            gcloud builds describe "${BUILD_ID}" \
-              --project="${GCP_PROJECT_ID}" \
-              --format=json > deployment-evidence/cloud-build.json
+            gcloud builds describe "${BUILD_ID}" --project="${GCP_PROJECT_ID}" --format=json > deployment-evidence/cloud-build.json
             case "${STATUS}" in
-              SUCCESS)
-                exit 0
-                ;;
-              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED)
-                exit 1
-                ;;
+              SUCCESS) exit 0 ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED) exit 1 ;;
             esac
             sleep 30
           done
-
           echo "Cloud Build ${BUILD_ID} did not finish within workflow polling window."
           exit 1
 
       - name: Run direct service smoke
         if: ${{ inputs.run_direct_smoke != false && inputs.deploy_services != 'frontend' }}
         shell: bash
+        env:
+          ENV_NAME: ${{ inputs.environment }}
         run: |
           set -euo pipefail
           mkdir -p deployment-evidence
@@ -153,21 +176,15 @@ jobs:
             exit 1
           fi
 
-          # Phase 2: catalog + tenant-school domains now live in school-core-service.
-          CATALOG_URL="$(gcloud run services describe custoking-school-core-service \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --format='value(status.url)')"
-          TENANT_URL="$(gcloud run services describe custoking-school-core-service \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --format='value(status.url)')"
+          # catalog + tenant-school domains live in school-core-service (env-suffixed).
+          CATALOG_URL="$(gcloud run services describe "custoking-school-core-service-${ENV_NAME}" \
+            --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')"
+          TENANT_URL="${CATALOG_URL}"
           export CATALOG_URL TENANT_URL
 
           python - <<'PY'
           import os
           from pathlib import Path
-
           template = Path("deploy/gcp/direct-service-smoke-job.template.yaml").read_text()
           values = {
               "__DIRECT_SMOKE_SERVICE_ACCOUNT__": os.environ["DIRECT_SMOKE_SERVICE_ACCOUNT"],
@@ -181,18 +198,9 @@ jobs:
           PY
 
           gcloud run jobs replace direct-service-smoke-job.generated.yaml \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" | tee deployment-evidence/direct-smoke-job-replace.log
+            --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" | tee deployment-evidence/direct-smoke-job-replace.log
           gcloud run jobs execute ims-direct-service-smoke \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --wait | tee deployment-evidence/direct-smoke-execution.log
-
-          cp direct-service-smoke-job.generated.yaml deployment-evidence/direct-service-smoke-job.generated.yaml
-          gcloud run jobs describe ims-direct-service-smoke \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --format=json > deployment-evidence/direct-service-smoke-job.json
+            --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --wait | tee deployment-evidence/direct-smoke-execution.log
 
       - name: Print Cloud Run URLs
         if: always()
@@ -200,19 +208,14 @@ jobs:
         run: |
           mkdir -p deployment-evidence
           gcloud run services list \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
+            --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" \
             --format="table(metadata.name,status.url,status.latestReadyRevisionName)" \
             | tee deployment-evidence/cloud-run-services.txt
-          gcloud run services list \
-            --project="${GCP_PROJECT_ID}" \
-            --region="${GCP_REGION}" \
-            --format=json > deployment-evidence/cloud-run-services.json
 
       - name: Upload deployment evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gcp-deployment-evidence-${{ github.run_id }}
+          name: gcp-deployment-evidence-${{ inputs.environment }}-${{ github.run_id }}
           path: deployment-evidence/
           if-no-files-found: warn

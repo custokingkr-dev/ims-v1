@@ -1,10 +1,18 @@
+# Cloud Build: build once, deploy to an environment.
+#
+# Environments live in ONE GCP project (custoking), separated by the _ENV suffix
+# (dev | prod) on every Cloud Run service, Secret Manager secret, and Pub/Sub topic.
+# Images are env-agnostic: built once, tagged by commit SHA, and the SAME tag is
+# promoted dev -> prod (_SKIP_BUILD=true on the prod promotion so nothing is rebuilt).
 substitutions:
+  _ENV: dev                      # dev | prod — suffixes every service, secret, and topic name
+  _SKIP_BUILD: "false"           # true on prod promotion: reuse the image already built for dev
   _REGION: asia-south2
-  _AR_REPO: custoking
-  _COMMIT_SHA: latest
+  _AR_REPO: custoking            # shared Artifact Registry repo (images are env-agnostic)
+  _COMMIT_SHA: latest            # image tag; the SAME sha is promoted across environments
   _DEPLOY_SERVICES: frontend
-  _DB_HOST: 10.116.0.3:5432
-  _DB_NAME: custoking_ims_v1
+  _DB_HOST: 127.0.0.1:5432       # overridden per env by the workflow (dev vs prod Cloud SQL private IP)
+  _DB_NAME: custoking_dev        # overridden per env by the workflow (custoking_dev | custoking_prod)
   _APP_DB_USER: app_rt
   _FLYWAY_DB_USER: appuser
   _VPC_NETWORK: default
@@ -12,17 +20,25 @@ substitutions:
   _VPC_EGRESS: all-traffic
   _FRONTEND_SERVICE: custoking-frontend
   _API_GATEWAY_SERVICE: custoking-api-gateway
-  # Pub/Sub topic billing's transactional-outbox relay publishes invoice events to
-  # (reporting projects them). Must exist in the deploy project before billing starts.
+  # Base Pub/Sub topic name; billing's relay publishes to "<base>-${_ENV}", created by the
+  # bootstrap script (scripts/bootstrap-gcp-environment.ps1) with an OIDC-authed push subscription.
   _REPORTING_TOPIC: ims-reporting-events-v1
 
 steps:
+  # ---- Build & push (skipped on promotion) --------------------------------------------------
   - name: gcr.io/cloud-builders/docker
     id: build-and-push-selected-images
     entrypoint: bash
     args:
       - -ceu
       - |
+        if [ "${_SKIP_BUILD}" = "true" ]; then
+          echo "Build-once-promote: _SKIP_BUILD=true — reusing images already at tag ${_COMMIT_SHA}; skipping build."
+          exit 0
+        fi
+
+        # image names are env-AGNOSTIC (one image serves every environment); only Cloud Run
+        # SERVICE names get the -${_ENV} suffix at deploy time below.
         services=(
           "identity-service:services/identity-service:custoking-identity-service"
           "school-core-service:services/school-core-service:custoking-school-core-service"
@@ -66,6 +82,7 @@ steps:
           exit 1
         fi
 
+  # ---- Deploy domain services (env-suffixed) ------------------------------------------------
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy-selected-domain-services
     entrypoint: bash
@@ -88,13 +105,15 @@ steps:
           return 1
         }
 
+        # Both environments run the prod profile (RLS, gateway-enforce, real Pub/Sub publisher) so
+        # dev is a faithful pre-production mirror. Only the wired resources differ by -${_ENV}.
         common_env="SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=${_APP_DB_USER},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_DB_USER}"
         common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --max-instances=2 --memory=768Mi --cpu-boost)
 
         deploy_service() {
           local selector="$1"
-          local service="$2"
-          local image="$3"
+          local service="$2"   # env-suffixed Cloud Run service name
+          local image="$3"     # env-agnostic image name
           local env="$4"
           local secrets="$5"
           local extra_flags="$${6:-}"
@@ -111,37 +130,35 @@ steps:
         }
 
         # school-core-service = tenant_school + student + attendance + fee + catalog (Phase 2 merge #3).
-        # Owns all five schemas (SCHOOLCORE_DB_SCHEMA defaults in application.yml). Accepts all five tokens.
-        deploy_service school-core-service custoking-school-core-service custoking-school-core-service "SCHOOL_CORE_MERGED=true" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest,STUDENT_READ_TOKEN=student-read-token:latest,ATTENDANCE_READ_TOKEN=attendance-read-token:latest,FEE_READ_TOKEN=fee-read-token:latest,CATALOG_READ_TOKEN=catalog-read-token:latest"
-        # identity calls tenant-school directly; that domain now lives in school-core.
-        TENANT_SCHOOL_URL="$(gcloud run services describe custoking-school-core-service --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
+        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "SCHOOL_CORE_MERGED=true" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
+
+        # identity calls tenant-school directly; that domain now lives in school-core (env-suffixed URL).
+        TENANT_SCHOOL_URL="$(gcloud run services describe custoking-school-core-service-${_ENV} --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
         if [ -z "$${TENANT_SCHOOL_URL}" ]; then
           TENANT_SCHOOL_URL="http://school-core-service:8080"
         fi
-        deploy_service identity-service custoking-identity-service custoking-identity-service "IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,APP_JWT_SECRET=jwt-secret:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token:latest" \
-          "--min-instances=1"
-        # operations-service = workflow + firefighting (Phase 2 merge). Owns both schemas
-        # (OPERATIONS_DB_SCHEMA defaults to "workflow,firefighting" in application.yml — not set
-        # here because a comma in a --set-env-vars value would be mis-parsed). Accepts both tokens.
-        deploy_service operations-service custoking-operations-service custoking-operations-service "OPERATIONS_MERGED=true" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,WORKFLOW_READ_TOKEN=workflow-read-token:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token:latest"
-        # platform-service = reporting + notification + audit (Phase 2 merge #2). Owns all three
-        # schemas (PLATFORM_DB_SCHEMA defaults to "reporting,notification,audit" in application.yml
-        # to avoid a comma in --set-env-vars). Accepts all three domains' tokens; keeps MSG91.
-        deploy_service platform-service custoking-platform-service custoking-platform-service "MSG91_DRY_RUN=true" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,REPORTING_READ_TOKEN=reporting-read-token:latest,AUDIT_INGEST_TOKEN=audit-ingest-token:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token:latest,MSG91_AUTH_KEY=msg91-auth-key:latest"
-        # BILLING_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps this env var to
-        # billing.outbox.pubsub.topic-id, the property @ConditionalOnProperty gates the real
-        # PubSubDomainEventPublisher on. The wrong name (..._TOPIC → billing.outbox.pubsub.topic) leaves
-        # the no-op LoggingDomainEventPublisher active, so the relay silently drops events.
-        # --min-instances=1: the @Scheduled outbox relay only polls while an instance is alive; under
-        # scale-to-zero it never runs, so billing must keep one warm instance.
-        deploy_service billing-service custoking-billing-service custoking-billing-service "BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC},BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password:latest,FLYWAY_PASSWORD=db-password:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest" \
+        deploy_service identity-service custoking-identity-service-${_ENV} custoking-identity-service "IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,APP_JWT_SECRET=jwt-secret-${_ENV}:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest" \
           "--min-instances=1"
 
+        # operations-service = workflow + firefighting (OPERATIONS_DB_SCHEMA default has a comma, set in yml).
+        deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OPERATIONS_MERGED=true" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest"
+
+        # platform-service = reporting + notification + audit (PLATFORM_DB_SCHEMA default set in yml).
+        deploy_service platform-service custoking-platform-service-${_ENV} custoking-platform-service "MSG91_DRY_RUN=true" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,REPORTING_READ_TOKEN=reporting-read-token-${_ENV}:latest,AUDIT_INGEST_TOKEN=audit-ingest-token-${_ENV}:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token-${_ENV}:latest,MSG91_AUTH_KEY=msg91-auth-key-${_ENV}:latest"
+
+        # billing-service. BILLING_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps
+        # this env var to billing.outbox.pubsub.topic-id, the property @ConditionalOnProperty gates the
+        # real PubSubDomainEventPublisher on. Wrong name -> no-op publisher silently drops events.
+        # --min-instances=1: the @Scheduled outbox relay only polls while an instance is alive.
+        deploy_service billing-service custoking-billing-service-${_ENV} custoking-billing-service "BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest" \
+          "--min-instances=1"
+
+  # ---- Deploy frontend + gateway (env-suffixed, upstreams resolved per env) ------------------
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     id: deploy-selected-frontend-gateway
     entrypoint: bash
@@ -168,12 +185,15 @@ steps:
           gcloud run services describe "$1" --region="${_REGION}" --format='value(status.url)'
         }
 
+        FRONTEND_SVC="${_FRONTEND_SERVICE}-${_ENV}"
+        GATEWAY_SVC="${_API_GATEWAY_SERVICE}-${_ENV}"
+
         if selected frontend custoking-frontend; then
-          CURRENT_GATEWAY_URL="$(gcloud run services describe "${_API_GATEWAY_SERVICE}" --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
+          CURRENT_GATEWAY_URL="$(gcloud run services describe "$${GATEWAY_SVC}" --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
           if [ -z "$${CURRENT_GATEWAY_URL}" ]; then
             CURRENT_GATEWAY_URL="http://api-gateway:80"
           fi
-          gcloud run deploy "${_FRONTEND_SERVICE}" \
+          gcloud run deploy "$${FRONTEND_SVC}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-frontend:${_COMMIT_SHA}" \
             --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2 --cpu-boost \
             --set-env-vars="API_UPSTREAM=$${CURRENT_GATEWAY_URL}"
@@ -182,21 +202,21 @@ steps:
         fi
 
         if selected api-gateway custoking-api-gateway; then
-          FRONTEND_URL="$(url "${_FRONTEND_SERVICE}")"
-          IDENTITY_URL="$(url custoking-identity-service)"
-          SCHOOLCORE_URL="$(url custoking-school-core-service)"
-          OPERATIONS_URL="$(url custoking-operations-service)"
-          PLATFORM_URL="$(url custoking-platform-service)"
-          BILLING_URL="$(url custoking-billing-service)"
+          FRONTEND_URL="$(url "$${FRONTEND_SVC}")"
+          IDENTITY_URL="$(url custoking-identity-service-${_ENV})"
+          SCHOOLCORE_URL="$(url custoking-school-core-service-${_ENV})"
+          OPERATIONS_URL="$(url custoking-operations-service-${_ENV})"
+          PLATFORM_URL="$(url custoking-platform-service-${_ENV})"
+          BILLING_URL="$(url custoking-billing-service-${_ENV})"
 
-          gcloud run deploy "${_API_GATEWAY_SERVICE}" \
+          gcloud run deploy "$${GATEWAY_SVC}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-api-gateway:${_COMMIT_SHA}" \
             --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 --cpu-boost --min-instances=1 \
             --set-env-vars="GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,GATEWAY_CORS_ALLOWED_ORIGINS=$${FRONTEND_URL},FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${SCHOOLCORE_URL},STUDENT_UPSTREAM=$${SCHOOLCORE_URL},ATTENDANCE_UPSTREAM=$${SCHOOLCORE_URL},FEE_UPSTREAM=$${SCHOOLCORE_URL},CATALOG_UPSTREAM=$${SCHOOLCORE_URL},WORKFLOW_UPSTREAM=$${OPERATIONS_URL},FIREFIGHTING_UPSTREAM=$${OPERATIONS_URL},REPORTING_UPSTREAM=$${PLATFORM_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${PLATFORM_URL},NOTIFICATION_UPSTREAM=$${PLATFORM_URL},GATEWAY_LOCAL_JWT_VERIFY=enabled" \
-            --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token:latest,STUDENT_SERVICE_TOKEN=student-read-token:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token:latest,FEE_SERVICE_TOKEN=fee-read-token:latest,CATALOG_SERVICE_TOKEN=catalog-read-token:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token:latest,REPORTING_SERVICE_TOKEN=reporting-read-token:latest,BILLING_SERVICE_TOKEN=billing-service-token:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token:latest,APP_JWT_SECRET=jwt-secret:latest"
+            --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token-${_ENV}:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_SERVICE_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token-${_ENV}:latest,FEE_SERVICE_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_SERVICE_TOKEN=catalog-read-token-${_ENV}:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token-${_ENV}:latest,REPORTING_SERVICE_TOKEN=reporting-read-token-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token-${_ENV}:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token-${_ENV}:latest,APP_JWT_SECRET=jwt-secret-${_ENV}:latest"
 
-          GATEWAY_URL="$(url "${_API_GATEWAY_SERVICE}")"
-          gcloud run services update "${_FRONTEND_SERVICE}" \
+          GATEWAY_URL="$(url "$${GATEWAY_SVC}")"
+          gcloud run services update "$${FRONTEND_SVC}" \
             --region="${_REGION}" \
             --set-env-vars="API_UPSTREAM=$${GATEWAY_URL}"
         else
