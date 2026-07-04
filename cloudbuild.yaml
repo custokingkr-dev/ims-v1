@@ -85,7 +85,7 @@ steps:
           return 1
         }
 
-        common_env="SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=${_APP_DB_USER},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_DB_USER},SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE=5,SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE=0"
+        common_env="SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=${_APP_DB_USER},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_DB_USER}"
         common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --max-instances=2 --memory=768Mi --cpu-boost)
 
         deploy_service() {
