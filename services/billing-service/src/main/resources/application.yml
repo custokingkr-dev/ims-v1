@@ -49,4 +49,4 @@ billing:
       # already exposes BILLING_OUTBOX_PUBSUB_TOPIC as billing.outbox.pubsub.topic-id
       # without needing an entry here; adding one with a `:` default would make
       # the property "present" (empty string) and wrongly satisfy the condition.
-      project-id: ${BILLING_OUTBOX_PUBSUB_PROJECT:${GOOGLE_CLOUD_PROJECT:${GCP_PROJECT:}}}
+      project-id: ${BILLING_OUTBOX_PUBSUB_PROJECT_ID:${GOOGLE_CLOUD_PROJECT:${GCP_PROJECT:}}}
