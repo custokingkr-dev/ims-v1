@@ -33,7 +33,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: app_rt
       SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
@@ -67,7 +66,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: app_rt
       SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
@@ -98,7 +96,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: app_rt
       SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
@@ -125,7 +122,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: app_rt
       SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
@@ -162,7 +158,6 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/postgres
       SPRING_DATASOURCE_USERNAME: app_rt
       SPRING_DATASOURCE_PASSWORD: app_rt
-      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "3"
       FLYWAY_URL: jdbc:postgresql://postgres:5432/postgres
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root

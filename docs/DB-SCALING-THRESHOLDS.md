@@ -121,3 +121,31 @@ script against the target Cloud SQL instance via a short-lived Cloud Run job (or
 For exact row counts (rather than the planner's `reltuples` estimate) on the small
 tables this doc tracks, `SELECT count(*) FROM <schema>.<table>` is cheap enough to run
 directly.
+
+## Connection pooling
+
+- **Current headroom:** peak ≈ 5 domain services × Hikari `maximum-pool-size` 5 ×
+  `max-instances` ≤2 ≈ ~50, plus identity/gateway (`min-instances` 1) and transient
+  per-schema Flyway migration pools (max 3, min-idle 0, drain after migrate) — vs
+  `max_connections=200` (≈25% utilization). There is substantial headroom before pooling
+  or connection limits become a concern.
+- **Single source of truth:** pool size/min-idle are defined **only** in each service's
+  `application.yml` (`spring.datasource.hikari.maximum-pool-size: ${DB_POOL_MAX:5}`,
+  `minimum-idle: ${DB_POOL_MIN:0}`); override per-env via `DB_POOL_MAX`/`DB_POOL_MIN`. The
+  duplicate `SPRING_DATASOURCE_HIKARI_*` env vars previously set in `cloudbuild.yaml`
+  common_env and per-service blocks in `docker-compose.yml` have been removed — Spring's
+  relaxed env-var binding meant they silently overrode the yml defaults, so two sources of
+  truth could (and did) drift out of sync.
+- **Pooler threshold:** introduce a pooler (PgBouncer in transaction mode, or the Cloud SQL
+  connector's built-in pooling) once peak connections approach ~150/200 — e.g. as
+  `max-instances` or per-service pool sizes grow.
+- **Prerequisite for transaction-mode pooling:** the RLS GUC in
+  `services/*/security/TenantAwareDataSource.java` is currently **session-level**
+  (`set_config('app.current_school_id', …, false)`, set on every Hikari borrow — safe with
+  direct Hikari connections, certified by `TenantGucConnectionReuseIntegrationTest`).
+  Transaction-mode pooling multiplexes physical backends per transaction rather than per
+  session, so it first requires converting this GUC to **transaction-local**
+  (`SET LOCAL` / `set_config(…, true)`) set inside each transaction, plus reworking the
+  autocommit read path (which is why session-level was chosen in the first place). Do this
+  conversion, with its own RLS regression tests, before enabling a transaction-mode
+  pooler.
