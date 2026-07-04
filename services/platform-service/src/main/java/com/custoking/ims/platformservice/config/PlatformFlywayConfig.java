@@ -1,6 +1,7 @@
 package com.custoking.ims.platformservice.config;
 
 import org.flywaydb.core.Flyway;
+import org.springframework.boot.jpa.autoconfigure.EntityManagerFactoryDependsOnPostProcessor;
 import org.springframework.beans.factory.annotation.Value;
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +20,18 @@ import javax.sql.DataSource;
  */
 @Configuration
 public class PlatformFlywayConfig {
+
+    /**
+     * Force JPA (entityManagerFactory) to wait for all three per-schema Flyway migrations.
+     * Spring Boot's Flyway auto-config — which normally injects this ordering — is disabled
+     * here, so on an empty database Hibernate schema validation would otherwise run before the
+     * migrations and fail with "missing table". This restores Flyway-before-JPA ordering.
+     */
+    @Bean
+    static EntityManagerFactoryDependsOnPostProcessor platformFlywayEmfDependsOn() {
+        return new EntityManagerFactoryDependsOnPostProcessor(
+                "reportingFlyway", "notificationFlyway", "auditFlyway");
+    }
 
     // One-shot, sequential migrations need only a tiny pool; default Hikari (max 10, min-idle 10)
     // would hold idle connections per schema forever after migrating and exhaust Cloud SQL (53300).
