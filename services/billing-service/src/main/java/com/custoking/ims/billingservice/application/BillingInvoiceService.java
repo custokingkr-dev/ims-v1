@@ -65,9 +65,20 @@ public class BillingInvoiceService {
     private void appendInvoiceOutbox(InvoiceRow row) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("id", row.id());
+        payload.put("orderRef", row.orderRef());
+        payload.put("school", row.school());
         payload.put("schoolId", row.schoolId());
-        payload.put("status", row.status());
+        payload.put("description", row.description());
+        payload.put("qty", row.qty());
+        payload.put("rate", row.rate());
+        payload.put("amount", row.amount());
+        payload.put("gstAmount", row.gstAmount());
         payload.put("total", row.total());
+        payload.put("status", row.status());
+        payload.put("issuedAt", row.issuedAt());
+        payload.put("dueAt", row.dueAt());
+        payload.put("notes", row.notes());
+        payload.put("createdAt", row.createdAt());
         String payloadJson = objectMapper.writeValueAsString(payload);
         outbox.append(
                 "billing.invoice-upserted.v1",

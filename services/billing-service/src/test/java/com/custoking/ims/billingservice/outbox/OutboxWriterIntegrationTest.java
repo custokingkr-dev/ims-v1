@@ -79,8 +79,8 @@ class OutboxWriterIntegrationTest {
                     .isEqualTo(1);
 
             try (PreparedStatement ps = c.prepareStatement(
-                    "SELECT event_type, aggregate_type, published_at FROM billing.outbox_events " +
-                    "WHERE aggregate_id = ?")) {
+                    "SELECT event_type, aggregate_type, published_at, payload::text AS payload_text " +
+                    "FROM billing.outbox_events WHERE aggregate_id = ?")) {
                 ps.setString(1, row.id());
                 try (ResultSet rs = ps.executeQuery()) {
                     assertThat(rs.next()).isTrue();
@@ -88,6 +88,28 @@ class OutboxWriterIntegrationTest {
                     assertThat(rs.getString("aggregate_type")).isEqualTo("SuperadminInvoice");
                     rs.getTimestamp("published_at");
                     assertThat(rs.wasNull()).as("published_at must be NULL for a fresh event").isTrue();
+
+                    // Task 4b: the outbox payload must carry the FULL invoice (all 15 columns),
+                    // not just {id, schoolId, status, total} — the reporting projection now
+                    // needs the wider shape to back the invoices() list endpoint too.
+                    // Postgres re-serializes jsonb text with a space after each colon, so match
+                    // loosely on key/value presence rather than the exact Jackson-written form.
+                    String payloadJson = rs.getString("payload_text");
+                    assertThat(payloadJson)
+                            .contains("\"id\"").contains(row.id())
+                            .contains("\"orderRef\"").contains(row.orderRef())
+                            .contains("\"school\"").contains(row.school())
+                            .contains("\"schoolId\"").contains(String.valueOf(row.schoolId()))
+                            .contains("\"description\"").contains(row.description())
+                            .contains("\"qty\"").contains(String.valueOf(row.qty()))
+                            .contains("\"rate\"").contains(String.valueOf(row.rate()))
+                            .contains("\"amount\"").contains(String.valueOf(row.amount()))
+                            .contains("\"gstAmount\"").contains(String.valueOf(row.gstAmount()))
+                            .contains("\"total\"").contains(String.valueOf(row.total()))
+                            .contains("\"status\"").contains(row.status())
+                            .contains("\"issuedAt\"").contains(row.issuedAt())
+                            .contains("\"dueAt\"").contains(row.dueAt())
+                            .contains("\"createdAt\"");
                 }
             }
         }
