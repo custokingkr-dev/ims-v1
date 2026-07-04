@@ -1,11 +1,11 @@
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn -q dependency:go-offline
 COPY src ./src
 RUN mvn -q -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 ARG APP_NAME=custoking-platform-service
 ARG APP_VERSION=0.1.0-SNAPSHOT
 ARG APP_DESCRIPTION="Custoking IMS platform microservice (reporting + notification + audit)"

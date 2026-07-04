@@ -16,7 +16,7 @@
     <description>Custoking IMS platform microservice (reporting + notification + audit)</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
     </properties>
 
     <dependencies>
