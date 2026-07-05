@@ -1,4 +1,5 @@
 import { DragEvent, useRef, useState } from 'react';
+import * as XLSX from 'xlsx';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { splitCsvLine } from '../utils';
@@ -88,21 +89,26 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
     return dataRows.map((row, index) => ({ ...row, __rowNumber: index + 2 }));
   };
 
+  // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
+  const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    if (!sheet) return [];
+    const json = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '', raw: false });
+    return json.map((row, index) => ({ ...row, __rowNumber: index + 2 }));
+  };
+
   const handleBulkImportFile = async (file: File) => {
     const ext = file.name.toLowerCase();
     setBulkImportError('');
     setBulkImportWarning('');
     setBulkImportToast(null);
     setBulkImportProgress(null);
-    if (!(ext.endsWith('.xlsx') || ext.endsWith('.csv'))) { setBulkImportError('Only .xlsx and .csv files are supported.'); return; }
+    if (!(ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.ods') || ext.endsWith('.csv'))) { setBulkImportError('Only .xlsx, .xls, .ods, and .csv files are supported.'); return; }
     if (file.size > 5 * 1024 * 1024) { setBulkImportError('Maximum file size is 5 MB.'); return; }
     try {
-      let rows: Record<string, string | number>[] = [];
-      if (ext.endsWith('.csv')) {
-        rows = parseCsvRows(await file.text());
-      } else {
-        rows = await parseXlsxRows(await file.arrayBuffer());
-      }
+      const rows = await parseRows(file);
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
       setBulkImportFileName(file.name);
       setSaving('previewing');
@@ -183,7 +189,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
 
   return (
     <ModuleShell title="Bulk import" subtitle="Upload .xlsx or .csv files, preview validations, and import valid students only.">
-      <input ref={bulkImportInputRef} type="file" accept=".xlsx,.csv" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleBulkImportFile(file); }} />
+      <input ref={bulkImportInputRef} type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleBulkImportFile(file); }} />
       <div className={`ck-import-zone ${bulkImportDragActive ? 'ck-import-zone-active' : ''}`} onDragOver={(e) => { e.preventDefault(); setBulkImportDragActive(true); }} onDragLeave={() => setBulkImportDragActive(false)} onDrop={(e) => void handleBulkImportDrop(e)}>
         <div className="ck-iz-icon">📊</div>
         <div className="ck-iz-title">Drop your Excel or CSV file here</div>
