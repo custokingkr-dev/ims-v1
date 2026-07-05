@@ -98,6 +98,18 @@ public class AttendanceReadController {
         return execute(() -> attendance.sectionRegister(date, classId, sectionId, scope));
     }
 
+    @GetMapping("/report/register")
+    public Map<String, Object> reportRegister(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam String month,
+            @RequestParam String classId,
+            @RequestParam String sectionId) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.registerReport(month, classId, sectionId, scope));
+    }
+
     // ─── PUT /section-register ───────────────────────────────────────────────
 
     @PutMapping("/section-register")

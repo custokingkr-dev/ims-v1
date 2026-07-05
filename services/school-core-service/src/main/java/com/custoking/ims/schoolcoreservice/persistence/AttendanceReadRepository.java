@@ -9,9 +9,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -144,6 +148,110 @@ public class AttendanceReadRepository {
                 "allSubmitted", sections.stream().noneMatch(section ->
                         longNum(section.get("totalStudents"), 0) > 0 && "Pending".equals(section.get("status"))),
                 "nonWorkingDay", date.getDayOfWeek() == DayOfWeek.SUNDAY);
+    }
+
+    public Map<String, Object> registerReport(String month, String classId, String sectionId, Long schoolId) {
+        YearMonth ym = YearMonth.parse(month);   // invalid → DateTimeParseException → 400 at controller
+        LocalDate first = ym.atDay(1);
+        LocalDate last = ym.atEndOfMonth();
+        String academicYearId = currentAcademicYearId();
+        Map<String, Object> section = sectionRecord(sectionId);
+        if (!classId.equals(section.get("classId"))) {
+            throw new IllegalArgumentException("Section does not belong to class");
+        }
+        Long sectionSchoolId = requireSectionSchool(section, sectionId);
+        if (schoolId != null && !schoolId.equals(sectionSchoolId)) {
+            throw new SecurityException("You do not have access to this section");
+        }
+
+        List<Map<String, Object>> days = new ArrayList<>();
+        for (LocalDate d = first; !d.isAfter(last); d = d.plusDays(1)) {
+            days.add(row("date", d.toString(),
+                    "dayOfMonth", d.getDayOfMonth(),
+                    "weekday", d.getDayOfWeek().getDisplayName(TextStyle.SHORT, Locale.ENGLISH),
+                    "nonWorkingDay", d.getDayOfWeek() == DayOfWeek.SUNDAY));
+        }
+
+        List<Map<String, Object>> students = jdbc.sql("""
+                SELECT id, admission_no, roll_no, full_name
+                FROM student.students
+                WHERE school_id = :schoolId AND class_id = :classId AND section_id = :sectionId
+                  AND deleted_at IS NULL
+                ORDER BY NULLIF(regexp_replace(COALESCE(roll_no, ''), '[^0-9]', '', 'g'), '')::int NULLS LAST,
+                         roll_no NULLS LAST, full_name
+                """)
+                .param("schoolId", sectionSchoolId)
+                .param("classId", classId)
+                .param("sectionId", sectionId)
+                .query((rs, n) -> row("studentId", rs.getLong("id"),
+                        "admissionNo", rs.getString("admission_no"),
+                        "rollNo", rs.getString("roll_no"),
+                        "fullName", rs.getString("full_name")))
+                .list();
+
+        // studentId -> (date -> status)
+        Map<Long, Map<String, String>> byStudent = new LinkedHashMap<>();
+        jdbc.sql("""
+                SELECT student_id, attendance_date, status
+                FROM %s
+                WHERE section_id = :sectionId AND academic_year_id = :academicYearId
+                  AND attendance_date BETWEEN :first AND :last
+                """.formatted(recordsTable))
+                .param("sectionId", sectionId)
+                .param("academicYearId", academicYearId)
+                .param("first", first)
+                .param("last", last)
+                .query((rs, n) -> {
+                    byStudent.computeIfAbsent(rs.getLong("student_id"), k -> new LinkedHashMap<>())
+                            .put(rs.getObject("attendance_date", LocalDate.class).toString(), rs.getString("status"));
+                    return null;
+                })
+                .list();
+
+        int[] totP = new int[days.size()], totL = new int[days.size()], totE = new int[days.size()], totA = new int[days.size()];
+        List<Map<String, Object>> studentRows = new ArrayList<>();
+        int sumP = 0, sumL = 0, sumE = 0, sumA = 0;
+        for (Map<String, Object> student : students) {
+            Long sid = longNum(student.get("studentId"), 0);
+            Map<String, String> byDate = byStudent.getOrDefault(sid, Map.of());
+            List<Map<String, Object>> cells = new ArrayList<>();
+            int p = 0, l = 0, e = 0, a = 0;
+            for (int i = 0; i < days.size(); i++) {
+                String date = str(days.get(i).get("date"), "");
+                String status = byDate.get(date);
+                cells.add(row("date", date, "status", status));
+                if ("PRESENT".equals(status)) { p++; totP[i]++; }
+                else if ("LATE".equals(status)) { l++; totL[i]++; }
+                else if ("LEAVE".equals(status)) { e++; totE[i]++; }
+                else if ("ABSENT".equals(status)) { a++; totA[i]++; }
+            }
+            sumP += p; sumL += l; sumE += e; sumA += a;
+            studentRows.add(row("studentId", sid,
+                    "admissionNo", student.get("admissionNo"),
+                    "rollNo", student.get("rollNo"),
+                    "fullName", student.get("fullName"),
+                    "cells", cells,
+                    "presentCount", p, "lateCount", l, "leaveCount", e, "absentCount", a,
+                    "presentPercent", attendancePercent(p, l, a)));
+        }
+
+        List<Map<String, Object>> dayTotals = new ArrayList<>();
+        for (int i = 0; i < days.size(); i++) {
+            dayTotals.add(row("date", str(days.get(i).get("date"), ""),
+                    "presentCount", totP[i], "lateCount", totL[i], "leaveCount", totE[i], "absentCount", totA[i]));
+        }
+
+        return row("month", month,
+                "monthLabel", ym.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH) + " " + ym.getYear(),
+                "classId", classId,
+                "sectionId", sectionId,
+                "sectionName", section.get("className") + "-" + section.get("name"),
+                "teacherName", section.get("teacherName"),
+                "days", days,
+                "students", studentRows,
+                "dayTotals", dayTotals,
+                "totals", row("presentCount", sumP, "lateCount", sumL, "leaveCount", sumE, "absentCount", sumA,
+                        "presentPercent", attendancePercent(sumP, sumL, sumA)));
     }
 
     public Map<String, Object> sectionRegister(LocalDate date, String classId, String sectionId, Long schoolId) {
