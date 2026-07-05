@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,9 +34,11 @@ public class StudentReadRepository {
 
     private final JdbcClient jdbc;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final StudentPhotoStorage photoStorage;
 
-    public StudentReadRepository(JdbcClient jdbc) {
+    public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage) {
         this.jdbc = jdbc;
+        this.photoStorage = photoStorage;
     }
 
     public List<StudentRow> list(Long schoolId, String classId, String sectionId, int limit) {
@@ -119,7 +122,7 @@ public class StudentReadRepository {
                     "name", fullName,
                     "fullName", fullName,
                     "avatarInitials", initials(fullName),
-                    "photoUrl", rs.getString("photo_url"),
+                    "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
                     "className", classLabel,
                     "sectionName", sectionLabel,
                     "classSection", classLabel.replace("Class ", "") + (sectionLabel.isBlank() ? "" : "-" + sectionLabel),
@@ -156,7 +159,7 @@ public class StudentReadRepository {
                             "name", fullName,
                             "fullName", fullName,
                             "avatarInitials", initials(fullName),
-                            "photoUrl", rs.getString("photo_url"),
+                            "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
                             "className", classLabel,
                             "sectionName", sectionLabel,
                             "classSection", classLabel.replace("Class ", "") + (sectionLabel.isBlank() ? "" : "-" + sectionLabel),
@@ -260,11 +263,16 @@ public class StudentReadRepository {
     }
 
     @Transactional
-    public Map<String, Object> attachPhoto(Long id, Map<String, Object> request) {
-        find(id).orElseThrow(() -> new IllegalArgumentException("Student not found"));
+    public Map<String, Object> attachPhoto(Long id, byte[] data, String contentType) {
+        Long schoolId = jdbc.sql("SELECT school_id FROM student.students WHERE id = :id")
+                .param("id", id)
+                .query(Long.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        String key = photoStorage.upload(schoolId, id, data, contentType);
         jdbc.sql("UPDATE student.students SET photo_url = :photoUrl, updated_at = :updatedAt WHERE id = :id")
                 .param("id", id)
-                .param("photoUrl", requireText(request.get("photoUrl"), "Photo URL is required"))
+                .param("photoUrl", key)
                 .param("updatedAt", OffsetDateTime.now())
                 .update();
         return studentDetail(id);
@@ -951,7 +959,7 @@ public class StudentReadRepository {
                             "name", fullName,
                             "fullName", fullName,
                             "avatarInitials", initials,
-                            "photoUrl", rs.getString("photo_url"),
+                            "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
                             "className", className,
                             "classId", rs.getString("class_id"),
                             "classSortOrder", rs.getInt("class_sort_order"),

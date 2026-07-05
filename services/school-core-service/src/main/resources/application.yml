@@ -21,6 +21,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: false
+  servlet:
+    multipart:
+      max-file-size: ${STUDENT_PHOTO_MAX_FILE_SIZE:2MB}
+      max-request-size: ${STUDENT_PHOTO_MAX_FILE_SIZE:2MB}
 
 flyway:
   url: ${FLYWAY_URL:${spring.datasource.url}}
@@ -45,6 +49,14 @@ student:
   read-token: ${STUDENT_READ_TOKEN:}
   db:
     schema: ${STUDENT_DB_SCHEMA:student}
+  photo:
+    # Private GCS bucket for student photos; empty locally/in tests (feature degrades gracefully).
+    bucket: ${STUDENT_PHOTO_BUCKET:}
+    signed-url-ttl-minutes: ${STUDENT_PHOTO_SIGNED_URL_TTL_MINUTES:60}
+    dimension: ${STUDENT_PHOTO_DIMENSION:512}
+    max-bytes: ${STUDENT_PHOTO_MAX_BYTES:2097152}
+    # Runtime SA to sign V4 URLs via IAM; blank -> resolved from the metadata server on Cloud Run.
+    signer-sa: ${STUDENT_PHOTO_SIGNER_SA:}
 
 attendance:
   read-token: ${ATTENDANCE_READ_TOKEN:}

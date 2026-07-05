@@ -55,9 +55,13 @@ public class ValidationExceptionHandler {
      */
     @ExceptionHandler(InvalidDataAccessApiUsageException.class)
     public ResponseEntity<Map<String, Object>> onDataAccessApiUsage(InvalidDataAccessApiUsageException ex) {
-        Throwable cause = ex.getMostSpecificCause();
-        if (cause instanceof IllegalArgumentException) {
-            return message(HttpStatus.BAD_REQUEST, cause.getMessage());
+        // Walk the cause chain (not getMostSpecificCause, which digs past the wrapped
+        // IllegalArgumentException to a deeper root like an IOException) so a validation error
+        // that itself wraps another exception still surfaces as a 400.
+        for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof IllegalArgumentException) {
+                return message(HttpStatus.BAD_REQUEST, cause.getMessage());
+            }
         }
         return message(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
     }

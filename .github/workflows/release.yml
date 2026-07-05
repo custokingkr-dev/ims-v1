@@ -39,7 +39,7 @@ jobs:
       environment: dev
       commit_sha: ${{ github.sha }}
       deploy_services: ${{ inputs.deploy_services || 'all' }}
-      run_direct_smoke: true
+      run_direct_smoke: false  # direct-service-smoke not yet provisioned in the custoking project
       skip_build: false
     secrets: inherit
 
@@ -52,6 +52,6 @@ jobs:
       environment: prod
       commit_sha: ${{ github.sha }}   # exact image validated in dev — no rebuild
       deploy_services: ${{ inputs.deploy_services || 'all' }}
-      run_direct_smoke: true
+      run_direct_smoke: false  # direct-service-smoke not yet provisioned in the custoking project
       skip_build: true                # build-once-promote: reuse dev's image
     secrets: inherit
