@@ -130,7 +130,7 @@ steps:
         }
 
         # school-core-service = tenant_school + student + attendance + fee + catalog (Phase 2 merge #3).
-        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "SCHOOL_CORE_MERGED=true" \
+        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV}" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
 
         # identity calls tenant-school directly; that domain now lives in school-core (env-suffixed URL).

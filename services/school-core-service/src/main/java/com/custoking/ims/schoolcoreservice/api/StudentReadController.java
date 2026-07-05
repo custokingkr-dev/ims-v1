@@ -24,7 +24,10 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.io.IOException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -127,11 +130,15 @@ public class StudentReadController {
     public Map<String, Object> attachPhoto(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @Valid @RequestBody AttachPhotoRequest req) {
+            @RequestParam("file") MultipartFile file) {
         requireToken(token, "student:write");
-        Map<String, Object> params = new HashMap<>();
-        params.put("photoUrl", req.photoUrl());
-        return execute(() -> students.attachPhoto(id, params));
+        byte[] data;
+        try {
+            data = file.getBytes();
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read the uploaded photo", ex);
+        }
+        return execute(() -> students.attachPhoto(id, data, file.getContentType()));
     }
 
     @PostMapping("/imports/preview")
