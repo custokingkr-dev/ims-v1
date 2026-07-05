@@ -2,7 +2,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as XLSX from 'xlsx';
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { BulkImportPanel } from './BulkImportPanel';
+import { BulkImportPanel, extractXlsxPhotos } from './BulkImportPanel';
 import api from '../../../services/api';
 
 vi.mock('../../../services/api');
@@ -41,5 +41,23 @@ describe('BulkImportPanel Excel format', () => {
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/import/preview', expect.objectContaining({
       rows: expect.arrayContaining([expect.objectContaining({ Name: 'Aya', Class: '1', AdmissionNo: 'A-1' })]),
     })));
+  });
+
+  it('extracts an embedded image and maps it to the row anchored in the Photo column', async () => {
+    const ExcelJS = (await import('exceljs')).default;
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Students');
+    ws.addRow(['Name', 'AdmissionNo', 'Photo']);       // row 1 header; Photo is column 3 (index 2)
+    ws.addRow(['Aya', 'A-1', '']);                     // data row 1 -> sheet row 2
+    const jpeg = new Uint8Array([0xFF, 0xD8, 0xFF, 0xE0, 0, 0]);
+    const imageId = wb.addImage({ buffer: jpeg, extension: 'jpeg' } as unknown as Parameters<typeof wb.addImage>[0]);
+    // Anchor the image's top-left into the Photo cell of the data row (col 2, row 1 — 0-indexed).
+    ws.addImage(imageId, { tl: { col: 2, row: 1 }, ext: { width: 40, height: 40 } });
+    const buf = await wb.xlsx.writeBuffer();
+    const file = new File([buf], 'roster.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    const photos = await extractXlsxPhotos(file); // exported for test via a module-level helper (see Step 3)
+    expect(photos.get(1)).toBeTruthy();            // data row 1
+    expect(photos.get(1)!.contentType).toContain('jpeg');
   });
 });

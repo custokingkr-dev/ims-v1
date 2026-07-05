@@ -24,6 +24,44 @@ const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; n
   { key: 'BoardRegistrationNo', required: false, example: 'BRN1001', note: '' },
 ];
 
+// Extracts embedded images from an .xlsx and maps each to its 1-based data-row ordinal
+// (matching `__rowNumber - 1` from parseRows), keeping only images anchored in the Photo column.
+export async function extractXlsxPhotos(
+  file: File,
+): Promise<Map<number, { bytes: Uint8Array; contentType: string }>> {
+  const result = new Map<number, { bytes: Uint8Array; contentType: string }>();
+  const name = file.name.toLowerCase();
+  if (!name.endsWith('.xlsx')) return result; // embedded images only supported for .xlsx
+  const ExcelJS = (await import('exceljs')).default;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(await file.arrayBuffer());
+  const sheet = wb.worksheets[0];
+  if (!sheet) return result;
+
+  // Find the Photo column (0-indexed) from the header row.
+  let photoCol = -1;
+  sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
+    if (String(cell.value ?? '').trim().toLowerCase() === 'photo') photoCol = col - 1; // ExcelJS col is 1-based
+  });
+  if (photoCol < 0) return result;
+
+  for (const img of sheet.getImages()) {
+    const tl = img.range?.tl as { nativeCol?: number; col?: number; nativeRow?: number; row?: number } | undefined;
+    const anchorCol = tl?.nativeCol ?? tl?.col;
+    const anchorRow = tl?.nativeRow ?? tl?.row; // 0-indexed
+    if (anchorCol == null || anchorRow == null) continue;
+    if (Math.round(anchorCol) !== photoCol) continue;                 // only images in the Photo column
+    const dataRow = Math.round(anchorRow); // sheet row (0-indexed); header is row 0, so dataRow 1 == first data row
+    if (dataRow < 1) continue;
+    const media = wb.getImage(Number(img.imageId));
+    const buffer = media.buffer as ArrayBuffer;
+    const ext = (media.extension || 'jpeg').toLowerCase();
+    const contentType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+    result.set(dataRow, { bytes: new Uint8Array(buffer), contentType });
+  }
+  return result;
+}
+
 export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Props) {
   const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
   const [bulkImportDragActive, setBulkImportDragActive] = useState(false);
