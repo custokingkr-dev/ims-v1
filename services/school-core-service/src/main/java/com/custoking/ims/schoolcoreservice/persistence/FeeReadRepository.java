@@ -193,7 +193,16 @@ public class FeeReadRepository {
                             + "Reassign or remove their fee plans first.");
         }
         jdbc.sql("DELETE FROM fee.fee_items WHERE band_id = :id").param("id", id).update();
-        jdbc.sql("DELETE FROM fee.fee_bands WHERE id = :id").param("id", id).update();
+        try {
+            jdbc.sql("DELETE FROM fee.fee_bands WHERE id = :id").param("id", id).update();
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            // Backstop for the count guard above: fee_assignments is RLS-scoped, so the count can
+            // read 0 rows the current tenant cannot see while the FK constraint (which bypasses RLS)
+            // still blocks the delete. Convert the raw FK violation into the same clear 400.
+            throw new IllegalArgumentException(
+                    "Cannot delete this fee plan: student(s) are still assigned to it. "
+                            + "Reassign or remove their fee plans first.");
+        }
     }
 
     @Transactional
