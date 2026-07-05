@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -38,5 +39,32 @@ public class ValidationExceptionHandler {
         body.put("message", "Validation failed");
         body.put("fieldErrors", fieldErrors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    /** Business validation throws IllegalArgumentException; return a clean 400 with its message. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> onIllegalArgument(IllegalArgumentException ex) {
+        return message(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Spring's persistence-exception translation rewraps an IllegalArgumentException thrown inside a
+     * repository bean as InvalidDataAccessApiUsageException before the controller can catch it, so
+     * validation failures would otherwise surface as 500. Unwrap it: an IllegalArgumentException
+     * cause is a client validation error (400); anything else is a genuine misuse (500).
+     */
+    @ExceptionHandler(InvalidDataAccessApiUsageException.class)
+    public ResponseEntity<Map<String, Object>> onDataAccessApiUsage(InvalidDataAccessApiUsageException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        if (cause instanceof IllegalArgumentException) {
+            return message(HttpStatus.BAD_REQUEST, cause.getMessage());
+        }
+        return message(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error");
+    }
+
+    private ResponseEntity<Map<String, Object>> message(HttpStatus status, String detail) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", detail == null || detail.isBlank() ? status.getReasonPhrase() : detail);
+        return ResponseEntity.status(status).body(body);
     }
 }
