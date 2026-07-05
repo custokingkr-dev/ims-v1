@@ -139,7 +139,7 @@ public class AttendanceReadRepository {
         double overall = overallDenom == 0 ? 0 : round(overallAttended * 100.0 / overallDenom);
         return row("date", date.toString(),
                 "dateLabel", date.format(DateTimeFormatter.ofPattern("dd MMM yyyy")),
-                "overallPercent", round(overall),
+                "overallPercent", overall,
                 "sections", sections,
                 "allSubmitted", sections.stream().noneMatch(section ->
                         longNum(section.get("totalStudents"), 0) > 0 && "Pending".equals(section.get("status"))),
@@ -279,6 +279,7 @@ public class AttendanceReadRepository {
             jdbc.sql("""
                     UPDATE %s
                     SET total_enrolled = :total, present_count = :present, absent_count = :absent,
+                        late_count = 0, leave_count = 0,
                         updated_by = :actorId, updated_at = :updatedAt
                     WHERE id = :id
                     """.formatted(dailyTable))
@@ -707,11 +708,6 @@ public class AttendanceReadRepository {
         } catch (RuntimeException ex) {
             return fallback;
         }
-    }
-
-    private double doubleNum(Object value) {
-        if (value instanceof Number number) return number.doubleValue();
-        return Double.parseDouble(String.valueOf(value));
     }
 
     /** The one place the attended/denominator percent rule lives. LEAVE is excused and never passed here. */
