@@ -89,8 +89,21 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   const loadSectionStudents = async (classId: string, sectionId: string) => {
     try {
       setFeeLoadError('');
-      const res = await api.get(`/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(sectionId)}/students`, { params: schoolScopedParams });
-      setPaymentOptions((prev: any) => ({ ...prev, students: res.data || [] }));
+      // Fee-aware source: only students with a fee plan can be collected against, and each
+      // row carries plan/total/paid/due for the payment preview + amount auto-fill.
+      const res = await api.get('/fees/report', { params: { classId, sectionId, ...(schoolScopedParams || {}) } });
+      const students = (Array.isArray(res.data) ? res.data : []).map((r: any) => ({
+        id: r.studentId,
+        name: r.student,
+        admissionNo: r.admissionNumber || r.admissionNo || '',
+        feePlan: r.planName,
+        schedule: r.schedule,
+        totalFee: r.totalAnnualFee,
+        discount: r.discounts ?? 0,
+        paid: r.paid,
+        dueAmount: r.due ?? r.dueAmount ?? 0,
+      }));
+      setPaymentOptions((prev: any) => ({ ...prev, students }));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load students.');
       setFeeLoadError(msg);

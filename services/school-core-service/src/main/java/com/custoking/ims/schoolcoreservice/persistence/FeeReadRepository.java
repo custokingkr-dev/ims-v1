@@ -645,6 +645,7 @@ public class FeeReadRepository {
         StringBuilder sql = new StringBuilder("""
                 SELECT fa.id, fa.schedule, fa.band_discount, fa.manual_discount, fa.surcharge,
                        fa.net_payable, fa.paid_amount, s.id AS student_id, s.full_name AS student_name,
+                       s.admission_no AS admission_no,
                        fb.id AS band_id, fb.name AS plan_name,
                        COALESCE(fi.total_annual_fee, 0) AS total_annual_fee,
                        latest_payment.id AS latest_payment_id
@@ -682,6 +683,7 @@ public class FeeReadRepository {
                             "studentId", rs.getLong("student_id"),
                             "paymentId", textOrDefault(rs.getString("latest_payment_id"), ""),
                             "student", rs.getString("student_name"),
+                            "admissionNumber", textOrDefault(rs.getString("admission_no"), ""),
                             "planName", rs.getString("plan_name"),
                             "schedule", rs.getString("schedule"),
                             "totalAnnualFee", rs.getLong("total_annual_fee"),
