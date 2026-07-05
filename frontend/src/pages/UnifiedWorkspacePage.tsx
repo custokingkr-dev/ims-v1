@@ -16,7 +16,7 @@ import { HomePanel } from './workspace/panels/HomePanel';
 import { StudentsPanel } from './workspace/panels/StudentsPanel';
 import { FeesPanel } from './workspace/panels/FeesPanel';
 import { FeeStructurePanel } from './workspace/panels/FeeStructurePanel';
-import { AttendancePanel } from './workspace/panels/AttendancePanel';
+import { AttendanceModulePanel } from './workspace/panels/AttendanceModulePanel';
 import { TimetablePanel } from './workspace/panels/TimetablePanel';
 import { StaffPanel } from './workspace/panels/StaffPanel';
 import { PlanningPanel } from './workspace/panels/PlanningPanel';
@@ -393,7 +393,7 @@ export default function UnifiedWorkspacePage() {
 
           {panel === 'bulkimport' && <BulkImportPanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
-          {panel === 'attendance' && <AttendancePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
+          {panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
           {panel === 'timetable' && workspace && <TimetablePanel workspace={workspace} onRefresh={refresh} />}
 

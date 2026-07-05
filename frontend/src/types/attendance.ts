@@ -78,3 +78,33 @@ export interface AttendanceDailySummaryResponse {
   allSubmitted: boolean;
   nonWorkingDay: boolean;
 }
+
+export interface RegisterDay { date: string; dayOfMonth: number; weekday: string; nonWorkingDay: boolean; }
+export interface RegisterCell { date: string; status: AttendanceStatus | null; }
+export interface RegisterStudentRow {
+  studentId: number; admissionNo: string; rollNo: string; fullName: string;
+  cells: RegisterCell[];
+  presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number;
+}
+export interface RegisterDayTotal { date: string; presentCount: number; lateCount: number; leaveCount: number; absentCount: number; }
+export interface AttendanceRegisterReport {
+  month: string; monthLabel: string; classId: string; sectionId: string; sectionName: string; teacherName: string;
+  days: RegisterDay[]; students: RegisterStudentRow[]; dayTotals: RegisterDayTotal[];
+  totals: { presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number };
+}
+
+export interface StudentHistoryDay { date: string; weekday: string; status: AttendanceStatus | null; remarks: string; nonWorkingDay: boolean; }
+export interface AttendanceStudentHistory {
+  student: { studentId: number; admissionNo: string; rollNo: string; fullName: string; sectionName: string };
+  from: string; to: string; days: StudentHistoryDay[];
+  presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number; daysRecorded: number;
+}
+
+export interface SummarySection {
+  classId: string; sectionId: string; sectionName: string; teacherName: string;
+  presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number; daysRecorded: number;
+}
+export interface AttendanceSummaryReport {
+  from: string; to: string; sections: SummarySection[];
+  overall: { presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number };
+}
