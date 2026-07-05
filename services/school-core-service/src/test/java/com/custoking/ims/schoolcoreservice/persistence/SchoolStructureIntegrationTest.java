@@ -159,6 +159,22 @@ class SchoolStructureIntegrationTest {
     }
 
     @Test
+    void edit_blockedForNonLetterSectionWithStudents() throws Exception {
+        long schoolId = seedSchool(5, 3);
+        // A non-A..Z section (e.g. created via import) that holds a student.
+        try (java.sql.Connection c = dataSource.getConnection(); java.sql.Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.school_sections (id, school_id, school_class_id, name, teacher_name, active) VALUES " +
+                    "('" + schoolId + "-c1-SR', " + schoolId + ", 'c1', 'SR', '', true)");
+        }
+        seedStudent(schoolId, "c1", schoolId + "-c1-SR");
+
+        // Even a no-op-looking edit (same counts) would deactivate 'SR' -> must be blocked.
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> repo.updateStructure(schoolId, 5, 3))
+                .isInstanceOf(StructureInUseException.class)
+                .hasMessageContaining("SR");
+    }
+
+    @Test
     void classes_nullScope_returnsFullGlobalList() {
         assertThat(repo.classes(null)).hasSize(12);
     }
