@@ -183,6 +183,15 @@ public class FeeReadRepository {
     @Transactional
     public void deleteBand(String id) {
         bandRecord(id);
+        long assignments = jdbc.sql("SELECT count(*) FROM fee.fee_assignments WHERE band_id = :id")
+                .param("id", id)
+                .query(Long.class)
+                .single();
+        if (assignments > 0) {
+            throw new IllegalArgumentException(
+                    "Cannot delete this fee plan: " + assignments + " student(s) are assigned to it. "
+                            + "Reassign or remove their fee plans first.");
+        }
         jdbc.sql("DELETE FROM fee.fee_items WHERE band_id = :id").param("id", id).update();
         jdbc.sql("DELETE FROM fee.fee_bands WHERE id = :id").param("id", id).update();
     }
