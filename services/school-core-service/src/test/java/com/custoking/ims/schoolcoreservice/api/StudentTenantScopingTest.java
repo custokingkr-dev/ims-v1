@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.MediaType;
 
@@ -36,31 +36,28 @@ class StudentTenantScopingTest {
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10"))
                 .andExpect(status().isForbidden());
-        verify(repo, never()).list(anyLong(), any(), any(), anyInt());
+        verify(repo, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
     void omittedSchoolId_scopesToAuthenticatedSchool() throws Exception {
-        when(repo.list(eq(10L), any(), any(), anyInt())).thenReturn(List.of());
-        when(repo.count(10L)).thenReturn(0L);
+        when(repo.workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt())).thenReturn(Map.of());
         mvc.perform(get("/api/v1/students")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10"))
                 .andExpect(status().isOk());
-        verify(repo).list(eq(10L), any(), any(), anyInt());
-        verify(repo).count(10L);
+        verify(repo).workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
     void superadmin_canTargetAnySchool() throws Exception {
-        when(repo.list(eq(99L), any(), any(), anyInt())).thenReturn(List.of());
-        when(repo.count(99L)).thenReturn(0L);
+        when(repo.workspaceStudents(eq(99L), any(), any(), any(), anyInt(), anyInt())).thenReturn(Map.of());
         mvc.perform(get("/api/v1/students?schoolId=99")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
-        verify(repo).list(eq(99L), any(), any(), anyInt());
+        verify(repo).workspaceStudents(eq(99L), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test

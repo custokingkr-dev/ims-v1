@@ -48,18 +48,20 @@ public class StudentReadController {
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
+    // The Students workspace grid + its class/section filter dropdowns consume this response's
+    // {items, filters:{classes,sections,feeStatuses}, ...}. The frontend sends class/section/feeStatus.
     @GetMapping
-    public StudentListResponse list(
+    public Map<String, Object> list(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId,
-            @RequestParam(required = false) String classId,
-            @RequestParam(required = false) String sectionId,
-            @RequestParam(defaultValue = "100") int limit) {
+            @RequestParam(name = "class", required = false) String className,
+            @RequestParam(name = "section", required = false) String sectionName,
+            @RequestParam(required = false) String feeStatus,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        return new StudentListResponse(
-                students.list(scope, classId, sectionId, limit),
-                students.count(scope));
+        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
     }
 
     @GetMapping("/{id}")

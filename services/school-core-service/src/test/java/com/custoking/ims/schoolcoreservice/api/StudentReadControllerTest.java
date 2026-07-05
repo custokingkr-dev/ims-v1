@@ -17,6 +17,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -32,29 +35,24 @@ class StudentReadControllerTest {
 
     @Test
     void listRejectsInvalidTokenBeforeQuerying() {
-        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "class-9", "section-a", 25))
+        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, 0, 25))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        verify(students, never()).list(4L, "class-9", "section-a", 25);
-        verify(students, never()).count(4L);
+        verify(students, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
-    void listDelegatesFiltersAndIncludesTotalCount() {
+    void listDelegatesFiltersToWorkspaceStudents() {
         TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
-        StudentRow row = studentRow(101L, "Aarav Sharma");
-        when(students.list(4L, "class-9", "section-a", 25)).thenReturn(List.of(row));
-        when(students.count(4L)).thenReturn(42L);
+        Map<String, Object> workspace = Map.of("items", List.of(), "filteredCount", 42);
+        when(students.workspaceStudents(4L, "9", "A", "Pending", 0, 25)).thenReturn(workspace);
 
-        StudentReadController.StudentListResponse response =
-                controller.list("student-token", 4L, "class-9", "section-a", 25);
+        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", 0, 25);
 
-        assertThat(response.content()).containsExactly(row);
-        assertThat(response.totalElements()).isEqualTo(42L);
-        verify(students).list(4L, "class-9", "section-a", 25);
-        verify(students).count(4L);
+        assertThat(response).isSameAs(workspace);
+        verify(students).workspaceStudents(4L, "9", "A", "Pending", 0, 25);
     }
 
     @Test
