@@ -194,6 +194,102 @@ public class SchoolStructureReadRepository {
     }
 
     @Transactional
+    public Map<String, Object> updateStructure(Long schoolId, int classCount, int sectionCount) {
+        requireSchool(schoolId);
+
+        // Block a class shrink that would orphan students: any student in a class
+        // beyond the first `classCount` (ordered by sort_order, name).
+        var offendingClass = jdbc.sql("""
+                        SELECT sc.name AS name, count(*) AS n
+                        FROM student.students st
+                        JOIN tenant_school.school_classes sc ON sc.id = st.class_id
+                        WHERE st.school_id = :schoolId AND st.deleted_at IS NULL
+                          AND st.class_id IN (
+                              SELECT id FROM tenant_school.school_classes
+                              ORDER BY sort_order, name OFFSET :keep
+                          )
+                        GROUP BY sc.name, sc.sort_order
+                        ORDER BY sc.sort_order
+                        LIMIT 1
+                        """)
+                .param("schoolId", schoolId)
+                .param("keep", classCount)
+                .query((rs, n) -> new Object[] {rs.getString("name"), rs.getLong("n")})
+                .optional();
+        if (offendingClass.isPresent()) {
+            Object[] o = offendingClass.get();
+            throw new StructureInUseException(
+                    "Cannot reduce classes to " + classCount + ": class '" + o[0] + "' has " + o[1] + " student(s)");
+        }
+
+        // Block a section shrink that would orphan students: any existing section
+        // letter for this school whose index is >= sectionCount and that has students.
+        List<String> existing = jdbc.sql(
+                        "SELECT DISTINCT name FROM tenant_school.school_sections WHERE school_id = :schoolId")
+                .param("schoolId", schoolId)
+                .query(String.class)
+                .list();
+        List<String> dropped = SchoolStructureDelta.droppedLetters(existing, sectionCount);
+        if (!dropped.isEmpty()) {
+            var offendingSection = jdbc.sql("""
+                            SELECT ss.name AS name, count(*) AS n
+                            FROM student.students st
+                            JOIN tenant_school.school_sections ss ON ss.id = st.section_id
+                            WHERE st.school_id = :schoolId AND st.deleted_at IS NULL
+                              AND ss.name IN (:dropped)
+                            GROUP BY ss.name
+                            ORDER BY ss.name
+                            LIMIT 1
+                            """)
+                    .param("schoolId", schoolId)
+                    .param("dropped", dropped)
+                    .query((rs, n) -> new Object[] {rs.getString("name"), rs.getLong("n")})
+                    .optional();
+            if (offendingSection.isPresent()) {
+                Object[] o = offendingSection.get();
+                throw new StructureInUseException(
+                        "Cannot reduce sections to " + sectionCount + ": section '" + o[0] + "' has " + o[1] + " student(s)");
+            }
+        }
+
+        // Apply: persist counts, create any missing in-range sections, then set the
+        // active flag so only in-range class/section combinations are visible.
+        jdbc.sql("""
+                        UPDATE tenant_school.schools
+                        SET configured_class_count = :classCount, configured_section_count = :sectionCount
+                        WHERE id = :schoolId
+                        """)
+                .param("classCount", classCount)
+                .param("sectionCount", sectionCount)
+                .param("schoolId", schoolId)
+                .update();
+
+        ensureSchoolSections(schoolId, classCount, sectionCount);
+
+        List<String> inRangeClassIds = jdbc.sql("""
+                        SELECT id FROM tenant_school.school_classes
+                        ORDER BY sort_order, name
+                        LIMIT :classCount
+                        """)
+                .param("classCount", classCount)
+                .query(String.class)
+                .list();
+        List<String> activeLetters = SchoolStructureDelta.activeLetters(sectionCount);
+
+        jdbc.sql("""
+                        UPDATE tenant_school.school_sections
+                        SET active = (school_class_id IN (:classIds) AND name IN (:letters))
+                        WHERE school_id = :schoolId
+                        """)
+                .param("classIds", inRangeClassIds)
+                .param("letters", activeLetters)
+                .param("schoolId", schoolId)
+                .update();
+
+        return schoolDetails(schoolId);
+    }
+
+    @Transactional
     public Map<String, Object> addStaff(Long schoolId, Map<String, Object> request) {
         requireSchool(schoolId);
         Long id = jdbc.sql("""
