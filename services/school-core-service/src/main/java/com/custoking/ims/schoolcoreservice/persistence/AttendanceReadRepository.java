@@ -13,6 +13,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Repository
@@ -22,6 +23,8 @@ public class AttendanceReadRepository {
     private final StudentPhotoStorage photoStorage;
     private final String dailyTable;
     private final String recordsTable;
+
+    static final Set<String> ALLOWED_STATUSES = Set.of("PRESENT", "ABSENT", "LATE", "LEAVE");
 
     public AttendanceReadRepository(
             JdbcClient jdbc,
@@ -75,7 +78,8 @@ public class AttendanceReadRepository {
         String academicYearId = currentAcademicYearId();
         List<Map<String, Object>> sections = jdbc.sql("""
                 SELECT ss.id, ss.name, ss.teacher_name, ss.school_class_id, sc.name AS class_name,
-                       ad.total_enrolled, ad.present_count, ad.absent_count, ad.recorded_at, ad.updated_at, ad.locked
+                       ad.total_enrolled, ad.present_count, ad.absent_count,
+                       ad.late_count, ad.leave_count, ad.recorded_at, ad.updated_at, ad.locked
                 FROM tenant_school.school_sections ss
                 JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
                 LEFT JOIN %s ad
@@ -92,6 +96,8 @@ public class AttendanceReadRepository {
                     Integer totalEnrolled = rs.getObject("total_enrolled", Integer.class);
                     Integer presentCount = rs.getObject("present_count", Integer.class);
                     Integer absentCount = rs.getObject("absent_count", Integer.class);
+                    Integer lateCount = rs.getObject("late_count", Integer.class);
+                    Integer leaveCount = rs.getObject("leave_count", Integer.class);
                     long totalStudents = countStudents(rs.getString("id"));
                     boolean emptySection = totalStudents == 0;
                     boolean sectionLocked = emptySection || Boolean.TRUE.equals(rs.getObject("locked", Boolean.class));
@@ -101,8 +107,11 @@ public class AttendanceReadRepository {
                     Double presentPercent = null;
                     if (emptySection) {
                         presentPercent = 0.0;
-                    } else if (presentCount != null && totalEnrolled != null && totalEnrolled > 0) {
-                        presentPercent = round(presentCount * 100.0 / totalEnrolled);
+                    } else if (presentCount != null) {
+                        presentPercent = attendancePercent(
+                                presentCount,
+                                lateCount == null ? 0 : lateCount,
+                                absentCount == null ? 0 : absentCount);
                     }
                     return row("sectionId", rs.getString("id"),
                             "classId", rs.getString("school_class_id"),
@@ -110,17 +119,24 @@ public class AttendanceReadRepository {
                             "totalStudents", totalStudents,
                             "presentPercent", presentPercent,
                             "presentCount", presentCount == null ? 0 : presentCount,
+                            "lateCount", lateCount == null ? 0 : lateCount,
+                            "leaveCount", leaveCount == null ? 0 : leaveCount,
                             "absentCount", absentCount == null ? 0 : absentCount,
                             "teacherName", rs.getString("teacher_name"),
                             "status", status,
                             "locked", sectionLocked);
                 })
                 .list();
-        double overall = sections.stream()
-                .filter(section -> section.get("presentPercent") != null)
-                .mapToDouble(section -> doubleNum(section.get("presentPercent")))
-                .average()
-                .orElse(0);
+        int overallAttended = 0;
+        int overallDenom = 0;
+        for (Map<String, Object> section : sections) {
+            int p = (int) longNum(section.get("presentCount"), 0);
+            int l = (int) longNum(section.get("lateCount"), 0);
+            int a = (int) longNum(section.get("absentCount"), 0);
+            overallAttended += p + l;
+            overallDenom += p + l + a;
+        }
+        double overall = overallDenom == 0 ? 0 : round(overallAttended * 100.0 / overallDenom);
         return row("date", date.toString(),
                 "dateLabel", date.format(DateTimeFormatter.ofPattern("dd MMM yyyy")),
                 "overallPercent", round(overall),
@@ -170,8 +186,10 @@ public class AttendanceReadRepository {
                         "status", rs.getString("status"),
                         "remarks", rs.getString("remarks") == null ? "" : rs.getString("remarks")))
                 .list();
-        int present = students.stream().filter(student -> "PRESENT".equals(student.get("status"))).toList().size();
-        int absent = students.stream().filter(student -> "ABSENT".equals(student.get("status"))).toList().size();
+        int present = (int) students.stream().filter(s -> "PRESENT".equals(s.get("status"))).count();
+        int late = (int) students.stream().filter(s -> "LATE".equals(s.get("status"))).count();
+        int leave = (int) students.stream().filter(s -> "LEAVE".equals(s.get("status"))).count();
+        int absent = (int) students.stream().filter(s -> "ABSENT".equals(s.get("status"))).count();
         int total = students.size();
         return row("date", date.toString(),
                 "classId", classId,
@@ -180,8 +198,10 @@ public class AttendanceReadRepository {
                 "locked", daily != null && Boolean.TRUE.equals(daily.get("locked")),
                 "totalStudents", total,
                 "presentCount", present,
+                "lateCount", late,
+                "leaveCount", leave,
                 "absentCount", absent,
-                "presentPercent", round(total == 0 ? 0 : present * 100.0 / total),
+                "presentPercent", attendancePercent(present, late, absent),
                 "students", students);
     }
 
@@ -321,13 +341,17 @@ public class AttendanceReadRepository {
         }
         List<Map<String, Object>> records = records(request.get("records"));
         int total = (int) countStudents(sectionId);
-        int submittedPresent = (int) records.stream().filter(row -> "PRESENT".equals(str(row.get("status"), ""))).count();
-        String dailyId = upsertDaily(date, classId, sectionId, academicYearId, total, submittedPresent, actorId, false, sectionSchoolId);
+        int subPresent = (int) records.stream().filter(r -> "PRESENT".equals(str(r.get("status"), ""))).count();
+        int subLate = (int) records.stream().filter(r -> "LATE".equals(str(r.get("status"), ""))).count();
+        int subLeave = (int) records.stream().filter(r -> "LEAVE".equals(str(r.get("status"), ""))).count();
+        int subAbsent = (int) records.stream().filter(r -> "ABSENT".equals(str(r.get("status"), ""))).count();
+        String dailyId = upsertDaily(date, classId, sectionId, academicYearId, total,
+                subPresent, subAbsent, subLate, subLeave, actorId, false, sectionSchoolId);
         OffsetDateTime now = OffsetDateTime.now();
         for (Map<String, Object> record : records) {
             Long studentId = longNum(record.get("studentId"), 0);
             String status = requireText(record.get("status"), "Status is required");
-            if (!"PRESENT".equals(status) && !"ABSENT".equals(status)) {
+            if (!ALLOWED_STATUSES.contains(status)) {
                 throw new IllegalArgumentException("Invalid attendance status");
             }
             ensureStudentInSection(studentId, sectionSchoolId, classId, sectionId);
@@ -362,18 +386,12 @@ public class AttendanceReadRepository {
                     .param("updatedAt", now)
                     .update();
         }
-        int persistedPresent = (int) jdbc.sql("""
-                SELECT COUNT(*) FROM %s
-                WHERE attendance_date = :date AND section_id = :sectionId AND academic_year_id = :academicYearId
-                  AND status = 'PRESENT'
-                """.formatted(recordsTable))
-                .param("date", date)
-                .param("sectionId", sectionId)
-                .param("academicYearId", academicYearId)
-                .query(Long.class)
-                .single()
-                .longValue();
-        upsertDaily(date, classId, sectionId, academicYearId, total, persistedPresent, actorId, false, sectionSchoolId);
+        int present = countStatus(date, sectionId, academicYearId, "PRESENT");
+        int late = countStatus(date, sectionId, academicYearId, "LATE");
+        int leave = countStatus(date, sectionId, academicYearId, "LEAVE");
+        int absent = countStatus(date, sectionId, academicYearId, "ABSENT");
+        upsertDaily(date, classId, sectionId, academicYearId, total, present, absent, late, leave,
+                actorId, false, sectionSchoolId);
         return sectionRegister(date, classId, sectionId, sectionSchoolId);
     }
 
@@ -393,18 +411,11 @@ public class AttendanceReadRepository {
             throw new SecurityException("You do not have access to this section");
         }
         int total = (int) countStudents(sectionId);
-        int present = (int) jdbc.sql("""
-                SELECT COUNT(*) FROM %s
-                WHERE attendance_date = :date AND section_id = :sectionId AND academic_year_id = :academicYearId
-                  AND status = 'PRESENT'
-                """.formatted(recordsTable))
-                .param("date", date)
-                .param("sectionId", sectionId)
-                .param("academicYearId", academicYearId)
-                .query(Long.class)
-                .single()
-                .longValue();
-        upsertDaily(date, classId, sectionId, academicYearId, total, present,
+        int present = countStatus(date, sectionId, academicYearId, "PRESENT");
+        int late = countStatus(date, sectionId, academicYearId, "LATE");
+        int leave = countStatus(date, sectionId, academicYearId, "LEAVE");
+        int absent = countStatus(date, sectionId, academicYearId, "ABSENT");
+        upsertDaily(date, classId, sectionId, academicYearId, total, present, absent, late, leave,
                 request.containsKey("actorId") ? longNum(request.get("actorId"), 0) : null, true, sectionSchoolId);
         return sectionRegister(date, classId, sectionId, sectionSchoolId);
     }
@@ -560,21 +571,23 @@ public class AttendanceReadRepository {
     }
 
     private String upsertDaily(LocalDate date, String classId, String sectionId, String academicYearId,
-                               int total, int present, Long actorId, boolean locked, Long schoolId) {
+                               int total, int present, int absent, int late, int leave,
+                               Long actorId, boolean locked, Long schoolId) {
         OffsetDateTime now = OffsetDateTime.now();
-        String id = dailyRecord(date, sectionId, academicYearId) == null
-                ? UUID.randomUUID().toString()
-                : String.valueOf(dailyRecord(date, sectionId, academicYearId).get("id"));
+        Map<String, Object> existing = dailyRecord(date, sectionId, academicYearId);
+        String id = existing == null ? UUID.randomUUID().toString() : String.valueOf(existing.get("id"));
         jdbc.sql("""
                 INSERT INTO %s(id, attendance_date, total_enrolled, present_count, absent_count,
-                               recorded_by, recorded_at, updated_by, updated_at, locked,
-                               school_class_id, section_id, academic_year_id, school_id)
-                VALUES (:id, :date, :total, :present, :absent, :actorId, :recordedAt, :actorId,
-                        :updatedAt, :locked, :classId, :sectionId, :academicYearId, :schoolId)
+                               late_count, leave_count, recorded_by, recorded_at, updated_by, updated_at,
+                               locked, school_class_id, section_id, academic_year_id, school_id)
+                VALUES (:id, :date, :total, :present, :absent, :late, :leave, :actorId, :recordedAt,
+                        :actorId, :updatedAt, :locked, :classId, :sectionId, :academicYearId, :schoolId)
                 ON CONFLICT (attendance_date, section_id, academic_year_id) DO UPDATE SET
                     total_enrolled = EXCLUDED.total_enrolled,
                     present_count = EXCLUDED.present_count,
                     absent_count = EXCLUDED.absent_count,
+                    late_count = EXCLUDED.late_count,
+                    leave_count = EXCLUDED.leave_count,
                     updated_by = EXCLUDED.updated_by,
                     updated_at = EXCLUDED.updated_at,
                     locked = EXCLUDED.locked
@@ -583,7 +596,9 @@ public class AttendanceReadRepository {
                 .param("date", date)
                 .param("total", total)
                 .param("present", present)
-                .param("absent", Math.max(total - present, 0))
+                .param("absent", absent)
+                .param("late", late)
+                .param("leave", leave)
                 .param("actorId", actorId)
                 .param("recordedAt", now)
                 .param("updatedAt", now)
@@ -697,6 +712,28 @@ public class AttendanceReadRepository {
     private double doubleNum(Object value) {
         if (value instanceof Number number) return number.doubleValue();
         return Double.parseDouble(String.valueOf(value));
+    }
+
+    /** The one place the attended/denominator percent rule lives. LEAVE is excused and never passed here. */
+    static double attendancePercent(int present, int late, int absent) {
+        int attended = present + late;
+        int denom = present + late + absent;
+        return denom == 0 ? 0.0 : Math.round(attended * 100.0 / denom * 10.0) / 10.0;
+    }
+
+    private int countStatus(LocalDate date, String sectionId, String academicYearId, String status) {
+        return jdbc.sql("""
+                SELECT COUNT(*) FROM %s
+                WHERE attendance_date = :date AND section_id = :sectionId
+                  AND academic_year_id = :academicYearId AND status = :status
+                """.formatted(recordsTable))
+                .param("date", date)
+                .param("sectionId", sectionId)
+                .param("academicYearId", academicYearId)
+                .param("status", status)
+                .query(Long.class)
+                .single()
+                .intValue();
     }
 
     private double round(double value) {
