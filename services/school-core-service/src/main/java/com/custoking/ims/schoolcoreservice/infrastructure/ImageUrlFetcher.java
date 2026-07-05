@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.infrastructure;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +30,7 @@ public class ImageUrlFetcher {
     private final long maxBytes;
     private final boolean allowLoopbackForTest;
 
+    @Autowired
     public ImageUrlFetcher(@Value("${student.photo.max-bytes:2097152}") long maxBytes) {
         this(maxBytes, false);
     }
