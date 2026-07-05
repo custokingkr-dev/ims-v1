@@ -268,6 +268,14 @@ public class StudentReadRepository {
         return studentDetail(id);
     }
 
+    public Long schoolIdForStudent(Long id) {
+        return jdbc.sql("SELECT school_id FROM student.students WHERE id = :id AND deleted_at IS NULL")
+                .param("id", id)
+                .query(Long.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("student not found"));
+    }
+
     @Transactional
     public Map<String, Object> attachPhoto(Long id, byte[] data, String contentType) {
         Long schoolId = jdbc.sql("SELECT school_id FROM student.students WHERE id = :id")
@@ -378,6 +386,7 @@ public class StudentReadRepository {
         int inserted = 0;
         int skipped = 0;
         List<Map<String, Object>> skippedRows = new ArrayList<>();
+        List<Map<String, Object>> insertedStudents = new ArrayList<>();
         for (ImportRow row : rows) {
             if (!"Valid".equalsIgnoreCase(row.status()) && !"Warning".equalsIgnoreCase(row.status())) {
                 skipped++;
@@ -393,6 +402,7 @@ public class StudentReadRepository {
                         .param("studentId", studentId)
                         .update();
                 inserted++;
+                insertedStudents.add(row("admissionNo", normalized.get("admissionNo"), "studentId", studentId));
             } catch (Exception ex) {
                 skipped++;
                 skippedRows.add(row("rowNumber", row.rowNo(), "reason", ex.getMessage()));
@@ -417,7 +427,8 @@ public class StudentReadRepository {
                 "inserted", inserted,
                 "skipped", skipped,
                 "done", true,
-                "skippedRows", skippedRows);
+                "skippedRows", skippedRows,
+                "insertedStudents", insertedStudents);
     }
 
     public Map<String, Object> importStatus(String jobId) {

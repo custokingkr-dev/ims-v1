@@ -28,7 +28,9 @@ import static org.mockito.Mockito.when;
 class StudentReadControllerTest {
 
     private final StudentReadRepository students = mock(StudentReadRepository.class);
-    private final StudentReadController controller = new StudentReadController(students, "student-token");
+    private final com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher fetcher =
+            mock(com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher.class);
+    private final StudentReadController controller = new StudentReadController(students, fetcher, "student-token");
 
     @AfterEach
     void cleanup() { TenantContext.clear(); }

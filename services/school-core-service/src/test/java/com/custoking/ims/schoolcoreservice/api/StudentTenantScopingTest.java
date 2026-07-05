@@ -21,8 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class StudentTenantScopingTest {
 
     private final StudentReadRepository repo = mock(StudentReadRepository.class);
+    private final com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher fetcher =
+            mock(com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher.class);
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new StudentReadController(repo, "tok"))
+            .standaloneSetup(new StudentReadController(repo, fetcher, "tok"))
             .addFilters(new TenantContextFilter())
             .build();
 
