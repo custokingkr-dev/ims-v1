@@ -121,14 +121,9 @@ public class TenantSchoolController {
         int classCount = intInRange(body.get("classCount"), 1, 12, "classCount");
         int sectionCount = intInRange(body.get("sectionCount"), 1, 26, "sectionCount");
         try {
-            return structure.updateStructure(resolvedId, classCount, sectionCount);
+            return runCommand(() -> structure.updateStructure(resolvedId, classCount, sectionCount));
         } catch (StructureInUseException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
-        } catch (IllegalArgumentException ex) {
-            String message = ex.getMessage() == null ? "Invalid request" : ex.getMessage();
-            HttpStatus status = message.toLowerCase().contains("not found")
-                    ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
-            throw new ResponseStatusException(status, message, ex);
         }
     }
 
