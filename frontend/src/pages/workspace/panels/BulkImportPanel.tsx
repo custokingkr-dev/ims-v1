@@ -24,42 +24,76 @@ const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; n
   { key: 'Photo', required: false, example: 'embedded image or https://…', note: 'Embedded image (.xlsx) or a public image link (any format) — optional' },
 ];
 
-// Extracts embedded images from an .xlsx and maps each to its 1-based data-row ordinal
-// (matching `__rowNumber - 1` from parseRows), keeping only images anchored in the Photo column.
+// Extracts embedded images from an .xlsx and maps each to its AdmissionNo, keeping only
+// images anchored in the Photo column. Joining by AdmissionNo (not row ordinal) avoids
+// mis-attaching photos when SheetJS's `sheet_to_json` (used elsewhere for parsing) drops
+// blank rows and renumbers survivors — a blank row would otherwise shift the row-ordinal
+// mapping and attach a photo to the wrong student.
 export async function extractXlsxPhotos(
   file: File,
-): Promise<Map<number, { bytes: Uint8Array; contentType: string }>> {
-  const result = new Map<number, { bytes: Uint8Array; contentType: string }>();
-  const name = file.name.toLowerCase();
-  if (!name.endsWith('.xlsx')) return result; // embedded images only supported for .xlsx
+): Promise<Map<string, { bytes: Uint8Array; contentType: string }>> {
+  const result = new Map<string, { bytes: Uint8Array; contentType: string }>();
+  if (!file.name.toLowerCase().endsWith('.xlsx')) return result; // embedded images only supported for .xlsx
   const ExcelJS = (await import('exceljs')).default;
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(await file.arrayBuffer());
   const sheet = wb.worksheets[0];
   if (!sheet) return result;
 
-  // Find the Photo column (0-indexed) from the header row.
-  let photoCol = -1;
+  let photoCol = -1;            // 0-indexed (matches image anchor cols)
+  let admissionCol1Based = -1;  // ExcelJS getCell is 1-based
   sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
-    if (String(cell.value ?? '').trim().toLowerCase() === 'photo') photoCol = col - 1; // ExcelJS col is 1-based
+    const h = String(cell.value ?? '').trim().toLowerCase();
+    if (h === 'photo') photoCol = col - 1;
+    if (h === 'admissionno' || h === 'admission no') admissionCol1Based = col;
   });
-  if (photoCol < 0) return result;
+  if (photoCol < 0 || admissionCol1Based < 0) return result;
 
   for (const img of sheet.getImages()) {
     const tl = img.range?.tl as { nativeCol?: number; col?: number; nativeRow?: number; row?: number } | undefined;
     const anchorCol = tl?.nativeCol ?? tl?.col;
-    const anchorRow = tl?.nativeRow ?? tl?.row; // 0-indexed
+    const anchorRow = tl?.nativeRow ?? tl?.row; // 0-indexed; header=0, first data row=1
     if (anchorCol == null || anchorRow == null) continue;
-    if (Math.round(anchorCol) !== photoCol) continue;                 // only images in the Photo column
-    const dataRow = Math.round(anchorRow); // sheet row (0-indexed); header is row 0, so dataRow 1 == first data row
-    if (dataRow < 1) continue;
+    if (Math.round(anchorCol) !== photoCol) continue;
+    const sheetRow = Math.round(anchorRow) + 1; // ExcelJS rows are 1-based
+    if (sheetRow < 2) continue;
+    const admissionNo = String(sheet.getRow(sheetRow).getCell(admissionCol1Based).value ?? '').trim();
+    if (!admissionNo) continue;
     const media = wb.getImage(Number(img.imageId));
-    const buffer = media.buffer as ArrayBuffer;
+    const buffer = media.buffer as unknown as ArrayBuffer;
     const ext = (media.extension || 'jpeg').toLowerCase();
     const contentType = ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
-    result.set(dataRow, { bytes: new Uint8Array(buffer), contentType });
+    result.set(admissionNo, { bytes: new Uint8Array(buffer), contentType });
   }
   return result;
+}
+
+// Downscales an embedded image to <=maxDim px on the longer side before upload, as a
+// client-side progressive enhancement (the server still resizes as a backstop). Falls back
+// to the original bytes if canvas/Image is unavailable (e.g. jsdom in tests) or decode fails.
+async function downscaleImageBlob(bytes: Uint8Array, contentType: string, maxDim = 512): Promise<Blob> {
+  const original = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: contentType });
+  try {
+    const url = URL.createObjectURL(original);
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => { img.onload = () => resolve(); img.onerror = () => reject(new Error('decode')); img.src = url; });
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return original;
+      ctx.drawImage(img, 0, 0, w, h);
+      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+      return blob ?? original;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return original; // jsdom / decode failure -> upload original (server resizes as backstop)
+  }
 }
 
 export type StagedPhoto =
@@ -70,16 +104,13 @@ export type StagedPhoto =
 // Photo failures are recorded as skips — never thrown — so a bad photo never fails the data import.
 export async function attachPhotos(
   insertedStudents: Array<{ admissionNo: string; studentId: number }>,
-  stagedByRow: Map<number, StagedPhoto>,
-  admissionByRow: Map<number, string>,
+  stagedByAdmission: Map<string, StagedPhoto>,
 ): Promise<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> }> {
   const idByAdmission = new Map(insertedStudents.map((s) => [String(s.admissionNo), s.studentId]));
   const jobs: Array<{ admissionNo: string; studentId: number; photo: StagedPhoto }> = [];
-  for (const [rowOrdinal, photo] of stagedByRow.entries()) {
-    const admissionNo = admissionByRow.get(rowOrdinal);
-    if (!admissionNo) continue;
+  for (const [admissionNo, photo] of stagedByAdmission.entries()) {
     const studentId = idByAdmission.get(String(admissionNo));
-    if (studentId == null) continue; // row wasn't inserted (skipped/error) — no photo to attach
+    if (studentId == null) continue; // row wasn't inserted (skipped/error) — no photo target
     jobs.push({ admissionNo, studentId, photo });
   }
 
@@ -92,11 +123,9 @@ export async function attachPhotos(
       const job = jobs[cursor++];
       try {
         if (job.photo.kind === 'embedded') {
-          const bytes = job.photo.bytes;
-          const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-          const blob = new Blob([arrayBuffer], { type: job.photo.contentType });
+          const blob = await downscaleImageBlob(job.photo.bytes, job.photo.contentType);
           const fd = new FormData();
-          fd.append('file', new File([blob], 'photo.jpg', { type: job.photo.contentType }));
+          fd.append('file', new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' }));
           await api.post(`/students/${job.studentId}/photo`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         } else {
           await api.post(`/students/${job.studentId}/photo-from-url`, { url: job.photo.url });
@@ -124,8 +153,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
   const [saving, setSaving] = useState('');
-  const stagedPhotosRef = useRef<Map<number, StagedPhoto>>(new Map());
-  const admissionByRowRef = useRef<Map<number, string>>(new Map());
+  const stagedPhotosRef = useRef<Map<string, StagedPhoto>>(new Map());
 
   // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
   const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
@@ -150,20 +178,17 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       const rows = await parseRows(file);
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
 
-      const embedded = await extractXlsxPhotos(file); // Map<dataRowOrdinal, {bytes, contentType}>
-      const staged = new Map<number, StagedPhoto>();
-      const admissionByRow = new Map<number, string>();
-      rows.forEach((row, index) => {
-        const ordinal = index + 1;
+      const embedded = await extractXlsxPhotos(file); // Map<admissionNo, {bytes, contentType}>
+      const stagedByAdmission = new Map<string, StagedPhoto>();
+      rows.forEach((row) => {
         const admissionNo = String(row['AdmissionNo'] ?? row['admissionNo'] ?? '').trim();
-        if (admissionNo) admissionByRow.set(ordinal, admissionNo);
-        const emb = embedded.get(ordinal);
+        if (!admissionNo) return;
+        const emb = embedded.get(admissionNo);
         const link = String(row['Photo'] ?? row['PhotoUrl'] ?? '').trim();
-        if (emb) staged.set(ordinal, { kind: 'embedded', bytes: emb.bytes, contentType: emb.contentType });
-        else if (/^https?:\/\//i.test(link)) staged.set(ordinal, { kind: 'link', url: link });
+        if (emb) stagedByAdmission.set(admissionNo, { kind: 'embedded', bytes: emb.bytes, contentType: emb.contentType });
+        else if (/^https?:\/\//i.test(link)) stagedByAdmission.set(admissionNo, { kind: 'link', url: link });
       });
-      stagedPhotosRef.current = staged;
-      admissionByRowRef.current = admissionByRow;
+      stagedPhotosRef.current = stagedByAdmission;
 
       setBulkImportFileName(file.name);
       setSaving('previewing');
@@ -237,8 +262,12 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       await onRefresh();
       if (stagedPhotosRef.current.size > 0 && insertedStudents.length > 0) {
         setSaving('photos');
-        const report = await attachPhotos(insertedStudents, stagedPhotosRef.current, admissionByRowRef.current);
-        setPhotoReport(report);
+        try {
+          const report = await attachPhotos(insertedStudents, stagedPhotosRef.current);
+          setPhotoReport(report);
+        } catch (photoErr: unknown) {
+          setPhotoReport({ attached: 0, skipped: [{ admissionNo: '', reason: 'photo upload failed' }] });
+        }
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Import failed.');
