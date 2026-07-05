@@ -118,6 +118,7 @@ public class TenantSchoolController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
         Long resolvedId = TenantScope.resolveSchoolId(id); // superadmin bypass; own-school admin; else 403
+        TenantScope.requireSchoolAdmin();
         int classCount = intInRange(body.get("classCount"), 1, 12, "classCount");
         int sectionCount = intInRange(body.get("sectionCount"), 1, 26, "sectionCount");
         try {

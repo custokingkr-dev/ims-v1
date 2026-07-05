@@ -76,6 +76,18 @@ class SchoolStructureControllerTest {
     }
 
     @Test
+    void nonAdminSchoolUser_isForbidden() throws Exception {
+        mvc.perform(put("/api/v1/schools/10/structure")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "TEACHER")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"classCount\":6,\"sectionCount\":3}"))
+                .andExpect(status().isForbidden());
+        verify(structure, never()).updateStructure(anyLong(), anyInt(), anyInt());
+    }
+
+    @Test
     void classCountOutOfRange_returns400() throws Exception {
         mvc.perform(put("/api/v1/schools/7/structure")
                         .header("X-Tenant-School-Token", "tok")

@@ -33,4 +33,15 @@ public final class TenantScope {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "superadmin required");
         }
     }
+
+    public static void requireSchoolAdmin() {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin()) {
+            return;
+        }
+        String role = ctx.role();
+        if (role == null || !role.equalsIgnoreCase("ADMIN")) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school admin role required");
+        }
+    }
 }
