@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -18,13 +19,16 @@ import java.util.UUID;
 public class AttendanceReadRepository {
 
     private final JdbcClient jdbc;
+    private final StudentPhotoStorage photoStorage;
     private final String dailyTable;
     private final String recordsTable;
 
     public AttendanceReadRepository(
             JdbcClient jdbc,
+            StudentPhotoStorage photoStorage,
             @Value("${attendance.db.schema:attendance}") String schema) {
         this.jdbc = jdbc;
+        this.photoStorage = photoStorage;
         this.dailyTable = qualifiedTable(schema, "attendance_daily");
         this.recordsTable = qualifiedTable(schema, "attendance_student_records");
     }
@@ -162,7 +166,7 @@ public class AttendanceReadRepository {
                         "admissionNo", rs.getString("admission_no"),
                         "rollNo", rs.getString("roll_no"),
                         "fullName", rs.getString("full_name"),
-                        "photoUrl", rs.getString("photo_url"),
+                        "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
                         "status", rs.getString("status"),
                         "remarks", rs.getString("remarks") == null ? "" : rs.getString("remarks")))
                 .list();
