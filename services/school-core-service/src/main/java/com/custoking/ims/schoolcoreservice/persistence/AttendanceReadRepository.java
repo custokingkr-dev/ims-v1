@@ -131,6 +131,12 @@ public class AttendanceReadRepository {
                             "locked", sectionLocked);
                 })
                 .list();
+        // Sections with no enrolled students have nobody to mark; showing them as "Submitted"
+        // clutters the grid and reads as "attendance was taken". Over-configured section counts
+        // (many empty sections per class) made every date look fully submitted. Drop the empties.
+        sections = sections.stream()
+                .filter(section -> longNum(section.get("totalStudents"), 0) > 0)
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
         int overallAttended = 0;
         int overallDenom = 0;
         for (Map<String, Object> section : sections) {
