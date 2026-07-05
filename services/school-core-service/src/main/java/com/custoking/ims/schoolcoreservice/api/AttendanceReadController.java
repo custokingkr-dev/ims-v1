@@ -5,6 +5,7 @@ import com.custoking.ims.schoolcoreservice.api.dto.SaveSectionRegisterRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SubmitDayRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SubmitSectionRequest;
 import com.custoking.ims.schoolcoreservice.application.report.AttendanceReportCsv;
+import com.custoking.ims.schoolcoreservice.application.report.AttendanceReportPdf;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.StudentAttendanceRow;
@@ -147,7 +148,7 @@ public class AttendanceReadController {
         requireToken(token, "attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> report = execute(() -> attendance.registerReport(month, classId, sectionId, scope));
-        return respondReport("register-" + month, format, report, AttendanceReportCsv::register);
+        return respondReport("register-" + month, format, report, AttendanceReportCsv::register, AttendanceReportPdf::register);
     }
 
     @GetMapping("/report/student/export")
@@ -160,7 +161,8 @@ public class AttendanceReadController {
         requireToken(token, "attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> report = execute(() -> attendance.studentHistory(studentId, from, to, scope));
-        return respondReport("student-" + studentId + "-" + from + "_" + to, format, report, AttendanceReportCsv::student);
+        return respondReport("student-" + studentId + "-" + from + "_" + to, format, report,
+                AttendanceReportCsv::student, AttendanceReportPdf::student);
     }
 
     @GetMapping("/report/summary/export")
@@ -173,20 +175,23 @@ public class AttendanceReadController {
         requireToken(token, "attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> report = execute(() -> attendance.sectionSummary(from, to, scope));
-        return respondReport("summary-" + from + "_" + to, format, report, AttendanceReportCsv::summary);
+        return respondReport("summary-" + from + "_" + to, format, report, AttendanceReportCsv::summary, AttendanceReportPdf::summary);
     }
 
-    // CSV only until Task 4 wires PDF.
     private ResponseEntity<byte[]> respondReport(String baseName, String format, Map<String, Object> report,
-                                                 Function<Map<String, Object>, byte[]> csv) {
+                                                 Function<Map<String, Object>, byte[]> csv,
+                                                 Function<Map<String, Object>, byte[]> pdf) {
         String fmt = format == null ? "csv" : format.toLowerCase();
-        if (!"csv".equals(fmt)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported format: " + format);
-        }
+        byte[] body;
+        String contentType;
+        String ext;
+        if ("csv".equals(fmt)) { body = csv.apply(report); contentType = "text/csv"; ext = "csv"; }
+        else if ("pdf".equals(fmt)) { body = pdf.apply(report); contentType = MediaType.APPLICATION_PDF_VALUE; ext = "pdf"; }
+        else throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported format: " + format);
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + baseName + ".csv")
-                .header(HttpHeaders.CONTENT_TYPE, "text/csv")
-                .body(csv.apply(report));
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + baseName + "." + ext)
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .body(body);
     }
 
     // ─── PUT /section-register ───────────────────────────────────────────────
