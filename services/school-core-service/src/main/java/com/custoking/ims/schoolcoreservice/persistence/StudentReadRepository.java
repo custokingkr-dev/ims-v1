@@ -1377,6 +1377,7 @@ public class StudentReadRepository {
                 FROM tenant_school.school_sections ss
                 JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
                 WHERE ss.school_id = :schoolId
+                  AND ss.active = true
                 ORDER BY sc.name
                 """)
                 .param("schoolId", schoolId)
@@ -1389,6 +1390,7 @@ public class StudentReadRepository {
                 SELECT DISTINCT name
                 FROM tenant_school.school_sections
                 WHERE school_id = :schoolId
+                  AND active = true
                 ORDER BY name
                 """)
                 .param("schoolId", schoolId)

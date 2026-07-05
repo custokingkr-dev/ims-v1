@@ -20,12 +20,30 @@ public class SchoolStructureReadRepository {
         this.jdbc = jdbc;
     }
 
-    public List<SchoolClassRow> classes() {
+    public List<SchoolClassRow> classes(Long schoolId) {
+        if (schoolId == null) {
+            return jdbc.sql("""
+                            SELECT id, name, sort_order
+                            FROM tenant_school.school_classes
+                            ORDER BY sort_order, name
+                            """)
+                    .query(SchoolClassRow.class)
+                    .list();
+        }
+        Integer count = jdbc.sql(
+                        "SELECT configured_class_count FROM tenant_school.schools WHERE id = :schoolId")
+                .param("schoolId", schoolId)
+                .query(Integer.class)
+                .optional()
+                .orElse(null);
+        int limit = (count == null) ? Integer.MAX_VALUE : count;
         return jdbc.sql("""
                         SELECT id, name, sort_order
                         FROM tenant_school.school_classes
                         ORDER BY sort_order, name
+                        LIMIT :limit
                         """)
+                .param("limit", limit)
                 .query(SchoolClassRow.class)
                 .list();
     }
@@ -190,6 +208,74 @@ public class SchoolStructureReadRepository {
                 .param("city", request.containsKey("city") ? trimToNull(str(request.get("city"), "")) : currentSchoolCity(schoolId))
                 .param("active", request.get("active"))
                 .update();
+        return schoolDetails(schoolId);
+    }
+
+    @Transactional
+    public Map<String, Object> updateStructure(Long schoolId, int classCount, int sectionCount) {
+        requireSchool(schoolId);
+
+        // Compute the target in-range class ids (first N) and active letters up front,
+        // so the occupancy guard mirrors exactly what the apply step will deactivate.
+        List<String> inRangeClassIds = jdbc.sql("""
+                        SELECT id FROM tenant_school.school_classes
+                        ORDER BY sort_order, name
+                        LIMIT :classCount
+                        """)
+                .param("classCount", classCount)
+                .query(String.class)
+                .list();
+        List<String> activeLetters = SchoolStructureDelta.activeLetters(sectionCount);
+
+        // Block if ANY student sits in a section this edit would deactivate: an
+        // out-of-range class, or a section name not among the active letters
+        // (including non-A..Z names created via import). Mirrors the apply UPDATE below.
+        var offender = jdbc.sql("""
+                        SELECT sc.name AS class_name, ss.name AS section_name, count(*) AS n
+                        FROM student.students st
+                        JOIN tenant_school.school_sections ss ON ss.id = st.section_id
+                        JOIN tenant_school.school_classes sc ON sc.id = st.class_id
+                        WHERE st.school_id = :schoolId AND st.deleted_at IS NULL
+                          AND NOT (ss.school_class_id IN (:classIds) AND ss.name IN (:letters))
+                        GROUP BY sc.name, ss.name, sc.sort_order
+                        ORDER BY sc.sort_order, ss.name
+                        LIMIT 1
+                        """)
+                .param("schoolId", schoolId)
+                .param("classIds", inRangeClassIds)
+                .param("letters", activeLetters)
+                .query((rs, n) -> new Object[] {rs.getString("class_name"), rs.getString("section_name"), rs.getLong("n")})
+                .optional();
+        if (offender.isPresent()) {
+            Object[] o = offender.get();
+            throw new StructureInUseException(
+                    "Cannot reduce structure: class '" + o[0] + "' section '" + o[1] + "' has " + o[2] + " student(s)");
+        }
+
+        // Apply: persist counts, create any missing in-range sections, then set the
+        // active flag so only in-range class/section combinations are visible.
+        jdbc.sql("""
+                        UPDATE tenant_school.schools
+                        SET configured_class_count = :classCount, configured_section_count = :sectionCount
+                        WHERE id = :schoolId
+                        """)
+                .param("classCount", classCount)
+                .param("sectionCount", sectionCount)
+                .param("schoolId", schoolId)
+                .update();
+
+        ensureSchoolSections(schoolId, classCount, sectionCount);
+
+        jdbc.sql("""
+                        UPDATE tenant_school.school_sections
+                        SET active = (school_class_id IN (:classIds) AND name IN (:letters))
+                        WHERE school_id = :schoolId
+                        """)
+                .param("classIds", inRangeClassIds)
+                .param("letters", activeLetters)
+                .param("schoolId", schoolId)
+                .update();
+
         return schoolDetails(schoolId);
     }
 

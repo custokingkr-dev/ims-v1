@@ -4,6 +4,7 @@ import com.custoking.ims.schoolcoreservice.persistence.SchoolEntity;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolRepository;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.StructureInUseException;
 import com.custoking.ims.schoolcoreservice.persistence.ModuleEntitlementReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneEntity;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
@@ -110,6 +111,23 @@ public class TenantSchoolController {
         return runCommand(() -> structure.updateSchool(id, body));
     }
 
+    @PutMapping("/schools/{id}/structure")
+    public Map<String, Object> updateSchoolStructure(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        requireToken(token, "tenant-school:write");
+        Long resolvedId = TenantScope.resolveSchoolId(id); // superadmin bypass; own-school admin; else 403
+        TenantScope.requireSchoolAdmin();
+        int classCount = intInRange(body.get("classCount"), 1, 12, "classCount");
+        int sectionCount = intInRange(body.get("sectionCount"), 1, 26, "sectionCount");
+        try {
+            return runCommand(() -> structure.updateStructure(resolvedId, classCount, sectionCount));
+        } catch (StructureInUseException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
+    }
+
     @GetMapping("/schools/{id}/modules")
     public Object schoolModules(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
@@ -174,7 +192,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
-        return structure.sections(resolvedId, classId, active);
+        return structure.sections(resolvedId, classId, active == null ? Boolean.TRUE : active);
     }
 
     @GetMapping("/schools/{id}/staff")
@@ -197,10 +215,14 @@ public class TenantSchoolController {
     }
 
     @GetMapping("/classes")
-    public Object classes(@RequestHeader(value = "X-Tenant-School-Token", required = false) String token) {
-        // Global class definitions (Grade 1-12 etc.) accessible to all authenticated users.
+    public Object classes(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
+        // Scoped to the caller's school (first-N configured classes); superadmin with no
+        // schoolId gets the full global list.
         requireToken(token, "tenant-school:read");
-        return structure.classes();
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return structure.classes(scope);
     }
 
     @GetMapping("/sections")
@@ -211,7 +233,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
-        return structure.sections(schoolId, classId, active);
+        return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
     }
 
     @GetMapping("/classes/{classId}/sections")
@@ -222,7 +244,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
-        return structure.sections(schoolId, classId, active);
+        return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
     }
 
     @GetMapping("/academic-years")
@@ -388,6 +410,24 @@ public class TenantSchoolController {
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid actorId: " + value);
         }
+    }
+
+    private int intInRange(Object value, int min, int max, String field) {
+        if (value == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, field + " is required");
+        }
+        int parsed;
+        try {
+            parsed = (value instanceof Number number) ? number.intValue()
+                    : Integer.parseInt(String.valueOf(value).trim());
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + field + ": " + value);
+        }
+        if (parsed < min || parsed > max) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    field + " must be between " + min + " and " + max);
+        }
+        return parsed;
     }
 
     private List<Long> parseLongList(Object value) {
