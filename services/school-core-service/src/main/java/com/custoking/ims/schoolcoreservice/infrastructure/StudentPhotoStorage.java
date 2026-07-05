@@ -90,11 +90,17 @@ public class StudentPhotoStorage {
         }
         byte[] resized = resize(data);
         String key = "students/" + schoolId + "/" + studentId + "/" + sha256(resized) + ".jpg";
-        BlobInfo blob = BlobInfo.newBuilder(bucket, key)
-                .setContentType("image/jpeg")
-                .setCacheControl(IMMUTABLE_CACHE)
-                .build();
-        storage().create(blob, resized);
+        try {
+            BlobInfo blob = BlobInfo.newBuilder(bucket, key)
+                    .setContentType("image/jpeg")
+                    .setCacheControl(IMMUTABLE_CACHE)
+                    .build();
+            storage().create(blob, resized);
+        } catch (RuntimeException ex) {
+            log.error("Failed to store student photo (bucket={}, key={})", bucket, key, ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Could not store the photo: " + ex.getClass().getSimpleName() + ": " + ex.getMessage(), ex);
+        }
         return key;
     }
 
