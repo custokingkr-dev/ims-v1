@@ -64,6 +64,19 @@ class SchoolStructureControllerTest {
     }
 
     @Test
+    void schoolAdminRole_SCHOOL_ADMIN_editingOwnSchool_isAllowed() throws Exception {
+        when(structure.updateStructure(10L, 6, 3)).thenReturn(Map.of("id", 10L));
+        mvc.perform(put("/api/v1/schools/10/structure")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "SCHOOL_ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"classCount\":6,\"sectionCount\":3}"))
+                .andExpect(status().isOk());
+        verify(structure).updateStructure(10L, 6, 3);
+    }
+
+    @Test
     void schoolAdmin_editingAnotherSchool_isForbidden() throws Exception {
         mvc.perform(put("/api/v1/schools/99/structure")
                         .header("X-Tenant-School-Token", "tok")

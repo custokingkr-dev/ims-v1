@@ -40,7 +40,8 @@ public final class TenantScope {
             return;
         }
         String role = ctx.role();
-        if (role == null || !role.equalsIgnoreCase("ADMIN")) {
+        // Both ADMIN and SCHOOL_ADMIN are school-level administrator roles in this system.
+        if (role == null || !(role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("SCHOOL_ADMIN"))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school admin role required");
         }
     }
