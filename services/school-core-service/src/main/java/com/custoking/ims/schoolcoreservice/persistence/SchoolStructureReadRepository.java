@@ -37,13 +37,26 @@ public class SchoolStructureReadRepository {
                 .optional()
                 .orElse(null);
         int limit = (count == null) ? Integer.MAX_VALUE : count;
+        // A school's classes = the first N configured classes UNION any class that
+        // actually has students (onboarding/import can place students in classes
+        // beyond the configured count; those must never be hidden from pickers).
         return jdbc.sql("""
                         SELECT id, name, sort_order
-                        FROM tenant_school.school_classes
-                        ORDER BY sort_order, name
-                        LIMIT :limit
+                        FROM tenant_school.school_classes sc
+                        WHERE sc.id IN (
+                            SELECT id FROM tenant_school.school_classes
+                            ORDER BY sort_order, name
+                            LIMIT :limit
+                        )
+                        OR sc.id IN (
+                            SELECT DISTINCT class_id
+                            FROM student.students
+                            WHERE school_id = :schoolId AND deleted_at IS NULL
+                        )
+                        ORDER BY sc.sort_order, sc.name
                         """)
                 .param("limit", limit)
+                .param("schoolId", schoolId)
                 .query(SchoolClassRow.class)
                 .list();
     }

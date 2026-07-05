@@ -188,6 +188,23 @@ class SchoolStructureIntegrationTest {
     }
 
     @Test
+    void classes_schoolScope_alsoIncludesOutOfRangeClassesThatHaveStudents() throws Exception {
+        // School configured for 1 class, but a student was onboarded into class 8
+        // (its section auto-created). Class 8 must NOT be hidden from the pickers.
+        long schoolId = seedSchool(1, 1);
+        // class 8 section must exist for the FK before seeding the student.
+        try (java.sql.Connection c = dataSource.getConnection(); java.sql.Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.school_sections (id, school_id, school_class_id, name, teacher_name, active) VALUES " +
+                    "('" + schoolId + "-c8-A', " + schoolId + ", 'c8', 'A', '', true)");
+        }
+        seedStudent(schoolId, "c8", schoolId + "-c8-A");
+
+        assertThat(repo.classes(schoolId))
+                .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
+                .containsExactly("1", "8"); // first-1 (class 1) UNION class-with-students (class 8)
+    }
+
+    @Test
     void workspaceFilters_excludeDeactivatedSectionsAfterShrink() throws Exception {
         long schoolId = seedSchool(5, 3);
         repo.updateStructure(schoolId, 3, 2); // classes 4-5 and section C deactivated

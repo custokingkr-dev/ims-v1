@@ -16,7 +16,26 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
   const { can } = usePermissions();
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
-  const feeSummary = workspace?.fees?.summary ?? { progressPercent: 0, collected: 0, outstanding: 0, overdueCount: 0, target: 0 };
+  // Real fee summary from school-core (the /workspace fees.summary is a hardcoded-0 stub).
+  const [feeSummary, setFeeSummary] = useState({ progressPercent: 0, collected: 0, outstanding: 0, overdueCount: 0, target: 0 });
+
+  const loadFeeSummary = async () => {
+    try {
+      const [moduleRes, overdueRes] = await Promise.all([
+        api.get('/fees/dashboard/module', { params: schoolScopedParams }),
+        api.get('/fees/dashboard/overdue-count', { params: schoolScopedParams }),
+      ]);
+      const s = (moduleRes.data as { summary?: { collected?: number; target?: number } })?.summary ?? {};
+      const collected = Number(s.collected || 0);
+      const target = Number(s.target || 0);
+      const outstanding = Math.max(0, target - collected);
+      const progressPercent = target > 0 ? Math.round((collected / target) * 100) : 0;
+      const overdueCount = Number((overdueRes.data as { count?: number })?.count || 0);
+      setFeeSummary({ progressPercent, collected, outstanding, overdueCount, target });
+    } catch {
+      // Non-fatal: keep the prior summary rather than blanking the cards.
+    }
+  };
 
   const [saving, setSaving] = useState('');
   const [feeClasses, setFeeClasses] = useState<any[]>([]);
@@ -176,6 +195,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
       };
       await api.post('/workspace/fees/record-payment', payload);
       await onRefresh();
+      await loadFeeSummary();
       if (feeFilters.className && feeFilters.sectionName) {
         await loadFeeReports(feeFilters.className, feeFilters.sectionName);
       }
@@ -242,6 +262,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
 
   useEffect(() => {
     loadFeeClasses();
+    loadFeeSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
