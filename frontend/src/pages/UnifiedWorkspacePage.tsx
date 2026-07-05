@@ -116,8 +116,16 @@ export default function UnifiedWorkspacePage() {
         api.get('/supply/orders', { params: { ...schoolScopedParams, page, size: 20 } }),
         api.get('/supply/orders/stats', { params: schoolScopedParams }),
       ]);
-      // ordRes.data is a PageResponse envelope: { content, page, size, totalElements, totalPages, last }
-      setLiveOrders(ordRes.data);
+      // GET /supply/orders returns a plain array; the order panels read a PageResponse
+      // envelope ({content, totalPages}). Normalize so placed orders actually render
+      // (a bare array left liveOrders.content undefined -> the grid showed nothing).
+      const ordersData: any = ordRes.data;
+      const content = Array.isArray(ordersData) ? ordersData : (ordersData?.content ?? []);
+      setLiveOrders({
+        content,
+        totalPages: (!Array.isArray(ordersData) && ordersData?.totalPages) || 1,
+        page,
+      });
       setOrdersPage(page);
       setLiveOrderStats(statsRes.data);
     } catch (e: any) {
