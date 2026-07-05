@@ -15,6 +15,14 @@ import java.util.Set;
 @Component
 public class ImageUrlFetcher {
 
+    static {
+        // SSRF rebinding mitigation (pragmatic): keep the positive DNS cache long enough that the
+        // address validated in validateHost() is the one HttpClient connects to (they resolve ms apart).
+        // Residual: a precisely-timed sub-TTL rebind is not fully closed (java.net.http has no
+        // per-request resolver hook; a full fix would need a global InetAddressResolverProvider).
+        java.security.Security.setProperty("networkaddress.cache.ttl", "30");
+    }
+
     private static final Set<String> IMAGE_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private static final int MAX_REDIRECTS = 3;
 
@@ -93,15 +101,51 @@ public class ImageUrlFetcher {
             throw new ImageFetchException("unreachable", "cannot resolve host");
         }
         for (InetAddress addr : addrs) {
-            if (isBlockedAddress(addr) && !allowLoopbackForTest) {
+            if (isBlockedAddress(addr)) {
+                if (allowLoopbackForTest && addr.isLoopbackAddress()) continue;
                 throw new ImageFetchException("blocked_host", "host resolves to a blocked address");
             }
         }
     }
 
     static boolean isBlockedAddress(InetAddress addr) {
-        return addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress()
-                || addr.isAnyLocalAddress() || addr.isMulticastAddress() || isUniqueLocalIpv6(addr);
+        InetAddress effective = unwrapEmbeddedIpv4(addr);
+        if (effective != addr) return isBlockedAddress(effective);
+        if (addr.isLoopbackAddress() || addr.isLinkLocalAddress() || addr.isSiteLocalAddress()
+                || addr.isAnyLocalAddress() || addr.isMulticastAddress() || isUniqueLocalIpv6(addr)) {
+            return true;
+        }
+        byte[] b = addr.getAddress();
+        if (b.length == 4) {
+            int o0 = b[0] & 0xFF, o1 = b[1] & 0xFF, o2 = b[2] & 0xFF;
+            if (o0 == 0) return true;                                   // 0.0.0.0/8
+            if (o0 == 100 && (o1 & 0xC0) == 0x40) return true;         // 100.64.0.0/10 CGNAT
+            if (o0 == 192 && o1 == 0 && (o2 == 0 || o2 == 2)) return true; // 192.0.0.0/24, 192.0.2.0/24
+            if (o0 == 198 && (o1 & 0xFE) == 18) return true;          // 198.18.0.0/15
+            if (o0 == 198 && o1 == 51 && o2 == 100) return true;      // 198.51.100.0/24
+            if (o0 == 203 && o1 == 0 && o2 == 113) return true;       // 203.0.113.0/24
+            if (o0 >= 240) return true;                                // 240.0.0.0/4 + broadcast
+        }
+        return false;
+    }
+
+    private static InetAddress unwrapEmbeddedIpv4(InetAddress addr) {
+        byte[] b = addr.getAddress();
+        if (b.length != 16) return addr;
+        boolean mapped = true;
+        for (int i = 0; i < 10; i++) if (b[i] != 0) { mapped = false; break; }
+        if (mapped && (b[10] & 0xFF) == 0xFF && (b[11] & 0xFF) == 0xFF) return ipv4(b, 12); // ::ffff:0:0/96
+        if ((b[0] & 0xFF) == 0x00 && (b[1] & 0xFF) == 0x64 && (b[2] & 0xFF) == 0xFF && (b[3] & 0xFF) == 0x9B) {
+            boolean zeros = true;
+            for (int i = 4; i < 12; i++) if (b[i] != 0) { zeros = false; break; }
+            if (zeros) return ipv4(b, 12);                             // 64:ff9b::/96 NAT64
+        }
+        return addr;
+    }
+
+    private static InetAddress ipv4(byte[] b, int off) {
+        try { return InetAddress.getByAddress(new byte[]{b[off], b[off + 1], b[off + 2], b[off + 3]}); }
+        catch (java.net.UnknownHostException e) { throw new IllegalStateException(e); }
     }
 
     private static boolean isUniqueLocalIpv6(InetAddress addr) {

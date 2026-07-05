@@ -20,6 +20,10 @@ class ImageUrlFetcherTest {
         assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("172.16.9.9"))).isTrue();
         assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("192.168.1.1"))).isTrue();
         assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("::1"))).isTrue();
+        assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("100.64.0.1"))).isTrue();
+        assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("0.0.0.0"))).isTrue();
+        assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("240.0.0.1"))).isTrue();
+        assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("::ffff:10.0.0.1"))).isTrue();
         assertThat(ImageUrlFetcher.isBlockedAddress(InetAddress.getByName("8.8.8.8"))).isFalse();
     }
 
@@ -70,6 +74,70 @@ class ImageUrlFetcherTest {
             var img = loopbackOk.fetch("http://127.0.0.1:" + server.getAddress().getPort() + "/p.jpg");
             assertThat(img.contentType()).isEqualTo("image/jpeg");
             assertThat(img.data()).isEqualTo(jpeg);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void rejectsNonImageContentTypeOnAllowedHost() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/x", ex -> {
+            byte[] body = "hello".getBytes();
+            ex.getResponseHeaders().add("Content-Type", "text/plain");
+            ex.sendResponseHeaders(200, body.length);
+            ex.getResponseBody().write(body);
+            ex.close();
+        });
+        server.start();
+        try {
+            ImageUrlFetcher loopbackOk = ImageUrlFetcher.forTestAllowingLoopback(2_097_152L);
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/x";
+            assertThatThrownBy(() -> loopbackOk.fetch(url))
+                    .isInstanceOf(ImageFetchException.class)
+                    .extracting(e -> ((ImageFetchException) e).reason()).isEqualTo("not_an_image");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void blocksRedirectToPrivateAddress() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/r", ex -> {
+            ex.getResponseHeaders().add("Location", "http://10.0.0.1/x");
+            ex.sendResponseHeaders(302, -1);
+            ex.close();
+        });
+        server.start();
+        try {
+            ImageUrlFetcher loopbackOk = ImageUrlFetcher.forTestAllowingLoopback(2_097_152L);
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/r";
+            assertThatThrownBy(() -> loopbackOk.fetch(url))
+                    .isInstanceOf(ImageFetchException.class)
+                    .extracting(e -> ((ImageFetchException) e).reason()).isEqualTo("blocked_host");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void rejectsOversizeImage() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        byte[] jpeg = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0};
+        server.createContext("/big.jpg", ex -> {
+            ex.getResponseHeaders().add("Content-Type", "image/jpeg");
+            ex.sendResponseHeaders(200, jpeg.length);
+            ex.getResponseBody().write(jpeg);
+            ex.close();
+        });
+        server.start();
+        try {
+            ImageUrlFetcher loopbackOk = ImageUrlFetcher.forTestAllowingLoopback(3L);
+            String url = "http://127.0.0.1:" + server.getAddress().getPort() + "/big.jpg";
+            assertThatThrownBy(() -> loopbackOk.fetch(url))
+                    .isInstanceOf(ImageFetchException.class)
+                    .extracting(e -> ((ImageFetchException) e).reason()).isEqualTo("too_large");
         } finally {
             server.stop(0);
         }
