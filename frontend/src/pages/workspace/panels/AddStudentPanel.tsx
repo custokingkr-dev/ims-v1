@@ -1,4 +1,4 @@
-import { DragEvent, useRef, useState } from 'react';
+import { DragEvent, useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 import type { PanelKey } from '../config';
@@ -27,6 +27,26 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
   const [photoOffsetX, setPhotoOffsetX] = useState(0);
   const [photoOffsetY, setPhotoOffsetY] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
+  const [sections, setSections] = useState<Array<{ id: string; name: string }>>([]);
+
+  useEffect(() => {
+    let alive = true;
+    void api.get<Array<{ id: string; name: string }>>('/classes')
+      .then((res) => { if (alive) setClasses(Array.isArray(res.data) ? res.data : []); })
+      .catch(() => { if (alive) setClasses([]); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    const selected = classes.find((c) => c.name === studentForm.gradeLevel);
+    if (!selected) { setSections([]); return; }
+    let alive = true;
+    void api.get<Array<{ id: string; name: string }>>(`/classes/${selected.id}/sections`, { params: { active: true } })
+      .then((res) => { if (alive) setSections(Array.isArray(res.data) ? res.data : []); })
+      .catch(() => { if (alive) setSections([]); });
+    return () => { alive = false; };
+  }, [classes, studentForm.gradeLevel]);
 
   const resetPhotoState = () => {
     setPhotoFile(null);
@@ -147,8 +167,8 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
               Academic Details
             </div>
             <div className="ck-form-grid ck-fg-3">
-              <Field label="Class *"><select value={studentForm.gradeLevel} onChange={(e) => setStudentForm({ ...studentForm, gradeLevel: e.target.value })}><option>Class 1</option><option>Class 2</option><option>Class 3</option><option>Class 4</option><option>Class 5</option><option>Class 6</option><option>Class 7</option><option>Class 8</option><option>Class 9</option><option>Class 10</option><option>Class 11</option><option>Class 12</option></select></Field>
-              <Field label="Section"><select value={studentForm.sectionName} onChange={(e) => setStudentForm({ ...studentForm, sectionName: e.target.value })}><option>A</option><option>B</option><option>C</option><option>D</option></select></Field>
+              <Field label="Class *"><select value={studentForm.gradeLevel} onChange={(e) => setStudentForm({ ...studentForm, gradeLevel: e.target.value, sectionName: '' })}>{classes.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select></Field>
+              <Field label="Section"><select value={studentForm.sectionName} onChange={(e) => setStudentForm({ ...studentForm, sectionName: e.target.value })}>{sections.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}</select></Field>
               <Field label="Academic year"><input value={studentForm.academicYear} onChange={(e) => setStudentForm({ ...studentForm, academicYear: e.target.value })} /></Field>
             </div>
           </div>
