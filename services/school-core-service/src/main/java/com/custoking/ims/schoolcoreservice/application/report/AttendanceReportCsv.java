@@ -26,8 +26,8 @@ public final class AttendanceReportCsv {
 
         for (Map<String, Object> s : students) {
             List<Map<String, Object>> cells = (List<Map<String, Object>>) s.get("cells");
-            StringBuilder row = new StringBuilder();
-            field(row, s.get("rollNo")); field(row, s.get("admissionNo")); field(row, s.get("fullName"));
+            StringBuilder row = new StringBuilder(String.join(",",
+                    esc(str(s.get("rollNo"))), esc(str(s.get("admissionNo"))), esc(str(s.get("fullName")))));
             for (Map<String, Object> cell : cells) row.append(',').append(LETTER.getOrDefault(String.valueOf(cell.get("status")), ""));
             row.append(',').append(s.get("presentCount")).append(',').append(s.get("lateCount"))
                .append(',').append(s.get("leaveCount")).append(',').append(s.get("absentCount"))
@@ -39,7 +39,7 @@ public final class AttendanceReportCsv {
         for (Map<String, Object> dt : dayTotals) {
             tot.append(',').append(num(dt.get("presentCount")) + num(dt.get("lateCount")) + num(dt.get("leaveCount")) + num(dt.get("absentCount")));
         }
-        tot.append(",,,,");
+        tot.append(",,,,,");
         line(sb, tot.toString());
 
         StringBuilder grand = new StringBuilder(",,Section total");
@@ -65,9 +65,8 @@ public final class AttendanceReportCsv {
         line(sb, "");
         line(sb, "Date,Weekday,Status,Remarks");
         for (Map<String, Object> d : days) {
-            StringBuilder row = new StringBuilder();
-            field(row, d.get("date")); field(row, d.get("weekday")); field(row, d.get("status")); field(row, d.get("remarks"));
-            line(sb, row.toString());
+            line(sb, String.join(",",
+                    esc(str(d.get("date"))), esc(str(d.get("weekday"))), esc(str(d.get("status"))), esc(str(d.get("remarks")))));
         }
         return sb.toString().getBytes(StandardCharsets.UTF_8);
     }
@@ -81,8 +80,8 @@ public final class AttendanceReportCsv {
         line(sb, "");
         line(sb, "Section,Teacher,Present,Late,Leave,Absent,Present%,Days Recorded");
         for (Map<String, Object> s : sections) {
-            StringBuilder row = new StringBuilder();
-            field(row, s.get("sectionName")); field(row, s.get("teacherName"));
+            StringBuilder row = new StringBuilder(String.join(",",
+                    esc(str(s.get("sectionName"))), esc(str(s.get("teacherName")))));
             row.append(',').append(s.get("presentCount")).append(',').append(s.get("lateCount"))
                .append(',').append(s.get("leaveCount")).append(',').append(s.get("absentCount"))
                .append(',').append(s.get("presentPercent")).append(',').append(s.get("daysRecorded"));
@@ -95,11 +94,7 @@ public final class AttendanceReportCsv {
 
     private static int num(Object o) { return o instanceof Number n ? n.intValue() : 0; }
     private static void line(StringBuilder sb, String s) { sb.append(s).append("\r\n"); }
-    private static void field(StringBuilder row, Object value) {
-        if (row.length() > 0 && row.charAt(row.length() - 1) != ',') row.append(',');
-        else if (row.length() > 0) { /* already has trailing comma */ }
-        row.append(esc(value == null ? "" : String.valueOf(value)));
-    }
+    private static String str(Object o) { return o == null ? "" : String.valueOf(o); }
     private static String esc(String v) {
         if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) {
             return '"' + v.replace("\"", "\"\"") + '"';
