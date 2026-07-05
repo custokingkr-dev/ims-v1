@@ -4,6 +4,8 @@ import com.custoking.ims.schoolcoreservice.api.dto.DailyEntryRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SaveSectionRegisterRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SubmitDayRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SubmitSectionRequest;
+import com.custoking.ims.schoolcoreservice.application.report.AttendanceReportCsv;
+import com.custoking.ims.schoolcoreservice.application.report.AttendanceReportPdf;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.StudentAttendanceRow;
@@ -11,7 +13,10 @@ import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +33,7 @@ import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/api/v1/attendance")
@@ -96,6 +102,96 @@ public class AttendanceReadController {
         requireToken(token, "attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         return execute(() -> attendance.sectionRegister(date, classId, sectionId, scope));
+    }
+
+    @GetMapping("/report/register")
+    public Map<String, Object> reportRegister(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam String month,
+            @RequestParam String classId,
+            @RequestParam String sectionId) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.registerReport(month, classId, sectionId, scope));
+    }
+
+    @GetMapping("/report/student")
+    public Map<String, Object> reportStudent(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam Long studentId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.studentHistory(studentId, from, to, scope));
+    }
+
+    @GetMapping("/report/summary")
+    public Map<String, Object> reportSummary(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.sectionSummary(from, to, scope));
+    }
+
+    @GetMapping("/report/register/export")
+    public ResponseEntity<byte[]> exportRegister(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam String month, @RequestParam String classId, @RequestParam String sectionId,
+            @RequestParam(defaultValue = "csv") String format) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        Map<String, Object> report = execute(() -> attendance.registerReport(month, classId, sectionId, scope));
+        return respondReport("register-" + month, format, report, AttendanceReportCsv::register, AttendanceReportPdf::register);
+    }
+
+    @GetMapping("/report/student/export")
+    public ResponseEntity<byte[]> exportStudent(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId, @RequestParam Long studentId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "csv") String format) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        Map<String, Object> report = execute(() -> attendance.studentHistory(studentId, from, to, scope));
+        return respondReport("student-" + studentId + "-" + from + "_" + to, format, report,
+                AttendanceReportCsv::student, AttendanceReportPdf::student);
+    }
+
+    @GetMapping("/report/summary/export")
+    public ResponseEntity<byte[]> exportSummary(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam(defaultValue = "csv") String format) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        Map<String, Object> report = execute(() -> attendance.sectionSummary(from, to, scope));
+        return respondReport("summary-" + from + "_" + to, format, report, AttendanceReportCsv::summary, AttendanceReportPdf::summary);
+    }
+
+    private ResponseEntity<byte[]> respondReport(String baseName, String format, Map<String, Object> report,
+                                                 Function<Map<String, Object>, byte[]> csv,
+                                                 Function<Map<String, Object>, byte[]> pdf) {
+        String fmt = format == null ? "csv" : format.toLowerCase();
+        byte[] body;
+        String contentType;
+        String ext;
+        if ("csv".equals(fmt)) { body = csv.apply(report); contentType = "text/csv"; ext = "csv"; }
+        else if ("pdf".equals(fmt)) { body = pdf.apply(report); contentType = MediaType.APPLICATION_PDF_VALUE; ext = "pdf"; }
+        else throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported format: " + format);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + baseName + "." + ext)
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .body(body);
     }
 
     // ─── PUT /section-register ───────────────────────────────────────────────
