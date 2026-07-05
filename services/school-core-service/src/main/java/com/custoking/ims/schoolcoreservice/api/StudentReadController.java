@@ -6,6 +6,8 @@ import com.custoking.ims.schoolcoreservice.api.dto.CreateStudentRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.InitiateIdCardReviewRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.InitiateFullNameReviewRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.PreviewImportRequest;
+import com.custoking.ims.schoolcoreservice.infrastructure.ImageFetchException;
+import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
@@ -39,12 +41,15 @@ import java.nio.charset.StandardCharsets;
 public class StudentReadController {
 
     private final StudentReadRepository students;
+    private final ImageUrlFetcher fetcher;
     private final String readToken;
 
     public StudentReadController(
             StudentReadRepository students,
+            ImageUrlFetcher fetcher,
             @Value("${student.read-token:}") String readToken) {
         this.students = students;
+        this.fetcher = fetcher;
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
@@ -141,6 +146,28 @@ public class StudentReadController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read the uploaded photo", ex);
         }
         return execute(() -> students.attachPhoto(id, data, file.getContentType()));
+    }
+
+    @PostMapping("/{id}/photo-from-url")
+    public ResponseEntity<Map<String, Object>> attachPhotoFromUrl(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        requireToken(token, "student:write");
+        Long schoolId;
+        try {
+            schoolId = students.schoolIdForStudent(id);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "student not found", ex);
+        }
+        TenantScope.resolveSchoolId(schoolId);
+        String url = body.get("url") == null ? "" : String.valueOf(body.get("url"));
+        try {
+            ImageUrlFetcher.FetchedImage img = fetcher.fetch(url);
+            return ResponseEntity.ok(execute(() -> students.attachPhoto(id, img.data(), img.contentType())));
+        } catch (ImageFetchException ex) {
+            return ResponseEntity.unprocessableEntity().body(Map.of("reason", ex.reason(), "ok", false));
+        }
     }
 
     @PostMapping("/imports/preview")

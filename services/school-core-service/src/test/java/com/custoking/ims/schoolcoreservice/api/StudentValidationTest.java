@@ -34,7 +34,9 @@ class StudentValidationTest {
     @BeforeEach
     void setUp() {
         repo = mock(StudentReadRepository.class);
-        StudentReadController controller = new StudentReadController(repo, VALID_TOKEN);
+        com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher fetcher =
+                mock(com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher.class);
+        StudentReadController controller = new StudentReadController(repo, fetcher, VALID_TOKEN);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
