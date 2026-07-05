@@ -11,8 +11,11 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -156,11 +159,38 @@ public class TenantSchoolClient {
         }
     }
 
+    // Gateway-authoritative caller context. The gateway strips any client-supplied copies and
+    // re-sets these from the verified JWT, so forwarding them onward to tenant-school is safe and
+    // lets tenant-school apply the SAME tenant scope (e.g. superadmin) the original caller had.
+    private static final String[] AUTH_CONTEXT_HEADERS = {
+            "X-Authenticated-User-Id", "X-Authenticated-Email", "X-Authenticated-Role",
+            "X-Authenticated-School-Id", "X-Authenticated-Zone-Id"
+    };
+
     private void applyHeaders(HttpHeaders headers) {
         headers.set("X-Tenant-School-Token", token);
+        forwardAuthenticatedContext(headers);
         String identityToken = cloudRunIdentityToken();
         if (StringUtils.hasText(identityToken)) {
             headers.setBearerAuth(identityToken);
+        }
+    }
+
+    /**
+     * Propagate the current request's authenticated-context headers to tenant-school so it can
+     * authorize the call as the original user (without this, a superadmin provisioning call reaches
+     * tenant-school with no scope and is rejected 403). No-op outside a servlet request (e.g. tests).
+     */
+    private void forwardAuthenticatedContext(HttpHeaders headers) {
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs)) {
+            return;
+        }
+        HttpServletRequest request = attrs.getRequest();
+        for (String name : AUTH_CONTEXT_HEADERS) {
+            String value = request.getHeader(name);
+            if (StringUtils.hasText(value)) {
+                headers.set(name, value);
+            }
         }
     }
 
