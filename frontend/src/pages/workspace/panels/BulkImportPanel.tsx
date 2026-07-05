@@ -8,6 +8,21 @@ interface Props {
   schoolScopedParams?: { schoolId: number };
 }
 
+// The exact columns the importer accepts (header names are case-insensitive on the server).
+// Shown to schools and used to generate a real .xlsx template.
+const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; note: string }> = [
+  { key: 'Name', required: true, example: 'Aryan Mehta', note: 'Student full name' },
+  { key: 'Class', required: true, example: '9', note: 'Class / grade (e.g. 1–12)' },
+  { key: 'Section', required: true, example: 'B', note: 'Section letter' },
+  { key: 'AdmissionNo', required: true, example: 'ADM-1001', note: 'Unique admission number' },
+  { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Format YYYY-MM-DD' },
+  { key: 'Gender', required: false, example: 'Male', note: 'Male / Female / Other' },
+  { key: 'FatherName', required: false, example: 'R. Mehta', note: '' },
+  { key: 'Phone', required: false, example: '9876543210', note: '10-digit contact number' },
+  { key: 'Address', required: false, example: 'Hyderabad', note: '' },
+  { key: 'BoardRegistrationNo', required: false, example: 'BRN1001', note: '' },
+];
+
 export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Props) {
   const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
   const [bulkImportDragActive, setBulkImportDragActive] = useState(false);
@@ -112,8 +127,16 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
 
   const downloadImportTemplate = async () => {
     try {
-      const res = await api.get('/students/import/template', { responseType: 'blob' });
-      const url = URL.createObjectURL(new Blob([res.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      // Generate a REAL .xlsx (the old backend template was CSV mislabeled as .xlsx, which
+      // failed the .xlsx parser on re-upload). ExcelJS is already used for parsing uploads.
+      const ExcelJS = (await import('exceljs')).default;
+      const workbook = new ExcelJS.Workbook();
+      const sheet = workbook.addWorksheet('Students');
+      sheet.columns = IMPORT_COLUMNS.map((c) => ({ header: c.key, key: c.key, width: Math.max(16, c.key.length + 4) }));
+      sheet.getRow(1).font = { bold: true };
+      sheet.addRow(Object.fromEntries(IMPORT_COLUMNS.map((c) => [c.key, c.example])));
+      const buffer = await workbook.xlsx.writeBuffer();
+      const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const link = document.createElement('a');
       link.href = url;
       link.download = 'student-import-template.xlsx';
@@ -170,6 +193,23 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
           <button className="ck-btn ck-btn-ghost" type="button" onClick={() => void downloadImportTemplate()}>Download sample template</button>
         </div>
         {bulkImportFileName ? <div className="ck-iz-file">Selected file: {bulkImportFileName}</div> : null}
+      </div>
+      <div className="ck-card" style={{ marginTop: 16 }}>
+        <div className="ck-card-h"><div className="ck-card-t">Excel format — use these exact column headers (row 1)</div></div>
+        <table className="ck-table">
+          <thead><tr><th>Column</th><th>Required</th><th>Example</th><th>Notes</th></tr></thead>
+          <tbody>
+            {IMPORT_COLUMNS.map((c) => (
+              <tr key={c.key}>
+                <td><strong>{c.key}</strong></td>
+                <td>{c.required ? <span className="ck-status sr">Required</span> : <span className="ck-status sgr">Optional</span>}</td>
+                <td>{c.example}</td>
+                <td className="ts">{c.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="ts" style={{ padding: '0 16px 16px' }}>Download the sample template above for a ready-to-fill .xlsx. Add student photos per student after import (bulk photo import is coming soon).</div>
       </div>
       {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
       {bulkImportError ? <div className="ck-alert ck-alert-r" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportError}</div></div> : null}
