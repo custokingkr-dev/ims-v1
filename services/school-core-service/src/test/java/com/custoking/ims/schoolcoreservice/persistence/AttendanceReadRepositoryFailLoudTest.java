@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
@@ -17,7 +18,7 @@ import static org.mockito.Mockito.mock;
 class AttendanceReadRepositoryFailLoudTest {
 
     private final AttendanceReadRepository repo =
-            new AttendanceReadRepository(mock(JdbcClient.class), "attendance");
+            new AttendanceReadRepository(mock(JdbcClient.class), mock(StudentPhotoStorage.class), "attendance");
 
     @Test
     void throws_whenSchoolIdAbsent() {

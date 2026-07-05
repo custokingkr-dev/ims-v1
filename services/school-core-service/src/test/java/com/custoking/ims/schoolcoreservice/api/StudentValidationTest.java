@@ -6,17 +6,21 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -104,33 +108,30 @@ class StudentValidationTest {
         assertEquals("Male", captured.get("gender"));
     }
 
-    // --- POST /{id}/photo ---
+    // --- POST /{id}/photo (multipart upload) ---
 
     @Test
-    void attachPhoto_missingPhotoUrl_returns400() throws Exception {
-        mvc.perform(post("/api/v1/students/42/photo")
-                        .header("X-Student-Service-Token", VALID_TOKEN)
-                        .contentType("application/json")
-                        .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.photoUrl").exists());
-        verify(repo, never()).attachPhoto(anyLong(), anyMap());
+    void attachPhoto_missingFile_returns400() throws Exception {
+        mvc.perform(multipart("/api/v1/students/42/photo")
+                        .header("X-Student-Service-Token", VALID_TOKEN))
+                .andExpect(status().isBadRequest());
+        verify(repo, never()).attachPhoto(anyLong(), any(byte[].class), any());
     }
 
     @Test
-    void attachPhoto_valid_callsRepositoryWithPhotoUrl() throws Exception {
-        when(repo.attachPhoto(anyLong(), anyMap())).thenReturn(Map.of("id", 42L));
-        mvc.perform(post("/api/v1/students/42/photo")
-                        .header("X-Student-Service-Token", VALID_TOKEN)
-                        .contentType("application/json")
-                        .content("{\"photoUrl\":\"https://cdn.example.com/photo.jpg\"}"))
+    void attachPhoto_valid_callsRepositoryWithBytesAndContentType() throws Exception {
+        when(repo.attachPhoto(anyLong(), any(byte[].class), any())).thenReturn(Map.of("id", 42L));
+        byte[] jpeg = new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+        MockMultipartFile file = new MockMultipartFile("file", "photo.jpg", "image/jpeg", jpeg);
+
+        mvc.perform(multipart("/api/v1/students/42/photo")
+                        .file(file)
+                        .header("X-Student-Service-Token", VALID_TOKEN))
                 .andExpect(status().isOk());
 
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(repo).attachPhoto(eq(42L), captor.capture());
-        assertEquals("https://cdn.example.com/photo.jpg", captor.getValue().get("photoUrl"));
+        ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
+        verify(repo).attachPhoto(eq(42L), bytesCaptor.capture(), eq("image/jpeg"));
+        assertArrayEquals(jpeg, bytesCaptor.getValue());
     }
 
     // --- POST /imports/preview ---
