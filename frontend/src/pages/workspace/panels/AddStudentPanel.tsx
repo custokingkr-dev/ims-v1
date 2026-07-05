@@ -48,6 +48,26 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
     return () => { alive = false; };
   }, [classes, studentForm.gradeLevel]);
 
+  // If the current class isn't among the fetched classes (e.g. the initial
+  // hardcoded default, or after switching schools), select the first one.
+  useEffect(() => {
+    if (classes.length === 0) return;
+    setStudentForm((prev) =>
+      classes.some((c) => c.name === prev.gradeLevel)
+        ? prev
+        : { ...prev, gradeLevel: classes[0].name, sectionName: '' });
+  }, [classes]);
+
+  // Once sections load for the selected class, default to the first section
+  // if the current one isn't valid for this class.
+  useEffect(() => {
+    if (sections.length === 0) return;
+    setStudentForm((prev) =>
+      sections.some((s) => s.name === prev.sectionName)
+        ? prev
+        : { ...prev, sectionName: sections[0].name });
+  }, [sections]);
+
   const resetPhotoState = () => {
     setPhotoFile(null);
     if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
