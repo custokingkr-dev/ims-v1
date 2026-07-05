@@ -4,6 +4,7 @@ import com.custoking.ims.schoolcoreservice.persistence.SchoolEntity;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolRepository;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.StructureInUseException;
 import com.custoking.ims.schoolcoreservice.persistence.ModuleEntitlementReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneEntity;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
@@ -108,6 +109,27 @@ public class TenantSchoolController {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSuperAdmin();
         return runCommand(() -> structure.updateSchool(id, body));
+    }
+
+    @PutMapping("/schools/{id}/structure")
+    public Map<String, Object> updateSchoolStructure(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        requireToken(token, "tenant-school:write");
+        Long resolvedId = TenantScope.resolveSchoolId(id); // superadmin bypass; own-school admin; else 403
+        int classCount = intInRange(body.get("classCount"), 1, 12, "classCount");
+        int sectionCount = intInRange(body.get("sectionCount"), 1, 26, "sectionCount");
+        try {
+            return structure.updateStructure(resolvedId, classCount, sectionCount);
+        } catch (StructureInUseException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            String message = ex.getMessage() == null ? "Invalid request" : ex.getMessage();
+            HttpStatus status = message.toLowerCase().contains("not found")
+                    ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
+            throw new ResponseStatusException(status, message, ex);
+        }
     }
 
     @GetMapping("/schools/{id}/modules")
@@ -388,6 +410,24 @@ public class TenantSchoolController {
         } catch (RuntimeException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid actorId: " + value);
         }
+    }
+
+    private int intInRange(Object value, int min, int max, String field) {
+        if (value == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, field + " is required");
+        }
+        int parsed;
+        try {
+            parsed = (value instanceof Number number) ? number.intValue()
+                    : Integer.parseInt(String.valueOf(value).trim());
+        } catch (RuntimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + field + ": " + value);
+        }
+        if (parsed < min || parsed > max) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    field + " must be between " + min + " and " + max);
+        }
+        return parsed;
     }
 
     private List<Long> parseLongList(Object value) {
