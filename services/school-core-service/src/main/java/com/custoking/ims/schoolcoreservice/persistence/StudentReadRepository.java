@@ -52,14 +52,20 @@ public class StudentReadRepository {
         if (schoolId != null) spec = spec.param("schoolId", schoolId);
         if (classId != null && !classId.isBlank()) spec = spec.param("classId", classId);
         if (sectionId != null && !sectionId.isBlank()) spec = spec.param("sectionId", sectionId);
-        return spec.query(StudentRow.class).list();
+        return spec.query(StudentRow.class).list().stream().map(this::signPhoto).toList();
     }
 
     public Optional<StudentRow> find(Long id) {
         return jdbc.sql(SELECT + " WHERE id = :id AND deleted_at IS NULL")
                 .param("id", id)
                 .query(StudentRow.class)
-                .optional();
+                .optional()
+                .map(this::signPhoto);
+    }
+
+    /** Replace a stored photo object key with a browser-loadable (signed) URL. */
+    private StudentRow signPhoto(StudentRow row) {
+        return row.withPhotoUrl(photoStorage.toDisplayUrl(row.photoUrl()));
     }
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
@@ -859,6 +865,14 @@ public class StudentReadRepository {
             String sectionId,
             String academicYearId,
             OffsetDateTime deletedAt) {
+
+        public StudentRow withPhotoUrl(String newPhotoUrl) {
+            return new StudentRow(id, admissionNo, rollNo, boardRegNo, fullName, dob, gender,
+                    fatherName, fatherContact, motherName, phone, address, houseNumber, street,
+                    locality, city, state, pinCode, newPhotoUrl, feeStatus, attendancePercent,
+                    importedAt, importBatchId, createdAt, updatedAt, schoolId, classId, sectionId,
+                    academicYearId, deletedAt);
+        }
     }
 
     public record ImportBatchRow(
