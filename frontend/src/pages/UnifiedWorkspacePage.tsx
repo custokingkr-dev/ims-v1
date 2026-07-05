@@ -22,6 +22,7 @@ import { StaffPanel } from './workspace/panels/StaffPanel';
 import { PlanningPanel } from './workspace/panels/PlanningPanel';
 import { CatalogPanel } from './workspace/panels/CatalogPanel';
 import { AddStudentPanel } from './workspace/panels/AddStudentPanel';
+import { SchoolStructurePanel } from './workspace/panels/SchoolStructurePanel';
 import { BulkImportPanel } from './workspace/panels/BulkImportPanel';
 import { FirefightingDashboardPanel } from './workspace/panels/FirefightingDashboardPanel';
 import { FirefightingNewPanel } from './workspace/panels/FirefightingNewPanel';
@@ -379,6 +380,8 @@ export default function UnifiedWorkspacePage() {
           {panel === 'feestructure' && <FeeStructurePanel onRefresh={refresh} />}
 
           {panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} />}
+
+          {panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 
           {panel === 'bulkimport' && <BulkImportPanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
