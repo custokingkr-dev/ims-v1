@@ -43,7 +43,9 @@ public final class AttendanceReportCsv {
         line(sb, tot.toString());
 
         StringBuilder grand = new StringBuilder(",,Section total");
-        for (int i = 0; i < days.size(); i++) grand.append(',');
+        // N+1 separators: N empty day columns + the separator before the first total column,
+        // so presentCount…presentPercent land under their headers (row width = 3 + N + 5).
+        for (int i = 0; i <= days.size(); i++) grand.append(',');
         grand.append(totals.get("presentCount")).append(',').append(totals.get("lateCount"))
              .append(',').append(totals.get("leaveCount")).append(',').append(totals.get("absentCount"))
              .append(',').append(totals.get("presentPercent"));
