@@ -12,6 +12,37 @@ export function SaSchoolsPanel() {
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [editSchool, setEditSchool] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({ classCount: '12', sectionCount: '2' });
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEdit = (school: any) => {
+    setEditSchool(school);
+    setEditForm({
+      classCount: String(school.configuredClassCount ?? 12),
+      sectionCount: String(school.configuredSectionCount ?? 2),
+    });
+    setEditError('');
+  };
+
+  const submitEdit = async () => {
+    const classCount = Number(editForm.classCount || 0);
+    const sectionCount = Number(editForm.sectionCount || 0);
+    if (!Number.isInteger(classCount) || classCount < 1 || classCount > 12) { setEditError('Classes must be between 1 and 12'); return; }
+    if (!Number.isInteger(sectionCount) || sectionCount < 1 || sectionCount > 26) { setEditError('Sections must be between 1 and 26'); return; }
+    setEditError(''); setEditSaving(true);
+    try {
+      await api.put(`/schools/${editSchool.id}/structure`, { classCount, sectionCount });
+      setToast(`${editSchool.name} structure updated`);
+      setEditSchool(null);
+      await loadSaSchools();
+    } catch (e: any) {
+      setEditError(e?.response?.data?.message || 'Update failed. Please try again.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!toast) return;
@@ -77,10 +108,10 @@ export function SaSchoolsPanel() {
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
           : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
           : <table className="ck-table">
-            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Admin</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th></tr></thead>
+            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Admin</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={9}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={10}><div className="ts">No schools found.</div></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'}</div></td>
@@ -92,6 +123,7 @@ export function SaSchoolsPanel() {
                     <td>{school.ordersYTD ?? 0}</td>
                     <td>₹{formatMoney(Math.round(Number(school.gmvYTD || 0) / 100))}</td>
                     <td>{school.erpSince || '—'}</td>
+                    <td><button className="ck-btn ck-btn-ghost" onClick={() => openEdit(school)}>Edit structure</button></td>
                   </tr>
                 ))}
             </tbody>
@@ -128,6 +160,29 @@ export function SaSchoolsPanel() {
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => setSaOnboardOpen(false)}>Cancel</button>
               <button className="ck-btn ck-btn-g" disabled={saOnboardSaving} onClick={submitSaOnboard}>{saOnboardSaving ? 'Saving…' : 'Create school'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editSchool && (
+        <div className="ck-modal-bg" onClick={() => setEditSchool(null)}>
+          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="ck-modal-h">
+              <div className="ck-modal-title">Edit structure — {editSchool.name}</div>
+              <button className="ck-modal-x" onClick={() => setEditSchool(null)}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              {editError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{editError}</div></div>}
+              <div className="ck-form-grid ck-fg-2">
+                <Field label="No. of classes *"><input type="number" min={1} max={12} value={editForm.classCount} onChange={(e) => setEditForm({ ...editForm, classCount: e.target.value })} /></Field>
+                <Field label="Sections per class *"><input type="number" min={1} max={26} value={editForm.sectionCount} onChange={(e) => setEditForm({ ...editForm, sectionCount: e.target.value })} /></Field>
+              </div>
+              <div className="ts" style={{ marginTop: 10 }}>Reducing a count is blocked if a removed class or section still has students.</div>
+            </div>
+            <div className="ck-modal-foot">
+              <button className="ck-btn ck-btn-ghost" onClick={() => setEditSchool(null)}>Cancel</button>
+              <button className="ck-btn ck-btn-g" disabled={editSaving} onClick={submitEdit}>{editSaving ? 'Saving…' : 'Save changes'}</button>
             </div>
           </div>
         </div>
