@@ -170,4 +170,21 @@ class SchoolStructureIntegrationTest {
                 .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
                 .containsExactly("1", "2", "3", "4", "5");
     }
+
+    @Test
+    void workspaceFilters_excludeDeactivatedSectionsAfterShrink() throws Exception {
+        long schoolId = seedSchool(5, 3);
+        repo.updateStructure(schoolId, 3, 2); // classes 4-5 and section C deactivated
+
+        var studentRepo = new StudentReadRepository(
+                jdbc, org.mockito.Mockito.mock(
+                        com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class));
+        Map<String, Object> workspace =
+                studentRepo.workspaceStudents(schoolId, null, null, null, 0, 500);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> filters = (Map<String, Object>) workspace.get("filters");
+        assertThat((java.util.List<String>) filters.get("sections")).containsExactly("A", "B");
+        assertThat((java.util.List<String>) filters.get("classes")).containsExactly("1", "2", "3");
+    }
 }
