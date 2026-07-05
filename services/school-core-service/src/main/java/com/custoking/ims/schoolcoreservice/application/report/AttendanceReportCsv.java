@@ -96,9 +96,16 @@ public final class AttendanceReportCsv {
     private static void line(StringBuilder sb, String s) { sb.append(s).append("\r\n"); }
     private static String str(Object o) { return o == null ? "" : String.valueOf(o); }
     private static String esc(String v) {
-        if (v.contains(",") || v.contains("\"") || v.contains("\n") || v.contains("\r")) {
-            return '"' + v.replace("\"", "\"\"") + '"';
+        String s = v;
+        // CSV formula-injection guard: a value a spreadsheet could execute as a formula
+        // (leading = + - @, tab, or CR) is neutralized with a leading apostrophe. Applied to
+        // user-controlled text (names, remarks, admission/roll numbers) before quoting.
+        if (!s.isEmpty() && "=+-@\t\r".indexOf(s.charAt(0)) >= 0) {
+            s = "'" + s;
         }
-        return v;
+        if (s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r")) {
+            return '"' + s.replace("\"", "\"\"") + '"';
+        }
+        return s;
     }
 }
