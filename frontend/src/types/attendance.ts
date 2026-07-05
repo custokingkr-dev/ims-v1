@@ -2,13 +2,24 @@
  * Attendance-related TypeScript types for frontend API contracts.
  */
 
+export type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE';
+
+/** Local editable state also allows null = unmarked. */
+export type EditableAttendanceStatus = AttendanceStatus | null;
+
+export interface StudentEditRecord {
+  studentId: number;
+  status: EditableAttendanceStatus;
+  remarks: string;
+}
+
 export interface StudentAttendanceRecord {
   studentId: number;
   fullName: string;
   admissionNo: string;
   rollNo: string;
   photoUrl: string | null;
-  status: 'PRESENT' | 'ABSENT' | null;
+  status: AttendanceStatus | null;
   remarks: string;
 }
 
@@ -20,6 +31,8 @@ export interface SectionRegisterResponse {
   locked: boolean;
   totalStudents: number;
   presentCount: number;
+  lateCount: number;
+  leaveCount: number;
   absentCount: number;
   presentPercent: number;
   students: StudentAttendanceRecord[];
@@ -31,7 +44,7 @@ export interface SaveSectionRegisterRequest {
   sectionId: string;
   records: Array<{
     studentId: number;
-    status: 'PRESENT' | 'ABSENT';
+    status: AttendanceStatus;
     remarks: string;
   }>;
 }
@@ -48,6 +61,8 @@ export interface AttendanceDailySummarySection {
   sectionName: string;
   totalStudents: number;
   presentCount: number;
+  lateCount: number;
+  leaveCount: number;
   absentCount: number;
   presentPercent: number;
   teacherName: string;

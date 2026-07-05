@@ -9,6 +9,7 @@ import './styles/tokens.css';
 import './styles/skeleton.css';
 import './styles/sidebar.css';
 import './styles/drawers.css';
+import './styles/attendance.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
