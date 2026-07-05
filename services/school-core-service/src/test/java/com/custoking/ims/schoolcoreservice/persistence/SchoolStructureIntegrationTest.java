@@ -157,4 +157,17 @@ class SchoolStructureIntegrationTest {
         assertThat(cRows).isEqualTo(5L);   // one 'C' per class, not duplicated
         assertThat(cActive).isEqualTo(5L);
     }
+
+    @Test
+    void classes_nullScope_returnsFullGlobalList() {
+        assertThat(repo.classes(null)).hasSize(12);
+    }
+
+    @Test
+    void classes_schoolScope_returnsFirstNByConfiguredCount() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        assertThat(repo.classes(schoolId))
+                .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
+                .containsExactly("1", "2", "3", "4", "5");
+    }
 }

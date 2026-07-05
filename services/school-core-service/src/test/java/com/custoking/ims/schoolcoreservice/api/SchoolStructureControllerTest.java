@@ -97,4 +97,26 @@ class SchoolStructureControllerTest {
                         .content("{\"classCount\":2,\"sectionCount\":2}"))
                 .andExpect(status().isConflict());
     }
+
+    @Test
+    void sectionsEndpoint_defaultsToActiveOnly_whenActiveOmitted() throws Exception {
+        when(structure.sections(99L, null, Boolean.TRUE)).thenReturn(java.util.List.of());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/v1/sections?schoolId=99")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(structure).sections(99L, null, Boolean.TRUE);
+    }
+
+    @Test
+    void sectionsEndpoint_honoursExplicitActiveFalse() throws Exception {
+        when(structure.sections(99L, null, Boolean.FALSE)).thenReturn(java.util.List.of());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/v1/sections?schoolId=99&active=false")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(structure).sections(99L, null, Boolean.FALSE);
+    }
 }

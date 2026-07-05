@@ -191,7 +191,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
-        return structure.sections(resolvedId, classId, active);
+        return structure.sections(resolvedId, classId, active == null ? Boolean.TRUE : active);
     }
 
     @GetMapping("/schools/{id}/staff")
@@ -214,10 +214,14 @@ public class TenantSchoolController {
     }
 
     @GetMapping("/classes")
-    public Object classes(@RequestHeader(value = "X-Tenant-School-Token", required = false) String token) {
-        // Global class definitions (Grade 1-12 etc.) accessible to all authenticated users.
+    public Object classes(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
+        // Scoped to the caller's school (first-N configured classes); superadmin with no
+        // schoolId gets the full global list.
         requireToken(token, "tenant-school:read");
-        return structure.classes();
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return structure.classes(scope);
     }
 
     @GetMapping("/sections")
@@ -228,7 +232,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
-        return structure.sections(schoolId, classId, active);
+        return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
     }
 
     @GetMapping("/classes/{classId}/sections")
@@ -239,7 +243,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
-        return structure.sections(schoolId, classId, active);
+        return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
     }
 
     @GetMapping("/academic-years")

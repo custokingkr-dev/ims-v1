@@ -20,12 +20,30 @@ public class SchoolStructureReadRepository {
         this.jdbc = jdbc;
     }
 
-    public List<SchoolClassRow> classes() {
+    public List<SchoolClassRow> classes(Long schoolId) {
+        if (schoolId == null) {
+            return jdbc.sql("""
+                            SELECT id, name, sort_order
+                            FROM tenant_school.school_classes
+                            ORDER BY sort_order, name
+                            """)
+                    .query(SchoolClassRow.class)
+                    .list();
+        }
+        Integer count = jdbc.sql(
+                        "SELECT configured_class_count FROM tenant_school.schools WHERE id = :schoolId")
+                .param("schoolId", schoolId)
+                .query(Integer.class)
+                .optional()
+                .orElse(null);
+        int limit = (count == null) ? Integer.MAX_VALUE : count;
         return jdbc.sql("""
                         SELECT id, name, sort_order
                         FROM tenant_school.school_classes
                         ORDER BY sort_order, name
+                        LIMIT :limit
                         """)
+                .param("limit", limit)
                 .query(SchoolClassRow.class)
                 .list();
     }
