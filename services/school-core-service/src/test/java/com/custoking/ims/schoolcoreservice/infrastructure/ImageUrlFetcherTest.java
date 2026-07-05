@@ -2,9 +2,12 @@ package com.custoking.ims.schoolcoreservice.infrastructure;
 
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.*;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.env.MapPropertySource;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -140,6 +143,20 @@ class ImageUrlFetcherTest {
                     .extracting(e -> ((ImageFetchException) e).reason()).isEqualTo("too_large");
         } finally {
             server.stop(0);
+        }
+    }
+
+    @Test
+    void springCanInstantiateAsAComponent() {
+        // Regression: the class has two constructors (public @Value + private test), which made
+        // Spring fail with "No default constructor found" and the container failed to start.
+        // Registering it in a real Spring context reproduces that wiring path without a DB.
+        try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
+            ctx.getEnvironment().getPropertySources()
+                    .addFirst(new MapPropertySource("test", Map.of("student.photo.max-bytes", "2097152")));
+            ctx.register(ImageUrlFetcher.class);
+            ctx.refresh();
+            assertThat(ctx.getBean(ImageUrlFetcher.class)).isNotNull();
         }
     }
 }
