@@ -62,6 +62,57 @@ export async function extractXlsxPhotos(
   return result;
 }
 
+export type StagedPhoto =
+  | { kind: 'embedded'; bytes: Uint8Array; contentType: string }
+  | { kind: 'link'; url: string };
+
+// Phase B: after students are inserted, attach each staged photo to its new student record.
+// Photo failures are recorded as skips — never thrown — so a bad photo never fails the data import.
+export async function attachPhotos(
+  insertedStudents: Array<{ admissionNo: string; studentId: number }>,
+  stagedByRow: Map<number, StagedPhoto>,
+  admissionByRow: Map<number, string>,
+): Promise<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> }> {
+  const idByAdmission = new Map(insertedStudents.map((s) => [String(s.admissionNo), s.studentId]));
+  const jobs: Array<{ admissionNo: string; studentId: number; photo: StagedPhoto }> = [];
+  for (const [rowOrdinal, photo] of stagedByRow.entries()) {
+    const admissionNo = admissionByRow.get(rowOrdinal);
+    if (!admissionNo) continue;
+    const studentId = idByAdmission.get(String(admissionNo));
+    if (studentId == null) continue; // row wasn't inserted (skipped/error) — no photo to attach
+    jobs.push({ admissionNo, studentId, photo });
+  }
+
+  let attached = 0;
+  const skipped: Array<{ admissionNo: string; reason: string }> = [];
+  const CONCURRENCY = 4;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < jobs.length) {
+      const job = jobs[cursor++];
+      try {
+        if (job.photo.kind === 'embedded') {
+          const bytes = job.photo.bytes;
+          const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+          const blob = new Blob([arrayBuffer], { type: job.photo.contentType });
+          const fd = new FormData();
+          fd.append('file', new File([blob], 'photo.jpg', { type: job.photo.contentType }));
+          await api.post(`/students/${job.studentId}/photo`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        } else {
+          await api.post(`/students/${job.studentId}/photo-from-url`, { url: job.photo.url });
+        }
+        attached += 1;
+      } catch (err: unknown) {
+        const reason = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason
+          || (err instanceof Error ? err.message : 'failed');
+        skipped.push({ admissionNo: job.admissionNo, reason });
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
+  return { attached, skipped };
+}
+
 export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Props) {
   const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
   const [bulkImportDragActive, setBulkImportDragActive] = useState(false);
