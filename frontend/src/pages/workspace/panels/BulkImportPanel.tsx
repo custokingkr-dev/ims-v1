@@ -2,7 +2,6 @@ import { DragEvent, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
-import { splitCsvLine } from '../utils';
 
 interface Props {
   onRefresh: () => Promise<void>;
@@ -19,9 +18,10 @@ const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; n
   { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Format YYYY-MM-DD' },
   { key: 'Gender', required: false, example: 'Male', note: 'Male / Female / Other' },
   { key: 'FatherName', required: false, example: 'R. Mehta', note: '' },
-  { key: 'Phone', required: false, example: '9876543210', note: '10-digit contact number' },
+  { key: 'Phone', required: true, example: '9876543210', note: '10-digit contact number' },
   { key: 'Address', required: false, example: 'Hyderabad', note: '' },
   { key: 'BoardRegistrationNo', required: false, example: 'BRN1001', note: '' },
+  { key: 'Photo', required: false, example: 'embedded image or https://…', note: 'Embedded image (.xlsx) or a public image link (any format) — optional' },
 ];
 
 // Extracts embedded images from an .xlsx and maps each to its 1-based data-row ordinal
@@ -122,61 +122,10 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; phone: string; status: string; statusTone: string; description?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
   const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; pct?: number; inserted?: number; skipped?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null>(null);
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
   const [saving, setSaving] = useState('');
-
-  const parseCsvRows = (content: string) => {
-    const lines = content.replace(/\r/g, '').split('\n').filter((line) => line.trim().length > 0);
-    if (!lines.length) return [] as Record<string, string | number>[];
-    const headers = splitCsvLine(lines[0]);
-    return lines.slice(1).map((line, index) => {
-      const values = splitCsvLine(line);
-      const row: Record<string, string | number> = { __rowNumber: index + 2 };
-      headers.forEach((header, headerIndex) => { row[header] = values[headerIndex] || ''; });
-      return row;
-    });
-  };
-
-  // Coerce an ExcelJS cell value to a scalar, mirroring xlsx sheet_to_json's defval: ''.
-  const cellToScalar = (value: unknown): string | number => {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'number' || typeof value === 'string') return value;
-    if (typeof value === 'boolean') return value ? 'TRUE' : 'FALSE';
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === 'object') {
-      const v = value as Record<string, unknown>;
-      if (Array.isArray(v.richText)) return v.richText.map((t) => (t as { text?: string }).text ?? '').join('');
-      if (typeof v.text === 'string') return v.text;           // hyperlink cell
-      if ('result' in v) return cellToScalar(v.result);        // formula cell → cached result
-    }
-    return '';
-  };
-
-  const parseXlsxRows = async (buffer: ArrayBuffer) => {
-    const ExcelJS = (await import('exceljs')).default;
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
-    const sheet = workbook.worksheets[0];
-    if (!sheet) return [] as Record<string, string | number>[];
-
-    const headers: string[] = [];
-    sheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => { headers[col] = String(cellToScalar(cell.value)); });
-
-    const dataRows: Record<string, string | number>[] = [];
-    sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-      if (rowNumber === 1) return;
-      const parsed: Record<string, string | number> = {};
-      let hasValue = false;
-      for (let col = 1; col < headers.length; col += 1) {
-        const key = headers[col];
-        if (!key) continue;
-        const val = cellToScalar(row.getCell(col).value);
-        if (val !== '') hasValue = true;
-        parsed[key] = val;
-      }
-      if (hasValue) dataRows.push(parsed);
-    });
-    return dataRows.map((row, index) => ({ ...row, __rowNumber: index + 2 }));
-  };
+  const stagedPhotosRef = useRef<Map<number, StagedPhoto>>(new Map());
+  const admissionByRowRef = useRef<Map<number, string>>(new Map());
 
   // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
   const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
@@ -194,11 +143,28 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
     setBulkImportWarning('');
     setBulkImportToast(null);
     setBulkImportProgress(null);
+    setPhotoReport(null);
     if (!(ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.ods') || ext.endsWith('.csv'))) { setBulkImportError('Only .xlsx, .xls, .ods, and .csv files are supported.'); return; }
-    if (file.size > 5 * 1024 * 1024) { setBulkImportError('Maximum file size is 5 MB.'); return; }
+    if (file.size > 50 * 1024 * 1024) { setBulkImportError('Maximum file size is 50 MB.'); return; }
     try {
       const rows = await parseRows(file);
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
+
+      const embedded = await extractXlsxPhotos(file); // Map<dataRowOrdinal, {bytes, contentType}>
+      const staged = new Map<number, StagedPhoto>();
+      const admissionByRow = new Map<number, string>();
+      rows.forEach((row, index) => {
+        const ordinal = index + 1;
+        const admissionNo = String(row['AdmissionNo'] ?? row['admissionNo'] ?? '').trim();
+        if (admissionNo) admissionByRow.set(ordinal, admissionNo);
+        const emb = embedded.get(ordinal);
+        const link = String(row['Photo'] ?? row['PhotoUrl'] ?? '').trim();
+        if (emb) staged.set(ordinal, { kind: 'embedded', bytes: emb.bytes, contentType: emb.contentType });
+        else if (/^https?:\/\//i.test(link)) staged.set(ordinal, { kind: 'link', url: link });
+      });
+      stagedPhotosRef.current = staged;
+      admissionByRowRef.current = admissionByRow;
+
       setBulkImportFileName(file.name);
       setSaving('previewing');
       try {
@@ -250,6 +216,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       setBulkImportToast(null);
       const confirmRes = await api.post<{ jobId?: string }>('/students/import/confirm', { fileToken: bulkImportPreview.fileToken });
       const jobId = (confirmRes.data as { jobId?: string })?.jobId;
+      const insertedStudents = (confirmRes.data as { insertedStudents?: Array<{ admissionNo: string; studentId: number }> })?.insertedStudents || [];
       if (!jobId) {
         // Backend returned a synchronous inline result — no job polling needed
         const inlineResult = confirmRes.data as { inserted?: number; skipped?: number; skippedRows?: { rowNumber: number; reason: string }[] };
@@ -268,6 +235,11 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
         setBulkImportToast({ type: 'success', message: `${finalStatus?.inserted || 0} students imported successfully. ${finalStatus?.skipped || 0} rows skipped due to errors.` });
       }
       await onRefresh();
+      if (stagedPhotosRef.current.size > 0 && insertedStudents.length > 0) {
+        setSaving('photos');
+        const report = await attachPhotos(insertedStudents, stagedPhotosRef.current, admissionByRowRef.current);
+        setPhotoReport(report);
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Import failed.');
       setBulkImportToast({ type: 'error', message: msg });
@@ -277,12 +249,12 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   };
 
   return (
-    <ModuleShell title="Bulk import" subtitle="Upload .xlsx or .csv files, preview validations, and import valid students only.">
+    <ModuleShell title="Bulk import" subtitle="Upload .xlsx, .xls, .ods, or .csv files, preview validations, and import valid students only.">
       <input ref={bulkImportInputRef} type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleBulkImportFile(file); }} />
       <div className={`ck-import-zone ${bulkImportDragActive ? 'ck-import-zone-active' : ''}`} onDragOver={(e) => { e.preventDefault(); setBulkImportDragActive(true); }} onDragLeave={() => setBulkImportDragActive(false)} onDrop={(e) => void handleBulkImportDrop(e)}>
         <div className="ck-iz-icon">📊</div>
-        <div className="ck-iz-title">Drop your Excel or CSV file here</div>
-        <div className="ck-iz-sub">.xlsx, .csv supported · Max 5 MB · Up to 500 rows</div>
+        <div className="ck-iz-title">Drop your .xlsx, .xls, .ods, or .csv file here</div>
+        <div className="ck-iz-sub">.xlsx, .xls, .ods, .csv supported · Max 50 MB · Up to 500 rows</div>
         <div className="ck-actions-inline" style={{ justifyContent: 'center', marginTop: 14 }}>
           <button className="ck-btn ck-btn-g" type="button" onClick={() => bulkImportInputRef.current?.click()}>Browse file</button>
           <button className="ck-btn ck-btn-ghost" type="button" onClick={() => void downloadImportTemplate()}>Download sample template</button>
@@ -304,9 +276,10 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
             ))}
           </tbody>
         </table>
-        <div className="ts" style={{ padding: '0 16px 16px' }}>Download the sample template above for a ready-to-fill .xlsx. Add student photos per student after import (bulk photo import is coming soon).</div>
+        <div className="ts" style={{ padding: '0 16px 16px' }}>Download the sample template above for a ready-to-fill .xlsx. Add a photo per student by embedding an image in the Photo column of an .xlsx, or by putting a public image link in that column — photos are attached automatically after import.</div>
       </div>
       {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
+      {saving === 'photos' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Uploading photos, please wait…</div></div> : null}
       {bulkImportError ? <div className="ck-alert ck-alert-r" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportError}</div></div> : null}
       {bulkImportWarning ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportWarning}</div></div> : null}
       {bulkImportToast ? <div className={`ck-alert ${bulkImportToast.type === 'success' ? 'ck-alert-g' : 'ck-alert-r'}`} style={{ marginTop: 16 }}><span>{bulkImportToast.type === 'success' ? '✓' : '!'}</span><div>{bulkImportToast.message}</div></div> : null}
@@ -329,6 +302,12 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
         </div>
       ) : null}
       {bulkImportProgress?.done && (bulkImportProgress.skippedRows || []).length ? <div className="ck-card" style={{ marginTop: 16 }}><div className="ck-card-h"><div className="ck-card-t">Skipped rows</div></div><div className="ck-form-body">{(bulkImportProgress.skippedRows || []).map((row, index) => <div key={index} className="ts" style={{ marginBottom: 8 }}>Row {row.rowNumber}: {row.reason}</div>)}</div></div> : null}
+      {photoReport ? (
+        <div className="ck-card" style={{ marginTop: 16 }}>
+          <div className="ck-card-h"><div className="ck-card-t">Photos — {photoReport.attached} photo{photoReport.attached === 1 ? '' : 's'} attached · {photoReport.skipped.length} skipped</div></div>
+          {photoReport.skipped.length ? <div className="ck-form-body">{photoReport.skipped.map((s, i) => <div key={i} className="ts" style={{ marginBottom: 8 }}>{s.admissionNo}: {s.reason}</div>)}</div> : null}
+        </div>
+      ) : null}
     </ModuleShell>
   );
 }
