@@ -102,6 +102,7 @@ const routes = [
   route('tenant', '/api/v1/schools'),
   route('tenant', '/api/v1/zones/'),
   route('tenant', '/api/v1/zones'),
+  route('tenant', '/api/v1/academic-years'),
   route('student', '/api/v1/students/'),
   route('student', '/api/v1/students'),
   route('student', '/api/v1/workspace/students'),

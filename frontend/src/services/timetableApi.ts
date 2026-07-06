@@ -30,4 +30,9 @@ export const updatePeriod = (id: number, pid: number, b: Omit<BellPeriod, 'id'>)
 export const deletePeriod = (id: number, pid: number) => api.delete(`/timetable/bell-schedules/${id}/periods/${pid}`);
 export const getClassSchedules = (p?: object) => api.get<ClassScheduleRow[]>('/timetable/class-schedules', { params: p });
 export const setClassSchedule = (classId: string, scheduleId: number) => api.put(`/timetable/class-schedules/${encodeURIComponent(classId)}`, { scheduleId });
-// subjects (Task 5) + timetable (Task 7) added in their tasks.
+
+export interface ClassSubjects { editable: boolean; yearId: string; subjects: { id: number; subjectName: string; sortOrder: number }[]; }
+export const getClassSubjects = (classId: string, yearId?: string) => api.get<ClassSubjects>('/timetable/class-subjects', { params: { classId, yearId } });
+export const addSubject = (classId: string, subjectName: string) => api.post('/timetable/class-subjects', { classId, subjectName });
+export const deleteSubject = (id: number) => api.delete(`/timetable/class-subjects/${id}`);
+// timetable (Task 7) added in its task.

@@ -79,6 +79,7 @@ export const ADMIN_NAV_SECTIONS: Array<{
       { key: 'staff',      label: 'Staff & HR',            icon: '👥' },
       { key: 'classsetup', label: 'Class & section setup', icon: '🏫' },
       { key: 'bellschedules', label: 'Bell schedules',     icon: '⏰' },
+      { key: 'subjectsmaster', label: 'Subjects',          icon: '📚' },
     ],
   },
 ];
