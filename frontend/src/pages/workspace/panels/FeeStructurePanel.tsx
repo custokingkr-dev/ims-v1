@@ -208,7 +208,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setSaving('fee-band-add');
       setFeeStructureError('');
-      await api.post('/fee-structure/band', { name: bandForm.name, classFrom: Number(bandForm.classFrom), classTo: Number(bandForm.classTo), discount: Number(bandForm.discount || 0), schedules: bandForm.schedules });
+      await api.post('/fee-structure/band', { name: bandForm.name, classFrom: Number(bandForm.classFrom), classTo: Number(bandForm.classTo), discount: Number(bandForm.discount || 0), schedules: bandForm.schedules, ...(schoolScopedParams || {}) });
       showFeeToast(`Band '${bandForm.name}' created.`);
       setShowBandForm(false);
       setBandForm({ name: '', classFrom: '1', classTo: '5', discount: '0', schedules: ['Annual'] });
