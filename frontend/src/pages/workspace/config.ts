@@ -21,6 +21,7 @@ export const ALL_MODULES: Array<{ code: ModuleCode; label: string; icon: string;
 export type PanelKey =
   | 'home' | 'students' | 'fees' | 'feestructure' | 'attendance' | 'timetable'
   | 'addstudent' | 'bulkimport' | 'staff' | 'catalog' | 'orders' | 'planning' | 'classsetup'
+  | 'bellschedules' | 'subjectsmaster'
   | 'ff-dashboard' | 'ff-new' | 'ff-approvals' | 'ff-orders'
   | 'sa-all-orders' | 'sa-new-order' | 'sa-invoices'
   | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog'
@@ -77,6 +78,7 @@ export const ADMIN_NAV_SECTIONS: Array<{
     items: [
       { key: 'staff',      label: 'Staff & HR',            icon: '👥' },
       { key: 'classsetup', label: 'Class & section setup', icon: '🏫' },
+      { key: 'bellschedules', label: 'Bell schedules',     icon: '⏰' },
     ],
   },
 ];
@@ -226,6 +228,8 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   bulkimport: 'Bulk import',
   staff: 'Staff & HR',
   classsetup: 'Class & section setup',
+  bellschedules: 'Bell schedules',
+  subjectsmaster: 'Subjects',
   catalog: 'Catalog',
   orders: 'School Orders',
   planning: 'Annual plan',
