@@ -397,7 +397,7 @@ export default function UnifiedWorkspacePage() {
           >
             ☰
           </button>
-          <div className="ck-topbar-title">{currentTitle}</div>
+          {!isFire && <div className="ck-topbar-title">{currentTitle}</div>}
           {isPlatformAdmin && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 'auto', marginLeft: 12 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--g)', background: 'var(--g1)', padding: '4px 10px', borderRadius: 8 }}>
@@ -407,9 +407,6 @@ export default function UnifiedWorkspacePage() {
                 🏫 Manage schools
               </button>
             </div>
-          )}
-          {isFire && (
-            <button className="ck-btn ck-btn-or" onClick={() => setPanel('ff-new')}>+ New Urgent Request</button>
           )}
         </div>
 

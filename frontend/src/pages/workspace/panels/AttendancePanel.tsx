@@ -66,6 +66,15 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
     void loadSummary(currentDate);
   }, [currentDate]);
 
+  // Auto-select the first section once the summary loads so the detail (right) pane is
+  // populated instead of showing the empty "Select a section" placeholder.
+  useEffect(() => {
+    if (!selectedSection && !summaryLoading && (summary.sections?.length ?? 0) > 0) {
+      void openSection(summary.sections[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary.sections, summaryLoading]);
+
   const handleDateChange = (dateValue: string) => {
     setCurrentDate(dateValue);
     setSelectedSection(null);
