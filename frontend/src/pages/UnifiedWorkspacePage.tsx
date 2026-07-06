@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
-import { X, ChevronDown } from 'lucide-react';
+import { X, ChevronDown, PanelLeft, PanelLeftClose } from 'lucide-react';
 import {
   type PanelKey, type WorkspaceData,
   ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
@@ -90,6 +90,16 @@ export default function UnifiedWorkspacePage() {
   const [rejectReason, setRejectReason] = useState('');
   const [designApprovingSaving, setDesignApprovingSaving] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pinned, setPinned] = useState(() => {
+    try { return localStorage.getItem('ck_nav_pinned') === '1'; } catch { return false; }
+  });
+  const togglePinned = () => {
+    setPinned((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('ck_nav_pinned', next ? '1' : '0'); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const navGroupsKey = `ck_nav_groups:${role ?? 'default'}`;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     try { return JSON.parse(localStorage.getItem(navGroupsKey) || '{}'); } catch { return {}; }
@@ -290,7 +300,7 @@ export default function UnifiedWorkspacePage() {
       />
       <aside
         id="ck-sidebar-nav"
-        className={`ck-sidebar${sidebarOpen ? ' open' : ''}`}
+        className={`ck-sidebar${sidebarOpen ? ' open' : ''}${pinned ? ' pinned' : ''}`}
       >
         <div className="ck-sb-header">
           <div className="ck-sb-monogram" aria-hidden>CK</div>
@@ -302,6 +312,14 @@ export default function UnifiedWorkspacePage() {
               {workspace.school.name}
             </div>
           )}
+          <button
+            className="ck-sb-pin"
+            onClick={togglePinned}
+            aria-label="Pin/Unpin sidebar"
+            aria-pressed={pinned}
+          >
+            {pinned ? <PanelLeftClose size={16} strokeWidth={2} aria-hidden /> : <PanelLeft size={16} strokeWidth={2} aria-hidden />}
+          </button>
           <button
             className="ck-sb-close"
             onClick={() => setSidebarOpen(false)}

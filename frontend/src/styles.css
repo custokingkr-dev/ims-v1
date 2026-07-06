@@ -127,7 +127,28 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   width: 248px;
   box-shadow: 2px 0 16px rgba(0,0,0,.08);
 }
+.ck-sidebar.pinned {
+  width: 248px;
+  box-shadow: none;
+}
 .ck-main { margin-left: 64px; }
+.ck-sidebar.pinned ~ .ck-main { margin-left: 248px; }
+
+/* pin toggle button (visible only when expanded/pinned) */
+.ck-sb-pin {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 26px; height: 26px;
+  border: none; background: transparent;
+  border-radius: 6px;
+  color: var(--ink3);
+  cursor: pointer;
+  position: absolute;
+  top: 14px; right: 10px;
+}
+.ck-sb-pin:hover { background: var(--bg); color: var(--ink2); }
+.ck-sidebar:is(:hover, :focus-within, .pinned) .ck-sb-pin { display: flex; }
+.ck-sb-pin[aria-pressed="true"] { color: var(--g); }
 
 .ck-sb-header { padding: 16px 12px 12px; border-bottom: 1px solid var(--border); position: relative; }
 .ck-sb-monogram {
@@ -141,13 +162,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-school-meta { font-size: 11px; color: var(--ink3); }
 /* collapsed: show monogram, hide wordmark/name/badge */
 .ck-sb-logo, .ck-school-name, .ck-school-meta, .ck-sb-school-badge { opacity: 0; transition: opacity .12s ease; }
-.ck-sidebar:is(:hover, :focus-within) .ck-sb-logo, .ck-sidebar:is(:hover, :focus-within) .ck-school-name,
-.ck-sidebar:is(:hover, :focus-within) .ck-school-meta, .ck-sidebar:is(:hover, :focus-within) .ck-sb-school-badge { opacity: 1; }
-.ck-sidebar:is(:hover, :focus-within) .ck-sb-monogram { display: none; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-sb-logo,
-.ck-sidebar:not(:hover):not(:focus-within) .ck-school-name,
-.ck-sidebar:not(:hover):not(:focus-within) .ck-school-meta,
-.ck-sidebar:not(:hover):not(:focus-within) .ck-sb-school-badge { height: 0; margin: 0; overflow: hidden; }
+.ck-sidebar:is(:hover, :focus-within, .pinned) .ck-sb-logo, .ck-sidebar:is(:hover, :focus-within, .pinned) .ck-school-name,
+.ck-sidebar:is(:hover, :focus-within, .pinned) .ck-school-meta, .ck-sidebar:is(:hover, :focus-within, .pinned) .ck-sb-school-badge { opacity: 1; }
+.ck-sidebar:is(:hover, :focus-within, .pinned) .ck-sb-monogram { display: none; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-sb-logo,
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-school-name,
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-school-meta,
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-sb-school-badge { height: 0; margin: 0; overflow: hidden; }
 
 .ck-nav { padding: 8px 0 16px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
 
@@ -163,8 +184,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-nav-group.closed .ck-nav-chevron { transform: rotate(-90deg); }
 .ck-nav-group.fire .ck-nav-group-header { color: var(--or); }
 /* headers hidden in the collapsed rail */
-.ck-sidebar:not(:hover):not(:focus-within) .ck-nav-group-header { height: 0; padding: 0; overflow: hidden; opacity: 0; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-nav-group:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-nav-group-header { height: 0; padding: 0; overflow: hidden; opacity: 0; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-nav-group:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; padding-top: 4px; }
 
 /* nav item */
 .ck-nav-item {
@@ -175,8 +196,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 }
 .ck-nav-item > svg { flex-shrink: 0; }
 .ck-nav-label { transition: opacity .12s ease; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-nav-item { justify-content: center; padding: 9px 0; gap: 0; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-nav-label { opacity: 0; width: 0; overflow: hidden; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-nav-item { justify-content: center; padding: 9px 0; gap: 0; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-nav-label { opacity: 0; width: 0; overflow: hidden; }
 .ck-nav-item:hover { background: var(--bg); }
 .ck-nav-item.on { background: var(--g1); color: var(--g); border-left-color: var(--g); font-weight: 600; }
 .ck-nav-item.on > svg { color: var(--g); }
@@ -185,15 +206,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-nav-item:focus-visible { outline: 2px solid var(--g); outline-offset: -2px; }
 
 /* accordion: a closed group hides its items ONLY when expanded (rail keeps all icons) */
-.ck-sidebar:is(:hover, :focus-within) .ck-nav-group.closed .ck-nav-item { display: none; }
+.ck-sidebar:is(:hover, :focus-within, .pinned) .ck-nav-group.closed .ck-nav-item { display: none; }
 
 /* user card */
 .ck-user-card { margin: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: #faf9f6; }
 .ck-user-name { font-weight: 700; margin-bottom: 4px; }
 .ck-user-card-details { transition: opacity .12s ease; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-user-card { margin: 12px 10px; padding: 8px; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-user-card-details { opacity: 0; height: 0; overflow: hidden; margin: 0; }
-.ck-sidebar:not(:hover):not(:focus-within) .ck-user-card-inner { justify-content: center; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-user-card { margin: 12px 10px; padding: 8px; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-user-card-details { opacity: 0; height: 0; overflow: hidden; margin: 0; }
+.ck-sidebar:not(:hover):not(:focus-within):not(.pinned) .ck-user-card-inner { justify-content: center; }
 
 @media (prefers-reduced-motion: reduce) {
   .ck-sidebar, .ck-nav-label, .ck-nav-chevron, .ck-user-card-details,
