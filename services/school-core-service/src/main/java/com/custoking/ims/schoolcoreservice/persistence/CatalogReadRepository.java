@@ -61,6 +61,37 @@ public class CatalogReadRepository {
         return spec.query(CatalogOrderRow.class).list();
     }
 
+    public Map<String, Object> ordersPage(Long schoolId, String status, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.max(1, Math.min(size, 200));
+
+        StringBuilder filter = new StringBuilder(" WHERE 1=1");
+        if (schoolId != null) filter.append(" AND school_id = :schoolId");
+        if (status != null && !status.isBlank()) filter.append(" AND status = :status");
+
+        var countSpec = jdbc.sql("SELECT count(*) FROM catalog.catalog_orders" + filter);
+        if (schoolId != null) countSpec = countSpec.param("schoolId", schoolId);
+        if (status != null && !status.isBlank()) countSpec = countSpec.param("status", status);
+        long totalElements = countSpec.query(Long.class).single();
+
+        StringBuilder sql = new StringBuilder(orderSelect()).append(filter)
+                .append(" ORDER BY created_at DESC NULLS LAST, id DESC LIMIT :size OFFSET :offset");
+        var itemSpec = jdbc.sql(sql.toString())
+                .param("size", safeSize)
+                .param("offset", (long) safePage * safeSize);
+        if (schoolId != null) itemSpec = itemSpec.param("schoolId", schoolId);
+        if (status != null && !status.isBlank()) itemSpec = itemSpec.param("status", status);
+        List<CatalogOrderRow> content = itemSpec.query(CatalogOrderRow.class).list();
+
+        int totalPages = (int) Math.ceil(totalElements / (double) safeSize);
+        return row(
+                "content", content,
+                "page", safePage,
+                "size", safeSize,
+                "totalElements", totalElements,
+                "totalPages", totalPages);
+    }
+
     public Optional<CatalogOrderRow> order(String id) {
         return jdbc.sql(orderSelect() + " WHERE id = :id")
                 .param("id", id)

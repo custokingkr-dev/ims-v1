@@ -4,7 +4,7 @@ import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Info } from '../ui';
-import { formatAddress, initials, attendanceNumber } from '../utils';
+import { formatAddress, initials } from '../utils';
 import type { PanelKey } from '../config';
 
 interface Props {
@@ -256,7 +256,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             {!studentsLoading && (
               <tbody>
                 {(studentsView.items || []).map((student: any) => {
-                  const attendanceValue = attendanceNumber(student.attendance);
                   return (
                     <tr key={student.id}>
                       <td>
@@ -288,9 +287,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       </td>
                       <td>
                         <div className="ck-mini-progress-cell">
-                          <div className="tb">{student.attendance}</div>
+                          <div className="tb">{student.attendancePercent ?? 0}%</div>
                           <div className="ck-mini-progress">
-                            <div className="ck-mini-progress-fill" style={{ width: `${attendanceValue}%` }} />
+                            <div className="ck-mini-progress-fill" style={{ width: `${student.attendancePercent ?? 0}%` }} />
                           </div>
                         </div>
                       </td>
@@ -414,10 +413,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <div className="ck-progress-wrap">
                         <div className="ck-progress-label">
                           <span>Attendance</span>
-                          <strong>{studentDetail.attendance}</strong>
+                          <strong>{studentDetail.attendancePercent ?? 0}%</strong>
                         </div>
                         <div className="ck-progress-bar">
-                          <div className="ck-progress-fill" style={{ width: `${attendanceNumber(studentDetail.attendance)}%` }} />
+                          <div className="ck-progress-fill" style={{ width: `${studentDetail.attendancePercent ?? 0}%` }} />
                         </div>
                       </div>
                       <span className={`ck-status ${feeStatusClass(studentDetail.feeStatus ?? '')}`}>

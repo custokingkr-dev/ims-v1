@@ -43,10 +43,11 @@ public class CatalogPublicCompatibilityController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "100") int limit) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "catalog:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        return catalog.orders(scope, status, limit);
+        return catalog.ordersPage(scope, status, page, size);
     }
 
     @GetMapping({"/api/v1/supply/orders/stats", "/api/v1/sa/orders/stats"})

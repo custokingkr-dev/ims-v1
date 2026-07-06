@@ -505,14 +505,14 @@ public class AttendanceReadRepository {
     public Map<String, Object> notifyAbsentees(LocalDate date, String sectionId, Long schoolId, Long actorId) {
         String academicYearId = currentAcademicYearId();
         List<Map<String, Object>> students = absenteeRows(date, sectionId, schoolId);
-        String schoolName = schoolId == null ? "your school" : jdbc.sql(
-                "SELECT name FROM tenant_school.schools WHERE id = :id")
-                .param("id", schoolId).query(String.class).optional().orElse("your school");
+        Map<Long, String> schoolNameCache = new java.util.HashMap<>();
         String dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
         int queued = 0, skippedNoContact = 0, skippedAlreadyQueued = 0;
         for (Map<String, Object> s : students) {
             if (Boolean.TRUE.equals(s.get("alreadyQueued"))) { skippedAlreadyQueued++; continue; }
             if (!Boolean.TRUE.equals(s.get("hasContact"))) { skippedNoContact++; continue; }
+            long rowSchoolId = longNum(s.get("schoolId"), 0);
+            String schoolName = schoolNameFor(rowSchoolId, schoolNameCache);
             String message = "Dear Parent, " + s.get("fullName") + " (" + s.get("classSection")
                     + ") was marked absent on " + dateLabel + " at " + schoolName
                     + ". Please contact the school if this is unexpected.";
@@ -1033,6 +1033,15 @@ public class AttendanceReadRepository {
 
     private String str(Object value, String fallback) {
         return value == null ? fallback : String.valueOf(value);
+    }
+
+    private String schoolNameFor(long schoolId, Map<Long, String> cache) {
+        if (schoolId <= 0) {
+            return "your school";
+        }
+        return cache.computeIfAbsent(schoolId, id -> jdbc.sql(
+                        "SELECT name FROM tenant_school.schools WHERE id = :id")
+                .param("id", id).query(String.class).optional().orElse("your school"));
     }
 
     private long longNum(Object value, long fallback) {

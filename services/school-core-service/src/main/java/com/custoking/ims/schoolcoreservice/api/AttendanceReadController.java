@@ -10,6 +10,7 @@ import com.custoking.ims.schoolcoreservice.application.report.AttendanceReportPd
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.StudentAttendanceRow;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -123,7 +124,8 @@ public class AttendanceReadController {
         requireToken(token, "attendance:write");
         Long scope = TenantScope.resolveSchoolId(body.schoolId());
         LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
-        return execute(() -> attendance.notifyAbsentees(date, body.sectionId(), scope, body.actorId()));
+        Long actorId = TenantContext.get() != null ? TenantContext.get().userId() : null;
+        return execute(() -> attendance.notifyAbsentees(date, body.sectionId(), scope, actorId));
     }
 
     @GetMapping("/report/register")
