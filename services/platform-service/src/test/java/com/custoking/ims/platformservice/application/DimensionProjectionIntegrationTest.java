@@ -156,4 +156,25 @@ class DimensionProjectionIntegrationTest {
         assertEquals(0, secondBatch, "replayed event with the same eventId must not be reprocessed");
         assertEquals(1, countSchoolRows(7L));
     }
+
+    @Test
+    void schoolUpsertedEvent_projectsToDimSchool_butDoesNotCreateCommandCenterFeedRow() throws Exception {
+        String eventId = UUID.randomUUID().toString();
+        feedSchoolEvent(eventId, 7L);
+
+        int processed = processor.processBatch();
+
+        assertEquals(1, processed);
+        assertEquals(1, countSchoolRows(7L), "dimension projection must still happen for reference events");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT count(*) FROM reporting.command_center_feed WHERE source_type = 'EVENT_INBOX' AND source_id = ?")) {
+            ps.setString(1, eventId);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                assertEquals(0, rs.getLong(1),
+                        "dimension/reference events must not create command_center_feed rows");
+            }
+        }
+    }
 }

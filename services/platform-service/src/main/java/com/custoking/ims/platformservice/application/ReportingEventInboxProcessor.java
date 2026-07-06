@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Locale;
+import java.util.Set;
 
 @Component
 @ConditionalOnProperty(prefix = "reporting.event-projection", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -24,6 +25,8 @@ public class ReportingEventInboxProcessor {
     private static final String SCHOOL_UPSERTED = "school.upserted.v1";
     private static final String SCHOOL_SECTION_UPSERTED = "school-section.upserted.v1";
     private static final String ACADEMIC_YEAR_UPSERTED = "academic-year.upserted.v1";
+    private static final Set<String> DIMENSION_EVENT_TYPES =
+            Set.of(SCHOOL_UPSERTED, SCHOOL_SECTION_UPSERTED, ACADEMIC_YEAR_UPSERTED);
 
     private final ReportingEventInboxRepository inbox;
     private final ReportingCommandRepository commands;
@@ -56,10 +59,12 @@ public class ReportingEventInboxProcessor {
         int processed = 0;
         for (var event : inbox.findReceivedForProjection(batchSize)) {
             try {
-                if (!commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
+                String eventType = event.eventType() == null ? "" : event.eventType();
+                if (!DIMENSION_EVENT_TYPES.contains(eventType)
+                        && !commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
                     commands.recordProjectedFeed(toFeedCommand(event));
                 }
-                switch (event.eventType() == null ? "" : event.eventType()) {
+                switch (eventType) {
                     case BILLING_INVOICE_UPSERTED -> projectBillingInvoice(event);
                     case SCHOOL_UPSERTED -> projectSchool(event);
                     case SCHOOL_SECTION_UPSERTED -> projectSection(event);
