@@ -6,13 +6,15 @@ import { getDisplayStatus } from '../../../shared/display/status';
 
 interface Props {
   onNewOrder: () => void;
+  canManage?: boolean;
 }
 
-export function SaAllOrdersPanel({ onNewOrder }: Props) {
+export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [stats, setStats] = useState<any>(null);
+  const [truncated, setTruncated] = useState(false);
   const [filter, setFilter] = useState({ cat: '', status: '', search: '' });
 
   const [detailOpen, setDetailOpen] = useState(false);
@@ -40,8 +42,20 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
   const load = async () => {
     setLoading(true); setError('');
     try {
-      const [ordRes, statsRes] = await Promise.all([api.get('/sa/orders'), api.get('/sa/orders/stats')]);
-      setOrders(Array.isArray(ordRes.data) ? ordRes.data : []);
+      const size = 200;
+      let page = 0; let all: any[] = []; let totalPages = 1; let totalElements = 0;
+      do {
+        const res = await api.get('/sa/orders', { params: { page, size } });
+        const d = res.data;
+        const content = Array.isArray(d) ? d : (d?.content ?? []);
+        totalPages = Array.isArray(d) ? 1 : (d?.totalPages ?? 1);
+        totalElements = Array.isArray(d) ? content.length : (d?.totalElements ?? all.length + content.length);
+        all = all.concat(content);
+        page += 1;
+      } while (page < totalPages && page < 25); // hard cap 25 pages (5000 orders) to avoid runaway
+      setTruncated(all.length < totalElements);
+      const statsRes = await api.get('/sa/orders/stats');
+      setOrders(all);
       setStats(statsRes.data || null);
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Failed to load orders.');
@@ -166,11 +180,11 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
 
   return (
     <>
-      <ModuleShell title="All orders" subtitle="All catalog orders across all schools" actions={<button className="ck-btn ck-btn-g" onClick={onNewOrder}>+ New order request</button>}>
+      <ModuleShell title="All orders" subtitle="All catalog orders across all schools" actions={canManage ? <button className="ck-btn ck-btn-g" onClick={onNewOrder}>+ New order request</button> : undefined}>
         <div className="ck-grid ck-grid-4" style={{ marginBottom: 16 }}>
-          <Stat label="Total orders" value={stats?.total ?? 0} sub="Across all schools" pill="Live" tone="blue" />
-          <Stat label="New requests" value={stats?.newRequests ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
-          <Stat label="In progress" value={stats?.inProgress ?? 0} sub="Approved or processing" pill="Active" tone="green" />
+          <Stat label="Total orders" value={stats?.totalOrders ?? 0} sub="Across all schools" pill="Live" tone="blue" />
+          <Stat label="New requests" value={stats?.pendingApproval ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
+          <Stat label="In progress" value={stats?.approved ?? 0} sub="Approved or processing" pill="Active" tone="green" />
           <Stat label="Order Value" value={`₹${formatMoney(Math.round(Number(stats?.gmv || 0) / 100))}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
         </div>
         <div className="ck-form-card" style={{ marginBottom: 16 }}>
@@ -194,6 +208,9 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
             </div>
           </div>
         </div>
+        {truncated && (
+          <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}><span>i</span><div>Showing the first {orders.length} orders — some older orders are not displayed. Refine the filters to narrow the list.</div></div>
+        )}
         <div className="ck-card">
           {loading ? <div style={{ padding: 16 }}>Loading orders…</div>
           : error ? <div style={{ padding: 16 }}>{error}</div>
@@ -213,9 +230,9 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
                       <td>{row.placedAt || row.createdAt || '—'}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <button className="ck-btn ck-btn-ghost" onClick={() => openDetail(row.id)}>View</button>
-                        {String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
+                        {canManage && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
-                          : <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>}
+                          : <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>)}
                       </td>
                     </tr>
                   ))}
@@ -246,28 +263,30 @@ export function SaAllOrdersPanel({ onNewOrder }: Props) {
                     <Info label="Delivery" value={String(detailOrder.estimatedDelivery || detailOrder.requiredByDate || '—')} />
                     <Info label="Status" value={getDisplayStatus(String(detailOrder.status || '—'))} />
                   </div>
-                  <div className="ck-form-card">
-                    <div className="ck-form-head">Update status</div>
-                    <div className="ck-form-body">
-                      <Field label="Status">
-                        <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
-                          <option>AWAITING_APPROVAL</option>
-                          <option>IN_PROGRESS</option>
-                          <option>APPROVED</option>
-                          <option>PROCESSING</option>
-                          <option>DELIVERED</option>
-                        </select>
-                      </Field>
+                  {canManage && (
+                    <div className="ck-form-card">
+                      <div className="ck-form-head">Update status</div>
+                      <div className="ck-form-body">
+                        <Field label="Status">
+                          <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}>
+                            <option>AWAITING_APPROVAL</option>
+                            <option>IN_PROGRESS</option>
+                            <option>APPROVED</option>
+                            <option>PROCESSING</option>
+                            <option>DELIVERED</option>
+                          </select>
+                        </Field>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </>
               )}
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>
+              {canManage && <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>}
               <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">WhatsApp school</button>
               <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download order sheet</button>
-              <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>
+              {canManage && <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>}
             </div>
           </div>
         </div>

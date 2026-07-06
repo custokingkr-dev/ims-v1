@@ -28,6 +28,16 @@ public final class TenantScope {
         return authed;
     }
 
+    /**
+     * Read scope for platform-wide readers (superadmin + operations): passthrough (null = all schools).
+     * Everyone else is locked to their own school via {@link #resolveSchoolId}.
+     */
+    public static Long resolvePlatformReadScope(Long requested) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin() || ctx.isOperations()) return requested;
+        return resolveSchoolId(requested);
+    }
+
     public static void requireSuperAdmin() {
         if (!TenantContext.get().isSuperAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "superadmin required");
