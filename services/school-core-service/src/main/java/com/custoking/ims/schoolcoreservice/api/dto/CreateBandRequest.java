@@ -12,5 +12,6 @@ public record CreateBandRequest(
         Integer classFrom,
         Integer classTo,
         @NotNull(message = "At least one schedule is required") Object schedules,
-        Double discount
+        Double discount,
+        Long schoolId
 ) {}
