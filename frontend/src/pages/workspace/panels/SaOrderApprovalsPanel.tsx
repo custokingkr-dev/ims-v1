@@ -64,7 +64,7 @@ export function SaOrderApprovalsPanel({
                   <td><div className="tb">{row.schoolName}</div></td>
                   <td>{row.category}</td>
                   <td><div style={{ maxWidth: 220 }}>{row.description || row.title || row.category}</div><div className="ts">{row.items}</div></td>
-                  <td style={{ fontWeight: 600 }}>₹{formatMoney(Math.round(Number(row.totalAmount ?? 0) / 100))}</td>
+                  <td style={{ fontWeight: 600 }}>₹{formatMoney(Number(row.totalAmount ?? 0) / 100)}</td>
                   <td style={{ color: 'var(--ink3)' }}>{row.placedAt ? new Date(row.placedAt).toLocaleDateString('en-IN') : row.date || '—'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>

@@ -413,7 +413,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                   <option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option>
                 </select>
               </Field>
-              <Field label="Amount (₹)"><input type="number" min={0} value={feeItemForm.amount} onChange={(e) => setFeeItemForm({ ...feeItemForm, amount: e.target.value })} /></Field>
+              <Field label="Amount (₹)"><input type="number" min={0} step="0.01" value={feeItemForm.amount} onChange={(e) => setFeeItemForm({ ...feeItemForm, amount: e.target.value })} /></Field>
               <div className="ck-field"><label>&nbsp;</label><button className="ck-btn ck-btn-g" disabled={saving === 'fee-structure-add'} onClick={addFeeStructureItem}>Add</button></div>
               <div className="ck-field"><label>&nbsp;</label><button className="ck-btn ck-btn-ghost" onClick={() => setShowFeeItemForm(false)}>Cancel</button></div>
             </div>
@@ -433,9 +433,9 @@ export function FeeStructurePanel({ onRefresh }: Props) {
 
       {(feeStructureData.bands || []).map((band: any) => {
         const totalPaise = Number(band.annualTotal || 0);
-        const totalRupees = Math.round(totalPaise / 100);
+        const totalRupees = totalPaise / 100;
         const discount = Number(band.discount || 0);
-        const savings = Math.round(totalRupees * discount / 100);
+        const savings = (totalRupees * discount) / 100;
         const activeSchedules = Array.isArray(band.activeSchedules) ? band.activeSchedules : [];
         const isExpanded = expandedBandIds.includes(band.id);
         const isEditingBand = editingBandId === band.id;
@@ -508,14 +508,14 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                             <tr key={item.id}>
                               <td>{isEditing ? <input value={editingFeeItem.name} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, name: e.target.value })} /> : <div className="tb">{item.name}</div>}</td>
                               <td>{isEditing ? <select value={editingFeeItem.frequency} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, frequency: e.target.value })}><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option></select> : <span className="ck-pill pb">{item.frequency}</span>}</td>
-                              <td style={{ textAlign: 'right' }}>{isEditing ? <input type="number" min={0} value={editingFeeItem.amount} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, amount: e.target.value })} /> : `₹${formatMoney(Math.round(Number(item.amount || 0) / 100))}`}</td>
+                              <td style={{ textAlign: 'right' }}>{isEditing ? <input type="number" min={0} step="0.01" value={editingFeeItem.amount} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, amount: e.target.value })} /> : `₹${formatMoney(Number(item.amount || 0) / 100)}`}</td>
                               <td><span className="ts">{pct}%</span></td>
                               <td>
                                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                                   {isEditing ? (
                                     <><button className="ck-btn ck-btn-g" disabled={saving === 'fee-structure-edit'} onClick={saveFeeStructureItem}>Save</button><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem(null)}>Cancel</button></>
                                   ) : (
-                                    <><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem({ id: item.id, name: item.name, frequency: item.frequency, amount: Math.round(Number(item.amount || 0) / 100) })}>Edit</button><button className="ck-btn ck-btn-ghost" onClick={() => setConfirmRemoveFeeItemId(confirmRemoveFeeItemId === item.id ? '' : item.id)}>Remove</button></>
+                                    <><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem({ id: item.id, name: item.name, frequency: item.frequency, amount: Number(item.amount || 0) / 100 })}>Edit</button><button className="ck-btn ck-btn-ghost" onClick={() => setConfirmRemoveFeeItemId(confirmRemoveFeeItemId === item.id ? '' : item.id)}>Remove</button></>
                                   )}
                                 </div>
                                 {confirmRemoveFeeItemId === item.id && !isEditing ? (
@@ -555,7 +555,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
           <Field label="Class"><select value={assignSelection.classId} onChange={(e) => handleAssignClassChange(e.target.value)}><option value="">Select class</option>{feeClasses.map((row: any) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field>
           <Field label="Section"><select disabled={!assignSelection.classId} value={assignSelection.sectionId} onChange={(e) => handleAssignSectionChange(e.target.value)}><option value="">Select section</option>{assignOptions.sections.map((row: any) => <option key={row.id} value={row.id}>{row.name}</option>)}</select>{!assignSelection.classId ? <div className="ts">Select a class first</div> : null}</Field>
           <Field label="Student"><select disabled={!assignSelection.sectionId} value={assignSelection.studentId} onChange={(e) => handleAssignStudentChange(e.target.value)}><option value="">Select student</option>{assignOptions.students.map((student: any) => <option key={student.id} value={student.id}>{student.name} · {student.admissionNo}</option>)}</select>{!assignSelection.sectionId ? <div className="ts">Select a section first</div> : null}</Field>
-          <Field label="Fee plan"><select value={feeAssignForm.bandId} onChange={(e) => handleFeePlanChange(e.target.value)}><option value="">Select fee plan</option>{(feeStructureData.bands || []).map((band: any) => <option key={band.id} value={band.id}>{band.name} · ₹{formatMoney(Math.round(Number(band.annualTotal || 0) / 100))}</option>)}</select>{feeAssignHint ? <div className="ts">{feeAssignHint}</div> : null}</Field>
+          <Field label="Fee plan"><select value={feeAssignForm.bandId} onChange={(e) => handleFeePlanChange(e.target.value)}><option value="">Select fee plan</option>{(feeStructureData.bands || []).map((band: any) => <option key={band.id} value={band.id}>{band.name} · ₹{formatMoney(Number(band.annualTotal || 0) / 100)}</option>)}</select>{feeAssignHint ? <div className="ts">{feeAssignHint}</div> : null}</Field>
           <Field label="Payment schedule"><select disabled={!feeAssignForm.bandId} value={feeAssignForm.paymentSchedule} onChange={(e) => setFeeAssignForm({ ...feeAssignForm, paymentSchedule: e.target.value, surcharge: e.target.value === 'Annual' ? '0' : feeAssignForm.surcharge })}><option value="">Select schedule</option>{(((feeStructureData.bands || []).find((band: any) => band.id === feeAssignForm.bandId)?.activeSchedules) || []).map((schedule: string) => <option key={schedule} value={schedule}>{schedule}</option>)}</select></Field>
           <Field label="Discount % (from band)"><input readOnly value={feeAssignForm.bandDiscount} /><div className="ts">Set in Fee structure</div></Field>
           <Field label="Manual student discount"><input type="number" min={0} max={100} value={feeAssignForm.manualDiscount} onChange={(e) => setFeeAssignForm({ ...feeAssignForm, manualDiscount: e.target.value })} /></Field>
@@ -570,7 +570,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                 <thead><tr><th>Item name</th><th>Frequency</th><th>Amount</th></tr></thead>
                 <tbody>
                   {(((feeStructureData.bands || []).find((band: any) => band.id === feeAssignForm.bandId)?.items) || []).map((item: any) => (
-                    <tr key={item.id}><td>{item.name}</td><td>{item.frequency}</td><td>₹{formatMoney(Math.round(Number(item.amount || 0) / 100))}</td></tr>
+                    <tr key={item.id}><td>{item.name}</td><td>{item.frequency}</td><td>₹{formatMoney(Number(item.amount || 0) / 100)}</td></tr>
                   ))}
                 </tbody>
               </table>

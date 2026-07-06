@@ -195,7 +195,7 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
                   <Field label="Category"><select value={ffForm.category} onChange={(e) => setFfForm({ ...ffForm, category: e.target.value })}><option>Furniture & fixtures</option><option>Electronics & security</option><option>Lab equipment</option><option>Sports & playground</option><option>Services & AMC</option><option>Civil & construction</option><option>Events & occasions</option><option>Other</option></select></Field>
                   <Field label="Urgency *"><select value={ffForm.urgency} onChange={(e) => setFfForm({ ...ffForm, urgency: e.target.value })}><option value="HIGH">High — needed within 7 days</option><option value="MEDIUM">Medium — within 30 days</option><option value="LOW">Low — no strict deadline</option></select></Field>
                   <Field label="Required by date"><input type="date" value={ffForm.requiredByDate} onChange={(e) => setFfForm({ ...ffForm, requiredByDate: e.target.value })} /></Field>
-                  <Field label="Estimated budget (₹)"><input type="number" value={ffForm.estimatedBudget} onChange={(e) => setFfForm({ ...ffForm, estimatedBudget: e.target.value })} placeholder="Approximate amount" /></Field>
+                  <Field label="Estimated budget (₹)"><input type="number" min={0} step="0.01" value={ffForm.estimatedBudget} onChange={(e) => setFfForm({ ...ffForm, estimatedBudget: e.target.value })} placeholder="Approximate amount" /></Field>
                 </div>
                 <Field label="Description *"><textarea value={ffForm.summary} onChange={(e) => setFfForm({ ...ffForm, summary: e.target.value })} placeholder="Describe exactly what you need — quantity, size, specs, where it will be used…" style={{ minHeight: 80 }} /></Field>
               </div>
@@ -258,7 +258,7 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
                 </div>
                 <div className="ck-form-grid ck-fg-3" style={{ marginBottom: 10 }}>
                   <Field label="Vendor name *"><input value={q.vendorName} onChange={(e) => setFfQuote(idx, 'vendorName', e.target.value)} placeholder="Vendor / supplier name" /></Field>
-                  <Field label="Quoted amount (₹) *"><input type="number" value={q.amount} onChange={(e) => setFfQuote(idx, 'amount', e.target.value)} placeholder="Total quote amount" /></Field>
+                  <Field label="Quoted amount (₹) *"><input type="number" min={0} step="0.01" value={q.amount} onChange={(e) => setFfQuote(idx, 'amount', e.target.value)} placeholder="Total quote amount" /></Field>
                   <Field label="Delivery timeline"><input value={q.deliveryTimeline} onChange={(e) => setFfQuote(idx, 'deliveryTimeline', e.target.value)} placeholder="e.g. 2–3 weeks" /></Field>
                 </div>
                 <Field label="Notes"><input value={q.notes} onChange={(e) => setFfQuote(idx, 'notes', e.target.value)} placeholder="Includes installation, GST, warranty…" /></Field>
