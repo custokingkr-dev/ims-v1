@@ -26,6 +26,20 @@ export function todayIso(): string {
   return local.toISOString().slice(0, 10);
 }
 
+/**
+ * Indian financial-year labels ("2026–27") starting from the current FY.
+ * FY runs April–March, so before April the current FY started the previous year.
+ * Returns `count` consecutive years, current first (e.g. ["2026–27","2027–28",…]).
+ */
+export function financialYearOptions(count = 4): string[] {
+  const now = new Date();
+  const startYear = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+  return Array.from({ length: count }, (_, i) => {
+    const s = startYear + i;
+    return `${s}–${String(s + 1).slice(-2)}`;
+  });
+}
+
 export function formatAddress(address: any): string {
   if (!address) return '—';
   return (

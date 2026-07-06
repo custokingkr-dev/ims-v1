@@ -4,9 +4,11 @@ import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { OrderSummaryPanel, thStyle, tdStyle, inlineInputStyle } from '../ui';
-import { formatMoney, toPaise } from '../utils';
+import { formatMoney, toPaise, todayIso, financialYearOptions } from '../utils';
 import { CATALOG_TILES } from '../config';
 import type { PanelKey } from '../config';
+
+const FY_OPTIONS = financialYearOptions();
 
 interface Props {
   setPanel: (key: PanelKey) => void;
@@ -16,13 +18,14 @@ export function CatalogPanel({ setPanel }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
+  const today = todayIso();
 
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogSaving, setCatalogSaving] = useState(false);
   const [catalogNotice, setCatalogNotice] = useState<{ type: 'success' | 'error' | 'draft'; msg: string } | null>(null);
 
-  const [uniformForm, setUniformForm] = useState({ academicYear: '2024–25', requiredByDate: '', classGroup: 'Class 6–8', logoOnUniform: 'Yes — school logo embroidered', specialInstructions: '', items: [{ name: 'Shirt (white)', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 320 }, { name: 'Trousers / skirt', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 480 }, { name: 'PE T-shirt', sizeBreakdown: 'S:30 M:50 L:20', qty: 100, unitPrice: 220 }] });
+  const [uniformForm, setUniformForm] = useState({ academicYear: FY_OPTIONS[0], requiredByDate: '', classGroup: 'Class 6–8', logoOnUniform: 'Yes — school logo embroidered', specialInstructions: '', items: [{ name: 'Shirt (white)', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 320 }, { name: 'Trousers / skirt', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 480 }, { name: 'PE T-shirt', sizeBreakdown: 'S:30 M:50 L:20', qty: 100, unitPrice: 220 }] });
   const [notebookForm, setNotebookForm] = useState({ numStudents: 487, notebooksPerStudent: 6, requiredByDate: '', coverLogo: 'School logo — printed', delivery: 'Deliver to school', schoolNameOnSpine: 'Yes', items: [{ type: 'Ruled notebook', size: 'A4', pages: '120', qty: 1200, unitPrice: 45 }, { type: 'School diary', size: 'A5', pages: '200 pg', qty: 487, unitPrice: 80 }, { type: 'Graph notebook', size: 'A4', pages: '60 pg', qty: 300, unitPrice: 28 }] });
   const [stationeryForm, setStationeryForm] = useState({ packType: 'Per-student kit', numKits: 487, requiredByDate: '', items: [{ name: 'Ball pen (blue)', brand: 'Reynolds 045', perKit: 2, unitPrice: 6 }, { name: 'Pencil HB', brand: 'Natraj 621', perKit: 2, unitPrice: 5 }, { name: 'Eraser', brand: 'Apsara Non-dust', perKit: 1, unitPrice: 8 }, { name: 'Scale 30cm', brand: 'Camlin', perKit: 1, unitPrice: 12 }] });
   const [idCardForm, setIdCardForm] = useState({ studentCount: 487, staffCount: 68, spareCards: 20, lanyardIncluded: 'Yes — with hook', requiredByDate: '' });
@@ -213,8 +216,8 @@ export function CatalogPanel({ setPanel }: Props) {
                         <div className="ck-form-head">Order details</div>
                         <div className="ck-form-body">
                           <div className="ck-form-grid ck-fg-2" style={{ marginBottom: 18 }}>
-                            <div className="field"><label>Academic year</label><select value={uniformForm.academicYear} onChange={(e) => setUniformForm((f) => ({ ...f, academicYear: e.target.value }))}><option>2024–25</option><option>2025–26</option></select></div>
-                            <div className="field"><label>Required by date *</label><input type="date" value={uniformForm.requiredByDate} onChange={(e) => setUniformForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
+                            <div className="field"><label>Academic year</label><select value={uniformForm.academicYear} onChange={(e) => setUniformForm((f) => ({ ...f, academicYear: e.target.value }))}>{FY_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
+                            <div className="field"><label>Required by date *</label><input type="date" min={today} value={uniformForm.requiredByDate} onChange={(e) => setUniformForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
                             <div className="field"><label>Class group</label><select value={uniformForm.classGroup} onChange={(e) => setUniformForm((f) => ({ ...f, classGroup: e.target.value }))}><option>Class 1–5</option><option>Class 6–8</option><option>Class 9–10</option><option>Class 11–12</option><option>All classes</option></select></div>
                             <div className="field"><label>Logo on uniform</label><select value={uniformForm.logoOnUniform} onChange={(e) => setUniformForm((f) => ({ ...f, logoOnUniform: e.target.value }))}><option>Yes — school logo embroidered</option><option>Yes — printed logo</option><option>No logo</option></select></div>
                           </div>
@@ -241,7 +244,7 @@ export function CatalogPanel({ setPanel }: Props) {
                           <div className="ck-form-grid ck-fg-3" style={{ marginBottom: 18 }}>
                             <div className="field"><label>No. of students *</label><input type="number" value={notebookForm.numStudents} onChange={(e) => setNotebookForm((f) => ({ ...f, numStudents: +e.target.value || 0 }))} /></div>
                             <div className="field"><label>Notebooks per student</label><input type="number" value={notebookForm.notebooksPerStudent} onChange={(e) => setNotebookForm((f) => ({ ...f, notebooksPerStudent: +e.target.value || 0 }))} /></div>
-                            <div className="field"><label>Required by</label><input type="date" value={notebookForm.requiredByDate} onChange={(e) => setNotebookForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
+                            <div className="field"><label>Required by</label><input type="date" min={today} value={notebookForm.requiredByDate} onChange={(e) => setNotebookForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
                             <div className="field"><label>Cover logo</label><select value={notebookForm.coverLogo} onChange={(e) => setNotebookForm((f) => ({ ...f, coverLogo: e.target.value }))}><option>School logo — printed</option><option>School logo — embossed</option><option>No logo</option></select></div>
                             <div className="field"><label>Delivery</label><select value={notebookForm.delivery} onChange={(e) => setNotebookForm((f) => ({ ...f, delivery: e.target.value }))}><option>Deliver to school</option><option>Warehouse pickup</option></select></div>
                             <div className="field"><label>School name on spine</label><select value={notebookForm.schoolNameOnSpine} onChange={(e) => setNotebookForm((f) => ({ ...f, schoolNameOnSpine: e.target.value }))}><option>Yes</option><option>No</option></select></div>
@@ -268,7 +271,7 @@ export function CatalogPanel({ setPanel }: Props) {
                           <div className="ck-form-grid ck-fg-3" style={{ marginBottom: 18 }}>
                             <div className="field"><label>Pack type</label><select value={stationeryForm.packType} onChange={(e) => setStationeryForm((f) => ({ ...f, packType: e.target.value }))}><option>Per-student kit</option><option>Bulk classroom supply</option></select></div>
                             <div className="field"><label>Number of kits *</label><input type="number" value={stationeryForm.numKits} onChange={(e) => setStationeryForm((f) => ({ ...f, numKits: +e.target.value || 0 }))} /></div>
-                            <div className="field"><label>Required by</label><input type="date" value={stationeryForm.requiredByDate} onChange={(e) => setStationeryForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
+                            <div className="field"><label>Required by</label><input type="date" min={today} value={stationeryForm.requiredByDate} onChange={(e) => setStationeryForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
                           </div>
                           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink3)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 10 }}>Kit contents</div>
                           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
@@ -286,14 +289,14 @@ export function CatalogPanel({ setPanel }: Props) {
                       <div className="field"><label>Staff count</label><input type="number" value={idCardForm.staffCount} onChange={(e) => setIdCardForm((f) => ({ ...f, staffCount: +e.target.value || 0 }))} /></div>
                       <div className="field"><label>Spare cards</label><input type="number" value={idCardForm.spareCards} onChange={(e) => setIdCardForm((f) => ({ ...f, spareCards: +e.target.value || 0 }))} /></div>
                       <div className="field"><label>Lanyard included</label><select value={idCardForm.lanyardIncluded} onChange={(e) => setIdCardForm((f) => ({ ...f, lanyardIncluded: e.target.value }))}><option>Yes — with hook</option><option>No</option></select></div>
-                      <div className="field"><label>Required by</label><input type="date" value={idCardForm.requiredByDate} onChange={(e) => setIdCardForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
+                      <div className="field"><label>Required by</label><input type="date" min={today} value={idCardForm.requiredByDate} onChange={(e) => setIdCardForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
                     </div>
                   )}
                   {activeCat === 'HOUSEKEEPING' && (
                     <div className="ck-form-grid ck-fg-2">
                       <div className="field"><label>Duration</label><select value={housekeepingForm.duration} onChange={(e) => setHousekeepingForm((f) => ({ ...f, duration: e.target.value }))}><option>1 month</option><option>3 months</option><option>6 months</option><option>Academic year</option></select></div>
                       <div className="field"><label>Staff required</label><input type="number" value={housekeepingForm.staffRequired} onChange={(e) => setHousekeepingForm((f) => ({ ...f, staffRequired: +e.target.value || 0 }))} /></div>
-                      <div className="field"><label>Start date</label><input type="date" value={housekeepingForm.startDate} onChange={(e) => setHousekeepingForm((f) => ({ ...f, startDate: e.target.value }))} /></div>
+                      <div className="field"><label>Start date</label><input type="date" min={today} value={housekeepingForm.startDate} onChange={(e) => setHousekeepingForm((f) => ({ ...f, startDate: e.target.value }))} /></div>
                     </div>
                   )}
                   {activeCat === 'EVENTS' && (
@@ -307,8 +310,8 @@ export function CatalogPanel({ setPanel }: Props) {
                         <div className="ck-form-body">
                           <div className="ck-form-grid ck-fg-2" style={{ marginBottom: 18 }}>
                             <div className="field"><label>Event name</label><input value={eventsForm.eventName} onChange={(e) => setEventsForm((f) => ({ ...f, eventName: e.target.value }))} placeholder="e.g. Annual Day 2025" /></div>
-                            <div className="field"><label>Event date</label><input type="date" value={eventsForm.eventDate} onChange={(e) => setEventsForm((f) => ({ ...f, eventDate: e.target.value }))} /></div>
-                            <div className="field"><label>Delivery deadline</label><input type="date" value={eventsForm.deliveryDeadline} onChange={(e) => setEventsForm((f) => ({ ...f, deliveryDeadline: e.target.value }))} /></div>
+                            <div className="field"><label>Event date</label><input type="date" min={today} value={eventsForm.eventDate} onChange={(e) => setEventsForm((f) => ({ ...f, eventDate: e.target.value }))} /></div>
+                            <div className="field"><label>Delivery deadline</label><input type="date" min={today} value={eventsForm.deliveryDeadline} onChange={(e) => setEventsForm((f) => ({ ...f, deliveryDeadline: e.target.value }))} /></div>
                           </div>
                           <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
                             <thead><tr style={{ background: 'var(--bg)' }}><th style={thStyle}>Item</th><th style={thStyle}>Spec</th><th style={thStyle}>Qty</th><th style={thStyle}>Unit ₹</th><th style={thStyle}>Total</th></tr></thead>
@@ -326,7 +329,7 @@ export function CatalogPanel({ setPanel }: Props) {
                         <div style={{ fontSize: 20 }}>🩺</div>
                         <div><div style={{ fontFamily: 'Merriweather, serif', fontSize: 18, fontWeight: 700 }}>Health &amp; safety</div><div className="ts">First aid, sanitizers, fire equipment, PPE</div></div>
                       </div>
-                      <div className="field" style={{ marginBottom: 12 }}><label>Required by date</label><input type="date" value={healthForm.requiredByDate} onChange={(e) => setHealthForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
+                      <div className="field" style={{ marginBottom: 12 }}><label>Required by date</label><input type="date" min={today} value={healthForm.requiredByDate} onChange={(e) => setHealthForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
                       <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)' }}>
                         <thead><tr style={{ background: 'var(--bg)' }}><th style={thStyle}>Item</th><th style={thStyle}>Qty</th><th style={thStyle}>Unit ₹</th></tr></thead>
                         <tbody>{healthForm.items.map((row, i) => <tr key={i}><td style={tdStyle}>{row.name}</td><td style={tdStyle}><input type="number" value={row.qty} onChange={(e) => setHealthForm((f) => { const items = [...f.items]; items[i] = { ...items[i], qty: +e.target.value || 0 }; return { ...f, items }; })} style={{ ...inlineInputStyle, width: 80 }} /></td><td style={tdStyle}><input type="number" value={row.unitPrice} onChange={(e) => setHealthForm((f) => { const items = [...f.items]; items[i] = { ...items[i], unitPrice: +e.target.value || 0 }; return { ...f, items }; })} style={{ ...inlineInputStyle, width: 80 }} /></td></tr>)}</tbody>

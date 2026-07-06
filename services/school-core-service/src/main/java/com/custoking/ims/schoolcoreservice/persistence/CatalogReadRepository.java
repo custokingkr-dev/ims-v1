@@ -531,11 +531,10 @@ public class CatalogReadRepository {
     }
 
     private String nextCatalogOrderId() {
-        Long next = jdbc.sql("""
-                SELECT COALESCE(MAX(NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::bigint), 1000) + 1
-                FROM catalog.catalog_orders
-                WHERE id LIKE 'CK-%'
-                """).query(Long.class).single();
+        // Use a global sequence (nextval ignores RLS) rather than MAX(id)+1, which ran under
+        // RLS scoped to the caller's own school and collided with other schools' global PKs.
+        Long next = jdbc.sql("SELECT nextval('catalog.seq_catalog_order_id')")
+                .query(Long.class).single();
         return "CK-" + next;
     }
 
