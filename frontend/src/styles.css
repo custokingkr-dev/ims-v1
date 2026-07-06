@@ -131,7 +131,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   width: 248px;
   box-shadow: none;
 }
-.ck-main { margin-left: 64px; }
+.ck-main { margin-left: 64px; flex: 1; min-width: 0; }
 .ck-sidebar.pinned ~ .ck-main { margin-left: 248px; }
 
 /* pin toggle button (visible only when expanded/pinned) */
