@@ -216,4 +216,94 @@ public class TimetableRepository {
                 .param("sid", scheduleId)
                 .update();
     }
+
+    public String activeYearId(Long schoolId) {
+        return jdbc.sql("""
+                SELECT id FROM tenant_school.academic_years
+                ORDER BY active DESC, id DESC LIMIT 1
+                """)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+    }
+
+    public Map<String, Object> classSubjects(Long schoolId, String classId, String yearId) {
+        List<Map<String, Object>> subjects = jdbc.sql("""
+                SELECT id, subject_name, sort_order
+                FROM tenant_school.school_class_subjects
+                WHERE school_id = :s AND class_id = :c AND academic_year_id = :y
+                ORDER BY sort_order, subject_name
+                """)
+                .param("s", schoolId)
+                .param("c", classId)
+                .param("y", yearId)
+                .query((rs, rowNum) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("subjectName", rs.getString("subject_name"));
+                    m.put("sortOrder", rs.getInt("sort_order"));
+                    return m;
+                })
+                .list();
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("editable", yearId != null && yearId.equals(activeYearId(schoolId)));
+        result.put("yearId", yearId);
+        result.put("subjects", subjects);
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> addSubject(Long schoolId, String classId, String yearId, String subjectName) {
+        if (yearId == null || !yearId.equals(activeYearId(schoolId))) {
+            throw new YearLockedException("Subjects for " + yearId + " are locked — the year has ended");
+        }
+        try {
+            return jdbc.sql("""
+                    INSERT INTO tenant_school.school_class_subjects
+                        (school_id, class_id, academic_year_id, subject_name)
+                    VALUES (:s, :c, :y, :n)
+                    RETURNING id, subject_name, sort_order
+                    """)
+                    .param("s", schoolId)
+                    .param("c", classId)
+                    .param("y", yearId)
+                    .param("n", subjectName)
+                    .query((rs, rowNum) -> {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("id", rs.getLong("id"));
+                        m.put("subjectName", rs.getString("subject_name"));
+                        m.put("sortOrder", rs.getInt("sort_order"));
+                        return m;
+                    })
+                    .single();
+        } catch (DuplicateKeyException ex) {
+            throw new IllegalArgumentException("'" + subjectName + "' already exists for this class/year");
+        }
+    }
+
+    @Transactional
+    public void deleteSubject(Long schoolId, long subjectId) {
+        String subjectYearId = jdbc.sql("""
+                SELECT academic_year_id FROM tenant_school.school_class_subjects
+                WHERE school_id = :s AND id = :id
+                """)
+                .param("s", schoolId)
+                .param("id", subjectId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+        if (subjectYearId == null) {
+            return;
+        }
+        if (!subjectYearId.equals(activeYearId(schoolId))) {
+            throw new YearLockedException("Subjects for " + subjectYearId + " are locked — the year has ended");
+        }
+        jdbc.sql("""
+                DELETE FROM tenant_school.school_class_subjects
+                WHERE school_id = :s AND id = :id
+                """)
+                .param("s", schoolId)
+                .param("id", subjectId)
+                .update();
+    }
 }

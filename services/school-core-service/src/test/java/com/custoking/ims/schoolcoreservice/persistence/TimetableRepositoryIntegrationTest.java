@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TimetableRepositoryIntegrationTest {
 
@@ -52,12 +53,14 @@ class TimetableRepositoryIntegrationTest {
     @BeforeEach
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM tenant_school.school_class_subjects");
             st.execute("DELETE FROM tenant_school.school_class_bell_map");
             st.execute("DELETE FROM tenant_school.school_bell_periods");
             st.execute("DELETE FROM tenant_school.school_bell_schedules");
             st.execute("DELETE FROM tenant_school.school_sections");
             st.execute("DELETE FROM tenant_school.school_classes");
             st.execute("DELETE FROM tenant_school.schools");
+            st.execute("DELETE FROM tenant_school.academic_years");
         }
     }
 
@@ -83,6 +86,14 @@ class TimetableRepositoryIntegrationTest {
         return classId;
     }
 
+    private String seedYear(long schoolId, String id, boolean active) throws Exception {
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES (" +
+                    "'" + id + "', '" + id + "', " + active + ")");
+        }
+        return id;
+    }
+
     @Test
     void createsScheduleWithPeriodsAndMapsClass() throws Exception {
         long schoolId = seedSchool();
@@ -102,5 +113,21 @@ class TimetableRepositoryIntegrationTest {
             assertThat(m.get("classId")).isEqualTo(classId);
             assertThat(((Number) m.get("scheduleId")).longValue()).isEqualTo(schedId);
         });
+    }
+
+    @Test
+    void rejectsSubjectEditsForNonActiveYear() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "6");
+        String active = seedYear(schoolId, "ay_2026_27", true);   // helper inserts academic_years
+        String past = seedYear(schoolId, "ay_2025_26", false);
+
+        var added = repo.addSubject(schoolId, classId, active, "Mathematics");
+        assertThat(added.get("id")).isNotNull();
+        assertThat(repo.classSubjects(schoolId, classId, active).get("editable")).isEqualTo(true);
+        assertThat(repo.classSubjects(schoolId, classId, past).get("editable")).isEqualTo(false);
+
+        assertThatThrownBy(() -> repo.addSubject(schoolId, classId, past, "History"))
+            .isInstanceOf(YearLockedException.class);
     }
 }

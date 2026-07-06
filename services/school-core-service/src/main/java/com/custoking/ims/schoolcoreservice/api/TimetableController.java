@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.TimetableRepository;
+import com.custoking.ims.schoolcoreservice.persistence.YearLockedException;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -154,6 +155,53 @@ public class TimetableController {
         long scheduleId = longValue(request.get("scheduleId"),
                 () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "scheduleId is required"));
         timetable.setClassSchedule(schoolId, classId, scheduleId);
+    }
+
+    @GetMapping("/api/v1/timetable/class-subjects")
+    public Map<String, Object> classSubjects(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestParam(value = "classId") String classId,
+            @RequestParam(value = "yearId", required = false) String yearIdParam) {
+        requireToken(token, "tenant-school:read");
+        Long schoolId = TenantScope.resolveSchoolId(schoolIdParam);
+        String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
+        return timetable.classSubjects(schoolId, classId, yearId);
+    }
+
+    @PostMapping("/api/v1/timetable/class-subjects")
+    public Map<String, Object> addSubject(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        String classId = requireText(request.get("classId"), "classId is required");
+        String subjectName = requireText(request.get("subjectName"), "subjectName is required");
+        String yearId = timetable.activeYearId(schoolId);
+        try {
+            return timetable.addSubject(schoolId, classId, yearId, subjectName);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @DeleteMapping("/api/v1/timetable/class-subjects/{id}")
+    public void deleteSubject(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable("id") long id) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        try {
+            timetable.deleteSubject(schoolId, id);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
     }
 
     private void requireToken(String token, String requiredScope) {
