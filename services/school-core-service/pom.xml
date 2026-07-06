@@ -101,6 +101,12 @@
             <artifactId>thumbnailator</artifactId>
             <version>${thumbnailator.version}</version>
         </dependency>
+        <!-- Raw Pub/Sub client for the real outbox publisher (PubSubDomainEventPublisher).
+             Deliberately NOT spring-cloud-gcp: its Spring Boot compat lags SB4. -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-pubsub</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
