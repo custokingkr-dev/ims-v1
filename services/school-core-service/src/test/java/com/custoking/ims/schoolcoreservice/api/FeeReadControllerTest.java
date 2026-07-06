@@ -29,7 +29,7 @@ class FeeReadControllerTest {
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        verify(fees, never()).bands("2026");
+        verify(fees, never()).bands("2026", null);
     }
 
     @Test

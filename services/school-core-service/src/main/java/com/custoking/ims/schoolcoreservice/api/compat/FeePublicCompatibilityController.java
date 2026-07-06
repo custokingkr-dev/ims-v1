@@ -40,7 +40,7 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestParam(required = false) String academicYearId) {
         requireToken(token, "fee:read");
-        return run(() -> fees.feeStructure(academicYearId));
+        return run(() -> fees.feeStructure(academicYearId, null));
     }
 
     @PostMapping("/api/v1/fee-structure/item")

@@ -55,7 +55,7 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestParam(required = false) String academicYearId) {
         requireToken(token, "fee:read");
-        return fees.bands(academicYearId);
+        return fees.bands(academicYearId, null);
     }
 
     @GetMapping("/items")
@@ -71,7 +71,7 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestParam(required = false) String academicYearId) {
         requireToken(token, "fee:read");
-        return execute(() -> fees.feeStructure(academicYearId));
+        return execute(() -> fees.feeStructure(academicYearId, null));
     }
 
     @GetMapping("/structure/match")

@@ -24,7 +24,7 @@ public class FeeReadRepository {
         this.jdbc = jdbc;
     }
 
-    public List<FeeBandRow> bands(String academicYearId) {
+    public List<FeeBandRow> bands(String academicYearId, Long schoolId) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, name, class_from, class_to, discount, active_schedules_csv,
                        created_at, updated_at, academic_year_id
@@ -32,10 +32,12 @@ public class FeeReadRepository {
                 WHERE 1=1
                 """);
         if (academicYearId != null && !academicYearId.isBlank()) sql.append(" AND academic_year_id = :academicYearId");
+        if (schoolId != null) sql.append(" AND school_id = :schoolId");
         sql.append(" ORDER BY class_from, class_to, name");
 
         var spec = jdbc.sql(sql.toString());
         if (academicYearId != null && !academicYearId.isBlank()) spec = spec.param("academicYearId", academicYearId);
+        if (schoolId != null) spec = spec.param("schoolId", schoolId);
         return spec.query(FeeBandRow.class).list();
     }
 
@@ -53,20 +55,14 @@ public class FeeReadRepository {
         return spec.query(FeeItemRow.class).list();
     }
 
-    public Map<String, Object> feeStructure(String academicYearId) {
+    public Map<String, Object> feeStructure(String academicYearId, Long schoolId) {
         Map<String, Object> year = academicYear(academicYearId);
-        List<Map<String, Object>> bands = jdbc.sql("""
-                        SELECT id
-                        FROM fee.fee_bands
-                        WHERE academic_year_id = :academicYearId
-                        ORDER BY class_from ASC, name ASC
-                        """)
-                .param("academicYearId", year.get("id"))
-                .query(String.class)
-                .list()
-                .stream()
-                .map(this::bandWithItems)
-                .toList();
+        StringBuilder sql = new StringBuilder("SELECT id FROM fee.fee_bands WHERE academic_year_id = :academicYearId");
+        if (schoolId != null) sql.append(" AND school_id = :schoolId");
+        sql.append(" ORDER BY class_from ASC, name ASC");
+        var spec = jdbc.sql(sql.toString()).param("academicYearId", year.get("id"));
+        if (schoolId != null) spec = spec.param("schoolId", schoolId);
+        List<Map<String, Object>> bands = spec.query(String.class).list().stream().map(this::bandWithItems).toList();
         return row("academicYearId", year.get("id"), "academicYear", year.get("label"), "bands", bands);
     }
 
@@ -109,11 +105,12 @@ public class FeeReadRepository {
         String id = UUID.randomUUID().toString();
         OffsetDateTime now = OffsetDateTime.now();
         String academicYearId = currentAcademicYearId();
+        Long schoolId = requireSchool(request.get("schoolId"));
 
         jdbc.sql("""
                 INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, active_schedules_csv,
-                                      created_at, updated_at, academic_year_id)
-                VALUES (:id, :name, :classFrom, :classTo, :discount, :schedules, :createdAt, :updatedAt, :academicYearId)
+                                      created_at, updated_at, academic_year_id, school_id)
+                VALUES (:id, :name, :classFrom, :classTo, :discount, :schedules, :createdAt, :updatedAt, :academicYearId, :schoolId)
                 """)
                 .param("id", id)
                 .param("name", name)
@@ -124,6 +121,7 @@ public class FeeReadRepository {
                 .param("createdAt", now)
                 .param("updatedAt", now)
                 .param("academicYearId", academicYearId)
+                .param("schoolId", schoolId)
                 .update();
         return bandWithItems(id);
     }
@@ -208,12 +206,12 @@ public class FeeReadRepository {
     @Transactional
     public Map<String, Object> createItem(Map<String, Object> request) {
         String bandId = requireText(request.get("bandId"), "Band id is required");
-        bandRecord(bandId);
+        Map<String, Object> band = bandRecord(bandId);
         String id = UUID.randomUUID().toString();
         OffsetDateTime now = OffsetDateTime.now();
         jdbc.sql("""
-                INSERT INTO fee.fee_items(id, name, frequency, amount, created_at, updated_at, band_id)
-                VALUES (:id, :name, :frequency, :amount, :createdAt, :updatedAt, :bandId)
+                INSERT INTO fee.fee_items(id, name, frequency, amount, created_at, updated_at, band_id, school_id)
+                VALUES (:id, :name, :frequency, :amount, :createdAt, :updatedAt, :bandId, :schoolId)
                 """)
                 .param("id", id)
                 .param("name", requireText(firstPresent(request, "itemName", "name"), "Item name is required"))
@@ -222,6 +220,7 @@ public class FeeReadRepository {
                 .param("createdAt", now)
                 .param("updatedAt", now)
                 .param("bandId", bandId)
+                .param("schoolId", band.get("schoolId"))
                 .update();
         return bandWithItems(bandId);
     }
@@ -825,7 +824,7 @@ public class FeeReadRepository {
     private Map<String, Object> bandRecord(String id) {
         return jdbc.sql("""
                 SELECT b.id, b.name, b.class_from, b.class_to, b.discount, b.active_schedules_csv,
-                       b.created_at, b.updated_at, b.academic_year_id, y.label AS academic_year
+                       b.created_at, b.updated_at, b.academic_year_id, b.school_id, y.label AS academic_year
                 FROM fee.fee_bands b
                 LEFT JOIN tenant_school.academic_years y ON y.id = b.academic_year_id
                 WHERE b.id = :id
@@ -844,9 +843,21 @@ public class FeeReadRepository {
                         "createdAt", rs.getObject("created_at", OffsetDateTime.class),
                         "updatedAt", rs.getObject("updated_at", OffsetDateTime.class),
                         "academicYearId", rs.getString("academic_year_id"),
-                        "academicYear", rs.getString("academic_year")))
+                        "academicYear", rs.getString("academic_year"),
+                        "schoolId", rs.getLong("school_id")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Fee band not found"));
+    }
+
+    private Long requireSchool(Object value) {
+        if (value == null) {
+            throw new IllegalArgumentException("A school must be selected to create a fee plan");
+        }
+        try {
+            return Long.valueOf(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid school id");
+        }
     }
 
     private Map<String, Object> itemRecord(String id) {

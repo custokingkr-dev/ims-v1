@@ -54,10 +54,10 @@ class FeeBandDeleteIntegrationTest {
             st.execute("DELETE FROM fee.fee_assignments");
             st.execute("DELETE FROM fee.fee_items");
             st.execute("DELETE FROM fee.fee_bands");
-            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, academic_year_id) VALUES " +
-                    "('band-empty', 'Empty', 1, 2, 0.0, 'AY'), ('band-inuse', 'InUse', 3, 4, 0.0, 'AY')");
-            st.execute("INSERT INTO fee.fee_items(id, name, frequency, amount, band_id) VALUES " +
-                    "('item-1', 'Tuition', 'Annual', 3000000, 'band-empty')");
+            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, academic_year_id, school_id) VALUES " +
+                    "('band-empty', 'Empty', 1, 2, 0.0, 'AY', 1), ('band-inuse', 'InUse', 3, 4, 0.0, 'AY', 1)");
+            st.execute("INSERT INTO fee.fee_items(id, name, frequency, amount, band_id, school_id) VALUES " +
+                    "('item-1', 'Tuition', 'Annual', 3000000, 'band-empty', 1)");
             st.execute("INSERT INTO fee.fee_assignments" +
                     "(id, band_discount, manual_discount, surcharge, net_payable, paid_amount, student_id, band_id, academic_year_id, version, school_id) VALUES " +
                     "('fa-1', 0.0, 0.0, 0.0, 5000, 0, 1, 'band-inuse', 'AY', 0, 1)");
