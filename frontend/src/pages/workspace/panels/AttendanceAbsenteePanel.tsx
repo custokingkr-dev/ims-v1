@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 import { todayIso } from '../utils';
+import { useAuth } from '../../../contexts/AuthContext';
 import type { AbsenteeListResponse, NotifyAbsenteesResponse } from '../../../types/attendance';
 
 interface Props { schoolScopedParams?: { schoolId: number }; }
@@ -12,6 +13,7 @@ function errMessage(err: unknown, fallback: string): string {
 }
 
 export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
+  const { user } = useAuth();
   const scoped = schoolScopedParams || {};
   const [date, setDate] = useState(todayIso());
   const [data, setData] = useState<AbsenteeListResponse | null>(null);
@@ -43,7 +45,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
     setError('');
     setToast('');
     try {
-      const res = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', { date, ...scoped });
+      const res = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', { date, actorId: user?.userId, ...scoped });
       const r = res.data;
       setToast(`Queued ${r.queued} · skipped ${r.skippedNoContact + r.skippedAlreadyQueued} (no contact ${r.skippedNoContact}, already queued ${r.skippedAlreadyQueued})`);
       await load(date);
