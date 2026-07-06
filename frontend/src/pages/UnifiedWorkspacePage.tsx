@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
-import { X } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import {
   type PanelKey, type WorkspaceData,
   ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
@@ -90,6 +90,17 @@ export default function UnifiedWorkspacePage() {
   const [rejectReason, setRejectReason] = useState('');
   const [designApprovingSaving, setDesignApprovingSaving] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navGroupsKey = `ck_nav_groups:${role ?? 'default'}`;
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem(navGroupsKey) || '{}'); } catch { return {}; }
+  });
+  const toggleGroup = (title: string) => {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [title]: !(prev[title] ?? true) };
+      try { localStorage.setItem(navGroupsKey, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
 
   // ── Workspace data loader ───────────────────────────────────────────────────
   const refresh = async () => {
@@ -282,6 +293,7 @@ export default function UnifiedWorkspacePage() {
         className={`ck-sidebar${sidebarOpen ? ' open' : ''}`}
       >
         <div className="ck-sb-header">
+          <div className="ck-sb-monogram" aria-hidden>CK</div>
           <div className="ck-sb-logo">custoking</div>
           <div className="ck-school-name">{workspace.school.name}</div>
           <div className="ck-school-meta">{workspace.school.meta}</div>
@@ -300,34 +312,38 @@ export default function UnifiedWorkspacePage() {
         </div>
 
         <nav className="ck-nav">
-          {navSections.map((section) => (
-            <div key={section.title}>
-              {section.fire ? (
-                <div className="ck-fire-header">
-                  <div className="ck-fire-label">Urgent Procurement</div>
-                  <div className="ck-fire-sub">Non-catalog urgent requests</div>
-                </div>
-              ) : (
-                <div className="ck-nav-section">{section.title}</div>
-              )}
-              {section.items.map((item) => (
+          {navSections.map((section) => {
+            const open = openGroups[section.title] ?? true;
+            return (
+              <div key={section.title} className={`ck-nav-group${open ? '' : ' closed'}${section.fire ? ' fire' : ''}`}>
                 <button
-                  key={item.key}
-                  className={`ck-nav-item ${panel === item.key ? 'on' : ''} ${section.fire ? 'fire' : ''}`}
-                  onClick={() => { setPanel(item.key); setSidebarOpen(false); }}
+                  type="button"
+                  className="ck-nav-group-header"
+                  aria-expanded={open}
+                  onClick={() => toggleGroup(section.title)}
                 >
-                  <NavIcon panelKey={item.key} fallback={item.icon} />
-                  <span>{item.label}</span>
-                  {item.key === 'sa-invoices' && saInvBadge > 0 && (
-                    <span style={{ marginLeft: 'auto', background: 'var(--re)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8 }}>
-                      {saInvBadge}
-                    </span>
-                  )}
+                  <span className="ck-nav-group-title">{section.fire ? 'Urgent Procurement' : section.title}</span>
+                  <ChevronDown className="ck-nav-chevron" size={13} aria-hidden />
                 </button>
-              ))}
-              {!section.fire && <div className="ck-sep" />}
-            </div>
-          ))}
+                {section.items.map((item) => (
+                  <button
+                    key={item.key}
+                    className={`ck-nav-item ${panel === item.key ? 'on' : ''} ${section.fire ? 'fire' : ''}`}
+                    onClick={() => { setPanel(item.key); setSidebarOpen(false); }}
+                    title={item.label}
+                    aria-label={item.label}
+                    aria-current={panel === item.key ? 'page' : undefined}
+                  >
+                    <NavIcon panelKey={item.key} fallback={item.icon} />
+                    <span className="ck-nav-label">{item.label}</span>
+                    {item.key === 'sa-invoices' && saInvBadge > 0 && (
+                      <span className="ck-nav-badge">{saInvBadge}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="ck-user-card">
@@ -335,12 +351,12 @@ export default function UnifiedWorkspacePage() {
             <div className="ck-user-avatar" aria-hidden="true">
               {(user?.fullName ?? user?.email ?? 'U').charAt(0).toUpperCase()}
             </div>
-            <div>
+            <div className="ck-user-card-details">
               <div className="ck-user-name">{user?.fullName ?? user?.email}</div>
               <div className="ck-user-meta">{role?.replace('_', ' ') ?? 'User'}</div>
             </div>
           </div>
-          <div className="ck-badge-row" style={{ marginTop: 10 }}>
+          <div className="ck-badge-row ck-user-card-details" style={{ marginTop: 10 }}>
             <button
               className="ck-btn ck-btn-ghost ck-btn-sm"
               onClick={() => { logout(); navigate('/login', { replace: true }); }}

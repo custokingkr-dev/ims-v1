@@ -50,18 +50,33 @@ export const ADMIN_NAV_SECTIONS: Array<{
     ],
   },
   {
-    title: 'School ERP',
+    title: 'Overview',
     items: [
-      { key: 'home',        label: 'Dashboard',      icon: '◼' },
-      { key: 'students',    label: 'Students',       icon: '🎓', module: 'STUDENTS' },
-      { key: 'fees',        label: 'Fee Collections',   icon: '₹',  module: 'FEES' },
-      { key: 'feestructure',label: 'Fee Configuration', icon: '📐', module: 'FEES' },
-      { key: 'attendance',  label: 'Attendance',     icon: '✓',  module: 'ATTENDANCE' },
-      { key: 'timetable',   label: 'Timetable',      icon: '📅' },
-      { key: 'addstudent',  label: 'Add student',    icon: '➕', module: 'STUDENTS' },
-      { key: 'bulkimport',  label: 'Bulk import',    icon: '📥', module: 'STUDENTS' },
-      { key: 'staff',       label: 'Staff & HR',     icon: '👥' },
-      { key: 'classsetup',  label: 'Class & section setup', icon: '🏫' },
+      { key: 'home', label: 'Dashboard', icon: '◼' },
+    ],
+  },
+  {
+    title: 'Academics',
+    items: [
+      { key: 'students',   label: 'Students',    icon: '🎓', module: 'STUDENTS' },
+      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'STUDENTS' },
+      { key: 'bulkimport', label: 'Bulk import', icon: '📥', module: 'STUDENTS' },
+      { key: 'attendance', label: 'Attendance',  icon: '✓',  module: 'ATTENDANCE' },
+      { key: 'timetable',  label: 'Timetable',   icon: '📅' },
+    ],
+  },
+  {
+    title: 'Finance',
+    items: [
+      { key: 'fees',         label: 'Fee Collections',   icon: '₹',  module: 'FEES' },
+      { key: 'feestructure', label: 'Fee Configuration', icon: '📐', module: 'FEES' },
+    ],
+  },
+  {
+    title: 'Setup',
+    items: [
+      { key: 'staff',      label: 'Staff & HR',            icon: '👥' },
+      { key: 'classsetup', label: 'Class & section setup', icon: '🏫' },
     ],
   },
 ];
