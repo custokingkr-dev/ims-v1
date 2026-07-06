@@ -114,7 +114,8 @@ class OutboxRelayIntegrationTest {
             assertThat(envelope.schemaVersion()).isEqualTo("ims.event-envelope.v1");
             assertThat(envelope.eventType()).isEqualTo("billing.invoice-upserted.v1");
             assertThat(envelope.aggregateType()).isEqualTo("SuperadminInvoice");
-            assertThat(envelope.eventId()).isIn(rowIdA, rowIdB);
+            assertThat(envelope.eventId()).isIn("billing:" + rowIdA, "billing:" + rowIdB);
+            assertThat(envelope.eventId()).startsWith("billing:");
             assertThat(envelope.payloadJson()).contains(envelope.aggregateId());
         }
 

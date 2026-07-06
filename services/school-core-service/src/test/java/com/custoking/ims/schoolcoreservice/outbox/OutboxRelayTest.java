@@ -100,7 +100,8 @@ class OutboxRelayTest {
 
         for (EventEnvelope envelope : capturingPublisher.published) {
             assertThat(envelope.schemaVersion()).isEqualTo("ims.event-envelope.v1");
-            assertThat(envelope.eventId()).isIn(String.valueOf(idA), String.valueOf(idB));
+            assertThat(envelope.eventId()).isIn("school-core:" + idA, "school-core:" + idB);
+            assertThat(envelope.eventId()).startsWith("school-core:");
             assertThat(envelope.payloadJson()).contains(envelope.aggregateId());
         }
         assertThat(capturingPublisher.published)

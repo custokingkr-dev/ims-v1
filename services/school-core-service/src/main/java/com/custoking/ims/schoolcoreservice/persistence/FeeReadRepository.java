@@ -962,10 +962,9 @@ public class FeeReadRepository {
 
     private void emitFeeAssignmentUpserted(String assignmentId) {
         Map<String, Object> assignment = jdbc.sql("""
-                        SELECT fa.id, fa.student_id, s.school_id, fa.academic_year_id,
+                        SELECT fa.id, fa.student_id, fa.school_id, fa.academic_year_id,
                                fa.net_payable, fa.paid_amount
                         FROM fee.fee_assignments fa
-                        JOIN student.students s ON s.id = fa.student_id
                         WHERE fa.id = :id
                         """)
                 .param("id", assignmentId)

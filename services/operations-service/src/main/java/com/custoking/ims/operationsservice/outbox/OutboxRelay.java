@@ -91,7 +91,7 @@ public class OutboxRelay {
     private EventEnvelope toEnvelope(OutboxRow row) {
         return new EventEnvelope(
                 SCHEMA_VERSION,
-                row.id(),
+                "operations:" + row.id(),
                 row.eventKey(),
                 row.eventType(),
                 EVENT_VERSION,
