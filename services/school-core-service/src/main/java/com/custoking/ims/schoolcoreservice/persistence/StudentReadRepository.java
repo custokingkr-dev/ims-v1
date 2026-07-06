@@ -201,19 +201,20 @@ public class StudentReadRepository {
     @Transactional
     public Map<String, Object> createStudent(Map<String, Object> request) {
         String admissionNo = requireText(firstPresent(request, "admissionNumber", "admissionNo"), "Admission Number is mandatory");
-        Long duplicate = jdbc.sql("SELECT COUNT(*) FROM student.students WHERE lower(admission_no) = lower(:admissionNo)")
+        Long schoolId = longValue(request.get("schoolId"), null);
+        if (schoolId == null) {
+            throw new IllegalArgumentException("School not found");
+        }
+        requireSchool(schoolId);
+        Long duplicate = jdbc.sql("SELECT COUNT(*) FROM student.students WHERE lower(admission_no) = lower(:admissionNo) AND school_id = :schoolId")
                 .param("admissionNo", admissionNo)
+                .param("schoolId", schoolId)
                 .query(Long.class)
                 .single();
         if (duplicate != null && duplicate > 0) {
             throw new IllegalArgumentException("Admission Number already exists");
         }
         String fullName = requireText(request.get("fullName"), "Full name is mandatory");
-        Long schoolId = longValue(request.get("schoolId"), null);
-        if (schoolId == null) {
-            throw new IllegalArgumentException("School not found");
-        }
-        requireSchool(schoolId);
         String className = str(firstPresent(request, "gradeLevel", "className"), "Class 9");
         Map<String, Object> schoolClass = classByName(className)
                 .or(() -> classById(String.valueOf(classSortOrder(str(request.get("gradeLevel"), "9")))))
@@ -291,8 +292,10 @@ public class StudentReadRepository {
         Long dup = jdbc.sql("""
                 SELECT COUNT(*) FROM student.students
                 WHERE lower(admission_no) = lower(:admissionNo) AND id <> :id AND deleted_at IS NULL
+                  AND school_id = :studentSchool
                 """)
-                .param("admissionNo", admissionNo).param("id", id).query(Long.class).single();
+                .param("admissionNo", admissionNo).param("id", id).param("studentSchool", studentSchool)
+                .query(Long.class).single();
         if (dup != null && dup > 0) {
             throw new IllegalArgumentException("Admission Number already exists");
         }
@@ -348,7 +351,10 @@ public class StudentReadRepository {
                     .param("classId", classId)
                     .param("sectionId", sectionId)
                     .param("now", OffsetDateTime.now())
-                    .param("updatedBy", str(firstPresent(request, "updatedBy", "actorId"), null))
+                    .param("updatedBy", com.custoking.ims.schoolcoreservice.security.TenantContext.get() != null
+                            && com.custoking.ims.schoolcoreservice.security.TenantContext.get().userId() != null
+                            ? String.valueOf(com.custoking.ims.schoolcoreservice.security.TenantContext.get().userId())
+                            : null)
                     .update();
         } catch (org.springframework.dao.DataIntegrityViolationException ex) {
             // Backstop for the (school_id, admission_no) unique constraint.
