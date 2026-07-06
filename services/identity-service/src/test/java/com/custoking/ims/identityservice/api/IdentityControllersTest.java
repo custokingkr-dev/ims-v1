@@ -173,14 +173,16 @@ class IdentityControllersTest {
     }
 
     @Test
-    void userDirectoryResetPasswordParsesActorFields() {
+    void userDirectoryResetPasswordUsesAuthenticatedActorNotClientSuppliedFields() {
+        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "ADMIN", null, null));
         UserDirectoryReadRepository users = mock(UserDirectoryReadRepository.class);
         UserDirectoryController controller = new UserDirectoryController(users, "identity-token");
 
-        PasswordResetRequest req = new PasswordResetRequest("new-password", 1L, "owner@custoking.com");
+        // Client-supplied actorId/actorEmail must be ignored in favor of the authenticated principal.
+        PasswordResetRequest req = new PasswordResetRequest("new-password", 1L, "spoofed@custoking.com");
         controller.resetPassword("identity-token", 9L, req);
 
-        verify(users).resetPassword(9L, "new-password", 1L, "owner@custoking.com");
+        verify(users).resetPassword(9L, "new-password", 7L, "authenticated-admin@custoking.com");
     }
 
     @Test
@@ -199,16 +201,22 @@ class IdentityControllersTest {
 
     @Test
     void provisioningDelegatesZoneAdminCreation() {
+        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "SUPERADMIN", null, null));
         IdentityUserProvisioningRepository users = mock(IdentityUserProvisioningRepository.class);
         IdentityProvisioningController controller = new IdentityProvisioningController(users, "identity-token");
         Map<String, Object> request = Map.of("email", "zone@school.test");
         Map<String, Object> result = Map.of("id", 10L);
-        when(users.provisionZoneAdmin(2L, request)).thenReturn(result);
+        when(users.provisionZoneAdmin(eq(2L), anyMap())).thenReturn(result);
 
         Map<String, Object> response = controller.provisionZoneAdmin("identity-token", 2L, request);
 
         assertThat(response).isSameAs(result);
-        verify(users).provisionZoneAdmin(2L, request);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(users).provisionZoneAdmin(eq(2L), captor.capture());
+        // assignedBy must come from the authenticated principal, not any client-supplied value.
+        assertThat(captor.getValue()).containsEntry("email", "zone@school.test");
+        assertThat(captor.getValue()).containsEntry("assignedBy", 7L);
     }
 
     private AuthResponse authResponse(String accessToken) {

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 import { todayIso } from '../utils';
-import { useAuth } from '../../../contexts/AuthContext';
 import type { AbsenteeListResponse, NotifyAbsenteesResponse } from '../../../types/attendance';
 
 interface Props { schoolScopedParams?: { schoolId: number }; }
@@ -15,7 +14,6 @@ function errMessage(err: unknown, fallback: string): string {
 }
 
 export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
-  const { user } = useAuth();
   const scoped = schoolScopedParams || {};
   const [date, setDate] = useState(todayIso());
   const [classes, setClasses] = useState<ClassOpt[]>([]);
@@ -43,11 +41,12 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
 
-  const load = async (d: string, secId: string) => {
+  const load = async (d: string, clsId: string, secId: string) => {
     setLoading(true);
     setError('');
     try {
       const params: Record<string, any> = { date: d, ...scoped };
+      if (clsId) params.classId = clsId;
       if (secId) params.sectionId = secId;
       const res = await api.get<AbsenteeListResponse>('/attendance/absentees', { params });
       setData(res.data);
@@ -59,7 +58,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
     }
   };
 
-  useEffect(() => { void load(date, sectionId); }, [date, sectionId]);
+  useEffect(() => { void load(date, classId, sectionId); }, [date, classId, sectionId]);
 
   const notifiable = (data?.students || []).filter((s) => s.hasContact && !s.alreadyQueued).length;
 
@@ -68,12 +67,13 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
     setError('');
     setToast('');
     try {
-      const body: Record<string, any> = { date, actorId: user?.userId, ...scoped };
+      const body: Record<string, any> = { date, ...scoped };
+      if (classId) body.classId = classId;
       if (sectionId) body.sectionId = sectionId;
       const res = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', body);
       const r = res.data;
       setToast(`Queued ${r.queued} · skipped ${r.skippedNoContact + r.skippedAlreadyQueued} (no contact ${r.skippedNoContact}, already queued ${r.skippedAlreadyQueued})`);
-      await load(date, sectionId);
+      await load(date, classId, sectionId);
     } catch (err) {
       setError(errMessage(err, 'Could not queue notifications'));
     } finally {

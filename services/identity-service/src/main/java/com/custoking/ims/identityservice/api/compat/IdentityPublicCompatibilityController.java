@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.api.compat;
 
 import com.custoking.ims.identityservice.persistence.IdentityUserProvisioningRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
 import com.custoking.ims.identityservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -36,7 +38,9 @@ public class IdentityPublicCompatibilityController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
         TenantScope.requireSuperAdmin();
-        return run(() -> users.provisionSchoolUser(schoolId, "ADMIN", body));
+        Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
+        stamped.put("assignedBy", TenantContext.get().userId());
+        return run(() -> users.provisionSchoolUser(schoolId, "ADMIN", stamped));
     }
 
     @PostMapping("/api/v1/schools/{schoolId}/operations-user")
@@ -47,7 +51,9 @@ public class IdentityPublicCompatibilityController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
         TenantScope.requireSuperAdmin();
-        return run(() -> users.provisionSchoolUser(schoolId, "OPERATIONS", body));
+        Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
+        stamped.put("assignedBy", TenantContext.get().userId());
+        return run(() -> users.provisionSchoolUser(schoolId, "OPERATIONS", stamped));
     }
 
     @PostMapping("/api/v1/zones/{zoneId}/admin")
@@ -58,7 +64,9 @@ public class IdentityPublicCompatibilityController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
         TenantScope.requireSuperAdmin();
-        return run(() -> users.provisionZoneAdmin(zoneId, body));
+        Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
+        stamped.put("assignedBy", TenantContext.get().userId());
+        return run(() -> users.provisionZoneAdmin(zoneId, stamped));
     }
 
     private void requireToken(String token, String requiredScope) {

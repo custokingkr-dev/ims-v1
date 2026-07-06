@@ -77,16 +77,17 @@ class ReportingReadControllerTest {
     @Test
     void acceptActionParsesActorContextAndDelegates() {
         // SUPERADMIN context: isSuperAdmin()=true, resolveSchoolId(4L)=4L; body superAdmin flag ignored.
+        // actor comes from the authenticated principal (TenantContext userId=1L), not the request body's actorId.
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         UUID actionId = UUID.fromString("11111111-1111-1111-1111-111111111111");
         CommandCenterActionRequest request = new CommandCenterActionRequest(9L, 4L, null);
         Map<String, Object> result = Map.of("id", actionId, "status", "ACCEPTED");
-        when(commands.acceptAction(actionId, 9L, 4L, true)).thenReturn(result);
+        when(commands.acceptAction(actionId, 1L, 4L, true)).thenReturn(result);
 
         Map<String, Object> response = controller.acceptAction("reporting-token", actionId, request);
 
         assertThat(response).isSameAs(result);
-        verify(commands).acceptAction(actionId, 9L, 4L, true);
+        verify(commands).acceptAction(actionId, 1L, 4L, true);
     }
 
     @Test
@@ -156,11 +157,12 @@ class ReportingReadControllerTest {
     @Test
     void compatibilityAcceptActionMapsValidationFailureToBadRequest() {
         // SUPERADMIN context: body=null → actorSchoolId=null, resolveSchoolId(null)=null, isSuperAdmin()=true.
+        // actor comes from the authenticated principal (TenantContext userId=1L), not the (absent) request body.
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         ReportingPublicCompatibilityController compat =
                 new ReportingPublicCompatibilityController(reporting, commands, "reporting-token");
         UUID actionId = UUID.fromString("33333333-3333-3333-3333-333333333333");
-        when(commands.acceptAction(actionId, null, null, true))
+        when(commands.acceptAction(actionId, 1L, null, true))
                 .thenThrow(new IllegalArgumentException("Access denied to this action"));
 
         assertThatThrownBy(() -> compat.acceptAction("reporting-token", actionId, null))

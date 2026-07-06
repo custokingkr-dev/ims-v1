@@ -94,7 +94,9 @@ class CatalogValidationTest {
         assertEquals("test order", body.get("notes"));
         // schoolId resolved through applyResolvedSchool (SUPERADMIN context passes 4L through)
         assertEquals(4L, ((Number) body.get("schoolId")).longValue());
-        assertEquals(7L, ((Number) body.get("actorId")).longValue());
+        // actorId is always stamped from TenantContext (null in this test's SUPERADMIN context),
+        // never from the client-supplied "actorId":7 in the request body.
+        assertNull(body.get("actorId"));
         assertEquals("DRAFT", body.get("status"));
         assertEquals("2026-12-31", body.get("requiredByDate"));
     }

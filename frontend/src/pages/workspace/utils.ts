@@ -46,11 +46,6 @@ export function initials(name: string): string {
   );
 }
 
-export function attendanceNumber(value?: string): number {
-  const match = `${value || ''}`.match(/\d+(?:\.\d+)?/);
-  return match ? Number(match[0]) : 0;
-}
-
 export function formatLongDate(value?: string): string {
   if (!value) return '—';
   return new Date(`${value}T00:00:00`).toLocaleDateString('en-GB', {

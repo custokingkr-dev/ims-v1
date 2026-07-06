@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -188,7 +189,7 @@ public class FeePublicCompatibilityController {
                 text(request.get("sectionId")),
                 text(request.get("academicYearId")),
                 scope,
-                longValue(request.get("actorId"))));
+                TenantContext.get().userId()));
     }
 
     @PostMapping("/api/v1/dashboard/finance/fee-defaulters/reminders")
@@ -202,7 +203,7 @@ public class FeePublicCompatibilityController {
                 text(request.get("sectionId")),
                 text(request.get("academicYearId")),
                 scope,
-                longValue(request.get("actorId"))));
+                TenantContext.get().userId()));
     }
 
     @GetMapping(value = {"/api/v1/receipts/{paymentId}/pdf", "/api/v1/fees/receipts/{paymentId}/pdf"},

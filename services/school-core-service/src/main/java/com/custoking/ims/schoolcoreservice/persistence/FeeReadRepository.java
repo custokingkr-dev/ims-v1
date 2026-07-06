@@ -480,7 +480,7 @@ public class FeeReadRepository {
         double manualDiscount = doubleValue(request.get("manualDiscount"), 0);
         double surcharge = "Annual".equalsIgnoreCase(schedule) ? 0 : doubleValue(request.get("surcharge"), 0);
         long netPayable = calculateNetPayable(bandTotal, bandDiscount, manualDiscount, surcharge, schedule);
-        Long actorId = request.containsKey("actorId") ? longValue(request.get("actorId"), 0) : null;
+        Long actorId = request.get("actorId") != null ? longValue(request.get("actorId"), 0) : null;
         OffsetDateTime now = OffsetDateTime.now();
 
         if (exists) {
@@ -573,7 +573,7 @@ public class FeeReadRepository {
         String paymentId = UUID.randomUUID().toString();
         OffsetDateTime paidAt = parsePaidAt(request.get("paidAt"));
         OffsetDateTime now = OffsetDateTime.now();
-        Long actorId = request.containsKey("actorId") ? longValue(request.get("actorId"), 0) : null;
+        Long actorId = request.get("actorId") != null ? longValue(request.get("actorId"), 0) : null;
         String receiptNumber = "RCPT-" + System.currentTimeMillis();
         String assignmentId = String.valueOf(assignment.get("id"));
 

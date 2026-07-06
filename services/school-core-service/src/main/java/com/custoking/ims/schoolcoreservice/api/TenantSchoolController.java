@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.SchoolEntity;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolRepository;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StructureInUseException;
@@ -163,7 +164,7 @@ public class TenantSchoolController {
                     parseDate(body.get("startDate"), "startDate"),
                     parseDate(body.get("endDate"), "endDate"),
                     body.containsKey("notes") ? String.valueOf(body.get("notes")) : null,
-                    parseLong(body.get("actorId")));
+                    TenantContext.get().userId());
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
         }
@@ -317,7 +318,7 @@ public class TenantSchoolController {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSuperAdmin();
         runCommand(() -> {
-            zoneCommands.assignSchool(id, schoolId, body == null ? null : parseLong(body.get("assignedBy")));
+            zoneCommands.assignSchool(id, schoolId, TenantContext.get().userId());
             return Map.of("ok", true);
         });
     }
@@ -363,7 +364,7 @@ public class TenantSchoolController {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSuperAdmin();
         runCommand(() -> {
-            zoneCommands.assignZoneAdmin(id, parseLong(body.get("userId")), parseLong(body.get("assignedBy")));
+            zoneCommands.assignZoneAdmin(id, parseLong(body.get("userId")), TenantContext.get().userId());
             return Map.of("ok", true);
         });
     }

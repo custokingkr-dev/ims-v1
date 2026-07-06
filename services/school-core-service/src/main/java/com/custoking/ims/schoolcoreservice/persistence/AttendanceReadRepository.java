@@ -448,8 +448,8 @@ public class AttendanceReadRepository {
                 "students", students);
     }
 
-    public Map<String, Object> absentees(LocalDate date, String sectionId, Long schoolId) {
-        List<Map<String, Object>> students = absenteeRows(date, sectionId, schoolId);
+    public Map<String, Object> absentees(LocalDate date, String classId, String sectionId, Long schoolId) {
+        List<Map<String, Object>> students = absenteeRows(date, classId, sectionId, schoolId);
         long queued = students.stream().filter(s -> Boolean.TRUE.equals(s.get("alreadyQueued"))).count();
         return row("date", date.toString(),
                 "sectionId", sectionId,
@@ -458,7 +458,7 @@ public class AttendanceReadRepository {
                 "queuedCount", queued);
     }
 
-    private List<Map<String, Object>> absenteeRows(LocalDate date, String sectionId, Long schoolId) {
+    private List<Map<String, Object>> absenteeRows(LocalDate date, String classId, String sectionId, Long schoolId) {
         String academicYearId = currentAcademicYearId();
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id AS student_id, s.full_name, s.admission_no, s.roll_no,
@@ -475,6 +475,7 @@ public class AttendanceReadRepository {
                   AND ar.status = 'ABSENT'
                 """.formatted(absenteeTable, recordsTable));
         if (schoolId != null) sql.append(" AND ar.school_id = :schoolId");
+        if (classId != null && !classId.isBlank()) sql.append(" AND ar.class_id = :classId");
         if (sectionId != null && !sectionId.isBlank()) sql.append(" AND ar.section_id = :sectionId");
         sql.append("""
                  ORDER BY NULLIF(regexp_replace(COALESCE(s.roll_no, ''), '[^0-9]', '', 'g'), '')::int NULLS LAST,
@@ -484,6 +485,7 @@ public class AttendanceReadRepository {
                 .param("date", date)
                 .param("academicYearId", academicYearId);
         if (schoolId != null) spec = spec.param("schoolId", schoolId);
+        if (classId != null && !classId.isBlank()) spec = spec.param("classId", classId);
         if (sectionId != null && !sectionId.isBlank()) spec = spec.param("sectionId", sectionId);
         return spec.query((rs, n) -> {
             String parent = rs.getString("parent_contact");
@@ -502,9 +504,9 @@ public class AttendanceReadRepository {
     }
 
     @Transactional
-    public Map<String, Object> notifyAbsentees(LocalDate date, String sectionId, Long schoolId, Long actorId) {
+    public Map<String, Object> notifyAbsentees(LocalDate date, String classId, String sectionId, Long schoolId, Long actorId) {
         String academicYearId = currentAcademicYearId();
-        List<Map<String, Object>> students = absenteeRows(date, sectionId, schoolId);
+        List<Map<String, Object>> students = absenteeRows(date, classId, sectionId, schoolId);
         Map<Long, String> schoolNameCache = new java.util.HashMap<>();
         String dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
         int queued = 0, skippedNoContact = 0, skippedAlreadyQueued = 0;
@@ -594,7 +596,7 @@ public class AttendanceReadRepository {
         if (present < 0 || present > total) {
             throw new IllegalArgumentException("Present count is invalid");
         }
-        Long actorId = request.containsKey("actorId") ? longNum(request.get("actorId"), 0) : null;
+        Long actorId = request.get("actorId") != null ? longNum(request.get("actorId"), 0) : null;
         OffsetDateTime now = OffsetDateTime.now();
         String id = jdbc.sql("""
                 SELECT id FROM %s
@@ -660,7 +662,7 @@ public class AttendanceReadRepository {
         LocalDate date = LocalDate.parse(str(request.get("date"), LocalDate.now().toString()));
         String classId = requireText(request.get("classId"), "Class not found");
         String sectionId = requireText(request.get("sectionId"), "Section not found");
-        Long actorId = request.containsKey("actorId") ? longNum(request.get("actorId"), 0) : null;
+        Long actorId = request.get("actorId") != null ? longNum(request.get("actorId"), 0) : null;
         String academicYearId = currentAcademicYearId();
         Map<String, Object> section = sectionRecord(sectionId);
         if (!classId.equals(section.get("classId"))) {
@@ -752,7 +754,7 @@ public class AttendanceReadRepository {
         int leave = countStatus(date, sectionId, academicYearId, "LEAVE");
         int absent = countStatus(date, sectionId, academicYearId, "ABSENT");
         upsertDaily(date, classId, sectionId, academicYearId, total, present, absent, late, leave,
-                request.containsKey("actorId") ? longNum(request.get("actorId"), 0) : null, true, sectionSchoolId);
+                request.get("actorId") != null ? longNum(request.get("actorId"), 0) : null, true, sectionSchoolId);
         return sectionRegister(date, classId, sectionId, sectionSchoolId);
     }
 

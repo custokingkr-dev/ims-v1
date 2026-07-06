@@ -7,6 +7,7 @@ import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository.Wo
 import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository.WorkflowDefinitionRow;
 import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository.WorkflowInstanceRow;
 import com.custoking.ims.operationsservice.persistence.WorkflowReadRepository.WorkflowStepRow;
+import com.custoking.ims.operationsservice.security.TenantContext;
 import com.custoking.ims.operationsservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -96,7 +97,7 @@ public class WorkflowReadController {
         body.put("entityType", req.entityType());
         body.put("entityId", req.entityId());
         if (req.definitionId() != null) body.put("definitionId", req.definitionId());
-        if (req.initiatedBy() != null) body.put("initiatedBy", req.initiatedBy());
+        body.put("initiatedBy", TenantContext.get().userId());
         body.put("schoolId", TenantScope.resolveSchoolId(req.schoolId()));
         return execute(() -> workflows.createOrGetInstance(body));
     }
@@ -172,11 +173,10 @@ public class WorkflowReadController {
 
     /** Converts a (possibly null) WorkflowActionRequest into the map the repository expects. */
     private Map<String, Object> toActionMap(WorkflowActionRequest req) {
-        if (req == null) return Map.of();
         Map<String, Object> m = new HashMap<>();
-        if (req.actorId()    != null) m.put("actorId",    req.actorId());
-        if (req.actorEmail() != null) m.put("actorEmail", req.actorEmail());
-        if (req.notes()      != null) m.put("notes",      req.notes());
+        m.put("actorId",    TenantContext.get().userId());
+        m.put("actorEmail", TenantContext.get().email());
+        if (req != null && req.notes() != null) m.put("notes", req.notes());
         return m;
     }
 

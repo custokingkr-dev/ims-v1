@@ -103,7 +103,7 @@ class AttendanceValidationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void saveSectionRegister_withActorId_putsActorIdKey() throws Exception {
+    void saveSectionRegister_clientSuppliedActorId_isIgnoredInFavorOfTenantContext() throws Exception {
         when(attendance.saveSectionRegister(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(put("/api/v1/attendance/section-register")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
@@ -112,13 +112,13 @@ class AttendanceValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveSectionRegister(captor.capture());
-        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must be present when sent");
-        assertEquals(42L, captor.getValue().get("actorId"));
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"), "actorId must come from TenantContext, not the client body");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void saveSectionRegister_withoutActorId_doesNotPutActorIdKey() throws Exception {
+    void saveSectionRegister_withoutActorId_stampsActorIdFromTenantContext() throws Exception {
         when(attendance.saveSectionRegister(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(put("/api/v1/attendance/section-register")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
@@ -127,7 +127,8 @@ class AttendanceValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveSectionRegister(captor.capture());
-        assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"));
     }
 
     // ─── POST /daily-entry ───────────────────────────────────────────────────
@@ -187,7 +188,7 @@ class AttendanceValidationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void dailyEntry_withActorId_putsActorIdKey() throws Exception {
+    void dailyEntry_clientSuppliedActorId_isIgnoredInFavorOfTenantContext() throws Exception {
         when(attendance.saveDailyAttendance(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/attendance/daily-entry")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
@@ -196,13 +197,13 @@ class AttendanceValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveDailyAttendance(captor.capture());
-        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must be present when sent");
-        assertEquals(7L, captor.getValue().get("actorId"));
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"), "actorId must come from TenantContext, not the client body");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void dailyEntry_withoutActorId_doesNotPutActorIdKey() throws Exception {
+    void dailyEntry_withoutActorId_stampsActorIdFromTenantContext() throws Exception {
         when(attendance.saveDailyAttendance(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/attendance/daily-entry")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
@@ -211,7 +212,8 @@ class AttendanceValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).saveDailyAttendance(captor.capture());
-        assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"));
     }
 
     // ─── POST /submit-section ────────────────────────────────────────────────
@@ -270,7 +272,7 @@ class AttendanceValidationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void submitSection_withActorId_putsActorIdKey() throws Exception {
+    void submitSection_clientSuppliedActorId_isIgnoredInFavorOfTenantContext() throws Exception {
         when(attendance.submitAttendanceSection(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/attendance/submit-section")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
@@ -279,13 +281,13 @@ class AttendanceValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).submitAttendanceSection(captor.capture());
-        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must be present when sent");
-        assertEquals(99L, captor.getValue().get("actorId"));
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"), "actorId must come from TenantContext, not the client body");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void submitSection_withoutActorId_doesNotPutActorIdKey() throws Exception {
+    void submitSection_withoutActorId_stampsActorIdFromTenantContext() throws Exception {
         when(attendance.submitAttendanceSection(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/attendance/submit-section")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
@@ -294,7 +296,8 @@ class AttendanceValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(attendance).submitAttendanceSection(captor.capture());
-        assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"));
     }
 
     // ─── Fix A: bad date string maps to 400 (not 500) ───────────────────────
@@ -315,13 +318,14 @@ class AttendanceValidationTest {
 
     @Test
     void submitDay_validPartialBody_delegatesOnlySentValues() throws Exception {
-        when(attendance.submitAttendanceDay("2026-06-30", null, null)).thenReturn(Map.of("ok", true));
+        when(attendance.submitAttendanceDay("2026-06-30", null, 1L)).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/attendance/submit-day")
                         .header("X-Attendance-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
                         .content("{\"date\":\"2026-06-30\"}"))
                 .andExpect(status().isOk());
-        verify(attendance).submitAttendanceDay("2026-06-30", null, null);
+        // actorId is always sourced from TenantContext (1L in this test), never the client body.
+        verify(attendance).submitAttendanceDay("2026-06-30", null, 1L);
     }
 
     @Test

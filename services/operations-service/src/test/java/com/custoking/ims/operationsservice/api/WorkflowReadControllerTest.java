@@ -81,10 +81,11 @@ class WorkflowReadControllerTest {
 
     @Test
     void approveLegacyDelegatesToCanonicalApproveRoute() {
-        // Build DTO (actorId=9, actorEmail=null, notes="approved")
+        // Client-supplied actorId=9 must be ignored — toActionMap stamps the trusted
+        // authenticated actor (TenantContext) instead.
+        TenantContext.set(new TenantContext(5L, "trusted@school.com", "SUPERADMIN", null, null));
         WorkflowActionRequest req = new WorkflowActionRequest(9L, null, "approved");
-        // toActionMap will produce {actorId=9L, notes="approved"} — null fields are omitted
-        Map<String, Object> expectedActionMap = Map.of("actorId", 9L, "notes", "approved");
+        Map<String, Object> expectedActionMap = Map.of("actorId", 5L, "actorEmail", "trusted@school.com", "notes", "approved");
         Map<String, Object> result = Map.of("id", 1001L, "status", "APPROVED");
         when(workflows.approve(1001L, expectedActionMap)).thenReturn(result);
 

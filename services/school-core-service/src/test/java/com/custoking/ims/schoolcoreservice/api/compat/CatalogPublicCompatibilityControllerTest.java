@@ -34,11 +34,12 @@ class CatalogPublicCompatibilityControllerTest {
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
 
         CatalogOrderRow row = order("12");
+        // actorId is always sourced from TenantContext (null here), never from the client body's "actorId":9.
         Map<String, Object> request = new HashMap<>(Map.of("schoolId", 1, "actorId", 9L, "notes", "paid offline"));
-        when(repo.markVendorPaid("12", 1L, 9L, "paid offline")).thenReturn(row);
+        when(repo.markVendorPaid("12", 1L, null, "paid offline")).thenReturn(row);
 
         assertThat(controller.markCatalogVendorPaid("tok", "12", request)).containsEntry("order", row);
-        verify(repo).markVendorPaid("12", 1L, 9L, "paid offline");
+        verify(repo).markVendorPaid("12", 1L, null, "paid offline");
     }
 
     @Test

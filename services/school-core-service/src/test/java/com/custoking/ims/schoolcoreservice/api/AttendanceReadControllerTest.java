@@ -92,25 +92,26 @@ class AttendanceReadControllerTest {
 
     @Test
     void submitDayParsesRequestAndDelegates() {
+        // actorId is always sourced from TenantContext (1L here), never the request body's actorId (9L).
         SubmitDayRequest request = new SubmitDayRequest("2026-02-02", 9L, 4L);
         Map<String, Object> result = Map.of("ok", true, "submitted", 3);
-        when(attendance.submitAttendanceDay("2026-02-02", 4L, 9L)).thenReturn(result);
+        when(attendance.submitAttendanceDay("2026-02-02", 4L, 1L)).thenReturn(result);
 
         Object response = controller.submitDay("attendance-token", request);
 
         assertThat(response).isSameAs(result);
-        verify(attendance).submitAttendanceDay("2026-02-02", 4L, 9L);
+        verify(attendance).submitAttendanceDay("2026-02-02", 4L, 1L);
     }
 
     @Test
     void submitDayNullBodyDelegatesWithDefaults() {
         Map<String, Object> result = Map.of("ok", true);
-        when(attendance.submitAttendanceDay("today", null, null)).thenReturn(result);
+        when(attendance.submitAttendanceDay("today", null, 1L)).thenReturn(result);
 
         Object response = controller.submitDay("attendance-token", null);
 
         assertThat(response).isSameAs(result);
-        verify(attendance).submitAttendanceDay("today", null, null);
+        verify(attendance).submitAttendanceDay("today", null, 1L);
     }
 
     // --- schoolId containsKey coverage: PUT /section-register ---

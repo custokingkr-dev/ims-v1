@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -167,7 +168,7 @@ public class CatalogPublicCompatibilityController {
         Map<String, Object> body = request == null ? new HashMap<>() : request;
         applyResolvedSchool(body);
         Long schoolId = longValue(body.get("schoolId"));
-        Long actorId = longValue(body.get("actorId"));
+        Long actorId = TenantContext.get().userId();
         String notes = body.get("notes") == null ? null : String.valueOf(body.get("notes"));
         var row = catalog.markVendorPaid(id, schoolId, actorId, notes);
         return Map.of("order", row);

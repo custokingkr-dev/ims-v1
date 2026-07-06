@@ -147,7 +147,7 @@ public class ReportingReadController {
         requireToken(token, "reporting:write");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body == null ? null : body.schoolId());
-        return command(() -> commands.acceptAction(id, body == null ? null : body.actorId(), resolvedSchoolId, superAdmin));
+        return command(() -> commands.acceptAction(id, TenantContext.get().userId(), resolvedSchoolId, superAdmin));
     }
 
     @PostMapping("/command-center/actions/{id}/dismiss")
@@ -160,7 +160,7 @@ public class ReportingReadController {
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body == null ? null : body.schoolId());
         return command(() -> commands.dismissAction(
                 id,
-                body == null ? null : body.actorId(),
+                TenantContext.get().userId(),
                 body == null ? null : (body.reason() == null ? "" : body.reason()),
                 resolvedSchoolId,
                 superAdmin));

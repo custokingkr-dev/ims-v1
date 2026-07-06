@@ -12,6 +12,7 @@ import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeAssi
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeBandRow;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeItemRow;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.PaymentRow;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -219,8 +220,7 @@ public class FeeReadController {
         if (req.bandDiscount() != null) body.put("bandDiscount", req.bandDiscount());
         if (req.manualDiscount() != null) body.put("manualDiscount", req.manualDiscount());
         if (req.surcharge() != null) body.put("surcharge", req.surcharge());
-        // actorId uses containsKey in repo — only put when explicitly sent
-        if (req.actorId() != null) body.put("actorId", req.actorId());
+        body.put("actorId", TenantContext.get().userId());
         return execute(() -> fees.assignFeePlan(body));
     }
 
@@ -285,7 +285,7 @@ public class FeeReadController {
                 text(request.get("sectionId")),
                 text(request.get("academicYearId")),
                 longValue(request.get("schoolId")),
-                longValue(request.get("actorId"))));
+                TenantContext.get().userId()));
     }
 
     @GetMapping("/dashboard/module")
@@ -319,8 +319,7 @@ public class FeeReadController {
         if (req.paidAt() != null) body.put("paidAt", req.paidAt());
         if (req.mode() != null) body.put("mode", req.mode());
         if (req.notes() != null) body.put("notes", req.notes());
-        // actorId uses containsKey in repo — only put when explicitly sent
-        if (req.actorId() != null) body.put("actorId", req.actorId());
+        body.put("actorId", TenantContext.get().userId());
         return execute(() -> fees.recordPayment(body));
     }
 

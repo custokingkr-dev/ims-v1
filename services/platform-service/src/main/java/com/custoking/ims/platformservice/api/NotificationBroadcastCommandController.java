@@ -3,6 +3,7 @@ package com.custoking.ims.platformservice.api;
 import com.custoking.ims.platformservice.api.dto.BroadcastActionRequest;
 import com.custoking.ims.platformservice.api.dto.CreateBroadcastRequest;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
+import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,7 +52,8 @@ public class NotificationBroadcastCommandController {
         if (req.audienceType() != null) body.put("audienceType", req.audienceType());
         if (req.channels() != null) body.put("channels", req.channels());
         if (req.scheduledAt() != null) body.put("scheduledAt", req.scheduledAt());
-        if (req.createdBy() != null) body.put("createdBy", req.createdBy());
+        Long createdBy = TenantContext.get().userId();
+        if (createdBy != null) body.put("createdBy", createdBy);
         return command(() -> broadcasts.create(body));
     }
 
@@ -78,7 +80,7 @@ public class NotificationBroadcastCommandController {
             @Valid @RequestBody(required = false) BroadcastActionRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
-        Long actorId = req != null ? req.actorId() : null;
+        Long actorId = TenantContext.get().userId();
         return command(() -> broadcasts.approve(id, actorId));
     }
 
@@ -92,7 +94,7 @@ public class NotificationBroadcastCommandController {
             @Valid @RequestBody(required = false) BroadcastActionRequest req) {
         requireToken(token, "notification:write");
         TenantScope.requireSuperAdmin();
-        Long actorId = req != null ? req.actorId() : null;
+        Long actorId = TenantContext.get().userId();
         return command(() -> broadcasts.send(id, actorId));
     }
 

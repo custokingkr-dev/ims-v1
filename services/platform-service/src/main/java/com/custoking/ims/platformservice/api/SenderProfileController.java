@@ -6,6 +6,7 @@ import com.custoking.ims.platformservice.api.dto.SenderProfileUpsertRequest;
 import com.custoking.ims.platformservice.api.dto.StartWhatsappOnboardingRequest;
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
+import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -135,7 +136,7 @@ public class SenderProfileController {
         if (req.desiredDisplayName() != null) body.put("desiredDisplayName", req.desiredDisplayName());
         if (req.desiredPhoneNumber() != null) body.put("desiredPhoneNumber", req.desiredPhoneNumber());
         if (req.notes() != null) body.put("notes", req.notes());
-        return command(() -> profiles.requestWhatsappOnboarding(schoolId, req.actorId(), body));
+        return command(() -> profiles.requestWhatsappOnboarding(schoolId, TenantContext.get().userId(), body));
     }
 
     /**

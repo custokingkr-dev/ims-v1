@@ -297,16 +297,17 @@ class ReportingValidationTest {
     @Test
     @SuppressWarnings("unchecked")
     void acceptAction_validBody_callsRepo() throws Exception {
+        // actor comes from the authenticated principal (TenantContext userId=1L), not the request body's actorId.
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         UUID id = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        when(commands.acceptAction(eq(id), eq(9L), eq(4L), eq(true)))
+        when(commands.acceptAction(eq(id), eq(1L), eq(4L), eq(true)))
                 .thenReturn(Map.of("id", id.toString(), "status", "ACCEPTED"));
         mvc.perform(post("/api/v1/reporting/command-center/actions/{id}/accept", id)
                         .header("X-Reporting-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
                         .content("{\"actorId\": 9, \"schoolId\": 4}"))
                 .andExpect(status().isOk());
-        verify(commands).acceptAction(eq(id), eq(9L), eq(4L), eq(true));
+        verify(commands).acceptAction(eq(id), eq(1L), eq(4L), eq(true));
     }
 
     @Test
@@ -314,11 +315,11 @@ class ReportingValidationTest {
     void acceptAction_nullBody_works() throws Exception {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         UUID id = UUID.fromString("22222222-2222-2222-2222-222222222222");
-        when(commands.acceptAction(eq(id), eq(null), eq(null), eq(true)))
+        when(commands.acceptAction(eq(id), eq(1L), eq(null), eq(true)))
                 .thenReturn(Map.of("id", id.toString(), "status", "ACCEPTED"));
         mvc.perform(post("/api/v1/reporting/command-center/actions/{id}/accept", id)
                         .header("X-Reporting-Service-Token", VALID_TOKEN))
                 .andExpect(status().isOk());
-        verify(commands).acceptAction(eq(id), eq(null), eq(null), eq(true));
+        verify(commands).acceptAction(eq(id), eq(1L), eq(null), eq(true));
     }
 }

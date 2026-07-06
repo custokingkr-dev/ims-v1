@@ -10,6 +10,7 @@ import com.custoking.ims.schoolcoreservice.infrastructure.ImageFetchException;
 import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -242,7 +243,7 @@ public class StudentReadController {
         requireToken(token, "student:write");
         Map<String, Object> params = new HashMap<>();
         params.put("schoolId", req.schoolId());
-        params.put("actorId", req.actorId());
+        params.put("actorId", TenantContext.get().userId());
         params.put("dueDate", req.dueDate());
         params.put("classIds", req.classIds());
         params.put("sectionIds", req.sectionIds());
@@ -267,7 +268,7 @@ public class StudentReadController {
         requireToken(token, "student:write");
         Map<String, Object> params = new HashMap<>();
         params.put("schoolId", req.schoolId());
-        params.put("actorId", req.actorId());
+        params.put("actorId", TenantContext.get().userId());
         params.put("dueDate", req.dueDate());
         params.put("verifier", req.verifier());
         params.put("classIds", req.classIds());
