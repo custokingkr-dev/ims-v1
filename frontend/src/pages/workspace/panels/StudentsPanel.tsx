@@ -73,7 +73,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     try {
       setStudentModalOpen(true);
       setStudentModalLoading(true);
-      const res = await api.get(`/students/${student.id}`);
+      const res = await api.get(`/students/${student.id}/workspace`);
       setStudentDetail(res.data);
     } catch {
       setStudentDetail(student);
@@ -89,31 +89,31 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setModalError(null);
   };
 
-  // NOTE: GET /api/v1/students/{id} returns the flat `StudentRow` shape (Jackson-serialized
-  // record) — field names are `admissionNo`, `boardRegNo`, `dob`, and `houseNumber`/`street`/
-  // `locality`/`city`/`state`/`pinCode` as top-level siblings (address is a plain joined string,
-  // not a nested object). This differs from the `/workspace`-suffixed detail shape. The edit form
-  // below is pre-filled/saved using these actual flat keys.
+  // NOTE: GET /api/v1/students/{id}/workspace returns the rich `workspaceStudentDetail`
+  // shape — field names are `admissionNumber`, `boardRegistrationNumber`, `dateOfBirth`,
+  // and address is a nested object `{houseNumber, street, locality, city, state, pinCode, full}`.
+  // The edit form below is pre-filled/saved using these workspace keys; `updateStudent` on the
+  // backend accepts both flat and workspace-shaped keys via `firstPresent(...)`.
   const startEdit = () => {
     if (!studentDetail) return;
     setModalError(null);
     setForm({
       fullName: studentDetail.fullName ?? '',
       rollNo: studentDetail.rollNo ?? '',
-      admissionNo: studentDetail.admissionNo ?? '',
-      boardRegNo: studentDetail.boardRegNo ?? '',
-      dob: studentDetail.dob ?? '',
+      admissionNumber: studentDetail.admissionNumber ?? '',
+      boardRegistrationNumber: studentDetail.boardRegistrationNumber ?? '',
+      dateOfBirth: studentDetail.dateOfBirth ?? '',
       gender: studentDetail.gender ?? '',
       fatherName: studentDetail.fatherName ?? '',
       fatherContact: studentDetail.fatherContact ?? '',
       motherName: studentDetail.motherName ?? '',
       phone: studentDetail.phone ?? '',
-      houseNumber: studentDetail.houseNumber ?? '',
-      street: studentDetail.street ?? '',
-      locality: studentDetail.locality ?? '',
-      city: studentDetail.city ?? '',
-      state: studentDetail.state ?? '',
-      pinCode: studentDetail.pinCode ?? '',
+      houseNumber: studentDetail.address?.houseNumber ?? '',
+      street: studentDetail.address?.street ?? '',
+      locality: studentDetail.address?.locality ?? '',
+      city: studentDetail.address?.city ?? '',
+      state: studentDetail.address?.state ?? '',
+      pinCode: studentDetail.address?.pinCode ?? '',
       classId: studentDetail.classId ?? '',
       sectionId: studentDetail.sectionId ?? '',
     });
@@ -138,7 +138,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setModalError(null);
     try {
       await api.put(`/workspace/students/${studentDetail.id}`, { ...form, ...(schoolScopedParams || {}) });
-      const res = await api.get(`/students/${studentDetail.id}`);
+      const res = await api.get(`/students/${studentDetail.id}/workspace`);
       setStudentDetail(res.data);
       setEditing(false);
       await loadStudents(studentFilters, studentsPage);
@@ -351,9 +351,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 <div className="ck-student-modal-info">
                   {modalError && <div className="ck-alert ck-alert-r" style={{ gridColumn: '1/-1' }}><span>!</span><div>{modalError}</div></div>}
                   <label>Full name<input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
-                  <label>Admission No<input value={form.admissionNo} onChange={(e) => setForm({ ...form, admissionNo: e.target.value })} /></label>
+                  <label>Admission No<input value={form.admissionNumber} onChange={(e) => setForm({ ...form, admissionNumber: e.target.value })} /></label>
                   <label>Roll No<input value={form.rollNo} onChange={(e) => setForm({ ...form, rollNo: e.target.value })} /></label>
-                  <label>Board Reg No<input value={form.boardRegNo} onChange={(e) => setForm({ ...form, boardRegNo: e.target.value })} /></label>
+                  <label>Board Reg No<input value={form.boardRegistrationNumber} onChange={(e) => setForm({ ...form, boardRegistrationNumber: e.target.value })} /></label>
                   <label>Class<select value={form.classId} onChange={(e) => onClassChange(e.target.value)}>
                     <option value="">Select class</option>
                     {classOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -362,7 +362,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                     <option value="">Select section</option>
                     {sectionOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select></label>
-                  <label>Date of birth<input type="date" value={form.dob || ''} onChange={(e) => setForm({ ...form, dob: e.target.value })} /></label>
+                  <label>Date of birth<input type="date" value={form.dateOfBirth || ''} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
                   <label>Gender<input value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} /></label>
                   <label>Father name<input value={form.fatherName} onChange={(e) => setForm({ ...form, fatherName: e.target.value })} /></label>
                   <label>Father contact<input value={form.fatherContact} onChange={(e) => setForm({ ...form, fatherContact: e.target.value })} /></label>
