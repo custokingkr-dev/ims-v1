@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
@@ -25,6 +26,7 @@ public class AttendanceReadRepository {
 
     private final JdbcClient jdbc;
     private final StudentPhotoStorage photoStorage;
+    private final OutboxWriter outbox;
     private final String dailyTable;
     private final String recordsTable;
     private final String absenteeTable;
@@ -34,9 +36,11 @@ public class AttendanceReadRepository {
     public AttendanceReadRepository(
             JdbcClient jdbc,
             StudentPhotoStorage photoStorage,
+            OutboxWriter outbox,
             @Value("${attendance.db.schema:attendance}") String schema) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
+        this.outbox = outbox;
         this.dailyTable = qualifiedTable(schema, "attendance_daily");
         this.recordsTable = qualifiedTable(schema, "attendance_student_records");
         this.absenteeTable = qualifiedTable(schema, "absentee_notifications");
@@ -649,6 +653,8 @@ public class AttendanceReadRepository {
                     .param("schoolId", sectionSchoolId)
                     .update();
         }
+        emitDailyUpsertedEvent(id, sectionSchoolId, date, classId, sectionId, academicYearId,
+                present, Math.max(total - present, 0), 0, 0, total);
         return row(
                 "ok", true,
                 "message", "Saved - " + schoolClass.get("name") + "-" + section.get("name")
@@ -946,7 +952,7 @@ public class AttendanceReadRepository {
                 .param("academicYearId", academicYearId)
                 .param("schoolId", schoolId)
                 .update();
-        return jdbc.sql("""
+        String upsertedId = jdbc.sql("""
                 SELECT id FROM %s
                 WHERE attendance_date = :date AND section_id = :sectionId AND academic_year_id = :academicYearId
                 """.formatted(dailyTable))
@@ -955,6 +961,36 @@ public class AttendanceReadRepository {
                 .param("academicYearId", academicYearId)
                 .query(String.class)
                 .single();
+        emitDailyUpsertedEvent(upsertedId, schoolId, date, classId, sectionId, academicYearId,
+                present, absent, late, leave, total);
+        return upsertedId;
+    }
+
+    /**
+     * Emits {@code attendance-daily.upserted.v1} to the shared tenant_school outbox in the same
+     * transaction as the {@code attendance.attendance_daily} write it accompanies (Reporting
+     * Decoupling SP3). The reporting-service projects this into {@code reporting.fact_attendance_daily}.
+     */
+    private void emitDailyUpsertedEvent(String id, Long schoolId, LocalDate date, String classId,
+                                        String sectionId, String academicYearId,
+                                        int present, int absent, int late, int leave, int total) {
+        if (outbox == null) {
+            return;
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", id);
+        payload.put("schoolId", schoolId);
+        payload.put("date", date == null ? null : date.toString());
+        payload.put("classId", classId);
+        payload.put("sectionId", sectionId);
+        payload.put("academicYearId", academicYearId);
+        payload.put("presentCount", present);
+        payload.put("absentCount", absent);
+        payload.put("lateCount", late);
+        payload.put("leaveCount", leave);
+        payload.put("totalEnrolled", total);
+        outbox.append("attendance-daily.upserted.v1", "AttendanceDailyUpserted:" + id,
+                "AttendanceDaily", id, schoolId, payload);
     }
 
     private void ensureStudentInSection(Long studentId, Long schoolId, String classId, String sectionId) {
