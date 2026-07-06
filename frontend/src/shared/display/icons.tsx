@@ -5,7 +5,7 @@ import {
   CalendarCheck, Clock, UserPlus, FileUp, Users, Package, ShoppingCart,
   CalendarDays, AlertCircle, Plus, ClipboardCheck, Truck,
   ClipboardList, FilePlus, Receipt, Building2, BarChart2,
-  TrendingUp, Globe, Package2,
+  TrendingUp, Globe, Package2, School,
 } from 'lucide-react';
 
 const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
@@ -34,6 +34,7 @@ const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
   'sa-catalog':    Package2,
   'za-overview':   Globe,
   'za-schools':    Building2,
+  classsetup:      School,
 };
 
 interface NavIconProps {
