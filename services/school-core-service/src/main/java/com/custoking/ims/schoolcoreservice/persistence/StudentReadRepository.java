@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,10 +36,12 @@ public class StudentReadRepository {
     private final JdbcClient jdbc;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final StudentPhotoStorage photoStorage;
+    private final OutboxWriter outbox;
 
-    public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage) {
+    public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
+        this.outbox = outbox;
     }
 
     public List<StudentRow> list(Long schoolId, String classId, String sectionId, int limit) {
@@ -274,6 +277,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        emitStudentUpserted(id);
         return studentDetail(id);
     }
 
@@ -366,7 +370,36 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        emitStudentUpserted(id);
         return studentDetail(id);
+    }
+
+    /** Emits {@code student.upserted.v1} for the reporting dim_student projection (SP5). */
+    private void emitStudentUpserted(Long id) {
+        Map<String, Object> row = jdbc.sql("""
+                SELECT id, school_id, admission_no, full_name, roll_no, class_id, section_id,
+                       father_contact, phone, deleted_at
+                FROM student.students
+                WHERE id = :id
+                """)
+                .param("id", id)
+                .query((rs, n) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getLong("id"));
+                    m.put("schoolId", rs.getLong("school_id"));
+                    m.put("admissionNo", rs.getString("admission_no"));
+                    m.put("fullName", rs.getString("full_name"));
+                    m.put("rollNo", rs.getString("roll_no"));
+                    m.put("classId", rs.getString("class_id"));
+                    m.put("sectionId", rs.getString("section_id"));
+                    m.put("parentContact", rs.getString("father_contact"));
+                    m.put("phone", rs.getString("phone"));
+                    m.put("active", rs.getObject("deleted_at") == null);
+                    return m;
+                })
+                .single();
+        Long schoolId = ((Number) row.get("schoolId")).longValue();
+        outbox.append("student.upserted.v1", "StudentUpserted:" + id, "Student", String.valueOf(id), schoolId, row);
     }
 
     public Long schoolIdForStudent(Long id) {

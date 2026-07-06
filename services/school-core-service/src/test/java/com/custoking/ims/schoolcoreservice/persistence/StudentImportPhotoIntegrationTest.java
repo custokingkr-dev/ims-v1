@@ -82,7 +82,8 @@ class StudentImportPhotoIntegrationTest {
     void confirmImport_returnsAdmissionNoToStudentIdMap() throws Exception {
         long schoolId = seedSchool(5, 2); // reuse the helper pattern from SchoolStructureIntegrationTest
         StudentReadRepository repo = new StudentReadRepository(jdbc,
-                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class));
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
 
         Map<String, Object> preview = repo.previewImport(Map.of(
                 "schoolId", schoolId,

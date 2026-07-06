@@ -213,7 +213,9 @@ class SchoolStructureIntegrationTest {
 
         var studentRepo = new StudentReadRepository(
                 jdbc, org.mockito.Mockito.mock(
-                        com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class));
+                        com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new com.custoking.ims.schoolcoreservice.outbox.OutboxWriter(
+                        jdbc, new tools.jackson.databind.ObjectMapper(), "tenant_school"));
         Map<String, Object> workspace =
                 studentRepo.workspaceStudents(schoolId, null, null, null, 0, 500);
 
