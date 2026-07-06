@@ -72,3 +72,25 @@ catalog:
   read-token: ${CATALOG_READ_TOKEN:}
   db:
     schema: ${CATALOG_DB_SCHEMA:catalog}
+
+school-core:
+  db:
+    schema: ${SCHOOL_CORE_DB_SCHEMA:tenant_school}
+  outbox:
+    relay:
+      batch-size: ${SCHOOL_CORE_OUTBOX_RELAY_BATCH_SIZE:100}
+      fixed-delay-ms: ${SCHOOL_CORE_OUTBOX_RELAY_FIXED_DELAY_MS:10000}
+      initial-delay-ms: ${SCHOOL_CORE_OUTBOX_RELAY_INITIAL_DELAY_MS:0}
+    pubsub:
+      # topic-id is intentionally NOT given a default here (not even an empty
+      # string): @ConditionalOnProperty(name = "school-core.outbox.pubsub.topic-id")
+      # on PubSubDomainEventPublisher must see this property as ABSENT unless
+      # the topic is actually configured, so LoggingDomainEventPublisher stays
+      # the default locally/in tests. Spring's relaxed env-var binding exposes
+      # env var SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID as school-core.outbox.pubsub.topic-id
+      # (NOTE the _ID suffix: env SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC would bind to the
+      # DIFFERENT property school-core.outbox.pubsub.topic and NOT satisfy the
+      # condition — that mismatch silently leaves the no-op publisher active).
+      # Adding an entry here with a `:` default would make the property "present"
+      # (empty string) and wrongly satisfy the condition, so we omit it.
+      project-id: ${SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID:${GOOGLE_CLOUD_PROJECT:${GCP_PROJECT:}}}

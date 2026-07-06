@@ -1,11 +1,13 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -38,7 +40,7 @@ class SchoolStructureIntegrationTest {
         }
         dataSource = new DriverManagerDataSource(PG.getJdbcUrl(), "owner", "owner");
         jdbc = JdbcClient.create(dataSource);
-        repo = new SchoolStructureReadRepository(jdbc);
+        repo = new SchoolStructureReadRepository(jdbc, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
     }
 
     @AfterAll

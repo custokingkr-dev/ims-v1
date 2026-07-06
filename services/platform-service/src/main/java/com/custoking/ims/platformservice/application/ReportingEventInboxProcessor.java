@@ -1,6 +1,7 @@
 package com.custoking.ims.platformservice.application;
 
 import com.custoking.ims.platformservice.persistence.BillingInvoiceReadRepository;
+import com.custoking.ims.platformservice.persistence.DimensionProjectionRepository;
 import com.custoking.ims.platformservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository;
 import tools.jackson.databind.JsonNode;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.Locale;
+import java.util.Set;
 
 @Component
 @ConditionalOnProperty(prefix = "reporting.event-projection", name = "enabled", havingValue = "true", matchIfMissing = true)
@@ -20,10 +22,16 @@ public class ReportingEventInboxProcessor {
 
     private static final String SOURCE_TYPE = "EVENT_INBOX";
     private static final String BILLING_INVOICE_UPSERTED = "billing.invoice-upserted.v1";
+    private static final String SCHOOL_UPSERTED = "school.upserted.v1";
+    private static final String SCHOOL_SECTION_UPSERTED = "school-section.upserted.v1";
+    private static final String ACADEMIC_YEAR_UPSERTED = "academic-year.upserted.v1";
+    private static final Set<String> DIMENSION_EVENT_TYPES =
+            Set.of(SCHOOL_UPSERTED, SCHOOL_SECTION_UPSERTED, ACADEMIC_YEAR_UPSERTED);
 
     private final ReportingEventInboxRepository inbox;
     private final ReportingCommandRepository commands;
     private final BillingInvoiceReadRepository billingInvoiceRead;
+    private final DimensionProjectionRepository dims;
     private final ObjectMapper objectMapper;
     private final int batchSize;
 
@@ -31,11 +39,13 @@ public class ReportingEventInboxProcessor {
             ReportingEventInboxRepository inbox,
             ReportingCommandRepository commands,
             BillingInvoiceReadRepository billingInvoiceRead,
+            DimensionProjectionRepository dims,
             ObjectMapper objectMapper,
             @Value("${reporting.event-projection.batch-size:50}") int batchSize) {
         this.inbox = inbox;
         this.commands = commands;
         this.billingInvoiceRead = billingInvoiceRead;
+        this.dims = dims;
         this.objectMapper = objectMapper;
         this.batchSize = batchSize;
     }
@@ -49,11 +59,17 @@ public class ReportingEventInboxProcessor {
         int processed = 0;
         for (var event : inbox.findReceivedForProjection(batchSize)) {
             try {
-                if (!commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
+                String eventType = event.eventType() == null ? "" : event.eventType();
+                if (!DIMENSION_EVENT_TYPES.contains(eventType)
+                        && !commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
                     commands.recordProjectedFeed(toFeedCommand(event));
                 }
-                if (BILLING_INVOICE_UPSERTED.equals(event.eventType())) {
-                    projectBillingInvoice(event);
+                switch (eventType) {
+                    case BILLING_INVOICE_UPSERTED -> projectBillingInvoice(event);
+                    case SCHOOL_UPSERTED -> projectSchool(event);
+                    case SCHOOL_SECTION_UPSERTED -> projectSection(event);
+                    case ACADEMIC_YEAR_UPSERTED -> projectAcademicYear(event);
+                    default -> { /* not a dimension-relevant event; feed already recorded above */ }
                 }
                 inbox.markProcessed(event.eventId());
                 processed++;
@@ -87,6 +103,46 @@ public class ReportingEventInboxProcessor {
         OffsetDateTime occurredAt = event.occurredAt() != null ? event.occurredAt() : event.receivedAt();
         billingInvoiceRead.upsert(id, orderRef, school, schoolId, description, qty, rate, amount, gstAmount,
                 total, status, issuedAt, dueAt, notes, createdAt, occurredAt);
+    }
+
+    private void projectSchool(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+        JsonNode payload = readPayload(event.payload());
+        Long id = longOrNull(payload, "id");
+        if (id == null) {
+            return;
+        }
+        String name = textOrNull(payload, "name");
+        String shortCode = textOrNull(payload, "shortCode");
+        String city = textOrNull(payload, "city");
+        String state = textOrNull(payload, "state");
+        boolean active = boolOrFalse(payload, "active");
+        dims.upsertSchool(id, name, shortCode, city, state, active);
+    }
+
+    private void projectSection(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+        JsonNode payload = readPayload(event.payload());
+        String id = textOrNull(payload, "id");
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        String name = textOrNull(payload, "name");
+        Long schoolId = longOrNull(payload, "schoolId");
+        String classId = textOrNull(payload, "classId");
+        String className = textOrNull(payload, "className");
+        boolean active = boolOrFalse(payload, "active");
+        String teacherName = textOrNull(payload, "teacherName");
+        dims.upsertSection(id, name, schoolId, classId, className, active, teacherName);
+    }
+
+    private void projectAcademicYear(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+        JsonNode payload = readPayload(event.payload());
+        String id = textOrNull(payload, "id");
+        if (id == null || id.isBlank()) {
+            return;
+        }
+        String label = textOrNull(payload, "label");
+        boolean active = boolOrFalse(payload, "active");
+        dims.upsertAcademicYear(id, label, active);
     }
 
     private JsonNode readPayload(String payload) {
@@ -123,6 +179,13 @@ public class ReportingEventInboxProcessor {
         if (value.isNumber()) return value.intValue();
         String text = value.asText();
         return text == null || text.isBlank() ? null : Integer.valueOf(text);
+    }
+
+    private boolean boolOrFalse(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return false;
+        if (value.isBoolean()) return value.booleanValue();
+        return Boolean.parseBoolean(value.asText());
     }
 
     private OffsetDateTime offsetDateTimeOrNull(JsonNode node, String field) {

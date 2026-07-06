@@ -409,10 +409,8 @@ public class ReportingReadRepository {
                             "firefightingCount", 0L, "firefightingTotalPaise", 0L, "totalDuesPaise", 0L),
                     Map.of("alertCount", 0));
         }
-        List<String> activeYears = jdbc.sql("SELECT id FROM tenant_school.academic_years WHERE active = true LIMIT 1")
-                .query(String.class)
-                .list();
-        if (activeYears.isEmpty()) {
+        String yearId = activeAcademicYearId();
+        if (yearId == null) {
             return dashboardCommandCenterRow(
                     0L, 0L, 0,
                     null, 0L, 0L, 0L,
@@ -421,7 +419,6 @@ public class ReportingReadRepository {
                     vendorDues(schoolId),
                     reorderSignals(schoolId));
         }
-        String yearId = activeYears.get(0);
         long defaulterCount = count("""
                 SELECT count(*)
                 FROM fee.fee_assignments fa
@@ -490,13 +487,10 @@ public class ReportingReadRepository {
         if (schoolId == null) {
             return row("date", effectiveDate, "thresholdPercent", 75, "sections", List.of());
         }
-        List<String> activeYears = jdbc.sql("SELECT id FROM tenant_school.academic_years WHERE active = true LIMIT 1")
-                .query(String.class)
-                .list();
-        if (activeYears.isEmpty()) {
+        String yearId = activeAcademicYearId();
+        if (yearId == null) {
             return row("date", effectiveDate, "thresholdPercent", 75, "sections", List.of());
         }
-        String yearId = activeYears.get(0);
         List<Map<String, Object>> sections = jdbc.sql("""
                 SELECT ad.section_id, ss.name AS section_name, sc.name AS class_name,
                        ad.present_count, ad.total_enrolled,
@@ -578,13 +572,10 @@ public class ReportingReadRepository {
         if (schoolId == null) {
             return feeDefaulterRow(0L, 0L, 0, List.of(), pageNumber, pageSize, 0L);
         }
-        List<String> activeYears = jdbc.sql("SELECT id FROM tenant_school.academic_years WHERE active = true LIMIT 1")
-                .query(String.class)
-                .list();
-        if (activeYears.isEmpty()) {
+        String yearId = activeAcademicYearId();
+        if (yearId == null) {
             return feeDefaulterRow(0L, 0L, 0, List.of(), pageNumber, pageSize, 0L);
         }
-        String yearId = activeYears.get(0);
         StringBuilder filter = new StringBuilder("""
                 FROM fee.fee_assignments fa
                 JOIN student.students s ON s.id = fa.student_id
@@ -728,7 +719,7 @@ public class ReportingReadRepository {
 
     public Map<String, Object> commandCenterSummary(Long schoolId, boolean platform) {
         if (platform) {
-            long totalSchools = count("SELECT count(*) FROM tenant_school.schools");
+            long totalSchools = count("SELECT count(*) FROM reporting.dim_school");
             long totalActions = count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN'");
             List<Map<String, Object>> kpis = List.of(
                     kpi("active_schools", "Active Schools", String.valueOf(totalSchools), "platform-wide", "success", "schools", "active"),
@@ -820,6 +811,13 @@ public class ReportingReadRepository {
                 .list();
         return row("schoolId", schoolId, "scope", "SCHOOL", "generatedAt", OffsetDateTime.now(),
                 "kpis", kpis, "criticalAlerts", alerts);
+    }
+
+    private String activeAcademicYearId() {
+        List<String> activeYears = jdbc.sql("SELECT id FROM reporting.dim_academic_year WHERE active = true LIMIT 1")
+                .query(String.class)
+                .list();
+        return activeYears.isEmpty() ? null : activeYears.get(0);
     }
 
     private long count(String sql) {
