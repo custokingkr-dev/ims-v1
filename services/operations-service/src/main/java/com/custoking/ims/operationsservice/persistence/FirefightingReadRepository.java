@@ -1,5 +1,6 @@
 package com.custoking.ims.operationsservice.persistence;
 
+import com.custoking.ims.operationsservice.outbox.OutboxWriter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +17,14 @@ import java.util.UUID;
 @Repository
 public class FirefightingReadRepository {
 
-    private final JdbcClient jdbc;
+    private static final String FIREFIGHTING_REQUEST_UPSERTED = "firefighting-request.upserted.v1";
 
-    public FirefightingReadRepository(JdbcClient jdbc) {
+    private final JdbcClient jdbc;
+    private final OutboxWriter outboxWriter;
+
+    public FirefightingReadRepository(JdbcClient jdbc, OutboxWriter outboxWriter) {
         this.jdbc = jdbc;
+        this.outboxWriter = outboxWriter;
     }
 
     public List<FirefightingRequestRow> requests(Long schoolId, String status, int limit) {
@@ -133,6 +138,7 @@ public class FirefightingReadRepository {
                 .param("createdBy", textOrNull(request.get("actorEmail")))
                 .param("updatedBy", textOrNull(request.get("actorEmail")))
                 .update();
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -155,6 +161,7 @@ public class FirefightingReadRepository {
                 .param("description", request.containsKey("description") ? str(request.get("description"), "") : current.get("description"))
                 .param("updatedBy", textOrNull(request.get("actorEmail")))
                 .update();
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -182,6 +189,7 @@ public class FirefightingReadRepository {
                 .param("requestId", code)
                 .param("schoolId", schoolId)
                 .update();
+        emitUpserted(code);
         return quotationMap(id);
     }
 
@@ -206,6 +214,7 @@ public class FirefightingReadRepository {
                 .param("documentUrl", request.containsKey("documentUrl") ? trimToNull(str(request.get("documentUrl"), "")) : quote.get("documentUrl"))
                 .param("isCustoking", "Custoking".equalsIgnoreCase(vendor))
                 .update();
+        emitUpserted(code);
         return quotationMap(quotationId);
     }
 
@@ -217,6 +226,7 @@ public class FirefightingReadRepository {
                 .param("id", quotationId)
                 .param("requestId", code)
                 .update();
+        emitUpserted(code);
         return row("ok", true);
     }
 
@@ -225,6 +235,7 @@ public class FirefightingReadRepository {
         Map<String, Object> current = requestMap(code);
         requireStatus(current, "DRAFT");
         updateStatus(code, "AWAITING_BURSAR");
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -241,6 +252,7 @@ public class FirefightingReadRepository {
                 .param("note", trimToNull(str(request.get("note"), "")))
                 .param("approvedAt", OffsetDateTime.now())
                 .update();
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -270,6 +282,7 @@ public class FirefightingReadRepository {
                 .param("note", trimToNull(str(request.get("note"), "")))
                 .param("approvedAt", OffsetDateTime.now())
                 .update();
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -278,6 +291,7 @@ public class FirefightingReadRepository {
         Map<String, Object> current = requestMap(code);
         requireStatus(current, "APPROVED");
         updateStatus(code, "CUSTOKING_APPROVED");
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -296,6 +310,7 @@ public class FirefightingReadRepository {
                 .param("rejectedBy", str(request.get("rejectedBy"), str(request.get("actorName"), "")))
                 .param("reason", str(firstPresent(request, "reason", "rejectedReason"), ""))
                 .update();
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -304,6 +319,7 @@ public class FirefightingReadRepository {
         Map<String, Object> current = requestMap(code);
         requireStatus(current, "CUSTOKING_APPROVED");
         updateStatus(code, "FULFILLED");
+        emitUpserted(code);
         return detailRow(code);
     }
 
@@ -329,7 +345,32 @@ public class FirefightingReadRepository {
                 .param("paidBy", longValue(request.get("paidBy"), null))
                 .param("notes", trimToNull(str(request.get("notes"), "")))
                 .update();
+        emitUpserted(code);
         return detailRow(code);
+    }
+
+    private void emitUpserted(String code) {
+        Map<String, Object> current = requestMap(code);
+        LinkedHashMap<String, Object> payload = new LinkedHashMap<>();
+        payload.put("code", current.get("code"));
+        payload.put("title", current.get("title"));
+        payload.put("category", current.get("category"));
+        payload.put("urgency", current.get("urgency"));
+        payload.put("status", current.get("status"));
+        payload.put("estimatedBudget", current.get("estimatedBudget"));
+        payload.put("schoolId", current.get("schoolId"));
+        payload.put("winnerVendor", current.get("winnerVendor"));
+        payload.put("winnerAmount", current.get("winnerAmount"));
+        payload.put("createdAt", current.get("createdAt") == null ? null : current.get("createdAt").toString());
+        payload.put("bursarApprovedAt", current.get("bursarApprovedAt") == null ? null : current.get("bursarApprovedAt").toString());
+        payload.put("principalApprovedAt", current.get("principalApprovedAt") == null ? null : current.get("principalApprovedAt").toString());
+        payload.put("rejectedReason", current.get("rejectedReason"));
+        payload.put("vendorPaidAt", current.get("vendorPaidAt") == null ? null : current.get("vendorPaidAt").toString());
+        payload.put("vendorPaidBy", current.get("vendorPaidBy"));
+        payload.put("vendorPaymentNotes", current.get("vendorPaymentNotes"));
+        Long schoolId = longValue(current.get("schoolId"), null);
+        outboxWriter.append(FIREFIGHTING_REQUEST_UPSERTED, "FirefightingRequestUpserted:" + code,
+                "FirefightingRequest", code, schoolId, payload);
     }
 
     private String requestSelect() {
@@ -402,6 +443,8 @@ public class FirefightingReadRepository {
                         "status", rs.getString("status"),
                         "bursarNote", rs.getString("bursar_note"),
                         "principalNote", rs.getString("principal_note"),
+                        "bursarApprovedAt", rs.getObject("bursar_approved_at", OffsetDateTime.class),
+                        "principalApprovedAt", rs.getObject("principal_approved_at", OffsetDateTime.class),
                         "rejectedReason", rs.getString("rejected_reason"),
                         "winnerVendor", rs.getString("winner_vendor"),
                         "winnerAmount", rs.getObject("winner_amount") == null ? null : rs.getLong("winner_amount"),
