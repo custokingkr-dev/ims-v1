@@ -147,7 +147,7 @@ public class StudentReadRepository {
                 SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
                        s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
-                       s.photo_url, s.fee_status, s.attendance_percent, s.school_id,
+                       s.photo_url, s.fee_status, s.attendance_percent, s.school_id, s.class_id, s.section_id,
                        sc.name AS class_name, ss.name AS section_name, ay.label AS academic_year_label
                 FROM student.students s
                 JOIN tenant_school.school_classes sc ON sc.id = s.class_id
@@ -178,6 +178,8 @@ public class StudentReadRepository {
                             "attendancePercent", attendance == null ? 0 : round(attendance));
                     LinkedHashMap<String, Object> detail = new LinkedHashMap<>(base);
                     detail.put("schoolId", rs.getLong("school_id"));
+                    detail.put("classId", rs.getString("class_id"));
+                    detail.put("sectionId", rs.getString("section_id"));
                     detail.put("dateOfBirth", rs.getObject("dob", LocalDate.class) == null ? null : rs.getObject("dob", LocalDate.class).toString());
                     detail.put("gender", rs.getString("gender"));
                     detail.put("boardRegistrationNumber", rs.getString("board_reg_no"));
@@ -265,6 +267,93 @@ public class StudentReadRepository {
                 .param("academicYearId", academicYearId)
                 .query(Long.class)
                 .single();
+        return studentDetail(id);
+    }
+
+    @Transactional
+    public Map<String, Object> updateStudent(Long id, Map<String, Object> request) {
+        Map<String, Object> current = jdbc.sql("""
+                SELECT id, school_id FROM student.students WHERE id = :id AND deleted_at IS NULL
+                """)
+                .param("id", id)
+                .query((rs, n) -> row("id", rs.getLong("id"), "schoolId", rs.getLong("school_id")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        Long studentSchool = longValue(current.get("schoolId"), null);
+        Long resolved = longValue(request.get("schoolId"), null);
+        if (resolved != null && !resolved.equals(studentSchool)) {
+            throw new SecurityException("You do not have access to this student");
+        }
+
+        String fullName = requireText(request.get("fullName"), "Full name is mandatory");
+        String admissionNo = requireText(firstPresent(request, "admissionNumber", "admissionNo"),
+                "Admission Number is mandatory");
+        Long dup = jdbc.sql("""
+                SELECT COUNT(*) FROM student.students
+                WHERE lower(admission_no) = lower(:admissionNo) AND id <> :id AND deleted_at IS NULL
+                """)
+                .param("admissionNo", admissionNo).param("id", id).query(Long.class).single();
+        if (dup != null && dup > 0) {
+            throw new IllegalArgumentException("Admission Number already exists");
+        }
+
+        String classId = requireText(firstPresent(request, "classId", "class_id"), "Class is required");
+        String sectionId = requireText(firstPresent(request, "sectionId", "section_id"), "Section is required");
+        long sectionOk = jdbc.sql("""
+                SELECT COUNT(*) FROM tenant_school.school_sections
+                WHERE id = :sectionId AND school_class_id = :classId AND school_id = :schoolId
+                """)
+                .param("sectionId", sectionId).param("classId", classId).param("schoolId", studentSchool)
+                .query(Long.class).single();
+        if (sectionOk == 0) {
+            throw new IllegalArgumentException("Selected section does not belong to the class and school");
+        }
+
+        String phone = requireText(request.get("phone"), "Phone is required");
+        String address = joinAddress(
+                str(request.get("houseNumber"), ""), str(request.get("street"), ""),
+                str(request.get("locality"), ""), str(request.get("city"), ""),
+                str(request.get("state"), ""), str(request.get("pinCode"), ""));
+
+        try {
+            jdbc.sql("""
+                    UPDATE student.students SET
+                        full_name = :fullName, roll_no = :rollNo, admission_no = :admissionNo,
+                        board_reg_no = :boardRegNo, dob = :dob, gender = :gender,
+                        father_name = :fatherName, father_contact = :fatherContact, mother_name = :motherName,
+                        phone = :phone, address = :address, house_number = :houseNumber, street = :street,
+                        locality = :locality, city = :city, state = :state, pin_code = :pinCode,
+                        class_id = :classId, section_id = :sectionId,
+                        updated_at = :now, updated_by = :updatedBy, version = version + 1
+                    WHERE id = :id AND deleted_at IS NULL
+                    """)
+                    .param("id", id)
+                    .param("fullName", fullName)
+                    .param("rollNo", str(request.get("rollNo"), ""))
+                    .param("admissionNo", admissionNo)
+                    .param("boardRegNo", str(firstPresent(request, "boardRegistrationNumber", "boardRegNo"), ""))
+                    .param("dob", parseDate(str(firstPresent(request, "dateOfBirth", "dob"), "")))
+                    .param("gender", str(request.get("gender"), "Unspecified"))
+                    .param("fatherName", str(request.get("fatherName"), ""))
+                    .param("fatherContact", str(firstPresent(request, "fatherContactNumber", "fatherContact"), ""))
+                    .param("motherName", str(request.get("motherName"), ""))
+                    .param("phone", phone)
+                    .param("address", address)
+                    .param("houseNumber", str(request.get("houseNumber"), ""))
+                    .param("street", str(request.get("street"), ""))
+                    .param("locality", str(request.get("locality"), ""))
+                    .param("city", str(request.get("city"), ""))
+                    .param("state", str(request.get("state"), ""))
+                    .param("pinCode", str(request.get("pinCode"), ""))
+                    .param("classId", classId)
+                    .param("sectionId", sectionId)
+                    .param("now", OffsetDateTime.now())
+                    .param("updatedBy", str(firstPresent(request, "updatedBy", "actorId"), null))
+                    .update();
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            // Backstop for the (school_id, admission_no) unique constraint.
+            throw new IllegalArgumentException("Admission Number already exists");
+        }
         return studentDetail(id);
     }
 

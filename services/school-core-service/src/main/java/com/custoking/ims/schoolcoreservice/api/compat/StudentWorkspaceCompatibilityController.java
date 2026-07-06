@@ -45,6 +45,23 @@ public class StudentWorkspaceCompatibilityController {
         }
     }
 
+    @PutMapping("/api/v1/workspace/students/{id}")
+    public Map<String, Object> updateFromWorkspace(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "student:read");
+        Map<String, Object> mutableRequest = new HashMap<>(request);
+        applyResolvedSchool(mutableRequest);
+        try {
+            return students.updateStudent(id, mutableRequest);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        } catch (SecurityException ex) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
+        }
+    }
+
     @GetMapping("/api/v1/classes/{classId}/sections/{sectionId}/students")
     public Object studentsForClassSection(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
