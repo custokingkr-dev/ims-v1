@@ -27,6 +27,7 @@ public class AttendanceReadRepository {
     private final StudentPhotoStorage photoStorage;
     private final String dailyTable;
     private final String recordsTable;
+    private final String absenteeTable;
 
     static final Set<String> ALLOWED_STATUSES = Set.of("PRESENT", "ABSENT", "LATE", "LEAVE");
 
@@ -38,6 +39,7 @@ public class AttendanceReadRepository {
         this.photoStorage = photoStorage;
         this.dailyTable = qualifiedTable(schema, "attendance_daily");
         this.recordsTable = qualifiedTable(schema, "attendance_student_records");
+        this.absenteeTable = qualifiedTable(schema, "absentee_notifications");
     }
 
     public List<DailyAttendanceRow> daily(String sectionId, String academicYearId, int limit) {
@@ -444,6 +446,98 @@ public class AttendanceReadRepository {
                 "absentCount", absent,
                 "presentPercent", attendancePercent(present, late, absent),
                 "students", students);
+    }
+
+    public Map<String, Object> absentees(LocalDate date, String sectionId, Long schoolId) {
+        List<Map<String, Object>> students = absenteeRows(date, sectionId, schoolId);
+        long queued = students.stream().filter(s -> Boolean.TRUE.equals(s.get("alreadyQueued"))).count();
+        return row("date", date.toString(),
+                "sectionId", sectionId,
+                "students", students,
+                "totalAbsent", students.size(),
+                "queuedCount", queued);
+    }
+
+    private List<Map<String, Object>> absenteeRows(LocalDate date, String sectionId, Long schoolId) {
+        String academicYearId = currentAcademicYearId();
+        StringBuilder sql = new StringBuilder("""
+                SELECT s.id AS student_id, s.full_name, s.admission_no, s.roll_no,
+                       s.school_id, ar.class_id, ar.section_id,
+                       sc.name AS class_name, ss.name AS section_name,
+                       COALESCE(NULLIF(s.father_contact, ''), NULLIF(s.phone, ''), '') AS parent_contact,
+                       EXISTS (SELECT 1 FROM %s an
+                                WHERE an.student_id = s.id AND an.attendance_date = :date) AS already_queued
+                FROM %s ar
+                JOIN student.students s ON s.id = ar.student_id AND s.deleted_at IS NULL
+                JOIN tenant_school.school_sections ss ON ss.id = ar.section_id
+                JOIN tenant_school.school_classes sc ON sc.id = ar.class_id
+                WHERE ar.attendance_date = :date AND ar.academic_year_id = :academicYearId
+                  AND ar.status = 'ABSENT'
+                """.formatted(absenteeTable, recordsTable));
+        if (schoolId != null) sql.append(" AND ar.school_id = :schoolId");
+        if (sectionId != null && !sectionId.isBlank()) sql.append(" AND ar.section_id = :sectionId");
+        sql.append("""
+                 ORDER BY NULLIF(regexp_replace(COALESCE(s.roll_no, ''), '[^0-9]', '', 'g'), '')::int NULLS LAST,
+                          s.roll_no NULLS LAST, s.full_name
+                """);
+        var spec = jdbc.sql(sql.toString())
+                .param("date", date)
+                .param("academicYearId", academicYearId);
+        if (schoolId != null) spec = spec.param("schoolId", schoolId);
+        if (sectionId != null && !sectionId.isBlank()) spec = spec.param("sectionId", sectionId);
+        return spec.query((rs, n) -> {
+            String parent = rs.getString("parent_contact");
+            return row("studentId", rs.getLong("student_id"),
+                    "fullName", rs.getString("full_name"),
+                    "admissionNo", rs.getString("admission_no"),
+                    "rollNo", rs.getString("roll_no"),
+                    "classSection", rs.getString("class_name") + "-" + rs.getString("section_name"),
+                    "schoolId", rs.getLong("school_id"),
+                    "classId", rs.getString("class_id"),
+                    "sectionId", rs.getString("section_id"),
+                    "parentContact", parent,
+                    "hasContact", parent != null && !parent.isBlank(),
+                    "alreadyQueued", rs.getBoolean("already_queued"));
+        }).list();
+    }
+
+    @Transactional
+    public Map<String, Object> notifyAbsentees(LocalDate date, String sectionId, Long schoolId, Long actorId) {
+        String academicYearId = currentAcademicYearId();
+        List<Map<String, Object>> students = absenteeRows(date, sectionId, schoolId);
+        String schoolName = schoolId == null ? "your school" : jdbc.sql(
+                "SELECT name FROM tenant_school.schools WHERE id = :id")
+                .param("id", schoolId).query(String.class).optional().orElse("your school");
+        String dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
+        int queued = 0, skippedNoContact = 0, skippedAlreadyQueued = 0;
+        for (Map<String, Object> s : students) {
+            if (Boolean.TRUE.equals(s.get("alreadyQueued"))) { skippedAlreadyQueued++; continue; }
+            if (!Boolean.TRUE.equals(s.get("hasContact"))) { skippedNoContact++; continue; }
+            String message = "Dear Parent, " + s.get("fullName") + " (" + s.get("classSection")
+                    + ") was marked absent on " + dateLabel + " at " + schoolName
+                    + ". Please contact the school if this is unexpected.";
+            int inserted = jdbc.sql("""
+                    INSERT INTO %s(id, school_id, student_id, class_id, section_id, academic_year_id,
+                                   attendance_date, parent_contact, channel, message, status, queued_by)
+                    VALUES (:id, :schoolId, :studentId, :classId, :sectionId, :academicYearId,
+                            :date, :parentContact, 'WHATSAPP', :message, 'QUEUED', :actorId)
+                    ON CONFLICT (student_id, attendance_date) DO NOTHING
+                    """.formatted(absenteeTable))
+                    .param("id", UUID.randomUUID().toString())
+                    .param("schoolId", longNum(s.get("schoolId"), 0))
+                    .param("studentId", longNum(s.get("studentId"), 0))
+                    .param("classId", s.get("classId"))
+                    .param("sectionId", s.get("sectionId"))
+                    .param("academicYearId", academicYearId)
+                    .param("date", date)
+                    .param("parentContact", s.get("parentContact"))
+                    .param("message", message)
+                    .param("actorId", actorId)
+                    .update();
+            if (inserted > 0) queued++; else skippedAlreadyQueued++;
+        }
+        return row("date", date.toString(), "queued", queued,
+                "skippedNoContact", skippedNoContact, "skippedAlreadyQueued", skippedAlreadyQueued);
     }
 
     public Map<String, Object> sectionInfo(LocalDate date, String sectionId, Long schoolId) {

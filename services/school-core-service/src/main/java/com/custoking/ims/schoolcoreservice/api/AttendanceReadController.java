@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.api.dto.DailyEntryRequest;
+import com.custoking.ims.schoolcoreservice.api.dto.NotifyAbsenteesRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SaveSectionRegisterRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SubmitDayRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.SubmitSectionRequest;
@@ -102,6 +103,27 @@ public class AttendanceReadController {
         requireToken(token, "attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         return execute(() -> attendance.sectionRegister(date, classId, sectionId, scope));
+    }
+
+    @GetMapping("/absentees")
+    public Map<String, Object> absentees(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String sectionId) {
+        requireToken(token, "attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> attendance.absentees(date, sectionId, scope));
+    }
+
+    @PostMapping("/absentees/notify")
+    public Map<String, Object> notifyAbsentees(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @Valid @RequestBody NotifyAbsenteesRequest body) {
+        requireToken(token, "attendance:write");
+        Long scope = TenantScope.resolveSchoolId(body.schoolId());
+        LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
+        return execute(() -> attendance.notifyAbsentees(date, body.sectionId(), scope, body.actorId()));
     }
 
     @GetMapping("/report/register")
