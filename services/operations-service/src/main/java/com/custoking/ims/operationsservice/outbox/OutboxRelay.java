@@ -1,4 +1,4 @@
-package com.custoking.ims.schoolcoreservice.outbox;
+package com.custoking.ims.operationsservice.outbox;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
- * Polls {@code tenant_school.outbox_events} for unpublished rows and relays
+ * Polls {@code firefighting.outbox_events} for unpublished rows and relays
  * each as a canonical {@link EventEnvelope} via {@link DomainEventPublisher}.
  *
  * <p><b>At-least-once semantics:</b> each row is published BEFORE it is marked
@@ -38,16 +38,16 @@ public class OutboxRelay {
     public OutboxRelay(
             JdbcClient jdbc,
             DomainEventPublisher publisher,
-            @Value("${school-core.db.schema:tenant_school}") String schema,
-            @Value("${school-core.outbox.relay.batch-size:100}") int batchSize) {
+            @Value("${operations.outbox.db.schema:firefighting}") String schema,
+            @Value("${operations.outbox.relay.batch-size:100}") int batchSize) {
         this.jdbc = jdbc;
         this.publisher = publisher;
         this.outboxTable = qualifiedTable(schema);
         this.batchSize = batchSize;
     }
 
-    @Scheduled(fixedDelayString = "${school-core.outbox.relay.fixed-delay-ms:10000}",
-            initialDelayString = "${school-core.outbox.relay.initial-delay-ms:0}")
+    @Scheduled(fixedDelayString = "${operations.outbox.relay.fixed-delay-ms:10000}",
+            initialDelayString = "${operations.outbox.relay.initial-delay-ms:0}")
     public void runScheduled() {
         int published = publishBatch();
         if (published > 0) {
@@ -91,7 +91,7 @@ public class OutboxRelay {
     private EventEnvelope toEnvelope(OutboxRow row) {
         return new EventEnvelope(
                 SCHEMA_VERSION,
-                "school-core:" + row.id(),
+                "operations:" + row.id(),
                 row.eventKey(),
                 row.eventType(),
                 EVENT_VERSION,

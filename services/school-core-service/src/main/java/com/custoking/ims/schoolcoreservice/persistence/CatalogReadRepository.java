@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -18,9 +19,11 @@ import java.util.UUID;
 public class CatalogReadRepository {
 
     private final JdbcClient jdbc;
+    private final OutboxWriter outbox;
 
-    public CatalogReadRepository(JdbcClient jdbc) {
+    public CatalogReadRepository(JdbcClient jdbc, OutboxWriter outbox) {
         this.jdbc = jdbc;
+        this.outbox = outbox;
     }
 
     public List<CatalogItemRow> items() {
@@ -290,7 +293,9 @@ public class CatalogReadRepository {
                 .param("eventDate", localDate(firstPresent(orderData, "eventDate")))
                 .param("createdAt", now)
                 .update();
-        return orderQuery(id).orElseThrow();
+        CatalogOrderRow created = orderQuery(id).orElseThrow();
+        emitOrderUpserted(created);
+        return created;
     }
 
     @Transactional
@@ -327,7 +332,9 @@ public class CatalogReadRepository {
                 .param("placedAt", OffsetDateTime.now())
                 .param("placedBy", actorId)
                 .update();
-        return requiredOrder(id);
+        CatalogOrderRow placed = requiredOrder(id);
+        emitOrderUpserted(placed);
+        return placed;
     }
 
     @Transactional
@@ -337,7 +344,9 @@ public class CatalogReadRepository {
                 .param("id", id)
                 .param("status", normalize(status, ""))
                 .update();
-        return requiredOrder(id);
+        CatalogOrderRow updated = requiredOrder(id);
+        emitOrderUpserted(updated);
+        return updated;
     }
 
     @Transactional
@@ -360,7 +369,9 @@ public class CatalogReadRepository {
                 .param("paidBy", actorId)
                 .param("notes", notes)
                 .update();
-        return requiredOrder(id);
+        CatalogOrderRow paid = requiredOrder(id);
+        emitOrderUpserted(paid);
+        return paid;
     }
 
     @Transactional
@@ -378,7 +389,9 @@ public class CatalogReadRepository {
                     status = 'DESIGN_APPROVED_PROCESSING', version = version + 1
                 WHERE id = :id
                 """).param("id", id).update();
-        return requiredOrder(id);
+        CatalogOrderRow approved = requiredOrder(id);
+        emitOrderUpserted(approved);
+        return approved;
     }
 
     @Transactional
@@ -390,7 +403,9 @@ public class CatalogReadRepository {
                 SET superadmin_approval_status = 'APPROVED', status = 'APPROVED', version = version + 1
                 WHERE id = :id
                 """).param("id", id).update();
-        return requiredOrder(id);
+        CatalogOrderRow updated = requiredOrder(id);
+        emitOrderUpserted(updated);
+        return updated;
     }
 
     @Transactional
@@ -410,7 +425,9 @@ public class CatalogReadRepository {
                 .param("designStatus", designStatus)
                 .param("notes", reason == null || reason.isBlank() ? "Returned by Superadmin" : reason.trim())
                 .update();
-        return requiredOrder(id);
+        CatalogOrderRow returned = requiredOrder(id);
+        emitOrderUpserted(returned);
+        return returned;
     }
 
     @Transactional
@@ -513,6 +530,27 @@ public class CatalogReadRepository {
 
     private CatalogOrderRow requiredOrder(String id) {
         return orderQuery(id).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+    }
+
+    /**
+     * Emits {@code catalog-order.upserted.v1} for the reporting service's catalog-fact
+     * projection (Reporting Decoupling SP4), inside the caller's existing transaction so the
+     * outbox row commits (or rolls back) atomically with the order mutation.
+     */
+    private void emitOrderUpserted(CatalogOrderRow order) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", order.id());
+        payload.put("schoolId", order.schoolId());
+        payload.put("category", order.category());
+        payload.put("status", order.status());
+        payload.put("totalAmount", order.totalAmount());
+        payload.put("superadminApprovalStatus", order.superadminApprovalStatus());
+        payload.put("vendorPaidAt", order.vendorPaidAt());
+        payload.put("createdAt", order.createdAt());
+        payload.put("requiredByDate", order.requiredByDate());
+        payload.put("designStatus", order.designStatus());
+        outbox.append("catalog-order.upserted.v1", "CatalogOrderUpserted:" + order.id(), "CatalogOrder",
+                order.id(), order.schoolId(), payload);
     }
 
     private void requireSchool(Long schoolId) {

@@ -74,6 +74,43 @@ public class DimensionProjectionRepository {
     }
 
     @Transactional
+    public void upsertStudent(long id, Long schoolId, String admissionNo, String fullName, String rollNo,
+                               String classId, String sectionId, String parentContact, String phone,
+                               boolean active) {
+        jdbc.sql("""
+                        INSERT INTO reporting.dim_student (
+                            id, school_id, admission_no, full_name, roll_no, class_id, section_id,
+                            parent_contact, phone, active, updated_at
+                        ) VALUES (
+                            :id, :schoolId, :admissionNo, :fullName, :rollNo, :classId, :sectionId,
+                            :parentContact, :phone, :active, now()
+                        )
+                        ON CONFLICT (id) DO UPDATE SET
+                            school_id = EXCLUDED.school_id,
+                            admission_no = EXCLUDED.admission_no,
+                            full_name = EXCLUDED.full_name,
+                            roll_no = EXCLUDED.roll_no,
+                            class_id = EXCLUDED.class_id,
+                            section_id = EXCLUDED.section_id,
+                            parent_contact = EXCLUDED.parent_contact,
+                            phone = EXCLUDED.phone,
+                            active = EXCLUDED.active,
+                            updated_at = now()
+                        """)
+                .param("id", id)
+                .param("schoolId", schoolId)
+                .param("admissionNo", admissionNo)
+                .param("fullName", fullName)
+                .param("rollNo", rollNo)
+                .param("classId", classId)
+                .param("sectionId", sectionId)
+                .param("parentContact", parentContact)
+                .param("phone", phone)
+                .param("active", active)
+                .update();
+    }
+
+    @Transactional
     public void upsertAcademicYear(String id, String label, boolean active) {
         jdbc.sql("""
                         INSERT INTO reporting.dim_academic_year (

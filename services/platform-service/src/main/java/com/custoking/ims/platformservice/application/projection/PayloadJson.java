@@ -4,6 +4,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 /**
@@ -64,5 +65,12 @@ public final class PayloadJson {
         if (value == null || value.isNull()) return null;
         String text = value.asText();
         return text == null || text.isBlank() ? null : OffsetDateTime.parse(text);
+    }
+
+    public static LocalDate localDateOrNull(JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value == null || value.isNull()) return null;
+        String text = value.asText();
+        return text == null || text.isBlank() ? null : LocalDate.parse(text);
     }
 }

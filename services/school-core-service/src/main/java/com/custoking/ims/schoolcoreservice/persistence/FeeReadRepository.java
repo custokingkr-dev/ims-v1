@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +20,11 @@ import java.util.UUID;
 public class FeeReadRepository {
 
     private final JdbcClient jdbc;
+    private final OutboxWriter outbox;
 
-    public FeeReadRepository(JdbcClient jdbc) {
+    public FeeReadRepository(JdbcClient jdbc, OutboxWriter outbox) {
         this.jdbc = jdbc;
+        this.outbox = outbox;
     }
 
     public List<FeeBandRow> bands(String academicYearId, Long schoolId) {
@@ -528,6 +531,7 @@ public class FeeReadRepository {
                     .update();
         }
         updateStudentFeeStatus(studentId, assignmentId);
+        emitFeeAssignmentUpserted(assignmentId);
         return row("ok", true, "assignment", assignmentRecord(assignmentId));
     }
 
@@ -619,6 +623,8 @@ public class FeeReadRepository {
                         "paidAmount", rs.getLong("paid_amount"),
                         "netPayable", rs.getLong("net_payable")))
                 .single();
+        emitFeeAssignmentUpserted(assignmentId);
+        emitPaymentRecorded(paymentId, assignmentId, schoolId, studentId, amount, paidAt);
         return row(
                 "paymentId", paymentId,
                 "receiptNumber", receiptNumber,
@@ -952,6 +958,52 @@ public class FeeReadRepository {
                 .param("updatedAt", OffsetDateTime.now())
                 .param("studentId", studentId)
                 .update();
+    }
+
+    private void emitFeeAssignmentUpserted(String assignmentId) {
+        Map<String, Object> assignment = jdbc.sql("""
+                        SELECT fa.id, fa.student_id, fa.school_id, fa.academic_year_id,
+                               fa.net_payable, fa.paid_amount
+                        FROM fee.fee_assignments fa
+                        WHERE fa.id = :id
+                        """)
+                .param("id", assignmentId)
+                .query((rs, rowNum) -> row(
+                        "id", rs.getString("id"),
+                        "studentId", rs.getLong("student_id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "netPayable", rs.getLong("net_payable"),
+                        "paidAmount", rs.getLong("paid_amount")))
+                .single();
+        long netPayable = ((Number) assignment.get("netPayable")).longValue();
+        long paidAmount = ((Number) assignment.get("paidAmount")).longValue();
+        long dueAmount = Math.max(0, netPayable - paidAmount);
+        Long schoolId = ((Number) assignment.get("schoolId")).longValue();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", assignmentId);
+        payload.put("studentId", assignment.get("studentId"));
+        payload.put("schoolId", schoolId);
+        payload.put("academicYearId", assignment.get("academicYearId"));
+        payload.put("netPayable", netPayable);
+        payload.put("paidAmount", paidAmount);
+        payload.put("dueAmount", dueAmount);
+        payload.put("status", dueAmount <= 0 ? "Paid" : "Overdue");
+        outbox.append("fee-assignment.upserted.v1", "FeeAssignmentUpserted:" + assignmentId, "FeeAssignment",
+                assignmentId, schoolId, payload);
+    }
+
+    private void emitPaymentRecorded(String paymentId, String assignmentId, Long schoolId, long studentId,
+                                      long amount, OffsetDateTime paidAt) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", paymentId);
+        payload.put("assignmentId", assignmentId);
+        payload.put("schoolId", schoolId);
+        payload.put("studentId", studentId);
+        payload.put("amount", amount);
+        payload.put("paidAt", paidAt == null ? null : paidAt.toString());
+        outbox.append("payment.recorded.v1", "PaymentRecorded:" + paymentId, "Payment",
+                paymentId, schoolId, payload);
     }
 
     private Object firstPresent(Map<String, Object> request, String... keys) {

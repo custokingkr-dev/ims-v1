@@ -1,11 +1,13 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -39,7 +41,8 @@ class FeeBandDeleteIntegrationTest {
                     .load().migrate();
         }
         ds = new DriverManagerDataSource(PG.getJdbcUrl(), "owner", "owner");
-        repo = new FeeReadRepository(JdbcClient.create(ds));
+        JdbcClient jdbc = JdbcClient.create(ds);
+        repo = new FeeReadRepository(jdbc, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
     }
 
     @AfterAll

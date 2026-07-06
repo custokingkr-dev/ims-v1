@@ -1,4 +1,4 @@
-package com.custoking.ims.schoolcoreservice.outbox;
+package com.custoking.ims.operationsservice.outbox;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Proves that {@link OutboxRelay#publishBatch()}:
  *
  * <ul>
- *   <li>publishes every unpublished {@code tenant_school.outbox_events} row as
+ *   <li>publishes every unpublished {@code firefighting.outbox_events} row as
  *       a canonical {@link EventEnvelope} (eventId = row id) via the injected
  *       {@link DomainEventPublisher};</li>
  *   <li>marks each row published (publish-then-mark, so at-least-once
@@ -32,11 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   <li>does NOT re-publish already-published rows on a subsequent call.</li>
  * </ul>
  *
- * <p>Mirrors {@code billing-service}'s {@code OutboxRelayIntegrationTest}, but
- * uses the plain Testcontainers + Flyway bootstrap already established by
- * {@code SchoolStructureIntegrationTest} in this service (no full
- * {@code @SpringBootTest} context — school-core-service's tests never boot
- * the whole app, only the schema + repository/component under test).
+ * <p>Mirrors {@code school-core-service}'s {@code OutboxRelayTest} (itself mirroring
+ * billing-service's {@code OutboxRelayIntegrationTest}): plain Testcontainers + Flyway
+ * bootstrap, no full {@code @SpringBootTest} context.
  */
 class OutboxRelayTest {
 
@@ -63,9 +61,9 @@ class OutboxRelayTest {
         PG.start();
         Flyway.configure()
                 .dataSource(PG.getJdbcUrl(), "owner", "owner")
-                .schemas("tenant_school")
-                .defaultSchema("tenant_school")
-                .locations("classpath:db/migration/tenant_school")
+                .schemas("firefighting")
+                .defaultSchema("firefighting")
+                .locations("classpath:db/migration/firefighting")
                 .load()
                 .migrate();
         dataSource = new DriverManagerDataSource(PG.getJdbcUrl(), "owner", "owner");
@@ -82,16 +80,16 @@ class OutboxRelayTest {
     @BeforeEach
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("DELETE FROM tenant_school.outbox_events");
+            st.execute("DELETE FROM firefighting.outbox_events");
         }
         capturingPublisher = new CapturingDomainEventPublisher();
-        relay = new OutboxRelay(jdbc, capturingPublisher, "tenant_school", 100);
+        relay = new OutboxRelay(jdbc, capturingPublisher, "firefighting", 100);
     }
 
     @Test
     void publishBatch_publishesEnvelopesForBothRows_andMarksThemPublished() throws Exception {
-        long idA = insertOutboxEvent("SchoolUpserted:A-" + System.nanoTime(), "School", 11L);
-        long idB = insertOutboxEvent("SchoolSectionUpserted:B-" + System.nanoTime(), "SchoolSection", 22L);
+        long idA = insertOutboxEvent("FF-" + System.nanoTime(), 11L);
+        long idB = insertOutboxEvent("FF-" + System.nanoTime(), 22L);
 
         int published = relay.publishBatch();
 
@@ -100,13 +98,11 @@ class OutboxRelayTest {
 
         for (EventEnvelope envelope : capturingPublisher.published) {
             assertThat(envelope.schemaVersion()).isEqualTo("ims.event-envelope.v1");
-            assertThat(envelope.eventId()).isIn("school-core:" + idA, "school-core:" + idB);
-            assertThat(envelope.eventId()).startsWith("school-core:");
+            assertThat(envelope.eventId()).isIn("operations:" + idA, "operations:" + idB);
+            assertThat(envelope.eventId()).startsWith("operations:");
             assertThat(envelope.payloadJson()).contains(envelope.aggregateId());
+            assertThat(envelope.eventType()).isEqualTo("firefighting-request.upserted.v1");
         }
-        assertThat(capturingPublisher.published)
-                .extracting(EventEnvelope::eventType)
-                .containsExactlyInAnyOrder("school.upserted.v1", "school-section.upserted.v1");
 
         assertThat(publishedAt(idA)).isNotNull();
         assertThat(publishedAt(idB)).isNotNull();
@@ -114,8 +110,8 @@ class OutboxRelayTest {
 
     @Test
     void publishBatch_secondCall_publishesNothing_noDuplicates() throws Exception {
-        insertOutboxEvent("SchoolUpserted:C-" + System.nanoTime(), "School", 33L);
-        insertOutboxEvent("SchoolSectionUpserted:D-" + System.nanoTime(), "SchoolSection", 44L);
+        insertOutboxEvent("FF-" + System.nanoTime(), 33L);
+        insertOutboxEvent("FF-" + System.nanoTime(), 44L);
 
         int firstRun = relay.publishBatch();
         assertThat(firstRun).isEqualTo(2);
@@ -128,19 +124,18 @@ class OutboxRelayTest {
         assertThat(capturingPublisher.published).isEmpty();
     }
 
-    private long insertOutboxEvent(String aggregateId, String aggregateType, long schoolId) throws Exception {
-        String eventType = "School".equals(aggregateType) ? "school.upserted.v1" : "school-section.upserted.v1";
+    private long insertOutboxEvent(String code, long schoolId) throws Exception {
         try (Connection c = dataSource.getConnection();
              java.sql.PreparedStatement ps = c.prepareStatement(
-                     "INSERT INTO tenant_school.outbox_events " +
+                     "INSERT INTO firefighting.outbox_events " +
                              "(event_key, event_type, aggregate_type, aggregate_id, school_id, payload) " +
                              "VALUES (?, ?, ?, ?, ?, ?::jsonb) RETURNING id")) {
-            ps.setString(1, aggregateId);
-            ps.setString(2, eventType);
-            ps.setString(3, aggregateType);
-            ps.setString(4, aggregateId);
+            ps.setString(1, "FirefightingRequestUpserted:" + code);
+            ps.setString(2, "firefighting-request.upserted.v1");
+            ps.setString(3, "FirefightingRequest");
+            ps.setString(4, code);
             ps.setLong(5, schoolId);
-            ps.setString(6, "{\"id\":\"" + aggregateId + "\"}");
+            ps.setString(6, "{\"code\":\"" + code + "\"}");
             try (java.sql.ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return rs.getLong(1);
@@ -149,7 +144,7 @@ class OutboxRelayTest {
     }
 
     private Timestamp publishedAt(long id) {
-        return jdbc.sql("SELECT published_at FROM tenant_school.outbox_events WHERE id = :id")
+        return jdbc.sql("SELECT published_at FROM firefighting.outbox_events WHERE id = :id")
                 .param("id", id)
                 .query((rs, rowNum) -> rs.getTimestamp("published_at"))
                 .single();
