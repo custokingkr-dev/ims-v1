@@ -148,8 +148,14 @@ steps:
           "--min-instances=1"
 
         # operations-service = workflow + firefighting (OPERATIONS_DB_SCHEMA default has a comma, set in yml).
-        deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OPERATIONS_MERGED=true" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest"
+        # OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps it to
+        # operations.outbox.pubsub.topic-id, which @ConditionalOnProperty gates the real PubSub relay on.
+        # Publishes to the SHARED reporting-events topic (same one billing/school-core use); reporting's
+        # existing subscription routes by eventType. --min-instances=1: the @Scheduled outbox relay only
+        # polls while alive.
+        deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OPERATIONS_MERGED=true,OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest" \
+          "--min-instances=1"
 
         # platform-service = reporting + notification + audit (PLATFORM_DB_SCHEMA default set in yml).
         deploy_service platform-service custoking-platform-service-${_ENV} custoking-platform-service "MSG91_DRY_RUN=true" \
