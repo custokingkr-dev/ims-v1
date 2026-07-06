@@ -90,13 +90,14 @@ export default function UnifiedWorkspacePage() {
   const [rejectReason, setRejectReason] = useState('');
   const [designApprovingSaving, setDesignApprovingSaving] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navGroupsKey = `ck_nav_groups:${role ?? 'default'}`;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    try { return JSON.parse(localStorage.getItem('ck_nav_groups') || '{}'); } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem(navGroupsKey) || '{}'); } catch { return {}; }
   });
   const toggleGroup = (title: string) => {
     setOpenGroups((prev) => {
       const next = { ...prev, [title]: !(prev[title] ?? true) };
-      try { localStorage.setItem('ck_nav_groups', JSON.stringify(next)); } catch { /* ignore */ }
+      try { localStorage.setItem(navGroupsKey, JSON.stringify(next)); } catch { /* ignore */ }
       return next;
     });
   };

@@ -132,9 +132,7 @@
   .ck-sb-header { display: flex; align-items: center; }
 
   /* drawer: always full labels, no icon-rail, no hover-expand */
-  .ck-sidebar { width: 272px !important; }
   .ck-sidebar:hover { box-shadow: var(--ck-shadow-popover); }
-  .ck-main { margin-left: 0 !important; }
   .ck-nav-label, .ck-nav-group-header, .ck-sb-logo, .ck-school-name,
   .ck-school-meta, .ck-sb-school-badge, .ck-user-card-details { opacity: 1 !important; height: auto !important; }
   .ck-sb-monogram { display: none; }
