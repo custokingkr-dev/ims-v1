@@ -281,6 +281,204 @@ public class TimetableRepository {
         }
     }
 
+    private static final List<String> DAYS = List.of("Mon", "Tue", "Wed", "Thu", "Fri", "Sat");
+
+    public Map<String, Object> timetable(Long schoolId, String sectionId, String yearId) {
+        String classId = jdbc.sql("""
+                SELECT school_class_id FROM tenant_school.school_sections
+                WHERE id = :sec AND school_id = :s
+                """)
+                .param("sec", sectionId)
+                .param("s", schoolId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("editable", yearId != null && yearId.equals(activeYearId(schoolId)));
+        result.put("yearId", yearId);
+        result.put("sectionId", sectionId);
+        result.put("days", DAYS);
+
+        Long scheduleId = classId == null ? null : jdbc.sql("""
+                SELECT schedule_id FROM tenant_school.school_class_bell_map
+                WHERE school_id = :s AND class_id = :c
+                """)
+                .param("s", schoolId)
+                .param("c", classId)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+
+        if (scheduleId == null) {
+            result.put("periods", List.of());
+            result.put("entries", List.of());
+            result.put("noSchedule", true);
+            return result;
+        }
+
+        result.put("periods", periods(scheduleId));
+        result.put("entries", jdbc.sql("""
+                SELECT e.day_name, e.bell_period_id, e.subject_name, e.teacher_id, st.name AS teacher_name
+                FROM tenant_school.school_timetable_entries e
+                LEFT JOIN tenant_school.staff_members st ON st.id = e.teacher_id
+                WHERE e.school_id = :s AND e.academic_year_id = :y AND e.section_id = :sec
+                """)
+                .param("s", schoolId)
+                .param("y", yearId)
+                .param("sec", sectionId)
+                .query((rs, rowNum) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("day", rs.getString("day_name"));
+                    m.put("periodId", rs.getLong("bell_period_id"));
+                    m.put("subjectName", rs.getString("subject_name"));
+                    long teacherId = rs.getLong("teacher_id");
+                    m.put("teacherId", rs.wasNull() ? null : teacherId);
+                    m.put("teacherName", rs.getString("teacher_name"));
+                    return m;
+                })
+                .list());
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> upsertEntry(Long schoolId, String sectionId, String day, long periodId,
+                                            String subjectName, Long teacherId) {
+        String year = activeYearId(schoolId);
+        if (year == null) {
+            throw new YearLockedException("No active academic year configured");
+        }
+
+        String classId = jdbc.sql("""
+                SELECT school_class_id FROM tenant_school.school_sections
+                WHERE id = :sec AND school_id = :s
+                """)
+                .param("sec", sectionId)
+                .param("s", schoolId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+        if (classId == null) {
+            throw new IllegalArgumentException("Section not found");
+        }
+
+        Long classScheduleId = jdbc.sql("""
+                SELECT schedule_id FROM tenant_school.school_class_bell_map
+                WHERE school_id = :s AND class_id = :c
+                """)
+                .param("s", schoolId)
+                .param("c", classId)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+
+        Map<String, Object> period = jdbc.sql("""
+                SELECT is_break, schedule_id, label FROM tenant_school.school_bell_periods
+                WHERE id = :pid AND school_id = :s
+                """)
+                .param("pid", periodId)
+                .param("s", schoolId)
+                .query((rs, rowNum) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("isBreak", rs.getBoolean("is_break"));
+                    m.put("scheduleId", rs.getLong("schedule_id"));
+                    m.put("label", rs.getString("label"));
+                    return m;
+                })
+                .optional()
+                .orElse(null);
+        if (period == null
+                || (Boolean) period.get("isBreak")
+                || classScheduleId == null
+                || !classScheduleId.equals(period.get("scheduleId"))) {
+            throw new IllegalArgumentException("Period is a break or not part of this class's schedule");
+        }
+
+        boolean subjectExists = jdbc.sql("""
+                SELECT 1 FROM tenant_school.school_class_subjects
+                WHERE school_id = :s AND class_id = :c AND academic_year_id = :y AND subject_name = :n
+                """)
+                .param("s", schoolId)
+                .param("c", classId)
+                .param("y", year)
+                .param("n", subjectName)
+                .query(Integer.class)
+                .optional()
+                .isPresent();
+        if (!subjectExists) {
+            throw new IllegalArgumentException("'" + subjectName + "' is not in this class's subject list for " + year);
+        }
+
+        jdbc.sql("""
+                INSERT INTO tenant_school.school_timetable_entries
+                    (school_id, academic_year_id, section_id, day_name, bell_period_id, subject_name, teacher_id, updated_at)
+                VALUES (:s, :y, :sec, :day, :pid, :subj, :teacher, now())
+                ON CONFLICT (school_id, academic_year_id, section_id, day_name, bell_period_id)
+                DO UPDATE SET subject_name = EXCLUDED.subject_name, teacher_id = EXCLUDED.teacher_id, updated_at = now()
+                """)
+                .param("s", schoolId)
+                .param("y", year)
+                .param("sec", sectionId)
+                .param("day", day)
+                .param("pid", periodId)
+                .param("subj", subjectName)
+                .param("teacher", teacherId)
+                .update();
+
+        String conflict = null;
+        if (teacherId != null) {
+            conflict = jdbc.sql("""
+                    SELECT st.name || ' already teaches ' || sec2.name || ' · ' || :day || ' ' || :label
+                    FROM tenant_school.school_timetable_entries e2
+                    JOIN tenant_school.school_sections sec2 ON sec2.id = e2.section_id
+                    LEFT JOIN tenant_school.staff_members st ON st.id = e2.teacher_id
+                    WHERE e2.school_id = :s AND e2.academic_year_id = :y AND e2.day_name = :day
+                      AND e2.bell_period_id = :pid AND e2.teacher_id = :teacher AND e2.section_id <> :sec
+                    LIMIT 1
+                    """)
+                    .param("day", day)
+                    .param("label", period.get("label"))
+                    .param("s", schoolId)
+                    .param("y", year)
+                    .param("pid", periodId)
+                    .param("teacher", teacherId)
+                    .param("sec", sectionId)
+                    .query(String.class)
+                    .optional()
+                    .orElse(null);
+        }
+
+        Map<String, Object> entry = new LinkedHashMap<>();
+        entry.put("day", day);
+        entry.put("periodId", periodId);
+        entry.put("subjectName", subjectName);
+        entry.put("teacherId", teacherId);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("entry", entry);
+        result.put("conflict", conflict);
+        return result;
+    }
+
+    @Transactional
+    public void deleteEntry(Long schoolId, String sectionId, String day, long periodId) {
+        String year = activeYearId(schoolId);
+        if (year == null) {
+            throw new YearLockedException("No active academic year configured");
+        }
+        jdbc.sql("""
+                DELETE FROM tenant_school.school_timetable_entries
+                WHERE school_id = :s AND academic_year_id = :y AND section_id = :sec
+                  AND day_name = :day AND bell_period_id = :pid
+                """)
+                .param("s", schoolId)
+                .param("y", year)
+                .param("sec", sectionId)
+                .param("day", day)
+                .param("pid", periodId)
+                .update();
+    }
+
     @Transactional
     public void deleteSubject(Long schoolId, long subjectId) {
         String subjectYearId = jdbc.sql("""

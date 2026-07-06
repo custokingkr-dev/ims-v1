@@ -53,10 +53,12 @@ class TimetableRepositoryIntegrationTest {
     @BeforeEach
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM tenant_school.school_timetable_entries");
             st.execute("DELETE FROM tenant_school.school_class_subjects");
             st.execute("DELETE FROM tenant_school.school_class_bell_map");
             st.execute("DELETE FROM tenant_school.school_bell_periods");
             st.execute("DELETE FROM tenant_school.school_bell_schedules");
+            st.execute("DELETE FROM tenant_school.staff_members");
             st.execute("DELETE FROM tenant_school.school_sections");
             st.execute("DELETE FROM tenant_school.school_classes");
             st.execute("DELETE FROM tenant_school.schools");
@@ -94,6 +96,24 @@ class TimetableRepositoryIntegrationTest {
         return id;
     }
 
+    private String seedSection(long schoolId, String classId, String name) throws Exception {
+        String sectionId = "sec-" + name;
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.school_sections (id, name, active, school_class_id, school_id) VALUES " +
+                    "('" + sectionId + "', '" + name + "', true, '" + classId + "', " + schoolId + ")");
+        }
+        return sectionId;
+    }
+
+    private long seedStaff(long schoolId, String name) throws Exception {
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.staff_members (name, designation, monthly_salary, school_id) VALUES " +
+                    "('" + name + "', 'Teacher', 0, " + schoolId + ")");
+        }
+        return jdbc.sql("SELECT id FROM tenant_school.staff_members WHERE school_id = :s AND name = :n ORDER BY id DESC LIMIT 1")
+                .param("s", schoolId).param("n", name).query(Long.class).single();
+    }
+
     @Test
     void createsScheduleWithPeriodsAndMapsClass() throws Exception {
         long schoolId = seedSchool();
@@ -129,5 +149,49 @@ class TimetableRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> repo.addSubject(schoolId, classId, past, "History"))
             .isInstanceOf(YearLockedException.class);
+    }
+
+    @Test
+    void upsertIsReplaceInPlaceAndReportsTeacherConflict() throws Exception {
+        long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
+        String sec1 = seedSection(schoolId, classId, "6-A"); String sec2 = seedSection(schoolId, classId, "6-B");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, schedId);
+        repo.addSubject(schoolId, classId, year, "Math");
+        long teacher = seedStaff(schoolId, "AB");
+
+        var r1 = repo.upsertEntry(schoolId, sec1, "Mon", pid, "Math", teacher);
+        assertThat(r1.get("conflict")).isNull();
+        // replace-in-place: second upsert on same slot updates, does not duplicate
+        repo.upsertEntry(schoolId, sec1, "Mon", pid, "Math", teacher);
+        var grid = repo.timetable(schoolId, sec1, year);
+        assertThat((List<?>) grid.get("entries")).hasSize(1);
+        // teacher double-booked in another section → conflict string, still saved
+        var r2 = repo.upsertEntry(schoolId, sec2, "Mon", pid, "Math", teacher);
+        assertThat((String) r2.get("conflict")).contains("6-A");
+        assertThat((List<?>) repo.timetable(schoolId, sec2, year).get("entries")).hasSize(1);
+    }
+
+    @Test
+    void upsertRejectsNonActiveYearAndBreakAndUnknownSubject() throws Exception {
+        long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
+        String sec = seedSection(schoolId, classId, "6-A");
+        String active = seedYear(schoolId, "ay_2026_27", true);
+        var sched = repo.createSchedule(schoolId, "Std"); long schedId=((Number)sched.get("id")).longValue();
+        var teach = repo.addPeriod(schoolId, schedId, "P1", "08:00","08:45", false, 1);
+        var brk = repo.addPeriod(schoolId, schedId, "Break", "08:45","09:00", true, 2);
+        repo.setClassSchedule(schoolId, classId, schedId);
+        repo.addSubject(schoolId, classId, active, "Math");
+        long teacher = seedStaff(schoolId, "AB");
+        long teachPid=((Number)teach.get("id")).longValue(), brkPid=((Number)brk.get("id")).longValue();
+
+        assertThatThrownBy(() -> repo.upsertEntry(schoolId, sec, "Mon", brkPid, "Math", teacher))
+            .isInstanceOf(IllegalArgumentException.class);            // break period
+        assertThatThrownBy(() -> repo.upsertEntry(schoolId, sec, "Mon", teachPid, "Chemistry", teacher))
+            .isInstanceOf(IllegalArgumentException.class);            // subject not in master
     }
 }

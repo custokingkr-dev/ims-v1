@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.TimetableRepository;
 import com.custoking.ims.schoolcoreservice.persistence.YearLockedException;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -202,6 +203,71 @@ public class TimetableController {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
+    }
+
+    @GetMapping("/api/v1/timetable")
+    public Map<String, Object> timetable(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestParam(value = "sectionId") String sectionId,
+            @RequestParam(value = "yearId", required = false) String yearIdParam) {
+        requireToken(token, "tenant-school:read");
+        Long schoolId = TenantScope.resolveSchoolId(schoolIdParam);
+        String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
+        Map<String, Object> grid = timetable.timetable(schoolId, sectionId, yearId);
+        if (!isAdmin()) {
+            grid.put("editable", false);
+        }
+        return grid;
+    }
+
+    @PutMapping("/api/v1/timetable/entry")
+    public Map<String, Object> upsertEntry(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        String sectionId = requireText(request.get("sectionId"), "sectionId is required");
+        String day = requireText(request.get("day"), "day is required");
+        long periodId = longValue(request.get("periodId"),
+                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "periodId is required"));
+        String subjectName = requireText(request.get("subjectName"), "subjectName is required");
+        Long teacherId = request.get("teacherId") == null ? null
+                : longValue(request.get("teacherId"),
+                        () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "teacherId is invalid"));
+        try {
+            return timetable.upsertEntry(schoolId, sectionId, day, periodId, subjectName, teacherId);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @DeleteMapping("/api/v1/timetable/entry")
+    public void deleteEntry(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "sectionId") String sectionId,
+            @RequestParam(value = "day") String day,
+            @RequestParam(value = "periodId") long periodId) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        try {
+            timetable.deleteEntry(schoolId, sectionId, day, periodId);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
+    }
+
+    private boolean isAdmin() {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin()) {
+            return true;
+        }
+        String role = ctx.role();
+        return role != null && (role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("SCHOOL_ADMIN"));
     }
 
     private void requireToken(String token, String requiredScope) {

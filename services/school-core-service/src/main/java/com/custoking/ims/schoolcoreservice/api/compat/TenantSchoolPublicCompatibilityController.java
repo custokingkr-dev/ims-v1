@@ -43,26 +43,6 @@ public class TenantSchoolPublicCompatibilityController {
         }
     }
 
-    @PostMapping("/api/v1/workspace/timetable")
-    public Map<String, Object> addTimetableFromWorkspace(
-            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
-            @RequestHeader(value = "X-Authenticated-School-Id", required = false) String authenticatedSchoolId,
-            @RequestBody Map<String, Object> request) {
-        requireToken(token, "tenant-school:write");
-        // Body schoolId is the requested school; TenantScope (via TenantContextFilter) resolves and sandboxes it.
-        // The explicit authenticatedSchoolId header is kept for backward-compat signature but TenantContextFilter
-        // already populated TenantContext from that header, so TenantScope.resolveSchoolId handles the fallback.
-        Long resolvedSchoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
-        if (resolvedSchoolId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
-        }
-        try {
-            return schools.addTimetableEntry(resolvedSchoolId, request);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
-        }
-    }
-
     private void requireToken(String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid tenant-school service token");
