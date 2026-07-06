@@ -21,7 +21,13 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 
-class AttendanceLateLeaveRoundTripTest {
+/**
+ * Proves that attendance mutations (Reporting Decoupling SP3) emit
+ * {@code attendance-daily.upserted.v1} to the shared {@code tenant_school.outbox_events} table
+ * in the SAME transaction as the {@code attendance.attendance_daily} write, mirroring the SP1
+ * {@code ReferenceEventEmissionIntegrationTest} pattern for school-core reference events.
+ */
+class AttendanceEventEmissionIntegrationTest {
 
     static PostgreSQLContainer<?> PG;
     static DataSource ds;
@@ -57,6 +63,7 @@ class AttendanceLateLeaveRoundTripTest {
         try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
             st.execute("DELETE FROM attendance.attendance_student_records");
             st.execute("DELETE FROM attendance.attendance_daily");
+            st.execute("DELETE FROM tenant_school.outbox_events");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.school_sections");
             st.execute("DELETE FROM tenant_school.school_classes");
@@ -69,7 +76,6 @@ class AttendanceLateLeaveRoundTripTest {
             st.execute("INSERT INTO tenant_school.school_classes(id, name, sort_order) VALUES ('c1','Class 1',1)");
             st.execute("INSERT INTO tenant_school.school_sections(id, name, teacher_name, active, school_class_id, school_id) " +
                     "VALUES ('s1','A','Ms Rao',true,'c1',1)");
-            // 4 students in c1/s1 — one for each status.
             for (int i = 1; i <= 4; i++) {
                 st.execute("INSERT INTO student.students" +
                         "(id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
@@ -78,68 +84,60 @@ class AttendanceLateLeaveRoundTripTest {
         }
     }
 
-    @Test
-    void saveThenRead_computesBuckets_andWritesLateLeaveToDaily() {
-        // P, Late, Leave, Absent — one each.
-        repo.saveSectionRegister(Map.of(
-                "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
-                "records", List.of(
-                        Map.of("studentId", 1, "status", "PRESENT", "remarks", ""),
-                        Map.of("studentId", 2, "status", "LATE", "remarks", "bus late"),
-                        Map.of("studentId", 3, "status", "LEAVE", "remarks", "sick"),
-                        Map.of("studentId", 4, "status", "ABSENT", "remarks", ""))));
-
-        Map<String, Object> reg = repo.sectionRegister(DAY, "c1", "s1", 1L);
-        assertThat(reg.get("presentCount")).isEqualTo(1);
-        assertThat(reg.get("lateCount")).isEqualTo(1);
-        assertThat(reg.get("leaveCount")).isEqualTo(1);
-        assertThat(reg.get("absentCount")).isEqualTo(1);
-        assertThat(reg.get("totalStudents")).isEqualTo(4);
-        // attended (P+Late)=2 / denom (P+Late+Absent)=3 -> 66.7; Leave excluded.
-        assertThat(((Number) reg.get("presentPercent")).doubleValue()).isEqualTo(66.7);
-
-        // late_count / leave_count persisted on the day rollup.
-        Map<String, Object> daily = JdbcClient.create(ds).sql(
-                "SELECT present_count, absent_count, late_count, leave_count FROM attendance.attendance_daily " +
-                "WHERE section_id = 's1' AND attendance_date = :d AND academic_year_id = 'AY'")
-                .param("d", DAY)
-                .query((rs, n) -> Map.<String, Object>of(
-                        "present", rs.getInt("present_count"),
-                        "absent", rs.getInt("absent_count"),
-                        "late", rs.getInt("late_count"),
-                        "leave", rs.getInt("leave_count")))
+    private long countOutbox() {
+        return JdbcClient.create(ds).sql("SELECT count(*) FROM tenant_school.outbox_events "
+                        + "WHERE event_type = 'attendance-daily.upserted.v1'")
+                .query(Long.class)
                 .single();
-        assertThat(daily).containsEntry("present", 1).containsEntry("absent", 1)
-                .containsEntry("late", 1).containsEntry("leave", 1);
     }
 
     @Test
-    void dailySummary_surfacesBucketsAndAggregatePercent() {
-        repo.saveSectionRegister(Map.of(
+    void saveSectionRegisterEmitsAttendanceDailyUpsertedInSameTransaction() {
+        Map<String, Object> result = repo.saveSectionRegister(Map.of(
                 "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
                 "records", List.of(
                         Map.of("studentId", 1, "status", "PRESENT", "remarks", ""),
                         Map.of("studentId", 2, "status", "LATE", "remarks", ""),
                         Map.of("studentId", 3, "status", "LEAVE", "remarks", ""),
                         Map.of("studentId", 4, "status", "ABSENT", "remarks", ""))));
+        assertThat(result).isNotNull();
 
-        Map<String, Object> summary = repo.dailySummary(DAY, 1L);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> sections = (List<Map<String, Object>>) summary.get("sections");
-        Map<String, Object> s1 = sections.stream()
-                .filter(s -> "s1".equals(s.get("sectionId"))).findFirst().orElseThrow();
-        assertThat(s1.get("lateCount")).isEqualTo(1);
-        assertThat(s1.get("leaveCount")).isEqualTo(1);
-        assertThat(((Number) s1.get("presentPercent")).doubleValue()).isEqualTo(66.7);
-        assertThat(((Number) summary.get("overallPercent")).doubleValue()).isEqualTo(66.7);
+        Map<String, Object> row = JdbcClient.create(ds).sql("""
+                        SELECT event_type, event_key, aggregate_type, aggregate_id, school_id, payload::text AS payload
+                        FROM tenant_school.outbox_events
+                        WHERE event_type = 'attendance-daily.upserted.v1'
+                        ORDER BY id DESC LIMIT 1
+                        """)
+                .query((rs, n) -> Map.<String, Object>of(
+                        "eventType", rs.getString("event_type"),
+                        "eventKey", rs.getString("event_key"),
+                        "aggregateType", rs.getString("aggregate_type"),
+                        "aggregateId", rs.getString("aggregate_id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "payload", rs.getString("payload")))
+                .single();
+
+        assertThat(row.get("eventType")).isEqualTo("attendance-daily.upserted.v1");
+        assertThat(row.get("aggregateType")).isEqualTo("AttendanceDaily");
+        assertThat(row.get("eventKey")).isEqualTo("AttendanceDailyUpserted:" + row.get("aggregateId"));
+        assertThat(row.get("schoolId")).isEqualTo(1L);
+        String payload = String.valueOf(row.get("payload"));
+        assertThat(payload).contains("\"sectionId\": \"s1\"")
+                .contains("\"classId\": \"c1\"")
+                .contains("\"academicYearId\": \"AY\"")
+                .contains("\"presentCount\": 1")
+                .contains("\"lateCount\": 1")
+                .contains("\"leaveCount\": 1")
+                .contains("\"absentCount\": 1")
+                .contains("\"totalEnrolled\": 4");
     }
 
     @Test
-    void unknownStatus_isRejected() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> repo.saveSectionRegister(Map.of(
-                "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
-                "records", List.of(Map.of("studentId", 1, "status", "HALF_DAY", "remarks", "")))))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Invalid attendance status");
+    void submitAttendanceSectionEmitsAttendanceDailyUpsertedEvent() {
+        long before = countOutbox();
+        repo.submitAttendanceSection(Map.of(
+                "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1));
+
+        assertThat(countOutbox()).isEqualTo(before + 1);
     }
 }
