@@ -1,5 +1,7 @@
 package com.custoking.ims.platformservice.application;
 
+import com.custoking.ims.platformservice.application.projection.BillingInvoiceProjector;
+import com.custoking.ims.platformservice.application.projection.ReferenceDimensionProjector;
 import com.custoking.ims.platformservice.persistence.BillingInvoiceReadRepository;
 import com.custoking.ims.platformservice.persistence.DimensionProjectionRepository;
 import com.custoking.ims.platformservice.persistence.ReportingCommandRepository;
@@ -83,8 +85,10 @@ class BillingInvoiceProjectionIntegrationTest {
         inbox = new ReportingEventInboxRepository(jdbcClient);
         commands = new ReportingCommandRepository(jdbcClient);
         billingInvoiceRead = new BillingInvoiceReadRepository(jdbcClient);
-        processor = new ReportingEventInboxProcessor(
-                inbox, commands, billingInvoiceRead, new DimensionProjectionRepository(jdbcClient), new ObjectMapper(), 50);
+        ObjectMapper objectMapper = new ObjectMapper();
+        processor = new ReportingEventInboxProcessor(inbox, commands, java.util.List.of(
+                new BillingInvoiceProjector(billingInvoiceRead, objectMapper),
+                new ReferenceDimensionProjector(new DimensionProjectionRepository(jdbcClient), objectMapper)), 50);
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             st.execute("TRUNCATE reporting.reporting_event_inbox, reporting.command_center_feed, reporting.billing_invoice_read");
         }
