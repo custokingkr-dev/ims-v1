@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   type BellSchedule, type BellPeriod, type ClassScheduleRow,
   getBellSchedules, createSchedule, renameSchedule, deleteSchedule,
-  addPeriod, updatePeriod, deletePeriod,
+  addPeriod, updatePeriod, deletePeriod, swapPeriods,
   getClassSchedules, setClassSchedule,
 } from '../../../../services/timetableApi';
 import { ModuleShell } from '../../ui';
@@ -153,14 +153,7 @@ export function BellSchedulesPanel() {
     const other = sorted[swapIdx];
     try {
       setError('');
-      await Promise.all([
-        updatePeriod(selectedSchedule.id, period.id, {
-          label: period.label, start: period.start, end: period.end, isBreak: period.isBreak, sortOrder: other.sortOrder,
-        }),
-        updatePeriod(selectedSchedule.id, other.id, {
-          label: other.label, start: other.start, end: other.end, isBreak: other.isBreak, sortOrder: period.sortOrder,
-        }),
-      ]);
+      await swapPeriods(selectedSchedule.id, period.id, other.id);
       await load();
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not reorder periods.'));

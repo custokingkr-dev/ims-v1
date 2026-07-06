@@ -177,6 +177,27 @@ class TimetableRepositoryIntegrationTest {
     }
 
     @Test
+    void swapPeriodOrderSwapsSortOrdersWithoutConstraintViolation() throws Exception {
+        long schoolId = seedSchool();
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        var p2 = repo.addPeriod(schoolId, schedId, "P2", "08:45", "09:30", false, 2);
+        long p1Id = ((Number) p1.get("id")).longValue();
+        long p2Id = ((Number) p2.get("id")).longValue();
+
+        repo.swapPeriodOrder(schoolId, schedId, p1Id, p2Id);
+
+        var periods = repo.bellSchedules(schoolId).get(0).get("periods");
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> periodList = (List<Map<String, Object>>) periods;
+        Map<String, Object> reloadedP1 = periodList.stream().filter(m -> ((Number) m.get("id")).longValue() == p1Id).findFirst().orElseThrow();
+        Map<String, Object> reloadedP2 = periodList.stream().filter(m -> ((Number) m.get("id")).longValue() == p2Id).findFirst().orElseThrow();
+        assertThat(reloadedP1.get("sortOrder")).isEqualTo(2);
+        assertThat(reloadedP2.get("sortOrder")).isEqualTo(1);
+    }
+
+    @Test
     void upsertRejectsNonActiveYearAndBreakAndUnknownSubject() throws Exception {
         long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
         String sec = seedSection(schoolId, classId, "6-A");

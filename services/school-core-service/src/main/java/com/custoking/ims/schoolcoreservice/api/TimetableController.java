@@ -125,6 +125,25 @@ public class TimetableController {
         }
     }
 
+    @PutMapping("/api/v1/timetable/bell-schedules/{id}/periods/swap")
+    public void swapPeriods(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable("id") long scheduleId,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        long idA = longValue(request.get("idA"),
+                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "idA is required"));
+        long idB = longValue(request.get("idB"),
+                () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "idB is required"));
+        try {
+            timetable.swapPeriodOrder(schoolId, scheduleId, idA, idB);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
     @DeleteMapping("/api/v1/timetable/bell-schedules/{id}/periods/{periodId}")
     public void deletePeriod(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
@@ -155,7 +174,11 @@ public class TimetableController {
         Long schoolId = TenantScope.resolveSchoolId(null);
         long scheduleId = longValue(request.get("scheduleId"),
                 () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "scheduleId is required"));
-        timetable.setClassSchedule(schoolId, classId, scheduleId);
+        try {
+            timetable.setClassSchedule(schoolId, classId, scheduleId);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
     }
 
     @GetMapping("/api/v1/timetable/class-subjects")

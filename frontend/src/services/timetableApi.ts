@@ -28,6 +28,8 @@ export const deleteSchedule = (id: number) => api.delete(`/timetable/bell-schedu
 export const addPeriod = (id: number, b: Omit<BellPeriod, 'id'>) => api.post(`/timetable/bell-schedules/${id}/periods`, b);
 export const updatePeriod = (id: number, pid: number, b: Omit<BellPeriod, 'id'>) => api.put(`/timetable/bell-schedules/${id}/periods/${pid}`, b);
 export const deletePeriod = (id: number, pid: number) => api.delete(`/timetable/bell-schedules/${id}/periods/${pid}`);
+export const swapPeriods = (scheduleId: number, idA: number, idB: number) =>
+  api.put(`/timetable/bell-schedules/${scheduleId}/periods/swap`, { idA, idB });
 export const getClassSchedules = (p?: object) => api.get<ClassScheduleRow[]>('/timetable/class-schedules', { params: p });
 export const setClassSchedule = (classId: string, scheduleId: number) => api.put(`/timetable/class-schedules/${encodeURIComponent(classId)}`, { scheduleId });
 

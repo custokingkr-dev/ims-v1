@@ -114,6 +114,7 @@ public class TimetableRepository {
     @Transactional
     public Map<String, Object> addPeriod(Long schoolId, long scheduleId, String label, String start, String end,
                                           boolean isBreak, int sortOrder) {
+        requireScheduleInSchool(schoolId, scheduleId);
         try {
             LocalTime startTime = LocalTime.parse(start, TIME_FMT);
             LocalTime endTime = LocalTime.parse(end, TIME_FMT);
@@ -172,6 +173,58 @@ public class TimetableRepository {
     }
 
     @Transactional
+    public void swapPeriodOrder(Long schoolId, long scheduleId, long idA, long idB) {
+        Integer orderA = jdbc.sql("""
+                SELECT sort_order FROM tenant_school.school_bell_periods
+                WHERE id = :id AND school_id = :s AND schedule_id = :sc
+                """)
+                .param("id", idA)
+                .param("s", schoolId)
+                .param("sc", scheduleId)
+                .query(Integer.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Period not found"));
+        Integer orderB = jdbc.sql("""
+                SELECT sort_order FROM tenant_school.school_bell_periods
+                WHERE id = :id AND school_id = :s AND schedule_id = :sc
+                """)
+                .param("id", idB)
+                .param("s", schoolId)
+                .param("sc", scheduleId)
+                .query(Integer.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Period not found"));
+
+        jdbc.sql("""
+                UPDATE tenant_school.school_bell_periods
+                SET sort_order = :neg
+                WHERE id = :idA AND school_id = :s
+                """)
+                .param("neg", -idA)
+                .param("idA", idA)
+                .param("s", schoolId)
+                .update();
+        jdbc.sql("""
+                UPDATE tenant_school.school_bell_periods
+                SET sort_order = :orderA
+                WHERE id = :idB AND school_id = :s
+                """)
+                .param("orderA", orderA)
+                .param("idB", idB)
+                .param("s", schoolId)
+                .update();
+        jdbc.sql("""
+                UPDATE tenant_school.school_bell_periods
+                SET sort_order = :orderB
+                WHERE id = :idA AND school_id = :s
+                """)
+                .param("orderB", orderB)
+                .param("idA", idA)
+                .param("s", schoolId)
+                .update();
+    }
+
+    @Transactional
     public void deletePeriod(Long schoolId, long periodId) {
         jdbc.sql("""
                 DELETE FROM tenant_school.school_bell_periods
@@ -206,6 +259,7 @@ public class TimetableRepository {
 
     @Transactional
     public void setClassSchedule(Long schoolId, String classId, long scheduleId) {
+        requireScheduleInSchool(schoolId, scheduleId);
         jdbc.sql("""
                 INSERT INTO tenant_school.school_class_bell_map (school_id, class_id, schedule_id)
                 VALUES (:s, :c, :sid)
@@ -215,6 +269,21 @@ public class TimetableRepository {
                 .param("c", classId)
                 .param("sid", scheduleId)
                 .update();
+    }
+
+    private void requireScheduleInSchool(Long schoolId, long scheduleId) {
+        boolean exists = jdbc.sql("""
+                SELECT 1 FROM tenant_school.school_bell_schedules
+                WHERE id = :scheduleId AND school_id = :schoolId
+                """)
+                .param("scheduleId", scheduleId)
+                .param("schoolId", schoolId)
+                .query(Integer.class)
+                .optional()
+                .isPresent();
+        if (!exists) {
+            throw new IllegalArgumentException("Schedule not found");
+        }
     }
 
     public String activeYearId(Long schoolId) {

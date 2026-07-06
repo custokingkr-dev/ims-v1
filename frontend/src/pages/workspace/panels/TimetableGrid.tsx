@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   getTimetable, putEntry, deleteEntry, getClassSubjects,
   type TimetableView, type ClassSubjects,
@@ -21,8 +22,9 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function TimetableGrid({ readOnly, staff }: Props) {
+export function TimetableGrid({ readOnly }: Props) {
   const { can } = usePermissions();
+  const { user } = useAuth();
   const canRead = can('timetable:read');
 
   const [classes, setClasses] = useState<ClassOpt[]>([]);
@@ -40,8 +42,17 @@ export function TimetableGrid({ readOnly, staff }: Props) {
   const [editSubject, setEditSubject] = useState('');
   const [editTeacherId, setEditTeacherId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [staffOptions, setStaffOptions] = useState<Array<{ id: number; name: string }>>([]);
 
-  const staffOptions = (staff || []).map((s) => ({ id: s.id, name: s.name }));
+  useEffect(() => {
+    if (!canRead || !user?.branchId) { setStaffOptions([]); return; }
+    void api.get<Array<{ id: number | string; name: string }>>(`/schools/${user.branchId}/staff`)
+      .then((r) => {
+        const list = Array.isArray(r.data) ? r.data : [];
+        setStaffOptions(list.map((row) => ({ id: Number(row.id), name: row.name })));
+      })
+      .catch(() => setStaffOptions([]));
+  }, [canRead, user?.branchId]);
 
   useEffect(() => {
     if (!canRead) return;
