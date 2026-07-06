@@ -35,4 +35,29 @@ export interface ClassSubjects { editable: boolean; yearId: string; subjects: { 
 export const getClassSubjects = (classId: string, yearId?: string) => api.get<ClassSubjects>('/timetable/class-subjects', { params: { classId, yearId } });
 export const addSubject = (classId: string, subjectName: string) => api.post('/timetable/class-subjects', { classId, subjectName });
 export const deleteSubject = (id: number) => api.delete(`/timetable/class-subjects/${id}`);
-// timetable (Task 7) added in its task.
+
+export interface TimetableEntry {
+  day: string;
+  periodId: number;
+  subjectName: string;
+  teacherId: number | null;
+  teacherName: string | null;
+}
+
+export interface TimetableView {
+  editable: boolean;
+  yearId: string;
+  sectionId: string;
+  noSchedule?: boolean;
+  days: string[];
+  periods: BellPeriod[];
+  entries: TimetableEntry[];
+  conflict?: string | null;
+}
+
+export const getTimetable = (sectionId: string, yearId?: string) =>
+  api.get<TimetableView>('/timetable', { params: { sectionId, yearId } });
+export const putEntry = (b: { sectionId: string; day: string; periodId: number; subjectName: string; teacherId: number | null }) =>
+  api.put<TimetableView>('/timetable/entry', b);
+export const deleteEntry = (p: { sectionId: string; day: string; periodId: number }) =>
+  api.delete('/timetable/entry', { params: p });

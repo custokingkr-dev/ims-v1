@@ -433,7 +433,7 @@ export default function UnifiedWorkspacePage() {
 
           {panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
-          {panel === 'timetable' && workspace && <TimetablePanel workspace={workspace} onRefresh={refresh} />}
+          {panel === 'timetable' && <TimetablePanel readOnly={isTeacher} staff={workspace?.staff} />}
 
           {panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
 
