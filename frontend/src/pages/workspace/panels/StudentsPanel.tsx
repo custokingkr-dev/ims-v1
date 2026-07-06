@@ -27,6 +27,12 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentModalLoading, setStudentModalLoading] = useState(false);
   const [studentsError, setStudentsError] = useState<string | null>(null);
   const [studentDetailLimited, setStudentDetailLimited] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Record<string, any>>({});
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [classOptions, setClassOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string }>>([]);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage) => {
     try {
@@ -74,6 +80,73 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setStudentDetailLimited(true);
     } finally {
       setStudentModalLoading(false);
+    }
+  };
+
+  const closeStudentModal = () => {
+    setStudentModalOpen(false);
+    setEditing(false);
+    setModalError(null);
+  };
+
+  // NOTE: GET /api/v1/students/{id} returns the flat `StudentRow` shape (Jackson-serialized
+  // record) — field names are `admissionNo`, `boardRegNo`, `dob`, and `houseNumber`/`street`/
+  // `locality`/`city`/`state`/`pinCode` as top-level siblings (address is a plain joined string,
+  // not a nested object). This differs from the `/workspace`-suffixed detail shape. The edit form
+  // below is pre-filled/saved using these actual flat keys.
+  const startEdit = () => {
+    if (!studentDetail) return;
+    setModalError(null);
+    setForm({
+      fullName: studentDetail.fullName ?? '',
+      rollNo: studentDetail.rollNo ?? '',
+      admissionNo: studentDetail.admissionNo ?? '',
+      boardRegNo: studentDetail.boardRegNo ?? '',
+      dob: studentDetail.dob ?? '',
+      gender: studentDetail.gender ?? '',
+      fatherName: studentDetail.fatherName ?? '',
+      fatherContact: studentDetail.fatherContact ?? '',
+      motherName: studentDetail.motherName ?? '',
+      phone: studentDetail.phone ?? '',
+      houseNumber: studentDetail.houseNumber ?? '',
+      street: studentDetail.street ?? '',
+      locality: studentDetail.locality ?? '',
+      city: studentDetail.city ?? '',
+      state: studentDetail.state ?? '',
+      pinCode: studentDetail.pinCode ?? '',
+      classId: studentDetail.classId ?? '',
+      sectionId: studentDetail.sectionId ?? '',
+    });
+    setEditing(true);
+    void api.get('/classes', { params: schoolScopedParams })
+      .then((r) => setClassOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setClassOptions([]));
+    if (studentDetail.classId) {
+      void api.get(`/classes/${encodeURIComponent(studentDetail.classId)}/sections`, { params: schoolScopedParams })
+        .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
+    }
+  };
+
+  const onClassChange = (classId: string) => {
+    setForm((f) => ({ ...f, classId, sectionId: '' }));
+    void api.get(`/classes/${encodeURIComponent(classId)}/sections`, { params: schoolScopedParams })
+      .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
+  };
+
+  const saveStudent = async () => {
+    if (!studentDetail) return;
+    setSaving(true);
+    setModalError(null);
+    try {
+      await api.put(`/workspace/students/${studentDetail.id}`, { ...form, ...(schoolScopedParams || {}) });
+      const res = await api.get(`/students/${studentDetail.id}`);
+      setStudentDetail(res.data);
+      setEditing(false);
+      await loadStudents(studentFilters, studentsPage);
+    } catch (err: unknown) {
+      setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : 'Could not save changes.'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -262,15 +335,46 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       </ModuleShell>
 
       {studentModalOpen && (
-        <div className="ck-modal-bg" onClick={() => setStudentModalOpen(false)}>
+        <div className="ck-modal-bg" onClick={closeStudentModal}>
           <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Student details</div>
-              <button className="ck-modal-x" onClick={() => setStudentModalOpen(false)}>×</button>
+              {can('student:update') && !editing && studentDetail && (
+                <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={startEdit}>Edit</button>
+              )}
+              <button className="ck-modal-x" onClick={closeStudentModal}>×</button>
             </div>
             <div className="ck-modal-body">
               {studentModalLoading || !studentDetail ? (
                 <div className="ts">Loading student details…</div>
+              ) : editing ? (
+                <div className="ck-student-modal-info">
+                  {modalError && <div className="ck-alert ck-alert-r" style={{ gridColumn: '1/-1' }}><span>!</span><div>{modalError}</div></div>}
+                  <label>Full name<input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
+                  <label>Admission No<input value={form.admissionNo} onChange={(e) => setForm({ ...form, admissionNo: e.target.value })} /></label>
+                  <label>Roll No<input value={form.rollNo} onChange={(e) => setForm({ ...form, rollNo: e.target.value })} /></label>
+                  <label>Board Reg No<input value={form.boardRegNo} onChange={(e) => setForm({ ...form, boardRegNo: e.target.value })} /></label>
+                  <label>Class<select value={form.classId} onChange={(e) => onClassChange(e.target.value)}>
+                    <option value="">Select class</option>
+                    {classOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select></label>
+                  <label>Section<select value={form.sectionId} onChange={(e) => setForm({ ...form, sectionId: e.target.value })} disabled={!form.classId}>
+                    <option value="">Select section</option>
+                    {sectionOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select></label>
+                  <label>Date of birth<input type="date" value={form.dob || ''} onChange={(e) => setForm({ ...form, dob: e.target.value })} /></label>
+                  <label>Gender<input value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} /></label>
+                  <label>Father name<input value={form.fatherName} onChange={(e) => setForm({ ...form, fatherName: e.target.value })} /></label>
+                  <label>Father contact<input value={form.fatherContact} onChange={(e) => setForm({ ...form, fatherContact: e.target.value })} /></label>
+                  <label>Mother name<input value={form.motherName} onChange={(e) => setForm({ ...form, motherName: e.target.value })} /></label>
+                  <label>Phone<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
+                  <label>House / building<input value={form.houseNumber} onChange={(e) => setForm({ ...form, houseNumber: e.target.value })} /></label>
+                  <label>Street<input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} /></label>
+                  <label>Locality<input value={form.locality} onChange={(e) => setForm({ ...form, locality: e.target.value })} /></label>
+                  <label>City<input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label>
+                  <label>State<input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></label>
+                  <label>PIN code<input value={form.pinCode} onChange={(e) => setForm({ ...form, pinCode: e.target.value })} /></label>
+                </div>
               ) : (
                 <div className="ck-student-modal-grid">
                   {studentDetailLimited && (
@@ -325,7 +429,14 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               )}
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" onClick={() => setStudentModalOpen(false)}>Close</button>
+              {editing ? (
+                <>
+                  <button className="ck-btn ck-btn-ghost" onClick={() => { setEditing(false); setModalError(null); }} disabled={saving}>Cancel</button>
+                  <button className="ck-btn ck-btn-g" onClick={saveStudent} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
+                </>
+              ) : (
+                <button className="ck-btn ck-btn-ghost" onClick={closeStudentModal}>Close</button>
+              )}
             </div>
           </div>
         </div>
