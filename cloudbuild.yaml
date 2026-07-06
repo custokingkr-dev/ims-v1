@@ -130,8 +130,13 @@ steps:
         }
 
         # school-core-service = tenant_school + student + attendance + fee + catalog (Phase 2 merge #3).
-        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV}" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
+        # SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps it to
+        # school-core.outbox.pubsub.topic-id, which @ConditionalOnProperty gates the real PubSub relay on.
+        # Publishes to the SHARED reporting-events topic (same one billing uses); reporting's existing
+        # subscription routes by eventType. --min-instances=1: the @Scheduled outbox relay only polls while alive.
+        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest" \
+          "--min-instances=1"
 
         # identity calls tenant-school directly; that domain now lives in school-core (env-suffixed URL).
         TENANT_SCHOOL_URL="$(gcloud run services describe custoking-school-core-service-${_ENV} --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
