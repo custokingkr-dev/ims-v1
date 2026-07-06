@@ -23,6 +23,8 @@ import { PlanningPanel } from './workspace/panels/PlanningPanel';
 import { CatalogPanel } from './workspace/panels/CatalogPanel';
 import { AddStudentPanel } from './workspace/panels/AddStudentPanel';
 import { SchoolStructurePanel } from './workspace/panels/SchoolStructurePanel';
+import { BellSchedulesPanel } from './workspace/panels/setup/BellSchedulesPanel';
+import { SubjectsMasterPanel } from './workspace/panels/setup/SubjectsMasterPanel';
 import { BulkImportPanel } from './workspace/panels/BulkImportPanel';
 import { FirefightingDashboardPanel } from './workspace/panels/FirefightingDashboardPanel';
 import { FirefightingNewPanel } from './workspace/panels/FirefightingNewPanel';
@@ -423,11 +425,15 @@ export default function UnifiedWorkspacePage() {
 
           {panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 
+          {panel === 'bellschedules' && !isPlatformAdmin && <BellSchedulesPanel />}
+
+          {panel === 'subjectsmaster' && !isPlatformAdmin && <SubjectsMasterPanel />}
+
           {panel === 'bulkimport' && <BulkImportPanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
           {panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
-          {panel === 'timetable' && workspace && <TimetablePanel workspace={workspace} onRefresh={refresh} />}
+          {panel === 'timetable' && <TimetablePanel readOnly={isTeacher} staff={workspace?.staff} />}
 
           {panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
 

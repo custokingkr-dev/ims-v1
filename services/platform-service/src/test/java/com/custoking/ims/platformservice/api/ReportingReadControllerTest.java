@@ -141,12 +141,9 @@ class ReportingReadControllerTest {
                 "feeOverdueCount", 3,
                 "firefightingActive", 2,
                 "pendingApprovals", 1));
-        when(reporting.timetable(4L)).thenReturn(List.of(Map.of("id", "1", "day", "Monday")));
-
         Map<String, Object> response = compat.workspace("reporting-token", 4L);
 
         assertThat(response).containsKeys("school", "dashboard", "students", "fees", "attendance");
-        assertThat(response).containsEntry("timetable", List.of(Map.of("id", "1", "day", "Monday")));
         assertThat(response.get("dashboard"))
                 .asInstanceOf(MAP)
                 .containsEntry("students", 125.0)

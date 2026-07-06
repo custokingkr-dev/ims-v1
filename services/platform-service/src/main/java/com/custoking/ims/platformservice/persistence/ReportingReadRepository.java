@@ -263,28 +263,6 @@ public class ReportingReadRepository {
                 "broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts WHERE school_id = :schoolId", schoolId));
     }
 
-    public List<Map<String, Object>> timetable(Long schoolId) {
-        if (schoolId == null) {
-            return List.of();
-        }
-        return jdbc.sql("""
-                SELECT id, day_name, period_label, class_section, subject, teacher
-                FROM tenant_school.school_timetable_entries
-                WHERE school_id = :schoolId
-                ORDER BY created_at DESC, id DESC
-                LIMIT 200
-                """)
-                .param("schoolId", schoolId)
-                .query((rs, rowNum) -> row(
-                        "id", String.valueOf(rs.getLong("id")),
-                        "day", rs.getString("day_name"),
-                        "period", rs.getString("period_label"),
-                        "classSection", rs.getString("class_section"),
-                        "subject", rs.getString("subject") == null ? "" : rs.getString("subject"),
-                        "teacher", rs.getString("teacher") == null ? "" : rs.getString("teacher")))
-                .list();
-    }
-
     public Map<String, Object> vendorDues(Long schoolId) {
         if (schoolId == null) {
             return Map.of(

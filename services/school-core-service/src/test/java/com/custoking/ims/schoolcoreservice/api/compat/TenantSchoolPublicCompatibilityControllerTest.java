@@ -74,36 +74,6 @@ class TenantSchoolPublicCompatibilityControllerTest {
         verify(schools, never()).addStaff(5L, request);
     }
 
-    @Test
-    void addsTimetableUsingAuthenticatedSchoolHeader() {
-        // TenantContextFilter (in production) populates schoolId=5 from X-Authenticated-School-Id header.
-        // In direct controller tests, we set TenantContext manually; resolveSchoolId(null) returns auth school.
-        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 5L, null));
-        Map<String, Object> request = Map.of(
-                "day", "Monday",
-                "period", "P1",
-                "classSection", "9-B",
-                "subject", "Math",
-                "teacher", "Asha");
-        when(schools.addTimetableEntry(eq(5L), eq(request))).thenReturn(Map.of("id", "1"));
-
-        assertThat(controller.addTimetableFromWorkspace("tok", "5", request)).containsEntry("id", "1");
-        verify(schools).addTimetableEntry(5L, request);
-    }
-
-    @Test
-    void timetableRequiresSchoolScope() {
-        // Superadmin with no schoolId in body/context → resolveSchoolId(null) returns null → 400
-        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
-        Map<String, Object> request = Map.of("day", "Monday", "period", "P1", "classSection", "9-B");
-
-        assertThatThrownBy(() -> controller.addTimetableFromWorkspace("tok", null, request))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_REQUEST));
-        verify(schools, never()).addTimetableEntry(null, request);
-    }
-
     // --- FIX 3: compat cross-tenant test via real TenantContextFilter ---
 
     @Test

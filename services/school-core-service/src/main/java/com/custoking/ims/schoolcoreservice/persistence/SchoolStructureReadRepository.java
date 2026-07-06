@@ -314,28 +314,6 @@ public class SchoolStructureReadRepository {
         return staffRow(id);
     }
 
-    @Transactional
-    public Map<String, Object> addTimetableEntry(Long schoolId, Map<String, Object> request) {
-        requireSchool(schoolId);
-        Long id = jdbc.sql("""
-                INSERT INTO tenant_school.school_timetable_entries (
-                    school_id, day_name, period_label, class_section, subject, teacher
-                ) VALUES (
-                    :schoolId, :day, :period, :classSection, :subject, :teacher
-                )
-                RETURNING id
-                """)
-                .param("schoolId", schoolId)
-                .param("day", requiredString(request.get("day"), "day"))
-                .param("period", requiredString(request.get("period"), "period"))
-                .param("classSection", requiredString(request.get("classSection"), "classSection"))
-                .param("subject", trimToNull(str(request.get("subject"), "")))
-                .param("teacher", trimToNull(str(request.get("teacher"), "")))
-                .query(Long.class)
-                .single();
-        return timetableRow(id);
-    }
-
     private void ensureSchoolSections(Long schoolId, int classCount, int sectionCount) {
         List<SchoolClassRow> selectedClasses = jdbc.sql("""
                         SELECT id, name, sort_order
@@ -401,23 +379,6 @@ public class SchoolStructureReadRepository {
                         "department", rs.getString("department"),
                         "monthlySalary", rs.getLong("monthly_salary"),
                         "payrollStatus", rs.getString("payroll_status")))
-                .single();
-    }
-
-    private Map<String, Object> timetableRow(Long id) {
-        return jdbc.sql("""
-                SELECT id, day_name, period_label, class_section, subject, teacher
-                FROM tenant_school.school_timetable_entries
-                WHERE id = :id
-                """)
-                .param("id", id)
-                .query((rs, rowNum) -> row(
-                        "id", String.valueOf(rs.getLong("id")),
-                        "day", rs.getString("day_name"),
-                        "period", rs.getString("period_label"),
-                        "classSection", rs.getString("class_section"),
-                        "subject", rs.getString("subject") == null ? "" : rs.getString("subject"),
-                        "teacher", rs.getString("teacher") == null ? "" : rs.getString("teacher")))
                 .single();
     }
 
