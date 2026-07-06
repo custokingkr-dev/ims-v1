@@ -47,7 +47,7 @@ public class CatalogPublicCompatibilityController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "catalog:read");
-        Long scope = TenantScope.resolveSchoolId(schoolId);
+        Long scope = TenantScope.resolvePlatformReadScope(schoolId);
         return catalog.ordersPage(scope, status, page, size);
     }
 
@@ -56,7 +56,7 @@ public class CatalogPublicCompatibilityController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "catalog:read");
-        Long scope = TenantScope.resolveSchoolId(schoolId);
+        Long scope = TenantScope.resolvePlatformReadScope(schoolId);
         return catalog.orderStats(scope);
     }
 

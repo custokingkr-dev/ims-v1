@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,7 +54,7 @@ public class CatalogReadRepository {
         StringBuilder sql = new StringBuilder(orderSelect()).append(" WHERE 1=1");
         if (schoolId != null) sql.append(" AND school_id = :schoolId");
         if (status != null && !status.isBlank()) sql.append(" AND status = :status");
-        sql.append(" ORDER BY created_at DESC NULLS LAST LIMIT :limit");
+        sql.append(" ORDER BY co.created_at DESC NULLS LAST LIMIT :limit");
 
         var spec = jdbc.sql(sql.toString()).param("limit", Math.max(1, Math.min(limit, 500)));
         if (schoolId != null) spec = spec.param("schoolId", schoolId);
@@ -61,7 +62,9 @@ public class CatalogReadRepository {
         return spec.query(CatalogOrderRow.class).list();
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> ordersPage(Long schoolId, String status, int page, int size) {
+        allowCrossSchoolReadForOperations();
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 200));
 
@@ -75,7 +78,7 @@ public class CatalogReadRepository {
         long totalElements = countSpec.query(Long.class).single();
 
         StringBuilder sql = new StringBuilder(orderSelect()).append(filter)
-                .append(" ORDER BY created_at DESC NULLS LAST, id DESC LIMIT :size OFFSET :offset");
+                .append(" ORDER BY co.created_at DESC NULLS LAST, co.id DESC LIMIT :size OFFSET :offset");
         var itemSpec = jdbc.sql(sql.toString())
                 .param("size", safeSize)
                 .param("offset", (long) safePage * safeSize);
@@ -92,8 +95,20 @@ public class CatalogReadRepository {
                 "totalPages", totalPages);
     }
 
+    @Transactional(readOnly = true)
     public Optional<CatalogOrderRow> order(String id) {
-        return jdbc.sql(orderSelect() + " WHERE id = :id")
+        allowCrossSchoolReadForOperations();
+        return orderQuery(id);
+    }
+
+    /**
+     * Non-bypassing order lookup for internal/write flows. RLS stays enforced here, so an
+     * OPERATIONS user (who gets a cross-school read bypass only via {@link #order(String)},
+     * {@link #ordersPage}, {@link #orderStats}) cannot resolve — and then mutate — another
+     * school's order through a write path that begins with a lookup.
+     */
+    private Optional<CatalogOrderRow> orderQuery(String id) {
+        return jdbc.sql(orderSelect() + " WHERE co.id = :id")
                 .param("id", id)
                 .query(CatalogOrderRow.class)
                 .optional();
@@ -120,7 +135,9 @@ public class CatalogReadRepository {
                 .list();
     }
 
+    @Transactional(readOnly = true)
     public Map<String, Object> orderStats(Long schoolId) {
+        allowCrossSchoolReadForOperations();
         if (schoolId == null) {
             return Map.of(
                     "totalOrders", count("SELECT count(*) FROM catalog.catalog_orders"),
@@ -273,7 +290,7 @@ public class CatalogReadRepository {
                 .param("eventDate", localDate(firstPresent(orderData, "eventDate")))
                 .param("createdAt", now)
                 .update();
-        return order(id).orElseThrow();
+        return orderQuery(id).orElseThrow();
     }
 
     @Transactional
@@ -472,19 +489,30 @@ public class CatalogReadRepository {
 
     private String orderSelect() {
         return """
-                SELECT id, category, order_data, subtotal, gst, total_amount, status,
-                       class_group, logo_on_uniform, notebook_cover_logo, notebook_delivery_mode,
-                       notebook_spine_name, stationery_pack_type, event_name, event_date,
-                       design_status, superadmin_approval_status, required_by_date,
-                       estimated_delivery, placed_by, placed_at, notes, created_at, school_id,
-                       version, created_by, updated_by, vendor_paid_at, vendor_paid_by,
-                       vendor_payment_notes
-                FROM catalog.catalog_orders
+                SELECT co.id, co.category, co.order_data, co.subtotal, co.gst, co.total_amount, co.status,
+                       co.class_group, co.logo_on_uniform, co.notebook_cover_logo, co.notebook_delivery_mode,
+                       co.notebook_spine_name, co.stationery_pack_type, co.event_name, co.event_date,
+                       co.design_status, co.superadmin_approval_status, co.required_by_date,
+                       co.estimated_delivery, co.placed_by, co.placed_at, co.notes, co.created_at, co.school_id,
+                       co.version, co.created_by, co.updated_by, co.vendor_paid_at, co.vendor_paid_by,
+                       co.vendor_payment_notes, s.name AS school_name
+                FROM catalog.catalog_orders co
+                LEFT JOIN tenant_school.schools s ON s.id = co.school_id
                 """;
     }
 
+    /**
+     * Operations users are cross-school for the orders read; grant a transaction-local RLS bypass
+     * (superadmin already bypasses session-level). MUST be called inside a @Transactional read.
+     */
+    private void allowCrossSchoolReadForOperations() {
+        if (TenantContext.get().isOperations()) {
+            jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
+        }
+    }
+
     private CatalogOrderRow requiredOrder(String id) {
-        return order(id).orElseThrow(() -> new IllegalArgumentException("Order not found"));
+        return orderQuery(id).orElseThrow(() -> new IllegalArgumentException("Order not found"));
     }
 
     private void requireSchool(Long schoolId) {
@@ -653,7 +681,8 @@ public class CatalogReadRepository {
             String updatedBy,
             OffsetDateTime vendorPaidAt,
             Long vendorPaidBy,
-            String vendorPaymentNotes) {
+            String vendorPaymentNotes,
+            String schoolName) {
     }
 
     public record PendingCatalogOrderRow(

@@ -35,5 +35,7 @@ public final class TenantContext {
 
     public boolean isSuperAdmin() { return role != null && role.equalsIgnoreCase("SUPERADMIN"); }
 
+    public boolean isOperations() { return role != null && role.equalsIgnoreCase("OPERATIONS"); }
+
     public boolean isAuthenticated() { return userId != null || (role != null && !role.isBlank()); }
 }

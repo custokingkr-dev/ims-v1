@@ -84,6 +84,7 @@ class CatalogPublicCompatibilityControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 }

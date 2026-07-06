@@ -128,6 +128,7 @@ class CatalogReadControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null);
     }
 }

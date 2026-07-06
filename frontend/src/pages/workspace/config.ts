@@ -91,7 +91,7 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
     title: 'Supply OS',
     items: [
       { key: 'catalog', label: 'Catalog',        icon: '⊞', module: 'ORDERS' },
-      { key: 'orders',  label: 'School Orders', icon: '📦', module: 'ORDERS' },
+      { key: 'orders',  label: 'All Orders', icon: '📦', module: 'ORDERS' },
     ],
   },
   {

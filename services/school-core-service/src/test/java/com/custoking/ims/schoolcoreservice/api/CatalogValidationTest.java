@@ -290,7 +290,7 @@ class CatalogValidationTest {
                 null, null, null, null, null, null, null, null,
                 "NOT_REQUIRED", "NOT_REQUIRED", null, "1-2 weeks",
                 null, null, null, OffsetDateTime.now(), 4L, 0L,
-                null, null, null, null, null);
+                null, null, null, null, null, null);
     }
 
     private AnnualPlanItemRow stubAnnualPlanItemRow() {

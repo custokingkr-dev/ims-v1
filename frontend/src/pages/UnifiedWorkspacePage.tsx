@@ -479,7 +479,11 @@ export default function UnifiedWorkspacePage() {
           {panel === 'sa-revenue' && isPlatformAdmin && <SaRevenuePanel />}
           {panel === 'sa-catalog' && isPlatformAdmin && <SaCatalogPanel />}
 
-          {panel === 'orders' && !isPlatformAdmin && (
+          {panel === 'orders' && isOperations && (
+            <SaAllOrdersPanel onNewOrder={() => setPanel('catalog')} canManage={false} />
+          )}
+
+          {panel === 'orders' && !isPlatformAdmin && !isOperations && (
             <AdminOrdersPanel
               orders={orderRows}
               stats={liveOrderStats}
