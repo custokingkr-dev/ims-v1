@@ -108,3 +108,27 @@ export interface AttendanceSummaryReport {
   from: string; to: string; sections: SummarySection[];
   overall: { presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number };
 }
+
+export interface AbsenteeStudent {
+  studentId: number;
+  fullName: string;
+  admissionNo: string;
+  rollNo: string;
+  classSection: string;
+  parentContact: string;
+  hasContact: boolean;
+  alreadyQueued: boolean;
+}
+export interface AbsenteeListResponse {
+  date: string;
+  sectionId: string | null;
+  students: AbsenteeStudent[];
+  totalAbsent: number;
+  queuedCount: number;
+}
+export interface NotifyAbsenteesResponse {
+  date: string;
+  queued: number;
+  skippedNoContact: number;
+  skippedAlreadyQueued: number;
+}
