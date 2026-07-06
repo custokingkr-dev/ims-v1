@@ -53,9 +53,10 @@ public class FeeReadController {
     @GetMapping("/bands")
     public List<FeeBandRow> bands(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestParam(required = false) String academicYearId) {
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return fees.bands(academicYearId);
+        return fees.bands(academicYearId, TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping("/items")
@@ -69,9 +70,10 @@ public class FeeReadController {
     @GetMapping("/structure")
     public Map<String, Object> structure(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestParam(required = false) String academicYearId) {
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return execute(() -> fees.feeStructure(academicYearId));
+        return execute(() -> fees.feeStructure(academicYearId, TenantScope.resolveSchoolId(schoolId)));
     }
 
     @GetMapping("/structure/match")
@@ -101,12 +103,14 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @Valid @RequestBody CreateBandRequest req) {
         requireToken(token, "fee:write");
+        Long schoolId = TenantScope.resolveSchoolId(req.schoolId());
         Map<String, Object> body = new HashMap<>();
         body.put("name", req.name());
         if (req.classFrom() != null) body.put("classFrom", req.classFrom());
         if (req.classTo() != null) body.put("classTo", req.classTo());
         if (req.schedules() != null) body.put("schedules", req.schedules());
         if (req.discount() != null) body.put("discount", req.discount());
+        if (schoolId != null) body.put("schoolId", schoolId);
         return execute(() -> fees.createBand(body));
     }
 

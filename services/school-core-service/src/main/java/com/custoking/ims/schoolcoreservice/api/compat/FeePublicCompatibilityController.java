@@ -38,9 +38,10 @@ public class FeePublicCompatibilityController {
     @GetMapping("/api/v1/fee-structure")
     public Map<String, Object> feeStructure(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestParam(required = false) String academicYearId) {
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return run(() -> fees.feeStructure(academicYearId));
+        return run(() -> fees.feeStructure(academicYearId, TenantScope.resolveSchoolId(schoolId)));
     }
 
     @PostMapping("/api/v1/fee-structure/item")
@@ -73,7 +74,15 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
-        return run(() -> fees.createBand(request));
+        // Parse inside run(): a non-numeric schoolId throws NumberFormatException (an
+        // IllegalArgumentException), which run() maps to 400 rather than a raw 500.
+        return run(() -> {
+            Long requested = request.get("schoolId") == null ? null
+                    : Long.valueOf(String.valueOf(request.get("schoolId")));
+            Long scope = TenantScope.resolveSchoolId(requested);
+            if (scope != null) request.put("schoolId", scope);
+            return fees.createBand(request);
+        });
     }
 
     @PutMapping("/api/v1/fee-structure/band/{id}")

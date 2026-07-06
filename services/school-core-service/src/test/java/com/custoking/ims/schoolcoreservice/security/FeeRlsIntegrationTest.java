@@ -41,9 +41,11 @@ class FeeRlsIntegrationTest {
             st.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA fee TO app_rt");
             st.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA fee TO app_rt");
 
-            // Seed a fee_band (required by FK on fee_assignments).
-            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, academic_year_id) " +
-                    "VALUES ('band-rls-1', 'Band RLS', 1, 12, 0.0, 'AY-2024')");
+            // Seed a fee_band (required by FK on fee_assignments). Owned by school 10 (arbitrary —
+            // fee_bands RLS is exercised separately by FeeBandSchoolScopeRepoTest); this fixture
+            // only needs the band to exist for the fee_assignments FK.
+            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, academic_year_id, school_id) " +
+                    "VALUES ('band-rls-1', 'Band RLS', 1, 12, 0.0, 'AY-2024', 10)");
 
             // Seed fee_assignments: school 10 (A) x2, school 20 (B) x1 — as owner (bypasses RLS).
             // Each row needs a unique (student_id, academic_year_id) combination.

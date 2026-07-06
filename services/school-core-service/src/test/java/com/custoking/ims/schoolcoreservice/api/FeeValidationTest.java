@@ -1,6 +1,8 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -39,6 +41,12 @@ class FeeValidationTest {
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
+        TenantContext.set(new TenantContext(1L, "admin@school.test", "ADMIN", 10L, null));
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     // ─── POST /bands ─────────────────────────────────────────────────────────

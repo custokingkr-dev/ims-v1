@@ -2,6 +2,8 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.api.dto.CreateBandRequest;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,14 +24,19 @@ class FeeReadControllerTest {
     private final FeeReadRepository fees = mock(FeeReadRepository.class);
     private final FeeReadController controller = new FeeReadController(fees, "fee-token");
 
+    @AfterEach
+    void cleanup() {
+        TenantContext.clear();
+    }
+
     @Test
     void bandsRejectsInvalidTokenBeforeQuerying() {
-        assertThatThrownBy(() -> controller.bands("wrong-token", "2026"))
+        assertThatThrownBy(() -> controller.bands("wrong-token", "2026", null))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        verify(fees, never()).bands("2026");
+        verify(fees, never()).bands("2026", null);
     }
 
     @Test
@@ -48,7 +55,8 @@ class FeeReadControllerTest {
     @Test
     void createBandMapsRepositoryValidationToBadRequest() {
         // DTO with name present but invalid class range — repo throws IllegalArgumentException
-        CreateBandRequest req = new CreateBandRequest("General", 5, 1, null, null);
+        TenantContext.set(new TenantContext(1L, "admin@school.test", "ADMIN", 10L, null));
+        CreateBandRequest req = new CreateBandRequest("General", 5, 1, null, null, null);
         when(fees.createBand(anyMap())).thenThrow(new IllegalArgumentException("Class to must be >= class from"));
 
         assertThatThrownBy(() -> controller.createBand("fee-token", req))
