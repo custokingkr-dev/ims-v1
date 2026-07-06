@@ -440,11 +440,11 @@ function ActionInsightsSection({
   if (!metrics) return null;
 
   const { fees, photography, lifecycle, attendance, vendorDues, reorderSignals } = metrics;
-  const overdueRupees = Math.round(fees.totalOverdueAmountPaise / 100);
+  const overdueRupees = fees.totalOverdueAmountPaise / 100;
   const feeVariant = fees.defaulterCount > 0 ? 'danger' : 'ok';
   const attVariant = attendance.sectionsBelowThresholdCount > 0 ? 'warn' : 'ok';
-  const photoCollectedRupees = Math.round(photography.collectedAmount / 100);
-  const photoPendingRupees = Math.round(photography.pendingAmount / 100);
+  const photoCollectedRupees = photography.collectedAmount / 100;
+  const photoPendingRupees = photography.pendingAmount / 100;
 
   return (
     <section>
@@ -459,7 +459,7 @@ function ActionInsightsSection({
           description="Students with outstanding fee balance in the active academic year."
           metrics={[
             { value: fees.defaulterCount, label: 'defaulters', variant: feeVariant },
-            ...(overdueRupees > 0 ? [{ value: `₹${overdueRupees.toLocaleString('en-IN')}`, label: 'overdue', variant: 'danger' as const }] : []),
+            ...(overdueRupees > 0 ? [{ value: `₹${overdueRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'overdue', variant: 'danger' as const }] : []),
             ...(fees.oldestDueDays > 0 ? [{ value: `${fees.oldestDueDays}d`, label: 'oldest due', variant: 'warn' as const }] : []),
           ]}
           ctaLabel="View Defaulters"
@@ -480,8 +480,8 @@ function ActionInsightsSection({
           title="Class Photography"
           description="Student contribution status for the upcoming photography event."
           metrics={[
-            ...(photoCollectedRupees > 0 ? [{ value: `₹${photoCollectedRupees.toLocaleString('en-IN')}`, label: 'collected', variant: 'ok' as const }] : []),
-            ...(photoPendingRupees > 0 ? [{ value: `₹${photoPendingRupees.toLocaleString('en-IN')}`, label: 'pending', variant: 'warn' as const }] : []),
+            ...(photoCollectedRupees > 0 ? [{ value: `₹${photoCollectedRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'collected', variant: 'ok' as const }] : []),
+            ...(photoPendingRupees > 0 ? [{ value: `₹${photoPendingRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'pending', variant: 'warn' as const }] : []),
             ...(photography.eventId == null ? [{ value: '—', label: 'no active event' }] : []),
           ]}
           ctaLabel="View Payments"
@@ -504,7 +504,7 @@ function ActionInsightsSection({
           description="Approved orders and firefighting requests with outstanding vendor payment."
           metrics={[
             { value: (vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0), label: 'unpaid orders', variant: ((vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0)) > 0 ? 'warn' : 'ok' },
-            ...(vendorDues?.totalDuesPaise > 0 ? [{ value: `₹${Math.round(vendorDues.totalDuesPaise / 100).toLocaleString('en-IN')}`, label: 'total due', variant: 'warn' as const }] : []),
+            ...(vendorDues?.totalDuesPaise > 0 ? [{ value: `₹${(vendorDues.totalDuesPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'total due', variant: 'warn' as const }] : []),
           ]}
           ctaLabel="View Dues"
           onCta={onOpenVendorDues}

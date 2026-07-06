@@ -99,7 +99,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
           <Stat label="Sent this month" value={saInvStats?.sentThisMonth ?? 0} sub="Invoices issued" pill="Current" tone="blue" />
           <Stat label="Paid" value={saInvStats?.paid ?? 0} sub="Settled invoices" pill="Received" tone="green" />
           <Stat label="Pending" value={saInvStats?.pending ?? 0} sub="Awaiting payment" pill="Action" tone="orange" />
-          <Stat label="Total invoiced" value={`₹${formatMoney(Math.round(Number(saInvStats?.totalInvoiced || 0) / 100))}`} sub="Grand total" pill="Paise→₹" tone="blue" />
+          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total" pill="Paise→₹" tone="blue" />
         </div>
         <div className="ck-card">
           {saInvoicesLoading ? <div style={{ padding: 16 }}>Loading invoices…</div>
@@ -114,7 +114,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td><div className="tb">{row.id}</div><div className="ts">{row.description || 'Invoice'}</div></td>
                     <td>{row.school || '—'}</td>
                     <td>{row.orderRef || '—'}</td>
-                    <td>₹{formatMoney(Math.round(Number(row.total || 0) / 100))}</td>
+                    <td>₹{formatMoney(Number(row.total || 0) / 100)}</td>
                     <td><span className={`ck-status ${String(row.status).toLowerCase().includes('paid') ? 'sg' : 'sam'}`}>{row.status}</span></td>
                     <td>{row.issuedAt || '—'}</td>
                     <td style={{ display: 'flex', gap: 8 }}>
@@ -160,9 +160,9 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
               </div>
               <div className="ck-card" style={{ marginTop: 16 }}>
                 <div className="ck-form-body">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>Subtotal</span><strong>₹{formatMoney(Math.round(Number(saInvData.amount || 0) / 100))}</strong></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>GST 12%</span><strong>₹{formatMoney(Math.round(Number(saInvData.gstAmount || 0) / 100))}</strong></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total</span><strong>₹{formatMoney(Math.round(Number(saInvData.total || 0) / 100))}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>Subtotal</span><strong>₹{formatMoney(Number(saInvData.amount || 0) / 100)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>GST 12%</span><strong>₹{formatMoney(Number(saInvData.gstAmount || 0) / 100)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total</span><strong>₹{formatMoney(Number(saInvData.total || 0) / 100)}</strong></div>
                 </div>
               </div>
             </div>

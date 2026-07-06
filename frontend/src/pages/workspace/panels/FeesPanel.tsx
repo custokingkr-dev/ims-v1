@@ -195,7 +195,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
       const duePaise = Number(paymentDuePreview?.dueAmount || 0);
       const amountPaise = Math.round(Number(paymentForm.amount || 0) * 100);
       if (paymentDuePreview && amountPaise > duePaise) {
-        setPaymentError(`Amount ₹${paymentForm.amount} exceeds the due amount of ₹${formatMoney(Math.round(duePaise / 100))}. Please verify.`);
+        setPaymentError(`Amount ₹${paymentForm.amount} exceeds the due amount of ₹${formatMoney(duePaise / 100)}. Please verify.`);
         return;
       }
       const payload = {
@@ -256,10 +256,10 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
       r.classSection || [r.className, r.sectionName].filter(Boolean).join(' · '),
       r.planName || '',
       r.paymentSchedule || r.schedule || '',
-      Math.round(Number(r.totalAnnualFee || 0) / 100),
-      Math.round(Number(r.approvedDiscount ?? r.discounts ?? 0) / 100),
-      Math.round(Number(r.paid || 0) / 100),
-      Math.round(Number(r.dueAmount ?? r.due ?? 0) / 100),
+      (Number(r.totalAnnualFee || 0) / 100).toFixed(2),
+      (Number(r.approvedDiscount ?? r.discounts ?? 0) / 100).toFixed(2),
+      (Number(r.paid || 0) / 100).toFixed(2),
+      (Number(r.dueAmount ?? r.due ?? 0) / 100).toFixed(2),
       r.status || '',
     ]);
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
@@ -325,8 +325,8 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
               <div className="ck-progress-fill" style={{ width: `${feeSummary.progressPercent}%`, background: feeSummary.progressPercent < 60 ? 'linear-gradient(to right, var(--am), #f5b041)' : 'linear-gradient(to right, var(--g), #2ecc71)' }} />
             </div>
             <div className="ck-progress-meta">
-              ₹{formatMoney(Math.round(Number(feeSummary.collected || 0) / 100))} collected ·
-              ₹{formatMoney(Math.round(Number(feeSummary.outstanding || 0) / 100))} outstanding ·
+              ₹{formatMoney(Number(feeSummary.collected || 0) / 100)} collected ·
+              ₹{formatMoney(Number(feeSummary.outstanding || 0) / 100)} outstanding ·
               <span style={{ color: Number(feeSummary.overdueCount || 0) > 0 ? 'var(--am)' : 'var(--ink2)', fontWeight: 700 }}>
                 {feeSummary.overdueCount} overdue accounts
               </span>
@@ -335,9 +335,9 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
         </div>
 
         <div className="ck-stats ck-s4">
-          <Stat label="Total payable" value={`₹${formatLakh(Math.round(Number(feeSummary.target || 0) / 100))}`} sub={`Full value ₹${formatMoney(Math.round(Number(feeSummary.target || 0) / 100))}`} pill="Across all schedules" tone="blue" />
-          <Stat label="Collected" value={`₹${formatLakh(Math.round(Number(feeSummary.collected || 0) / 100))}`} sub={`Full value ₹${formatMoney(Math.round(Number(feeSummary.collected || 0) / 100))}`} pill="Live updates" tone="green" />
-          <Stat label="Outstanding" value={`₹${formatLakh(Math.round(Number(feeSummary.outstanding || 0) / 100))}`} sub={`Full value ₹${formatMoney(Math.round(Number(feeSummary.outstanding || 0) / 100))}`} pill={`${feeSummary.overdueCount} overdue`} tone="red" />
+          <Stat label="Total payable" value={`₹${formatLakh(Math.round(Number(feeSummary.target || 0) / 100))}`} sub={`Full value ₹${formatMoney(Number(feeSummary.target || 0) / 100)}`} pill="Across all schedules" tone="blue" />
+          <Stat label="Collected" value={`₹${formatLakh(Math.round(Number(feeSummary.collected || 0) / 100))}`} sub={`Full value ₹${formatMoney(Number(feeSummary.collected || 0) / 100)}`} pill="Live updates" tone="green" />
+          <Stat label="Outstanding" value={`₹${formatLakh(Math.round(Number(feeSummary.outstanding || 0) / 100))}`} sub={`Full value ₹${formatMoney(Number(feeSummary.outstanding || 0) / 100)}`} pill={`${feeSummary.overdueCount} overdue`} tone="red" />
           <Stat label="Schedules" value="4" sub="Monthly · Quarterly · Half-yearly · Annual" pill="Configurable" tone="orange" />
         </div>
 
@@ -346,7 +346,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
           {/* Total Collected — green accent with progress bar */}
           <div className="ck-metric-card ck-mc-green">
             <div className="ck-mc-label">Total Collected</div>
-            <div className="ck-mc-value">₹{formatMoney(Math.round(Number(feeSummary.collected || 0) / 100))}</div>
+            <div className="ck-mc-value">₹{formatMoney(Number(feeSummary.collected || 0) / 100)}</div>
             <div className="ck-mc-sub">{feeSummary.progressPercent}% of target</div>
             <div className="ck-mc-bar-track">
               <div
@@ -364,13 +364,13 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
           {/* Outstanding (Pending) — amber accent */}
           <div className="ck-metric-card ck-mc-amber">
             <div className="ck-mc-label">Outstanding</div>
-            <div className="ck-mc-value">₹{formatMoney(Math.round(Number(feeSummary.outstanding || 0) / 100))}</div>
+            <div className="ck-mc-value">₹{formatMoney(Number(feeSummary.outstanding || 0) / 100)}</div>
             <div className="ck-mc-sub">Remaining to collect</div>
           </div>
           {/* Target — blue accent */}
           <div className="ck-metric-card ck-mc-blue">
             <div className="ck-mc-label">Annual Target</div>
-            <div className="ck-mc-value">₹{formatMoney(Math.round(Number(feeSummary.target || 0) / 100))}</div>
+            <div className="ck-mc-value">₹{formatMoney(Number(feeSummary.target || 0) / 100)}</div>
             <div className="ck-mc-sub">Total fees assigned</div>
           </div>
         </div>
@@ -405,7 +405,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
           <div style={{ padding: '0 16px' }}><div className="ck-divider" /></div>
           <div style={{ padding: '16px 16px 0' }} className="ts">Payment details</div>
           <div className="ck-form-grid ck-fg-3" style={{ padding: 16 }}>
-            <Field label="Amount"><input value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} /></Field>
+            <Field label="Amount"><input type="number" min={0} step="0.01" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} /></Field>
             <Field label="Mode">
               <select value={paymentForm.paymentMode} onChange={(e) => setPaymentForm({ ...paymentForm, paymentMode: e.target.value })}>
                 <option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Cheque</option>
@@ -419,7 +419,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
                 <span>₹</span>
                 <div>
                   <strong>{paymentDuePreview.feePlan}</strong> · {paymentDuePreview.schedule}
-                  <div>Total fee ₹{formatMoney(Math.round(Number(paymentDuePreview.totalFee || 0) / 100))} · Discount ₹{formatMoney(Math.round(Number(paymentDuePreview.discount || 0) / 100))} · Paid ₹{formatMoney(Math.round(Number(paymentDuePreview.paid || 0) / 100))} · <span style={{ color: Number(paymentDuePreview.dueAmount) > 0 ? '#A32D2D' : undefined, fontWeight: 700 }}>Due ₹{formatMoney(Math.round(Number(paymentDuePreview.dueAmount || 0) / 100))}</span></div>
+                  <div>Total fee ₹{formatMoney(Number(paymentDuePreview.totalFee || 0) / 100)} · Discount ₹{formatMoney(Number(paymentDuePreview.discount || 0) / 100)} · Paid ₹{formatMoney(Number(paymentDuePreview.paid || 0) / 100)} · <span style={{ color: Number(paymentDuePreview.dueAmount) > 0 ? '#A32D2D' : undefined, fontWeight: 700 }}>Due ₹{formatMoney(Number(paymentDuePreview.dueAmount || 0) / 100)}</span></div>
                 </div>
               </div>
             </div>
@@ -493,10 +493,10 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
                     <tr key={rowKey} className={isSelected ? 'ck-row-selected' : ''} style={{ cursor: 'pointer' }} onClick={() => setSelectedReportStudentId(selectedId)}>
                       <td><div className="tb">{studentName}</div><div className="ts">{[classSection, admissionNumber ? `Adm. ${admissionNumber}` : ''].filter(Boolean).join(' · ') || '—'}</div></td>
                       <td><div className="tb">{row.planName || '—'}</div><div className="ts">{paymentSchedule}</div></td>
-                      <td className="col-money">₹{formatMoney(Math.round(Number(row.totalAnnualFee || 0) / 100))}</td>
-                      <td className="col-money"><div className="tb">Discount ₹{formatMoney(Math.round(Number(approvedDiscount || 0) / 100))}</div><div className="ts">Surcharge ₹{formatMoney(Math.round(Number(surchargeAmount || 0) / 100))}</div></td>
-                      <td className="col-money ck-amt-green">₹{formatMoney(Math.round(Number(row.paid || 0) / 100))}</td>
-                      <td className={`col-money ${Number(dueAmount) > 0 ? 'ck-amt-red' : 'col-money'}`}>₹{formatMoney(Math.round(Number(dueAmount || 0) / 100))}</td>
+                      <td className="col-money">₹{formatMoney(Number(row.totalAnnualFee || 0) / 100)}</td>
+                      <td className="col-money"><div className="tb">Discount ₹{formatMoney(Number(approvedDiscount || 0) / 100)}</div><div className="ts">Surcharge ₹{formatMoney(Number(surchargeAmount || 0) / 100)}</div></td>
+                      <td className="col-money ck-amt-green">₹{formatMoney(Number(row.paid || 0) / 100)}</td>
+                      <td className={`col-money ${Number(dueAmount) > 0 ? 'ck-amt-red' : 'col-money'}`}>₹{formatMoney(Number(dueAmount || 0) / 100)}</td>
                       <td>{feeStatusBadge(row.status || 'Pending')}</td>
                       <td>{paymentId ? <button className="ck-btn ck-btn-ghost" onClick={(e) => { e.stopPropagation(); openReceiptPdf(paymentId); }}>PDF</button> : '—'}</td>
                     </tr>
@@ -525,7 +525,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
                     <tr key={row.studentId || row.assignmentId || `${row.studentName || row.student || 'student'}-${i}`}>
                       <td><div className="tb">{row.studentName || row.student || '—'}</div><div className="ts">{row.classSection || [row.className, row.sectionName].filter(Boolean).join(' · ') || '—'}</div></td>
                       <td>{row.schedule || '—'}</td>
-                      <td className="col-money ck-amt-red">₹{formatMoney(Math.round(Number(row.dueAmount || 0) / 100))}</td>
+                      <td className="col-money ck-amt-red">₹{formatMoney(Number(row.dueAmount || 0) / 100)}</td>
                       <td className="col-money" style={{ color: dayColor, fontWeight: 700 }}>{days}</td>
                     </tr>
                   );
@@ -544,7 +544,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
             <div style={{ padding: 16 }}>
               <div className="ck-alert ck-alert-g">
                 <span>✓</span>
-                <div>Total annual fee ₹{formatMoney(Math.round(Number(selectedReportRow.totalAnnualFee || 0) / 100))} − approved discounts ₹{formatMoney(Math.round(Number(selectedReportRow.approvedDiscount ?? selectedReportRow.discounts ?? 0) / 100))} − payments ₹{formatMoney(Math.round(Number(selectedReportRow.paid || 0) / 100))} = due ₹{formatMoney(Math.round(Number(selectedReportRow.dueAmount ?? selectedReportRow.due ?? 0) / 100))}</div>
+                <div>Total annual fee ₹{formatMoney(Number(selectedReportRow.totalAnnualFee || 0) / 100)} − approved discounts ₹{formatMoney(Number(selectedReportRow.approvedDiscount ?? selectedReportRow.discounts ?? 0) / 100)} − payments ₹{formatMoney(Number(selectedReportRow.paid || 0) / 100)} = due ₹{formatMoney(Number(selectedReportRow.dueAmount ?? selectedReportRow.due ?? 0) / 100)}</div>
               </div>
               {Array.isArray(selectedReportRow.installments) && selectedReportRow.installments.length ? (
                 <table className="ck-table">
@@ -555,7 +555,7 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
                         <td>#{ins.installmentNo || idx + 1}</td>
                         <td>{ins.dueDate || '—'}</td>
                         <td>{ins.paidDate || '—'}</td>
-                        <td className="col-money">₹{formatMoney(Math.round(Number(ins.amount || 0) / 100))}</td>
+                        <td className="col-money">₹{formatMoney(Number(ins.amount || 0) / 100)}</td>
                         <td>{feeStatusBadge(ins.status || 'Pending')}</td>
                       </tr>
                     ))}

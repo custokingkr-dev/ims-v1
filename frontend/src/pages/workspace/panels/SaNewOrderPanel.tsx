@@ -164,7 +164,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
                     <input type="number" min="1" value={form.duration || ''} onChange={(e) => setForm({ ...form, duration: e.target.value })} placeholder="12" />
                   </Field>
                   <Field label="Monthly rate">
-                    <input type="number" min="0" value={form.monthlyRate || ''} onChange={(e) => setForm({ ...form, monthlyRate: e.target.value })} placeholder="Enter monthly rate" />
+                    <input type="number" min="0" step="0.01" value={form.monthlyRate || ''} onChange={(e) => setForm({ ...form, monthlyRate: e.target.value })} placeholder="Enter monthly rate" />
                   </Field>
                 </>
               )}
@@ -190,7 +190,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
                     <textarea value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Describe the requirement" />
                   </Field>
                   <Field label="Budget">
-                    <input type="number" min="0" value={form.budget || ''} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="Enter expected budget" />
+                    <input type="number" min="0" step="0.01" value={form.budget || ''} onChange={(e) => setForm({ ...form, budget: e.target.value })} placeholder="Enter expected budget" />
                   </Field>
                 </>
               )}

@@ -65,7 +65,7 @@ export function SaErpPanel() {
         />
         <Stat
           label="Total overdue"
-          value={`₹${formatMoney(Math.round(metrics.fees.totalOverdueAmountPaise / 100))}`}
+          value={`₹${formatMoney(metrics.fees.totalOverdueAmountPaise / 100)}`}
           sub="Overdue fee amount"
           pill="Paise→₹"
           tone="orange"
@@ -107,7 +107,7 @@ export function SaErpPanel() {
       <div className="ck-grid ck-grid-3" style={{ marginBottom: 20 }}>
         <Stat
           label="Total vendor dues"
-          value={`₹${formatMoney(Math.round(metrics.vendorDues.totalDuesPaise / 100))}`}
+          value={`₹${formatMoney(metrics.vendorDues.totalDuesPaise / 100)}`}
           sub="Unpaid vendor amounts"
           pill="Paise→₹"
           tone="orange"

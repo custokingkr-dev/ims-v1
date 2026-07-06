@@ -22,7 +22,7 @@ const CHANNELS = ['SMS', 'WhatsApp', 'Email', 'Push'];
 const PAGE_SIZE = 20;
 
 function fmt(paise: number): string {
-  return '₹' + Math.round(paise / 100).toLocaleString('en-IN');
+  return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function StatusBadge({ status }: { status: PhotoContributionItem['status'] }) {

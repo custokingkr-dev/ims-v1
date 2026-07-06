@@ -18,7 +18,7 @@ const CHANNELS = ['SMS', 'WhatsApp', 'Email', 'Push'];
 const PAGE_SIZE = 20;
 
 function formatRupees(paise: number): string {
-  return '₹' + Math.round(paise / 100).toLocaleString('en-IN');
+  return '₹' + (paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function ReminderStatusBadge({ status }: { status: FeeDefaulterItem['reminderStatus'] }) {

@@ -185,7 +185,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <Stat label="Total orders" value={stats?.totalOrders ?? 0} sub="Across all schools" pill="Live" tone="blue" />
           <Stat label="New requests" value={stats?.pendingApproval ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
           <Stat label="In progress" value={stats?.approved ?? 0} sub="Approved or processing" pill="Active" tone="green" />
-          <Stat label="Order Value" value={`₹${formatMoney(Math.round(Number(stats?.gmv || 0) / 100))}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
+          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
         </div>
         <div className="ck-form-card" style={{ marginBottom: 16 }}>
           <div className="ck-form-body">
@@ -225,7 +225,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                       <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td>{row.category}</td>
-                      <td>₹{formatMoney(Math.round(Number(row.totalAmount ?? 0) / 100))}</td>
+                      <td>₹{formatMoney(Number(row.totalAmount ?? 0) / 100)}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
                       <td>{row.placedAt || row.createdAt || '—'}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
@@ -259,7 +259,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                     <Info label="Order ID" value={String(detailOrder.id || '—')} />
                     <Info label="School" value={String(detailOrder.schoolName || detailOrder.school || '—')} />
                     <Info label="Category" value={String(detailOrder.category || '—')} />
-                    <Info label="Amount" value={`₹${formatMoney(Math.round(Number(detailOrder.totalAmount || 0) / 100))}`} />
+                    <Info label="Amount" value={`₹${formatMoney(Number(detailOrder.totalAmount || 0) / 100)}`} />
                     <Info label="Delivery" value={String(detailOrder.estimatedDelivery || detailOrder.requiredByDate || '—')} />
                     <Info label="Status" value={getDisplayStatus(String(detailOrder.status || '—'))} />
                   </div>
@@ -322,9 +322,9 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               </div>
               <div className="ck-card" style={{ marginTop: 16 }}>
                 <div className="ck-form-body">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>Subtotal</span><strong>₹{formatMoney(Math.round(Number(invData.amount || 0) / 100))}</strong></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>GST 12%</span><strong>₹{formatMoney(Math.round(Number(invData.gstAmount || 0) / 100))}</strong></div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total</span><strong>₹{formatMoney(Math.round(Number(invData.total || 0) / 100))}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>Subtotal</span><strong>₹{formatMoney(Number(invData.amount || 0) / 100)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span>GST 12%</span><strong>₹{formatMoney(Number(invData.gstAmount || 0) / 100)}</strong></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total</span><strong>₹{formatMoney(Number(invData.total || 0) / 100)}</strong></div>
                 </div>
               </div>
             </div>

@@ -99,7 +99,7 @@ export function SaSchoolsPanel() {
             <div className="ck-stats ck-s4" style={{ marginBottom: 18 }}>
               <Stat label="Active schools" value={activeSchools} sub={`${saSchools.length} total onboarded`} pill="Platform" tone="blue" />
               <Stat label="Orders YTD" value={totalOrders} sub="Supply orders across all schools" pill="All schools" tone="green" />
-              <Stat label="Order value YTD" value={`₹${formatMoney(Math.round(totalGmvPaise / 100))}`} sub="Platform GMV" pill="Gross" tone="orange" />
+              <Stat label="Order value YTD" value={`₹${formatMoney(totalGmvPaise / 100)}`} sub="Platform GMV" pill="Gross" tone="orange" />
               <Stat label="Pending setup" value={saSchools.filter((s: any) => !s.adminEmail).length} sub="Schools without admin user" pill={saSchools.filter((s: any) => !s.adminEmail).length > 0 ? 'Action needed' : 'All set'} tone={saSchools.filter((s: any) => !s.adminEmail).length > 0 ? 'red' : 'green'} />
             </div>
           );
@@ -121,7 +121,7 @@ export function SaSchoolsPanel() {
                     <td>{school.configuredSectionCount ?? '—'}</td>
                     <td>{school.adminEmail || '—'}</td>
                     <td>{school.ordersYTD ?? 0}</td>
-                    <td>₹{formatMoney(Math.round(Number(school.gmvYTD || 0) / 100))}</td>
+                    <td>₹{formatMoney(Number(school.gmvYTD || 0) / 100)}</td>
                     <td>{school.erpSince || '—'}</td>
                     <td><button className="ck-btn ck-btn-ghost" onClick={() => openEdit(school)}>Edit structure</button></td>
                   </tr>

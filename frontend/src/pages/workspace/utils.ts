@@ -12,7 +12,7 @@ export const EVENT_RATES: Record<string, number> = {
 
 export function formatMoney(value: any): string {
   const n = typeof value === 'number' ? value : Number(value || 0);
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
 export function formatLakh(value: any): string {

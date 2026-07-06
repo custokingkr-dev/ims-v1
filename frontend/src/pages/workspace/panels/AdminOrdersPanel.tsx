@@ -91,7 +91,7 @@ export function AdminOrdersPanel({
       )}
       <div className="ck-grid ck-grid-4" style={{ marginBottom: 16 }}>
         <Stat label="Active orders" value={stats?.activeOrders ?? 0} sub="Awaiting, processing, transit" pill="Live" tone="blue" />
-        <Stat label="Term spend" value={`₹${formatMoney(Math.round(Number(stats?.termSpend || 0) / 100))}`} sub="Placed this term" pill="Paise→₹" tone="green" />
+        <Stat label="Term spend" value={`₹${formatMoney(Number(stats?.termSpend || 0) / 100)}`} sub="Placed this term" pill="Paise→₹" tone="green" />
         <Stat label="Active services" value={stats?.activeServices ?? 0} sub="Running contracts" pill="Service" tone="blue" />
         <Stat label="Delivered" value={stats?.deliveredCount ?? 0} sub="Completed orders" pill="Closed" tone="orange" />
       </div>
@@ -139,7 +139,7 @@ export function AdminOrdersPanel({
                     <td><div className="tb">{row.id || row.code}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                     <td>{row.category}</td>
                     <td>{row.items}</td>
-                    <td className="col-money">₹{formatMoney(Math.round(Number(row.totalAmount ?? row.amount ?? 0) / 100))}</td>
+                    <td className="col-money">₹{formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}</td>
                     <td style={{ minWidth: 200 }}>
                       <OrderWorkflowBanner status={status} />
                     </td>
