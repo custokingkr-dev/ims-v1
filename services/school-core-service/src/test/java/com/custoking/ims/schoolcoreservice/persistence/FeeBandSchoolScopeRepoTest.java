@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantAwareDataSource;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.zaxxer.hikari.HikariDataSource;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.*;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -68,7 +70,8 @@ class FeeBandSchoolScopeRepoTest {
         pool.setPassword("app_rt");
         pool.setMaximumPoolSize(2);
         appRt = new TenantAwareDataSource(pool);
-        repo = new FeeReadRepository(JdbcClient.create(appRt));
+        JdbcClient jdbc = JdbcClient.create(appRt);
+        repo = new FeeReadRepository(jdbc, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
     }
 
     @AfterAll
