@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +16,11 @@ import java.util.Map;
 public class SchoolStructureReadRepository {
 
     private final JdbcClient jdbc;
+    private final OutboxWriter outbox;
 
-    public SchoolStructureReadRepository(JdbcClient jdbc) {
+    public SchoolStructureReadRepository(JdbcClient jdbc, OutboxWriter outbox) {
         this.jdbc = jdbc;
+        this.outbox = outbox;
     }
 
     public List<SchoolClassRow> classes(Long schoolId) {
@@ -203,7 +206,9 @@ public class SchoolStructureReadRepository {
                 .query(Long.class)
                 .single();
         ensureSchoolSections(id, classCount, sectionCount);
-        return schoolDetails(id);
+        Map<String, Object> details = schoolDetails(id);
+        emitSchoolUpserted(details);
+        return details;
     }
 
     @Transactional
@@ -221,7 +226,21 @@ public class SchoolStructureReadRepository {
                 .param("city", request.containsKey("city") ? trimToNull(str(request.get("city"), "")) : currentSchoolCity(schoolId))
                 .param("active", request.get("active"))
                 .update();
-        return schoolDetails(schoolId);
+        Map<String, Object> details = schoolDetails(schoolId);
+        emitSchoolUpserted(details);
+        return details;
+    }
+
+    private void emitSchoolUpserted(Map<String, Object> details) {
+        Long id = ((Number) details.get("id")).longValue();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", details.get("id"));
+        payload.put("name", details.get("name"));
+        payload.put("shortCode", details.get("shortCode"));
+        payload.put("city", details.get("city"));
+        payload.put("state", details.get("state"));
+        payload.put("active", details.get("active"));
+        outbox.append("school.upserted.v1", "SchoolUpserted:" + id, "School", String.valueOf(id), id, payload);
     }
 
     @Transactional
@@ -289,7 +308,41 @@ public class SchoolStructureReadRepository {
                 .param("schoolId", schoolId)
                 .update();
 
+        emitSectionsUpserted(schoolId);
+
         return schoolDetails(schoolId);
+    }
+
+    /** Re-reads and re-emits every section of a school after a bulk mutation (grow/shrink toggle). */
+    private void emitSectionsUpserted(Long schoolId) {
+        jdbc.sql("""
+                        SELECT ss.id, ss.name, ss.teacher_name, ss.active, ss.school_class_id, sc.name AS class_name
+                        FROM tenant_school.school_sections ss
+                        JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
+                        WHERE ss.school_id = :schoolId
+                        """)
+                .param("schoolId", schoolId)
+                .query((rs, n) -> {
+                    emitSectionUpserted(rs.getString("id"), rs.getString("name"), schoolId,
+                            rs.getString("school_class_id"), rs.getString("class_name"),
+                            rs.getBoolean("active"), rs.getString("teacher_name"));
+                    return null;
+                })
+                .list();
+    }
+
+    private void emitSectionUpserted(String sectionId, String name, Long schoolId, String classId,
+                                      String className, boolean active, String teacherName) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", sectionId);
+        payload.put("name", name);
+        payload.put("schoolId", schoolId);
+        payload.put("classId", classId);
+        payload.put("className", className);
+        payload.put("active", active);
+        payload.put("teacherName", teacherName);
+        outbox.append("school-section.upserted.v1", "SchoolSectionUpserted:" + sectionId, "SchoolSection",
+                sectionId, schoolId, payload);
     }
 
     @Transactional
@@ -341,6 +394,7 @@ public class SchoolStructureReadRepository {
                         .param("classId", schoolClass.id())
                         .param("name", sectionName)
                         .update();
+                emitSectionUpserted(sectionId, sectionName, schoolId, schoolClass.id(), schoolClass.name(), true, "");
             }
         }
     }

@@ -15,8 +15,9 @@ import java.sql.Statement;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class StudentImportPhotoIntegrationTest {
+class ReferenceEventEmissionIntegrationTest {
 
     static PostgreSQLContainer<?> PG;
     static DataSource dataSource;
@@ -51,11 +52,11 @@ class StudentImportPhotoIntegrationTest {
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             st.execute("DELETE FROM student.students");
+            st.execute("DELETE FROM tenant_school.outbox_events");
             st.execute("DELETE FROM tenant_school.school_sections");
             st.execute("DELETE FROM tenant_school.school_classes");
             st.execute("DELETE FROM tenant_school.academic_years");
             st.execute("DELETE FROM tenant_school.schools");
-            // 12 global classes named '1'..'12'
             for (int i = 1; i <= 12; i++) {
                 st.execute("INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES " +
                         "('c" + i + "', '" + i + "', " + i + ")");
@@ -64,40 +65,28 @@ class StudentImportPhotoIntegrationTest {
         }
     }
 
-    /** Seeds a school row and generates its sections via the repository's own path. */
-    static long seedSchool(int classCount, int sectionCount) throws Exception {
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.schools " +
-                    "(name, short_code, city, state, active, configured_class_count, configured_section_count, created_at) " +
-                    "VALUES ('Demo', 'DEMO', 'Hyd', 'TG', true, " + classCount + ", " + sectionCount + ", now()) ");
-        }
-        Long id = jdbc.sql("SELECT id FROM tenant_school.schools WHERE short_code = 'DEMO'")
-                .query(Long.class).single();
-        // Generate the initial sections to match the seeded counts.
-        repo.updateStructure(id, classCount, sectionCount);
-        return id;
+    static long countOutbox() {
+        return jdbc.sql("SELECT count(*) FROM tenant_school.outbox_events").query(Long.class).single();
     }
 
     @Test
-    void confirmImport_returnsAdmissionNoToStudentIdMap() throws Exception {
-        long schoolId = seedSchool(5, 2); // reuse the helper pattern from SchoolStructureIntegrationTest
-        StudentReadRepository repo = new StudentReadRepository(jdbc,
-                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class));
+    void createSchoolEmitsSchoolUpsertedInSameTransaction() {
+        Map<String, Object> req = Map.of("name", "Test School", "shortCode", "TS", "active", true);
+        var created = repo.createSchool(req);
+        Long id = ((Number) created.get("id")).longValue();
 
-        Map<String, Object> preview = repo.previewImport(Map.of(
-                "schoolId", schoolId,
-                "rows", java.util.List.of(Map.of(
-                        "Name", "Imp One", "Class", "1", "Section", "A", "AdmissionNo", "IMP-1", "Gender", "Male",
-                        "Phone", "9876543210"))));
-        String fileToken = (String) preview.get("fileToken");
+        var rows = jdbc.sql("SELECT event_type, event_key, payload FROM tenant_school.outbox_events WHERE aggregate_type='School' AND aggregate_id=:id")
+                .param("id", id.toString())
+                .query((rs, n) -> rs.getString("event_type"))
+                .list();
+        assertThat(rows).contains("school.upserted.v1");
+    }
 
-        Map<String, Object> confirm = repo.confirmImport(Map.of("schoolId", schoolId, "fileToken", fileToken));
-
-        @SuppressWarnings("unchecked")
-        java.util.List<Map<String, Object>> inserted =
-                (java.util.List<Map<String, Object>>) confirm.get("insertedStudents");
-        assertThat(inserted).hasSize(1);
-        assertThat(inserted.get(0).get("admissionNo")).isEqualTo("IMP-1");
-        assertThat(((Number) inserted.get(0).get("studentId")).longValue()).isPositive();
+    @Test
+    void failedSchoolCreateEmitsNoEvent() {
+        long before = countOutbox();
+        assertThatThrownBy(() -> repo.createSchool(Map.of()))   // missing required name -> throws
+                .isInstanceOf(RuntimeException.class);
+        assertThat(countOutbox()).isEqualTo(before);             // rolled back with the transaction
     }
 }
