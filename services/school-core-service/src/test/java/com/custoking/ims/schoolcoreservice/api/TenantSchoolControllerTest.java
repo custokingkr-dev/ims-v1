@@ -123,6 +123,7 @@ class TenantSchoolControllerTest {
                 "startDate", "2026-04-01",
                 "endDate", "2027-03-31",
                 "notes", "annual",
+                // actorId in the client body must be ignored; TenantContext (userId 1L) is the trusted actor.
                 "actorId", "9");
         ModuleEntitlementRow result = new ModuleEntitlementRow(
                 55L,
@@ -135,7 +136,7 @@ class TenantSchoolControllerTest {
                 "annual",
                 null,
                 null,
-                9L);
+                1L);
         when(modules.upsert(
                 4L,
                 "reports",
@@ -144,7 +145,7 @@ class TenantSchoolControllerTest {
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2027-03-31"),
                 "annual",
-                9L)).thenReturn(result);
+                1L)).thenReturn(result);
 
         Object response = controller.upsertSchoolModule("tenant-token", 4L, "reports", request);
 
@@ -157,7 +158,7 @@ class TenantSchoolControllerTest {
                 LocalDate.parse("2026-04-01"),
                 LocalDate.parse("2027-03-31"),
                 "annual",
-                9L);
+                1L);
     }
 
     @Test
@@ -239,11 +240,12 @@ class TenantSchoolControllerTest {
     @Test
     void assignZoneAdminDelegatesToZoneCommandRepository() {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        // "assignedBy" in the client body must be ignored; TenantContext (userId 1L) is the trusted actor.
         Map<String, Object> request = Map.of("userId", "44", "assignedBy", "9");
 
         controller.assignZoneAdmin("tenant-token", 7L, request);
 
-        verify(zoneCommands).assignZoneAdmin(7L, 44L, 9L);
+        verify(zoneCommands).assignZoneAdmin(7L, 44L, 1L);
     }
 
     @Test

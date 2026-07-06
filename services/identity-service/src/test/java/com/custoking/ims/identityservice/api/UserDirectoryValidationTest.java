@@ -1,6 +1,8 @@
 package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,11 +21,17 @@ class UserDirectoryValidationTest {
 
     @BeforeEach
     void setUp() {
+        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "ADMIN", null, null));
         users = mock(UserDirectoryReadRepository.class);
         UserDirectoryController controller = new UserDirectoryController(users, VALID_TOKEN);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
+    }
+
+    @AfterEach
+    void cleanup() {
+        TenantContext.clear();
     }
 
     @Test
@@ -39,12 +47,12 @@ class UserDirectoryValidationTest {
     }
 
     @Test
-    void resetPassword_valid_callsRepositoryWithCorrectArgs() throws Exception {
+    void resetPassword_valid_callsRepositoryWithAuthenticatedActorIgnoringClientSuppliedFields() throws Exception {
         mvc.perform(post("/api/v1/users/9/password-reset")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"password\":\"longenough\",\"actorId\":1,\"actorEmail\":\"owner@custoking.com\"}"))
+                        .content("{\"password\":\"longenough\",\"actorId\":1,\"actorEmail\":\"spoofed@custoking.com\"}"))
                 .andExpect(status().isNoContent());
-        verify(users).resetPassword(eq(9L), eq("longenough"), eq(1L), eq("owner@custoking.com"));
+        verify(users).resetPassword(eq(9L), eq("longenough"), eq(7L), eq("authenticated-admin@custoking.com"));
     }
 }

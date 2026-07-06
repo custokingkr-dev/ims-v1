@@ -11,6 +11,7 @@ import com.custoking.ims.operationsservice.api.dto.VendorPaidRequest;
 import com.custoking.ims.operationsservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.operationsservice.persistence.FirefightingReadRepository.FirefightingRequestRow;
 import com.custoking.ims.operationsservice.persistence.FirefightingReadRepository.QuotationRow;
+import com.custoking.ims.operationsservice.security.TenantContext;
 import com.custoking.ims.operationsservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -111,8 +112,8 @@ public class FirefightingReadController {
         if (req.description() != null) body.put("description", req.description());
         if (req.summary() != null) body.put("summary", req.summary());
         if (req.referenceFileUrl() != null) body.put("referenceFileUrl", req.referenceFileUrl());
-        if (req.actorId() != null) body.put("actorId", req.actorId());
-        if (req.actorEmail() != null) body.put("actorEmail", req.actorEmail());
+        body.put("actorId", TenantContext.get().userId());
+        body.put("actorEmail", TenantContext.get().email());
         applyResolvedSchool(body);
         return execute(() -> firefighting.createRequest(body));
     }
@@ -131,7 +132,7 @@ public class FirefightingReadController {
         if (req.requiredByDate() != null) body.put("requiredByDate", req.requiredByDate());
         if (req.estimatedBudget() != null) body.put("estimatedBudget", req.estimatedBudget());
         if (req.description() != null) body.put("description", req.description());
-        if (req.actorEmail() != null) body.put("actorEmail", req.actorEmail());
+        body.put("actorEmail", TenantContext.get().email());
         return execute(() -> firefighting.updateRequest(code, body));
     }
 
@@ -231,8 +232,7 @@ public class FirefightingReadController {
             @Valid @RequestBody(required = false) RejectRequest req) {
         requireToken(token, "firefighting:write");
         Map<String, Object> body = new HashMap<>();
-        if (req != null && req.rejectedBy() != null) body.put("rejectedBy", req.rejectedBy());
-        if (req != null && req.actorName() != null) body.put("actorName", req.actorName());
+        body.put("actorName", TenantContext.get().email());
         if (req != null && req.reason() != null) body.put("reason", req.reason());
         if (req != null && req.rejectedReason() != null) body.put("rejectedReason", req.rejectedReason());
         return execute(() -> firefighting.reject(code, body));
@@ -254,7 +254,7 @@ public class FirefightingReadController {
         requireToken(token, "firefighting:write");
         Map<String, Object> body = new HashMap<>();
         if (req != null && req.schoolId() != null) body.put("schoolId", req.schoolId());
-        if (req != null && req.paidBy() != null) body.put("paidBy", req.paidBy());
+        body.put("paidBy", TenantContext.get().userId());
         if (req != null && req.notes() != null) body.put("notes", req.notes());
         applyResolvedSchool(body);
         return execute(() -> firefighting.markVendorPaid(code, body));

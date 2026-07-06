@@ -117,7 +117,7 @@ public class RbacReadController {
         body.put("name", req.name());
         body.put("description", req.description());
         body.put("permissions", req.permissions());
-        body.put("actorId", req.actorId());
+        body.put("actorId", TenantContext.get().userId());
         return commands.createRole(body);
     }
 
@@ -130,7 +130,7 @@ public class RbacReadController {
         Map<String, Object> body = new HashMap<>();
         if (req.description() != null) body.put("description", req.description());
         if (req.permissions() != null) body.put("permissions", req.permissions());
-        body.put("actorId", req.actorId());
+        body.put("actorId", TenantContext.get().userId());
         return commands.updateRole(roleId, body);
     }
 
@@ -142,7 +142,7 @@ public class RbacReadController {
         requireToken(token, "identity:write");
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
-        body.put("assignedBy", req.assignedBy());
+        body.put("assignedBy", TenantContext.get().userId());
         return commands.assignPlatformRole(userId, body);
     }
 
@@ -155,7 +155,7 @@ public class RbacReadController {
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
         body.put("schoolId", req.schoolId());
-        body.put("assignedBy", req.assignedBy());
+        body.put("assignedBy", TenantContext.get().userId());
         return commands.assignSchoolRole(userId, body);
     }
 
@@ -168,7 +168,7 @@ public class RbacReadController {
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
         body.put("zoneId", req.zoneId());
-        body.put("assignedBy", req.assignedBy());
+        body.put("assignedBy", TenantContext.get().userId());
         return commands.assignZoneRole(userId, body);
     }
 
@@ -179,7 +179,9 @@ public class RbacReadController {
             @PathVariable Long assignmentId,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
-        commands.revokeAssignment(userId, assignmentId, body);
+        Map<String, Object> stamped = body == null ? new HashMap<>() : new HashMap<>(body);
+        stamped.put("revokedBy", TenantContext.get().userId());
+        commands.revokeAssignment(userId, assignmentId, stamped);
     }
 
     private Long resolveZoneId(Long requested) {

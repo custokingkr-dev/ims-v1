@@ -1,4 +1,4 @@
 package com.custoking.ims.schoolcoreservice.api.dto;
 
 /** Body for POST /attendance/absentees/notify. All optional except date. */
-public record NotifyAbsenteesRequest(String date, String sectionId, Long schoolId, Long actorId) {}
+public record NotifyAbsenteesRequest(String date, String classId, String sectionId, Long schoolId) {}

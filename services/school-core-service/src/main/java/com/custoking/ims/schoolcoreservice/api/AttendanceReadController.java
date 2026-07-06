@@ -111,10 +111,11 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String classId,
             @RequestParam(required = false) String sectionId) {
         requireToken(token, "attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        return execute(() -> attendance.absentees(date, sectionId, scope));
+        return execute(() -> attendance.absentees(date, classId, sectionId, scope));
     }
 
     @PostMapping("/absentees/notify")
@@ -125,7 +126,7 @@ public class AttendanceReadController {
         Long scope = TenantScope.resolveSchoolId(body.schoolId());
         LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
         Long actorId = TenantContext.get() != null ? TenantContext.get().userId() : null;
-        return execute(() -> attendance.notifyAbsentees(date, body.sectionId(), scope, actorId));
+        return execute(() -> attendance.notifyAbsentees(date, body.classId(), body.sectionId(), scope, actorId));
     }
 
     @GetMapping("/report/register")
@@ -230,7 +231,7 @@ public class AttendanceReadController {
         request.put("classId", body.classId());
         request.put("sectionId", body.sectionId());
         if (body.date() != null) request.put("date", body.date());
-        if (body.actorId() != null) request.put("actorId", body.actorId());
+        request.put("actorId", TenantContext.get().userId());
         if (resolvedSchoolId != null) request.put("schoolId", resolvedSchoolId);
         if (body.records() != null) request.put("records", body.records());
         return execute(() -> attendance.saveSectionRegister(request));
@@ -250,7 +251,7 @@ public class AttendanceReadController {
         if (body.date() != null) request.put("date", body.date());
         if (body.totalEnrolled() != null) request.put("totalEnrolled", body.totalEnrolled());
         if (body.presentCount() != null) request.put("presentCount", body.presentCount());
-        if (body.actorId() != null) request.put("actorId", body.actorId());
+        request.put("actorId", TenantContext.get().userId());
         if (resolvedSchoolId != null) request.put("schoolId", resolvedSchoolId);
         return execute(() -> attendance.saveDailyAttendance(request));
     }
@@ -267,7 +268,7 @@ public class AttendanceReadController {
         request.put("classId", body.classId());
         request.put("sectionId", body.sectionId());
         if (body.date() != null) request.put("date", body.date());
-        if (body.actorId() != null) request.put("actorId", body.actorId());
+        request.put("actorId", TenantContext.get().userId());
         if (resolvedSchoolId != null) request.put("schoolId", resolvedSchoolId);
         return execute(() -> attendance.submitAttendanceSection(request));
     }
@@ -283,7 +284,7 @@ public class AttendanceReadController {
         SubmitDayRequest request = body == null ? new SubmitDayRequest(null, null, null) : body;
         Long scope = TenantScope.resolveSchoolId(request.schoolId());
         String date = request.date() == null ? "today" : request.date();
-        Long actorId = request.actorId();
+        Long actorId = TenantContext.get().userId();
         return execute(() -> attendance.submitAttendanceDay(date, scope, actorId));
     }
 

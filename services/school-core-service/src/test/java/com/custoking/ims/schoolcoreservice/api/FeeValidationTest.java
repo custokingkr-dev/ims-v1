@@ -232,7 +232,7 @@ class FeeValidationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void assignFeePlan_withActorId_putsActorIdKey() throws Exception {
+    void assignFeePlan_clientSuppliedActorId_isIgnoredInFavorOfTenantContext() throws Exception {
         when(fees.assignFeePlan(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/fees/assignments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
@@ -241,13 +241,13 @@ class FeeValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).assignFeePlan(captor.capture());
-        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must be present when sent");
-        assertEquals(42L, captor.getValue().get("actorId"));
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"), "actorId must come from TenantContext, not the client body");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void assignFeePlan_withoutActorId_doesNotPutActorIdKey() throws Exception {
+    void assignFeePlan_withoutActorId_stampsActorIdFromTenantContext() throws Exception {
         when(fees.assignFeePlan(anyMap())).thenReturn(Map.of("ok", true));
         mvc.perform(post("/api/v1/fees/assignments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
@@ -256,7 +256,8 @@ class FeeValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).assignFeePlan(captor.capture());
-        assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"));
     }
 
     // ─── PUT /bands/{id} ─────────────────────────────────────────────────────
@@ -509,7 +510,7 @@ class FeeValidationTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void recordPayment_withActorId_putsActorIdKey() throws Exception {
+    void recordPayment_clientSuppliedActorId_isIgnoredInFavorOfTenantContext() throws Exception {
         when(fees.recordPayment(anyMap())).thenReturn(Map.of("receiptNumber", "RCPT-123"));
         mvc.perform(post("/api/v1/fees/payments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
@@ -518,13 +519,13 @@ class FeeValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).recordPayment(captor.capture());
-        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must be present when sent");
-        assertEquals(42L, captor.getValue().get("actorId"));
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"), "actorId must come from TenantContext, not the client body");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void recordPayment_withoutActorId_doesNotPutActorIdKey() throws Exception {
+    void recordPayment_withoutActorId_stampsActorIdFromTenantContext() throws Exception {
         when(fees.recordPayment(anyMap())).thenReturn(Map.of("receiptNumber", "RCPT-123"));
         mvc.perform(post("/api/v1/fees/payments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
@@ -533,6 +534,7 @@ class FeeValidationTest {
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).recordPayment(captor.capture());
-        assertFalse(captor.getValue().containsKey("actorId"), "actorId key must NOT be present when not sent");
+        assertTrue(captor.getValue().containsKey("actorId"), "actorId key must always be present");
+        assertEquals(1L, captor.getValue().get("actorId"));
     }
 }

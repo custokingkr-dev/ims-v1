@@ -73,8 +73,9 @@ class CatalogReadControllerTest {
         // Set SUPERADMIN context so resolveSchoolId(5L) passes through to the repo call
         TenantContext.set(new TenantContext(null, null, "SUPERADMIN", null, null));
 
+        // actorId is now sourced from TenantContext (null here), never from the client body.
         Map<String, Object> request = new HashMap<>(Map.of("schoolId", 5L, "actorId", 9L, "notes", "paid offline"));
-        when(catalog.markVendorPaid("CK-1001", 5L, 9L, "paid offline"))
+        when(catalog.markVendorPaid("CK-1001", 5L, null, "paid offline"))
                 .thenThrow(new SecurityException("Cross-school access denied"));
 
         assertThatThrownBy(() -> controller.markVendorPaid("catalog-token", "CK-1001", request))

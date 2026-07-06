@@ -163,14 +163,16 @@ class NotificationValidationTest {
         broadcastMvc.perform(post("/api/v1/notifications/broadcasts")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
+                        .header("X-Authenticated-User-Id", "99")
                         .contentType("application/json")
-                        .content("{\"title\":\"Test\",\"message\":\"Body\",\"schoolId\":10,\"module\":\"FEES\",\"createdBy\":99}"))
+                        .content("{\"title\":\"Test\",\"message\":\"Body\",\"schoolId\":10,\"module\":\"FEES\"}"))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(broadcasts).create(captor.capture());
         assertEquals(10L, captor.getValue().get("schoolId"));
         assertEquals("FEES", captor.getValue().get("module"));
+        // createdBy is stamped from the authenticated principal (TenantContext), not the client body.
         assertEquals(99L, captor.getValue().get("createdBy"));
     }
 
@@ -330,10 +332,12 @@ class NotificationValidationTest {
         broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/approve")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
+                        .header("X-Authenticated-User-Id", "5")
                         .contentType("application/json")
-                        .content("{\"actorId\":5}"))
+                        .content("{}"))
                 .andExpect(status().isOk());
 
+        // actor comes from the authenticated principal (TenantContext), not the client body.
         verify(broadcasts).approve(eq(id), eq(5L));
     }
 
@@ -345,10 +349,12 @@ class NotificationValidationTest {
         broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/send")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
+                        .header("X-Authenticated-User-Id", "5")
                         .contentType("application/json")
-                        .content("{\"actorId\":5}"))
+                        .content("{}"))
                 .andExpect(status().isOk());
 
+        // actor comes from the authenticated principal (TenantContext), not the client body.
         verify(broadcasts).send(eq(id), eq(5L));
     }
 
@@ -374,10 +380,12 @@ class NotificationValidationTest {
         senderProfileMvc.perform(post("/api/v1/notifications/sender-profiles/schools/4/whatsapp-onboarding")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
+                        .header("X-Authenticated-User-Id", "9")
                         .contentType("application/json")
-                        .content("{\"actorId\":9,\"schoolName\":\"Demo\",\"contactEmail\":\"a@b.com\"}"))
+                        .content("{\"schoolName\":\"Demo\",\"contactEmail\":\"a@b.com\"}"))
                 .andExpect(status().isOk());
 
+        // actor comes from the authenticated principal (TenantContext), not the client body.
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(senderProfiles).requestWhatsappOnboarding(eq(4L), eq(9L), captor.capture());
         assertEquals("Demo", captor.getValue().get("schoolName"));

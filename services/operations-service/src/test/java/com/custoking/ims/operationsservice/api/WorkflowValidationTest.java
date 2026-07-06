@@ -139,7 +139,9 @@ class WorkflowValidationTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).createOrGetInstance(captor.capture());
         Map<String, Object> body = captor.getValue();
-        assertEquals(7L, body.get("initiatedBy"));
+        // initiatedBy must come from the authenticated TenantContext (userId=1L, set in
+        // setUp), NOT the client-supplied 7, which must be ignored.
+        assertEquals(1L, body.get("initiatedBy"));
         // Fix 2: use assertTrue (not assertNotNull) — containsKey returns boolean, not Object
         assertTrue(body.containsKey("schoolId"));
         // Fix 3: TenantScope.resolveSchoolId(42L) = 42L for SUPERADMIN
@@ -198,18 +200,22 @@ class WorkflowValidationTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).submit(eq(99L), captor.capture());
         Map<String, Object> actionMap = captor.getValue();
-        assertEquals(7L, actionMap.get("actorId"));
+        // actorId must come from the authenticated TenantContext (userId=1L, set in setUp),
+        // NOT the client-supplied 7, which must be ignored.
+        assertEquals(1L, actionMap.get("actorId"));
         assertEquals("Submitting now", actionMap.get("notes"));
-        // actorEmail was not sent — must not be in the map
-        assertFalse(actionMap.containsKey("actorEmail"));
+        // actorEmail is always stamped from the authenticated TenantContext, regardless of
+        // what the client sent (nothing, here).
+        assertEquals("sa@x", actionMap.get("actorEmail"));
     }
 
     /**
      * Null body (no Content-Type, no body): endpoint must still succeed and repo must be
-     * called with an empty map (not throw NPE).
+     * called with the trusted actor stamped in (not an empty map — actorId/actorEmail are
+     * always populated from TenantContext regardless of body presence).
      */
     @Test
-    void submitAction_nullBody_callsRepoWithEmptyMap() throws Exception {
+    void submitAction_nullBody_callsRepoWithStampedActor() throws Exception {
         when(repo.submit(anyLong(), anyMap())).thenReturn(Map.of("id", 99L, "status", "PENDING"));
 
         mvc.perform(post("/api/v1/workflows/instances/99/submit")
@@ -219,6 +225,9 @@ class WorkflowValidationTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).submit(eq(99L), captor.capture());
-        assertTrue(captor.getValue().isEmpty());
+        Map<String, Object> actionMap = captor.getValue();
+        assertEquals(1L, actionMap.get("actorId"));
+        assertEquals("sa@x", actionMap.get("actorEmail"));
+        assertFalse(actionMap.containsKey("notes"));
     }
 }

@@ -155,9 +155,10 @@ class FirefightingReadControllerTest {
                 new VendorPaidRequest(null, 9L, "paid by bank transfer"));
 
         assertThat(response).isSameAs(result);
-        // applyResolvedSchool injects schoolId into the body; verify paidBy still present
+        // applyResolvedSchool injects schoolId into the body; paidBy is the trusted authenticated
+        // actor (TenantContext), NOT the client-supplied 9L, which must be ignored.
         verify(firefighting).markVendorPaid(eq("FF-1001"),
-                argThat(m -> Long.valueOf(9L).equals(m.get("paidBy")) && m.containsKey("schoolId")));
+                argThat(m -> Long.valueOf(1L).equals(m.get("paidBy")) && m.containsKey("schoolId")));
     }
 
     private FirefightingRequestRow requestRow(String code, String title) {

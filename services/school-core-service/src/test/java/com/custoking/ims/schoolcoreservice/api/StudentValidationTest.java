@@ -207,7 +207,8 @@ class StudentValidationTest {
         verify(repo).initiateIdCardReview(captor.capture());
         Map<String, Object> captured = captor.getValue();
         assertEquals(4L, captured.get("schoolId"));
-        assertEquals(10L, captured.get("actorId"));
+        // actorId is always stamped from TenantContext (1L here), never the client-supplied "actorId":10.
+        assertEquals(1L, captured.get("actorId"));
         assertEquals("2026-08-01", captured.get("dueDate"));
         assertNotNull(captured.get("classIds"));
         assertNotNull(captured.get("sectionIds"));
@@ -245,7 +246,8 @@ class StudentValidationTest {
         verify(repo).initiateFullNameVerification(captor.capture());
         Map<String, Object> captured = captor.getValue();
         assertEquals(4L, captured.get("schoolId"));
-        assertEquals(10L, captured.get("actorId"));
+        // actorId is always stamped from TenantContext (1L here), never the client-supplied "actorId":10.
+        assertEquals(1L, captured.get("actorId"));
         assertEquals("PARENT", captured.get("verifier"));
         assertNotNull(captured.get("classIds"));
     }

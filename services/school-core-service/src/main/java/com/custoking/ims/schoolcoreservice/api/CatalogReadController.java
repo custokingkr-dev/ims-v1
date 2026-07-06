@@ -9,6 +9,7 @@ import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.Cat
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.CatalogOrderRow;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.PendingCatalogOrderRow;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.SupplyOrderRow;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -99,7 +100,7 @@ public class CatalogReadController {
         if (dto.totalAmount() != null) body.put("totalAmount", dto.totalAmount());
         if (dto.status() != null) body.put("status", dto.status());
         if (dto.notes() != null) body.put("notes", dto.notes());
-        if (dto.actorId() != null) body.put("actorId", dto.actorId());
+        body.put("actorId", TenantContext.get().userId());
         if (dto.requiredByDate() != null) body.put("requiredByDate", dto.requiredByDate());
         if (dto.id() != null) body.put("id", dto.id());
         if (dto.orderId() != null) body.put("orderId", dto.orderId());
@@ -116,7 +117,7 @@ public class CatalogReadController {
             @PathVariable String id,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "catalog:write");
-        return runCommand(() -> catalog.placeOrder(id, request == null ? null : longValue(request.get("actorId"))));
+        return runCommand(() -> catalog.placeOrder(id, TenantContext.get().userId()));
     }
 
     @PatchMapping("/orders/{id}/status")
@@ -164,7 +165,7 @@ public class CatalogReadController {
         requireToken(token, "catalog:write");
         applyResolvedSchool(request);
         Long schoolId = longValue(request.get("schoolId"));
-        Long actorId = longValue(request.get("actorId"));
+        Long actorId = TenantContext.get().userId();
         String notes = String.valueOf(request.getOrDefault("notes", ""));
         return runCommand(() -> catalog.markVendorPaid(id, schoolId, actorId, notes));
     }

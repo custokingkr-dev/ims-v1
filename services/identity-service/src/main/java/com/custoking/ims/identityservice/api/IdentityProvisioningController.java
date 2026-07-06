@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.IdentityUserProvisioningRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -37,7 +39,9 @@ public class IdentityProvisioningController {
             @PathVariable String role,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
-        return users.provisionSchoolUser(schoolId, role, body);
+        Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
+        stamped.put("assignedBy", TenantContext.get().userId());
+        return users.provisionSchoolUser(schoolId, role, stamped);
     }
 
     @PostMapping("/zones/{zoneId}/admin")
@@ -47,7 +51,9 @@ public class IdentityProvisioningController {
             @PathVariable Long zoneId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
-        return users.provisionZoneAdmin(zoneId, body);
+        Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
+        stamped.put("assignedBy", TenantContext.get().userId());
+        return users.provisionZoneAdmin(zoneId, stamped);
     }
 
     private void requireToken(String token, String requiredScope) {

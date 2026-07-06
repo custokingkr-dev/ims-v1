@@ -223,51 +223,57 @@ public class StudentReadRepository {
                 schoolId, String.valueOf(schoolClass.get("id")), str(request.get("sectionName"), "A"));
         String academicYearId = currentAcademicYearId();
         OffsetDateTime now = OffsetDateTime.now();
-        Long id = jdbc.sql("""
-                INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, gender,
-                                     father_name, father_contact, mother_name, phone, address,
-                                     house_number, street, locality, city, state, pin_code, photo_url,
-                                     fee_status, attendance_percent, created_at, updated_at,
-                                     school_id, class_id, section_id, academic_year_id, version)
-                VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :gender,
-                        :fatherName, :fatherContact, :motherName, :phone, :address,
-                        :houseNumber, :street, :locality, :city, :state, :pinCode, :photoUrl,
-                        'Pending', 0, :createdAt, :updatedAt,
-                        :schoolId, :classId, :sectionId, :academicYearId, 0)
-                RETURNING id
-                """)
-                .param("admissionNo", admissionNo)
-                .param("rollNo", str(request.get("rollNo"), String.valueOf(countBySection(String.valueOf(section.get("id"))) + 1)))
-                .param("boardRegNo", str(request.get("boardRegistrationNumber"), ""))
-                .param("fullName", fullName)
-                .param("dob", parseDate(str(request.get("dateOfBirth"), "")))
-                .param("gender", str(request.get("gender"), "Unspecified"))
-                .param("fatherName", str(request.get("fatherName"), ""))
-                .param("fatherContact", str(firstPresent(request, "fatherContactNumber", "fatherContact"), ""))
-                .param("motherName", str(request.get("motherName"), ""))
-                .param("phone", str(request.get("phone"), str(firstPresent(request, "fatherContactNumber", "fatherContact"), "")))
-                .param("address", joinAddress(
-                        str(request.get("houseNumber"), ""),
-                        str(request.get("street"), ""),
-                        str(request.get("locality"), ""),
-                        str(request.get("city"), "Hyderabad"),
-                        str(request.get("state"), "Telangana"),
-                        str(request.get("pinCode"), "")))
-                .param("houseNumber", str(request.get("houseNumber"), ""))
-                .param("street", str(request.get("street"), ""))
-                .param("locality", str(request.get("locality"), ""))
-                .param("city", str(request.get("city"), "Hyderabad"))
-                .param("state", str(request.get("state"), "Telangana"))
-                .param("pinCode", str(request.get("pinCode"), ""))
-                .param("photoUrl", str(request.get("photoUrl"), null))
-                .param("createdAt", now)
-                .param("updatedAt", now)
-                .param("schoolId", schoolId)
-                .param("classId", schoolClass.get("id"))
-                .param("sectionId", section.get("id"))
-                .param("academicYearId", academicYearId)
-                .query(Long.class)
-                .single();
+        Long id;
+        try {
+            id = jdbc.sql("""
+                    INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, gender,
+                                         father_name, father_contact, mother_name, phone, address,
+                                         house_number, street, locality, city, state, pin_code, photo_url,
+                                         fee_status, attendance_percent, created_at, updated_at,
+                                         school_id, class_id, section_id, academic_year_id, version)
+                    VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :gender,
+                            :fatherName, :fatherContact, :motherName, :phone, :address,
+                            :houseNumber, :street, :locality, :city, :state, :pinCode, :photoUrl,
+                            'Pending', 0, :createdAt, :updatedAt,
+                            :schoolId, :classId, :sectionId, :academicYearId, 0)
+                    RETURNING id
+                    """)
+                    .param("admissionNo", admissionNo)
+                    .param("rollNo", str(request.get("rollNo"), String.valueOf(countBySection(String.valueOf(section.get("id"))) + 1)))
+                    .param("boardRegNo", str(request.get("boardRegistrationNumber"), ""))
+                    .param("fullName", fullName)
+                    .param("dob", parseDate(str(request.get("dateOfBirth"), "")))
+                    .param("gender", str(request.get("gender"), "Unspecified"))
+                    .param("fatherName", str(request.get("fatherName"), ""))
+                    .param("fatherContact", str(firstPresent(request, "fatherContactNumber", "fatherContact"), ""))
+                    .param("motherName", str(request.get("motherName"), ""))
+                    .param("phone", str(request.get("phone"), str(firstPresent(request, "fatherContactNumber", "fatherContact"), "")))
+                    .param("address", joinAddress(
+                            str(request.get("houseNumber"), ""),
+                            str(request.get("street"), ""),
+                            str(request.get("locality"), ""),
+                            str(request.get("city"), "Hyderabad"),
+                            str(request.get("state"), "Telangana"),
+                            str(request.get("pinCode"), "")))
+                    .param("houseNumber", str(request.get("houseNumber"), ""))
+                    .param("street", str(request.get("street"), ""))
+                    .param("locality", str(request.get("locality"), ""))
+                    .param("city", str(request.get("city"), "Hyderabad"))
+                    .param("state", str(request.get("state"), "Telangana"))
+                    .param("pinCode", str(request.get("pinCode"), ""))
+                    .param("photoUrl", str(request.get("photoUrl"), null))
+                    .param("createdAt", now)
+                    .param("updatedAt", now)
+                    .param("schoolId", schoolId)
+                    .param("classId", schoolClass.get("id"))
+                    .param("sectionId", section.get("id"))
+                    .param("academicYearId", academicYearId)
+                    .query(Long.class)
+                    .single();
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            // Backstop for the (school_id, admission_no) unique constraint.
+            throw new IllegalArgumentException("Admission Number already exists");
+        }
         return studentDetail(id);
     }
 

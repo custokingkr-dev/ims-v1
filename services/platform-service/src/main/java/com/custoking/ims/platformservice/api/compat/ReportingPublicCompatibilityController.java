@@ -179,7 +179,7 @@ public class ReportingPublicCompatibilityController {
         requireToken(token, "reporting:read");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
-        return command(() -> commands.acceptAction(id, actorId(body), resolvedSchoolId, superAdmin));
+        return command(() -> commands.acceptAction(id, TenantContext.get().userId(), resolvedSchoolId, superAdmin));
     }
 
     @PostMapping("/api/v1/command-centre/actions/{id}/dismiss")
@@ -190,7 +190,7 @@ public class ReportingPublicCompatibilityController {
         requireToken(token, "reporting:read");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
-        return command(() -> commands.dismissAction(id, actorId(body), reason(body), resolvedSchoolId, superAdmin));
+        return command(() -> commands.dismissAction(id, TenantContext.get().userId(), reason(body), resolvedSchoolId, superAdmin));
     }
 
     @GetMapping("/api/v1/command-centre/feed")
@@ -229,10 +229,6 @@ public class ReportingPublicCompatibilityController {
         if (value instanceof Number number) return number.doubleValue();
         if (value == null || String.valueOf(value).isBlank()) return 0;
         return Double.parseDouble(String.valueOf(value));
-    }
-
-    private Long actorId(Map<String, Object> body) {
-        return longBody(body, "actorId");
     }
 
     private Long actorSchoolId(Map<String, Object> body) {

@@ -83,6 +83,8 @@ class FirefightingValidationTest {
         mvc.perform(post("/api/v1/ff/requests")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
+                        .header("X-Authenticated-User-Id", "5")
+                        .header("X-Authenticated-Email", "trusted@school.com")
                         .contentType("application/json")
                         .content("{\"title\":\"Replace extinguishers\",\"category\":\"Health\",\"urgency\":\"HIGH\"," +
                                 "\"estimatedBudget\":50000,\"schoolId\":10,\"actorId\":9,\"actorEmail\":\"admin@school.com\"}"))
@@ -94,8 +96,10 @@ class FirefightingValidationTest {
         assertEquals("HIGH", captor.getValue().get("urgency"));
         assertEquals(50000L, captor.getValue().get("estimatedBudget"));
         assertEquals(Long.valueOf(10L), captor.getValue().get("schoolId"));
-        assertEquals(Long.valueOf(9L), captor.getValue().get("actorId"));
-        assertEquals("admin@school.com", captor.getValue().get("actorEmail"));
+        // actorId/actorEmail must come from the authenticated TenantContext, NOT the
+        // client-supplied body values (9 / admin@school.com), which must be ignored.
+        assertEquals(Long.valueOf(5L), captor.getValue().get("actorId"));
+        assertEquals("trusted@school.com", captor.getValue().get("actorEmail"));
     }
 
     @Test
@@ -373,12 +377,14 @@ class FirefightingValidationTest {
         mvc.perform(post("/api/v1/ff/requests/FF-001/vendor-paid")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN")
+                        .header("X-Authenticated-User-Id", "7")
                         .contentType("application/json")
                         .content("{\"paidBy\":42,\"notes\":\"Wire transfer\"}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).markVendorPaid(eq("FF-001"), captor.capture());
-        assertEquals(42L, captor.getValue().get("paidBy"));
+        // paidBy must come from the authenticated TenantContext, NOT the client-supplied 42.
+        assertEquals(7L, captor.getValue().get("paidBy"));
         assertEquals("Wire transfer", captor.getValue().get("notes"));
     }
 }

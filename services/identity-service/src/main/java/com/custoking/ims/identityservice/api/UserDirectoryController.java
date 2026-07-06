@@ -2,6 +2,7 @@ package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.api.dto.PasswordResetRequest;
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
 import com.custoking.ims.identityservice.security.TenantScope;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,7 +70,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @Valid @RequestBody PasswordResetRequest req) {
         requireToken(token, "identity:write");
-        users.resetPassword(id, req.password(), req.actorId(), req.actorEmail());
+        users.resetPassword(id, req.password(), TenantContext.get().userId(), TenantContext.get().email());
     }
 
     @PostMapping("/{id}/disable")
@@ -79,7 +80,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
-        users.disableUser(id, longValue(body, "actorId"), text(body, "actorEmail"));
+        users.disableUser(id, TenantContext.get().userId(), TenantContext.get().email());
     }
 
     @PostMapping("/{id}/enable")
@@ -89,7 +90,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
-        users.enableUser(id, longValue(body, "actorId"), text(body, "actorEmail"));
+        users.enableUser(id, TenantContext.get().userId(), TenantContext.get().email());
     }
 
     private void requireToken(String token, String requiredScope) {
