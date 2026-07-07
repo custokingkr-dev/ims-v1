@@ -24,13 +24,21 @@ permissions:
   contents: read
   id-token: write
 
-concurrency:
-  group: cd-release
-  cancel-in-progress: false
-
+# Concurrency is scoped PER JOB, not per workflow, on purpose. A single shared group would let a
+# promote-prod job that is parked at the prod reviewer gate (it can wait for hours as an
+# in-progress job) hold the group and starve every later push's dev deploy — GitHub keeps only the
+# newest pending run per group and cancels the rest. Splitting the groups keeps the two lanes
+# independent: dev always converges to the latest merged SHA, and a waiting prod approval never
+# cancels a dev deploy.
 jobs:
   deploy-dev:
     name: Build + deploy DEV
+    # Serialize dev deploys; a burst of merges cancels only the older *pending* runs, so dev
+    # converges to the newest SHA. cancel-in-progress:false so an in-flight deploy is never
+    # interrupted mid-rollout (avoids a half-deployed dev).
+    concurrency:
+      group: cd-dev
+      cancel-in-progress: false
     # Skip cleanly until the GCP project is bootstrapped (the GCP_PROJECT_ID repo
     # Variable is set). Prevents failing deploy runs on every push to main pre-setup.
     if: ${{ vars.GCP_PROJECT_ID != '' }}
@@ -46,6 +54,12 @@ jobs:
   promote-prod:
     name: Promote same image to PROD (gated)
     needs: deploy-dev
+    # Its own group so the prod approval gate never blocks dev. cancel-in-progress:true so a newer
+    # merge supersedes a promotion still parked at the reviewer gate — the gate always reflects the
+    # latest dev-validated SHA instead of holding a stale one.
+    concurrency:
+      group: cd-prod
+      cancel-in-progress: true
     if: ${{ vars.GCP_PROJECT_ID != '' }}
     uses: ./.github/workflows/deploy.yml
     with:
