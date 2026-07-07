@@ -118,6 +118,15 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     }
   };
 
+  const markDelivered = async (orderId: string) => {
+    try {
+      await api.post(`/supply/orders/${orderId}/deliver`);
+      await load();
+    } catch (e: any) {
+      setToast(e?.response?.data?.message || 'Could not mark delivered.');
+    }
+  };
+
   const openInvoiceFromOrder = async (orderId: string, school: string, schoolId: number | null, valuePaise: number) => {
     setInvError(''); setInvEditing(false); setInvSaving(false);
     try {
@@ -232,7 +241,14 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                         <button className="ck-btn ck-btn-ghost" onClick={() => openDetail(row.id)}>View</button>
                         {canManage && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
-                          : <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>)}
+                          : (
+                            <>
+                              {String(row.status).toUpperCase() === 'APPROVED' && (
+                                <button className="ck-btn ck-btn-g" onClick={() => markDelivered(row.id)}>Mark delivered</button>
+                              )}
+                              <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>
+                            </>
+                          ))}
                       </td>
                     </tr>
                   ))}
