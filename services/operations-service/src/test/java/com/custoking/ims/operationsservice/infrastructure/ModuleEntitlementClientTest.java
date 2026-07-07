@@ -5,7 +5,6 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,7 +41,7 @@ class ModuleEntitlementClientTest {
 
     // cloud-run-auth = "never" so the metadata server is never contacted in tests.
     private ModuleEntitlementClient client(long ttlMs) {
-        return new ModuleEntitlementClient(RestClient.builder(), baseUrl, "tok", "never", ttlMs, 3000, 5000);
+        return new ModuleEntitlementClient(baseUrl, "tok", "never", ttlMs, 3000, 5000);
     }
 
     @Test
@@ -72,7 +71,7 @@ class ModuleEntitlementClientTest {
 
     @Test
     void notConfiguredThrows() {
-        ModuleEntitlementClient unconfigured = new ModuleEntitlementClient(RestClient.builder(), "", "", "never", 60000, 3000, 5000);
+        ModuleEntitlementClient unconfigured = new ModuleEntitlementClient("", "", "never", 60000, 3000, 5000);
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> unconfigured.activeModules(1L))
                 .isInstanceOf(IllegalStateException.class);

@@ -54,7 +54,6 @@ public class ModuleEntitlementClient {
     }
 
     public ModuleEntitlementClient(
-            RestClient.Builder restClientBuilder,
             @Value("${operations.tenant-school.base-url:}") String baseUrl,
             @Value("${operations.tenant-school.token:}") String token,
             @Value("${operations.tenant-school.cloud-run-auth:auto}") String cloudRunAuthMode,
@@ -68,7 +67,11 @@ public class ModuleEntitlementClient {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Math.max(0, connectTimeoutMs));
         requestFactory.setReadTimeout(Math.max(0, readTimeoutMs));
-        this.restClient = restClientBuilder
+        // Use the static RestClient.builder() factory rather than injecting the autoconfigured
+        // RestClient.Builder bean: that bean is not present in operations-service's context and
+        // injecting it fails the whole ApplicationContext at boot (unlike identity-service, where
+        // TenantSchoolClient can inject it). The static factory needs no autoconfiguration.
+        this.restClient = RestClient.builder()
                 .baseUrl(this.baseUrl.isBlank() ? "http://localhost" : this.baseUrl)
                 .requestFactory(requestFactory)
                 .build();
