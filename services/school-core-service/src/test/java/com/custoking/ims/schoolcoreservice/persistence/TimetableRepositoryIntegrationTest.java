@@ -197,6 +197,74 @@ class TimetableRepositoryIntegrationTest {
         assertThat(reloadedP2.get("sortOrder")).isEqualTo(1);
     }
 
+    private void insertEntryDirect(long schoolId, String year, String sectionId, long periodId, String subject) throws Exception {
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.school_timetable_entries " +
+                    "(school_id, academic_year_id, section_id, day_name, bell_period_id, subject_name) VALUES (" +
+                    schoolId + ", '" + year + "', '" + sectionId + "', 'Mon', " + periodId + ", '" + subject + "')");
+        }
+    }
+
+    @Test
+    void deletePeriodBlockedWhenReferencedByPastYearTimetable() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "6");
+        String sec = seedSection(schoolId, classId, "6-A");
+        seedYear(schoolId, "ay_2026_27", true);
+        String past = seedYear(schoolId, "ay_2025_26", false);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        // An archived (past-year) timetable references this period.
+        insertEntryDirect(schoolId, past, sec, pid, "Math");
+
+        assertThatThrownBy(() -> repo.deletePeriod(schoolId, pid))
+            .isInstanceOf(YearLockedException.class);
+        // period must survive so the archive stays intact
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> periods = (List<Map<String, Object>>) repo.bellSchedules(schoolId).get(0).get("periods");
+        assertThat(periods).anySatisfy(m -> assertThat(((Number) m.get("id")).longValue()).isEqualTo(pid));
+    }
+
+    @Test
+    void deletePeriodAllowedWhenOnlyActiveYearUsesIt() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "6");
+        String sec = seedSection(schoolId, classId, "6-A");
+        String active = seedYear(schoolId, "ay_2026_27", true);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, schedId);
+        repo.addSubject(schoolId, classId, active, "Math");
+        repo.upsertEntry(schoolId, sec, "Mon", pid, "Math", null);
+
+        repo.deletePeriod(schoolId, pid);   // active-year only → allowed, cascade clears the active entry
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> periods = (List<Map<String, Object>>) repo.bellSchedules(schoolId).get(0).get("periods");
+        assertThat(periods).noneSatisfy(m -> assertThat(((Number) m.get("id")).longValue()).isEqualTo(pid));
+    }
+
+    @Test
+    void deleteScheduleBlockedWhenReferencedByPastYearTimetable() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "6");
+        String sec = seedSection(schoolId, classId, "6-A");
+        seedYear(schoolId, "ay_2026_27", true);
+        String past = seedYear(schoolId, "ay_2025_26", false);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        insertEntryDirect(schoolId, past, sec, pid, "Math");
+
+        assertThatThrownBy(() -> repo.deleteSchedule(schoolId, schedId))
+            .isInstanceOf(YearLockedException.class);
+        assertThat(repo.bellSchedules(schoolId)).hasSize(1);
+    }
+
     @Test
     void upsertRejectsNonActiveYearAndBreakAndUnknownSubject() throws Exception {
         long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
