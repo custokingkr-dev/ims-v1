@@ -277,7 +277,7 @@ public class ReportingReadRepository {
                 SELECT 'CATALOG_ORDER' AS source_type, id, category AS title, category,
                        NULL::varchar AS vendor_name, total_amount AS amount_paise,
                        status, created_at
-                FROM catalog.catalog_orders
+                FROM reporting.fact_catalog_order
                 WHERE school_id = :schoolId
                   AND status IN ('APPROVED', 'FULFILLED')
                   AND vendor_paid_at IS NULL
@@ -298,7 +298,7 @@ public class ReportingReadRepository {
                 SELECT 'FIREFIGHTING' AS source_type, code AS id, title, category,
                        winner_vendor AS vendor_name, winner_amount AS amount_paise,
                        status, created_at
-                FROM firefighting.firefighting_requests
+                FROM reporting.fact_firefighting_request
                 WHERE school_id = :schoolId
                   AND status = 'APPROVED'
                   AND winner_amount IS NOT NULL
@@ -336,7 +336,7 @@ public class ReportingReadRepository {
         }
         List<Map<String, Object>> orders = jdbc.sql("""
                 SELECT category, created_at
-                FROM catalog.catalog_orders
+                FROM reporting.fact_catalog_order
                 WHERE school_id = :schoolId
                   AND status IN ('APPROVED', 'FULFILLED')
                   AND created_at IS NOT NULL
@@ -746,41 +746,39 @@ public class ReportingReadRepository {
                     "kpis", List.of(), "criticalAlerts", List.of());
         }
         long feesPaid = countAmount("""
-                SELECT COALESCE(SUM(p.amount), 0)
-                FROM fee.payment_records p
-                JOIN student.students s ON s.id = p.student_id
-                WHERE s.school_id = :schoolId
+                SELECT COALESCE(SUM(amount), 0)
+                FROM reporting.fact_payment
+                WHERE school_id = :schoolId
                 """, schoolId);
         long overdueCount = count("""
                 SELECT count(*)
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
-                WHERE fa.academic_year_id = 'ay_2025_26'
-                  AND s.school_id = :schoolId
-                  AND fa.net_payable > fa.paid_amount
+                FROM reporting.fact_fee_assignment
+                WHERE academic_year_id = 'ay_2025_26'
+                  AND school_id = :schoolId
+                  AND net_payable > paid_amount
                 """, schoolId);
         long openFF = count("""
                 SELECT count(*)
-                FROM firefighting.firefighting_requests
+                FROM reporting.fact_firefighting_request
                 WHERE school_id = :schoolId
                   AND status <> 'FULFILLED'
                 """, schoolId);
         long pendingFFApprovals = count("""
                 SELECT count(*)
-                FROM firefighting.firefighting_requests
+                FROM reporting.fact_firefighting_request
                 WHERE school_id = :schoolId
                   AND status IN ('AWAITING_PRINCIPAL', 'AWAITING_BURSAR')
                 """, schoolId);
         long activeOrders = count("""
                 SELECT count(*)
-                FROM catalog.catalog_orders
+                FROM reporting.fact_catalog_order
                 WHERE school_id = :schoolId
                   AND status IN ('SUBMITTED', 'AWAITING_APPROVAL', 'IN_TRANSIT',
                                  'AWAITING_DESIGN_APPROVAL', 'DESIGN_APPROVED', 'PROCESSING')
                 """, schoolId);
         long attendanceSections = count("""
                 SELECT count(*)
-                FROM attendance.attendance_daily
+                FROM reporting.fact_attendance_daily
                 WHERE attendance_date = CURRENT_DATE
                   AND academic_year_id = 'ay_2025_26'
                 """);
