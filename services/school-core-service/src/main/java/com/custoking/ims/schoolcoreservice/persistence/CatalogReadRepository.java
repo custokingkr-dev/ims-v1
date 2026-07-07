@@ -549,6 +549,7 @@ public class CatalogReadRepository {
         payload.put("createdAt", order.createdAt());
         payload.put("requiredByDate", order.requiredByDate());
         payload.put("designStatus", order.designStatus());
+        payload.put("notes", order.notes());
         outbox.append("catalog-order.upserted.v1", "CatalogOrderUpserted:" + order.id(), "CatalogOrder",
                 order.id(), order.schoolId(), payload);
     }

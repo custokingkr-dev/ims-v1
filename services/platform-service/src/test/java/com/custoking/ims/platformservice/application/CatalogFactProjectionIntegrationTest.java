@@ -91,7 +91,7 @@ class CatalogFactProjectionIntegrationTest {
     private void feedCatalogOrderEvent(String eventId, String orderId, long schoolId, String status) {
         String payload = "{\"id\":\"" + orderId + "\",\"schoolId\":" + schoolId + ",\"category\":\"STATIONERY\","
                 + "\"status\":\"" + status + "\",\"totalAmount\":1180,\"superadminApprovalStatus\":\"PENDING\","
-                + "\"designStatus\":\"NOT_REQUIRED\"}";
+                + "\"designStatus\":\"NOT_REQUIRED\",\"notes\":\"Please expedite\"}";
         String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"catalog-order.upserted.v1\","
                 + "\"payload\":" + payload + "}";
         inbox.record(new ReportingEventInboxRecord(
@@ -131,7 +131,7 @@ class CatalogFactProjectionIntegrationTest {
         assertEquals(1, processed);
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "SELECT school_id, category, status, total_amount FROM reporting.fact_catalog_order WHERE id = ?")) {
+                     "SELECT school_id, category, status, total_amount, notes FROM reporting.fact_catalog_order WHERE id = ?")) {
             ps.setString(1, "CK-1001");
             try (ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "expected a fact_catalog_order row for CK-1001");
@@ -139,6 +139,7 @@ class CatalogFactProjectionIntegrationTest {
                 assertEquals("STATIONERY", rs.getString("category"));
                 assertEquals("DRAFT", rs.getString("status"));
                 assertEquals(1180L, rs.getLong("total_amount"));
+                assertEquals("Please expedite", rs.getString("notes"));
             }
         }
     }
