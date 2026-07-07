@@ -3,12 +3,14 @@ import api from '../../../services/api';
 import { ModuleShell, Field, Info } from '../ui';
 import { formatMoney } from '../utils';
 import type { FirefightingRequest, Quotation } from '../../../types/workspace';
+import { usePermissions } from '../../../hooks/usePermissions';
 
 const FF_STAGES = [
   { key: 'DRAFT', label: 'Draft' },
   { key: 'AWAITING_BURSAR', label: 'Finance Review' },
   { key: 'AWAITING_PRINCIPAL', label: 'Admin Approval' },
-  { key: 'APPROVED', label: 'Approved' },
+  { key: 'APPROVED', label: 'Approved (awaiting Custoking)' },
+  { key: 'CUSTOKING_APPROVED', label: 'Custoking Approved' },
   { key: 'FULFILLED', label: 'Fulfilled' },
 ] as const;
 
@@ -48,11 +50,14 @@ function WorkflowStepper({ status }: { status: string }) {
 }
 
 interface Props {
-  pendingRequests: FirefightingRequest[];
+  isSuperAdmin: boolean;
   onRefresh: () => Promise<void>;
 }
 
-export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props) {
+export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
+  const { can } = usePermissions();
+  const canWrite = can('firefighting:write');
+  const [pendingRequests, setPendingRequests] = useState<FirefightingRequest[]>([]);
   const [ffApprovalDetails, setFfApprovalDetails] = useState<FirefightingRequest[]>([]);
   const [ffApprovalLoading, setFfApprovalLoading] = useState(false);
   const [ffApprovalLoadError, setFfApprovalLoadError] = useState('');
@@ -71,8 +76,19 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
     return () => clearTimeout(t);
   }, [toast]);
 
+  const loadPendingRequests = async () => {
+    try {
+      const res = await api.get('/ff/requests/pending-approvals', { params: { limit: 200 } });
+      setPendingRequests(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setPendingRequests([]);
+    }
+  };
+
+  useEffect(() => { void loadPendingRequests(); }, []);
+
   const loadFfApprovalDetails = async () => {
-    const pending = pendingRequests.filter((r) => ['AWAITING_BURSAR', 'AWAITING_PRINCIPAL'].includes(r.status));
+    const pending = pendingRequests.filter((r) => ['AWAITING_BURSAR', 'AWAITING_PRINCIPAL', 'APPROVED'].includes(r.status));
     if (!pending.length) { setFfApprovalDetails([]); setFfApprovalLoadError(''); return; }
     setFfApprovalLoading(true);
     setFfApprovalLoadError('');
@@ -108,9 +124,11 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
         }
       } else if (req.status === 'AWAITING_PRINCIPAL') {
         await api.post(`/ff/requests/${req.code}/approve-principal`, { note, selectedQuotationId: qid });
+      } else if (req.status === 'APPROVED') {
+        await api.post(`/ff/requests/${req.code}/approve-custoking`, {});
       }
       await onRefresh();
-      await loadFfApprovalDetails();
+      await loadPendingRequests();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Approval failed';
       setToast(msg);
@@ -133,7 +151,7 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
     try {
       await api.post(`/ff/requests/${rejectTarget.code}/reject`, { reason: rejectReason });
       await onRefresh();
-      await loadFfApprovalDetails();
+      await loadPendingRequests();
       setRejectModalOpen(false);
       setRejectTarget(null);
       setRejectReason('');
@@ -162,7 +180,7 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {req.urgency === 'HIGH' && <span style={{ background: 'var(--re1)', color: 'var(--re)', fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 5 }}>Urgent</span>}
                 <span style={{ background: req.status === 'AWAITING_BURSAR' ? 'var(--am1)' : 'var(--b1)', color: req.status === 'AWAITING_BURSAR' ? 'var(--am)' : 'var(--b)', fontSize: 11.5, fontWeight: 700, padding: '4px 11px', borderRadius: 20 }}>
-                  {req.status === 'AWAITING_BURSAR' ? '⏳ Finance Review Pending' : '⏳ Admin Approval Pending'}
+                  {req.status === 'AWAITING_BURSAR' ? '⏳ Finance Review Pending' : req.status === 'AWAITING_PRINCIPAL' ? '⏳ Admin Approval Pending' : '⏳ Custoking Approval Pending'}
                 </span>
               </div>
             </div>
@@ -206,16 +224,21 @@ export function FirefightingApprovalsPanel({ pendingRequests, onRefresh }: Props
               </Field>
             </div>
             <div style={{ display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg)', flexWrap: 'wrap' }}>
-              {req.status === 'AWAITING_BURSAR' && (
+              {canWrite && req.status === 'AWAITING_BURSAR' && (
                 <>
                   <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req, false)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Finance Review'}</button>
                   <button className="ck-btn" style={{ background: 'var(--b1)', color: 'var(--b)', border: '1px solid var(--b)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: approving[req.code] ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: approving[req.code] ? 0.6 : 1 }} disabled={approving[req.code]} onClick={() => void approveFfRequest(req, true)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Admin Approval'}</button>
                 </>
               )}
-              {req.status === 'AWAITING_PRINCIPAL' && (
+              {canWrite && req.status === 'AWAITING_PRINCIPAL' && (
                 <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Admin Approval'}</button>
               )}
-              <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid #f5c0bc', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }} onClick={() => openRejectModal(req)}>Reject</button>
+              {canWrite && isSuperAdmin && req.status === 'APPROVED' && (
+                <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Custoking'}</button>
+              )}
+              {canWrite && (
+                <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid #f5c0bc', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }} onClick={() => openRejectModal(req)}>Reject</button>
+              )}
             </div>
           </div>
         ))}

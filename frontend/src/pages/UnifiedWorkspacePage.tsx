@@ -518,7 +518,6 @@ export default function UnifiedWorkspacePage() {
           {panel === 'ff-dashboard' && (
             <FirefightingDashboardPanel
               isSuperAdmin={isPlatformAdmin}
-              adminRequests={workspace?.firefighting?.requests ?? []}
               setPanel={setPanel}
               onOpenFfDraft={(code) => { setFfEditingCode(code); setPanel('ff-new'); }}
             />
@@ -528,14 +527,13 @@ export default function UnifiedWorkspacePage() {
           )}
           {panel === 'ff-approvals' && (
             <FirefightingApprovalsPanel
-              pendingRequests={workspace?.firefighting?.requests ?? []}
+              isSuperAdmin={isPlatformAdmin}
               onRefresh={refresh}
             />
           )}
           {panel === 'ff-orders' && (
             <FirefightingOrdersPanel
               isSuperAdmin={isPlatformAdmin}
-              adminRequests={workspace?.firefighting?.requests ?? []}
               onRefresh={refresh}
             />
           )}
