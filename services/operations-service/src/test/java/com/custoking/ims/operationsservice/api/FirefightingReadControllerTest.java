@@ -189,6 +189,9 @@ class FirefightingReadControllerTest {
                 "Admin",
                 null,
                 null,
+                null,
+                null,
+                null,
                 null);
     }
 }

@@ -79,6 +79,7 @@ export interface FirefightingRequest {
   winnerVendor?: string;
   winner?: string;
   date?: string;
+  createdAt?: string;
   description?: string;
   summary?: string;
   requiredByDate?: string;

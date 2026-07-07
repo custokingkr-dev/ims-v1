@@ -7,19 +7,30 @@ import { getDisplayStatus } from '../../../shared/display/status';
 import { markFirefightingVendorPaid } from '../../../api/dashboardCommandCenterApi';
 
 interface FfTrackItem {
-  state: string;
-  title: string;
-  meta: string;
-  note?: string;
+  status: string;
+  at: string;
 }
 
 interface Props {
   isSuperAdmin: boolean;
-  adminRequests: FirefightingRequest[];
   onRefresh: () => Promise<void>;
 }
 
-export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh }: Props) {
+function formatFfDate(value?: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function labelFfStatus(status: string): string {
+  return status
+    .split('_')
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+export function FirefightingOrdersPanel({ isSuperAdmin, onRefresh }: Props) {
   const [saFfRequests, setSaFfRequests] = useState<FirefightingRequest[]>([]);
   const [saFfLoading, setSaFfLoading] = useState(false);
   const [saFfError, setSaFfError] = useState('');
@@ -38,15 +49,13 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
   }, [toast]);
 
   useEffect(() => {
-    if (!isSuperAdmin) return;
     setSaFfLoading(true);
     setSaFfError('');
-    // PageResponse envelope → extract content; size=200 for the full orders list
-    api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } })
-      .then((res) => setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []))
+    api.get('/ff/requests', { params: { limit: 200 } })
+      .then((res) => setSaFfRequests(Array.isArray(res.data) ? res.data : []))
       .catch(() => { setSaFfRequests([]); setSaFfError('Failed to load orders. Please refresh to try again.'); })
       .finally(() => setSaFfLoading(false));
-  }, [isSuperAdmin]);
+  }, []);
 
   const openFfTrack = async (req: FirefightingRequest) => {
     setFfTrackRequest(req);
@@ -68,10 +77,8 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
   const approveFfCustoking = async (req: FirefightingRequest) => {
     try {
       await api.post(`/ff/requests/${req.code}/approve-custoking`, {});
-      if (isSuperAdmin) {
-        const res = await api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } });
-        setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []);
-      }
+      const res = await api.get('/ff/requests', { params: { limit: 200 } });
+      setSaFfRequests(Array.isArray(res.data) ? res.data : []);
       await onRefresh();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to approve for Custoking fulfilment';
@@ -82,10 +89,8 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
   const fulfillFfRequest = async (req: FirefightingRequest) => {
     try {
       await api.patch(`/ff/requests/${req.code}/fulfill`);
-      if (isSuperAdmin) {
-        const res = await api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } });
-        setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []);
-      }
+      const res = await api.get('/ff/requests', { params: { limit: 200 } });
+      setSaFfRequests(Array.isArray(res.data) ? res.data : []);
       await onRefresh();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to mark as delivered';
@@ -99,10 +104,8 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
     setVendorPaidLoading(req.code);
     try {
       await markFirefightingVendorPaid(req.code, note ? { notes: note } : undefined);
-      if (isSuperAdmin) {
-        const res = await api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } });
-        setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []);
-      }
+      const res = await api.get('/ff/requests', { params: { limit: 200 } });
+      setSaFfRequests(Array.isArray(res.data) ? res.data : []);
       await onRefresh();
       setToast('Vendor payment recorded');
     } catch (err: unknown) {
@@ -113,7 +116,7 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
     }
   };
 
-  const allReqs = isSuperAdmin ? saFfRequests : adminRequests;
+  const allReqs = saFfRequests;
   const displayRows = allReqs.filter((r) => ['FULFILLED', 'APPROVED', 'CUSTOKING_APPROVED'].includes(r.status));
 
   return (
@@ -152,7 +155,7 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
                       {getDisplayStatus(row.status)}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--ink3)' }}>{row.date}</td>
+                  <td style={{ color: 'var(--ink3)' }}>{formatFfDate(row.createdAt)}</td>
                   {isSuperAdmin && (
                     <td>
                       {row.status === 'APPROVED' && <button className="ck-btn ck-btn-or" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void approveFfCustoking(row)}>Move to Fulfilment</button>}
@@ -188,14 +191,13 @@ export function FirefightingOrdersPanel({ isSuperAdmin, adminRequests, onRefresh
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                   {ffTimeline.map((item, i) => (
                     <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: i < ffTimeline.length - 1 ? 20 : 0, position: 'relative' }}>
-                      {i < ffTimeline.length - 1 && <div style={{ position: 'absolute', left: 10, top: 22, width: 2, height: 'calc(100% - 4px)', background: item.state === 'done' ? 'var(--g)' : 'var(--border2)', zIndex: 0 }} />}
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: item.state === 'done' ? 'var(--g)' : item.state === 'active' ? 'var(--b)' : 'var(--border2)', border: item.state === 'active' ? '2px solid var(--b)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: item.state === 'pending' ? 'var(--ink3)' : '#fff', fontWeight: 700, zIndex: 1 }}>
-                        {item.state === 'done' ? '✓' : item.state === 'active' ? '•' : '○'}
+                      {i < ffTimeline.length - 1 && <div style={{ position: 'absolute', left: 10, top: 22, width: 2, height: 'calc(100% - 4px)', background: 'var(--g)', zIndex: 0 }} />}
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--g)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', fontWeight: 700, zIndex: 1 }}>
+                        ✓
                       </div>
                       <div style={{ flex: 1, paddingTop: 2 }}>
-                        <div style={{ fontSize: 13.5, fontWeight: 600, color: item.state === 'pending' ? 'var(--ink3)' : 'var(--ink)' }}>{item.title}</div>
-                        <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{item.meta}</div>
-                        {item.note && <div style={{ fontSize: 12, color: 'var(--ink2)', marginTop: 5, background: 'var(--bg)', padding: '5px 10px', borderRadius: 6, borderLeft: '3px solid var(--border2)' }}>{item.note}</div>}
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)' }}>{labelFfStatus(item.status)}</div>
+                        <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{formatFfDate(item.at)}</div>
                       </div>
                     </div>
                   ))}

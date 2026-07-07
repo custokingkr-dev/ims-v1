@@ -95,7 +95,7 @@ public class ReportingApprovalRepository {
                        ff.school_id, s.name AS school_name
                 FROM reporting.fact_firefighting_request ff
                 LEFT JOIN reporting.dim_school s ON s.id = ff.school_id
-                WHERE ff.status IN ('AWAITING_BURSAR', 'AWAITING_PRINCIPAL', 'AWAITING_CUSTOKING')
+                WHERE ff.status IN ('AWAITING_BURSAR', 'AWAITING_PRINCIPAL', 'APPROVED')
                 ORDER BY ff.created_at DESC NULLS LAST
                 LIMIT :limit
                 """)
@@ -139,7 +139,7 @@ public class ReportingApprovalRepository {
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Approval not found"));
         String status = normalize(current);
-        if (!List.of("AWAITING_BURSAR", "AWAITING_PRINCIPAL", "AWAITING_CUSTOKING").contains(status)) {
+        if (!List.of("AWAITING_BURSAR", "AWAITING_PRINCIPAL", "APPROVED").contains(status)) {
             throw new IllegalArgumentException("Approval not found");
         }
         if ("REJECT".equals(action)) {
@@ -151,7 +151,7 @@ public class ReportingApprovalRepository {
         switch (status) {
             case "AWAITING_BURSAR" -> approvalCommandClient.approveFirefightingBursar(code, decisionNote(request));
             case "AWAITING_PRINCIPAL" -> approvalCommandClient.approveFirefightingPrincipal(code, decisionNote(request));
-            case "AWAITING_CUSTOKING" -> approvalCommandClient.approveFirefightingCustoking(code);
+            case "APPROVED" -> approvalCommandClient.approveFirefightingCustoking(code);
             default -> throw new IllegalArgumentException("Approval not found");
         }
         return row("id", "firefighting:" + code, "sourceType", "FIREFIGHTING", "sourceId", code, "status", "APPROVED");
@@ -161,7 +161,7 @@ public class ReportingApprovalRepository {
         return switch (normalize(status)) {
             case "AWAITING_BURSAR" -> "Urgent procurement - bursar approval";
             case "AWAITING_PRINCIPAL" -> "Urgent procurement - principal approval";
-            case "AWAITING_CUSTOKING" -> "Urgent procurement - Custoking approval";
+            case "APPROVED" -> "Urgent procurement - Custoking approval";
             default -> "Urgent procurement";
         };
     }

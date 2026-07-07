@@ -153,7 +153,7 @@ class ReportingApprovalRepositoryTest {
 
     @Test
     void decideFirefightingAwaitingCustokingCallsApproveCustokingEndpoint() throws Exception {
-        seedFirefighting("FF-3", "AWAITING_CUSTOKING");
+        seedFirefighting("FF-3", "APPROVED");
         when(commandClient.approveFirefightingCustoking("FF-3")).thenReturn(Map.of());
 
         approvals.decide("firefighting:FF-3", "approve", Map.of());
@@ -187,7 +187,7 @@ class ReportingApprovalRepositoryTest {
 
     @Test
     void decideFirefightingTerminalStatusThrowsNotFound() throws Exception {
-        seedFirefighting("FF-5", "APPROVED");
+        seedFirefighting("FF-5", "CUSTOKING_APPROVED");
 
         assertThatThrownBy(() -> approvals.decide("firefighting:FF-5", "approve", Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)

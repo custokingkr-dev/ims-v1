@@ -74,7 +74,7 @@ class FirefightingOutboxIntegrationTest {
             st.execute("DELETE FROM firefighting.firefighting_requests");
         }
         OutboxWriter outboxWriter = new OutboxWriter(jdbc, new ObjectMapper(), "firefighting");
-        repository = new FirefightingReadRepository(jdbc, outboxWriter);
+        repository = new FirefightingReadRepository(jdbc, outboxWriter, new ObjectMapper());
     }
 
     private long countOutboxRows(String code) {

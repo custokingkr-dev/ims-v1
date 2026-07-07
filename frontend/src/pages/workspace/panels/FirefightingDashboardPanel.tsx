@@ -6,20 +6,31 @@ import type { FirefightingRequest } from '../../../types/workspace';
 import type { PanelKey } from '../config';
 
 interface FfTrackItem {
-  state: string;
-  title: string;
-  meta: string;
-  note?: string;
+  status: string;
+  at: string;
 }
 
 interface Props {
   isSuperAdmin: boolean;
-  adminRequests: FirefightingRequest[];
   setPanel: (key: PanelKey) => void;
   onOpenFfDraft: (code: string) => void;
 }
 
-export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPanel, onOpenFfDraft }: Props) {
+function formatFfDate(value?: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function labelFfStatus(status: string): string {
+  return status
+    .split('_')
+    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+export function FirefightingDashboardPanel({ isSuperAdmin, setPanel, onOpenFfDraft }: Props) {
   const [saFfRequests, setSaFfRequests] = useState<FirefightingRequest[]>([]);
   const [saFfLoading, setSaFfLoading] = useState(false);
   const [saFfError, setSaFfError] = useState('');
@@ -30,15 +41,13 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
   const [ffTimelineError, setFfTimelineError] = useState(false);
 
   useEffect(() => {
-    if (!isSuperAdmin) return;
     setSaFfLoading(true);
-    // size=200: pipeline board needs all cards visible at once; PageResponse envelope → extract content
     setSaFfError('');
-    api.get<{ content: FirefightingRequest[] }>('/ff/requests', { params: { size: 200 } })
-      .then((res) => setSaFfRequests(Array.isArray(res.data?.content) ? res.data.content : []))
+    api.get('/ff/requests', { params: { limit: 200 } })
+      .then((res) => setSaFfRequests(Array.isArray(res.data) ? res.data : []))
       .catch(() => { setSaFfRequests([]); setSaFfError('Failed to load requests. Please refresh to try again.'); })
       .finally(() => setSaFfLoading(false));
-  }, [isSuperAdmin]);
+  }, []);
 
   const openFfTrack = async (req: FirefightingRequest) => {
     setFfTrackRequest(req);
@@ -57,8 +66,8 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
     }
   };
 
-  const allReqs = isSuperAdmin ? saFfRequests : adminRequests;
-  if (isSuperAdmin && saFfLoading) return (
+  const allReqs = saFfRequests;
+  if (saFfLoading) return (
     <div style={{ padding: '0 0 16px' }}>
       <div className="ck-stats ck-s4" style={{ marginBottom: 20 }}>
         {[1,2,3,4].map(i => (
@@ -178,15 +187,12 @@ export function FirefightingDashboardPanel({ isSuperAdmin, adminRequests, setPan
                   {ffTimeline.map((item, i) => (
                     <div key={i} className="ck-timeline-item">
                       <div className="ck-timeline-left">
-                        <div className={`ck-timeline-dot${item.state === 'done' ? ' done' : item.state === 'active' ? ' active' : ''}`}>
-                          {item.state === 'done' ? '✓' : item.state === 'active' ? '•' : '○'}
-                        </div>
-                        {i < ffTimeline.length - 1 && <div className={`ck-timeline-line${item.state === 'done' ? ' done' : ''}`} />}
+                        <div className="ck-timeline-dot done">✓</div>
+                        {i < ffTimeline.length - 1 && <div className="ck-timeline-line done" />}
                       </div>
                       <div className="ck-timeline-body">
-                        <div className="ck-timeline-title">{item.title}</div>
-                        <div className="ck-timeline-meta">{item.meta}</div>
-                        {item.note && <div className="ck-timeline-note">{item.note}</div>}
+                        <div className="ck-timeline-title">{labelFfStatus(item.status)}</div>
+                        <div className="ck-timeline-meta">{formatFfDate(item.at)}</div>
                       </div>
                     </div>
                   ))}
