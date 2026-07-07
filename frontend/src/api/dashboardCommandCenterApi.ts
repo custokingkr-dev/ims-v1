@@ -74,7 +74,7 @@ export async function sendPhotographyPaymentReminders(
 
 export async function fetchIdCardReviewStatus(): Promise<IdCardReviewStatusResponse> {
   const res = await api.get<IdCardReviewStatusResponse>(
-    '/dashboard/student-lifecycle/id-card-review/status'
+    '/students/reviews/id-card/status'
   );
   return res.data;
 }
@@ -83,7 +83,7 @@ export async function initiateIdCardReview(
   request: InitiateIdCardReviewRequest
 ): Promise<IdCardReviewStatusResponse> {
   const res = await api.post<IdCardReviewStatusResponse>(
-    '/dashboard/student-lifecycle/id-card-review/initiate',
+    '/students/reviews/id-card/initiate',
     request
   );
   return res.data;
@@ -91,7 +91,7 @@ export async function initiateIdCardReview(
 
 export async function fetchFullNameVerificationStatus(): Promise<FullNameVerificationStatusResponse> {
   const res = await api.get<FullNameVerificationStatusResponse>(
-    '/dashboard/student-lifecycle/full-name-verification/status'
+    '/students/reviews/full-name/status'
   );
   return res.data;
 }
@@ -100,7 +100,7 @@ export async function initiateFullNameVerification(
   request: InitiateFullNameVerificationRequest
 ): Promise<FullNameVerificationStatusResponse> {
   const res = await api.post<FullNameVerificationStatusResponse>(
-    '/dashboard/student-lifecycle/full-name-verification/initiate',
+    '/students/reviews/full-name/initiate',
     request
   );
   return res.data;

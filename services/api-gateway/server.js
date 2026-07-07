@@ -110,6 +110,7 @@ const routes = [
   route('firefighting', '/api/v1/workspace/firefighting'),
   route('tenant', '/api/v1/workspace/staff'),
   route('tenant', '/api/v1/timetable/'),
+  route('tenant', '/api/v1/timetable'),
   route('fee', '/api/v1/workspace/fees/'),
   route('reporting', '/api/v1/workspace/'),
   route('reporting', '/api/v1/workspace'),
