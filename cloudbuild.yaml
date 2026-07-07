@@ -153,8 +153,8 @@ steps:
         # Publishes to the SHARED reporting-events topic (same one billing/school-core use); reporting's
         # existing subscription routes by eventType. --min-instances=1: the @Scheduled outbox relay only
         # polls while alive.
-        deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OPERATIONS_MERGED=true,OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest" \
+        deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OPERATIONS_MERGED=true,OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID,OPERATIONS_TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH=auto" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest,OPERATIONS_TENANT_SCHOOL_TOKEN=tenant-school-read-token-${_ENV}:latest" \
           "--min-instances=1"
 
         # platform-service = reporting + notification + audit (PLATFORM_DB_SCHEMA default set in yml).
