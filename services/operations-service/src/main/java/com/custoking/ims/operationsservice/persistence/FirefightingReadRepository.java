@@ -403,10 +403,13 @@ public class FirefightingReadRepository {
     }
 
     private String nextCode() {
-        Integer max = jdbc.sql("SELECT COALESCE(MAX(NULLIF(regexp_replace(code, '[^0-9]+', '', 'g'), '')::int), 2) FROM firefighting_requests")
-                .query(Integer.class)
+        // Use a global sequence (nextval ignores RLS) rather than MAX(code)+1, which ran under
+        // RLS scoped to the caller's own school and collided with other schools' global PKs
+        // (duplicate-key 500 on submit). See V9__firefighting_code_sequence.sql.
+        Long next = jdbc.sql("SELECT nextval('firefighting.seq_firefighting_request_code')")
+                .query(Long.class)
                 .single();
-        return String.format("FF-%03d", (max == null ? 2 : max) + 1);
+        return String.format("FF-%03d", next);
     }
 
     private Map<String, Object> detailRow(String code) {

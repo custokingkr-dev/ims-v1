@@ -122,6 +122,43 @@ class FirefightingRlsIntegrationTest {
     }
 
     @Test
+    void requestCode_usesGlobalSequence_notRlsScopedMax() throws Exception {
+        // Regression: request-code minting used MAX(numeric(code))+1, which runs under RLS
+        // scoped to the caller's own school. School A (10) sees only FF-001/FF-002, so the
+        // scoped max is 2 and the old code minted FF-003 — already owned globally by school B
+        // (20) — causing a duplicate-key 500 on the global code PK. The V9 sequence is seeded
+        // from the GLOBAL max (3, visible to the RLS-exempt owner at migration time), so
+        // nextval() returns past it regardless of the caller's RLS scope. No collision.
+        // In prod the request rows pre-exist when V9 runs, so V9 seeds the sequence from the
+        // global max. This harness inserts the seed rows AFTER migrate(), so align the sequence
+        // to the global max as the RLS-exempt owner does — reproducing the prod ordering.
+        try (Connection owner = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
+             Statement st = owner.createStatement()) {
+            st.execute("SELECT setval('firefighting.seq_firefighting_request_code', " +
+                    "(SELECT MAX(NULLIF(regexp_replace(code, '[^0-9]', '', 'g'), '')::bigint) " +
+                    " FROM firefighting.firefighting_requests WHERE code LIKE 'FF-%'))");
+        }
+
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            try (ResultSet rs = st.executeQuery(
+                    "SELECT COALESCE(MAX(NULLIF(regexp_replace(code, '[^0-9]+', '', 'g'), '')::int), 0) " +
+                    "FROM firefighting.firefighting_requests")) {
+                rs.next();
+                assertEquals(2, rs.getInt(1), "RLS scopes school A's visible max to 2 (the old, buggy basis)");
+            }
+            // The global sequence mints past the GLOBAL max (3) even under school A's RLS scope,
+            // so it never collides with school B's existing FF-003 (the old MAX+1 minted FF-003).
+            try (ResultSet rs = st.executeQuery(
+                    "SELECT nextval('firefighting.seq_firefighting_request_code')")) {
+                rs.next();
+                assertTrue(rs.getLong(1) >= 4,
+                        "sequence must mint from the global max (3), not the RLS-scoped max (2)");
+            }
+        }
+    }
+
+    @Test
     void withCheck_blocksCrossTenantInsert() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
         try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
