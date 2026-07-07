@@ -1,6 +1,6 @@
 import Paginator from '../../../components/Paginator';
 import { ModuleShell, Stat } from '../ui';
-import { formatMoney, prettyOrderStatus } from '../utils';
+import { formatMoney, prettyOrderStatus, orderItemsSummary } from '../utils';
 
 // Supply order status → stage index mapping.
 // DESIGN_APPROVAL / DESIGN_APPROVED_PROCESSING are mid-review sub-states.
@@ -138,7 +138,7 @@ export function AdminOrdersPanel({
                   <tr key={i}>
                     <td><div className="tb">{row.id || row.code}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                     <td>{row.category}</td>
-                    <td>{row.items}</td>
+                    <td>{orderItemsSummary(row.orderData) || row.items || '—'}</td>
                     <td className="col-money">₹{formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}</td>
                     <td style={{ minWidth: 200 }}>
                       <OrderWorkflowBanner status={status} />

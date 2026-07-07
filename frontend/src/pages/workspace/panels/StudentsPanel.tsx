@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -94,6 +94,31 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   // and address is a nested object `{houseNumber, street, locality, city, state, pinCode, full}`.
   // The edit form below is pre-filled/saved using these workspace keys; `updateStudent` on the
   // backend accepts both flat and workspace-shaped keys via `firstPresent(...)`.
+  const editPhotoInputRef = useRef<HTMLInputElement | null>(null);
+  const [editPhotoBusy, setEditPhotoBusy] = useState(false);
+
+  const uploadEditPhoto = async (file: File) => {
+    if (!studentDetail) return;
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setModalError('Only JPG, PNG, or WEBP files are allowed.'); return; }
+    if (file.size > 2 * 1024 * 1024) { setModalError('Photo must be 2MB or smaller.'); return; }
+    setEditPhotoBusy(true);
+    setModalError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post(`/students/${studentDetail.id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const res = await api.get(`/students/${studentDetail.id}/workspace`);
+      setStudentDetail(res.data);
+      await loadStudents(studentFilters, studentsPage);
+    } catch (err: unknown) {
+      setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : 'Could not update photo.'));
+    } finally {
+      setEditPhotoBusy(false);
+      if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+    }
+  };
+
   const startEdit = () => {
     if (!studentDetail) return;
     setModalError(null);
@@ -349,6 +374,14 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               ) : editing ? (
                 <div className="ck-student-modal-info">
                   {modalError && <div className="ck-alert ck-alert-r" style={{ gridColumn: '1/-1' }}><span>!</span><div>{modalError}</div></div>}
+                  <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {studentDetail.photoUrl
+                      ? <img src={studentDetail.photoUrl} alt={studentDetail.fullName || studentDetail.name} className="ck-student-avatar" />
+                      : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(studentDetail.fullName || studentDetail.name)}</div>}
+                    <input ref={editPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadEditPhoto(f); }} />
+                    <button type="button" className="ck-btn ck-btn-ghost" disabled={editPhotoBusy} onClick={() => editPhotoInputRef.current?.click()}>{editPhotoBusy ? 'Uploading…' : 'Change photo'}</button>
+                    <div className="ts">JPG, PNG or WEBP · up to 2MB</div>
+                  </div>
                   <label>Full name<input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
                   <label>Admission No<input value={form.admissionNumber} onChange={(e) => setForm({ ...form, admissionNumber: e.target.value })} /></label>
                   <label>Roll No<input value={form.rollNo} onChange={(e) => setForm({ ...form, rollNo: e.target.value })} /></label>

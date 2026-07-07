@@ -129,3 +129,32 @@ export function prettyOrderStatus(status?: string): string {
   if (value === 'APPROVED') return 'Approved';
   return value.replace(/_/g, ' ');
 }
+
+/**
+ * A catalog order's line items live inside its `orderData` JSON blob (the backend exposes it as an
+ * opaque string), so the orders list can't read a top-level `items` field. This parses that blob
+ * and produces a short human-readable summary for the Items column, handling the per-category item
+ * shapes (name|type, qty|perKit) and the categories that have no line-item array (ID cards, etc.).
+ */
+export function orderItemsSummary(orderData?: unknown): string {
+  if (!orderData) return '';
+  let parsed: any = orderData;
+  if (typeof orderData === 'string') {
+    try { parsed = JSON.parse(orderData); } catch { return ''; }
+  }
+  const items = Array.isArray(parsed?.items) ? parsed.items : [];
+  if (!items.length) {
+    if (parsed?.studentCount != null) return `${parsed.studentCount} students`;
+    if (parsed?.numKits != null) return `${parsed.numKits} kits`;
+    if (parsed?.staffRequired != null) return `${parsed.staffRequired} staff`;
+    return '';
+  }
+  const label = (it: any) => {
+    const name = it?.name || it?.type || 'Item';
+    const qty = it?.qty ?? it?.perKit;
+    return qty != null ? `${name} ×${qty}` : String(name);
+  };
+  const shown = items.slice(0, 2).map(label);
+  const extra = items.length - shown.length;
+  return shown.join(', ') + (extra > 0 ? ` +${extra} more` : '');
+}
