@@ -30,6 +30,9 @@ export function BellSchedulesPanel() {
   const [newPeriod, setNewPeriod] = useState<{ label: string; start: string; end: string; isBreak: boolean }>({
     label: '', start: '', end: '', isBreak: false,
   });
+  const [showAddPeriod, setShowAddPeriod] = useState(false);
+  const [editingPeriodId, setEditingPeriodId] = useState<number | null>(null);
+  const [assignClassId, setAssignClassId] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -183,6 +186,27 @@ export function BellSchedulesPanel() {
     ? [...selectedSchedule.periods].sort((a, b) => a.sortOrder - b.sortOrder)
     : [];
 
+  const assigned = selectedSchedule
+    ? classSchedules.filter((c) => c.scheduleId === selectedSchedule.id)
+    : [];
+  const unassignedToThis = selectedSchedule
+    ? classSchedules.filter((c) => c.scheduleId !== selectedSchedule.id)
+    : [];
+  const unmapped = classSchedules.filter((c) => c.scheduleId == null);
+
+  const updatePeriodField = (periodId: number, patch: Partial<BellPeriod>) => {
+    if (!selectedSchedule) return;
+    setSchedules((prev) => prev.map((s) => s.id === selectedSchedule.id
+      ? { ...s, periods: s.periods.map((p) => p.id === periodId ? { ...p, ...patch } : p) }
+      : s));
+  };
+
+  const handleAssignClass = async () => {
+    if (!selectedSchedule || !assignClassId) return;
+    await handleClassScheduleChange(assignClassId, String(selectedSchedule.id));
+    setAssignClassId('');
+  };
+
   return (
     <ModuleShell title="Bell schedules" subtitle="Configure period timings and assign schedules to classes">
       <div className="ck-panel-stack">
@@ -243,136 +267,173 @@ export function BellSchedulesPanel() {
             </div>
           </div>
 
-          {/* Right: periods for selected schedule */}
+          {/* Right: timeline for selected schedule */}
           <div className="ck-card">
             <div className="ck-card-h"><div className="ck-card-t">Periods {selectedSchedule ? `— ${selectedSchedule.name}` : ''}</div></div>
             {!selectedSchedule ? (
               <div style={{ padding: 16 }} className="ck-import-zone"><div className="iz-title">Select a schedule to edit its periods</div></div>
             ) : (
               <div style={{ padding: 16 }}>
-                <table className="ck-table">
-                  <thead>
-                    <tr>
-                      <th>Label</th>
-                      <th>Start</th>
-                      <th>End</th>
-                      <th>Break</th>
-                      <th>Order</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                {/* Applies-to chip row */}
+                <div style={{ marginBottom: 16 }}>
+                  <div className="ts" style={{ color: 'var(--ink3)', marginBottom: 6 }}>Applies to</div>
+                  <div className="ck-badge-row">
+                    {assigned.length ? assigned.map((c) => (
+                      <span
+                        key={c.classId}
+                        className="ck-btn ck-btn-ghost"
+                        style={{ borderRadius: 999, cursor: 'default' }}
+                      >
+                        {c.className}
+                      </span>
+                    )) : (
+                      <span className="ts" style={{ color: 'var(--ink3)' }}>No classes assigned yet</span>
+                    )}
+                    {unassignedToThis.length ? (
+                      <>
+                        <select
+                          value={assignClassId}
+                          onChange={(e) => setAssignClassId(e.target.value)}
+                          style={{ borderRadius: 999 }}
+                        >
+                          <option value="">+ Assign class…</option>
+                          {unassignedToThis.map((c) => (
+                            <option key={c.classId} value={c.classId}>{c.className}</option>
+                          ))}
+                        </select>
+                        <button className="ck-btn ck-btn-g" disabled={!assignClassId} onClick={handleAssignClass}>
+                          + Assign class
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                  {unmapped.length ? (
+                    <div className="ck-alert ck-alert-am" style={{ marginTop: 8 }}>
+                      <span>!</span>
+                      <div>{unmapped.length} class{unmapped.length === 1 ? '' : 'es'} have no bell schedule: {unmapped.map((c) => c.className).join(', ')}</div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Day timeline */}
+                {!sortedPeriods.length ? (
+                  <div className="ck-import-zone"><div className="iz-title">No periods yet — add the first one below</div></div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 8 }}>
                     {sortedPeriods.map((period, idx) => (
-                      <tr key={period.id}>
-                        <td>
-                          <input
-                            value={period.label}
-                            onChange={(e) => {
-                              const label = e.target.value;
-                              setSchedules((prev) => prev.map((s) => s.id === selectedSchedule.id
-                                ? { ...s, periods: s.periods.map((p) => p.id === period.id ? { ...p, label } : p) }
-                                : s));
-                            }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="time"
-                            value={period.start}
-                            onChange={(e) => {
-                              const start = e.target.value;
-                              setSchedules((prev) => prev.map((s) => s.id === selectedSchedule.id
-                                ? { ...s, periods: s.periods.map((p) => p.id === period.id ? { ...p, start } : p) }
-                                : s));
-                            }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="time"
-                            value={period.end}
-                            onChange={(e) => {
-                              const end = e.target.value;
-                              setSchedules((prev) => prev.map((s) => s.id === selectedSchedule.id
-                                ? { ...s, periods: s.periods.map((p) => p.id === period.id ? { ...p, end } : p) }
-                                : s));
-                            }}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={period.isBreak}
-                            onChange={(e) => {
-                              const isBreak = e.target.checked;
-                              setSchedules((prev) => prev.map((s) => s.id === selectedSchedule.id
-                                ? { ...s, periods: s.periods.map((p) => p.id === period.id ? { ...p, isBreak } : p) }
-                                : s));
-                            }}
-                          />
-                        </td>
-                        <td>
-                          <button className="ck-btn ck-btn-ghost" disabled={idx === 0} onClick={() => handleMovePeriod(period, 'up')}>↑</button>
-                          <button className="ck-btn ck-btn-ghost" disabled={idx === sortedPeriods.length - 1} onClick={() => handleMovePeriod(period, 'down')}>↓</button>
-                        </td>
-                        <td>
-                          <button className="ck-btn ck-btn-g" onClick={() => handleUpdatePeriod(period)}>Save</button>
-                          <button className="ck-btn ck-btn-ghost" onClick={() => handleDeletePeriod(period.id)}>Delete</button>
-                        </td>
-                      </tr>
+                      <div
+                        key={period.id}
+                        className="ck-card"
+                        style={{
+                          display: 'flex',
+                          gap: 12,
+                          padding: 12,
+                          alignItems: editingPeriodId === period.id ? 'flex-start' : 'center',
+                          background: period.isBreak ? 'var(--g1)' : undefined,
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        <div style={{ minWidth: 108, color: 'var(--ink3)' }} className="ts">
+                          {period.start}–{period.end}
+                        </div>
+
+                        {editingPeriodId === period.id ? (
+                          <div style={{ flex: 1, display: 'grid', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                              <input
+                                value={period.label}
+                                onChange={(e) => updatePeriodField(period.id, { label: e.target.value })}
+                                style={{ flex: 1, minWidth: 140 }}
+                              />
+                              <input
+                                type="time"
+                                value={period.start}
+                                onChange={(e) => updatePeriodField(period.id, { start: e.target.value })}
+                              />
+                              <input
+                                type="time"
+                                value={period.end}
+                                onChange={(e) => updatePeriodField(period.id, { end: e.target.value })}
+                              />
+                              <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={period.isBreak}
+                                  onChange={(e) => updatePeriodField(period.id, { isBreak: e.target.checked })}
+                                />
+                                Break
+                              </label>
+                            </div>
+                            <div className="ck-actions-inline">
+                              <button
+                                className="ck-btn ck-btn-g"
+                                onClick={async () => { await handleUpdatePeriod(period); setEditingPeriodId(null); }}
+                              >
+                                Save
+                              </button>
+                              <button
+                                className="ck-btn ck-btn-ghost"
+                                onClick={async () => { setEditingPeriodId(null); await load(); }}
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div style={{ flex: 1 }}>
+                              <div>{period.label}</div>
+                              {period.isBreak ? (
+                                <div className="ts" style={{ color: 'var(--am)' }}>☕ Break</div>
+                              ) : null}
+                            </div>
+                            <div className="ck-actions-inline">
+                              <button className="ck-btn ck-btn-ghost" onClick={() => setEditingPeriodId(period.id)}>✎ Edit</button>
+                              <button className="ck-btn ck-btn-ghost" disabled={idx === 0} onClick={() => handleMovePeriod(period, 'up')}>↑</button>
+                              <button className="ck-btn ck-btn-ghost" disabled={idx === sortedPeriods.length - 1} onClick={() => handleMovePeriod(period, 'down')}>↓</button>
+                              <button className="ck-btn ck-btn-ghost" onClick={() => handleDeletePeriod(period.id)}>Delete</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     ))}
-                    <tr>
-                      <td><input placeholder="Label" value={newPeriod.label} onChange={(e) => setNewPeriod({ ...newPeriod, label: e.target.value })} /></td>
-                      <td><input type="time" value={newPeriod.start} onChange={(e) => setNewPeriod({ ...newPeriod, start: e.target.value })} /></td>
-                      <td><input type="time" value={newPeriod.end} onChange={(e) => setNewPeriod({ ...newPeriod, end: e.target.value })} /></td>
-                      <td><input type="checkbox" checked={newPeriod.isBreak} onChange={(e) => setNewPeriod({ ...newPeriod, isBreak: e.target.checked })} /></td>
-                      <td></td>
-                      <td>
+                  </div>
+                )}
+
+                {/* Add period */}
+                <div style={{ marginTop: 16 }}>
+                  {showAddPeriod ? (
+                    <div className="ck-card" style={{ padding: 12, border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <input placeholder="Label" value={newPeriod.label} onChange={(e) => setNewPeriod({ ...newPeriod, label: e.target.value })} style={{ flex: 1, minWidth: 140 }} />
+                        <input type="time" value={newPeriod.start} onChange={(e) => setNewPeriod({ ...newPeriod, start: e.target.value })} />
+                        <input type="time" value={newPeriod.end} onChange={(e) => setNewPeriod({ ...newPeriod, end: e.target.value })} />
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <input type="checkbox" checked={newPeriod.isBreak} onChange={(e) => setNewPeriod({ ...newPeriod, isBreak: e.target.checked })} />
+                          Break
+                        </label>
+                      </div>
+                      <div className="ck-actions-inline" style={{ marginTop: 8 }}>
                         <button
                           className="ck-btn ck-btn-g"
                           disabled={!newPeriod.label.trim() || !newPeriod.start || !newPeriod.end}
-                          onClick={handleAddPeriod}
+                          onClick={async () => { await handleAddPeriod(); setShowAddPeriod(false); }}
                         >
-                          + Add row
+                          Save period
                         </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Class schedules mapping */}
-        <div className="ck-card">
-          <div className="ck-card-h"><div className="ck-card-t">Class schedules</div></div>
-          <div style={{ padding: 16 }}>
-            {!classSchedules.length ? (
-              <div className="ck-import-zone"><div className="iz-title">No classes found</div></div>
-            ) : (
-              <table className="ck-table">
-                <thead><tr><th>Class</th><th>Bell schedule</th></tr></thead>
-                <tbody>
-                  {classSchedules.map((row) => (
-                    <tr key={row.classId}>
-                      <td>
-                        {row.className}
-                        {row.scheduleId == null ? <div className="ts" style={{ color: 'var(--am)' }}>Unmapped — no schedule assigned</div> : null}
-                      </td>
-                      <td>
-                        <select
-                          value={row.scheduleId ?? ''}
-                          onChange={(e) => handleClassScheduleChange(row.classId, e.target.value)}
+                        <button
+                          className="ck-btn ck-btn-ghost"
+                          onClick={() => { setShowAddPeriod(false); setNewPeriod({ label: '', start: '', end: '', isBreak: false }); }}
                         >
-                          <option value="">Select schedule</option>
-                          {schedules.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button className="ck-btn ck-btn-ghost" onClick={() => setShowAddPeriod(true)}>+ Add period</button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>
