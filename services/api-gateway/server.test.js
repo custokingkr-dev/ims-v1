@@ -162,6 +162,13 @@ test('student-review-items routes to student', () => {
   assert.equal(resolve('/api/v1/student-review-items/RV-9'), 'student');
 });
 
+test('timetable routes to tenant for both the bare grid path and subpaths', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/timetable'), 'tenant');                 // grid fetch: GET /timetable?sectionId=..
+  assert.equal(resolve('/api/v1/timetable/bell-schedules'), 'tenant');  // subpath
+  assert.equal(resolve('/api/v1/timetable/entry'), 'tenant');           // subpath
+});
+
 test('zone admin routes to identity, zone reads stay tenant', () => {
   const resolve = (p) => routes.find((r) => r.matches(p))?.service;
   assert.equal(resolve('/api/v1/zones/12/admin'), 'identity');
