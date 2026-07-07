@@ -64,46 +64,10 @@ class ReportingDimensionReadIntegrationTest {
         dataSource = pool;
         jdbcClient = JdbcClient.create(dataSource);
 
-        // Minimal supporting tables for the downstream (still cross-schema, out-of-scope-for-SP1)
-        // joins that lowAttendanceSections() exercises once an active academic year is resolved.
-        // Deliberately NOT creating tenant_school.schools / tenant_school.academic_years anywhere:
-        // this proves the swapped reads no longer depend on those tables at all.
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("CREATE SCHEMA IF NOT EXISTS tenant_school");
-            st.execute("""
-                    CREATE TABLE IF NOT EXISTS tenant_school.school_sections (
-                        id VARCHAR(255) PRIMARY KEY,
-                        name VARCHAR(255),
-                        school_id BIGINT
-                    )
-                    """);
-            st.execute("""
-                    CREATE TABLE IF NOT EXISTS tenant_school.school_classes (
-                        id VARCHAR(255) PRIMARY KEY,
-                        name VARCHAR(255)
-                    )
-                    """);
-            st.execute("CREATE SCHEMA IF NOT EXISTS attendance");
-            st.execute("""
-                    CREATE TABLE IF NOT EXISTS attendance.attendance_daily (
-                        section_id VARCHAR(255),
-                        school_class_id VARCHAR(255),
-                        academic_year_id VARCHAR(255),
-                        attendance_date DATE,
-                        present_count INT,
-                        total_enrolled INT
-                    )
-                    """);
-            st.execute("CREATE SCHEMA IF NOT EXISTS student");
-            st.execute("""
-                    CREATE TABLE IF NOT EXISTS student.students (
-                        id BIGINT,
-                        school_id BIGINT,
-                        section_id VARCHAR(255),
-                        attendance_percent NUMERIC
-                    )
-                    """);
-        }
+        // Phase 2 of the reporting decoupling fully swapped lowAttendanceSections() onto
+        // reporting.fact_attendance_daily / reporting.dim_section / reporting.dim_student — no
+        // cross-schema tables are created here at all, proving the read no longer depends on
+        // tenant_school / attendance / student.
     }
 
     @AfterAll
@@ -117,10 +81,9 @@ class ReportingDimensionReadIntegrationTest {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             st.execute("TRUNCATE reporting.dim_school");
             st.execute("TRUNCATE reporting.dim_academic_year");
-            st.execute("TRUNCATE attendance.attendance_daily");
-            st.execute("TRUNCATE tenant_school.school_sections");
-            st.execute("TRUNCATE tenant_school.school_classes");
-            st.execute("TRUNCATE student.students");
+            st.execute("TRUNCATE reporting.fact_attendance_daily");
+            st.execute("TRUNCATE reporting.dim_section");
+            st.execute("TRUNCATE reporting.dim_student");
         }
     }
 
@@ -169,14 +132,15 @@ class ReportingDimensionReadIntegrationTest {
         seedAcademicYear("ay-dim-2025", "2024-25", false);
 
         LocalDate today = LocalDate.now();
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.school_classes (id, name) VALUES ('class-1', 'Grade 5')");
-            st.execute("INSERT INTO tenant_school.school_sections (id, name, school_id) VALUES ('sec-1', 'A', 100)");
-        }
         jdbcClient.sql("""
-                        INSERT INTO attendance.attendance_daily
-                            (section_id, school_class_id, academic_year_id, attendance_date, present_count, total_enrolled)
-                        VALUES ('sec-1', 'class-1', :yearId, :date, 5, 10)
+                        INSERT INTO reporting.dim_section (id, name, school_id, class_id, class_name, active, updated_at)
+                        VALUES ('sec-1', 'A', 100, 'class-1', 'Grade 5', true, now())
+                        """)
+                .update();
+        jdbcClient.sql("""
+                        INSERT INTO reporting.fact_attendance_daily
+                            (id, school_id, section_id, academic_year_id, attendance_date, present_count, total_enrolled, updated_at)
+                        VALUES ('ad-dim-1', 100, 'sec-1', :yearId, :date, 5, 10, now())
                         """)
                 .param("yearId", "ay-dim-2026")
                 .param("date", today)

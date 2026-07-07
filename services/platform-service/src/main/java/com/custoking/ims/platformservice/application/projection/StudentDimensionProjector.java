@@ -54,7 +54,9 @@ public class StudentDimensionProjector implements ReportingEventProjector {
         String parentContact = PayloadJson.textOrNull(payload, "parentContact");
         String phone = PayloadJson.textOrNull(payload, "phone");
         boolean active = PayloadJson.boolOrFalse(payload, "active");
+        java.math.BigDecimal attendancePercent = PayloadJson.decimalOrNull(payload, "attendancePercent");
+        String fatherName = PayloadJson.textOrNull(payload, "fatherName");
         dims.upsertStudent(id, schoolId, admissionNo, fullName, rollNo, classId, sectionId,
-                parentContact, phone, active);
+                parentContact, phone, active, attendancePercent, fatherName);
     }
 }

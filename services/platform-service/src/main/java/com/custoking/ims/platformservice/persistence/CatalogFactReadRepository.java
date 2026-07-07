@@ -24,16 +24,16 @@ public class CatalogFactReadRepository {
     @Transactional
     public void upsert(String id, Long schoolId, String category, String status, Long totalAmount,
                         String superadminApprovalStatus, OffsetDateTime vendorPaidAt, OffsetDateTime createdAt,
-                        LocalDate requiredByDate, String designStatus) {
+                        LocalDate requiredByDate, String designStatus, String notes) {
         jdbc.sql("""
                         INSERT INTO reporting.fact_catalog_order (
                             id, school_id, category, status, total_amount,
                             superadmin_approval_status, vendor_paid_at, created_at,
-                            required_by_date, design_status, updated_at
+                            required_by_date, design_status, notes, updated_at
                         ) VALUES (
                             :id, :schoolId, :category, :status, :totalAmount,
                             :superadminApprovalStatus, :vendorPaidAt, :createdAt,
-                            :requiredByDate, :designStatus, now()
+                            :requiredByDate, :designStatus, :notes, now()
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             school_id = EXCLUDED.school_id,
@@ -45,6 +45,7 @@ public class CatalogFactReadRepository {
                             created_at = EXCLUDED.created_at,
                             required_by_date = EXCLUDED.required_by_date,
                             design_status = EXCLUDED.design_status,
+                            notes = EXCLUDED.notes,
                             updated_at = now()
                         """)
                 .param("id", id)
@@ -57,6 +58,7 @@ public class CatalogFactReadRepository {
                 .param("createdAt", createdAt)
                 .param("requiredByDate", requiredByDate)
                 .param("designStatus", designStatus)
+                .param("notes", notes)
                 .update();
     }
 }

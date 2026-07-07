@@ -23,14 +23,15 @@ public class FeeFactReadRepository {
 
     @Transactional
     public void upsertFeeAssignment(String id, Long studentId, Long schoolId, String academicYearId,
-                                     Long netPayable, Long paidAmount, Long dueAmount, String status) {
+                                     Long netPayable, Long paidAmount, Long dueAmount, String status,
+                                     OffsetDateTime assignedAt) {
         jdbc.sql("""
                         INSERT INTO reporting.fact_fee_assignment (
                             id, student_id, school_id, academic_year_id, net_payable, paid_amount,
-                            due_amount, status, updated_at
+                            due_amount, status, assigned_at, updated_at
                         ) VALUES (
                             :id, :studentId, :schoolId, :academicYearId, :netPayable, :paidAmount,
-                            :dueAmount, :status, now()
+                            :dueAmount, :status, :assignedAt, now()
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             student_id = EXCLUDED.student_id,
@@ -40,6 +41,7 @@ public class FeeFactReadRepository {
                             paid_amount = EXCLUDED.paid_amount,
                             due_amount = EXCLUDED.due_amount,
                             status = EXCLUDED.status,
+                            assigned_at = EXCLUDED.assigned_at,
                             updated_at = now()
                         """)
                 .param("id", id)
@@ -50,6 +52,7 @@ public class FeeFactReadRepository {
                 .param("paidAmount", paidAmount)
                 .param("dueAmount", dueAmount)
                 .param("status", status)
+                .param("assignedAt", assignedAt)
                 .update();
     }
 

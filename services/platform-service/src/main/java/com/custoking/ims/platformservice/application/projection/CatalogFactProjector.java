@@ -57,7 +57,8 @@ public class CatalogFactProjector implements ReportingEventProjector {
         OffsetDateTime createdAt = PayloadJson.offsetDateTimeOrNull(payload, "createdAt");
         LocalDate requiredByDate = PayloadJson.localDateOrNull(payload, "requiredByDate");
         String designStatus = PayloadJson.textOrNull(payload, "designStatus");
+        String notes = PayloadJson.textOrNull(payload, "notes");
         catalogFactRead.upsert(id, schoolId, category, status, totalAmount, superadminApprovalStatus,
-                vendorPaidAt, createdAt, requiredByDate, designStatus);
+                vendorPaidAt, createdAt, requiredByDate, designStatus, notes);
     }
 }

@@ -92,7 +92,8 @@ class FeeFactProjectionIntegrationTest {
                                          long netPayable, long paidAmount, String status) {
         String payload = "{\"id\":\"" + assignmentId + "\",\"studentId\":1,\"schoolId\":" + schoolId
                 + ",\"academicYearId\":\"ay1\",\"netPayable\":" + netPayable + ",\"paidAmount\":" + paidAmount
-                + ",\"dueAmount\":" + Math.max(0, netPayable - paidAmount) + ",\"status\":\"" + status + "\"}";
+                + ",\"dueAmount\":" + Math.max(0, netPayable - paidAmount) + ",\"status\":\"" + status + "\""
+                + ",\"assignedAt\":\"2025-01-01T00:00:00Z\"}";
         String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"fee-assignment.upserted.v1\","
                 + "\"payload\":" + payload + "}";
         inbox.record(new ReportingEventInboxRecord(
@@ -119,7 +120,7 @@ class FeeFactProjectionIntegrationTest {
         assertEquals(1, processed);
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "SELECT school_id, net_payable, paid_amount, due_amount, status FROM reporting.fact_fee_assignment WHERE id = ?")) {
+                     "SELECT school_id, net_payable, paid_amount, due_amount, status, assigned_at FROM reporting.fact_fee_assignment WHERE id = ?")) {
             ps.setString(1, "fa-1");
             try (ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "expected a fact_fee_assignment row for id fa-1");
@@ -128,6 +129,7 @@ class FeeFactProjectionIntegrationTest {
                 assertEquals(0L, rs.getLong("paid_amount"));
                 assertEquals(500000L, rs.getLong("due_amount"));
                 assertEquals("Overdue", rs.getString("status"));
+                assertTrue(rs.getObject("assigned_at") != null, "expected assigned_at to be set");
             }
         }
     }

@@ -15,6 +15,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -37,9 +38,10 @@ class ReportingFactReadIntegrationTest {
     static JdbcClient jdbcClient;
 
     private ReportingReadRepository reporting;
+    private ReportingApprovalRepository approvals;
 
     @BeforeAll
-    static void setUpContainer() {
+    static void setUpContainer() throws Exception {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(),
                 "Docker not available — skipping reporting fact read-swap integration test");
         PG = new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner");
@@ -56,6 +58,24 @@ class ReportingFactReadIntegrationTest {
         pool.setMaximumPoolSize(2);
         dataSource = pool;
         jdbcClient = JdbcClient.create(dataSource);
+
+        // Minimal same-service (notification schema is owned by platform-service too) supporting
+        // table for the LEFT JOIN LATERAL / subquery reminder lookups exercised by feeDefaulters()
+        // and lowAttendanceStudents(). No fee/student/tenant_school/attendance/catalog schema is
+        // ever created here, proving those five reads no longer depend on them.
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("CREATE SCHEMA IF NOT EXISTS notification");
+            st.execute("""
+                    CREATE TABLE IF NOT EXISTS notification.notification_logs (
+                        id VARCHAR(36) PRIMARY KEY,
+                        school_id BIGINT,
+                        student_id BIGINT,
+                        notification_type VARCHAR(80) NOT NULL,
+                        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                        sent_at TIMESTAMPTZ
+                    )
+                    """);
+        }
     }
 
     @AfterAll
@@ -66,12 +86,61 @@ class ReportingFactReadIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         reporting = new ReportingReadRepository(jdbcClient);
+        approvals = new ReportingApprovalRepository(jdbcClient);
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             for (String t : List.of("fact_catalog_order", "fact_firefighting_request", "fact_payment",
-                    "fact_fee_assignment", "fact_attendance_daily", "command_center_actions")) {
-                st.execute("TRUNCATE reporting." + t);
+                    "fact_fee_assignment", "fact_attendance_daily", "command_center_actions",
+                    "dim_student", "dim_section", "dim_academic_year", "event_student_contributions",
+                    "academic_events")) {
+                st.execute("TRUNCATE reporting." + t + " CASCADE");
             }
+            st.execute("TRUNCATE notification.notification_logs");
         }
+    }
+
+    private void seedActiveYear(String id) {
+        jdbcClient.sql("""
+                INSERT INTO reporting.dim_academic_year (id, label, active, updated_at)
+                VALUES (:id, :id, true, now())
+                """).param("id", id).update();
+    }
+
+    private void seedSection(String id, long schoolId, String className, String sectionName) {
+        jdbcClient.sql("""
+                INSERT INTO reporting.dim_section (id, name, school_id, class_id, class_name, active, updated_at)
+                VALUES (:id, :name, :schoolId, :classId, :className, true, now())
+                """)
+                .param("id", id).param("name", sectionName).param("schoolId", schoolId)
+                .param("classId", "class-" + id).param("className", className)
+                .update();
+    }
+
+    private void seedStudent(long id, long schoolId, String sectionId, String fullName, String admissionNo,
+                              String fatherName, String parentContact, Double attendancePercent) {
+        jdbcClient.sql("""
+                INSERT INTO reporting.dim_student
+                    (id, school_id, admission_no, full_name, section_id, class_id, parent_contact, phone,
+                     father_name, attendance_percent, active, updated_at)
+                VALUES (:id, :schoolId, :admissionNo, :fullName, :sectionId, :classId, :parentContact, :parentContact,
+                        :fatherName, :attendancePercent, true, now())
+                """)
+                .param("id", id).param("schoolId", schoolId).param("admissionNo", admissionNo)
+                .param("fullName", fullName).param("sectionId", sectionId).param("classId", "class-" + sectionId)
+                .param("parentContact", parentContact).param("fatherName", fatherName)
+                .param("attendancePercent", attendancePercent)
+                .update();
+    }
+
+    private void seedFeeAssignment(String id, long studentId, long schoolId, String yearId,
+                                    long netPayable, long paidAmount, OffsetDateTime assignedAt) {
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_fee_assignment
+                    (id, student_id, school_id, academic_year_id, net_payable, paid_amount, due_amount, status, assigned_at, updated_at)
+                VALUES (:id, :studentId, :schoolId, :yearId, :net, :paid, :net - :paid, 'PARTIAL', :assignedAt, now())
+                """)
+                .param("id", id).param("studentId", studentId).param("schoolId", schoolId).param("yearId", yearId)
+                .param("net", netPayable).param("paid", paidAmount).param("assignedAt", assignedAt)
+                .update();
     }
 
     private void seedCatalogOrder(String id, long schoolId, String category, String status, long totalPaise) {
@@ -140,5 +209,120 @@ class ReportingFactReadIntegrationTest {
 
     private static String kpiValue(List<Map<String, Object>> kpis, String key) {
         return (String) kpis.stream().filter(k -> key.equals(k.get("key"))).findFirst().orElseThrow().get("value");
+    }
+
+    // ---- Phase 2 read-swap coverage: feeDefaulters / lowAttendanceSections / lowAttendanceStudents /
+    // classPhotographyPaymentStatus / catalogApprovals now read exclusively off reporting.dim_*/fact_*. ----
+
+    @Test
+    void feeDefaulters_returnsOverdueRowWithDaysOverdueDerivedFromAssignedAt() {
+        seedActiveYear("ay_2025_26");
+        seedSection("sec-1", 100L, "Grade 5", "A");
+        seedStudent(1L, 100L, "sec-1", "Asha Rao", "ADM-1", "Ramesh Rao", "9990001111", 90.0);
+        OffsetDateTime assignedAt = OffsetDateTime.now().minusDays(10);
+        seedFeeAssignment("fa-1", 1L, 100L, "ay_2025_26", 10000L, 4000L, assignedAt);
+
+        Map<String, Object> result = reporting.feeDefaulters(100L, null, null, null, null, 0, 20);
+
+        assertEquals(1L, result.get("totalDefaulters"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) result.get("items");
+        assertEquals(1, items.size());
+        Map<String, Object> item = items.get(0);
+        assertEquals("Asha Rao", item.get("studentName"));
+        assertEquals("ADM-1", item.get("admissionNo"));
+        assertEquals("Grade 5", item.get("className"));
+        assertEquals("A", item.get("sectionName"));
+        assertEquals("Ramesh Rao", item.get("parentName"));
+        assertEquals("9990001111", item.get("parentPhone"));
+        assertEquals(6000L, item.get("dueAmount"));
+        assertEquals(10, item.get("daysOverdue"));
+    }
+
+    @Test
+    void lowAttendanceStudents_filtersByAttendancePercentBelow75() {
+        seedSection("sec-2", 200L, "Grade 6", "B");
+        seedStudent(10L, 200L, "sec-2", "Below Threshold", "ADM-10", "Father A", "9990002222", 60.0);
+        seedStudent(11L, 200L, "sec-2", "Above Threshold", "ADM-11", "Father B", "9990003333", 95.0);
+
+        List<Map<String, Object>> result = reporting.lowAttendanceStudents(200L, "sec-2");
+
+        assertEquals(1, result.size());
+        assertEquals("Below Threshold", result.get(0).get("studentName"));
+        assertEquals("Father A", result.get(0).get("fatherName"));
+        assertEquals("9990002222", result.get(0).get("fatherContact"));
+        assertEquals("Grade 6", result.get(0).get("className"));
+        assertEquals("B", result.get(0).get("sectionName"));
+    }
+
+    @Test
+    void lowAttendanceSections_readsFactAttendanceAndDimSectionOnly() {
+        seedActiveYear("ay_2025_26");
+        seedSection("sec-3", 300L, "Grade 7", "C");
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily
+                    (id, school_id, section_id, academic_year_id, attendance_date, present_count, total_enrolled, updated_at)
+                VALUES ('ad-3', 300, 'sec-3', 'ay_2025_26', CURRENT_DATE, 5, 10, now())
+                """).update();
+
+        Map<String, Object> result = reporting.lowAttendanceSections(300L, LocalDate.now());
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> sections = (List<Map<String, Object>>) result.get("sections");
+        assertEquals(1, sections.size());
+        assertEquals("sec-3", sections.get(0).get("sectionId"));
+        assertEquals("C", sections.get(0).get("sectionName"));
+        assertEquals("Grade 7", sections.get(0).get("className"));
+    }
+
+    @Test
+    void classPhotographyPaymentStatus_readsDimStudentAndDimSectionOnly() {
+        seedSection("sec-4", 400L, "Grade 8", "D");
+        seedStudent(20L, 400L, "sec-4", "Photo Student", "ADM-20", "Father C", "9990004444", 88.0);
+        jdbcClient.sql("""
+                INSERT INTO reporting.academic_events
+                    (id, school_id, title, event_type, status, total_budget, school_contribution,
+                     student_contribution_target, created_at, updated_at)
+                VALUES ('evt-1', 400, 'Class Photo Day', 'CLASS_PHOTOGRAPHY', 'ACTIVE', 50000, 20000, 30000, now(), now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.event_student_contributions
+                    (id, event_id, student_id, school_id, expected_amount, paid_amount, status, created_at, updated_at)
+                VALUES ('esc-1', 'evt-1', 20, 400, 1000, 500, 'PARTIAL', now(), now())
+                """).update();
+
+        Map<String, Object> result = reporting.classPhotographyPaymentStatus(400L, null, null, null, 0, 20);
+
+        assertEquals("evt-1", result.get("eventId"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> students = (List<Map<String, Object>>) result.get("students");
+        assertEquals(1, students.size());
+        assertEquals("Photo Student", students.get(0).get("studentName"));
+        assertEquals("Grade 8", students.get(0).get("className"));
+        assertEquals("D", students.get(0).get("sectionName"));
+        assertEquals("9990004444", students.get(0).get("parentPhone"));
+    }
+
+    @Test
+    void catalogApprovals_returnsPendingOrderIncludingNotes() {
+        jdbcClient.sql("""
+                INSERT INTO reporting.dim_school (id, name, active, updated_at)
+                VALUES (500, 'Greenwood High', true, now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_catalog_order
+                    (id, school_id, category, status, total_amount, superadmin_approval_status, notes, created_at, updated_at)
+                VALUES ('ord-approval-1', 500, 'UNIFORMS', 'PROCESSING', 12000, 'PENDING', 'Please expedite', now(), now())
+                """).update();
+
+        List<Map<String, Object>> result = approvals.approvals(50);
+
+        assertEquals(1, result.size());
+        Map<String, Object> item = result.get(0);
+        assertEquals("catalog:ord-approval-1", item.get("id"));
+        assertEquals("CATALOG", item.get("sourceType"));
+        assertEquals("Greenwood High", item.get("schoolName"));
+        assertEquals("Please expedite", item.get("notes"));
+        assertEquals(12000L, item.get("amount"));
     }
 }
