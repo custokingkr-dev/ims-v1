@@ -8,31 +8,36 @@ import {
   type TimetableView, type ClassSubjects,
 } from '../../../services/timetableApi';
 
+interface AcademicYearOpt { id: string; label: string; active: boolean }
+
 interface Props {
   readOnly?: boolean;
   staff?: Array<{ id: number | string; name: string }>;
+  yearId?: string;
+  years?: AcademicYearOpt[];
 }
 
 interface ClassOpt { id: string; name: string }
 interface SectionOpt { id: string; name: string }
-interface AcademicYearOpt { id: string; label: string; active: boolean }
 
 function errMsg(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function TimetableGrid({ readOnly }: Props) {
+export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }: Props) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const canRead = can('timetable:read');
 
   const [classes, setClasses] = useState<ClassOpt[]>([]);
   const [sections, setSections] = useState<SectionOpt[]>([]);
-  const [years, setYears] = useState<AcademicYearOpt[]>([]);
+  const [internalYears, setInternalYears] = useState<AcademicYearOpt[]>([]);
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
-  const [yearId, setYearId] = useState('');
+  const [internalYearId, setInternalYearId] = useState('');
+  const yearId = yearIdProp ?? internalYearId;
+  const years = yearsProp ?? internalYears;
   const [data, setData] = useState<TimetableView | null>(null);
   const [subjects, setSubjects] = useState<ClassSubjects | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,16 +64,18 @@ export function TimetableGrid({ readOnly }: Props) {
     void api.get<ClassOpt[]>('/classes')
       .then((r) => setClasses(Array.isArray(r.data) ? r.data : []))
       .catch(() => setClasses([]));
-    void api.get<AcademicYearOpt[]>('/academic-years')
-      .then((r) => {
-        const list = Array.isArray(r.data) ? r.data : [];
-        setYears(list);
-        const activeYear = list.find((y) => y.active);
-        if (activeYear) setYearId(activeYear.id);
-      })
-      .catch(() => setYears([]));
+    if (!yearIdProp) {
+      void api.get<AcademicYearOpt[]>('/academic-years')
+        .then((r) => {
+          const list = Array.isArray(r.data) ? r.data : [];
+          setInternalYears(list);
+          const activeYear = list.find((y) => y.active);
+          if (activeYear) setInternalYearId(activeYear.id);
+        })
+        .catch(() => setInternalYears([]));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRead]);
+  }, [canRead, yearIdProp]);
 
   useEffect(() => {
     if (!canRead || !classes.length) return;
@@ -206,9 +213,11 @@ export function TimetableGrid({ readOnly }: Props) {
           <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!classId}>
             {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
-            {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
-          </select>
+          {!yearIdProp ? (
+            <select value={internalYearId} onChange={(e) => setInternalYearId(e.target.value)}>
+              {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
+            </select>
+          ) : null}
         </div>
 
         {!data?.editable && !readOnly && data ? (

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { TimetableGrid } from './TimetableGrid';
 import { BellSchedulesPanel } from './setup/BellSchedulesPanel';
@@ -8,6 +9,8 @@ interface Props {
   readOnly?: boolean;
   staff?: Array<{ id: number | string; name: string }>;
 }
+
+interface AcademicYearOpt { id: string; label: string; active: boolean }
 
 type TabKey = 'grid' | 'bell' | 'subjects';
 
@@ -19,9 +22,28 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 
 export function TimetableModule({ readOnly, staff }: Props) {
   const [tab, setTab] = useState<TabKey>('grid');
+  const [years, setYears] = useState<AcademicYearOpt[]>([]);
+  const [yearId, setYearId] = useState('');
+
+  useEffect(() => {
+    void api.get<AcademicYearOpt[]>('/academic-years')
+      .then((r) => {
+        const list = Array.isArray(r.data) ? r.data : [];
+        setYears(list);
+        const active = list.find((y) => y.active);
+        setYearId((prev) => prev || active?.id || list[0]?.id || '');
+      })
+      .catch(() => setYears([]));
+  }, []);
+
   return (
     <ModuleShell title="Timetable" subtitle="Weekly grid, bell schedules & subjects">
       <div className="ck-panel-stack">
+        <div className="ck-actions-inline" style={{ justifyContent: 'flex-end' }}>
+          <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
+            {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
+          </select>
+        </div>
         <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)' }}>
           {TABS.map((t) => (
             <button
@@ -39,9 +61,9 @@ export function TimetableModule({ readOnly, staff }: Props) {
             </button>
           ))}
         </div>
-        {tab === 'grid' && <TimetableGrid readOnly={readOnly} staff={staff} />}
+        {tab === 'grid' && <TimetableGrid readOnly={readOnly} staff={staff} yearId={yearId} years={years} />}
         {tab === 'bell' && <BellSchedulesPanel />}
-        {tab === 'subjects' && <SubjectsMasterPanel />}
+        {tab === 'subjects' && <SubjectsMasterPanel yearId={yearId} years={years} />}
       </div>
     </ModuleShell>
   );
