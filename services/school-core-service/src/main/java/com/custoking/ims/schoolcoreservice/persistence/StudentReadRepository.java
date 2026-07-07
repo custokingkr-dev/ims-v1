@@ -378,7 +378,7 @@ public class StudentReadRepository {
     private void emitStudentUpserted(Long id) {
         Map<String, Object> row = jdbc.sql("""
                 SELECT id, school_id, admission_no, full_name, roll_no, class_id, section_id,
-                       father_contact, phone, deleted_at
+                       father_contact, phone, deleted_at, attendance_percent, father_name
                 FROM student.students
                 WHERE id = :id
                 """)
@@ -395,6 +395,8 @@ public class StudentReadRepository {
                     m.put("parentContact", rs.getString("father_contact"));
                     m.put("phone", rs.getString("phone"));
                     m.put("active", rs.getObject("deleted_at") == null);
+                    m.put("attendancePercent", rs.getObject("attendance_percent", Double.class));
+                    m.put("fatherName", rs.getString("father_name"));
                     return m;
                 })
                 .single();

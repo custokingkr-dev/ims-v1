@@ -93,7 +93,8 @@ class StudentDimensionProjectionIntegrationTest {
         String payload = "{\"id\":" + studentId + ",\"schoolId\":" + schoolId
                 + ",\"admissionNo\":\"ADM-" + studentId + "\",\"fullName\":\"" + fullName + "\","
                 + "\"rollNo\":\"7\",\"classId\":\"c1\",\"sectionId\":\"s1\","
-                + "\"parentContact\":\"9876500000\",\"phone\":\"9876500000\",\"active\":true}";
+                + "\"parentContact\":\"9876500000\",\"phone\":\"9876500000\",\"active\":true,"
+                + "\"attendancePercent\":92.5,\"fatherName\":\"John Doe\"}";
         String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"student.upserted.v1\","
                 + "\"payload\":" + payload + "}";
         inbox.record(new ReportingEventInboxRecord(
@@ -133,7 +134,8 @@ class StudentDimensionProjectionIntegrationTest {
         assertEquals(1, processed);
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "SELECT full_name, admission_no, school_id, active FROM reporting.dim_student WHERE id = ?")) {
+                     "SELECT full_name, admission_no, school_id, active, attendance_percent, father_name "
+                             + "FROM reporting.dim_student WHERE id = ?")) {
             ps.setLong(1, 42L);
             try (ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "expected a dim_student row for id 42");
@@ -141,6 +143,8 @@ class StudentDimensionProjectionIntegrationTest {
                 assertEquals("ADM-42", rs.getString("admission_no"));
                 assertEquals(7L, rs.getLong("school_id"));
                 assertTrue(rs.getBoolean("active"));
+                assertEquals(0, java.math.BigDecimal.valueOf(92.5).compareTo(rs.getBigDecimal("attendance_percent")));
+                assertEquals("John Doe", rs.getString("father_name"));
             }
         }
     }

@@ -76,14 +76,14 @@ public class DimensionProjectionRepository {
     @Transactional
     public void upsertStudent(long id, Long schoolId, String admissionNo, String fullName, String rollNo,
                                String classId, String sectionId, String parentContact, String phone,
-                               boolean active) {
+                               boolean active, java.math.BigDecimal attendancePercent, String fatherName) {
         jdbc.sql("""
                         INSERT INTO reporting.dim_student (
                             id, school_id, admission_no, full_name, roll_no, class_id, section_id,
-                            parent_contact, phone, active, updated_at
+                            parent_contact, phone, active, attendance_percent, father_name, updated_at
                         ) VALUES (
                             :id, :schoolId, :admissionNo, :fullName, :rollNo, :classId, :sectionId,
-                            :parentContact, :phone, :active, now()
+                            :parentContact, :phone, :active, :attendancePercent, :fatherName, now()
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             school_id = EXCLUDED.school_id,
@@ -95,6 +95,8 @@ public class DimensionProjectionRepository {
                             parent_contact = EXCLUDED.parent_contact,
                             phone = EXCLUDED.phone,
                             active = EXCLUDED.active,
+                            attendance_percent = EXCLUDED.attendance_percent,
+                            father_name = EXCLUDED.father_name,
                             updated_at = now()
                         """)
                 .param("id", id)
@@ -107,6 +109,8 @@ public class DimensionProjectionRepository {
                 .param("parentContact", parentContact)
                 .param("phone", phone)
                 .param("active", active)
+                .param("attendancePercent", attendancePercent)
+                .param("fatherName", fatherName)
                 .update();
     }
 
