@@ -79,3 +79,19 @@ notification:
 
 audit:
   ingest-token: ${AUDIT_INGEST_TOKEN:}
+
+school-core:
+  base-url: ${SCHOOL_CORE_URL:}
+  connect-timeout-ms: ${SCHOOL_CORE_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${SCHOOL_CORE_READ_TIMEOUT_MS:5000}
+
+operations:
+  base-url: ${OPERATIONS_URL:}
+  connect-timeout-ms: ${OPERATIONS_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${OPERATIONS_READ_TIMEOUT_MS:5000}
+
+catalog:
+  read-token: ${CATALOG_READ_TOKEN:}
+
+firefighting:
+  read-token: ${FIREFIGHTING_READ_TOKEN:}
