@@ -127,6 +127,7 @@ export function prettyOrderStatus(status?: string): string {
   if (value === 'AWAITING_APPROVAL') return 'Awaiting approval';
   if (value === 'PROCESSING') return 'Processing';
   if (value === 'APPROVED') return 'Approved';
+  if (value === 'DELIVERED') return 'Delivered';
   return value.replace(/_/g, ' ');
 }
 

@@ -142,9 +142,9 @@ public class CatalogReadRepository {
     public Map<String, Object> orderStats(Long schoolId) {
         allowCrossSchoolReadForOperations();
         // "active" = placed and still in-flight: not a draft, not rejected/returned, and not yet
-        // finally APPROVED (which we surface as delivered/fulfilled, since the order model has no
-        // dedicated DELIVERED status). termSpend = value of everything placed (non-draft), in paise.
-        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','APPROVED')";
+        // DELIVERED (APPROVED is now active/awaiting-delivery; DELIVERED is the real fulfilled
+        // state). termSpend = value of everything placed (non-draft), in paise.
+        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','DELIVERED')";
         if (schoolId == null) {
             Map<String, Object> stats = new LinkedHashMap<>();
             stats.put("totalOrders", count("SELECT count(*) FROM catalog.catalog_orders"));
@@ -155,7 +155,7 @@ public class CatalogReadRepository {
             stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE " + activePred));
             stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE UPPER(status) <> 'DRAFT'"));
             stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred));
-            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) = 'APPROVED'"));
+            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) = 'DELIVERED'"));
             return stats;
         }
         Map<String, Object> stats = new LinkedHashMap<>();
@@ -167,7 +167,7 @@ public class CatalogReadRepository {
         stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND " + activePred, schoolId));
         stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) <> 'DRAFT'", schoolId));
         stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred, schoolId));
-        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) = 'APPROVED'", schoolId));
+        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) = 'DELIVERED'", schoolId));
         return stats;
     }
 
@@ -417,6 +417,29 @@ public class CatalogReadRepository {
                 SET superadmin_approval_status = 'APPROVED', status = 'APPROVED', version = version + 1
                 WHERE id = :id
                 """).param("id", id).update();
+        CatalogOrderRow updated = requiredOrder(id);
+        emitOrderUpserted(updated);
+        return updated;
+    }
+
+    @Transactional
+    public CatalogOrderRow markDelivered(String id, Long actorId) {
+        // Deliberate cross-school write allowance: an operations user has no home school, so grant
+        // the same transaction-local RLS bypass used for the all-orders read (superadmin already
+        // bypasses session-wide). This is the one operator write we intentionally allow cross-school.
+        allowCrossSchoolReadForOperations();
+        CatalogOrderRow current = requiredOrder(id);
+        if (!"APPROVED".equalsIgnoreCase(current.status())) {
+            throw new IllegalStateException("Only approved orders can be marked delivered. Current status: " + current.status());
+        }
+        jdbc.sql("""
+                UPDATE catalog.catalog_orders
+                SET status = 'DELIVERED', delivered_at = now(), delivered_by = :actorId, version = version + 1
+                WHERE id = :id
+                """)
+                .param("id", id)
+                .param("actorId", actorId)
+                .update();
         CatalogOrderRow updated = requiredOrder(id);
         emitOrderUpserted(updated);
         return updated;

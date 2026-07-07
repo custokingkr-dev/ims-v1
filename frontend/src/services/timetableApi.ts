@@ -32,6 +32,7 @@ export const swapPeriods = (scheduleId: number, idA: number, idB: number) =>
   api.put(`/timetable/bell-schedules/${scheduleId}/periods/swap`, { idA, idB });
 export const getClassSchedules = (p?: object) => api.get<ClassScheduleRow[]>('/timetable/class-schedules', { params: p });
 export const setClassSchedule = (classId: string, scheduleId: number) => api.put(`/timetable/class-schedules/${encodeURIComponent(classId)}`, { scheduleId });
+export const unassignClass = (classId: string) => api.delete(`/timetable/class-schedules/${encodeURIComponent(classId)}`);
 
 export interface ClassSubjects { editable: boolean; yearId: string; subjects: { id: number; subjectName: string; sortOrder: number }[]; }
 export const getClassSubjects = (classId: string, yearId?: string) => api.get<ClassSubjects>('/timetable/class-subjects', { params: { classId, yearId } });

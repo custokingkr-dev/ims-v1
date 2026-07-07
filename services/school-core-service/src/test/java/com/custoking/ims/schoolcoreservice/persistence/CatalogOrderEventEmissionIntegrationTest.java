@@ -100,18 +100,46 @@ class CatalogOrderEventEmissionIntegrationTest {
     @Test
     void orderStatsExposesActiveDeliveredServiceAndTermSpend() {
         // Two active (placed, in-flight) orders — one of them a service category; one delivered
-        // (APPROVED); one draft (not placed). termSpend excludes the draft.
+        // (DELIVERED); one draft (not placed); one approved-but-not-yet-delivered (still active).
+        // termSpend excludes the draft.
         repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 1180, "status", "PROCESSING"));
         repo.createOrder(Map.of("schoolId", 1, "category", "HOUSEKEEPING", "totalAmount", 5000, "status", "PROCESSING"));
-        repo.createOrder(Map.of("schoolId", 1, "category", "UNIFORMS", "totalAmount", 2000, "status", "APPROVED"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "UNIFORMS", "totalAmount", 2000, "status", "DELIVERED"));
         repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 999, "status", "DRAFT"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "NOTEBOOKS", "totalAmount", 3000, "status", "APPROVED"));
 
         Map<String, Object> stats = repo.orderStats(1L);
 
-        assertThat(((Number) stats.get("activeOrders")).longValue()).isEqualTo(2L);
+        assertThat(((Number) stats.get("activeOrders")).longValue()).isEqualTo(3L);
         assertThat(((Number) stats.get("activeServices")).longValue()).isEqualTo(1L);
         assertThat(((Number) stats.get("deliveredCount")).longValue()).isEqualTo(1L);
-        assertThat(((Number) stats.get("termSpend")).longValue()).isEqualTo(1180L + 5000L + 2000L);
+        assertThat(((Number) stats.get("termSpend")).longValue()).isEqualTo(1180L + 5000L + 2000L + 3000L);
+    }
+
+    @Test
+    void markDeliveredMovesApprovedToDeliveredAndEmits() {
+        var created = repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY",
+                "totalAmount", 1180, "status", "APPROVED"));
+        long before = countOutbox();
+
+        var delivered = repo.markDelivered(created.id(), 42L);
+
+        assertThat(delivered.status()).isEqualTo("DELIVERED");
+        String status = jdbc.sql("SELECT status FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", created.id()).query(String.class).single();
+        assertThat(status).isEqualTo("DELIVERED");
+        Long deliveredBy = jdbc.sql("SELECT delivered_by FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", created.id()).query(Long.class).single();
+        assertThat(deliveredBy).isEqualTo(42L);
+        assertThat(countOutbox()).isEqualTo(before + 1);
+    }
+
+    @Test
+    void markDeliveredRejectsNonApprovedOrder() {
+        var created = repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY",
+                "totalAmount", 1180, "status", "PROCESSING"));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class,
+                () -> repo.markDelivered(created.id(), 42L));
     }
 
     @Test

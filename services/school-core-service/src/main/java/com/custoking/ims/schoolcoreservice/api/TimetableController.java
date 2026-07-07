@@ -189,6 +189,16 @@ public class TimetableController {
         }
     }
 
+    @DeleteMapping("/api/v1/timetable/class-schedules/{classId}")
+    public void unassignClassSchedule(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable("classId") String classId) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        timetable.deleteClassSchedule(schoolId, classId);
+    }
+
     @GetMapping("/api/v1/timetable/class-subjects")
     public Map<String, Object> classSubjects(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,

@@ -136,6 +136,26 @@ class TimetableRepositoryIntegrationTest {
     }
 
     @Test
+    void deleteClassScheduleUnassignsTheClass() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "6");
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, schedId);
+        assertThat(repo.classSchedules(schoolId)).anySatisfy(m -> {
+            assertThat(m.get("classId")).isEqualTo(classId);
+            assertThat(((Number) m.get("scheduleId")).longValue()).isEqualTo(schedId);
+        });
+
+        repo.deleteClassSchedule(schoolId, classId);
+
+        assertThat(repo.classSchedules(schoolId)).anySatisfy(m -> {
+            assertThat(m.get("classId")).isEqualTo(classId);
+            assertThat(m.get("scheduleId")).isNull();
+        });
+    }
+
+    @Test
     void rejectsSubjectEditsForNonActiveYear() throws Exception {
         long schoolId = seedSchool();
         String classId = seedClass(schoolId, "6");
