@@ -131,7 +131,9 @@ public class IdentityAuthService {
 
     private LoginResult issueSession(AppUserEntity user, String familyId) {
         AuthenticatedUserSnapshot snapshot = snapshot(user);
-        String accessToken = jwtService.generateAccessToken(snapshot);
+        List<String> permissions = new ArrayList<>(rbac.permissionCodes(user.getId()));
+        permissions.sort(String::compareTo);
+        String accessToken = jwtService.generateAccessToken(snapshot, permissions);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
         session.setId(UUID.randomUUID().toString());
