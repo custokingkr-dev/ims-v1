@@ -420,26 +420,23 @@ public class ReportingReadRepository {
         }
         long defaulterCount = count("""
                 SELECT count(*)
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
+                FROM reporting.fact_fee_assignment fa
                 WHERE fa.academic_year_id = :yearId
-                  AND s.school_id = :schoolId
+                  AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
                 """, yearId, schoolId);
         long totalOverdue = countAmount("""
                 SELECT COALESCE(SUM(fa.net_payable - fa.paid_amount), 0)
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
+                FROM reporting.fact_fee_assignment fa
                 WHERE fa.academic_year_id = :yearId
-                  AND s.school_id = :schoolId
+                  AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
                 """, yearId, schoolId);
         List<OffsetDateTime> oldestRows = jdbc.sql("""
                 SELECT MIN(fa.assigned_at)
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
+                FROM reporting.fact_fee_assignment fa
                 WHERE fa.academic_year_id = :yearId
-                  AND s.school_id = :schoolId
+                  AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
                 """)
                 .param("yearId", yearId)
@@ -452,22 +449,24 @@ public class ReportingReadRepository {
                 : 0;
         long belowThreshold = count("""
                 SELECT count(*)
-                FROM attendance.attendance_daily ad
-                JOIN tenant_school.school_sections ss ON ss.id = ad.section_id
+                FROM reporting.fact_attendance_daily ad
                 WHERE ad.attendance_date = CURRENT_DATE
                   AND ad.academic_year_id = :yearId
-                  AND ss.school_id = :schoolId
+                  AND ad.school_id = :schoolId
                   AND ad.total_enrolled > 0
                   AND (ad.present_count * 1.0 / ad.total_enrolled) < 0.75
                 """, yearId, schoolId);
         Map<String, Object> photo = dashboardPhotography(schoolId);
+        // NOTE: the original monolithic query filtered on the owning campaign's status = 'ACTIVE'.
+        // The fact row carries no campaign status, so this counts every PENDING item. This is
+        // equivalent today because review campaigns are only ever created ACTIVE and no code path
+        // deactivates/completes them. If campaign completion is ever added, project campaign_status
+        // onto fact_student_review_item and restore the filter, or this KPI will over-count.
         long pendingReviewCount = count("""
                 SELECT count(*)
-                FROM student.student_review_items i
-                JOIN student.student_review_campaigns c ON c.id = i.campaign_id
-                WHERE c.school_id = :schoolId
-                  AND c.status = 'ACTIVE'
-                  AND i.status = 'PENDING'
+                FROM reporting.fact_student_review_item
+                WHERE school_id = :schoolId
+                  AND status = 'PENDING'
                 """, schoolId);
         return dashboardCommandCenterRow(
                 defaulterCount, totalOverdue, oldestDueDays,
@@ -655,9 +654,14 @@ public class ReportingReadRepository {
                     .filter(row -> reminderStatus.equalsIgnoreCase(String.valueOf(row.get("reminderStatus"))))
                     .toList();
         }
+        // The dim_student + dim_section joins mirror the list query above exactly, so the totals
+        // cover the same row-set that is displayed (a defaulter whose section has not yet projected
+        // into dim_section is excluded from both the list and these totals).
         long totalOverdueAmount = countAmount("""
                 SELECT COALESCE(SUM(fa.net_payable - fa.paid_amount), 0)
                 FROM reporting.fact_fee_assignment fa
+                JOIN reporting.dim_student ds ON ds.id = fa.student_id
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
                 WHERE fa.academic_year_id = :yearId
                   AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
@@ -665,6 +669,8 @@ public class ReportingReadRepository {
         List<OffsetDateTime> oldestRows = jdbc.sql("""
                 SELECT MIN(fa.assigned_at)
                 FROM reporting.fact_fee_assignment fa
+                JOIN reporting.dim_student ds ON ds.id = fa.student_id
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
                 WHERE fa.academic_year_id = :yearId
                   AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount

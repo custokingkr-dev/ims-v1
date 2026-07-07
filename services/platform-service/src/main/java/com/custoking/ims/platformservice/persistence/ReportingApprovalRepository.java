@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.infrastructure.ApprovalCommandClient;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,9 +16,11 @@ import java.util.Map;
 public class ReportingApprovalRepository {
 
     private final JdbcClient jdbc;
+    private final ApprovalCommandClient approvalCommandClient;
 
-    public ReportingApprovalRepository(JdbcClient jdbc) {
+    public ReportingApprovalRepository(JdbcClient jdbc, ApprovalCommandClient approvalCommandClient) {
         this.jdbc = jdbc;
+        this.approvalCommandClient = approvalCommandClient;
     }
 
     public List<Map<String, Object>> approvals(int limit) {
@@ -114,93 +117,41 @@ public class ReportingApprovalRepository {
     }
 
     private Map<String, Object> decideCatalog(String orderId, String action, String note) {
-        int updated;
         if ("APPROVE".equals(action)) {
-            updated = jdbc.sql("""
-                    UPDATE catalog.catalog_orders
-                    SET superadmin_approval_status = 'APPROVED', status = 'APPROVED', version = version + 1
-                    WHERE id = :id
-                      AND UPPER(status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
-                      AND UPPER(superadmin_approval_status) = 'PENDING'
-                    """)
-                    .param("id", orderId)
-                    .update();
+            approvalCommandClient.approveCatalog(orderId);
         } else {
-            updated = jdbc.sql("""
-                    UPDATE catalog.catalog_orders
-                    SET superadmin_approval_status = 'RETURNED',
-                        status = CASE WHEN UPPER(category) IN ('UNIFORMS', 'NOTEBOOKS') THEN 'DESIGN_APPROVAL' ELSE 'PROCESSING' END,
-                        design_status = CASE WHEN UPPER(category) IN ('UNIFORMS', 'NOTEBOOKS') THEN 'PENDING' ELSE 'NOT_REQUIRED' END,
-                        notes = :note,
-                        version = version + 1
-                    WHERE id = :id
-                      AND UPPER(status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
-                      AND UPPER(superadmin_approval_status) = 'PENDING'
-                    """)
-                    .param("id", orderId)
-                    .param("note", note == null || note.isBlank() ? "Returned by Superadmin" : note)
-                    .update();
-        }
-        if (updated == 0) {
-            throw new IllegalArgumentException("Approval not found");
+            approvalCommandClient.rejectCatalog(orderId, note == null || note.isBlank() ? "Returned by Superadmin" : note);
         }
         return row("id", "catalog:" + orderId, "sourceType", "CATALOG", "sourceId", orderId,
                 "status", "APPROVE".equals(action) ? "APPROVED" : "REJECTED");
     }
 
     private Map<String, Object> decideFirefighting(String code, String action, Map<String, Object> request) {
-        Map<String, Object> current = jdbc.sql("""
-                SELECT code, status
-                FROM firefighting.firefighting_requests
+        // The current status is read from the locally-projected fact table (reporting owns this
+        // as a read model); the firefighting schema itself is never read or written from here.
+        String current = jdbc.sql("""
+                SELECT status
+                FROM reporting.fact_firefighting_request
                 WHERE code = :code
                 """)
                 .param("code", code)
-                .query((rs, rowNum) -> row("code", rs.getString("code"), "status", rs.getString("status")))
+                .query(String.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Approval not found"));
-        String status = normalize(String.valueOf(current.get("status")));
+        String status = normalize(current);
         if (!List.of("AWAITING_BURSAR", "AWAITING_PRINCIPAL", "AWAITING_CUSTOKING").contains(status)) {
             throw new IllegalArgumentException("Approval not found");
         }
         if ("REJECT".equals(action)) {
-            jdbc.sql("""
-                    UPDATE firefighting.firefighting_requests
-                    SET rejected_by = :rejectedBy, rejected_reason = :reason, status = 'REJECTED'
-                    WHERE code = :code
-                    """)
-                    .param("code", code)
-                    .param("rejectedBy", text(request, "actorName", "Superadmin"))
-                    .param("reason", text(request, "decisionNote", text(request, "reason", "")))
-                    .update();
+            approvalCommandClient.rejectFirefighting(code, text(request, "actorName", "Superadmin"),
+                    text(request, "decisionNote", text(request, "reason", "")));
             return row("id", "firefighting:" + code, "sourceType", "FIREFIGHTING", "sourceId", code, "status", "REJECTED");
         }
 
         switch (status) {
-            case "AWAITING_BURSAR" -> jdbc.sql("""
-                    UPDATE firefighting.firefighting_requests
-                    SET bursar_note = :note, bursar_approved_at = :approvedAt, status = 'AWAITING_PRINCIPAL'
-                    WHERE code = :code
-                    """)
-                    .param("code", code)
-                    .param("note", decisionNote(request))
-                    .param("approvedAt", OffsetDateTime.now())
-                    .update();
-            case "AWAITING_PRINCIPAL" -> jdbc.sql("""
-                    UPDATE firefighting.firefighting_requests
-                    SET principal_note = :note, principal_approved_at = :approvedAt, status = 'APPROVED'
-                    WHERE code = :code
-                    """)
-                    .param("code", code)
-                    .param("note", decisionNote(request))
-                    .param("approvedAt", OffsetDateTime.now())
-                    .update();
-            case "AWAITING_CUSTOKING" -> jdbc.sql("""
-                    UPDATE firefighting.firefighting_requests
-                    SET status = 'CUSTOKING_APPROVED'
-                    WHERE code = :code
-                    """)
-                    .param("code", code)
-                    .update();
+            case "AWAITING_BURSAR" -> approvalCommandClient.approveFirefightingBursar(code, decisionNote(request));
+            case "AWAITING_PRINCIPAL" -> approvalCommandClient.approveFirefightingPrincipal(code, decisionNote(request));
+            case "AWAITING_CUSTOKING" -> approvalCommandClient.approveFirefightingCustoking(code);
             default -> throw new IllegalArgumentException("Approval not found");
         }
         return row("id", "firefighting:" + code, "sourceType", "FIREFIGHTING", "sourceId", code, "status", "APPROVED");

@@ -733,6 +733,7 @@ public class StudentReadRepository {
                 .param("correctionNotes", correctionNotes)
                 .param("status", status)
                 .update();
+        emitReviewItemUpserted(itemId);
         return reviewItemDetail(itemId, schoolId).orElseThrow();
     }
 
@@ -793,6 +794,7 @@ public class StudentReadRepository {
                     .param("correctionNotes", str(request.get("correctionNotes"), null))
                     .update();
         }
+        emitReviewItemUpserted(itemId);
         return reviewItemDetail(itemId, schoolId).orElseThrow();
     }
 
@@ -1176,6 +1178,7 @@ public class StudentReadRepository {
         List<Map<String, Object>> students = spec.query((rs, rowNum) ->
                 row("id", rs.getLong("id"), "fullName", rs.getString("full_name"))).list();
         for (Map<String, Object> student : students) {
+            String itemId = UUID.randomUUID().toString();
             jdbc.sql("""
                             INSERT INTO student.student_review_items
                                 (id, campaign_id, student_id, school_id, assigned_to_user_id, status,
@@ -1185,14 +1188,46 @@ public class StudentReadRepository {
                                  :currentFullName, now(), now())
                             ON CONFLICT (campaign_id, student_id) DO NOTHING
                             """)
-                    .param("id", UUID.randomUUID().toString())
+                    .param("id", itemId)
                     .param("campaignId", campaignId)
                     .param("studentId", student.get("id"))
                     .param("schoolId", schoolId)
                     .param("assignedToUserId", assignedToUserId)
                     .param("currentFullName", student.get("fullName"))
                     .update();
+            emitReviewItemUpserted(itemId);
         }
+    }
+
+    /**
+     * Emits {@code student-review-item.upserted.v1} for the reporting
+     * fact_student_review_item projection (SP7 student-review). school_id already lives
+     * directly on student_review_items (denormalized at insert time), so no campaign join
+     * is needed to resolve it.
+     */
+    private void emitReviewItemUpserted(String itemId) {
+        Optional<Map<String, Object>> found = jdbc.sql("""
+                SELECT id, school_id, campaign_id, status
+                FROM student.student_review_items
+                WHERE id = :id
+                """)
+                .param("id", itemId)
+                .query((rs, n) -> {
+                    Map<String, Object> m = new LinkedHashMap<>();
+                    m.put("id", rs.getString("id"));
+                    m.put("schoolId", rs.getLong("school_id"));
+                    m.put("campaignId", rs.getString("campaign_id"));
+                    m.put("status", rs.getString("status"));
+                    return m;
+                })
+                .optional();
+        if (found.isEmpty()) {
+            return;
+        }
+        Map<String, Object> row = found.get();
+        Long schoolId = ((Number) row.get("schoolId")).longValue();
+        outbox.append("student-review-item.upserted.v1", "StudentReviewItemUpserted:" + itemId,
+                "StudentReviewItem", itemId, schoolId, row);
     }
 
     private Map<String, Object> idCardStatus(String campaignId) {
