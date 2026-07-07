@@ -15,34 +15,42 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function SubjectsMasterPanel() {
+interface Props { yearId?: string; years?: AcademicYearOpt[]; embedded?: boolean }
+
+export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp, embedded }: Props = {}) {
   const { can } = usePermissions();
   const canManage = can('timetable:manage');
 
   const [classes, setClasses] = useState<ClassOpt[]>([]);
-  const [years, setYears] = useState<AcademicYearOpt[]>([]);
+  const [internalYears, setInternalYears] = useState<AcademicYearOpt[]>([]);
   const [classId, setClassId] = useState('');
-  const [yearId, setYearId] = useState('');
+  const [internalYearId, setInternalYearId] = useState('');
   const [data, setData] = useState<ClassSubjects | null>(null);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const controlled = yearIdProp !== undefined;
+  const yearId = yearIdProp ?? internalYearId;
+  const years = yearsProp ?? internalYears;
 
   useEffect(() => {
     if (!canManage) return;
     void api.get<ClassOpt[]>('/classes')
       .then((r) => setClasses(Array.isArray(r.data) ? r.data : []))
       .catch(() => setClasses([]));
-    void api.get<AcademicYearOpt[]>('/academic-years')
-      .then((r) => {
-        const list = Array.isArray(r.data) ? r.data : [];
-        setYears(list);
-        const activeYear = list.find((y) => y.active);
-        if (activeYear) setYearId(activeYear.id);
-      })
-      .catch(() => setYears([]));
+    if (!controlled) {
+      void api.get<AcademicYearOpt[]>('/academic-years')
+        .then((r) => {
+          const list = Array.isArray(r.data) ? r.data : [];
+          setInternalYears(list);
+          const activeYear = list.find((y) => y.active);
+          if (activeYear) setInternalYearId(activeYear.id);
+        })
+        .catch(() => setInternalYears([]));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage]);
+  }, [canManage, controlled]);
 
   useEffect(() => {
     if (!canManage || !classes.length) return;
@@ -93,17 +101,19 @@ export function SubjectsMasterPanel() {
   };
 
   if (!canManage) {
-    return (
+    const noPermission = (
+      <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage subjects.</div></div>
+    );
+    return embedded ? noPermission : (
       <ModuleShell title="Subjects" subtitle="Configure per-class subjects for the academic year">
-        <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage subjects.</div></div>
+        {noPermission}
       </ModuleShell>
     );
   }
 
   const selectedYear = years.find((y) => y.id === yearId) || null;
 
-  return (
-    <ModuleShell title="Subjects" subtitle="Configure per-class subjects for the academic year">
+  const body = (
       <div className="ck-panel-stack">
         {error ? <div className="ck-alert ck-alert-re"><span>!</span><div>{error}</div></div> : null}
 
@@ -111,9 +121,11 @@ export function SubjectsMasterPanel() {
           <select value={classId} onChange={(e) => setClassId(e.target.value)}>
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
-            {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
-          </select>
+          {!controlled ? (
+            <select value={internalYearId} onChange={(e) => setInternalYearId(e.target.value)}>
+              {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
+            </select>
+          ) : null}
         </div>
 
         <div className="ck-card">
@@ -172,6 +184,11 @@ export function SubjectsMasterPanel() {
           </div>
         </div>
       </div>
+  );
+
+  return embedded ? body : (
+    <ModuleShell title="Subjects" subtitle="Configure per-class subjects for the academic year">
+      {body}
     </ModuleShell>
   );
 }

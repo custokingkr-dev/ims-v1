@@ -8,31 +8,39 @@ import {
   type TimetableView, type ClassSubjects,
 } from '../../../services/timetableApi';
 
+interface AcademicYearOpt { id: string; label: string; active: boolean }
+
 interface Props {
   readOnly?: boolean;
   staff?: Array<{ id: number | string; name: string }>;
+  yearId?: string;
+  years?: AcademicYearOpt[];
+  embedded?: boolean;
+  onNeedBellSetup?: (classId: string) => void;
 }
 
 interface ClassOpt { id: string; name: string }
 interface SectionOpt { id: string; name: string }
-interface AcademicYearOpt { id: string; label: string; active: boolean }
 
 function errMsg(err: unknown, fallback: string): string {
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function TimetableGrid({ readOnly }: Props) {
+export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, embedded, onNeedBellSetup }: Props) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const canRead = can('timetable:read');
 
   const [classes, setClasses] = useState<ClassOpt[]>([]);
   const [sections, setSections] = useState<SectionOpt[]>([]);
-  const [years, setYears] = useState<AcademicYearOpt[]>([]);
+  const [internalYears, setInternalYears] = useState<AcademicYearOpt[]>([]);
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
-  const [yearId, setYearId] = useState('');
+  const [internalYearId, setInternalYearId] = useState('');
+  const controlled = yearIdProp !== undefined;
+  const yearId = yearIdProp ?? internalYearId;
+  const years = yearsProp ?? internalYears;
   const [data, setData] = useState<TimetableView | null>(null);
   const [subjects, setSubjects] = useState<ClassSubjects | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,16 +67,18 @@ export function TimetableGrid({ readOnly }: Props) {
     void api.get<ClassOpt[]>('/classes')
       .then((r) => setClasses(Array.isArray(r.data) ? r.data : []))
       .catch(() => setClasses([]));
-    void api.get<AcademicYearOpt[]>('/academic-years')
-      .then((r) => {
-        const list = Array.isArray(r.data) ? r.data : [];
-        setYears(list);
-        const activeYear = list.find((y) => y.active);
-        if (activeYear) setYearId(activeYear.id);
-      })
-      .catch(() => setYears([]));
+    if (!controlled) {
+      void api.get<AcademicYearOpt[]>('/academic-years')
+        .then((r) => {
+          const list = Array.isArray(r.data) ? r.data : [];
+          setInternalYears(list);
+          const activeYear = list.find((y) => y.active);
+          if (activeYear) setInternalYearId(activeYear.id);
+        })
+        .catch(() => setInternalYears([]));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRead]);
+  }, [canRead, controlled]);
 
   useEffect(() => {
     if (!canRead || !classes.length) return;
@@ -178,18 +188,17 @@ export function TimetableGrid({ readOnly }: Props) {
   };
 
   if (!canRead) {
-    return (
+    const noPermission = (
+      <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to view the timetable.</div></div>
+    );
+    return embedded ? noPermission : (
       <ModuleShell title="Timetable" subtitle="Weekly class schedule">
-        <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to view the timetable.</div></div>
+        {noPermission}
       </ModuleShell>
     );
   }
 
-  return (
-    <ModuleShell
-      title="Timetable"
-      subtitle={readOnly ? 'View-only weekly schedule' : 'Weekly class schedule'}
-    >
+  const body = (
       <div className="ck-panel-stack">
         {toast ? (
           <div className="ck-alert ck-alert-am">
@@ -206,9 +215,11 @@ export function TimetableGrid({ readOnly }: Props) {
           <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!classId}>
             {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
-            {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
-          </select>
+          {!controlled ? (
+            <select value={internalYearId} onChange={(e) => setInternalYearId(e.target.value)}>
+              {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
+            </select>
+          ) : null}
         </div>
 
         {!data?.editable && !readOnly && data ? (
@@ -228,7 +239,24 @@ export function TimetableGrid({ readOnly }: Props) {
             ) : data.noSchedule ? (
               <div className="ck-alert ck-alert-am">
                 <span>i</span>
-                <div>This class has no bell schedule — set one up in Setup → Bell schedules.</div>
+                <div>
+                  This class has no bell schedule.
+                  {onNeedBellSetup ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="ck-btn ck-btn-ghost"
+                        style={{ padding: '2px 6px', textDecoration: 'underline' }}
+                        onClick={() => onNeedBellSetup(classId)}
+                      >
+                        Set up this class's bell schedule →
+                      </button>
+                    </>
+                  ) : (
+                    ' Set one up in Setup → Bell schedules.'
+                  )}
+                </div>
               </div>
             ) : data.periods.length === 0 ? (
               <div className="ck-import-zone"><div className="iz-title">No periods defined for this schedule yet</div></div>
@@ -304,6 +332,14 @@ export function TimetableGrid({ readOnly }: Props) {
           </div>
         </div>
       </div>
+  );
+
+  return embedded ? body : (
+    <ModuleShell
+      title="Timetable"
+      subtitle={readOnly ? 'View-only weekly schedule' : 'Weekly class schedule'}
+    >
+      {body}
     </ModuleShell>
   );
 }
