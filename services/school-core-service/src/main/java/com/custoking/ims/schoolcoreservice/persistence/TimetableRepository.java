@@ -102,6 +102,27 @@ public class TimetableRepository {
 
     @Transactional
     public void deleteSchedule(Long schoolId, long id) {
+        // Deleting a schedule cascades to its periods and, in turn, to every timetable entry that
+        // references those periods (ON DELETE CASCADE). Refuse when any past-year (archived)
+        // timetable depends on it — those years are read-only everywhere else in this module.
+        boolean usedByArchive = jdbc.sql("""
+                SELECT 1
+                FROM tenant_school.school_timetable_entries e
+                JOIN tenant_school.school_bell_periods p ON p.id = e.bell_period_id
+                WHERE e.school_id = :s AND p.schedule_id = :id
+                  AND e.academic_year_id <> :activeYear
+                LIMIT 1
+                """)
+                .param("s", schoolId)
+                .param("id", id)
+                .param("activeYear", activeYearOrBlank(schoolId))
+                .query(Integer.class)
+                .optional()
+                .isPresent();
+        if (usedByArchive) {
+            throw new YearLockedException("This schedule is used by a past-year timetable, which is read-only. "
+                    + "Create a new schedule for the current year instead of deleting it.");
+        }
         jdbc.sql("""
                 DELETE FROM tenant_school.school_bell_schedules
                 WHERE school_id = :s AND id = :id
@@ -226,6 +247,24 @@ public class TimetableRepository {
 
     @Transactional
     public void deletePeriod(Long schoolId, long periodId) {
+        // A period FK-cascades to timetable entries across ALL years. Refuse when a past-year
+        // (archived, read-only) timetable references it; current-year entries cascade as intended.
+        boolean usedByArchive = jdbc.sql("""
+                SELECT 1 FROM tenant_school.school_timetable_entries
+                WHERE school_id = :s AND bell_period_id = :id
+                  AND academic_year_id <> :activeYear
+                LIMIT 1
+                """)
+                .param("s", schoolId)
+                .param("id", periodId)
+                .param("activeYear", activeYearOrBlank(schoolId))
+                .query(Integer.class)
+                .optional()
+                .isPresent();
+        if (usedByArchive) {
+            throw new YearLockedException("This period is used by a past-year timetable, which is read-only. "
+                    + "Create a new schedule for the current year instead of deleting it.");
+        }
         jdbc.sql("""
                 DELETE FROM tenant_school.school_bell_periods
                 WHERE school_id = :s AND id = :id
@@ -233,6 +272,14 @@ public class TimetableRepository {
                 .param("s", schoolId)
                 .param("id", periodId)
                 .update();
+    }
+
+    // Active academic year id, or "" when none is active. The blank sentinel makes the guard
+    // conservative: `academic_year_id <> ''` matches every real year, so if no year is active
+    // any timetable-referenced period/schedule is treated as archived and protected.
+    private String activeYearOrBlank(Long schoolId) {
+        String activeYear = activeYearId(schoolId);
+        return activeYear == null ? "" : activeYear;
     }
 
     public List<Map<String, Object>> classSchedules(Long schoolId) {

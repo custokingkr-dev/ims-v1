@@ -81,7 +81,11 @@ public class TimetableController {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
         Long schoolId = TenantScope.resolveSchoolId(null);
-        timetable.deleteSchedule(schoolId, id);
+        try {
+            timetable.deleteSchedule(schoolId, id);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
     }
 
     @PostMapping("/api/v1/timetable/bell-schedules/{id}/periods")
@@ -152,7 +156,11 @@ public class TimetableController {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
         Long schoolId = TenantScope.resolveSchoolId(null);
-        timetable.deletePeriod(schoolId, periodId);
+        try {
+            timetable.deletePeriod(schoolId, periodId);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
     }
 
     @GetMapping("/api/v1/timetable/class-schedules")
