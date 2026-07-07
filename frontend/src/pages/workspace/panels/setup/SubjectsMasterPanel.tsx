@@ -30,6 +30,7 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Pr
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const controlled = yearIdProp !== undefined;
   const yearId = yearIdProp ?? internalYearId;
   const years = yearsProp ?? internalYears;
 
@@ -38,7 +39,7 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Pr
     void api.get<ClassOpt[]>('/classes')
       .then((r) => setClasses(Array.isArray(r.data) ? r.data : []))
       .catch(() => setClasses([]));
-    if (!yearIdProp) {
+    if (!controlled) {
       void api.get<AcademicYearOpt[]>('/academic-years')
         .then((r) => {
           const list = Array.isArray(r.data) ? r.data : [];
@@ -49,7 +50,7 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Pr
         .catch(() => setInternalYears([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canManage, yearIdProp]);
+  }, [canManage, controlled]);
 
   useEffect(() => {
     if (!canManage || !classes.length) return;
@@ -118,7 +119,7 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Pr
           <select value={classId} onChange={(e) => setClassId(e.target.value)}>
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          {!yearIdProp ? (
+          {!controlled ? (
             <select value={internalYearId} onChange={(e) => setInternalYearId(e.target.value)}>
               {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
             </select>

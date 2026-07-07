@@ -36,6 +36,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
   const [classId, setClassId] = useState('');
   const [sectionId, setSectionId] = useState('');
   const [internalYearId, setInternalYearId] = useState('');
+  const controlled = yearIdProp !== undefined;
   const yearId = yearIdProp ?? internalYearId;
   const years = yearsProp ?? internalYears;
   const [data, setData] = useState<TimetableView | null>(null);
@@ -64,7 +65,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
     void api.get<ClassOpt[]>('/classes')
       .then((r) => setClasses(Array.isArray(r.data) ? r.data : []))
       .catch(() => setClasses([]));
-    if (!yearIdProp) {
+    if (!controlled) {
       void api.get<AcademicYearOpt[]>('/academic-years')
         .then((r) => {
           const list = Array.isArray(r.data) ? r.data : [];
@@ -75,7 +76,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
         .catch(() => setInternalYears([]));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canRead, yearIdProp]);
+  }, [canRead, controlled]);
 
   useEffect(() => {
     if (!canRead || !classes.length) return;
@@ -213,7 +214,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
           <select value={sectionId} onChange={(e) => setSectionId(e.target.value)} disabled={!classId}>
             {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          {!yearIdProp ? (
+          {!controlled ? (
             <select value={internalYearId} onChange={(e) => setInternalYearId(e.target.value)}>
               {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
             </select>
