@@ -4,6 +4,7 @@ import com.custoking.ims.operationsservice.outbox.OutboxWriter;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -21,10 +22,12 @@ public class FirefightingReadRepository {
 
     private final JdbcClient jdbc;
     private final OutboxWriter outboxWriter;
+    private final ObjectMapper objectMapper;
 
-    public FirefightingReadRepository(JdbcClient jdbc, OutboxWriter outboxWriter) {
+    public FirefightingReadRepository(JdbcClient jdbc, OutboxWriter outboxWriter, ObjectMapper objectMapper) {
         this.jdbc = jdbc;
         this.outboxWriter = outboxWriter;
+        this.objectMapper = objectMapper;
     }
 
     public List<FirefightingRequestRow> requests(Long schoolId, String status, int limit) {
@@ -41,7 +44,7 @@ public class FirefightingReadRepository {
 
     public List<FirefightingRequestRow> pending(Long schoolId, int limit) {
         StringBuilder sql = new StringBuilder(requestSelect()).append("""
-                 WHERE status IN ('AWAITING_BURSAR', 'AWAITING_PRINCIPAL', 'AWAITING_CUSTOKING')
+                 WHERE status IN ('AWAITING_BURSAR', 'AWAITING_PRINCIPAL', 'APPROVED')
                 """);
         if (schoolId != null) sql.append(" AND school_id = :schoolId");
         sql.append(" ORDER BY created_at DESC NULLS LAST LIMIT :limit");
@@ -70,6 +73,9 @@ public class FirefightingReadRepository {
         addEvent(events, "BURSAR_APPROVED", row.bursarApprovedAt());
         addEvent(events, "PRINCIPAL_APPROVED", row.principalApprovedAt());
         addEvent(events, "VENDOR_PAID", row.vendorPaidAt());
+        addEvent(events, "CUSTOKING_APPROVED", row.custokingApprovedAt());
+        addEvent(events, "FULFILLED", row.fulfilledAt());
+        addEvent(events, "REJECTED", row.rejectedAt());
         events.sort(java.util.Comparator.comparing(event -> (OffsetDateTime) event.get("at")));
         return events;
     }
@@ -290,7 +296,10 @@ public class FirefightingReadRepository {
     public Map<String, Object> approveCustoking(String code) {
         Map<String, Object> current = requestMap(code);
         requireStatus(current, "APPROVED");
-        updateStatus(code, "CUSTOKING_APPROVED");
+        jdbc.sql("UPDATE firefighting_requests SET status='CUSTOKING_APPROVED', custoking_approved_at=:at WHERE code=:code")
+                .param("code", code)
+                .param("at", OffsetDateTime.now())
+                .update();
         emitUpserted(code);
         return detailRow(code);
     }
@@ -303,12 +312,13 @@ public class FirefightingReadRepository {
         }
         jdbc.sql("""
                 UPDATE firefighting_requests
-                SET rejected_by = :rejectedBy, rejected_reason = :reason, status = 'REJECTED'
+                SET rejected_by = :rejectedBy, rejected_reason = :reason, status = 'REJECTED', rejected_at = :at
                 WHERE code = :code
                 """)
                 .param("code", code)
                 .param("rejectedBy", str(request.get("rejectedBy"), str(request.get("actorName"), "")))
                 .param("reason", str(firstPresent(request, "reason", "rejectedReason"), ""))
+                .param("at", OffsetDateTime.now())
                 .update();
         emitUpserted(code);
         return detailRow(code);
@@ -318,7 +328,10 @@ public class FirefightingReadRepository {
     public Map<String, Object> fulfill(String code) {
         Map<String, Object> current = requestMap(code);
         requireStatus(current, "CUSTOKING_APPROVED");
-        updateStatus(code, "FULFILLED");
+        jdbc.sql("UPDATE firefighting_requests SET status='FULFILLED', fulfilled_at=:at WHERE code=:code")
+                .param("code", code)
+                .param("at", OffsetDateTime.now())
+                .update();
         emitUpserted(code);
         return detailRow(code);
     }
@@ -332,6 +345,10 @@ public class FirefightingReadRepository {
         }
         if (current.get("vendorPaidAt") != null) {
             throw new IllegalArgumentException("Request already marked as vendor-paid");
+        }
+        String status = str(current.get("status"), "").toUpperCase(Locale.ROOT);
+        if (!List.of("CUSTOKING_APPROVED", "FULFILLED").contains(status)) {
+            throw new IllegalStateException("Only approved/fulfilled requests can be marked vendor-paid");
         }
         jdbc.sql("""
                 UPDATE firefighting_requests
@@ -380,7 +397,7 @@ public class FirefightingReadRepository {
                        principal_note, bursar_approved_at, principal_approved_at, rejected_by,
                        rejected_reason, custoking_criteria_json, winner_vendor, winner_amount,
                        created_at, school_id, version, created_by, updated_by, vendor_paid_at,
-                       vendor_paid_by, vendor_payment_notes
+                       vendor_paid_by, vendor_payment_notes, custoking_approved_at, fulfilled_at, rejected_at
                 FROM firefighting_requests
                 """;
     }
@@ -423,7 +440,7 @@ public class FirefightingReadRepository {
         row.put("vendorPaidAt", request.get("vendorPaidAt"));
         row.put("vendorPaidBy", request.get("vendorPaidBy"));
         row.put("vendorPaymentNotes", request.get("vendorPaymentNotes"));
-        row.put("custokingCriteria", Map.of());
+        row.put("custokingCriteria", parseCriteria(str(request.get("custokingCriteriaJson"), "")));
         return row;
     }
 
@@ -452,7 +469,11 @@ public class FirefightingReadRepository {
                         "schoolId", rs.getObject("school_id") == null ? null : rs.getLong("school_id"),
                         "vendorPaidAt", rs.getObject("vendor_paid_at", OffsetDateTime.class),
                         "vendorPaidBy", rs.getObject("vendor_paid_by") == null ? null : rs.getLong("vendor_paid_by"),
-                        "vendorPaymentNotes", rs.getString("vendor_payment_notes")))
+                        "vendorPaymentNotes", rs.getString("vendor_payment_notes"),
+                        "custokingCriteriaJson", rs.getString("custoking_criteria_json"),
+                        "custokingApprovedAt", rs.getObject("custoking_approved_at", OffsetDateTime.class),
+                        "fulfilledAt", rs.getObject("fulfilled_at", OffsetDateTime.class),
+                        "rejectedAt", rs.getObject("rejected_at", OffsetDateTime.class)))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
     }
@@ -503,6 +524,12 @@ public class FirefightingReadRepository {
                 .param("code", code)
                 .param("status", status)
                 .update();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> parseCriteria(String json) {
+        if (json == null || json.isBlank()) return Map.of();
+        return objectMapper.readValue(json, Map.class);
     }
 
     private String criteriaJson(String category) {
@@ -587,7 +614,10 @@ public class FirefightingReadRepository {
             String updatedBy,
             OffsetDateTime vendorPaidAt,
             Long vendorPaidBy,
-            String vendorPaymentNotes) {
+            String vendorPaymentNotes,
+            OffsetDateTime custokingApprovedAt,
+            OffsetDateTime fulfilledAt,
+            OffsetDateTime rejectedAt) {
     }
 
     public record QuotationRow(
