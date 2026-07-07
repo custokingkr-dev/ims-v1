@@ -199,6 +199,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @Valid @RequestBody(required = false) ApproveNoteRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermission("firefighting:approve");
         Map<String, Object> body = new HashMap<>();
         if (req != null && req.note() != null) body.put("note", req.note());
         return execute(() -> firefighting.approveBursar(code, body));
@@ -210,6 +211,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @Valid @RequestBody(required = false) ApprovePrincipalRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermission("firefighting:approve");
         Map<String, Object> body = new HashMap<>();
         if (req != null && req.selectedQuotationId() != null) body.put("selectedQuotationId", req.selectedQuotationId());
         if (req != null && req.note() != null) body.put("note", req.note());
@@ -231,6 +233,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @Valid @RequestBody(required = false) RejectRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermission("firefighting:approve");
         Map<String, Object> body = new HashMap<>();
         body.put("actorName", TenantContext.get().email());
         if (req != null && req.reason() != null) body.put("reason", req.reason());

@@ -33,4 +33,14 @@ public final class TenantScope {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "superadmin required");
         }
     }
+
+    public static void requirePermission(String code) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin()) return;                       // superadmin bypass
+        if (ctx.permissions().isEmpty()) return;              // transitional: pre-ver-3 token, no header
+        if (!ctx.hasPermission(code)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "You do not have permission to approve firefighting requests");
+        }
+    }
 }

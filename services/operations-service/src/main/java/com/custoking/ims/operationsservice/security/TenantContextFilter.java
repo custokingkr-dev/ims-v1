@@ -24,7 +24,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 trimToNull(request.getHeader("X-Authenticated-Email")),
                 trimToNull(request.getHeader("X-Authenticated-Role")),
                 parseLong(request.getHeader("X-Authenticated-School-Id")),
-                parseLong(request.getHeader("X-Authenticated-Zone-Id"))));
+                parseLong(request.getHeader("X-Authenticated-Zone-Id")),
+                parsePermissions(request.getHeader("X-Authenticated-Permissions"))));
         try {
             filterChain.doFilter(request, response);
         } finally {
@@ -39,5 +40,15 @@ public class TenantContextFilter extends OncePerRequestFilter {
 
     private static String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private static java.util.Set<String> parsePermissions(String header) {
+        if (!StringUtils.hasText(header)) return java.util.Set.of();
+        java.util.Set<String> out = new java.util.HashSet<>();
+        for (String part : header.split(",")) {
+            String code = part.trim();
+            if (!code.isEmpty()) out.add(code);
+        }
+        return out;
     }
 }
