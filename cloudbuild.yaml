@@ -158,8 +158,16 @@ steps:
           "--min-instances=1"
 
         # platform-service = reporting + notification + audit (PLATFORM_DB_SCHEMA default set in yml).
-        deploy_service platform-service custoking-platform-service-${_ENV} custoking-platform-service "MSG91_DRY_RUN=true" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,REPORTING_READ_TOKEN=reporting-read-token-${_ENV}:latest,AUDIT_INGEST_TOKEN=audit-ingest-token-${_ENV}:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token-${_ENV}:latest,MSG91_AUTH_KEY=msg91-auth-key-${_ENV}:latest"
+        # Reporting's approvals endpoint writes decisions into the owning services over HTTP
+        # (school-core-service for catalog supply orders, operations-service for firefighting
+        # requests) instead of cross-schema UPDATEs. Reuse TENANT_SCHOOL_URL (already resolved
+        # above) as SCHOOL_CORE_URL, and resolve operations-service's URL the same way.
+        OPERATIONS_URL="$(gcloud run services describe custoking-operations-service-${_ENV} --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
+        if [ -z "$${OPERATIONS_URL}" ]; then
+          OPERATIONS_URL="http://operations-service:8080"
+        fi
+        deploy_service platform-service custoking-platform-service-${_ENV} custoking-platform-service "MSG91_DRY_RUN=true,SCHOOL_CORE_URL=$${TENANT_SCHOOL_URL},OPERATIONS_URL=$${OPERATIONS_URL}" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,REPORTING_READ_TOKEN=reporting-read-token-${_ENV}:latest,AUDIT_INGEST_TOKEN=audit-ingest-token-${_ENV}:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token-${_ENV}:latest,MSG91_AUTH_KEY=msg91-auth-key-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest"
 
         # billing-service. BILLING_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps
         # this env var to billing.outbox.pubsub.topic-id, the property @ConditionalOnProperty gates the

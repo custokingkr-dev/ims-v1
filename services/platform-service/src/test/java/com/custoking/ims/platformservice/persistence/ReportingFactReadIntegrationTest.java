@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.infrastructure.ApprovalCommandClient;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
@@ -86,7 +87,7 @@ class ReportingFactReadIntegrationTest {
     @BeforeEach
     void setUp() throws Exception {
         reporting = new ReportingReadRepository(jdbcClient);
-        approvals = new ReportingApprovalRepository(jdbcClient);
+        approvals = new ReportingApprovalRepository(jdbcClient, org.mockito.Mockito.mock(ApprovalCommandClient.class));
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             for (String t : List.of("fact_catalog_order", "fact_firefighting_request", "fact_payment",
                     "fact_fee_assignment", "fact_attendance_daily", "fact_student_review_item",
