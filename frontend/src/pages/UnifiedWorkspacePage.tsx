@@ -76,14 +76,16 @@ export default function UnifiedWorkspacePage() {
 
   // activeModules: the school's active module entitlements, used to gate nav items tagged
   // with a `module`. Platform admins bypass entitlement and always see everything.
-  const [activeModules, setActiveModules] = useState<Set<string>>(new Set());
+  // null = unknown (loading, or fetch failed) — treated as "show all module items" so a
+  // transient error never blanks out an entitled school's nav.
+  const [activeModules, setActiveModules] = useState<Set<string> | null>(null);
   useEffect(() => {
     if (!user?.branchId || isPlatformAdmin) return;
     api.get(`/schools/${user.branchId}/modules/active`)
       .then((res) => setActiveModules(new Set(
         (Array.isArray(res.data) ? res.data : []).map((m: any) => String(m.moduleCode).toUpperCase())
       )))
-      .catch(() => setActiveModules(new Set()));
+      .catch(() => setActiveModules(null));
   }, [user?.branchId, isPlatformAdmin]);
 
   // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
@@ -280,7 +282,7 @@ export default function UnifiedWorkspacePage() {
     : rawNavSections
         .map(section => ({
           ...section,
-          items: section.items.filter(item => !item.module || activeModules.has(item.module)),
+          items: section.items.filter(item => !item.module || activeModules === null || activeModules.has(item.module)),
         }))
         .filter(section => section.items.length > 0);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));

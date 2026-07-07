@@ -5,6 +5,13 @@ import { formatMoney } from '../utils';
 import type { FirefightingRequest, Quotation } from '../../../types/workspace';
 import { usePermissions } from '../../../hooks/usePermissions';
 
+function formatFfDate(value?: string): string {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString(undefined, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 const FF_STAGES = [
   { key: 'DRAFT', label: 'Draft' },
   { key: 'AWAITING_BURSAR', label: 'Finance Review' },
@@ -174,7 +181,7 @@ export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
           <div key={req.code} className="ck-form-card" style={{ marginBottom: 14 }}>
             <div className="ck-form-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', marginBottom: 2, fontFamily: 'monospace' }}>{req.code} · {req.date}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink3)', marginBottom: 2, fontFamily: 'monospace' }}>{req.code} · {formatFfDate(req.createdAt)}</div>
                 <div style={{ fontSize: 14, fontWeight: 600 }}>{req.title}</div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
