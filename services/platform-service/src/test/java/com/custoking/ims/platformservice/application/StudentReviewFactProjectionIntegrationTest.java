@@ -98,6 +98,46 @@ class StudentReviewFactProjectionIntegrationTest {
                 null, Optional.of(OffsetDateTime.now()), OffsetDateTime.now(), envelope, payload));
     }
 
+    private void feedCampaignCompletedEvent(String eventId, long schoolId, String campaignId) {
+        String payload = "{\"campaignId\":\"" + campaignId + "\",\"schoolId\":" + schoolId + ",\"status\":\"COMPLETED\"}";
+        String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"student-review-campaign.completed.v1\","
+                + "\"payload\":" + payload + "}";
+        inbox.record(new ReportingEventInboxRecord(
+                eventId, null, "student-review-campaign.completed.v1", "v1", "StudentReviewCampaign", campaignId, schoolId,
+                null, Optional.of(OffsetDateTime.now()), OffsetDateTime.now(), envelope, payload));
+    }
+
+    @Test
+    void campaignCompletedEvent_flipsCampaignStatusForAllItemsOfThatCampaign() throws Exception {
+        feedReviewItemEvent(UUID.randomUUID().toString(), "item-a", 7L, "camp-x", "PENDING");
+        feedReviewItemEvent(UUID.randomUUID().toString(), "item-b", 7L, "camp-x", "COMPLETED");
+        feedReviewItemEvent(UUID.randomUUID().toString(), "item-c", 7L, "camp-y", "PENDING");
+        processor.processBatch();
+
+        feedCampaignCompletedEvent(UUID.randomUUID().toString(), 7L, "camp-x");
+        int processed = processor.processBatch();
+        assertEquals(1, processed);
+
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT campaign_id, campaign_status FROM reporting.fact_student_review_item ORDER BY id")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                int completedCamp = 0, activeCamp = 0;
+                while (rs.next()) {
+                    if ("camp-x".equals(rs.getString("campaign_id"))) {
+                        assertEquals("COMPLETED", rs.getString("campaign_status"));
+                        completedCamp++;
+                    } else {
+                        assertEquals("ACTIVE", rs.getString("campaign_status"));
+                        activeCamp++;
+                    }
+                }
+                assertEquals(2, completedCamp, "both camp-x items flip to COMPLETED");
+                assertEquals(1, activeCamp, "camp-y stays ACTIVE");
+            }
+        }
+    }
+
     @Test
     void projectsStudentReviewItemUpsertedEventIntoFactStudentReviewItem() throws Exception {
         feedReviewItemEvent(UUID.randomUUID().toString(), "item-1", 7L, "campaign-1", "PENDING");

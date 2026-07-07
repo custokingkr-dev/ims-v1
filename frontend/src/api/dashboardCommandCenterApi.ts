@@ -152,6 +152,10 @@ export async function verifyFullName(
   return res.data;
 }
 
+export async function completeReviewCampaign(campaignId: string): Promise<void> {
+  await api.post(`/students/review-campaigns/${campaignId}/complete`, {});
+}
+
 // ── Low Attendance Meeting Invites ────────────────────────────────────────────
 
 export async function fetchLowAttendanceSections(date?: string): Promise<LowAttendanceSectionsResponse> {

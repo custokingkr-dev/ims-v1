@@ -678,6 +678,7 @@ public class StudentReadRepository {
 
     @Transactional
     public Map<String, Object> updateReviewItem(String itemId, Map<String, Object> request) {
+        requireCampaignEditable(itemId);
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
         if (reviewItemDetail(itemId, schoolId).isEmpty()) {
             throw new IllegalArgumentException("Review item not found");
@@ -739,6 +740,7 @@ public class StudentReadRepository {
 
     @Transactional
     public Map<String, Object> verifyFullName(String itemId, Map<String, Object> request) {
+        requireCampaignEditable(itemId);
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
         Map<String, Object> detail = reviewItemDetail(itemId, schoolId)
                 .orElseThrow(() -> new IllegalArgumentException("Review item not found"));
@@ -796,6 +798,68 @@ public class StudentReadRepository {
         }
         emitReviewItemUpserted(itemId);
         return reviewItemDetail(itemId, schoolId).orElseThrow();
+    }
+
+    @Transactional
+    public Map<String, Object> completeCampaign(String campaignId, Long actorId) {
+        Map<String, Object> campaign = jdbc.sql("""
+                        SELECT status, school_id, review_type
+                        FROM student.student_review_campaigns
+                        WHERE id = :campaignId
+                        """)
+                .param("campaignId", campaignId)
+                .query((rs, rowNum) -> row(
+                        "status", rs.getString("status"),
+                        "schoolId", rs.getLong("school_id"),
+                        "reviewType", rs.getString("review_type")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Review campaign not found"));
+        if (!"ACTIVE".equals(campaign.get("status"))) {
+            throw new IllegalArgumentException("This campaign is not active");
+        }
+        long unresolved = jdbc.sql("""
+                        SELECT count(*) FROM student.student_review_items
+                        WHERE campaign_id = :campaignId AND status <> 'COMPLETED'
+                        """)
+                .param("campaignId", campaignId)
+                .query(Long.class)
+                .single();
+        if (unresolved > 0) {
+            throw new IllegalArgumentException(unresolved
+                    + " item(s) still need review — resolve them before completing the campaign.");
+        }
+        jdbc.sql("""
+                        UPDATE student.student_review_campaigns
+                        SET status = 'COMPLETED', completed_at = now(), completed_by = :actorId, updated_at = now()
+                        WHERE id = :campaignId
+                        """)
+                .param("actorId", actorId)
+                .param("campaignId", campaignId)
+                .update();
+        Long schoolId = ((Number) campaign.get("schoolId")).longValue();
+        outbox.append("student-review-campaign.completed.v1", "StudentReviewCampaignCompleted:" + campaignId,
+                "StudentReviewCampaign", campaignId, schoolId,
+                row("campaignId", campaignId, "schoolId", schoolId, "status", "COMPLETED"));
+        return "ID_CARD_DETAILS".equals(campaign.get("reviewType"))
+                ? idCardStatus(campaignId)
+                : fullNameStatus(campaignId);
+    }
+
+    /** Rejects a mutation when the item's owning campaign is COMPLETED (frozen archive). */
+    private void requireCampaignEditable(String itemId) {
+        String campaignStatus = jdbc.sql("""
+                        SELECT c.status
+                        FROM student.student_review_items i
+                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                        WHERE i.id = :itemId
+                        """)
+                .param("itemId", itemId)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+        if ("COMPLETED".equals(campaignStatus)) {
+            throw new CampaignCompletedException("This campaign is completed and read-only.");
+        }
     }
 
     public long count(Long schoolId) {
@@ -1650,6 +1714,14 @@ public class StudentReadRepository {
     public Long schoolIdForReviewItem(String itemId) {
         return jdbc.sql("SELECT school_id FROM student.student_review_items WHERE id = :itemId")
                 .param("itemId", itemId)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+    }
+
+    public Long schoolIdForCampaign(String campaignId) {
+        return jdbc.sql("SELECT school_id FROM student.student_review_campaigns WHERE id = :campaignId")
+                .param("campaignId", campaignId)
                 .query(Long.class)
                 .optional()
                 .orElse(null);

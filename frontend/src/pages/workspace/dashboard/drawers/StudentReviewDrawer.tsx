@@ -8,6 +8,7 @@ import {
   fetchCampaignItems,
   updateReviewItem,
   verifyFullName,
+  completeReviewCampaign,
 } from '../../../../api/dashboardCommandCenterApi';
 import type {
   IdCardReviewStatusResponse,
@@ -60,6 +61,7 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
   const [status, setStatus] = useState<IdCardReviewStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ReviewItemDetail[]>([]);
   const [page, setPage] = useState(0);
@@ -112,6 +114,22 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
       setError(msg ?? 'Failed to initiate review campaign.');
     } finally {
       setInitiating(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!status?.campaignId) return;
+    if (!window.confirm('Complete this campaign? It will be locked and can’t be edited.')) return;
+    setCompleting(true);
+    setError(null);
+    try {
+      await completeReviewCampaign(status.campaignId);
+      await loadStatus();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? 'Failed to complete campaign.');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -189,6 +207,28 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
         </div>
         <ProgressBar pct={pct} />
       </div>
+
+      {canWrite && (
+        <div style={{ marginBottom: 16, textAlign: 'right' }}>
+          <button
+            onClick={handleComplete}
+            disabled={completing || status.completed !== status.totalStudents}
+            title={status.completed !== status.totalStudents
+              ? `${status.totalStudents - status.completed} student(s) still to review`
+              : undefined}
+            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', fontWeight: 600,
+                     cursor: (completing || status.completed !== status.totalStudents) ? 'default' : 'pointer',
+                     background: (completing || status.completed !== status.totalStudents) ? '#c5cae9' : '#1a6840',
+                     color: '#fff' }}>
+            {completing ? 'Completing…' : 'Complete campaign'}
+          </button>
+          {status.completed !== status.totalStudents && (
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              {status.totalStudents - status.completed} student(s) still to review
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filter */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
@@ -274,6 +314,7 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
   const [status, setStatus] = useState<FullNameVerificationStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [initiating, setInitiating] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ReviewItemDetail[]>([]);
   const [page, setPage] = useState(0);
@@ -326,6 +367,22 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
       setError(msg ?? 'Failed to initiate campaign.');
     } finally {
       setInitiating(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!status?.campaignId) return;
+    if (!window.confirm('Complete this campaign? It will be locked and can’t be edited.')) return;
+    setCompleting(true);
+    setError(null);
+    try {
+      await completeReviewCampaign(status.campaignId);
+      await loadStatus();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(msg ?? 'Failed to complete campaign.');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -407,6 +464,28 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
         </div>
         <ProgressBar pct={pct} />
       </div>
+
+      {canWrite && (
+        <div style={{ marginBottom: 16, textAlign: 'right' }}>
+          <button
+            onClick={handleComplete}
+            disabled={completing || status.confirmed !== status.totalStudents}
+            title={status.confirmed !== status.totalStudents
+              ? `${status.totalStudents - status.confirmed} student(s) still to review`
+              : undefined}
+            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', fontWeight: 600,
+                     cursor: (completing || status.confirmed !== status.totalStudents) ? 'default' : 'pointer',
+                     background: (completing || status.confirmed !== status.totalStudents) ? '#c5cae9' : '#1a6840',
+                     color: '#fff' }}>
+            {completing ? 'Completing…' : 'Complete campaign'}
+          </button>
+          {status.confirmed !== status.totalStudents && (
+            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              {status.totalStudents - status.confirmed} student(s) still to review
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Filter */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
