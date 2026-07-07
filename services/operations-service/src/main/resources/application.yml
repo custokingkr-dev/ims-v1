@@ -45,6 +45,11 @@ firefighting:
     schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
 
 operations:
+  tenant-school:
+    base-url: ${OPERATIONS_TENANT_SCHOOL_BASE_URL:}
+    token: ${OPERATIONS_TENANT_SCHOOL_TOKEN:}
+    cloud-run-auth: ${OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH:auto}
+    module-cache-ttl-ms: ${OPERATIONS_TENANT_SCHOOL_MODULE_CACHE_TTL_MS:60000}
   outbox:
     db:
       schema: ${OPERATIONS_OUTBOX_DB_SCHEMA:firefighting}
