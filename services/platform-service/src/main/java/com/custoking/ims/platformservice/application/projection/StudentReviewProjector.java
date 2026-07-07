@@ -19,6 +19,7 @@ import java.util.Set;
 public class StudentReviewProjector implements ReportingEventProjector {
 
     private static final String STUDENT_REVIEW_ITEM_UPSERTED = "student-review-item.upserted.v1";
+    private static final String STUDENT_REVIEW_CAMPAIGN_COMPLETED = "student-review-campaign.completed.v1";
 
     private final StudentReviewFactReadRepository facts;
     private final ObjectMapper objectMapper;
@@ -30,7 +31,7 @@ public class StudentReviewProjector implements ReportingEventProjector {
 
     @Override
     public Set<String> handledEventTypes() {
-        return Set.of(STUDENT_REVIEW_ITEM_UPSERTED);
+        return Set.of(STUDENT_REVIEW_ITEM_UPSERTED, STUDENT_REVIEW_CAMPAIGN_COMPLETED);
     }
 
     @Override
@@ -41,6 +42,14 @@ public class StudentReviewProjector implements ReportingEventProjector {
     @Override
     public void project(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
         JsonNode payload = PayloadJson.readPayload(objectMapper, event.payload());
+        if (STUDENT_REVIEW_CAMPAIGN_COMPLETED.equals(event.eventType())) {
+            String campaignId = PayloadJson.textOrNull(payload, "campaignId");
+            if (campaignId != null && !campaignId.isBlank()) {
+                String status = PayloadJson.textOrNull(payload, "status");
+                facts.updateCampaignStatus(campaignId, status == null ? "COMPLETED" : status);
+            }
+            return;
+        }
         String id = PayloadJson.textOrNull(payload, "id");
         if (id == null || id.isBlank()) {
             return;

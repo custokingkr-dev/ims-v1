@@ -39,4 +39,16 @@ public class StudentReviewFactReadRepository {
                 .param("status", status)
                 .update();
     }
+
+    @Transactional
+    public void updateCampaignStatus(String campaignId, String status) {
+        jdbc.sql("""
+                        UPDATE reporting.fact_student_review_item
+                        SET campaign_status = :status, updated_at = now()
+                        WHERE campaign_id = :campaignId
+                        """)
+                .param("status", status)
+                .param("campaignId", campaignId)
+                .update();
+    }
 }
