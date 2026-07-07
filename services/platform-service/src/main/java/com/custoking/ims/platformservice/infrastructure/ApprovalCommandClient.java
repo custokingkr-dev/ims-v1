@@ -16,6 +16,14 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 
 /**
@@ -38,6 +46,11 @@ public class ApprovalCommandClient {
 
     private final RestClient schoolCoreClient;
     private final RestClient operationsClient;
+    private final HttpClient metadataClient;
+    private final String schoolCoreBaseUrl;
+    private final String operationsBaseUrl;
+    private final String schoolCoreAuthMode;
+    private final String operationsAuthMode;
     private final String catalogToken;
     private final String firefightingToken;
     private final boolean schoolCoreConfigured;
@@ -49,12 +62,18 @@ public class ApprovalCommandClient {
             @Value("${catalog.read-token:}") String catalogToken,
             @Value("${operations.base-url:}") String operationsBaseUrl,
             @Value("${firefighting.read-token:}") String firefightingToken,
+            @Value("${school-core.cloud-run-auth:auto}") String schoolCoreAuthMode,
+            @Value("${operations.cloud-run-auth:auto}") String operationsAuthMode,
             @Value("${school-core.connect-timeout-ms:3000}") int schoolCoreConnectTimeoutMs,
             @Value("${school-core.read-timeout-ms:5000}") int schoolCoreReadTimeoutMs,
             @Value("${operations.connect-timeout-ms:3000}") int operationsConnectTimeoutMs,
             @Value("${operations.read-timeout-ms:5000}") int operationsReadTimeoutMs) {
         String trimmedSchoolCoreBaseUrl = trimTrailingSlash(schoolCoreBaseUrl);
         String trimmedOperationsBaseUrl = trimTrailingSlash(operationsBaseUrl);
+        this.schoolCoreBaseUrl = trimmedSchoolCoreBaseUrl;
+        this.operationsBaseUrl = trimmedOperationsBaseUrl;
+        this.schoolCoreAuthMode = schoolCoreAuthMode == null ? "auto" : schoolCoreAuthMode.trim().toLowerCase();
+        this.operationsAuthMode = operationsAuthMode == null ? "auto" : operationsAuthMode.trim().toLowerCase();
         this.catalogToken = catalogToken == null ? "" : catalogToken.trim();
         this.firefightingToken = firefightingToken == null ? "" : firefightingToken.trim();
         this.schoolCoreConfigured = StringUtils.hasText(trimmedSchoolCoreBaseUrl) && StringUtils.hasText(this.catalogToken);
@@ -68,6 +87,10 @@ public class ApprovalCommandClient {
                 .baseUrl(trimmedOperationsBaseUrl.isBlank() ? "http://localhost" : trimmedOperationsBaseUrl)
                 .requestFactory(requestFactory(operationsConnectTimeoutMs, operationsReadTimeoutMs))
                 .build();
+        // Used to mint Cloud Run OIDC identity tokens (audience = the private peer's URL) so the
+        // gateway-less service-to-service call is accepted by the peer's IAM-gated ingress. Inert
+        // locally (auto mode only activates for *.run.app base URLs).
+        this.metadataClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
     }
 
     private SimpleClientHttpRequestFactory requestFactory(int connectTimeoutMs, int readTimeoutMs) {
@@ -143,11 +166,51 @@ public class ApprovalCommandClient {
     private void applySchoolCoreHeaders(HttpHeaders headers) {
         headers.set("X-Catalog-Service-Token", catalogToken);
         applySuperAdminContext(headers);
+        applyCloudRunAuth(headers, schoolCoreBaseUrl, schoolCoreAuthMode);
     }
 
     private void applyOperationsHeaders(HttpHeaders headers) {
         headers.set("X-Firefighting-Service-Token", firefightingToken);
         applySuperAdminContext(headers);
+        applyCloudRunAuth(headers, operationsBaseUrl, operationsAuthMode);
+    }
+
+    private void applyCloudRunAuth(HttpHeaders headers, String baseUrl, String authMode) {
+        String identityToken = cloudRunIdentityToken(baseUrl, authMode);
+        if (StringUtils.hasText(identityToken)) {
+            headers.setBearerAuth(identityToken);
+        }
+    }
+
+    /**
+     * Mint a Google-signed OIDC identity token (audience = the peer's base URL) from the Cloud Run
+     * metadata server. Private Cloud Run services reject calls without it at the ingress before the
+     * app runs. "auto" activates only for *.run.app URLs; "never" disables it (both leave local HTTP
+     * and tests unaffected). Any failure returns "" so the token is simply omitted.
+     */
+    private String cloudRunIdentityToken(String baseUrl, String authMode) {
+        if ("never".equals(authMode)) {
+            return "";
+        }
+        if ("auto".equals(authMode) && !baseUrl.contains(".run.app")) {
+            return "";
+        }
+        String audience = URLEncoder.encode(baseUrl, StandardCharsets.UTF_8);
+        HttpRequest request = HttpRequest.newBuilder(URI.create(
+                        "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=" + audience))
+                .timeout(Duration.ofSeconds(2))
+                .header("Metadata-Flavor", "Google")
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> response = metadataClient.send(request, HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200 ? response.body() : "";
+        } catch (IOException ex) {
+            return "";
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            return "";
+        }
     }
 
     private void applySuperAdminContext(HttpHeaders headers) {

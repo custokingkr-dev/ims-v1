@@ -457,6 +457,11 @@ public class ReportingReadRepository {
                   AND (ad.present_count * 1.0 / ad.total_enrolled) < 0.75
                 """, yearId, schoolId);
         Map<String, Object> photo = dashboardPhotography(schoolId);
+        // NOTE: the original monolithic query filtered on the owning campaign's status = 'ACTIVE'.
+        // The fact row carries no campaign status, so this counts every PENDING item. This is
+        // equivalent today because review campaigns are only ever created ACTIVE and no code path
+        // deactivates/completes them. If campaign completion is ever added, project campaign_status
+        // onto fact_student_review_item and restore the filter, or this KPI will over-count.
         long pendingReviewCount = count("""
                 SELECT count(*)
                 FROM reporting.fact_student_review_item
@@ -649,10 +654,14 @@ public class ReportingReadRepository {
                     .filter(row -> reminderStatus.equalsIgnoreCase(String.valueOf(row.get("reminderStatus"))))
                     .toList();
         }
+        // The dim_student + dim_section joins mirror the list query above exactly, so the totals
+        // cover the same row-set that is displayed (a defaulter whose section has not yet projected
+        // into dim_section is excluded from both the list and these totals).
         long totalOverdueAmount = countAmount("""
                 SELECT COALESCE(SUM(fa.net_payable - fa.paid_amount), 0)
                 FROM reporting.fact_fee_assignment fa
                 JOIN reporting.dim_student ds ON ds.id = fa.student_id
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
                 WHERE fa.academic_year_id = :yearId
                   AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
@@ -661,6 +670,7 @@ public class ReportingReadRepository {
                 SELECT MIN(fa.assigned_at)
                 FROM reporting.fact_fee_assignment fa
                 JOIN reporting.dim_student ds ON ds.id = fa.student_id
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
                 WHERE fa.academic_year_id = :yearId
                   AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
