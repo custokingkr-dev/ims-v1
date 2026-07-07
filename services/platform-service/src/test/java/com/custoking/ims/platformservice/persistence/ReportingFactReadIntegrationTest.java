@@ -89,9 +89,9 @@ class ReportingFactReadIntegrationTest {
         approvals = new ReportingApprovalRepository(jdbcClient);
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             for (String t : List.of("fact_catalog_order", "fact_firefighting_request", "fact_payment",
-                    "fact_fee_assignment", "fact_attendance_daily", "command_center_actions",
-                    "dim_student", "dim_section", "dim_academic_year", "event_student_contributions",
-                    "academic_events")) {
+                    "fact_fee_assignment", "fact_attendance_daily", "fact_student_review_item",
+                    "command_center_actions", "dim_student", "dim_section", "dim_academic_year",
+                    "event_student_contributions", "academic_events")) {
                 st.execute("TRUNCATE reporting." + t + " CASCADE");
             }
             st.execute("TRUNCATE notification.notification_logs");
@@ -324,5 +324,43 @@ class ReportingFactReadIntegrationTest {
         assertEquals("Greenwood High", item.get("schoolName"));
         assertEquals("Please expedite", item.get("notes"));
         assertEquals(12000L, item.get("amount"));
+    }
+
+    // ---- SP7 (student-review) coverage: dashboardCommandCenter now reads exclusively off
+    // reporting.fact_*/dim_* — no fee/student/attendance/tenant_school schema is ever created in
+    // this test class, proving the fee-defaulter, low-attendance and pending-review reads are
+    // fully decoupled. ----
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void dashboardCommandCenter_readsFactsOnly() {
+        seedActiveYear("ay_2025_26");
+        seedFeeAssignment("fa-1", 1L, 600L, "ay_2025_26", 10000L, 4000L, OffsetDateTime.now().minusDays(5));
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily
+                    (id, school_id, section_id, academic_year_id, attendance_date, present_count, total_enrolled, updated_at)
+                VALUES ('ad-dash-1', 600, 'sec-dash-1', 'ay_2025_26', CURRENT_DATE, 5, 10, now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_student_review_item (id, school_id, campaign_id, status, updated_at)
+                VALUES ('item-dash-1', 600, 'campaign-dash-1', 'PENDING', now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_student_review_item (id, school_id, campaign_id, status, updated_at)
+                VALUES ('item-dash-2', 600, 'campaign-dash-1', 'COMPLETED', now())
+                """).update();
+
+        Map<String, Object> result = reporting.dashboardCommandCenter(600L);
+
+        Map<String, Object> fees = (Map<String, Object>) result.get("fees");
+        assertEquals(1L, fees.get("defaulterCount"));
+        assertEquals(6000L, fees.get("totalOverdueAmountPaise"));
+        assertEquals(5, fees.get("oldestDueDays"));
+
+        Map<String, Object> attendance = (Map<String, Object>) result.get("attendance");
+        assertEquals(1, attendance.get("sectionsBelowThresholdCount"));
+
+        Map<String, Object> lifecycle = (Map<String, Object>) result.get("lifecycle");
+        assertEquals(1, lifecycle.get("pendingReviewCount"));
     }
 }
