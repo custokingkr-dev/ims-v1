@@ -963,7 +963,7 @@ public class FeeReadRepository {
     private void emitFeeAssignmentUpserted(String assignmentId) {
         Map<String, Object> assignment = jdbc.sql("""
                         SELECT fa.id, fa.student_id, fa.school_id, fa.academic_year_id,
-                               fa.net_payable, fa.paid_amount
+                               fa.net_payable, fa.paid_amount, fa.assigned_at
                         FROM fee.fee_assignments fa
                         WHERE fa.id = :id
                         """)
@@ -974,12 +974,14 @@ public class FeeReadRepository {
                         "schoolId", rs.getLong("school_id"),
                         "academicYearId", rs.getString("academic_year_id"),
                         "netPayable", rs.getLong("net_payable"),
-                        "paidAmount", rs.getLong("paid_amount")))
+                        "paidAmount", rs.getLong("paid_amount"),
+                        "assignedAt", rs.getObject("assigned_at", OffsetDateTime.class)))
                 .single();
         long netPayable = ((Number) assignment.get("netPayable")).longValue();
         long paidAmount = ((Number) assignment.get("paidAmount")).longValue();
         long dueAmount = Math.max(0, netPayable - paidAmount);
         Long schoolId = ((Number) assignment.get("schoolId")).longValue();
+        OffsetDateTime assignedAt = (OffsetDateTime) assignment.get("assignedAt");
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("id", assignmentId);
         payload.put("studentId", assignment.get("studentId"));
@@ -989,6 +991,7 @@ public class FeeReadRepository {
         payload.put("paidAmount", paidAmount);
         payload.put("dueAmount", dueAmount);
         payload.put("status", dueAmount <= 0 ? "Paid" : "Overdue");
+        payload.put("assignedAt", assignedAt == null ? null : assignedAt.toString());
         outbox.append("fee-assignment.upserted.v1", "FeeAssignmentUpserted:" + assignmentId, "FeeAssignment",
                 assignmentId, schoolId, payload);
     }

@@ -61,7 +61,9 @@ public class FeeFactProjector implements ReportingEventProjector {
         Long paidAmount = PayloadJson.longOrNull(payload, "paidAmount");
         Long dueAmount = PayloadJson.longOrNull(payload, "dueAmount");
         String status = PayloadJson.textOrNull(payload, "status");
-        facts.upsertFeeAssignment(id, studentId, schoolId, academicYearId, netPayable, paidAmount, dueAmount, status);
+        var assignedAt = PayloadJson.offsetDateTimeOrNull(payload, "assignedAt");
+        facts.upsertFeeAssignment(id, studentId, schoolId, academicYearId, netPayable, paidAmount, dueAmount, status,
+                assignedAt);
     }
 
     private void projectPayment(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
