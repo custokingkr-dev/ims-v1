@@ -8,6 +8,7 @@ import com.custoking.ims.schoolcoreservice.api.dto.InitiateFullNameReviewRequest
 import com.custoking.ims.schoolcoreservice.api.dto.PreviewImportRequest;
 import com.custoking.ims.schoolcoreservice.infrastructure.ImageFetchException;
 import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
+import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
@@ -308,6 +309,15 @@ public class StudentReadController {
         return execute(() -> students.verifyFullName(itemId, request));
     }
 
+    @PostMapping("/review-campaigns/{campaignId}/complete")
+    public Map<String, Object> completeCampaign(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable String campaignId) {
+        requireToken(token, "student:write");
+        Long actorId = TenantContext.get().userId();
+        return execute(() -> students.completeCampaign(campaignId, actorId));
+    }
+
     @GetMapping("/imports/batches")
     public Object importBatches(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
@@ -393,6 +403,8 @@ public class StudentReadController {
     private Map<String, Object> execute(Command command) {
         try {
             return command.run();
+        } catch (CampaignCompletedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }

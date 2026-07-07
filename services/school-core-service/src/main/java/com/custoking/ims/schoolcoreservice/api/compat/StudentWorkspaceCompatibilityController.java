@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
+import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
@@ -86,6 +87,8 @@ public class StudentWorkspaceCompatibilityController {
         mutableRequest.put("schoolId", scope);
         try {
             return students.updateReviewItem(itemId, mutableRequest);
+        } catch (CampaignCompletedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
