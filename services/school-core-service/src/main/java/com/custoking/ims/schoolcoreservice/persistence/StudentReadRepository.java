@@ -1719,6 +1719,14 @@ public class StudentReadRepository {
                 .orElse(null);
     }
 
+    public Long schoolIdForCampaign(String campaignId) {
+        return jdbc.sql("SELECT school_id FROM student.student_review_campaigns WHERE id = :campaignId")
+                .param("campaignId", campaignId)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
+    }
+
     private record ImportValidation(String status, String message, boolean valid, boolean error, boolean warning) {}
 
     private record ReviewCounts(long total, long completed, long pending, long needsCorrection, double percent) {}

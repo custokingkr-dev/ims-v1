@@ -314,6 +314,8 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable String campaignId) {
         requireToken(token, "student:write");
+        Long campaignSchool = students.schoolIdForCampaign(campaignId);
+        TenantScope.resolveSchoolId(campaignSchool);
         Long actorId = TenantContext.get().userId();
         return execute(() -> students.completeCampaign(campaignId, actorId));
     }
