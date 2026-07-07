@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   type BellSchedule, type BellPeriod, type ClassScheduleRow,
   getBellSchedules, createSchedule, renameSchedule, deleteSchedule,
@@ -68,12 +68,16 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
 
   // Best-effort cross-tab handoff: pre-select the class that triggered the
   // "no bell schedule" prompt on the Grid tab, if it's still unassigned.
+  // One-shot per initialClassId so subsequent reloads (which mint a new
+  // classSchedules array) don't clobber an in-progress manual selection.
+  const consumedInitialClassId = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (!initialClassId || !classSchedules.length) return;
+    if (!initialClassId || initialClassId === consumedInitialClassId.current || !classSchedules.length) return;
     const target = classSchedules.find((c) => c.classId === initialClassId);
     if (target && target.scheduleId == null) {
       setAssignClassId(initialClassId);
     }
+    consumedInitialClassId.current = initialClassId;
   }, [initialClassId, classSchedules]);
 
   const selectedSchedule = schedules.find((s) => s.id === selectedId) || null;
@@ -113,8 +117,8 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
     }
   };
 
-  const handleAddPeriod = async () => {
-    if (!selectedSchedule || !newPeriod.label.trim() || !newPeriod.start || !newPeriod.end) return;
+  const handleAddPeriod = async (): Promise<boolean> => {
+    if (!selectedSchedule || !newPeriod.label.trim() || !newPeriod.start || !newPeriod.end) return false;
     try {
       setError('');
       const sortOrder = selectedSchedule.periods.length
@@ -129,13 +133,15 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
       });
       setNewPeriod({ label: '', start: '', end: '', isBreak: false });
       await load();
+      return true;
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not add period.'));
+      return false;
     }
   };
 
-  const handleUpdatePeriod = async (period: BellPeriod) => {
-    if (!selectedSchedule) return;
+  const handleUpdatePeriod = async (period: BellPeriod): Promise<boolean> => {
+    if (!selectedSchedule) return false;
     try {
       setError('');
       await updatePeriod(selectedSchedule.id, period.id, {
@@ -146,8 +152,10 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
         sortOrder: period.sortOrder,
       });
       await load();
+      return true;
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not save period.'));
+      return false;
     }
   };
 
@@ -384,7 +392,7 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
                             <div className="ck-actions-inline">
                               <button
                                 className="ck-btn ck-btn-g"
-                                onClick={async () => { await handleUpdatePeriod(period); setEditingPeriodId(null); }}
+                                onClick={async () => { const ok = await handleUpdatePeriod(period); if (ok) setEditingPeriodId(null); }}
                               >
                                 Save
                               </button>
@@ -434,7 +442,7 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
                         <button
                           className="ck-btn ck-btn-g"
                           disabled={!newPeriod.label.trim() || !newPeriod.start || !newPeriod.end}
-                          onClick={async () => { await handleAddPeriod(); setShowAddPeriod(false); }}
+                          onClick={async () => { const ok = await handleAddPeriod(); if (ok) setShowAddPeriod(false); }}
                         >
                           Save period
                         </button>
