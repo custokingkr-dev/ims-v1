@@ -79,6 +79,7 @@ export default function UnifiedWorkspacePage() {
   // null = unknown (loading, or fetch failed) — treated as "show all module items" so a
   // transient error never blanks out an entitled school's nav.
   const [activeModules, setActiveModules] = useState<Set<string> | null>(null);
+  const [refreshNonce, setRefreshNonce] = useState(0);
   useEffect(() => {
     if (!user?.branchId || isPlatformAdmin) return;
     api.get(`/schools/${user.branchId}/modules/active`)
@@ -86,7 +87,7 @@ export default function UnifiedWorkspacePage() {
         (Array.isArray(res.data) ? res.data : []).map((m: any) => String(m.moduleCode).toUpperCase())
       )))
       .catch(() => setActiveModules(null));
-  }, [user?.branchId, isPlatformAdmin]);
+  }, [user?.branchId, isPlatformAdmin, refreshNonce]);
 
   // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
   // liveOrders holds the full PageResponse envelope { content, page, size, totalElements, totalPages, last }
@@ -141,6 +142,7 @@ export default function UnifiedWorkspacePage() {
       }
       setWorkspaceError(message);
     }
+    setRefreshNonce(n => n + 1);
   };
 
   // ── Supply order loaders and actions ───────────────────────────────────────
