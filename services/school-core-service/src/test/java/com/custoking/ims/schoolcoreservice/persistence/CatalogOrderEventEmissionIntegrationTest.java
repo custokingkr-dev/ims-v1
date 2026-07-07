@@ -98,6 +98,23 @@ class CatalogOrderEventEmissionIntegrationTest {
     }
 
     @Test
+    void orderStatsExposesActiveDeliveredServiceAndTermSpend() {
+        // Two active (placed, in-flight) orders — one of them a service category; one delivered
+        // (APPROVED); one draft (not placed). termSpend excludes the draft.
+        repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 1180, "status", "PROCESSING"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "HOUSEKEEPING", "totalAmount", 5000, "status", "PROCESSING"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "UNIFORMS", "totalAmount", 2000, "status", "APPROVED"));
+        repo.createOrder(Map.of("schoolId", 1, "category", "STATIONERY", "totalAmount", 999, "status", "DRAFT"));
+
+        Map<String, Object> stats = repo.orderStats(1L);
+
+        assertThat(((Number) stats.get("activeOrders")).longValue()).isEqualTo(2L);
+        assertThat(((Number) stats.get("activeServices")).longValue()).isEqualTo(1L);
+        assertThat(((Number) stats.get("deliveredCount")).longValue()).isEqualTo(1L);
+        assertThat(((Number) stats.get("termSpend")).longValue()).isEqualTo(1180L + 5000L + 2000L);
+    }
+
+    @Test
     void placeOrderEmitsAnotherCatalogOrderUpsertedEvent() {
         var created = repo.createOrder(Map.of(
                 "schoolId", 1,

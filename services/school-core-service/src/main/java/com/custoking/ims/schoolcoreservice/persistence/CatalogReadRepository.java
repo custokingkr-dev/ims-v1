@@ -141,20 +141,34 @@ public class CatalogReadRepository {
     @Transactional(readOnly = true)
     public Map<String, Object> orderStats(Long schoolId) {
         allowCrossSchoolReadForOperations();
+        // "active" = placed and still in-flight: not a draft, not rejected/returned, and not yet
+        // finally APPROVED (which we surface as delivered/fulfilled, since the order model has no
+        // dedicated DELIVERED status). termSpend = value of everything placed (non-draft), in paise.
+        String activePred = "UPPER(status) NOT IN ('DRAFT','REJECTED','RETURNED','APPROVED')";
         if (schoolId == null) {
-            return Map.of(
-                    "totalOrders", count("SELECT count(*) FROM catalog.catalog_orders"),
-                    "pendingApproval", count("SELECT count(*) FROM catalog.catalog_orders WHERE superadmin_approval_status = 'PENDING' OR status IN ('Pending', 'Pending approval')"),
-                    "approved", count("SELECT count(*) FROM catalog.catalog_orders WHERE superadmin_approval_status = 'APPROVED' OR status = 'Approved'"),
-                    "rejected", count("SELECT count(*) FROM catalog.catalog_orders WHERE superadmin_approval_status = 'REJECTED' OR status = 'Rejected'"),
-                    "gmv", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders"));
+            Map<String, Object> stats = new LinkedHashMap<>();
+            stats.put("totalOrders", count("SELECT count(*) FROM catalog.catalog_orders"));
+            stats.put("pendingApproval", count("SELECT count(*) FROM catalog.catalog_orders WHERE superadmin_approval_status = 'PENDING' OR status IN ('Pending', 'Pending approval')"));
+            stats.put("approved", count("SELECT count(*) FROM catalog.catalog_orders WHERE superadmin_approval_status = 'APPROVED' OR status = 'Approved'"));
+            stats.put("rejected", count("SELECT count(*) FROM catalog.catalog_orders WHERE superadmin_approval_status = 'REJECTED' OR status = 'Rejected'"));
+            stats.put("gmv", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders"));
+            stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE " + activePred));
+            stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE UPPER(status) <> 'DRAFT'"));
+            stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred));
+            stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE UPPER(status) = 'APPROVED'"));
+            return stats;
         }
-        return Map.of(
-                "totalOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId", schoolId),
-                "pendingApproval", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND (superadmin_approval_status = 'PENDING' OR status IN ('Pending', 'Pending approval'))", schoolId),
-                "approved", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND (superadmin_approval_status = 'APPROVED' OR status = 'Approved')", schoolId),
-                "rejected", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND (superadmin_approval_status = 'REJECTED' OR status = 'Rejected')", schoolId),
-                "gmv", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE school_id = :schoolId", schoolId));
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId", schoolId));
+        stats.put("pendingApproval", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND (superadmin_approval_status = 'PENDING' OR status IN ('Pending', 'Pending approval'))", schoolId));
+        stats.put("approved", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND (superadmin_approval_status = 'APPROVED' OR status = 'Approved')", schoolId));
+        stats.put("rejected", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND (superadmin_approval_status = 'REJECTED' OR status = 'Rejected')", schoolId));
+        stats.put("gmv", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE school_id = :schoolId", schoolId));
+        stats.put("activeOrders", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND " + activePred, schoolId));
+        stats.put("termSpend", sum("SELECT COALESCE(SUM(total_amount), 0) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) <> 'DRAFT'", schoolId));
+        stats.put("activeServices", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(category) IN ('HOUSEKEEPING','HEALTH') AND " + activePred, schoolId));
+        stats.put("deliveredCount", count("SELECT count(*) FROM catalog.catalog_orders WHERE school_id = :schoolId AND UPPER(status) = 'APPROVED'", schoolId));
+        return stats;
     }
 
     public List<SupplyOrderRow> supplyOrders(int limit) {
