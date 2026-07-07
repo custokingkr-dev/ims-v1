@@ -364,4 +364,21 @@ class ReportingFactReadIntegrationTest {
         Map<String, Object> lifecycle = (Map<String, Object>) result.get("lifecycle");
         assertEquals(1, lifecycle.get("pendingReviewCount"));
     }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void pendingReviewCount_excludesCompletedCampaigns() {
+        seedActiveYear("ay_2025_26");
+        // Two PENDING items: one in an ACTIVE campaign, one in a COMPLETED campaign.
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_student_review_item (id, school_id, campaign_id, status, campaign_status, updated_at)
+                VALUES ('r1', :s, 'c-active', 'PENDING', 'ACTIVE', now()),
+                       ('r2', :s, 'c-done', 'PENDING', 'COMPLETED', now())
+                """).param("s", 700L).update();
+
+        Map<String, Object> result = reporting.dashboardCommandCenter(700L);
+
+        Map<String, Object> lifecycle = (Map<String, Object>) result.get("lifecycle");
+        assertEquals(1, lifecycle.get("pendingReviewCount"));
+    }
 }

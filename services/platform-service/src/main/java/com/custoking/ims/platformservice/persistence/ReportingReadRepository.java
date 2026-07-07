@@ -457,16 +457,15 @@ public class ReportingReadRepository {
                   AND (ad.present_count * 1.0 / ad.total_enrolled) < 0.75
                 """, yearId, schoolId);
         Map<String, Object> photo = dashboardPhotography(schoolId);
-        // NOTE: the original monolithic query filtered on the owning campaign's status = 'ACTIVE'.
-        // The fact row carries no campaign status, so this counts every PENDING item. This is
-        // equivalent today because review campaigns are only ever created ACTIVE and no code path
-        // deactivates/completes them. If campaign completion is ever added, project campaign_status
-        // onto fact_student_review_item and restore the filter, or this KPI will over-count.
+        // pendingReviewCount counts only ACTIVE campaigns' pending items. campaign_status is
+        // projected from student-review-campaign.completed.v1 (reporting V21), so completed
+        // campaigns' still-PENDING items no longer inflate this KPI.
         long pendingReviewCount = count("""
                 SELECT count(*)
                 FROM reporting.fact_student_review_item
                 WHERE school_id = :schoolId
                   AND status = 'PENDING'
+                  AND campaign_status = 'ACTIVE'
                 """, schoolId);
         return dashboardCommandCenterRow(
                 defaulterCount, totalOverdue, oldestDueDays,
