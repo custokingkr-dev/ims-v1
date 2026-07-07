@@ -15,9 +15,9 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-interface Props { yearId?: string; years?: AcademicYearOpt[] }
+interface Props { yearId?: string; years?: AcademicYearOpt[]; embedded?: boolean }
 
-export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Props = {}) {
+export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp, embedded }: Props = {}) {
   const { can } = usePermissions();
   const canManage = can('timetable:manage');
 
@@ -101,17 +101,19 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Pr
   };
 
   if (!canManage) {
-    return (
+    const noPermission = (
+      <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage subjects.</div></div>
+    );
+    return embedded ? noPermission : (
       <ModuleShell title="Subjects" subtitle="Configure per-class subjects for the academic year">
-        <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage subjects.</div></div>
+        {noPermission}
       </ModuleShell>
     );
   }
 
   const selectedYear = years.find((y) => y.id === yearId) || null;
 
-  return (
-    <ModuleShell title="Subjects" subtitle="Configure per-class subjects for the academic year">
+  const body = (
       <div className="ck-panel-stack">
         {error ? <div className="ck-alert ck-alert-re"><span>!</span><div>{error}</div></div> : null}
 
@@ -182,6 +184,11 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp }: Pr
           </div>
         </div>
       </div>
+  );
+
+  return embedded ? body : (
+    <ModuleShell title="Subjects" subtitle="Configure per-class subjects for the academic year">
+      {body}
     </ModuleShell>
   );
 }

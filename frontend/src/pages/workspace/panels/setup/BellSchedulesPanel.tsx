@@ -13,7 +13,12 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function BellSchedulesPanel() {
+interface Props {
+  embedded?: boolean;
+  initialClassId?: string;
+}
+
+export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
   const { can } = usePermissions();
   const canManage = can('timetable:manage');
 
@@ -60,6 +65,16 @@ export function BellSchedulesPanel() {
     if (canManage) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManage]);
+
+  // Best-effort cross-tab handoff: pre-select the class that triggered the
+  // "no bell schedule" prompt on the Grid tab, if it's still unassigned.
+  useEffect(() => {
+    if (!initialClassId || !classSchedules.length) return;
+    const target = classSchedules.find((c) => c.classId === initialClassId);
+    if (target && target.scheduleId == null) {
+      setAssignClassId(initialClassId);
+    }
+  }, [initialClassId, classSchedules]);
 
   const selectedSchedule = schedules.find((s) => s.id === selectedId) || null;
 
@@ -175,9 +190,12 @@ export function BellSchedulesPanel() {
   };
 
   if (!canManage) {
-    return (
+    const noPermission = (
+      <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage bell schedules.</div></div>
+    );
+    return embedded ? noPermission : (
       <ModuleShell title="Bell schedules" subtitle="Configure period timings and class assignments">
-        <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage bell schedules.</div></div>
+        {noPermission}
       </ModuleShell>
     );
   }
@@ -207,8 +225,7 @@ export function BellSchedulesPanel() {
     setAssignClassId('');
   };
 
-  return (
-    <ModuleShell title="Bell schedules" subtitle="Configure period timings and assign schedules to classes">
+  const body = (
       <div className="ck-panel-stack">
         {error ? <div className="ck-alert ck-alert-re"><span>!</span><div>{error}</div></div> : null}
 
@@ -438,6 +455,11 @@ export function BellSchedulesPanel() {
           </div>
         </div>
       </div>
+  );
+
+  return embedded ? body : (
+    <ModuleShell title="Bell schedules" subtitle="Configure period timings and assign schedules to classes">
+      {body}
     </ModuleShell>
   );
 }

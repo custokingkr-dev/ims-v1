@@ -24,6 +24,7 @@ export function TimetableModule({ readOnly, staff }: Props) {
   const [tab, setTab] = useState<TabKey>('grid');
   const [years, setYears] = useState<AcademicYearOpt[]>([]);
   const [yearId, setYearId] = useState('');
+  const [bellInitialClassId, setBellInitialClassId] = useState<string | undefined>();
 
   useEffect(() => {
     void api.get<AcademicYearOpt[]>('/academic-years')
@@ -61,9 +62,18 @@ export function TimetableModule({ readOnly, staff }: Props) {
             </button>
           ))}
         </div>
-        {tab === 'grid' && <TimetableGrid readOnly={readOnly} staff={staff} yearId={yearId} years={years} />}
-        {tab === 'bell' && <BellSchedulesPanel />}
-        {tab === 'subjects' && <SubjectsMasterPanel yearId={yearId} years={years} />}
+        {tab === 'grid' && (
+          <TimetableGrid
+            readOnly={readOnly}
+            staff={staff}
+            yearId={yearId}
+            years={years}
+            embedded
+            onNeedBellSetup={(classId) => { setBellInitialClassId(classId); setTab('bell'); }}
+          />
+        )}
+        {tab === 'bell' && <BellSchedulesPanel embedded initialClassId={bellInitialClassId} />}
+        {tab === 'subjects' && <SubjectsMasterPanel yearId={yearId} years={years} embedded />}
       </div>
     </ModuleShell>
   );

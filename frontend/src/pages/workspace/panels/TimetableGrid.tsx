@@ -15,6 +15,8 @@ interface Props {
   staff?: Array<{ id: number | string; name: string }>;
   yearId?: string;
   years?: AcademicYearOpt[];
+  embedded?: boolean;
+  onNeedBellSetup?: (classId: string) => void;
 }
 
 interface ClassOpt { id: string; name: string }
@@ -25,7 +27,7 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }: Props) {
+export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, embedded, onNeedBellSetup }: Props) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const canRead = can('timetable:read');
@@ -186,18 +188,17 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
   };
 
   if (!canRead) {
-    return (
+    const noPermission = (
+      <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to view the timetable.</div></div>
+    );
+    return embedded ? noPermission : (
       <ModuleShell title="Timetable" subtitle="Weekly class schedule">
-        <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to view the timetable.</div></div>
+        {noPermission}
       </ModuleShell>
     );
   }
 
-  return (
-    <ModuleShell
-      title="Timetable"
-      subtitle={readOnly ? 'View-only weekly schedule' : 'Weekly class schedule'}
-    >
+  const body = (
       <div className="ck-panel-stack">
         {toast ? (
           <div className="ck-alert ck-alert-am">
@@ -238,7 +239,24 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
             ) : data.noSchedule ? (
               <div className="ck-alert ck-alert-am">
                 <span>i</span>
-                <div>This class has no bell schedule — set one up in Setup → Bell schedules.</div>
+                <div>
+                  This class has no bell schedule.
+                  {onNeedBellSetup ? (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className="ck-btn ck-btn-ghost"
+                        style={{ padding: '2px 6px', textDecoration: 'underline' }}
+                        onClick={() => onNeedBellSetup(classId)}
+                      >
+                        Set up this class's bell schedule →
+                      </button>
+                    </>
+                  ) : (
+                    ' Set one up in Setup → Bell schedules.'
+                  )}
+                </div>
               </div>
             ) : data.periods.length === 0 ? (
               <div className="ck-import-zone"><div className="iz-title">No periods defined for this schedule yet</div></div>
@@ -314,6 +332,14 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp }
           </div>
         </div>
       </div>
+  );
+
+  return embedded ? body : (
+    <ModuleShell
+      title="Timetable"
+      subtitle={readOnly ? 'View-only weekly schedule' : 'Weekly class schedule'}
+    >
+      {body}
     </ModuleShell>
   );
 }
