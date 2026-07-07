@@ -74,6 +74,18 @@ export default function UnifiedWorkspacePage() {
     ? { schoolId: user.branchId }
     : undefined;
 
+  // activeModules: the school's active module entitlements, used to gate nav items tagged
+  // with a `module`. Platform admins bypass entitlement and always see everything.
+  const [activeModules, setActiveModules] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!user?.branchId || isPlatformAdmin) return;
+    api.get(`/schools/${user.branchId}/modules/active`)
+      .then((res) => setActiveModules(new Set(
+        (Array.isArray(res.data) ? res.data : []).map((m: any) => String(m.moduleCode).toUpperCase())
+      )))
+      .catch(() => setActiveModules(new Set()));
+  }, [user?.branchId, isPlatformAdmin]);
+
   // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
   // liveOrders holds the full PageResponse envelope { content, page, size, totalElements, totalPages, last }
   const [liveOrders, setLiveOrders] = useState<any | null>(null);
@@ -247,7 +259,7 @@ export default function UnifiedWorkspacePage() {
     ? 'Supply order approvals'
     : PANEL_TITLES[panel];
 
-  const navSections = isPlatformAdmin
+  const rawNavSections = isPlatformAdmin
     ? SUPERADMIN_NAV_SECTIONS
     : isZoneAdmin
       ? ZONE_ADMIN_NAV_SECTIONS
@@ -260,6 +272,17 @@ export default function UnifiedWorkspacePage() {
             : isViewer
               ? VIEWER_NAV_SECTIONS
               : ADMIN_NAV_SECTIONS;
+
+  // Filter out nav items gated by a module the school hasn't been entitled to.
+  // Items without a `module` field, and everything for platform admins, are always shown.
+  const navSections = isPlatformAdmin
+    ? rawNavSections
+    : rawNavSections
+        .map(section => ({
+          ...section,
+          items: section.items.filter(item => !item.module || activeModules.has(item.module)),
+        }))
+        .filter(section => section.items.length > 0);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
 
   const isFire = panel.startsWith('ff-');
