@@ -17,6 +17,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(firefightingModuleInterceptor)
-                .addPathPatterns("/api/v1/ff/**", "/api/v1/workspace/firefighting");
+                .addPathPatterns("/api/v1/ff/**", "/api/v1/workspace/firefighting",
+                        "/api/v1/dashboard/vendor-dues/firefighting/**");
     }
 }
