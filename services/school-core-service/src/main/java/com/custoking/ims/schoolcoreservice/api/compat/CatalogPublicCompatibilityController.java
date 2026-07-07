@@ -131,6 +131,17 @@ public class CatalogPublicCompatibilityController {
         return command(() -> catalog.returnBySuperadmin(id, reason));
     }
 
+    @PostMapping("/api/v1/supply/orders/{id}/deliver")
+    public Object markDelivered(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @PathVariable String id) {
+        requireToken(token, "catalog:read");
+        if (!(TenantContext.get().isSuperAdmin() || TenantContext.get().isOperations())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only superadmin or operations can mark orders delivered");
+        }
+        return command(() -> catalog.markDelivered(id, TenantContext.get().userId()));
+    }
+
     @GetMapping("/api/v1/supply/annual-plan")
     public Object annualPlan(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
