@@ -90,8 +90,8 @@ public class ReportingApprovalRepository {
         return jdbc.sql("""
                 SELECT ff.code, ff.title, ff.category, ff.status, ff.estimated_budget, ff.created_at,
                        ff.school_id, s.name AS school_name
-                FROM firefighting.firefighting_requests ff
-                LEFT JOIN tenant_school.schools s ON s.id = ff.school_id
+                FROM reporting.fact_firefighting_request ff
+                LEFT JOIN reporting.dim_school s ON s.id = ff.school_id
                 WHERE ff.status IN ('AWAITING_BURSAR', 'AWAITING_PRINCIPAL', 'AWAITING_CUSTOKING')
                 ORDER BY ff.created_at DESC NULLS LAST
                 LIMIT :limit
