@@ -38,6 +38,28 @@ Let a school admin **complete** a review campaign once every student's item is r
 
 **Out of scope (YAGNI):** reopen/unfreeze; a completed-campaign history view. If a campaign is completed by mistake, the admin starts a fresh one (it re-scans every student).
 
+## 3.5 Prerequisite — the review drawer is broken on GCP (fix FIRST)
+
+**Confirmed on dev (2026-07-07):** the `StudentReviewDrawer`'s status/initiate calls are wired to endpoints that do not exist. `dashboardCommandCenterApi.ts` calls `/api/v1/dashboard/student-lifecycle/{id-card-review|full-name-verification}/{status|initiate}`, which the gateway routes to **platform-service** (`route('reporting', '/api/v1/dashboard/')`). Platform has **no** controller for those paths. An authenticated superadmin probe returns:
+
+```
+GET /api/v1/dashboard/student-lifecycle/id-card-review/status  →  HTTP 404 Not Found
+{"status":404,"error":"Not Found","path":"/api/v1/dashboard/student-lifecycle/id-card-review/status"}
+```
+
+So the drawer cannot load campaign status or start a campaign on GCP today — the whole feature sits on a broken surface. The working endpoints already exist in **school-core** `StudentReadController` (`@RequestMapping("/api/v1/students")`), routed via the `/api/v1/students/` gateway prefix:
+
+| Purpose | Working endpoint (school-core) |
+|---|---|
+| ID-card status | `GET /api/v1/students/reviews/id-card/status` |
+| ID-card initiate | `POST /api/v1/students/reviews/id-card/initiate` |
+| Full-name status | `GET /api/v1/students/reviews/full-name/status` |
+| Full-name initiate | `POST /api/v1/students/reviews/full-name/initiate` |
+| Campaign items (already correct) | `GET /api/v1/students/review-campaigns/{campaignId}/items` |
+| Item edit (already correct) | `PUT /api/v1/student-review-items/{itemId}` (+ `/full-name-verification`) |
+
+**Fix (prerequisite task, do before the Complete button):** repoint the four status/initiate functions in `dashboardCommandCenterApi.ts` from `/dashboard/student-lifecycle/…` to the canonical `/students/reviews/…` paths above. Confirm the school-core status DTOs match the drawer's TS types (`IdCardReviewStatusResponse` / `FullNameVerificationStatusResponse`: `campaignId`, `totalStudents`, `completed`, `needsCorrection`, `completionPercent`). No gateway change (already routed). This also means status is read **live from the owning service (school-core)**, which resolves the post-complete refresh concern (see §7) — no projection lag.
+
 ## 4. Item status model (existing, for reference)
 
 Item `status` (`student.student_review_items.status`) is one of:
@@ -63,7 +85,9 @@ ALTER TABLE student.student_review_campaigns
 
 ### 5.2 New endpoint — complete a campaign
 
-`POST /api/v1/reviews/campaigns/{campaignId}/complete`, in `StudentReadController`, gated on the internal token scope `student:write` and tenant scope (identical to the initiate endpoints). Returns the campaign's status DTO (same shape as `idCardReviewStatus` / `fullNameVerificationStatus`) so the caller can refresh in place.
+`POST /api/v1/students/review-campaigns/{campaignId}/complete`, in `StudentReadController` (which is `@RequestMapping("/api/v1/students")`, so the method path is `/review-campaigns/{campaignId}/complete`). This sits under the already-routed `/api/v1/students/` gateway prefix (→ student/school-core) — **no gateway change needed**, and it is a sibling of the existing `GET /api/v1/students/review-campaigns/{campaignId}/items`. Gated on the internal token scope `student:write` and tenant scope (identical to the initiate endpoints). Returns the campaign's status DTO (same shape as `idCardReviewStatus` / `fullNameVerificationStatus`) so the caller can refresh in place.
+
+> **Do NOT** put this under `/api/v1/reviews/…` — there is no such gateway route, so it would 404 (the exact failure mode the timetable route hit). The plan MUST include a step confirming the gateway routes the chosen path.
 
 `StudentReadRepository.completeCampaign(String campaignId, Long actorId)` (`@Transactional`):
 
@@ -81,12 +105,14 @@ ALTER TABLE student.student_review_campaigns
 
 ### 5.3 Freeze — reject item edits on a completed campaign
 
-Both item-mutating paths guard on the owning campaign's status **before** mutating:
+Both item-mutating repository methods guard on the owning campaign's status **before** mutating:
 
-- `updateReviewItem(itemId, patch)` (ID-card checklist updates)
-- `verifyFullName(itemId, …)` (full-name confirm / request-correction)
+- the ID-card checklist update method (behind `POST /students/reviews/items/{itemId}`)
+- the full-name confirm / request-correction method (behind `POST /students/reviews/items/{itemId}/full-name-verification`)
 
-Guard: read the item's campaign status; if `COMPLETED`, throw a dedicated `CampaignCompletedException` (new, in `student` persistence package) which the controller maps to **HTTP 409 CONFLICT** ("This campaign is completed and read-only."). Mirrors how `TimetableController` maps `YearLockedException` → 409.
+**Put the guard in the repository method, not the controller.** Each item edit has *two* HTTP entry points that call the same repository method — the canonical `StudentReadController` path above **and** the compat `StudentWorkspaceCompatibilityController` path (`PUT /api/v1/student-review-items/{itemId}` and `…/full-name-verification`, which is what the FE currently calls). Guarding in the repository covers both; guarding only in one controller would leave the compat path unprotected.
+
+Guard: read the item's campaign status; if `COMPLETED`, throw a dedicated `CampaignCompletedException` (new, in `student` persistence package). **Both** controllers (`StudentReadController` and `StudentWorkspaceCompatibilityController`) map it to **HTTP 409 CONFLICT** ("This campaign is completed and read-only."), mirroring how `TimetableController` maps `YearLockedException` → 409.
 
 ### 5.4 Event emission
 
@@ -143,15 +169,17 @@ WHERE school_id = :schoolId AND status = 'PENDING' AND campaign_status = 'ACTIVE
 
 The phase-3 invariant-note comment is replaced with a one-line note that the filter is now backed by projected campaign status.
 
-## 7. Frontend — `StudentReviewDrawer.tsx`
+## 7. Frontend — `dashboardCommandCenterApi.ts` + `StudentReviewDrawer.tsx`
 
-Both tabs (`IdCardTab`, `FullNameTab`) already render an active-campaign view with a summary (`total`, `completed`, `needsCorrection`) and progress. Add:
+**First (prerequisite, §3.5):** repoint the four status/initiate functions from the broken `/dashboard/student-lifecycle/…` paths to the working `/students/reviews/…` paths so the drawer loads at all.
+
+Then the drawer's two tabs (`IdCardTab`, `FullNameTab`) already render an active-campaign view with a summary (`total`, `completed`, `needsCorrection`) and progress. Add:
 
 - A **"Complete campaign"** button in the active-campaign header/summary area.
   - **Enabled only when every item is resolved**, i.e. `completed === total` (since an item counts as `completed` only when fully `COMPLETED`, this already excludes `PENDING` and `NEEDS_CORRECTION`). When disabled, show an inline hint with the remaining count, e.g. "42 student(s) still to review".
   - Clicking opens a confirm dialog ("Complete this campaign? It will be locked and can't be edited."). On confirm, call the new endpoint.
-- New API function in `dashboardCommandCenterApi.ts`: `completeReviewCampaign(campaignId)` → `POST /reviews/campaigns/{campaignId}/complete`.
-- On success: reload status. Because the campaign is no longer `ACTIVE`, the status endpoint returns no active campaign, so the tab returns to its "Initiate" screen — ready for the next campaign. Trigger `onMetricsRefresh` so the dashboard KPI updates.
+- New API function in `dashboardCommandCenterApi.ts`: `completeReviewCampaign(campaignId)` → `POST /students/review-campaigns/{campaignId}/complete`.
+- On success: reload status. Because status is read **live from school-core** (after the §3.5 fix) and the campaign is no longer `ACTIVE`, the status endpoint returns no active campaign, so the tab returns to its "Initiate" screen — ready for the next campaign, with **no projection lag**. Trigger `onMetricsRefresh` so the dashboard KPI (served from the reporting projection, which updates once the completion event projects) refreshes.
 - Button gated on the existing `canWrite` (`student:update`) like the other write actions.
 
 ## 8. Error handling summary
@@ -161,7 +189,7 @@ Both tabs (`IdCardTab`, `FullNameTab`) already render an active-campaign view wi
 | Complete a non-existent/invisible campaign | 400 | "Review campaign not found" |
 | Complete a non-`ACTIVE` campaign | 400 | "This campaign is not active" |
 | Complete with unresolved items | 400 | "`<n>` item(s) still need review — resolve them before completing the campaign." |
-| Edit an item in a `COMPLETED` campaign | 409 | "This campaign is completed and read-only." |
+| Edit an item in a `COMPLETED` campaign (either entry point) | 409 | "This campaign is completed and read-only." |
 
 All surfaced by the FE via the existing `err.response.data.message` pattern.
 
@@ -181,15 +209,21 @@ All surfaced by the FE via the existing `err.response.data.message` pattern.
 - A completed campaign's `PENDING` items are excluded from `pendingReviewCount`; an active campaign's are counted.
 - An item upsert after completion does not reset `campaign_status`.
 
+**Prerequisite (§3.5) verification:** after repointing the FE, manually confirm on dev (authenticated) that the drawer loads campaign status and can initiate — i.e. `GET /api/v1/students/reviews/id-card/status` returns a real DTO (not 404). This is the acceptance gate for the prerequisite before the Complete button is built.
+
 **Frontend:** no tests (repo convention for these panels), unless requested.
 
 ## 10. Files
 
+**Prerequisite (§3.5) — frontend wiring fix, do first**
+- Modify: `frontend/src/api/dashboardCommandCenterApi.ts` — repoint `fetchIdCardReviewStatus`, `initiateIdCardReview`, `fetchFullNameVerificationStatus`, `initiateFullNameVerification` from `/dashboard/student-lifecycle/…` to `/students/reviews/…`.
+
 **school-core-service**
 - Create: `src/main/resources/db/migration/student/V8__review_campaign_completion.sql`
 - Create: `src/main/java/.../schoolcoreservice/persistence/CampaignCompletedException.java`
-- Modify: `src/main/java/.../persistence/StudentReadRepository.java` (`completeCampaign`, freeze guards in `updateReviewItem`/`verifyFullName`)
-- Modify: `src/main/java/.../api/StudentReadController.java` (complete endpoint; map `CampaignCompletedException` → 409)
+- Modify: `src/main/java/.../persistence/StudentReadRepository.java` (`completeCampaign`; freeze guard in both item-mutating methods)
+- Modify: `src/main/java/.../api/StudentReadController.java` (complete endpoint at `/review-campaigns/{campaignId}/complete`; map `CampaignCompletedException` → 409)
+- Modify: `src/main/java/.../api/compat/StudentWorkspaceCompatibilityController.java` (map `CampaignCompletedException` → 409 on the compat item-edit paths)
 - Test: `src/test/java/.../persistence/StudentReviewRepositoryIntegrationTest.java`
 
 **platform-service**
@@ -200,5 +234,5 @@ All surfaced by the FE via the existing `err.response.data.message` pattern.
 - Test: reporting projection + `pendingReviewCount` integration tests
 
 **frontend**
-- Modify: `src/pages/workspace/dashboard/drawers/StudentReviewDrawer.tsx`
-- Modify: `src/api/dashboardCommandCenterApi.ts`
+- Modify: `src/pages/workspace/dashboard/drawers/StudentReviewDrawer.tsx` (Complete button + confirm)
+- Modify: `src/api/dashboardCommandCenterApi.ts` (`completeReviewCampaign` — same file as the prerequisite repoint)
