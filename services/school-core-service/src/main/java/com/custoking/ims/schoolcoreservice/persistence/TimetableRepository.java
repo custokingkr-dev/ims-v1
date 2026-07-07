@@ -318,6 +318,17 @@ public class TimetableRepository {
                 .update();
     }
 
+    @Transactional
+    public void deleteClassSchedule(Long schoolId, String classId) {
+        jdbc.sql("""
+                DELETE FROM tenant_school.school_class_bell_map
+                WHERE school_id = :s AND class_id = :c
+                """)
+                .param("s", schoolId)
+                .param("c", classId)
+                .update();
+    }
+
     private void requireScheduleInSchool(Long schoolId, long scheduleId) {
         boolean exists = jdbc.sql("""
                 SELECT 1 FROM tenant_school.school_bell_schedules

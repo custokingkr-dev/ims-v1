@@ -3,7 +3,7 @@ import {
   type BellSchedule, type BellPeriod, type ClassScheduleRow,
   getBellSchedules, createSchedule, renameSchedule, deleteSchedule,
   addPeriod, updatePeriod, deletePeriod, swapPeriods,
-  getClassSchedules, setClassSchedule,
+  getClassSchedules, setClassSchedule, unassignClass,
 } from '../../../../services/timetableApi';
 import { ModuleShell } from '../../ui';
 import { usePermissions } from '../../../../hooks/usePermissions';
@@ -197,6 +197,16 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
     }
   };
 
+  const handleUnassignClass = async (classId: string) => {
+    try {
+      setError('');
+      await unassignClass(classId);
+      await load();
+    } catch (err: unknown) {
+      setError(errMsg(err, 'Could not unassign class.'));
+    }
+  };
+
   if (!canManage) {
     const noPermission = (
       <div className="ck-alert ck-alert-am"><span>!</span><div>You do not have permission to manage bell schedules.</div></div>
@@ -307,9 +317,16 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
                       <span
                         key={c.classId}
                         className="ck-btn ck-btn-ghost"
-                        style={{ borderRadius: 999, cursor: 'default' }}
+                        style={{ borderRadius: 999, cursor: 'default', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                       >
                         {c.className}
+                        <button
+                          className="ck-btn ck-btn-ghost"
+                          style={{ padding: '0 6px' }}
+                          onClick={() => handleUnassignClass(c.classId)}
+                        >
+                          ×
+                        </button>
                       </span>
                     )) : (
                       <span className="ts" style={{ color: 'var(--ink3)' }}>No classes assigned yet</span>
