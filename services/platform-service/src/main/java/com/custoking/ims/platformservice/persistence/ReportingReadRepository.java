@@ -153,14 +153,13 @@ public class ReportingReadRepository {
         String eventId = String.valueOf(event.get("eventId"));
         StringBuilder filter = new StringBuilder("""
                 FROM reporting.event_student_contributions c
-                JOIN student.students s ON s.id = c.student_id
-                JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-                JOIN tenant_school.school_sections ss ON ss.id = s.section_id
+                JOIN reporting.dim_student ds ON ds.id = c.student_id
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
                 WHERE c.event_id = :eventId
                   AND c.school_id = :schoolId
                 """);
-        if (classId != null && !classId.isBlank()) filter.append(" AND s.class_id = :classId\n");
-        if (sectionId != null && !sectionId.isBlank()) filter.append(" AND s.section_id = :sectionId\n");
+        if (classId != null && !classId.isBlank()) filter.append(" AND ds.class_id = :classId\n");
+        if (sectionId != null && !sectionId.isBlank()) filter.append(" AND ds.section_id = :sectionId\n");
         if (status != null && !status.isBlank()) filter.append(" AND c.status = :status\n");
 
         var countSpec = jdbc.sql("SELECT count(*) " + filter)
@@ -170,12 +169,12 @@ public class ReportingReadRepository {
                 .param("eventId", eventId)
                 .param("schoolId", schoolId);
         var itemSpec = jdbc.sql("""
-                SELECT s.id AS student_id, s.full_name, s.admission_no,
-                       sc.name AS class_name, ss.name AS section_name,
-                       COALESCE(NULLIF(s.father_contact, ''), s.phone) AS parent_phone,
+                SELECT ds.id AS student_id, ds.full_name, ds.admission_no,
+                       sec.class_name AS class_name, sec.name AS section_name,
+                       COALESCE(NULLIF(ds.parent_contact, ''), ds.phone) AS parent_phone,
                        c.expected_amount, c.paid_amount, c.status, c.last_reminder_sent_at
                 """ + filter + """
-                ORDER BY sc.sort_order, ss.name, s.full_name
+                ORDER BY sec.class_name, sec.name, ds.full_name
                 LIMIT :limit OFFSET :offset
                 """)
                 .param("eventId", eventId)
@@ -492,26 +491,26 @@ public class ReportingReadRepository {
             return row("date", effectiveDate, "thresholdPercent", 75, "sections", List.of());
         }
         List<Map<String, Object>> sections = jdbc.sql("""
-                SELECT ad.section_id, ss.name AS section_name, sc.name AS class_name,
+                SELECT ad.section_id, sec.name AS section_name, sec.class_name AS class_name,
                        ad.present_count, ad.total_enrolled,
                        ROUND((ad.present_count * 10000.0 / ad.total_enrolled)) / 100.0 AS attendance_pct,
                        (
                          SELECT count(*)
-                         FROM student.students s
-                         WHERE s.section_id = ad.section_id
-                           AND s.school_id = :schoolId
-                           AND (s.attendance_percent IS NULL OR s.attendance_percent < 75)
+                         FROM reporting.dim_student
+                         WHERE section_id = ad.section_id
+                           AND school_id = :schoolId
+                           AND (attendance_percent IS NULL OR attendance_percent < :threshold)
                        ) AS students_below_threshold
-                FROM attendance.attendance_daily ad
-                JOIN tenant_school.school_sections ss ON ss.id = ad.section_id
-                JOIN tenant_school.school_classes sc ON sc.id = ad.school_class_id
+                FROM reporting.fact_attendance_daily ad
+                JOIN reporting.dim_section sec ON sec.id = ad.section_id
                 WHERE ad.attendance_date = :date
                   AND ad.academic_year_id = :yearId
-                  AND ss.school_id = :schoolId
+                  AND sec.school_id = :schoolId
                   AND ad.total_enrolled > 0
                   AND (ad.present_count * 1.0 / ad.total_enrolled) < 0.75
                 ORDER BY (ad.present_count * 1.0 / ad.total_enrolled) ASC
                 """)
+                .param("threshold", 75)
                 .param("date", effectiveDate)
                 .param("yearId", yearId)
                 .param("schoolId", schoolId)
@@ -532,22 +531,21 @@ public class ReportingReadRepository {
             return List.of();
         }
         return jdbc.sql("""
-                SELECT s.id, s.full_name, s.admission_no, sc.name AS class_name, ss.name AS section_name,
-                       s.father_name, s.father_contact, s.attendance_percent,
+                SELECT ds.id, ds.full_name, ds.admission_no, sec.class_name AS class_name, sec.name AS section_name,
+                       ds.father_name, ds.parent_contact, ds.attendance_percent,
                        (
                          SELECT MAX(nl.sent_at)
                          FROM notification.notification_logs nl
                          WHERE nl.school_id = :schoolId
-                           AND nl.student_id = s.id
+                           AND nl.student_id = ds.id
                            AND nl.notification_type = 'LOW_ATTENDANCE_MEETING_INVITE'
                        ) AS last_invite_sent_at
-                FROM student.students s
-                JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-                JOIN tenant_school.school_sections ss ON ss.id = s.section_id
-                WHERE s.school_id = :schoolId
-                  AND s.section_id = :sectionId
-                  AND (s.attendance_percent IS NULL OR s.attendance_percent < 75)
-                ORDER BY s.full_name ASC
+                FROM reporting.dim_student ds
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
+                WHERE ds.school_id = :schoolId
+                  AND ds.section_id = :sectionId
+                  AND (ds.attendance_percent IS NULL OR ds.attendance_percent < 75)
+                ORDER BY ds.full_name ASC
                 """)
                 .param("schoolId", schoolId)
                 .param("sectionId", sectionId)
@@ -558,7 +556,7 @@ public class ReportingReadRepository {
                         "className", rs.getString("class_name"),
                         "sectionName", rs.getString("section_name"),
                         "fatherName", rs.getString("father_name"),
-                        "fatherContact", rs.getString("father_contact"),
+                        "fatherContact", rs.getString("parent_contact"),
                         "attendancePercent", rs.getObject("attendance_percent"),
                         "lastInviteSentAt", rs.getObject("last_invite_sent_at", OffsetDateTime.class)))
                 .list();
@@ -577,32 +575,31 @@ public class ReportingReadRepository {
             return feeDefaulterRow(0L, 0L, 0, List.of(), pageNumber, pageSize, 0L);
         }
         StringBuilder filter = new StringBuilder("""
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
-                JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-                JOIN tenant_school.school_sections ss ON ss.id = s.section_id
+                FROM reporting.fact_fee_assignment fa
+                JOIN reporting.dim_student ds ON ds.id = fa.student_id
+                JOIN reporting.dim_section sec ON sec.id = ds.section_id
                 LEFT JOIN LATERAL (
                     SELECT sent_at, status
                     FROM notification.notification_logs
-                    WHERE student_id = s.id
+                    WHERE student_id = ds.id
                       AND notification_type = 'FEE_OVERDUE'
                     ORDER BY sent_at DESC NULLS LAST
                     LIMIT 1
                 ) nl ON true
                 WHERE fa.academic_year_id = :yearId
-                  AND s.school_id = :schoolId
+                  AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
                 """);
-        if (classId != null && !classId.isBlank()) filter.append(" AND s.class_id = :classId\n");
-        if (sectionId != null && !sectionId.isBlank()) filter.append(" AND s.section_id = :sectionId\n");
+        if (classId != null && !classId.isBlank()) filter.append(" AND ds.class_id = :classId\n");
+        if (sectionId != null && !sectionId.isBlank()) filter.append(" AND ds.section_id = :sectionId\n");
 
         var countSpec = jdbc.sql("SELECT count(*) " + filter)
                 .param("yearId", yearId)
                 .param("schoolId", schoolId);
         var itemSpec = jdbc.sql("""
-                SELECT s.id AS student_id, s.full_name, s.admission_no,
-                       sc.name AS class_name, ss.name AS section_name,
-                       s.father_name, s.father_contact,
+                SELECT ds.id AS student_id, ds.full_name, ds.admission_no,
+                       sec.class_name AS class_name, sec.name AS section_name,
+                       ds.father_name, ds.parent_contact,
                        (fa.net_payable - fa.paid_amount) AS due_amount,
                        fa.assigned_at,
                        nl.sent_at AS last_reminder_sent_at,
@@ -639,7 +636,7 @@ public class ReportingReadRepository {
                             "className", rs.getString("class_name"),
                             "sectionName", rs.getString("section_name"),
                             "parentName", rs.getString("father_name"),
-                            "parentPhone", rs.getString("father_contact"),
+                            "parentPhone", rs.getString("parent_contact"),
                             "dueAmount", rs.getLong("due_amount"),
                             "dueDate", dueDate,
                             "daysOverdue", daysOverdue,
@@ -660,18 +657,16 @@ public class ReportingReadRepository {
         }
         long totalOverdueAmount = countAmount("""
                 SELECT COALESCE(SUM(fa.net_payable - fa.paid_amount), 0)
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
+                FROM reporting.fact_fee_assignment fa
                 WHERE fa.academic_year_id = :yearId
-                  AND s.school_id = :schoolId
+                  AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
                 """, yearId, schoolId);
         List<OffsetDateTime> oldestRows = jdbc.sql("""
                 SELECT MIN(fa.assigned_at)
-                FROM fee.fee_assignments fa
-                JOIN student.students s ON s.id = fa.student_id
+                FROM reporting.fact_fee_assignment fa
                 WHERE fa.academic_year_id = :yearId
-                  AND s.school_id = :schoolId
+                  AND fa.school_id = :schoolId
                   AND fa.net_payable > fa.paid_amount
                 """)
                 .param("yearId", yearId)

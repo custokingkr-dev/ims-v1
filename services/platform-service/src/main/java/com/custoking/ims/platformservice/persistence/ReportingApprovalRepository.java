@@ -62,8 +62,8 @@ public class ReportingApprovalRepository {
         return jdbc.sql("""
                 SELECT co.id, co.category, co.total_amount, co.status, co.notes, co.created_at,
                        co.school_id, s.name AS school_name
-                FROM catalog.catalog_orders co
-                LEFT JOIN tenant_school.schools s ON s.id = co.school_id
+                FROM reporting.fact_catalog_order co
+                LEFT JOIN reporting.dim_school s ON s.id = co.school_id
                 WHERE UPPER(co.status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
                   AND UPPER(co.superadmin_approval_status) = 'PENDING'
                 ORDER BY co.created_at DESC NULLS LAST
