@@ -29,12 +29,21 @@ public final class TenantScope {
     }
 
     /**
-     * Read scope for platform-wide readers (superadmin + operations): passthrough (null = all schools).
-     * Everyone else is locked to their own school via {@link #resolveSchoolId}.
+     * Read scope for platform-wide readers. Superadmin passes through unbounded (null = all
+     * schools). Operations is bounded to its superadmin-assigned operator school set: an
+     * explicit request outside that set is rejected; no request (null) is left to RLS
+     * (app.operator_schools) to bound at the query layer. Everyone else is locked to their own
+     * school via {@link #resolveSchoolId}.
      */
     public static Long resolvePlatformReadScope(Long requested) {
         TenantContext ctx = TenantContext.get();
-        if (ctx.isSuperAdmin() || ctx.isOperations()) return requested;
+        if (ctx.isSuperAdmin()) return requested;
+        if (ctx.isOperations()) {
+            if (requested != null && !ctx.operatorSchools().contains(requested)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school not in operator scope");
+            }
+            return requested;
+        }
         return resolveSchoolId(requested);
     }
 

@@ -4,6 +4,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class TenantScopeTest {
@@ -48,5 +50,31 @@ class TenantScopeTest {
     void emptyContext_isNotSuperadmin_andForbidsScopedAccess() {
         assertFalse(TenantContext.get().isSuperAdmin());
         assertThrows(ResponseStatusException.class, () -> TenantScope.resolveSchoolId(1L));
+    }
+
+    @Test
+    void operations_requestedSchoolWithinOperatorSet_allowed() {
+        TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null, Set.of(10L, 20L)));
+        assertEquals(10L, TenantScope.resolvePlatformReadScope(10L));
+    }
+
+    @Test
+    void operations_requestedSchoolOutsideOperatorSet_forbidden() {
+        TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null, Set.of(10L, 20L)));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> TenantScope.resolvePlatformReadScope(30L));
+        assertEquals(403, ex.getStatusCode().value());
+    }
+
+    @Test
+    void operations_noSchoolRequested_returnsNull_boundedByRls() {
+        TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null, Set.of(10L, 20L)));
+        assertNull(TenantScope.resolvePlatformReadScope(null));
+    }
+
+    @Test
+    void operations_emptyOperatorSet_anyRequestedSchoolForbidden() {
+        TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null, Set.of()));
+        assertThrows(ResponseStatusException.class, () -> TenantScope.resolvePlatformReadScope(10L));
     }
 }

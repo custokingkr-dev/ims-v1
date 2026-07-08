@@ -136,10 +136,20 @@ public class CatalogPublicCompatibilityController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "catalog:read");
-        if (!(TenantContext.get().isSuperAdmin() || TenantContext.get().isOperations())) {
+        TenantContext ctx = TenantContext.get();
+        if (!(ctx.isSuperAdmin() || ctx.isOperations())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only superadmin or operations can mark orders delivered");
         }
-        return command(() -> catalog.markDelivered(id, TenantContext.get().userId()));
+        if (ctx.isOperations()) {
+            // Belt-and-suspenders with the RLS WITH CHECK on the update itself: give an explicit
+            // 403 for an out-of-scope order rather than relying solely on the DB-level guard.
+            Long orderSchoolId = catalog.orderSchoolId(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "catalog order not found"));
+            if (!ctx.operatorSchools().contains(orderSchoolId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school not in operator scope");
+            }
+        }
+        return command(() -> catalog.markDelivered(id, ctx.userId()));
     }
 
     @GetMapping("/api/v1/supply/annual-plan")
