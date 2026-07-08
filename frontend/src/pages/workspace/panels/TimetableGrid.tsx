@@ -304,28 +304,43 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     const sourceDay = data.days.find((d) =>
       data.periods.some((p) => !p.isBreak && data.entries.some((e) => e.day === d && e.periodId === p.id))
     ) || data.days[0];
-    if (!window.confirm(`Set every day to match ${sourceDay}? This will overwrite the other days' schedules.`)) {
+    if (!window.confirm(`Set every day to match ${sourceDay}? This overwrites the other days.`)) {
       return;
     }
     const nonBreak = data.periods.filter((p) => !p.isBreak);
     const entries: { day: string; periodId: number; subjectName: string; teacherId: number | null }[] = [];
+    const toClear: { day: string; periodId: number }[] = [];
     for (const p of nonBreak) {
       const src = data.entries.find((e) => e.day === sourceDay && e.periodId === p.id);
-      if (!src) continue;
-      for (const day of data.days) {
-        entries.push({ day, periodId: p.id, subjectName: src.subjectName, teacherId: src.teacherId });
+      if (src) {
+        for (const day of data.days) {
+          entries.push({ day, periodId: p.id, subjectName: src.subjectName, teacherId: src.teacherId });
+        }
+      } else {
+        // sourceDay has no assignment for this period, but some other day may — clear
+        // it everywhere so the collapsed "Every day" view doesn't hide a divergent value.
+        for (const day of data.days) {
+          if (data.entries.some((e) => e.day === day && e.periodId === p.id)) {
+            toClear.push({ day, periodId: p.id });
+          }
+        }
       }
     }
-    if (!entries.length) {
+    if (!entries.length && !toClear.length) {
       setSameEveryDay(true);
       return;
     }
     setSaving(true);
     setError('');
     try {
-      const res = await putEntriesBulk({ sectionId, entries });
-      setData(res.data);
+      if (entries.length) {
+        await putEntriesBulk({ sectionId, entries });
+      }
+      for (const { day, periodId } of toClear) {
+        await deleteEntry({ sectionId, day, periodId });
+      }
       setSameEveryDay(true);
+      await load();
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not sync days.'));
     } finally {
