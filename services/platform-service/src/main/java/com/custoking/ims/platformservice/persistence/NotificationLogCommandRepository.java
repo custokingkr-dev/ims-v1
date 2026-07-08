@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +19,14 @@ public class NotificationLogCommandRepository {
         this.jdbc = jdbc;
     }
 
+    // notification_logs carries a tenant_isolation RLS policy (see
+    // notification/V8__enable_rls.sql). This method is invoked by the internal-token-gated
+    // system ingestion endpoint (POST /api/v1/notifications/logs) with NO matching TenantContext,
+    // so ProjectorRls.allow() sets a transaction-local RLS bypass before the insert, otherwise
+    // WITH CHECK would reject context-less writes.
     @Transactional
     public Map<String, Object> createRequestLog(Map<String, Object> request) {
+        ProjectorRls.allow(jdbc);
         String id = str(request.get("id"), UUID.randomUUID().toString());
         OffsetDateTime now = OffsetDateTime.now();
         jdbc.sql("""
