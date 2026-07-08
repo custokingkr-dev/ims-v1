@@ -72,6 +72,7 @@ public class RbacReadController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        TenantScope.requireSuperAdmin();
         return rbac.userAssignments(userId, active, limit);
     }
 
@@ -104,6 +105,7 @@ public class RbacReadController {
             @RequestParam(required = false) Long targetUserId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        TenantScope.requireSuperAdmin();
         return rbac.audit(actorUserId, targetUserId, limit);
     }
 
