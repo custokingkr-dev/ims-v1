@@ -463,47 +463,49 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
           ) : !safeReportRows.length ? (
             <div className="ck-import-zone" style={{ margin: 16 }}><div className="iz-title">No records for this section</div></div>
           ) : (
-            <table className="ck-table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Plan / Schedule</th>
-                  <th className="col-money">Total Annual Fee</th>
-                  <th className="col-money">Discounts / Surcharge</th>
-                  <th className="col-money">Paid</th>
-                  <th className="col-money">Due</th>
-                  <th>Status</th>
-                  <th>Receipt</th>
-                </tr>
-              </thead>
-              <tbody>
-                {safeReportRows.map((row: any, idx: number) => {
-                  const rowKey = row.assignmentId || row.studentId || row.paymentId || `${row.studentName || row.student || 'student'}-${row.admissionNumber || idx}`;
-                  const studentName = row.studentName || row.student || '—';
-                  const classSection = row.classSection || [row.className, row.sectionName].filter(Boolean).join(' · ');
-                  const admissionNumber = row.admissionNumber || row.admissionNo || '';
-                  const paymentSchedule = row.paymentSchedule || row.schedule || '—';
-                  const approvedDiscount = row.approvedDiscount ?? row.discounts ?? 0;
-                  const surchargeAmount = row.surchargeAmount ?? row.surcharge ?? 0;
-                  const dueAmount = row.dueAmount ?? row.due ?? 0;
-                  const paymentId = row.payments?.[0]?.paymentId || row.paymentId;
-                  const selectedId = String(row.studentId || row.assignmentId || '');
-                  const isSelected = selectedReportStudentId ? selectedReportStudentId === selectedId : idx === 0;
-                  return (
-                    <tr key={rowKey} className={isSelected ? 'ck-row-selected' : ''} style={{ cursor: 'pointer' }} onClick={() => setSelectedReportStudentId(selectedId)}>
-                      <td><div className="tb">{studentName}</div><div className="ts">{[classSection, admissionNumber ? `Adm. ${admissionNumber}` : ''].filter(Boolean).join(' · ') || '—'}</div></td>
-                      <td><div className="tb">{row.planName || '—'}</div><div className="ts">{paymentSchedule}</div></td>
-                      <td className="col-money">₹{formatMoney(Number(row.totalAnnualFee || 0) / 100)}</td>
-                      <td className="col-money"><div className="tb">Discount ₹{formatMoney(Number(approvedDiscount || 0) / 100)}</div><div className="ts">Surcharge ₹{formatMoney(Number(surchargeAmount || 0) / 100)}</div></td>
-                      <td className="col-money ck-amt-green">₹{formatMoney(Number(row.paid || 0) / 100)}</td>
-                      <td className={`col-money ${Number(dueAmount) > 0 ? 'ck-amt-red' : 'col-money'}`}>₹{formatMoney(Number(dueAmount || 0) / 100)}</td>
-                      <td>{feeStatusBadge(row.status || 'Pending')}</td>
-                      <td>{paymentId ? <button className="ck-btn ck-btn-ghost" onClick={(e) => { e.stopPropagation(); openReceiptPdf(paymentId); }}>PDF</button> : '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="ck-table-wrap">
+              <table className="ck-table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Plan / Schedule</th>
+                    <th className="col-money">Total Annual Fee</th>
+                    <th className="col-money">Discounts / Surcharge</th>
+                    <th className="col-money">Paid</th>
+                    <th className="col-money">Due</th>
+                    <th>Status</th>
+                    <th>Receipt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {safeReportRows.map((row: any, idx: number) => {
+                    const rowKey = row.assignmentId || row.studentId || row.paymentId || `${row.studentName || row.student || 'student'}-${row.admissionNumber || idx}`;
+                    const studentName = row.studentName || row.student || '—';
+                    const classSection = row.classSection || [row.className, row.sectionName].filter(Boolean).join(' · ');
+                    const admissionNumber = row.admissionNumber || row.admissionNo || '';
+                    const paymentSchedule = row.paymentSchedule || row.schedule || '—';
+                    const approvedDiscount = row.approvedDiscount ?? row.discounts ?? 0;
+                    const surchargeAmount = row.surchargeAmount ?? row.surcharge ?? 0;
+                    const dueAmount = row.dueAmount ?? row.due ?? 0;
+                    const paymentId = row.payments?.[0]?.paymentId || row.paymentId;
+                    const selectedId = String(row.studentId || row.assignmentId || '');
+                    const isSelected = selectedReportStudentId ? selectedReportStudentId === selectedId : idx === 0;
+                    return (
+                      <tr key={rowKey} className={isSelected ? 'ck-row-selected' : ''} style={{ cursor: 'pointer' }} onClick={() => setSelectedReportStudentId(selectedId)}>
+                        <td><div className="tb">{studentName}</div><div className="ts">{[classSection, admissionNumber ? `Adm. ${admissionNumber}` : ''].filter(Boolean).join(' · ') || '—'}</div></td>
+                        <td><div className="tb">{row.planName || '—'}</div><div className="ts">{paymentSchedule}</div></td>
+                        <td className="col-money">₹{formatMoney(Number(row.totalAnnualFee || 0) / 100)}</td>
+                        <td className="col-money"><div className="tb">Discount ₹{formatMoney(Number(approvedDiscount || 0) / 100)}</div><div className="ts">Surcharge ₹{formatMoney(Number(surchargeAmount || 0) / 100)}</div></td>
+                        <td className="col-money ck-amt-green">₹{formatMoney(Number(row.paid || 0) / 100)}</td>
+                        <td className={`col-money ${Number(dueAmount) > 0 ? 'ck-amt-red' : 'col-money'}`}>₹{formatMoney(Number(dueAmount || 0) / 100)}</td>
+                        <td>{feeStatusBadge(row.status || 'Pending')}</td>
+                        <td>{paymentId ? <button className="ck-btn ck-btn-ghost" onClick={(e) => { e.stopPropagation(); openReceiptPdf(paymentId); }}>PDF</button> : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
@@ -515,23 +517,25 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
           {!feeFilters.className || !feeFilters.sectionName ? (
             <div className="ck-import-zone" style={{ margin: 16 }}><div className="iz-title">Select a class and section above to load overdue records</div></div>
           ) : safeOverdueRows.length ? (
-            <table className="ck-table">
-              <thead><tr><th>Student</th><th>Schedule</th><th className="col-money">Due Amount</th><th className="col-money">Days Overdue</th></tr></thead>
-              <tbody>
-                {safeOverdueRows.map((row: any, i: number) => {
-                  const days = Number(row.daysOverdue || 0);
-                  const dayColor = days > 60 ? 'var(--re)' : days > 30 ? 'var(--am)' : 'var(--ink2)';
-                  return (
-                    <tr key={row.studentId || row.assignmentId || `${row.studentName || row.student || 'student'}-${i}`}>
-                      <td><div className="tb">{row.studentName || row.student || '—'}</div><div className="ts">{row.classSection || [row.className, row.sectionName].filter(Boolean).join(' · ') || '—'}</div></td>
-                      <td>{row.schedule || '—'}</td>
-                      <td className="col-money ck-amt-red">₹{formatMoney(Number(row.dueAmount || 0) / 100)}</td>
-                      <td className="col-money" style={{ color: dayColor, fontWeight: 700 }}>{days}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="ck-table-wrap">
+              <table className="ck-table">
+                <thead><tr><th>Student</th><th>Schedule</th><th className="col-money">Due Amount</th><th className="col-money">Days Overdue</th></tr></thead>
+                <tbody>
+                  {safeOverdueRows.map((row: any, i: number) => {
+                    const days = Number(row.daysOverdue || 0);
+                    const dayColor = days > 60 ? 'var(--re)' : days > 30 ? 'var(--am)' : 'var(--ink2)';
+                    return (
+                      <tr key={row.studentId || row.assignmentId || `${row.studentName || row.student || 'student'}-${i}`}>
+                        <td><div className="tb">{row.studentName || row.student || '—'}</div><div className="ts">{row.classSection || [row.className, row.sectionName].filter(Boolean).join(' · ') || '—'}</div></td>
+                        <td>{row.schedule || '—'}</td>
+                        <td className="col-money ck-amt-red">₹{formatMoney(Number(row.dueAmount || 0) / 100)}</td>
+                        <td className="col-money" style={{ color: dayColor, fontWeight: 700 }}>{days}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div style={{ padding: 16 }}>No overdue records for this section.</div>
           )}
@@ -547,20 +551,22 @@ export function FeesPanel({ workspace, onRefresh }: Props) {
                 <div>Total annual fee ₹{formatMoney(Number(selectedReportRow.totalAnnualFee || 0) / 100)} − approved discounts ₹{formatMoney(Number(selectedReportRow.approvedDiscount ?? selectedReportRow.discounts ?? 0) / 100)} − payments ₹{formatMoney(Number(selectedReportRow.paid || 0) / 100)} = due ₹{formatMoney(Number(selectedReportRow.dueAmount ?? selectedReportRow.due ?? 0) / 100)}</div>
               </div>
               {Array.isArray(selectedReportRow.installments) && selectedReportRow.installments.length ? (
-                <table className="ck-table">
-                  <thead><tr><th>Installment</th><th>Due date</th><th>Paid date</th><th className="col-money">Amount</th><th>Status</th></tr></thead>
-                  <tbody>
-                    {selectedReportRow.installments.map((ins: any, idx: number) => (
-                      <tr key={ins.installmentNo || ins.dueDate || idx}>
-                        <td>#{ins.installmentNo || idx + 1}</td>
-                        <td>{ins.dueDate || '—'}</td>
-                        <td>{ins.paidDate || '—'}</td>
-                        <td className="col-money">₹{formatMoney(Number(ins.amount || 0) / 100)}</td>
-                        <td>{feeStatusBadge(ins.status || 'Pending')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="ck-table-wrap">
+                  <table className="ck-table">
+                    <thead><tr><th>Installment</th><th>Due date</th><th>Paid date</th><th className="col-money">Amount</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {selectedReportRow.installments.map((ins: any, idx: number) => (
+                        <tr key={ins.installmentNo || ins.dueDate || idx}>
+                          <td>#{ins.installmentNo || idx + 1}</td>
+                          <td>{ins.dueDate || '—'}</td>
+                          <td>{ins.paidDate || '—'}</td>
+                          <td className="col-money">₹{formatMoney(Number(ins.amount || 0) / 100)}</td>
+                          <td>{feeStatusBadge(ins.status || 'Pending')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="ck-import-zone" style={{ marginTop: 16 }}>
                   <div className="iz-title">Installment-wise statement is not available for this fee record yet.</div>

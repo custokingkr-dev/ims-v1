@@ -309,7 +309,9 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
               <div style={{ padding: 16 }} className="ck-import-zone"><div className="iz-title">Select a schedule to edit its periods</div></div>
             ) : (
               <div style={{ padding: 16 }}>
-                {/* Applies-to chip row */}
+                {/* Applies-to chip row — hidden when embedded (the timetable grid's inline
+                    "Period pattern" dropdown is the primary way to map a class to a schedule). */}
+                {!embedded && (
                 <div style={{ marginBottom: 16 }}>
                   <div className="ts" style={{ color: 'var(--ink3)', marginBottom: 6 }}>Applies to</div>
                   <div className="ck-badge-row">
@@ -356,6 +358,7 @@ export function BellSchedulesPanel({ embedded, initialClassId }: Props = {}) {
                     </div>
                   ) : null}
                 </div>
+                )}
 
                 {/* Day timeline */}
                 {!sortedPeriods.length ? (

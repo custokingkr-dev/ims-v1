@@ -179,7 +179,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
       )}
 
       {toast && (
-        <div className="ck-command-toast ok" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999 }}>
+        <div className="ck-command-toast ok">
           {toast}
         </div>
       )}

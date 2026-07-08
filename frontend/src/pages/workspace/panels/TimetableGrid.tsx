@@ -79,6 +79,8 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
   const [editSubject, setEditSubject] = useState('');
   const [editTeacherId, setEditTeacherId] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
   const [staffOptions, setStaffOptions] = useState<Array<{ id: number; name: string }>>([]);
   const [schedules, setSchedules] = useState<BellSchedule[]>([]);
   const [classScheduleRows, setClassScheduleRows] = useState<Array<{ classId: string; className: string; scheduleId: number | null }>>([]);
@@ -198,21 +200,29 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     }
   };
 
-  const handleSubjectSelectChange = async (value: string) => {
+  const handleSubjectSelectChange = (value: string) => {
     if (value === ADD_SUBJECT_VALUE) {
-      const name = window.prompt('New subject name');
-      if (!name || !name.trim()) return;
-      try {
-        await addSubject(classId, name.trim());
-        const res = await getClassSubjects(classId, yearId);
-        setSubjects(res.data);
-        setEditSubject(name.trim());
-      } catch (err: unknown) {
-        setError(errMsg(err, 'Could not add subject.'));
-      }
+      // Open an inline styled input inside the cell editor (no window.prompt).
+      setNewSubjectName('');
+      setAddingSubject(true);
       return;
     }
     setEditSubject(value);
+  };
+
+  const submitNewSubject = async () => {
+    const name = newSubjectName.trim();
+    if (!name) return;
+    try {
+      await addSubject(classId, name);
+      const res = await getClassSubjects(classId, yearId);
+      setSubjects(res.data);
+      setEditSubject(name);
+      setAddingSubject(false);
+      setNewSubjectName('');
+    } catch (err: unknown) {
+      setError(errMsg(err, 'Could not add subject.'));
+    }
   };
 
   const selectedYear = years.find((y) => y.id === yearId) || null;
@@ -228,10 +238,12 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     setEditingCell({ day, periodId });
     setEditSubject(existing?.subjectName || '');
     setEditTeacherId(existing?.teacherId != null ? String(existing.teacherId) : '');
+    setAddingSubject(false);
+    setNewSubjectName('');
     setError('');
   };
 
-  const closeEditor = () => setEditingCell(null);
+  const closeEditor = () => { setEditingCell(null); setAddingSubject(false); setNewSubjectName(''); };
 
   const save = async () => {
     if (!editingCell) return;
@@ -579,6 +591,20 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
                                       ))}
                                       <option value={ADD_SUBJECT_VALUE}>+ Add subject…</option>
                                     </select>
+                                    {addingSubject ? (
+                                      <div style={{ display: 'flex', gap: 6 }}>
+                                        <input
+                                          autoFocus
+                                          value={newSubjectName}
+                                          onChange={(e) => setNewSubjectName(e.target.value)}
+                                          onKeyDown={(e) => { if (e.key === 'Enter') void submitNewSubject(); if (e.key === 'Escape') setAddingSubject(false); }}
+                                          placeholder="New subject name"
+                                          style={{ flex: 1, minWidth: 0 }}
+                                        />
+                                        <button className="ck-btn ck-btn-g" disabled={!newSubjectName.trim()} onClick={() => void submitNewSubject()}>Add</button>
+                                        <button className="ck-btn ck-btn-ghost" onClick={() => setAddingSubject(false)}>×</button>
+                                      </div>
+                                    ) : null}
                                     <select value={editTeacherId} onChange={(e) => setEditTeacherId(e.target.value)}>
                                       <option value="">No teacher</option>
                                       {staffOptions.map((s) => (

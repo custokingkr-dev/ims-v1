@@ -247,6 +247,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
         </div>
 
         <div className="ck-card">
+          <div className="ck-table-wrap">
           <table className="ck-table">
             <thead>
               <tr>
@@ -327,6 +328,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               </tbody>
             )}
           </table>
+          </div>
 
           {/* Change 3: Designed empty state */}
           {!studentsLoading && (studentsView.items?.length ?? 0) === 0 && (

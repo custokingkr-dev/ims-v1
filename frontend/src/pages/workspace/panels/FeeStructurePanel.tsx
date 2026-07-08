@@ -498,35 +498,37 @@ export function FeeStructurePanel({ onRefresh }: Props) {
               <div onClick={(e) => e.stopPropagation()}>
                 <div className="ck-card" style={{ border: 'none', borderTop: '1px solid var(--border)', borderRadius: 0, boxShadow: 'none' }}>
                   {(band.items || []).length ? (
-                    <table className="ck-table">
-                      <thead><tr><th>Item name</th><th>Frequency</th><th>Amount</th><th>% of total</th><th>Actions</th></tr></thead>
-                      <tbody>
-                        {(band.items || []).map((item: any) => {
-                          const isEditing = editingFeeItem?.id === item.id;
-                          const pct = totalPaise > 0 ? Math.round(Number(item.amount || 0) / totalPaise * 100) : 0;
-                          return (
-                            <tr key={item.id}>
-                              <td>{isEditing ? <input value={editingFeeItem.name} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, name: e.target.value })} /> : <div className="tb">{item.name}</div>}</td>
-                              <td>{isEditing ? <select value={editingFeeItem.frequency} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, frequency: e.target.value })}><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option></select> : <span className="ck-pill pb">{item.frequency}</span>}</td>
-                              <td style={{ textAlign: 'right' }}>{isEditing ? <input type="number" min={0} step="0.01" value={editingFeeItem.amount} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, amount: e.target.value })} /> : `₹${formatMoney(Number(item.amount || 0) / 100)}`}</td>
-                              <td><span className="ts">{pct}%</span></td>
-                              <td>
-                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                                  {isEditing ? (
-                                    <><button className="ck-btn ck-btn-g" disabled={saving === 'fee-structure-edit'} onClick={saveFeeStructureItem}>Save</button><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem(null)}>Cancel</button></>
-                                  ) : (
-                                    <><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem({ id: item.id, name: item.name, frequency: item.frequency, amount: Number(item.amount || 0) / 100 })}>Edit</button><button className="ck-btn ck-btn-ghost" onClick={() => setConfirmRemoveFeeItemId(confirmRemoveFeeItemId === item.id ? '' : item.id)}>Remove</button></>
-                                  )}
-                                </div>
-                                {confirmRemoveFeeItemId === item.id && !isEditing ? (
-                                  <div className="ts" style={{ marginTop: 6, textAlign: 'right' }}>Remove this item? <button className="ck-inline-action" onClick={() => removeFeeStructureItem(item.id)}>Yes</button> / <button className="ck-inline-action" onClick={() => setConfirmRemoveFeeItemId('')}>No</button></div>
-                                ) : null}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="ck-table-wrap">
+                      <table className="ck-table">
+                        <thead><tr><th>Item name</th><th>Frequency</th><th>Amount</th><th>% of total</th><th>Actions</th></tr></thead>
+                        <tbody>
+                          {(band.items || []).map((item: any) => {
+                            const isEditing = editingFeeItem?.id === item.id;
+                            const pct = totalPaise > 0 ? Math.round(Number(item.amount || 0) / totalPaise * 100) : 0;
+                            return (
+                              <tr key={item.id}>
+                                <td>{isEditing ? <input value={editingFeeItem.name} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, name: e.target.value })} /> : <div className="tb">{item.name}</div>}</td>
+                                <td>{isEditing ? <select value={editingFeeItem.frequency} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, frequency: e.target.value })}><option>Monthly</option><option>Quarterly</option><option>Half-yearly</option><option>Annual</option></select> : <span className="ck-pill pb">{item.frequency}</span>}</td>
+                                <td style={{ textAlign: 'right' }}>{isEditing ? <input type="number" min={0} step="0.01" value={editingFeeItem.amount} onChange={(e) => setEditingFeeItem({ ...editingFeeItem, amount: e.target.value })} /> : `₹${formatMoney(Number(item.amount || 0) / 100)}`}</td>
+                                <td><span className="ts">{pct}%</span></td>
+                                <td>
+                                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                    {isEditing ? (
+                                      <><button className="ck-btn ck-btn-g" disabled={saving === 'fee-structure-edit'} onClick={saveFeeStructureItem}>Save</button><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem(null)}>Cancel</button></>
+                                    ) : (
+                                      <><button className="ck-btn ck-btn-ghost" onClick={() => setEditingFeeItem({ id: item.id, name: item.name, frequency: item.frequency, amount: Number(item.amount || 0) / 100 })}>Edit</button><button className="ck-btn ck-btn-ghost" onClick={() => setConfirmRemoveFeeItemId(confirmRemoveFeeItemId === item.id ? '' : item.id)}>Remove</button></>
+                                    )}
+                                  </div>
+                                  {confirmRemoveFeeItemId === item.id && !isEditing ? (
+                                    <div className="ts" style={{ marginTop: 6, textAlign: 'right' }}>Remove this item? <button className="ck-inline-action" onClick={() => removeFeeStructureItem(item.id)}>Yes</button> / <button className="ck-inline-action" onClick={() => setConfirmRemoveFeeItemId('')}>No</button></div>
+                                  ) : null}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   ) : (
                     <div style={{ padding: 20, textAlign: 'center' }} className="ts">No fee items yet. Use '+ Add item' to add one.</div>
                   )}
@@ -566,14 +568,16 @@ export function FeeStructurePanel({ onRefresh }: Props) {
           <div style={{ padding: '0 16px 16px' }}>
             <div className="ck-card" style={{ boxShadow: 'none' }}>
               <div className="ck-card-h"><div className="ck-card-t">Fee items in this band</div></div>
-              <table className="ck-table">
-                <thead><tr><th>Item name</th><th>Frequency</th><th>Amount</th></tr></thead>
-                <tbody>
-                  {(((feeStructureData.bands || []).find((band: any) => band.id === feeAssignForm.bandId)?.items) || []).map((item: any) => (
-                    <tr key={item.id}><td>{item.name}</td><td>{item.frequency}</td><td>₹{formatMoney(Number(item.amount || 0) / 100)}</td></tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="ck-table-wrap">
+                <table className="ck-table">
+                  <thead><tr><th>Item name</th><th>Frequency</th><th>Amount</th></tr></thead>
+                  <tbody>
+                    {(((feeStructureData.bands || []).find((band: any) => band.id === feeAssignForm.bandId)?.items) || []).map((item: any) => (
+                      <tr key={item.id}><td>{item.name}</td><td>{item.frequency}</td><td>₹{formatMoney(Number(item.amount || 0) / 100)}</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : null}

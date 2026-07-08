@@ -415,6 +415,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
                   <div><div className="ap-tc-title">Class-wise supply plan</div><div className="ap-tc-sub">Click a row to configure quantities and items</div></div>
                   <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{studentCount} students total</div>
                 </div>
+                <div className="ck-table-wrap">
                 <table className="ap-plan-table">
                   <thead>
                     <tr><th>Class</th><th>Need</th><th>Students</th><th>Items</th><th>Est. amount</th><th>Progress</th><th>Status</th><th>Order by</th></tr>
@@ -450,6 +451,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
               {/* AI suggestions sidebar */}
               <div className="ap-intel-sidebar">
@@ -624,6 +626,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
               </div>
             </div>
             <div className="ap-table-card">
+              <div className="ck-table-wrap">
               <table className="ap-plan-table">
                 <thead>
                   <tr><th>FF Request</th><th>Category</th><th>Pattern</th><th>Est. amount</th><th>Status</th><th>Recommendation</th><th></th></tr>
@@ -675,6 +678,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}

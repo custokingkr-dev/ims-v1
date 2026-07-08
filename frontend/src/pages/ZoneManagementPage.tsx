@@ -98,6 +98,7 @@ export default function ZoneManagementPage() {
       {notice && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '0.75rem 1rem', borderRadius: 8, marginBottom: '1rem' }}>{notice}</div>}
 
       {loading ? <p>Loading zones…</p> : (
+        <div className="ck-table-wrap">
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
@@ -127,6 +128,7 @@ export default function ZoneManagementPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       {showZoneModal && (

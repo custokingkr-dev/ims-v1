@@ -292,19 +292,21 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       </div>
       <div className="ck-card" style={{ marginTop: 16 }}>
         <div className="ck-card-h"><div className="ck-card-t">Excel format — use these exact column headers (row 1)</div></div>
-        <table className="ck-table">
-          <thead><tr><th>Column</th><th>Required</th><th>Example</th><th>Notes</th></tr></thead>
-          <tbody>
-            {IMPORT_COLUMNS.map((c) => (
-              <tr key={c.key}>
-                <td><strong>{c.key}</strong></td>
-                <td>{c.required ? <span className="ck-status sr">Required</span> : <span className="ck-status sgr">Optional</span>}</td>
-                <td>{c.example}</td>
-                <td className="ts">{c.note}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="ck-table-wrap">
+          <table className="ck-table">
+            <thead><tr><th>Column</th><th>Required</th><th>Example</th><th>Notes</th></tr></thead>
+            <tbody>
+              {IMPORT_COLUMNS.map((c) => (
+                <tr key={c.key}>
+                  <td><strong>{c.key}</strong></td>
+                  <td>{c.required ? <span className="ck-status sr">Required</span> : <span className="ck-status sgr">Optional</span>}</td>
+                  <td>{c.example}</td>
+                  <td className="ts">{c.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <div className="ts" style={{ padding: '0 16px 16px' }}>Download the sample template above for a ready-to-fill .xlsx. Add a photo per student by embedding an image in the Photo column of an .xlsx, or by putting a public image link in that column — photos are attached automatically after import.</div>
       </div>
       {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
@@ -322,12 +324,14 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
             </div>
             <button className="ck-btn ck-btn-g" disabled={(bulkImportPreview.validCount || 0) === 0 || Boolean(bulkImportProgress?.done) || saving === 'bulk-import-confirm'} onClick={() => void confirmBulkImport()}>{bulkImportProgress?.done ? 'Done' : saving === 'bulk-import-confirm' ? 'Importing…' : `Import ${bulkImportPreview.validCount || 0} valid rows`}</button>
           </div>
-          <table className="ck-table">
-            <thead><tr><th>#</th><th>Name</th><th>Class</th><th>Section</th><th>Admission No.</th><th>Phone</th><th>Status</th></tr></thead>
-            <tbody>
-              {(bulkImportPreview.rows || []).map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description}</div> : null}</td></tr>)}
-            </tbody>
-          </table>
+          <div className="ck-table-wrap">
+            <table className="ck-table">
+              <thead><tr><th>#</th><th>Name</th><th>Class</th><th>Section</th><th>Admission No.</th><th>Phone</th><th>Status</th></tr></thead>
+              <tbody>
+                {(bulkImportPreview.rows || []).map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description}</div> : null}</td></tr>)}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : null}
       {bulkImportProgress?.done && (bulkImportProgress.skippedRows || []).length ? <div className="ck-card" style={{ marginTop: 16 }}><div className="ck-card-h"><div className="ck-card-t">Skipped rows</div></div><div className="ck-form-body">{(bulkImportProgress.skippedRows || []).map((row, index) => <div key={index} className="ts" style={{ marginBottom: 8 }}>Row {row.rowNumber}: {row.reason}</div>)}</div></div> : null}
