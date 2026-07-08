@@ -32,8 +32,11 @@ public class TenantAwareDataSource extends DelegatingDataSource {
         TenantContext ctx = TenantContext.get();
         String schoolId = ctx.schoolId() == null ? "" : ctx.schoolId().toString();
         String bypass = ctx.isSuperAdmin() ? "on" : "off";
+        // Reset app.operator_schools to empty (fail-closed) on every checkout so a stale operator
+        // scope can never leak across the pool. The operator-scope setter uses a transaction-local
+        // (is_local=true) set_config, so this session-level reset is defense-in-depth only.
         try (PreparedStatement ps = connection.prepareStatement(
-                "SELECT set_config('app.current_school_id', ?, false), set_config('app.bypass_rls', ?, false)")) {
+                "SELECT set_config('app.current_school_id', ?, false), set_config('app.bypass_rls', ?, false), set_config('app.operator_schools', '', false)")) {
             ps.setString(1, schoolId);
             ps.setString(2, bypass);
             ps.execute();

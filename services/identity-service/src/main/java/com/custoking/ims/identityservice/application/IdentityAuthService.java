@@ -133,9 +133,9 @@ public class IdentityAuthService {
         AuthenticatedUserSnapshot snapshot = snapshot(user);
         List<String> permissions = new ArrayList<>(rbac.permissionCodes(user.getId()));
         permissions.sort(String::compareTo);
-        List<Long> opsSchools = "OPERATIONS".equalsIgnoreCase(user.getRole())
-                ? rbac.operatorSchoolIds(user.getId())
-                : List.of();
+        // Derive the operator school set from the user's active OPERATIONS assignments, not the
+        // display-only legacy `role` column. operatorSchoolIds returns [] for non-operators.
+        List<Long> opsSchools = rbac.operatorSchoolIds(user.getId());
         String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
@@ -155,6 +155,10 @@ public class IdentityAuthService {
         List<String> roles = rbac.roleNames(user.getId());
         List<String> permissions = new ArrayList<>(rbac.permissionCodes(user.getId()));
         permissions.sort(String::compareTo);
+        // Carry the operator school set on the response principal too, so the gateway's
+        // introspection fallback (GATEWAY_LOCAL_JWT_VERIFY=disabled / un-enriched tokens) forwards
+        // x-authenticated-operator-schools with the same value as the local-JWT path.
+        List<Long> operatorSchools = rbac.operatorSchoolIds(user.getId());
         return new AuthResponse(
                 accessToken,
                 user.getId(),
@@ -166,7 +170,8 @@ public class IdentityAuthService {
                 user.getZoneId(),
                 user.getZoneName(),
                 roles,
-                permissions);
+                permissions,
+                operatorSchools);
     }
 
     private AuthenticatedUserSnapshot snapshot(AppUserEntity user) {
@@ -211,7 +216,8 @@ public class IdentityAuthService {
             Long zoneId,
             String zoneName,
             List<String> roles,
-            List<String> permissions) {
+            List<String> permissions,
+            List<Long> operatorSchools) {
     }
 
     public record IntrospectionResponse(boolean active, AuthResponse principal) {
