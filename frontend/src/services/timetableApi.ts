@@ -64,3 +64,5 @@ export const putEntry = (b: { sectionId: string; day: string; periodId: number; 
   api.put<TimetableView>('/timetable/entry', b);
 export const deleteEntry = (p: { sectionId: string; day: string; periodId: number }) =>
   api.delete('/timetable/entry', { params: p });
+export const putEntriesBulk = (b: { sectionId: string; entries: { day: string; periodId: number; subjectName: string; teacherId: number | null }[] }) =>
+  api.put<TimetableView>('/timetable/entries/bulk', b);

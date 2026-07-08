@@ -286,6 +286,44 @@ public class TimetableController {
         }
     }
 
+    @PutMapping("/api/v1/timetable/entries/bulk")
+    public Map<String, Object> upsertEntries(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        String sectionId = requireText(request.get("sectionId"), "sectionId is required");
+        Object entriesRaw = request.get("entries");
+        if (!(entriesRaw instanceof List<?> rawList)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "entries is required");
+        }
+        List<Map<String, Object>> entries = new java.util.ArrayList<>();
+        for (Object rowObj : rawList) {
+            if (!(rowObj instanceof Map<?, ?> rowMap)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "each entry must be an object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> row = (Map<String, Object>) rowMap;
+            requireText(row.get("day"), "day is required");
+            longValue(row.get("periodId"),
+                    () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "periodId is required"));
+            requireText(row.get("subjectName"), "subjectName is required");
+            if (row.get("teacherId") != null) {
+                longValue(row.get("teacherId"),
+                        () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "teacherId is invalid"));
+            }
+            entries.add(row);
+        }
+        try {
+            return timetable.upsertEntries(schoolId, sectionId, entries);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
     @DeleteMapping("/api/v1/timetable/entry")
     public void deleteEntry(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
