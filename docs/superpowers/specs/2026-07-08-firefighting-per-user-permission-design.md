@@ -50,7 +50,7 @@ Access tokens are short-lived (`APP_JWT_EXPIRATION_MS=900000` = 15 min) and the 
 - Add `TenantContext.hasPermission(String code)` and a guard `TenantScope.requirePermission(String code)` mirroring `requireSuperAdmin()`:
   - **superadmin** (`TenantContext.get().isSuperAdmin()`) → allow (bypass).
   - permissions set **non-empty** and does **not** contain the code → `403` "You do not have permission to approve firefighting requests".
-  - permissions set **empty** (header absent — a pre-ver-3 token during the ≤15-min rollover, or a misconfig) → **allow** (fall back to today's behavior; the internal service token + tenant scope + FE gate still apply). This prevents a token-version transition from locking approvers out. Log at debug.
+  - permissions set **empty or lacking the code** → **403** (fail closed). *(REVISED: the original design allowed an empty set as a transitional fallback; a security review found this a permanent fail-open — the gateway injects an empty header for permission-less users — so it was changed to fail closed. See commit `0fd0abd`. Accepted trade-off: non-superadmin approvers holding a pre-ver-3 token are denied for ≤15 min post-deploy until their access token refreshes; superadmin always bypasses.)*
 - Apply `TenantScope.requirePermission("firefighting:approve")` in `FirefightingReadController` on: `approve-bursar` (:196), `approve-principal` (:207), `reject` (:228). Leave `approve-custoking` on `requireSuperAdmin()`. Leave create/quotations/submit/fulfill/vendor-paid as-is.
 
 ## Part 4 — Frontend: align the Approvals gate
@@ -63,7 +63,7 @@ Access tokens are short-lived (`APP_JWT_EXPIRATION_MS=900000` = 15 min) and the 
 | Condition | HTTP | Message |
 |---|---|---|
 | non-superadmin with `perms` present but missing `firefighting:approve` hits approve-bursar/principal/reject | 403 | "You do not have permission to approve firefighting requests" |
-| pre-ver-3 token (no permissions header) hits an approval endpoint | (allow) | transitional fallback; service token + tenant scope still enforced |
+| non-superadmin with empty/absent permissions (incl. pre-ver-3 token) hits an approval endpoint | 403 | fail closed (REVISED from transitional-allow; commit `0fd0abd`) |
 | superadmin | (allow) | bypass |
 | approve-custoking by non-superadmin | 403 | existing `requireSuperAdmin()` |
 
