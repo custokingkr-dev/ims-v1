@@ -92,6 +92,26 @@ public class RbacReadRepository {
         return spec.query(String.class).list();
     }
 
+    /**
+     * Permission codes granted by a role, keyed by role name (case-insensitive). Used to backfill
+     * the OPERATIONS role's codes for operators whose stale {@code app_users.branch_id} no longer
+     * matches any of their active {@code ops_schools} assignments — see
+     * {@code IdentityAuthService.loginPermissions}.
+     */
+    public List<String> permissionCodesForRole(String roleName) {
+        return jdbc.sql("""
+                SELECT DISTINCT p.code
+                FROM identity.roles r
+                JOIN identity.role_permissions rp ON rp.role_id = r.id
+                JOIN identity.permissions p ON p.id = rp.permission_id
+                WHERE UPPER(r.name) = UPPER(:roleName)
+                ORDER BY p.code
+                """)
+                .param("roleName", roleName)
+                .query(String.class)
+                .list();
+    }
+
     public List<Long> operatorSchoolIds(Long userId) {
         return jdbc.sql("""
                 SELECT DISTINCT ura.school_id
