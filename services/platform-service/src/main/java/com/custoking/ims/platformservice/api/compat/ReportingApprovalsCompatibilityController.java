@@ -1,6 +1,7 @@
 package com.custoking.ims.platformservice.api.compat;
 
 import com.custoking.ims.platformservice.persistence.ReportingApprovalRepository;
+import com.custoking.ims.platformservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -34,6 +35,7 @@ public class ReportingApprovalsCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requireSuperAdmin();
         return approvals.approvals(limit);
     }
 
@@ -44,6 +46,7 @@ public class ReportingApprovalsCompatibilityController {
             @PathVariable String action,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "reporting:read");
+        TenantScope.requireSuperAdmin();
         try {
             return approvals.decide(id, action, request == null ? Map.of() : request);
         } catch (IllegalArgumentException ex) {
