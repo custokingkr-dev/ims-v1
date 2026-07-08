@@ -154,6 +154,17 @@ public class RbacCommandRepository {
         if (!userExists(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
         }
+        // Only operator users may be given operator school assignments — otherwise this endpoint
+        // would grant OPERATIONS role_permissions to an arbitrary user. Check the provisioned
+        // user type (app_users.role), which for operators is always OPERATIONS.
+        boolean isOperator = Boolean.TRUE.equals(jdbc.sql(
+                        "SELECT EXISTS (SELECT 1 FROM identity.app_users WHERE id = :userId AND UPPER(role) = 'OPERATIONS' AND deleted_at IS NULL)")
+                .param("userId", userId)
+                .query(Boolean.class)
+                .single());
+        if (!isOperator) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "user is not an operator");
+        }
         Long roleId = jdbc.sql("SELECT id FROM identity.roles WHERE UPPER(name) = :roleName")
                 .param("roleName", "OPERATIONS")
                 .query(Long.class)

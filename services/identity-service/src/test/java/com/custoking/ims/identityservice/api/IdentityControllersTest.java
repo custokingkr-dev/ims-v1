@@ -233,6 +233,7 @@ class IdentityControllersTest {
                 null,
                 null,
                 List.of("SUPERADMIN"),
-                List.of("USERS_READ"));
+                List.of("USERS_READ"),
+                List.of());
     }
 }
