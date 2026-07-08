@@ -1,5 +1,5 @@
 param(
-    [string]$ProjectId = "custoking-ims",
+    [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
     [string]$TemplatePath = "deploy/gcp/direct-service-smoke-job.template.yaml",
     [string]$OutputPath = "artifacts/direct-service-smoke-job.generated.yaml",

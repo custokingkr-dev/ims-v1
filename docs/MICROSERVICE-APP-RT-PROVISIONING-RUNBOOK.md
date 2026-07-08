@@ -7,7 +7,7 @@ owner + Flyway role. See `docs/superpowers/specs/2026-06-28-app-rt-runtime-role-
 
 1. **Create the secret** (one-time):
    ```
-   <generate a strong value> | gcloud secrets create app-rt-password --data-file=- --project=custoking-ims
+   <generate a strong value> | gcloud secrets create app-rt-password --data-file=- --project=custoking
    ```
    Grant each runtime service account `roles/secretmanager.secretAccessor` on `app-rt-password`
    (same accessors that hold `db-password`).

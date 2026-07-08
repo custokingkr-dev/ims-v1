@@ -1,5 +1,5 @@
 param(
-    [string]$ProjectId = "custoking-ims",
+    [string]$ProjectId = "custoking",
     [string]$BuildId,
     [string]$CommitSha,
     [string]$OutputJson = "cloud-build-evidence.json",

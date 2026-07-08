@@ -2,7 +2,7 @@ param(
     [ValidateSet("staging", "production")]
     [string]$Environment = "production",
     [string]$ArtifactDir = "promotion-artifacts",
-    [string]$ProjectId = "custoking-ims",
+    [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
     [string]$Repository = "custoking",
     [string]$Tag = "latest",

@@ -1,5 +1,5 @@
 param(
-    [string]$ProjectId = "custoking-ims",
+    [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
     [string]$GatewayService = "custoking-api-gateway",
     [string]$RetiredBackendService = "custoking-backend",
