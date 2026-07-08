@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +49,7 @@ public class DimensionProjectionRepository {
     @Transactional
     public void upsertSection(String id, String name, Long schoolId, String classId, String className,
                                boolean active, String teacherName) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.dim_section (
                             id, name, school_id, class_id, class_name, active, teacher_name, updated_at
@@ -77,6 +79,7 @@ public class DimensionProjectionRepository {
     public void upsertStudent(long id, Long schoolId, String admissionNo, String fullName, String rollNo,
                                String classId, String sectionId, String parentContact, String phone,
                                boolean active, java.math.BigDecimal attendancePercent, String fatherName) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.dim_student (
                             id, school_id, admission_no, full_name, roll_no, class_id, section_id,

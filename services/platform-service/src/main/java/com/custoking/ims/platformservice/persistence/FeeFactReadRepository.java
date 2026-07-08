@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class FeeFactReadRepository {
     public void upsertFeeAssignment(String id, Long studentId, Long schoolId, String academicYearId,
                                      Long netPayable, Long paidAmount, Long dueAmount, String status,
                                      OffsetDateTime assignedAt) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.fact_fee_assignment (
                             id, student_id, school_id, academic_year_id, net_payable, paid_amount,
@@ -59,6 +61,7 @@ public class FeeFactReadRepository {
     @Transactional
     public void upsertPayment(String id, String assignmentId, Long schoolId, Long studentId,
                                Long amount, OffsetDateTime paidAt) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.fact_payment (
                             id, assignment_id, school_id, student_id, amount, paid_at, updated_at

@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ public class StudentReviewFactReadRepository {
 
     @Transactional
     public void upsert(String id, Long schoolId, String campaignId, String status) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.fact_student_review_item (
                             id, school_id, campaign_id, status, updated_at
@@ -42,6 +44,7 @@ public class StudentReviewFactReadRepository {
 
     @Transactional
     public void updateCampaignStatus(String campaignId, String status) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         UPDATE reporting.fact_student_review_item
                         SET campaign_status = :status, updated_at = now()
