@@ -424,9 +424,10 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow markDelivered(String id, Long actorId) {
-        // Deliberate cross-school write allowance: an operations user has no home school, so grant
-        // the same transaction-local RLS bypass used for the all-orders read (superadmin already
-        // bypasses session-wide). This is the one operator write we intentionally allow cross-school.
+        // Operations users have no home school; set the transaction-local operator-school scope
+        // (the same GUC used for the orders read) so RLS bounds this write to the operator's
+        // assigned schools (superadmin still bypasses session-wide). The controller additionally
+        // 403s an out-of-set order before reaching here (belt-and-suspenders with the WITH CHECK).
         allowCrossSchoolReadForOperations();
         CatalogOrderRow current = requiredOrder(id);
         if (!"APPROVED".equalsIgnoreCase(current.status())) {
