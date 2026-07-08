@@ -587,6 +587,38 @@ public class TimetableRepository {
         return result;
     }
 
+    // Bulk upsert: loops the same per-row validation/write as upsertEntry (break-period check,
+    // subject-master check, year-locked check) so "same every day" / "copy day -> all" fire one
+    // call instead of N single upserts. One invalid/locked row aborts the whole batch — the
+    // surrounding @Transactional rolls back everything written so far in this call.
+    @Transactional
+    public Map<String, Object> upsertEntries(Long schoolId, String sectionId, List<Map<String, Object>> entries) {
+        for (Map<String, Object> row : entries) {
+            String day = String.valueOf(row.get("day"));
+            long periodId = numberValue(row.get("periodId"), "periodId is required");
+            String subjectName = String.valueOf(row.get("subjectName"));
+            Object teacherRaw = row.get("teacherId");
+            Long teacherId = teacherRaw == null ? null : numberValue(teacherRaw, "teacherId is invalid");
+            upsertEntry(schoolId, sectionId, day, periodId, subjectName, teacherId);
+        }
+        String year = activeYearId(schoolId);
+        return timetable(schoolId, sectionId, year);
+    }
+
+    private long numberValue(Object value, String errorMessage) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value != null) {
+            try {
+                return Long.parseLong(String.valueOf(value).trim());
+            } catch (NumberFormatException ignored) {
+                // fall through to IllegalArgumentException below
+            }
+        }
+        throw new IllegalArgumentException(errorMessage);
+    }
+
     @Transactional
     public void deleteEntry(Long schoolId, String sectionId, String day, long periodId) {
         String year = activeYearId(schoolId);

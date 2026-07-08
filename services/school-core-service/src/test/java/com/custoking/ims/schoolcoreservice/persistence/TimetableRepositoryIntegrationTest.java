@@ -303,4 +303,54 @@ class TimetableRepositoryIntegrationTest {
         assertThatThrownBy(() -> repo.upsertEntry(schoolId, sec, "Mon", teachPid, "Chemistry", teacher))
             .isInstanceOf(IllegalArgumentException.class);            // subject not in master
     }
+
+    @Test
+    void upsertEntriesBulkUpsertsAllRowsAndReturnsRefreshedGrid() throws Exception {
+        long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
+        String sec = seedSection(schoolId, classId, "6-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, schedId);
+        repo.addSubject(schoolId, classId, year, "Math");
+        long teacher = seedStaff(schoolId, "AB");
+
+        List<Map<String, Object>> entries = List.of(
+                Map.of("day", "Mon", "periodId", pid, "subjectName", "Math"),
+                Map.of("day", "Tue", "periodId", pid, "subjectName", "Math"),
+                Map.of("day", "Wed", "periodId", pid, "subjectName", "Math", "teacherId", teacher));
+
+        var grid = repo.upsertEntries(schoolId, sec, entries);
+
+        assertThat((List<?>) grid.get("entries")).hasSize(3);
+        assertThat((List<?>) repo.timetable(schoolId, sec, year).get("entries")).hasSize(3);
+    }
+
+    @Test
+    void upsertEntriesBulkAbortsWholeBatchWhenOneRowInvalid() throws Exception {
+        long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
+        String sec = seedSection(schoolId, classId, "6-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, schedId);
+        repo.addSubject(schoolId, classId, year, "Math");
+
+        List<Map<String, Object>> entries = List.of(
+                Map.of("day", "Mon", "periodId", pid, "subjectName", "Math"),
+                Map.of("day", "Tue", "periodId", pid, "subjectName", "Chemistry")); // not in master
+
+        // The second row is invalid (subject not in the class's subject master) and must abort
+        // the whole call with the same exception the controller maps to 400. Note: true
+        // cross-row rollback is provided by Spring's @Transactional proxy in the running
+        // application; this repository-level test (built via `new TimetableRepository(jdbc)`,
+        // no Spring context/AOP proxy) can only assert that the invalid row still fails loudly
+        // rather than being silently skipped.
+        assertThatThrownBy(() -> repo.upsertEntries(schoolId, sec, entries))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
 }
