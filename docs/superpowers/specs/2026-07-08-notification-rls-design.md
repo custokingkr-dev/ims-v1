@@ -11,7 +11,7 @@ Add RLS to the notification tables that carry `school_id`. platform-service alre
 |---|---|---|---|
 | `notification_broadcasts` | yes (nullable) | **standard policy** | superadmin-only writes (always bypass); harmless/defense-in-depth |
 | `notification_logs` | yes (nullable) | **standard policy** | **needs `ProjectorRls.allow(jdbc)` bypass** in the writer — see below |
-| `notification_sender_profiles` | yes (nullable) | **standard policy** | request-scoped via `resolveSchoolId` (context always matches) — no bypass |
+|  ~~`notification_sender_profiles`~~ (EXCLUDED — read context-less by MSG91 delivery worker) | yes (nullable) | **standard policy** | request-scoped via `resolveSchoolId` (context always matches) — no bypass |
 | `whatsapp_onboarding_sessions` | yes (NOT NULL) | **standard policy** | request-scoped — no bypass |
 | `notification_delivery_logs` | no (broadcast_id only) | exclude | — |
 | `notification_inbox_events`, `notification_delivery_attempts` | no | exclude | — |

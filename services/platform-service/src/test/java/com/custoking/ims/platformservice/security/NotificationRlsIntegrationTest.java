@@ -69,12 +69,6 @@ class NotificationRlsIntegrationTest {
                     "(id, school_id, channel, notification_type) VALUES " +
                     "('log-a1', 10, 'SMS', 'FEE'), ('log-a2', 10, 'SMS', 'FEE'), ('log-b1', 20, 'SMS', 'FEE')");
 
-            st.execute("INSERT INTO notification.notification_sender_profiles " +
-                    "(id, school_id, profile_name, active) VALUES " +
-                    "('c0000000-0000-0000-0000-000000000001', 10, 'A1', true)," +
-                    "('c0000000-0000-0000-0000-000000000002', 10, 'A2', false)," +
-                    "('c0000000-0000-0000-0000-000000000003', 20, 'B1', true)");
-
             st.execute("INSERT INTO notification.whatsapp_onboarding_sessions " +
                     "(id, school_id) VALUES " +
                     "('d0000000-0000-0000-0000-000000000001', 10)," +
@@ -127,7 +121,7 @@ class NotificationRlsIntegrationTest {
         }
     }
 
-    // --- (1) isolation reads, all 4 tables ---
+    // --- (1) isolation reads (broadcasts, logs, whatsapp_onboarding_sessions) ---
 
     @Test
     void notificationBroadcasts_schoolA_seesOnlyItsRows() throws Exception {
@@ -166,18 +160,6 @@ class NotificationRlsIntegrationTest {
     }
 
     @Test
-    void senderProfiles_isolation() throws Exception {
-        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
-        assertEquals(2, count("notification_sender_profiles", "c0000000"));
-        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
-        assertEquals(1, count("notification_sender_profiles", "c0000000"));
-        TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
-        assertEquals(3, count("notification_sender_profiles", "c0000000"));
-        TenantContext.clear();
-        assertEquals(0, count("notification_sender_profiles", "c0000000"));
-    }
-
-    @Test
     void whatsappOnboardingSessions_isolation() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
         assertEquals(2, count("whatsapp_onboarding_sessions", "d0000000"));
@@ -189,7 +171,7 @@ class NotificationRlsIntegrationTest {
         assertEquals(0, count("whatsapp_onboarding_sessions", "d0000000"));
     }
 
-    // --- (2) WITH CHECK blocks cross-tenant raw insert on all 4 standard-policy tables ---
+    // --- (2) WITH CHECK blocks cross-tenant raw insert on the standard-policy tables ---
 
     @Test
     void withCheck_blocksCrossTenantInsert_notificationBroadcasts() throws Exception {
@@ -211,18 +193,6 @@ class NotificationRlsIntegrationTest {
                     "INSERT INTO notification.notification_logs " +
                     "(id, school_id, channel, notification_type) VALUES " +
                     "('mallory-log', 20, 'SMS', 'FEE')"));
-            assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
-        }
-    }
-
-    @Test
-    void withCheck_blocksCrossTenantInsert_senderProfiles() throws Exception {
-        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
-        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
-            SQLException ex = assertThrows(SQLException.class, () -> st.execute(
-                    "INSERT INTO notification.notification_sender_profiles " +
-                    "(id, school_id, profile_name, active) VALUES " +
-                    "('e0000000-0000-0000-0000-000000000002', 20, 'Mallory', false)"));
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
         }
     }
