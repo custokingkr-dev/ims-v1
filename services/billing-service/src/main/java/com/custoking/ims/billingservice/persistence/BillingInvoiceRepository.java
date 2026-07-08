@@ -420,7 +420,7 @@ public class BillingInvoiceRepository {
                 .param("id", SEQUENCE_ID)
                 .query(Long.class)
                 .single();
-        return "INV-2025-0" + next;
+        return "INV-" + java.time.Year.now().getValue() + "-0" + next;
     }
 
     private CustomerRow customerById(Long id) {
