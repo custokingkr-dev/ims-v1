@@ -1,5 +1,6 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
@@ -19,6 +20,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -32,9 +34,10 @@ class RbacAuthorizationTest {
 
     private final RbacReadRepository reads = mock(RbacReadRepository.class);
     private final RbacCommandRepository commands = mock(RbacCommandRepository.class);
+    private final TenantSchoolClient schoolClient = mock(TenantSchoolClient.class);
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new RbacReadController(reads, commands, VALID_TOKEN))
+            .standaloneSetup(new RbacReadController(reads, commands, schoolClient, VALID_TOKEN))
             .addFilters(new TenantContextFilter())
             .build();
 
@@ -178,6 +181,59 @@ class RbacAuthorizationTest {
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
         verify(reads).audit(any(), any(), anyInt());
+    }
+
+    // ---- operator-schools (sync) ----
+
+    @Test
+    void syncOperatorSchools_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(post("/api/v1/rbac/users/9/operator-schools")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolIds\":[1,2]}"))
+                .andExpect(status().isForbidden());
+        verify(commands, never()).syncOperatorSchools(anyLong(), any(), any());
+    }
+
+    @Test
+    void syncOperatorSchools_superadmin_isAllowed() throws Exception {
+        when(commands.syncOperatorSchools(anyLong(), any(), any())).thenReturn(Map.of("userId", 9L, "schoolIds", List.of(1L, 2L)));
+        mvc.perform(post("/api/v1/rbac/users/9/operator-schools")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolIds\":[1,2]}"))
+                .andExpect(status().isOk());
+        verify(commands).syncOperatorSchools(eq(9L), eq(List.of(1L, 2L)), any());
+    }
+
+    // ---- operator-schools (read) ----
+
+    @Test
+    void operatorSchools_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/users/9/operator-schools")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).operatorSchoolIds(anyLong());
+    }
+
+    @Test
+    void operatorSchools_superadmin_isAllowed() throws Exception {
+        when(reads.operatorSchoolIds(9L)).thenReturn(List.of(1L, 2L));
+        when(schoolClient.school(1L)).thenReturn(new TenantSchoolClient.TenantSchoolRef(1L, "School One"));
+        when(schoolClient.school(2L)).thenReturn(new TenantSchoolClient.TenantSchoolRef(2L, "School Two"));
+        mvc.perform(get("/api/v1/rbac/users/9/operator-schools")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].schoolId").value(1))
+                .andExpect(jsonPath("$[0].schoolName").value("School One"))
+                .andExpect(jsonPath("$[1].schoolId").value(2));
+        verify(reads).operatorSchoolIds(9L);
     }
 
     // ---- roles (untouched read) — proves the guard is narrow ----

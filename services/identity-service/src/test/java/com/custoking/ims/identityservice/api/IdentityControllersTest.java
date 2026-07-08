@@ -7,6 +7,7 @@ import com.custoking.ims.identityservice.application.IdentityAuthService.AuthRes
 import com.custoking.ims.identityservice.application.IdentityAuthService.IntrospectionResponse;
 import com.custoking.ims.identityservice.application.IdentityAuthService.LoginRequest;
 import com.custoking.ims.identityservice.application.IdentityAuthService.LoginResult;
+import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import com.custoking.ims.identityservice.persistence.IdentityUserProvisioningRepository;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
@@ -116,7 +117,7 @@ class IdentityControllersTest {
     @Test
     void rbacRolesRejectsInvalidTokenBeforeQuerying() {
         RbacReadRepository rbac = mock(RbacReadRepository.class);
-        RbacReadController controller = new RbacReadController(rbac, mock(RbacCommandRepository.class), "identity-token");
+        RbacReadController controller = new RbacReadController(rbac, mock(RbacCommandRepository.class), mock(TenantSchoolClient.class), "identity-token");
 
         assertThatThrownBy(() -> controller.roles("wrong-token"))
                 .isInstanceOf(ResponseStatusException.class)
@@ -130,7 +131,7 @@ class IdentityControllersTest {
     void rbacUserPermissionsDelegatesFilters() {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         RbacReadRepository rbac = mock(RbacReadRepository.class);
-        RbacReadController controller = new RbacReadController(rbac, mock(RbacCommandRepository.class), "identity-token");
+        RbacReadController controller = new RbacReadController(rbac, mock(RbacCommandRepository.class), mock(TenantSchoolClient.class), "identity-token");
         when(rbac.effectivePermissions(9L, 4L, 2L)).thenReturn(List.of("STUDENTS_READ"));
 
         Object response = controller.userPermissions("identity-token", 9L, 4L, 2L);
@@ -143,7 +144,7 @@ class IdentityControllersTest {
     void rbacAssignSchoolRoleDelegatesBody() {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         RbacCommandRepository commands = mock(RbacCommandRepository.class);
-        RbacReadController controller = new RbacReadController(mock(RbacReadRepository.class), commands, "identity-token");
+        RbacReadController controller = new RbacReadController(mock(RbacReadRepository.class), commands, mock(TenantSchoolClient.class), "identity-token");
         Map<String, Object> result = Map.of("id", 44L);
         when(commands.assignSchoolRole(eq(9L), anyMap())).thenReturn(result);
 

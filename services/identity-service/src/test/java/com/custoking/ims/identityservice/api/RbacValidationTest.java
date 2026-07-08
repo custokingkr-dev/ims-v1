@@ -1,5 +1,6 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
@@ -38,7 +39,8 @@ class RbacValidationTest {
         TenantContext.set(new TenantContext(1L, "sa@custoking.com", "SUPERADMIN", null, null));
         commands = mock(RbacCommandRepository.class);
         RbacReadRepository reads = mock(RbacReadRepository.class);
-        RbacReadController controller = new RbacReadController(reads, commands, VALID_TOKEN);
+        TenantSchoolClient schoolClient = mock(TenantSchoolClient.class);
+        RbacReadController controller = new RbacReadController(reads, commands, schoolClient, VALID_TOKEN);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();

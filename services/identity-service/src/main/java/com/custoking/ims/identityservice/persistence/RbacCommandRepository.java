@@ -149,6 +149,67 @@ public class RbacCommandRepository {
         }
     }
 
+    @Transactional
+    public Map<String, Object> syncOperatorSchools(Long userId, List<Long> schoolIds, Long actorId) {
+        if (!userExists(userId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
+        }
+        Long roleId = jdbc.sql("SELECT id FROM identity.roles WHERE UPPER(name) = :roleName")
+                .param("roleName", "OPERATIONS")
+                .query(Long.class)
+                .optional()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown role"));
+
+        java.util.LinkedHashSet<Long> target = new java.util.LinkedHashSet<>();
+        if (schoolIds != null) {
+            for (Long schoolId : schoolIds) {
+                if (schoolId != null) target.add(schoolId);
+            }
+        }
+
+        List<Long> currentSchoolIds = jdbc.sql("""
+                        SELECT school_id
+                        FROM identity.user_role_assignments
+                        WHERE user_id = :userId
+                          AND role_id = :roleId
+                          AND active = true
+                          AND revoked_at IS NULL
+                          AND school_id IS NOT NULL
+                        """)
+                .param("userId", userId)
+                .param("roleId", roleId)
+                .query(Long.class)
+                .list();
+        java.util.LinkedHashSet<Long> current = new java.util.LinkedHashSet<>(currentSchoolIds);
+
+        for (Long schoolId : target) {
+            if (!current.contains(schoolId)) {
+                assignScopedRole(userId, "OPERATIONS", schoolId, null, actorId);
+            }
+        }
+        for (Long schoolId : current) {
+            if (!target.contains(schoolId)) {
+                jdbc.sql("""
+                                UPDATE identity.user_role_assignments
+                                SET active = false, revoked_at = now(), revoked_by = :actorId
+                                WHERE user_id = :userId AND role_id = :roleId AND school_id = :schoolId
+                                  AND active = true AND revoked_at IS NULL
+                                """)
+                        .param("userId", userId)
+                        .param("roleId", roleId)
+                        .param("schoolId", schoolId)
+                        .param("actorId", actorId)
+                        .update();
+                logAudit("ROLE_REVOKED", actorId, userId, roleId, "OPERATIONS", schoolId, null);
+            }
+        }
+
+        Map<String, Object> view = new LinkedHashMap<>();
+        view.put("userId", userId);
+        view.put("schoolIds", new java.util.ArrayList<>(target));
+        return view;
+    }
+
     private boolean userExists(Long userId) {
         return Boolean.TRUE.equals(jdbc.sql("SELECT EXISTS (SELECT 1 FROM identity.app_users WHERE id = :userId AND deleted_at IS NULL)")
                 .param("userId", userId)

@@ -54,6 +54,27 @@ class JwtServiceTest {
     }
 
     @Test
+    void accessTokenCarriesOpsSchoolsClaimForOperator() {
+        JwtService jwt = new JwtService("0123456789012345678901234567890123456789", 900000, 604800000);
+        AuthenticatedUserSnapshot user = new AuthenticatedUserSnapshot(
+                7L, "Ann", "ann@x", "OPERATIONS", null, null, null, null);
+        String token = jwt.generateAccessToken(user, java.util.List.of("firefighting:read"), java.util.List.of(10L, 20L));
+        Claims claims = jwt.claims(token);
+        assertEquals(3, ((Number) claims.get("ver")).intValue());
+        assertEquals(java.util.List.of(10, 20), claims.get("ops_schools", java.util.List.class));
+    }
+
+    @Test
+    void accessTokenTwoArgOverloadDelegatesWithEmptyOpsSchools() {
+        JwtService jwt = new JwtService("0123456789012345678901234567890123456789", 900000, 604800000);
+        AuthenticatedUserSnapshot user = new AuthenticatedUserSnapshot(
+                7L, "Ann", "ann@x", "ADMIN", 10L, "Br", null, null);
+        String token = jwt.generateAccessToken(user, java.util.List.of("firefighting:approve"));
+        Claims claims = jwt.claims(token);
+        assertEquals(java.util.List.of(), claims.get("ops_schools", java.util.List.class));
+    }
+
+    @Test
     void refreshTokenIsUnchanged() {
         String token = jwtService.generateRefreshToken(user(42L, "ADMIN", 7L, 3L));
         Claims claims = jwtService.claims(token);

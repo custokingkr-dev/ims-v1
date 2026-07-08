@@ -92,6 +92,7 @@ class IdentityAuthServiceRotationTest {
     private void stubTokenGeneration(AppUserEntity user) {
         when(jwtService.generateAccessToken(any())).thenReturn("new-access-token");
         when(jwtService.generateAccessToken(any(), any())).thenReturn("new-access-token");
+        when(jwtService.generateAccessToken(any(), any(), any())).thenReturn("new-access-token");
         when(jwtService.generateRefreshToken(any())).thenReturn("new-refresh-token");
         when(jwtService.extractExpiration("new-refresh-token"))
                 .thenReturn(new Date(System.currentTimeMillis() + 3_600_000));
