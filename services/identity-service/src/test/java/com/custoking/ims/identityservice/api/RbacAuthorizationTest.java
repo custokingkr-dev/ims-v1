@@ -136,6 +136,28 @@ class RbacAuthorizationTest {
         verify(reads).userAssignments(any(), any(), anyInt());
     }
 
+    // ---- users/{id}/roles (same unscoped cross-school assignments as user-role-assignments) ----
+
+    @Test
+    void userRoles_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/users/42/roles")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).userAssignments(any(), any(), anyInt());
+    }
+
+    @Test
+    void userRoles_superadmin_isAllowed() throws Exception {
+        when(reads.userAssignments(any(), any(), anyInt())).thenReturn(List.of());
+        mvc.perform(get("/api/v1/rbac/users/42/roles")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(reads).userAssignments(any(), any(), anyInt());
+    }
+
     // ---- audit (cross-school read) ----
 
     @Test

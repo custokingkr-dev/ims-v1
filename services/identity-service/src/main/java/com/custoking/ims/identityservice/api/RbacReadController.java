@@ -83,6 +83,10 @@ public class RbacReadController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        // Same unscoped cross-school assignments as GET /user-role-assignments (both call
+        // rbac.userAssignments); gate identically so enumerating userIds can't reconstruct
+        // another school's role assignments. Per-user permissions read below IS school-scoped.
+        TenantScope.requireSuperAdmin();
         return rbac.userAssignments(userId, active, limit);
     }
 
