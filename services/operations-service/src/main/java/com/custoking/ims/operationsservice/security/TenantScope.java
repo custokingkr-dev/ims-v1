@@ -37,7 +37,10 @@ public final class TenantScope {
     public static void requirePermission(String code) {
         TenantContext ctx = TenantContext.get();
         if (ctx.isSuperAdmin()) return;                       // superadmin bypass
-        if (ctx.permissions().isEmpty()) return;              // transitional: pre-ver-3 token, no header
+        // Fail closed: a non-superadmin without the permission is denied, whether the
+        // permission set is empty (no/absent header, or a genuinely permission-less user)
+        // or simply lacks the code. Note: non-superadmin approvers holding a pre-ver-3 token
+        // (no perms claim) are denied until their access token refreshes (<=15 min post-deploy).
         if (!ctx.hasPermission(code)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "You do not have permission to approve firefighting requests");

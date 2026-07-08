@@ -299,7 +299,8 @@ class FirefightingValidationTest {
     void approveBursar_noBody_callsRepoWithEmptyMap() throws Exception {
         when(repo.approveBursar(anyString(), anyMap())).thenReturn(Map.of("code", "FF-001", "status", "AWAITING_PRINCIPAL"));
         mvc.perform(post("/api/v1/ff/requests/FF-001/approve-bursar")
-                        .header("X-Firefighting-Service-Token", VALID_TOKEN))
+                        .header("X-Firefighting-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Permissions", "firefighting:approve"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(repo).approveBursar(eq("FF-001"), captor.capture());
@@ -314,6 +315,7 @@ class FirefightingValidationTest {
         when(repo.approvePrincipal(anyString(), anyMap())).thenReturn(Map.of("code", "FF-001", "status", "APPROVED"));
         mvc.perform(post("/api/v1/ff/requests/FF-001/approve-principal")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Permissions", "firefighting:approve")
                         .contentType("application/json")
                         .content("{\"selectedQuotationId\":\"q-abc-123\",\"note\":\"Approved by principal\"}"))
                 .andExpect(status().isOk());
@@ -344,6 +346,7 @@ class FirefightingValidationTest {
         when(repo.reject(anyString(), anyMap())).thenReturn(Map.of("code", "FF-001", "status", "REJECTED"));
         mvc.perform(post("/api/v1/ff/requests/FF-001/reject")
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Permissions", "firefighting:approve")
                         .contentType("application/json")
                         .content("{\"reason\":\"Not urgent enough\"}"))
                 .andExpect(status().isOk());

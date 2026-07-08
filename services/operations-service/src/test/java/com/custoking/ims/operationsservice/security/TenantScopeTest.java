@@ -72,8 +72,11 @@ class TenantScopeTest {
     }
 
     @Test
-    void requirePermission_allowsWhenSetEmpty_transitional() {
+    void requirePermission_403WhenSetEmpty_failClosed() {
+        // Fail closed: a non-superadmin with no permissions (empty/absent header) is denied.
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null, java.util.Set.of()));
-        assertDoesNotThrow(() -> TenantScope.requirePermission("firefighting:approve"));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> TenantScope.requirePermission("firefighting:approve"));
+        assertEquals(HttpStatus.FORBIDDEN, ex.getStatusCode());
     }
 }
