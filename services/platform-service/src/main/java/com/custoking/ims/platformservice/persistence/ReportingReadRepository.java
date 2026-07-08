@@ -750,13 +750,14 @@ public class ReportingReadRepository {
                 FROM reporting.fact_payment
                 WHERE school_id = :schoolId
                 """, schoolId);
-        long overdueCount = count("""
+        String yearId = activeAcademicYearId();
+        long overdueCount = yearId == null ? 0L : count("""
                 SELECT count(*)
                 FROM reporting.fact_fee_assignment
-                WHERE academic_year_id = 'ay_2025_26'
+                WHERE academic_year_id = :yearId
                   AND school_id = :schoolId
                   AND net_payable > paid_amount
-                """, schoolId);
+                """, yearId, schoolId);
         long openFF = count("""
                 SELECT count(*)
                 FROM reporting.fact_firefighting_request
@@ -776,13 +777,13 @@ public class ReportingReadRepository {
                   AND status IN ('SUBMITTED', 'AWAITING_APPROVAL', 'IN_TRANSIT',
                                  'AWAITING_DESIGN_APPROVAL', 'DESIGN_APPROVED', 'PROCESSING')
                 """, schoolId);
-        long attendanceSections = count("""
+        long attendanceSections = yearId == null ? 0L : count("""
                 SELECT count(*)
                 FROM reporting.fact_attendance_daily
                 WHERE attendance_date = CURRENT_DATE
-                  AND academic_year_id = 'ay_2025_26'
+                  AND academic_year_id = :yearId
                   AND school_id = :schoolId
-                """, schoolId);
+                """, yearId, schoolId);
         List<Map<String, Object>> kpis = List.of(
                 kpi("fees_collected", "Fees Collected", formatLakh(feesPaid), overdueCount + " students overdue",
                         overdueCount > 20 ? "warning" : "success", "fees", "collected"),
