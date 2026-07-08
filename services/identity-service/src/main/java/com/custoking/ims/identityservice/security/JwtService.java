@@ -38,6 +38,11 @@ public class JwtService {
     }
 
     public String generateAccessToken(AuthenticatedUserSnapshot user, java.util.List<String> permissions) {
+        return generateAccessToken(user, permissions, java.util.List.of());
+    }
+
+    public String generateAccessToken(AuthenticatedUserSnapshot user, java.util.List<String> permissions,
+                                       java.util.List<Long> opsSchools) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", user.role());
         claims.put("uid", user.id());
@@ -49,6 +54,7 @@ public class JwtService {
         }
         claims.put("perms", permissions == null ? java.util.List.of() : permissions);
         claims.put("ver", 3);
+        claims.put("ops_schools", opsSchools == null ? java.util.List.of() : opsSchools);
         return token(user.email(), claims, expirationMs);
     }
 

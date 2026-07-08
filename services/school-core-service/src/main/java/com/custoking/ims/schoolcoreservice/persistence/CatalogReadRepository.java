@@ -424,9 +424,10 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow markDelivered(String id, Long actorId) {
-        // Deliberate cross-school write allowance: an operations user has no home school, so grant
-        // the same transaction-local RLS bypass used for the all-orders read (superadmin already
-        // bypasses session-wide). This is the one operator write we intentionally allow cross-school.
+        // Operations users have no home school; set the transaction-local operator-school scope
+        // (the same GUC used for the orders read) so RLS bounds this write to the operator's
+        // assigned schools (superadmin still bypasses session-wide). The controller additionally
+        // 403s an out-of-set order before reaching here (belt-and-suspenders with the WITH CHECK).
         allowCrossSchoolReadForOperations();
         CatalogOrderRow current = requiredOrder(id);
         if (!"APPROVED".equalsIgnoreCase(current.status())) {
@@ -556,13 +557,37 @@ public class CatalogReadRepository {
     }
 
     /**
-     * Operations users are cross-school for the orders read; grant a transaction-local RLS bypass
-     * (superadmin already bypasses session-level). MUST be called inside a @Transactional read.
+     * Operations users have no home school, so their read scope is the superadmin-assigned
+     * operator school set rather than a full RLS bypass (superadmin already bypasses
+     * session-level via app.bypass_rls). Sets app.operator_schools transaction-locally so the
+     * catalog RLS policies' third disjunct admits exactly that set — an empty set resolves to an
+     * empty string, which the policy's nullif(...,'') guard turns into ANY(NULL) (false), so an
+     * operator with no assigned schools sees nothing (fail closed). MUST be called inside a
+     * @Transactional read.
      */
     private void allowCrossSchoolReadForOperations() {
-        if (TenantContext.get().isOperations()) {
-            jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isOperations()) {
+            String csv = String.join(",", ctx.operatorSchools().stream().map(String::valueOf).toList());
+            jdbc.sql("SELECT set_config('app.operator_schools', :csv, true)").param("csv", csv)
+                    .query(String.class).single();
         }
+    }
+
+    /**
+     * Resolves an order's actual school_id regardless of the caller's tenant/operator scope, for
+     * use as an explicit authorization check (belt-and-suspenders alongside the RLS WITH CHECK on
+     * the write itself) — e.g. so an operations caller marking an out-of-scope order delivered
+     * gets an explicit 403 rather than a bare "not found". Read-only; does not return any other
+     * order data cross-school.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Long> orderSchoolId(String id) {
+        jdbc.sql("SELECT set_config('app.bypass_rls', 'on', true)").query(String.class).single();
+        return jdbc.sql("SELECT school_id FROM catalog.catalog_orders WHERE id = :id")
+                .param("id", id)
+                .query(Long.class)
+                .optional();
     }
 
     private CatalogOrderRow requiredOrder(String id) {

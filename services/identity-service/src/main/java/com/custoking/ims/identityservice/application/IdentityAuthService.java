@@ -133,7 +133,10 @@ public class IdentityAuthService {
         AuthenticatedUserSnapshot snapshot = snapshot(user);
         List<String> permissions = new ArrayList<>(rbac.permissionCodes(user.getId()));
         permissions.sort(String::compareTo);
-        String accessToken = jwtService.generateAccessToken(snapshot, permissions);
+        List<Long> opsSchools = "OPERATIONS".equalsIgnoreCase(user.getRole())
+                ? rbac.operatorSchoolIds(user.getId())
+                : List.of();
+        String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
         session.setId(UUID.randomUUID().toString());

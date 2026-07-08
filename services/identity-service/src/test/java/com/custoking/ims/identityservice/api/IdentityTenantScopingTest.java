@@ -1,5 +1,6 @@
 package com.custoking.ims.identityservice.api;
 
+import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.UserDirectoryReadRepository;
@@ -29,7 +30,7 @@ class IdentityTenantScopingTest {
             .build();
 
     private final MockMvc rbacMvc = MockMvcBuilders
-            .standaloneSetup(new RbacReadController(rbac, mock(RbacCommandRepository.class), "tok"))
+            .standaloneSetup(new RbacReadController(rbac, mock(RbacCommandRepository.class), mock(TenantSchoolClient.class), "tok"))
             .addFilters(new TenantContextFilter())
             .build();
 

@@ -92,6 +92,25 @@ public class RbacReadRepository {
         return spec.query(String.class).list();
     }
 
+    public List<Long> operatorSchoolIds(Long userId) {
+        return jdbc.sql("""
+                SELECT DISTINCT ura.school_id
+                FROM identity.user_role_assignments ura
+                JOIN identity.roles r ON r.id = ura.role_id
+                WHERE ura.user_id = :userId
+                  AND ura.active = true
+                  AND ura.revoked_at IS NULL
+                  AND ura.school_id IS NOT NULL
+                  AND (ura.valid_from IS NULL OR ura.valid_from <= now())
+                  AND (ura.valid_until IS NULL OR ura.valid_until >= now())
+                  AND UPPER(r.name) = 'OPERATIONS'
+                ORDER BY ura.school_id
+                """)
+                .param("userId", userId)
+                .query(Long.class)
+                .list();
+    }
+
     public List<RbacAuditRow> audit(Long actorUserId, Long targetUserId, int limit) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, event_type, actor_user_id, actor_email, target_user_id, role_id,

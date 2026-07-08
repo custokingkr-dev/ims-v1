@@ -5,6 +5,7 @@ import com.custoking.ims.identityservice.api.dto.AssignSchoolRoleRequest;
 import com.custoking.ims.identityservice.api.dto.AssignZoneRoleRequest;
 import com.custoking.ims.identityservice.api.dto.CreateRoleRequest;
 import com.custoking.ims.identityservice.api.dto.UpdateRoleRequest;
+import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
@@ -25,7 +26,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -34,14 +38,17 @@ public class RbacReadController {
 
     private final RbacReadRepository rbac;
     private final RbacCommandRepository commands;
+    private final TenantSchoolClient schoolClient;
     private final String serviceToken;
 
     public RbacReadController(
             RbacReadRepository rbac,
             RbacCommandRepository commands,
+            TenantSchoolClient schoolClient,
             @Value("${identity.introspection-token:}") String serviceToken) {
         this.rbac = rbac;
         this.commands = commands;
+        this.schoolClient = schoolClient;
         this.serviceToken = serviceToken == null ? "" : serviceToken.trim();
     }
 
@@ -194,6 +201,57 @@ public class RbacReadController {
         Map<String, Object> stamped = body == null ? new HashMap<>() : new HashMap<>(body);
         stamped.put("revokedBy", TenantContext.get().userId());
         commands.revokeAssignment(userId, assignmentId, stamped);
+    }
+
+    @PostMapping("/users/{userId}/operator-schools")
+    public Object syncOperatorSchools(
+            @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
+            @PathVariable Long userId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
+        return commands.syncOperatorSchools(userId, extractSchoolIds(body), TenantContext.get().userId());
+    }
+
+    @GetMapping("/users/{userId}/operator-schools")
+    public Object operatorSchools(
+            @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
+            @PathVariable Long userId) {
+        requireToken(token, "identity:read");
+        TenantScope.requireSuperAdmin();
+        List<Long> schoolIds = rbac.operatorSchoolIds(userId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Long schoolId : schoolIds) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("schoolId", schoolId);
+            try {
+                row.put("schoolName", schoolClient.school(schoolId).name());
+            } catch (RuntimeException ex) {
+                // Best-effort name resolution: the tenant-school service may be unreachable/
+                // unconfigured or the school may since have been removed. The FE can hydrate
+                // the display name itself from schoolId alone in that case.
+            }
+            result.add(row);
+        }
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Long> extractSchoolIds(Map<String, Object> body) {
+        Object value = body == null ? null : body.get("schoolIds");
+        if (value == null) return List.of();
+        if (value instanceof List<?> list) {
+            List<Long> ids = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Number number) {
+                    ids.add(number.longValue());
+                } else if (item != null) {
+                    ids.add(Long.parseLong(item.toString()));
+                }
+            }
+            return ids;
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolIds must be a list");
     }
 
     private Long resolveZoneId(Long requested) {

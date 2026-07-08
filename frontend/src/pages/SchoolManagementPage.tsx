@@ -20,6 +20,24 @@ type ModuleEntitlement = {
   enabled: boolean;
 };
 
+type OperatorAssignmentRow = {
+  userId: number;
+  schoolId: number | null;
+  roleName: string;
+  active: boolean;
+};
+
+type OperatorSchoolRow = {
+  schoolId: number;
+  schoolName?: string;
+};
+
+type AssignTarget = {
+  userId: number;
+  email: string;
+  schoolName: string;
+};
+
 const defaultSchoolForm = {
   name: '',
   shortCode: '',
@@ -70,6 +88,15 @@ export default function SchoolManagementPage() {
   const [currentEntitlements, setCurrentEntitlements] = useState<Record<string, boolean>>({});
   const [modulesLoading, setModulesLoading] = useState(false);
 
+  // Maps schoolId -> the userId of that school's currently-active OPERATIONS user.
+  // Resolved from GET /rbac/user-role-assignments (superadmin-only) since the /schools
+  // list itself does not surface the operator's userId, only its display email.
+  const [operatorUserIdBySchool, setOperatorUserIdBySchool] = useState<Record<number, number>>({});
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assignTarget, setAssignTarget] = useState<AssignTarget | null>(null);
+  const [assignSelectedSchoolIds, setAssignSelectedSchoolIds] = useState<Set<number>>(new Set());
+  const [assignLoading, setAssignLoading] = useState(false);
+
   const activeCount = useMemo(() => schools.filter((school) => school.active).length, [schools]);
 
   const loadSchools = async () => {
@@ -85,9 +112,31 @@ export default function SchoolManagementPage() {
     }
   };
 
+  // Best-effort resolution of each school's active OPERATIONS user id, so the
+  // "Assign schools" action knows which operator to sync. Non-critical: if this
+  // call fails (or the caller lacks superadmin scope) the table still renders,
+  // the Assign action just won't appear for affected rows.
+  const loadOperatorAssignments = async () => {
+    try {
+      const res = await api.get<OperatorAssignmentRow[]>('/rbac/user-role-assignments', {
+        params: { active: true, limit: 500 },
+      });
+      const map: Record<number, number> = {};
+      for (const row of res.data || []) {
+        if (row.schoolId != null && row.active && (row.roleName || '').toUpperCase() === 'OPERATIONS') {
+          map[row.schoolId] = row.userId;
+        }
+      }
+      setOperatorUserIdBySchool(map);
+    } catch {
+      // Swallow: see comment above.
+    }
+  };
+
   useEffect(() => {
     if (can('school:read')) {
       loadSchools();
+      loadOperatorAssignments();
     }
   }, []);
 
@@ -189,13 +238,72 @@ export default function SchoolManagementPage() {
     try {
       setSaving(true);
       setError('');
-      await api.post(`/schools/${selectedSchool.id}/operations-user`, opsForm);
+      const schoolId = selectedSchool.id;
+      const res = await api.post<{ userId?: number }>(`/schools/${schoolId}/operations-user`, opsForm);
+      const newOperatorUserId = res.data?.userId;
+      if (newOperatorUserId) {
+        // Provisioning response already carries the operator's userId — capture it so
+        // the "Assign schools" action is available immediately, without waiting on a
+        // reload of GET /rbac/user-role-assignments.
+        setOperatorUserIdBySchool((m) => ({ ...m, [schoolId]: newOperatorUserId }));
+      }
       setShowOpsModal(false);
       setSelectedSchool(null);
       setNotice('Operations user created or reset successfully.');
       await loadSchools();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to create or reset operations user.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openAssignModal = async (school: SchoolRow) => {
+    const operatorUserId = operatorUserIdBySchool[school.id];
+    if (!operatorUserId) {
+      setError('No operations user found for this school yet. Create one first.');
+      return;
+    }
+    setError('');
+    setNotice('');
+    setAssignTarget({ userId: operatorUserId, email: school.operationsEmail, schoolName: school.name });
+    setAssignSelectedSchoolIds(new Set());
+    setShowAssignModal(true);
+    setAssignLoading(true);
+    try {
+      const res = await api.get<OperatorSchoolRow[]>(`/rbac/users/${operatorUserId}/operator-schools`);
+      setAssignSelectedSchoolIds(new Set((res.data || []).map((row) => row.schoolId)));
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to load assigned schools.');
+      setShowAssignModal(false);
+      setAssignTarget(null);
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const toggleAssignSchool = (schoolId: number) => {
+    setAssignSelectedSchoolIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(schoolId)) next.delete(schoolId);
+      else next.add(schoolId);
+      return next;
+    });
+  };
+
+  const submitAssign = async () => {
+    if (!assignTarget) return;
+    try {
+      setSaving(true);
+      setError('');
+      await api.post(`/rbac/users/${assignTarget.userId}/operator-schools`, {
+        schoolIds: Array.from(assignSelectedSchoolIds),
+      });
+      setShowAssignModal(false);
+      setNotice(`Assigned schools updated for ${assignTarget.email || 'operator'}.`);
+      setAssignTarget(null);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err?.message || 'Unable to update assigned schools.');
     } finally {
       setSaving(false);
     }
@@ -290,6 +398,11 @@ export default function SchoolManagementPage() {
                     {can('school:update') && (
                       <button className="ck-btn ck-btn-ghost" onClick={() => openOpsModal(school)}>
                         {school.operationsEmail ? 'Reset Ops' : 'Add Ops'}
+                      </button>
+                    )}
+                    {can('school:update') && operatorUserIdBySchool[school.id] && (
+                      <button className="ck-btn ck-btn-ghost" onClick={() => openAssignModal(school)}>
+                        Assign Schools
                       </button>
                     )}
                     {can('school:update') && (
@@ -413,6 +526,60 @@ export default function SchoolManagementPage() {
                 <button type="submit" className="ck-btn ck-btn-g" disabled={saving}>{saving ? 'Saving...' : 'Save Ops User'}</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Assign Schools to Operator Modal ────────────────────────────── */}
+      {showAssignModal && assignTarget && (
+        <div className="ck-modal-bg" onClick={() => !saving && setShowAssignModal(false)}>
+          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="ck-modal-h">
+              <div>
+                <div className="ck-modal-title">Assign schools</div>
+                <div className="section-copy" style={{ marginTop: 6 }}>
+                  Operator: {assignTarget.email || `user #${assignTarget.userId}`}
+                </div>
+              </div>
+              <button type="button" className="ck-modal-x" onClick={() => !saving && setShowAssignModal(false)}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              {assignLoading ? (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280' }}>Loading assigned schools…</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+                    Select which schools this operations user can access. This replaces their
+                    current set of assigned schools.
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, maxHeight: 320, overflowY: 'auto' }}>
+                    {schools.map((school) => (
+                      <label
+                        key={school.id}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: assignSelectedSchoolIds.has(school.id) ? 'var(--g1, #f0fdf4)' : '#fafafa' }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={assignSelectedSchoolIds.has(school.id)}
+                          onChange={() => toggleAssignSchool(school.id)}
+                          style={{ marginTop: 2, accentColor: 'var(--g, #16a34a)' }}
+                        />
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{school.name}</div>
+                          <div style={{ fontSize: 11, color: '#6b7280' }}>{school.shortCode}</div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="ck-modal-foot">
+              <button type="button" className="ck-btn ck-btn-ghost" onClick={() => !saving && setShowAssignModal(false)}>Cancel</button>
+              <button type="button" className="ck-btn ck-btn-g" disabled={saving || assignLoading} onClick={submitAssign}>
+                {saving ? 'Saving…' : 'Save Assignment'}
+              </button>
+            </div>
           </div>
         </div>
       )}
