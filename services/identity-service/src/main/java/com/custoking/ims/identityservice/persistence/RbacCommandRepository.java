@@ -309,8 +309,8 @@ public class RbacCommandRepository {
                               AND role_id = :roleId
                               AND active = true
                               AND revoked_at IS NULL
-                              AND ((:schoolId IS NULL AND school_id IS NULL) OR school_id = :schoolId)
-                              AND ((:zoneId IS NULL AND zone_id IS NULL) OR zone_id = :zoneId)
+                              AND school_id IS NOT DISTINCT FROM :schoolId
+                              AND zone_id IS NOT DISTINCT FROM :zoneId
                               AND (valid_from IS NULL OR valid_from <= now())
                               AND (valid_until IS NULL OR valid_until > now())
                         )
