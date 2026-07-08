@@ -26,7 +26,7 @@ class JwtServiceTest {
         assertEquals(42L, ((Number) claims.get("uid")).longValue());
         assertEquals(7L, ((Number) claims.get("sid")).longValue());
         assertEquals(3L, ((Number) claims.get("zid")).longValue());
-        assertEquals(2, ((Number) claims.get("ver")).intValue());
+        assertEquals(3, ((Number) claims.get("ver")).intValue());
     }
 
     @Test
@@ -34,10 +34,23 @@ class JwtServiceTest {
         String token = jwtService.generateAccessToken(user(1L, "SUPERADMIN", null, null));
         Claims claims = jwtService.claims(token);
 
-        assertEquals(2, ((Number) claims.get("ver")).intValue());
+        assertEquals(3, ((Number) claims.get("ver")).intValue());
         assertEquals(1L, ((Number) claims.get("uid")).longValue());
         assertNull(claims.get("sid"));
         assertNull(claims.get("zid"));
+    }
+
+    @Test
+    void accessTokenCarriesPermissionsAndVer3() {
+        JwtService jwt = new JwtService("0123456789012345678901234567890123456789", 900000, 604800000);
+        AuthenticatedUserSnapshot user = new AuthenticatedUserSnapshot(
+                7L, "Ann", "ann@x", "ADMIN", 10L, "Br", null, null);
+        String token = jwt.generateAccessToken(user, java.util.List.of("firefighting:approve", "firefighting:read"));
+        Claims claims = jwt.claims(token);
+        assertEquals(3, ((Number) claims.get("ver")).intValue());
+        assertEquals(java.util.List.of("firefighting:approve", "firefighting:read"),
+                claims.get("perms", java.util.List.class));
+        assertEquals(7, ((Number) claims.get("uid")).intValue());
     }
 
     @Test

@@ -369,6 +369,7 @@ test('isClientSpoofableHeader flags gateway-only headers', () => {
   assert.equal(isClientSpoofableHeader('x-authenticated-role'), true);
   assert.equal(isClientSpoofableHeader('X-Identity-Service-Token'), true);
   assert.equal(isClientSpoofableHeader('x-billing-service-token'), true);
+  assert.equal(isClientSpoofableHeader('x-authenticated-permissions'), true);
   assert.equal(isClientSpoofableHeader('content-type'), false);
   assert.equal(isClientSpoofableHeader('x-request-id'), false);
 });
@@ -430,7 +431,7 @@ test('verifyJwtLocally rejects a 3-segment token whose payload is not valid JSON
 
 test('principalFromClaims maps an enriched claim set', () => {
   assert.deepEqual(principalFromClaims(enrichedClaims), {
-    userId: 42, email: 'a@b.com', role: 'ADMIN', branchId: 7, zoneId: 3,
+    userId: 42, email: 'a@b.com', role: 'ADMIN', branchId: 7, zoneId: 3, permissions: [],
   });
 });
 
@@ -443,6 +444,16 @@ test('principalFromClaims yields null branchId/zoneId when sid/zid absent', () =
   const p = principalFromClaims({ sub: 's@b.com', role: 'SUPERADMIN', uid: 1, ver: 2 });
   assert.equal(p.branchId, null);
   assert.equal(p.zoneId, null);
+});
+
+test('principalFromClaims exposes permissions for ver>=3', () => {
+  const p = principalFromClaims({ ver: 3, uid: 7, sub: 'a@x', role: 'ADMIN', perms: ['firefighting:approve'] });
+  assert.deepEqual(p.permissions, ['firefighting:approve']);
+});
+
+test('principalFromClaims defaults permissions to [] for ver 2', () => {
+  const p = principalFromClaims({ ver: 2, uid: 7, sub: 'a@x', role: 'ADMIN' });
+  assert.deepEqual(p.permissions, []);
 });
 
 // --- authenticate() dispatch (Task 2.3) ---

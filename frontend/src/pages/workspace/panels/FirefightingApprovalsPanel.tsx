@@ -57,7 +57,7 @@ interface Props {
 
 export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
   const { can } = usePermissions();
-  const canWrite = can('firefighting:write');
+  const canApprove = can('firefighting:approve');
   const [pendingRequests, setPendingRequests] = useState<FirefightingRequest[]>([]);
   const [ffApprovalDetails, setFfApprovalDetails] = useState<FirefightingRequest[]>([]);
   const [ffApprovalLoading, setFfApprovalLoading] = useState(false);
@@ -225,19 +225,19 @@ export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
               </Field>
             </div>
             <div style={{ display: 'flex', gap: 10, padding: '14px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg)', flexWrap: 'wrap' }}>
-              {canWrite && req.status === 'AWAITING_BURSAR' && (
+              {canApprove && req.status === 'AWAITING_BURSAR' && (
                 <>
                   <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req, false)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Finance Review'}</button>
                   <button className="ck-btn" style={{ background: 'var(--b1)', color: 'var(--b)', border: '1px solid var(--b)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: approving[req.code] ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: approving[req.code] ? 0.6 : 1 }} disabled={approving[req.code]} onClick={() => void approveFfRequest(req, true)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Admin Approval'}</button>
                 </>
               )}
-              {canWrite && req.status === 'AWAITING_PRINCIPAL' && (
+              {canApprove && req.status === 'AWAITING_PRINCIPAL' && (
                 <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Admin Approval'}</button>
               )}
-              {canWrite && isSuperAdmin && req.status === 'APPROVED' && (
+              {canApprove && isSuperAdmin && req.status === 'APPROVED' && (
                 <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Custoking'}</button>
               )}
-              {canWrite && (
+              {canApprove && (
                 <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid #f5c0bc', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }} onClick={() => openRejectModal(req)}>Reject</button>
               )}
             </div>

@@ -136,6 +136,7 @@ class FirefightingReadControllerTest {
 
     @Test
     void approveBursarUsesEmptyBodyWhenRequestIsMissing() {
+        TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
         Map<String, Object> result = Map.of("code", "FF-1001", "status", "BURSAR_APPROVED");
         when(firefighting.approveBursar("FF-1001", Map.of())).thenReturn(result);
 
