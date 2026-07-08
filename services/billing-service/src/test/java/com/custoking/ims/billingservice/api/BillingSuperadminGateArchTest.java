@@ -14,8 +14,10 @@ import java.util.regex.Pattern;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Regression guard: billing-service has no {@code TenantAwareDataSource} and every endpoint is
- * currently expected to be superadmin-only (full billing RLS is intentionally deferred). This
+ * Regression guard: every billing endpoint is currently expected to be superadmin-only. (Billing
+ * now has a {@code TenantAwareDataSource} + branch-keyed RLS as a fail-closed backstop, but no
+ * school-facing billing endpoint exists yet, so the superadmin gate is still the live enforcement.)
+ * This
  * test parses the two billing controllers' SOURCE files and asserts that EVERY request-mapped
  * handler method's body calls {@code TenantScope.requireSuperAdmin()}.
  *
