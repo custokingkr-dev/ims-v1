@@ -1,13 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
-  getTimetable, putEntry, deleteEntry, getClassSubjects, addSubject,
+  getTimetable, putEntry, deleteEntry, putEntriesBulk, getClassSubjects, addSubject,
   getBellSchedules, getClassSchedules, setClassSchedule,
   type TimetableView, type ClassSubjects, type BellSchedule,
 } from '../../../services/timetableApi';
+
+const EVERY_DAY = '__EVERY_DAY__';
+
+/** True when, for every non-break period, the (subjectName, teacherId) assignment is
+ * identical across all `view.days`, and at least one such assignment exists. */
+function isUniformAcrossDays(view: TimetableView | null): boolean {
+  if (!view || !view.days.length) return false;
+  const nonBreak = view.periods.filter((p) => !p.isBreak);
+  if (!nonBreak.length) return false;
+  let anyAssigned = false;
+  const keyOf = (day: string, periodId: number) => {
+    const e = view.entries.find((x) => x.day === day && x.periodId === periodId) || null;
+    if (e) anyAssigned = true;
+    return e ? `${e.subjectName}|${e.teacherId ?? ''}` : '';
+  };
+  for (const p of nonBreak) {
+    const first = keyOf(view.days[0], p.id);
+    for (const day of view.days) {
+      if (keyOf(day, p.id) !== first) return false;
+    }
+  }
+  return anyAssigned;
+}
 
 interface AcademicYearOpt { id: string; label: string; active: boolean }
 
@@ -59,6 +82,8 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
   const [schedules, setSchedules] = useState<BellSchedule[]>([]);
   const [classScheduleRows, setClassScheduleRows] = useState<Array<{ classId: string; className: string; scheduleId: number | null }>>([]);
   const [patternSaving, setPatternSaving] = useState(false);
+  const [sameEveryDay, setSameEveryDay] = useState(false);
+  const autoKeyRef = useRef('');
 
   useEffect(() => {
     if (!canRead || !user?.branchId) { setStaffOptions([]); return; }
@@ -113,6 +138,11 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     try {
       const res = await getTimetable(sectionId, yearId);
       setData(res.data);
+      const key = `${sectionId}:${yearId}`;
+      if (autoKeyRef.current !== key) {
+        autoKeyRef.current = key;
+        setSameEveryDay(isUniformAcrossDays(res.data));
+      }
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not load timetable.'));
       setData(null);
@@ -192,7 +222,8 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
 
   const openEditor = (day: string, periodId: number) => {
     if (!editable) return;
-    const existing = entryFor(day, periodId);
+    const lookupDay = day === EVERY_DAY ? (data?.days[0] || day) : day;
+    const existing = entryFor(lookupDay, periodId);
     setEditingCell({ day, periodId });
     setEditSubject(existing?.subjectName || '');
     setEditTeacherId(existing?.teacherId != null ? String(existing.teacherId) : '');
@@ -210,17 +241,26 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     setSaving(true);
     setError('');
     try {
-      const res = await putEntry({
-        sectionId,
-        day: editingCell.day,
-        periodId: editingCell.periodId,
-        subjectName: editSubject.trim(),
-        teacherId: editTeacherId ? Number(editTeacherId) : null,
-      });
-      if (res.data?.conflict) {
-        setToast(res.data.conflict);
+      if (editingCell.day === EVERY_DAY) {
+        const res = await putEntriesBulk({
+          sectionId,
+          entries: (data?.days || []).map((day) => ({
+            day,
+            periodId: editingCell.periodId,
+            subjectName: editSubject.trim(),
+            teacherId: editTeacherId ? Number(editTeacherId) : null,
+          })),
+        });
+        setToast(res.data?.conflict || '');
       } else {
-        setToast('');
+        const res = await putEntry({
+          sectionId,
+          day: editingCell.day,
+          periodId: editingCell.periodId,
+          subjectName: editSubject.trim(),
+          teacherId: editTeacherId ? Number(editTeacherId) : null,
+        });
+        setToast(res.data?.conflict || '');
       }
       closeEditor();
       await load();
@@ -236,11 +276,90 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     setSaving(true);
     setError('');
     try {
-      await deleteEntry({ sectionId, day: editingCell.day, periodId: editingCell.periodId });
+      if (editingCell.day === EVERY_DAY) {
+        for (const day of data?.days || []) {
+          await deleteEntry({ sectionId, day, periodId: editingCell.periodId });
+        }
+      } else {
+        await deleteEntry({ sectionId, day: editingCell.day, periodId: editingCell.periodId });
+      }
       closeEditor();
       await load();
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not clear timetable entry.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleSameEveryDay = async (checked: boolean) => {
+    if (!checked) {
+      setSameEveryDay(false);
+      return;
+    }
+    if (!data || isUniformAcrossDays(data)) {
+      setSameEveryDay(true);
+      return;
+    }
+    const sourceDay = data.days.find((d) =>
+      data.periods.some((p) => !p.isBreak && data.entries.some((e) => e.day === d && e.periodId === p.id))
+    ) || data.days[0];
+    if (!window.confirm(`Set every day to match ${sourceDay}? This will overwrite the other days' schedules.`)) {
+      return;
+    }
+    const nonBreak = data.periods.filter((p) => !p.isBreak);
+    const entries: { day: string; periodId: number; subjectName: string; teacherId: number | null }[] = [];
+    for (const p of nonBreak) {
+      const src = data.entries.find((e) => e.day === sourceDay && e.periodId === p.id);
+      if (!src) continue;
+      for (const day of data.days) {
+        entries.push({ day, periodId: p.id, subjectName: src.subjectName, teacherId: src.teacherId });
+      }
+    }
+    if (!entries.length) {
+      setSameEveryDay(true);
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await putEntriesBulk({ sectionId, entries });
+      setData(res.data);
+      setSameEveryDay(true);
+    } catch (err: unknown) {
+      setError(errMsg(err, 'Could not sync days.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCopyDay = async (day: string) => {
+    if (!data) return;
+    const nonBreak = data.periods.filter((p) => !p.isBreak);
+    const entries: { day: string; periodId: number; subjectName: string; teacherId: number | null }[] = [];
+    for (const p of nonBreak) {
+      const src = data.entries.find((e) => e.day === day && e.periodId === p.id);
+      if (!src) continue;
+      for (const otherDay of data.days) {
+        if (otherDay === day) continue;
+        entries.push({ day: otherDay, periodId: p.id, subjectName: src.subjectName, teacherId: src.teacherId });
+      }
+    }
+    if (!entries.length) {
+      setToast(`${day} has no assignments to copy.`);
+      return;
+    }
+    if (!window.confirm(`Copy ${day}'s schedule to all other weekdays? This will overwrite existing entries.`)) {
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await putEntriesBulk({ sectionId, entries });
+      setData(res.data);
+      setToast('');
+    } catch (err: unknown) {
+      setError(errMsg(err, 'Could not copy day.'));
     } finally {
       setSaving(false);
     }
@@ -309,6 +428,18 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
           </div>
         ) : null}
 
+        {editable && data && !data.noSchedule && data.periods.length > 0 ? (
+          <label className="ck-actions-inline ts" style={{ color: 'var(--ink3)', gap: 6 }}>
+            <input
+              type="checkbox"
+              checked={sameEveryDay}
+              disabled={saving}
+              onChange={(e) => void handleToggleSameEveryDay(e.target.checked)}
+            />
+            Same every day
+          </label>
+        ) : null}
+
         {!data?.editable && !readOnly && data ? (
           <div className="ck-alert ck-alert-am">
             <span>!</span>
@@ -352,7 +483,29 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
                   <thead>
                     <tr>
                       <th>Period</th>
-                      {data.days.map((d) => <th key={d}>{d}</th>)}
+                      {sameEveryDay ? (
+                        <th>Every day</th>
+                      ) : (
+                        data.days.map((d) => (
+                          <th key={d}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span>{d}</span>
+                              {editable ? (
+                                <button
+                                  type="button"
+                                  className="ck-btn ck-btn-ghost"
+                                  title={`Copy ${d} to all other weekdays`}
+                                  style={{ padding: '0 4px', lineHeight: 1 }}
+                                  disabled={saving}
+                                  onClick={() => void handleCopyDay(d)}
+                                >
+                                  ⧉
+                                </button>
+                              ) : null}
+                            </div>
+                          </th>
+                        ))
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -363,17 +516,17 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
                           <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{p.start}–{p.end}</div>
                         </td>
                         {p.isBreak ? (
-                          <td colSpan={data.days.length} style={{ color: 'var(--ink3)', fontStyle: 'italic', textAlign: 'center', background: 'var(--g1)' }}>
+                          <td colSpan={sameEveryDay ? 1 : data.days.length} style={{ color: 'var(--ink3)', fontStyle: 'italic', textAlign: 'center', background: 'var(--g1)' }}>
                             ☕ Break
                           </td>
                         ) : (
-                          data.days.map((day) => {
-                            const entry = entryFor(day, p.id);
+                          (sameEveryDay ? [EVERY_DAY] : data.days).map((day) => {
+                            const entry = entryFor(day === EVERY_DAY ? data.days[0] : day, p.id);
                             const isEditing = editingCell && editingCell.day === day && editingCell.periodId === p.id;
                             return (
                               <td
                                 key={day}
-                                data-label={day}
+                                data-label={day === EVERY_DAY ? 'Every day' : day}
                                 onClick={() => (editable && !isEditing ? openEditor(day, p.id) : undefined)}
                                 style={editable ? { cursor: 'pointer' } : undefined}
                               >
