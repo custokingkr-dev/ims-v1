@@ -13,6 +13,15 @@
                 <pattern>
                     <pattern>{"service":"${serviceName}"}</pattern>
                 </pattern>
+                <pattern>
+                    <pattern>
+                        {
+                          "severity": "%level",
+                          "logging.googleapis.com/trace": "projects/${GCP_PROJECT:-custoking}/traces/%mdc{traceId:-}",
+                          "logging.googleapis.com/spanId": "%mdc{spanId:-}"
+                        }
+                    </pattern>
+                </pattern>
             </providers>
         </encoder>
     </appender>
