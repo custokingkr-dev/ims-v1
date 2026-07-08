@@ -41,6 +41,7 @@ interface Props {
   years?: AcademicYearOpt[];
   embedded?: boolean;
   onManagePatterns?: () => void;
+  onManageSubjects?: () => void;
   refreshSignal?: number;
 }
 
@@ -54,7 +55,7 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, embedded, onManagePatterns, refreshSignal }: Props) {
+export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, embedded, onManagePatterns, onManageSubjects, refreshSignal }: Props) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const canRead = can('timetable:read');
@@ -161,7 +162,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     void getClassSubjects(classId, yearId)
       .then((r) => setSubjects(r.data))
       .catch(() => setSubjects(null));
-  }, [classId, yearId]);
+  }, [classId, yearId, refreshSignal]);
 
   const loadPatterns = async () => {
     try {
@@ -352,15 +353,26 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     if (!data) return;
     const nonBreak = data.periods.filter((p) => !p.isBreak);
     const entries: { day: string; periodId: number; subjectName: string; teacherId: number | null }[] = [];
+    const toClear: { day: string; periodId: number }[] = [];
     for (const p of nonBreak) {
       const src = data.entries.find((e) => e.day === day && e.periodId === p.id);
-      if (!src) continue;
-      for (const otherDay of data.days) {
-        if (otherDay === day) continue;
-        entries.push({ day: otherDay, periodId: p.id, subjectName: src.subjectName, teacherId: src.teacherId });
+      if (src) {
+        for (const otherDay of data.days) {
+          if (otherDay === day) continue;
+          entries.push({ day: otherDay, periodId: p.id, subjectName: src.subjectName, teacherId: src.teacherId });
+        }
+      } else {
+        // source day is empty for this period — clear it on the other days too so the
+        // copy fully mirrors the source (matches the confirm text below).
+        for (const otherDay of data.days) {
+          if (otherDay === day) continue;
+          if (data.entries.some((e) => e.day === otherDay && e.periodId === p.id)) {
+            toClear.push({ day: otherDay, periodId: p.id });
+          }
+        }
       }
     }
-    if (!entries.length) {
+    if (!entries.length && !toClear.length) {
       setToast(`${day} has no assignments to copy.`);
       return;
     }
@@ -370,9 +382,14 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     setSaving(true);
     setError('');
     try {
-      const res = await putEntriesBulk({ sectionId, entries });
-      setData(res.data);
+      if (entries.length) {
+        await putEntriesBulk({ sectionId, entries });
+      }
+      for (const { day: clearDay, periodId } of toClear) {
+        await deleteEntry({ sectionId, day: clearDay, periodId });
+      }
       setToast('');
+      await load();
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not copy day.'));
     } finally {
@@ -431,6 +448,9 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
           )}
           {canManage && onManagePatterns ? (
             <button type="button" className="ck-btn ck-btn-ghost" onClick={onManagePatterns}>Manage patterns</button>
+          ) : null}
+          {canManage && editable && onManageSubjects ? (
+            <button type="button" className="ck-btn ck-btn-ghost" onClick={onManageSubjects}>Manage subjects</button>
           ) : null}
         </div>
         {selectedSchedule ? (

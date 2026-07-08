@@ -3,6 +3,7 @@ import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { TimetableGrid } from './TimetableGrid';
 import { BellSchedulesPanel } from './setup/BellSchedulesPanel';
+import { SubjectsMasterPanel } from './setup/SubjectsMasterPanel';
 
 interface Props {
   readOnly?: boolean;
@@ -15,6 +16,7 @@ export function TimetableModule({ readOnly, staff }: Props) {
   const [years, setYears] = useState<AcademicYearOpt[]>([]);
   const [yearId, setYearId] = useState('');
   const [showManagePatterns, setShowManagePatterns] = useState(false);
+  const [showManageSubjects, setShowManageSubjects] = useState(false);
   const [refreshSignal, setRefreshSignal] = useState(0);
 
   useEffect(() => {
@@ -30,6 +32,11 @@ export function TimetableModule({ readOnly, staff }: Props) {
 
   const closeManagePatterns = () => {
     setShowManagePatterns(false);
+    setRefreshSignal((n) => n + 1);
+  };
+
+  const closeManageSubjects = () => {
+    setShowManageSubjects(false);
     setRefreshSignal((n) => n + 1);
   };
 
@@ -49,6 +56,7 @@ export function TimetableModule({ readOnly, staff }: Props) {
           embedded
           refreshSignal={refreshSignal}
           onManagePatterns={() => setShowManagePatterns(true)}
+          onManageSubjects={() => setShowManageSubjects(true)}
         />
       </div>
 
@@ -64,6 +72,23 @@ export function TimetableModule({ readOnly, staff }: Props) {
             </div>
             <div className="ck-modal-foot">
               <button type="button" className="ck-btn ck-btn-g" onClick={closeManagePatterns}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showManageSubjects && (
+        <div className="ck-modal-bg" onClick={closeManageSubjects}>
+          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 900 }}>
+            <div className="ck-modal-h">
+              <div className="ck-modal-title">Manage subjects</div>
+              <button type="button" className="ck-modal-x" onClick={closeManageSubjects}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              <SubjectsMasterPanel embedded yearId={yearId} years={years} />
+            </div>
+            <div className="ck-modal-foot">
+              <button type="button" className="ck-btn ck-btn-g" onClick={closeManageSubjects}>Done</button>
             </div>
           </div>
         </div>
