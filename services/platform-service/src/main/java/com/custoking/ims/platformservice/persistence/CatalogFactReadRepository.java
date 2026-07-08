@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class CatalogFactReadRepository {
     public void upsert(String id, Long schoolId, String category, String status, Long totalAmount,
                         String superadminApprovalStatus, OffsetDateTime vendorPaidAt, OffsetDateTime createdAt,
                         LocalDate requiredByDate, String designStatus, String notes) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.fact_catalog_order (
                             id, school_id, category, status, total_amount,

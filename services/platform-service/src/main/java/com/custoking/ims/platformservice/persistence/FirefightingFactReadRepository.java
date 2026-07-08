@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +27,7 @@ public class FirefightingFactReadRepository {
                         OffsetDateTime createdAt, OffsetDateTime bursarApprovedAt, OffsetDateTime principalApprovedAt,
                         String rejectedReason, OffsetDateTime vendorPaidAt, Long vendorPaidBy,
                         String vendorPaymentNotes, OffsetDateTime occurredAt) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.fact_firefighting_request (
                             code, title, category, urgency, status, estimated_budget, school_id,

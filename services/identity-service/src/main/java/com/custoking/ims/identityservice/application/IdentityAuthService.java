@@ -6,6 +6,7 @@ import com.custoking.ims.identityservice.persistence.AuthAuditRepository;
 import com.custoking.ims.identityservice.persistence.AuthSessionEntity;
 import com.custoking.ims.identityservice.persistence.AuthSessionRepository;
 import com.custoking.ims.identityservice.persistence.RbacLookupRepository;
+import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.security.JwtService;
 import io.jsonwebtoken.Claims;
 import org.springframework.http.HttpStatus;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.UUID;
 
 @Service
@@ -32,6 +34,7 @@ public class IdentityAuthService {
     private final AppUserRepository users;
     private final AuthSessionRepository sessions;
     private final RbacLookupRepository rbac;
+    private final RbacReadRepository rbacRead;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthAuditRepository authAudit;
@@ -39,12 +42,14 @@ public class IdentityAuthService {
     public IdentityAuthService(AppUserRepository users,
                                AuthSessionRepository sessions,
                                RbacLookupRepository rbac,
+                               RbacReadRepository rbacRead,
                                PasswordEncoder passwordEncoder,
                                JwtService jwtService,
                                AuthAuditRepository authAudit) {
         this.users = users;
         this.sessions = sessions;
         this.rbac = rbac;
+        this.rbacRead = rbacRead;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.authAudit = authAudit;
@@ -131,11 +136,10 @@ public class IdentityAuthService {
 
     private LoginResult issueSession(AppUserEntity user, String familyId) {
         AuthenticatedUserSnapshot snapshot = snapshot(user);
-        List<String> permissions = new ArrayList<>(rbac.permissionCodes(user.getId()));
-        permissions.sort(String::compareTo);
+        List<String> permissions = loginPermissions(user);
         // Derive the operator school set from the user's active OPERATIONS assignments, not the
         // display-only legacy `role` column. operatorSchoolIds returns [] for non-operators.
-        List<Long> opsSchools = rbac.operatorSchoolIds(user.getId());
+        List<Long> opsSchools = rbacRead.operatorSchoolIds(user.getId());
         String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
@@ -153,12 +157,11 @@ public class IdentityAuthService {
 
     private AuthResponse responseFor(AppUserEntity user, String accessToken) {
         List<String> roles = rbac.roleNames(user.getId());
-        List<String> permissions = new ArrayList<>(rbac.permissionCodes(user.getId()));
-        permissions.sort(String::compareTo);
+        List<String> permissions = loginPermissions(user);
         // Carry the operator school set on the response principal too, so the gateway's
         // introspection fallback (GATEWAY_LOCAL_JWT_VERIFY=disabled / un-enriched tokens) forwards
         // x-authenticated-operator-schools with the same value as the local-JWT path.
-        List<Long> operatorSchools = rbac.operatorSchoolIds(user.getId());
+        List<Long> operatorSchools = rbacRead.operatorSchoolIds(user.getId());
         return new AuthResponse(
                 accessToken,
                 user.getId(),
@@ -172,6 +175,27 @@ public class IdentityAuthService {
                 roles,
                 permissions,
                 operatorSchools);
+    }
+
+    /**
+     * Resolves the permission codes granted to a user at login: effective permissions scoped to
+     * the user's active school/zone (never a cross-school union — see RbacReadRepository#
+     * effectivePermissions), unioned with the OPERATIONS role's codes whenever the user has any
+     * active operator assignment.
+     *
+     * <p>The operator union is a deliberate mitigation: {@code syncOperatorSchools} can move an
+     * operator onto a school set that no longer includes their stale {@code app_users.branch_id}.
+     * Scoping strictly to {@code branchId} would then return zero permissions even though the user
+     * is an active operator elsewhere — their OPERATIONS codes are identical at every school, and
+     * school-level scope is enforced separately via {@code ops_schools}, so unioning them in here
+     * is safe and keeps operators from losing all access.
+     */
+    private List<String> loginPermissions(AppUserEntity user) {
+        var codes = new TreeSet<>(rbacRead.effectivePermissions(user.getId(), user.getBranchId(), user.getZoneId()));
+        if (!rbacRead.operatorSchoolIds(user.getId()).isEmpty()) {
+            codes.addAll(rbacRead.permissionCodesForRole("OPERATIONS"));
+        }
+        return new ArrayList<>(codes);
     }
 
     private AuthenticatedUserSnapshot snapshot(AppUserEntity user) {

@@ -1,5 +1,6 @@
 package com.custoking.ims.platformservice.persistence;
 
+import com.custoking.ims.platformservice.security.ProjectorRls;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class AttendanceFactReadRepository {
     public void upsert(String id, Long schoolId, LocalDate attendanceDate, String classId, String sectionId,
                         String academicYearId, Integer presentCount, Integer absentCount, Integer lateCount,
                         Integer leaveCount, Integer totalEnrolled) {
+        ProjectorRls.allow(jdbc);
         jdbc.sql("""
                         INSERT INTO reporting.fact_attendance_daily (
                             id, school_id, attendance_date, class_id, section_id, academic_year_id,

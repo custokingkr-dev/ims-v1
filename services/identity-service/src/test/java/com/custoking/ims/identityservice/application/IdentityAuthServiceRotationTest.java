@@ -6,6 +6,7 @@ import com.custoking.ims.identityservice.persistence.AuthAuditRepository;
 import com.custoking.ims.identityservice.persistence.AuthSessionEntity;
 import com.custoking.ims.identityservice.persistence.AuthSessionRepository;
 import com.custoking.ims.identityservice.persistence.RbacLookupRepository;
+import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.security.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,12 +19,12 @@ import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -35,6 +36,7 @@ class IdentityAuthServiceRotationTest {
     private AppUserRepository users;
     private AuthSessionRepository sessions;
     private RbacLookupRepository rbac;
+    private RbacReadRepository rbacRead;
     private PasswordEncoder passwordEncoder;
     private JwtService jwtService;
     private AuthAuditRepository authAudit;
@@ -49,10 +51,11 @@ class IdentityAuthServiceRotationTest {
         users = mock(AppUserRepository.class);
         sessions = mock(AuthSessionRepository.class);
         rbac = mock(RbacLookupRepository.class);
+        rbacRead = mock(RbacReadRepository.class);
         passwordEncoder = mock(PasswordEncoder.class);
         jwtService = mock(JwtService.class);
         authAudit = mock(AuthAuditRepository.class);
-        service = new IdentityAuthService(users, sessions, rbac, passwordEncoder, jwtService, authAudit);
+        service = new IdentityAuthService(users, sessions, rbac, rbacRead, passwordEncoder, jwtService, authAudit);
     }
 
     /** Builds a mock user with id=7 and email=EMAIL. */
@@ -88,16 +91,22 @@ class IdentityAuthServiceRotationTest {
         when(jwtService.isTokenValid(RAW_TOKEN, EMAIL)).thenReturn(true);
     }
 
-    /** Stubs JwtService to generate new tokens and stubs rbac for responseFor(). */
-    private void stubTokenGeneration(AppUserEntity user) {
+    /** Stubs JwtService to generate new tokens, without touching any rbac/rbacRead stubs. */
+    private void stubJwtTokenGeneration() {
         when(jwtService.generateAccessToken(any())).thenReturn("new-access-token");
         when(jwtService.generateAccessToken(any(), any())).thenReturn("new-access-token");
         when(jwtService.generateAccessToken(any(), any(), any())).thenReturn("new-access-token");
         when(jwtService.generateRefreshToken(any())).thenReturn("new-refresh-token");
         when(jwtService.extractExpiration("new-refresh-token"))
                 .thenReturn(new Date(System.currentTimeMillis() + 3_600_000));
+    }
+
+    /** Stubs JwtService to generate new tokens and stubs rbac/rbacRead for responseFor(). */
+    private void stubTokenGeneration(AppUserEntity user) {
+        stubJwtTokenGeneration();
         when(rbac.roleNames(7L)).thenReturn(List.of());
-        when(rbac.permissionCodes(7L)).thenReturn(Set.of());
+        when(rbacRead.effectivePermissions(eq(7L), any(), any())).thenReturn(List.of());
+        when(rbacRead.operatorSchoolIds(7L)).thenReturn(List.of());
     }
 
     @Test
@@ -232,5 +241,77 @@ class IdentityAuthServiceRotationTest {
         AuthSessionEntity saved = captor.getValue();
         assertThat(saved.getStatus()).isEqualTo(AuthSessionEntity.ACTIVE);
         assertThat(saved.getFamilyId()).isNotNull().isNotBlank();
+    }
+
+    // --- Per-school permission resolution (no cross-school union) ---
+
+    @Test
+    void login_permissions_scopedToActiveSchool_notUnionedAcrossSchools() {
+        // Arrange: user's active school is 1. effectivePermissions(userId, 1, zone) -> CODE_A only;
+        // a role granting CODE_B at school 2 must NOT leak in (that's the bug being fixed).
+        AppUserEntity user = mockUser();
+        when(user.getPasswordHash()).thenReturn("hashed-password");
+        when(user.getBranchId()).thenReturn(1L);
+        when(user.getZoneId()).thenReturn(null);
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "hashed-password")).thenReturn(true);
+        stubJwtTokenGeneration();
+        when(rbac.roleNames(7L)).thenReturn(List.of());
+        when(rbacRead.effectivePermissions(7L, 1L, null)).thenReturn(List.of("CODE_A"));
+        when(rbacRead.operatorSchoolIds(7L)).thenReturn(List.of());
+
+        // Act
+        IdentityAuthService.LoginResult result = service.login(new IdentityAuthService.LoginRequest(EMAIL, "secret"));
+
+        // Assert
+        assertThat(result.authResponse().permissions()).containsExactly("CODE_A");
+        verify(rbacRead, times(2)).effectivePermissions(7L, 1L, null);
+    }
+
+    @Test
+    void login_permissions_includePlatformGlobalAssignment() {
+        // Arrange: effectivePermissions already folds in platform-global (null school/zone) grants
+        // alongside the school-1 role — both codes should surface in the login response.
+        AppUserEntity user = mockUser();
+        when(user.getPasswordHash()).thenReturn("hashed-password");
+        when(user.getBranchId()).thenReturn(1L);
+        when(user.getZoneId()).thenReturn(null);
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "hashed-password")).thenReturn(true);
+        stubJwtTokenGeneration();
+        when(rbac.roleNames(7L)).thenReturn(List.of());
+        when(rbacRead.effectivePermissions(7L, 1L, null)).thenReturn(List.of("CODE_A", "CODE_GLOBAL"));
+        when(rbacRead.operatorSchoolIds(7L)).thenReturn(List.of());
+
+        // Act
+        IdentityAuthService.LoginResult result = service.login(new IdentityAuthService.LoginRequest(EMAIL, "secret"));
+
+        // Assert
+        assertThat(result.authResponse().permissions()).containsExactlyInAnyOrder("CODE_A", "CODE_GLOBAL");
+    }
+
+    @Test
+    void login_operatorRegression_operationsCodesSurviveStaleBranchId() {
+        // Arrange: user is an active operator at schools {2, 3} but app_users.branch_id is stale
+        // (=1, no assignment there) -- effectivePermissions(userId, 1, zone) returns nothing, but
+        // the OPERATIONS role's codes must still be unioned in so the operator doesn't lose access.
+        AppUserEntity user = mockUser();
+        when(user.getPasswordHash()).thenReturn("hashed-password");
+        when(user.getBranchId()).thenReturn(1L);
+        when(user.getZoneId()).thenReturn(null);
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("secret", "hashed-password")).thenReturn(true);
+        stubJwtTokenGeneration();
+        when(rbac.roleNames(7L)).thenReturn(List.of());
+        when(rbacRead.effectivePermissions(7L, 1L, null)).thenReturn(List.of());
+        when(rbacRead.operatorSchoolIds(7L)).thenReturn(List.of(2L, 3L));
+        when(rbacRead.permissionCodesForRole("OPERATIONS")).thenReturn(List.of("OPS_READ", "OPS_WRITE"));
+
+        // Act
+        IdentityAuthService.LoginResult result = service.login(new IdentityAuthService.LoginRequest(EMAIL, "secret"));
+
+        // Assert
+        assertThat(result.authResponse().permissions()).containsExactlyInAnyOrder("OPS_READ", "OPS_WRITE");
+        verify(rbacRead, times(2)).permissionCodesForRole("OPERATIONS");
     }
 }
