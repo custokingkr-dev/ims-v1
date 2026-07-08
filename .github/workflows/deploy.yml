@@ -25,6 +25,11 @@ on:
         description: "Run the private Cloud Run direct-service smoke after deploy."
         required: true
         type: boolean
+      run_gateway_smoke:
+        description: "Run the deployed whole-application gateway smoke after deploy."
+        required: false
+        default: false
+        type: boolean
       skip_build:
         description: "Promotion: reuse the image already built for the same SHA (build-once-promote)."
         required: false
@@ -60,6 +65,11 @@ on:
           - billing-service
       run_direct_smoke:
         description: "Run private Cloud Run direct service smoke after deploy."
+        required: true
+        default: true
+        type: boolean
+      run_gateway_smoke:
+        description: "Run the deployed whole-application gateway smoke after deploy."
         required: true
         default: true
         type: boolean
@@ -201,6 +211,22 @@ jobs:
             --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" | tee deployment-evidence/direct-smoke-job-replace.log
           gcloud run jobs execute ims-direct-service-smoke \
             --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --wait | tee deployment-evidence/direct-smoke-execution.log
+
+      - name: Run deployed gateway smoke
+        if: ${{ inputs.run_gateway_smoke == true && inputs.deploy_services != 'frontend' }}
+        shell: bash
+        env:
+          ENV_NAME: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+          URL="$(gcloud run services describe "custoking-api-gateway-${ENV_NAME}" \
+            --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')"
+          echo "gateway_url=${URL}"
+          pwsh ./scripts/invoke-production-gateway-smoke.ps1 \
+            -Project "${GCP_PROJECT_ID}" \
+            -Region "${GCP_REGION}" \
+            -GatewayBaseUrl "${URL}" \
+            -Gcloud "gcloud"
 
       - name: Print Cloud Run URLs
         if: always()
