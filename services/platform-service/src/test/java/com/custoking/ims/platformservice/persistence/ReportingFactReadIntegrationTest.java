@@ -208,6 +208,25 @@ class ReportingFactReadIntegrationTest {
         assertEquals("1 sections", kpiValue(kpis, "attendance_today"));
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void commandCenterSummary_attendanceTodayKpi_isScopedToRequestingSchool() {
+        // School 100 has one attendance row today; school 200 (a different school) also has one.
+        // The attendance_today KPI for school 100 must count ONLY school 100's sections, not both.
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily (id, school_id, attendance_date, academic_year_id, present_count, total_enrolled, updated_at)
+                VALUES ('ad-1', 100, CURRENT_DATE, 'ay_2025_26', 5, 10, now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily (id, school_id, attendance_date, academic_year_id, present_count, total_enrolled, updated_at)
+                VALUES ('ad-2', 200, CURRENT_DATE, 'ay_2025_26', 8, 12, now())
+                """).update();
+
+        Map<String, Object> summary = reporting.commandCenterSummary(100L, false);
+        List<Map<String, Object>> kpis = (List<Map<String, Object>>) summary.get("kpis");
+        assertEquals("1 sections", kpiValue(kpis, "attendance_today"));
+    }
+
     private static String kpiValue(List<Map<String, Object>> kpis, String key) {
         return (String) kpis.stream().filter(k -> key.equals(k.get("key"))).findFirst().orElseThrow().get("value");
     }

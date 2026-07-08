@@ -781,7 +781,8 @@ public class ReportingReadRepository {
                 FROM reporting.fact_attendance_daily
                 WHERE attendance_date = CURRENT_DATE
                   AND academic_year_id = 'ay_2025_26'
-                """);
+                  AND school_id = :schoolId
+                """, schoolId);
         List<Map<String, Object>> kpis = List.of(
                 kpi("fees_collected", "Fees Collected", formatLakh(feesPaid), overdueCount + " students overdue",
                         overdueCount > 20 ? "warning" : "success", "fees", "collected"),
