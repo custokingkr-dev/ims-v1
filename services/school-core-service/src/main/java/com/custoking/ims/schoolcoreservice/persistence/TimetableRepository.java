@@ -593,16 +593,28 @@ public class TimetableRepository {
     // surrounding @Transactional rolls back everything written so far in this call.
     @Transactional
     public Map<String, Object> upsertEntries(Long schoolId, String sectionId, List<Map<String, Object>> entries) {
+        // Collect any teacher double-booking warnings from the per-row upserts (deduped, order-kept)
+        // so the returned grid surfaces them — the bulk callers ("same every day" / "copy day") would
+        // otherwise lose the conflict warning that single-cell edits show.
+        java.util.LinkedHashSet<String> conflicts = new java.util.LinkedHashSet<>();
         for (Map<String, Object> row : entries) {
             String day = String.valueOf(row.get("day"));
             long periodId = numberValue(row.get("periodId"), "periodId is required");
             String subjectName = String.valueOf(row.get("subjectName"));
             Object teacherRaw = row.get("teacherId");
             Long teacherId = teacherRaw == null ? null : numberValue(teacherRaw, "teacherId is invalid");
-            upsertEntry(schoolId, sectionId, day, periodId, subjectName, teacherId);
+            Map<String, Object> rowResult = upsertEntry(schoolId, sectionId, day, periodId, subjectName, teacherId);
+            Object conflict = rowResult.get("conflict");
+            if (conflict != null) {
+                conflicts.add(String.valueOf(conflict));
+            }
         }
         String year = activeYearId(schoolId);
-        return timetable(schoolId, sectionId, year);
+        Map<String, Object> grid = timetable(schoolId, sectionId, year);
+        if (!conflicts.isEmpty()) {
+            grid.put("conflict", String.join("; ", conflicts));
+        }
+        return grid;
     }
 
     private long numberValue(Object value, String errorMessage) {

@@ -17,6 +17,7 @@ export function TimetableModule({ readOnly, staff }: Props) {
   const [yearId, setYearId] = useState('');
   const [showManagePatterns, setShowManagePatterns] = useState(false);
   const [showManageSubjects, setShowManageSubjects] = useState(false);
+  const [manageSubjectsClassId, setManageSubjectsClassId] = useState<string | undefined>();
   const [refreshSignal, setRefreshSignal] = useState(0);
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export function TimetableModule({ readOnly, staff }: Props) {
           embedded
           refreshSignal={refreshSignal}
           onManagePatterns={() => setShowManagePatterns(true)}
-          onManageSubjects={() => setShowManageSubjects(true)}
+          onManageSubjects={(classId) => { setManageSubjectsClassId(classId); setShowManageSubjects(true); }}
         />
       </div>
 
@@ -85,7 +86,7 @@ export function TimetableModule({ readOnly, staff }: Props) {
               <button type="button" className="ck-modal-x" onClick={closeManageSubjects}>×</button>
             </div>
             <div className="ck-modal-body">
-              <SubjectsMasterPanel embedded yearId={yearId} years={years} />
+              <SubjectsMasterPanel embedded yearId={yearId} years={years} classId={manageSubjectsClassId} />
             </div>
             <div className="ck-modal-foot">
               <button type="button" className="ck-btn ck-btn-g" onClick={closeManageSubjects}>Done</button>

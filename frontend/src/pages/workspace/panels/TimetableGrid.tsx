@@ -41,7 +41,7 @@ interface Props {
   years?: AcademicYearOpt[];
   embedded?: boolean;
   onManagePatterns?: () => void;
-  onManageSubjects?: () => void;
+  onManageSubjects?: (classId: string) => void;
   refreshSignal?: number;
 }
 
@@ -334,14 +334,17 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     setSaving(true);
     setError('');
     try {
+      let conflict: string | undefined;
       if (entries.length) {
-        await putEntriesBulk({ sectionId, entries });
+        const res = await putEntriesBulk({ sectionId, entries });
+        conflict = res.data?.conflict || undefined;
       }
       for (const { day, periodId } of toClear) {
         await deleteEntry({ sectionId, day, periodId });
       }
       setSameEveryDay(true);
       await load();
+      if (conflict) setToast(conflict);
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not sync days.'));
     } finally {
@@ -382,14 +385,16 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
     setSaving(true);
     setError('');
     try {
+      let conflict: string | undefined;
       if (entries.length) {
-        await putEntriesBulk({ sectionId, entries });
+        const res = await putEntriesBulk({ sectionId, entries });
+        conflict = res.data?.conflict || undefined;
       }
       for (const { day: clearDay, periodId } of toClear) {
         await deleteEntry({ sectionId, day: clearDay, periodId });
       }
-      setToast('');
       await load();
+      setToast(conflict || '');
     } catch (err: unknown) {
       setError(errMsg(err, 'Could not copy day.'));
     } finally {
@@ -450,7 +455,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
             <button type="button" className="ck-btn ck-btn-ghost" onClick={onManagePatterns}>Manage patterns</button>
           ) : null}
           {canManage && editable && onManageSubjects ? (
-            <button type="button" className="ck-btn ck-btn-ghost" onClick={onManageSubjects}>Manage subjects</button>
+            <button type="button" className="ck-btn ck-btn-ghost" onClick={() => onManageSubjects(classId)}>Manage subjects</button>
           ) : null}
         </div>
         {selectedSchedule ? (

@@ -15,9 +15,9 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-interface Props { yearId?: string; years?: AcademicYearOpt[]; embedded?: boolean }
+interface Props { yearId?: string; years?: AcademicYearOpt[]; embedded?: boolean; classId?: string }
 
-export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp, embedded }: Props = {}) {
+export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp, embedded, classId: classIdProp }: Props = {}) {
   const { can } = usePermissions();
   const canManage = can('timetable:manage');
 
@@ -54,9 +54,15 @@ export function SubjectsMasterPanel({ yearId: yearIdProp, years: yearsProp, embe
 
   useEffect(() => {
     if (!canManage || !classes.length) return;
-    setClassId((prev) => prev || classes[0].id);
+    setClassId((prev) => prev || classIdProp || classes[0].id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canManage, classes]);
+
+  // When opened for a specific class (e.g. the Manage-subjects modal on the timetable screen),
+  // preselect that class instead of defaulting to the first one.
+  useEffect(() => {
+    if (classIdProp) setClassId(classIdProp);
+  }, [classIdProp]);
 
   const load = async () => {
     if (!classId || !yearId) return;
