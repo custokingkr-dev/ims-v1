@@ -3,7 +3,6 @@ import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import { TimetableGrid } from './TimetableGrid';
 import { BellSchedulesPanel } from './setup/BellSchedulesPanel';
-import { SubjectsMasterPanel } from './setup/SubjectsMasterPanel';
 
 interface Props {
   readOnly?: boolean;
@@ -12,19 +11,11 @@ interface Props {
 
 interface AcademicYearOpt { id: string; label: string; active: boolean }
 
-type TabKey = 'grid' | 'bell' | 'subjects';
-
-const TABS: Array<{ key: TabKey; label: string }> = [
-  { key: 'grid', label: 'Weekly Grid' },
-  { key: 'bell', label: 'Bell Schedules' },
-  { key: 'subjects', label: 'Subjects' },
-];
-
 export function TimetableModule({ readOnly, staff }: Props) {
-  const [tab, setTab] = useState<TabKey>('grid');
   const [years, setYears] = useState<AcademicYearOpt[]>([]);
   const [yearId, setYearId] = useState('');
-  const [bellInitialClassId, setBellInitialClassId] = useState<string | undefined>();
+  const [showManagePatterns, setShowManagePatterns] = useState(false);
+  const [refreshSignal, setRefreshSignal] = useState(0);
 
   useEffect(() => {
     void api.get<AcademicYearOpt[]>('/academic-years')
@@ -37,44 +28,46 @@ export function TimetableModule({ readOnly, staff }: Props) {
       .catch(() => setYears([]));
   }, []);
 
+  const closeManagePatterns = () => {
+    setShowManagePatterns(false);
+    setRefreshSignal((n) => n + 1);
+  };
+
   return (
-    <ModuleShell title="Timetable" subtitle="Weekly grid, bell schedules & subjects">
+    <ModuleShell title="Timetable" subtitle="Weekly class schedule">
       <div className="ck-panel-stack">
         <div className="ck-actions-inline" style={{ justifyContent: 'flex-end' }}>
           <select value={yearId} onChange={(e) => setYearId(e.target.value)}>
             {years.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid var(--border)' }}>
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              className="ck-btn ck-btn-ghost"
-              onClick={() => setTab(t.key)}
-              style={{
-                borderRadius: '6px 6px 0 0',
-                borderBottom: tab === t.key ? '2px solid var(--g2)' : '2px solid transparent',
-                fontWeight: tab === t.key ? 600 : 400,
-                marginBottom: -2,
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        {tab === 'grid' && (
-          <TimetableGrid
-            readOnly={readOnly}
-            staff={staff}
-            yearId={yearId}
-            years={years}
-            embedded
-            onNeedBellSetup={(classId) => { setBellInitialClassId(classId); setTab('bell'); }}
-          />
-        )}
-        {tab === 'bell' && <BellSchedulesPanel embedded initialClassId={bellInitialClassId} />}
-        {tab === 'subjects' && <SubjectsMasterPanel yearId={yearId} years={years} embedded />}
+        <TimetableGrid
+          readOnly={readOnly}
+          staff={staff}
+          yearId={yearId}
+          years={years}
+          embedded
+          refreshSignal={refreshSignal}
+          onManagePatterns={() => setShowManagePatterns(true)}
+        />
       </div>
+
+      {showManagePatterns && (
+        <div className="ck-modal-bg" onClick={closeManagePatterns}>
+          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 900 }}>
+            <div className="ck-modal-h">
+              <div className="ck-modal-title">Manage period patterns</div>
+              <button type="button" className="ck-modal-x" onClick={closeManagePatterns}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              <BellSchedulesPanel embedded />
+            </div>
+            <div className="ck-modal-foot">
+              <button type="button" className="ck-btn ck-btn-g" onClick={closeManagePatterns}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
     </ModuleShell>
   );
 }

@@ -4,8 +4,9 @@ import { ModuleShell } from '../ui';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
-  getTimetable, putEntry, deleteEntry, getClassSubjects,
-  type TimetableView, type ClassSubjects,
+  getTimetable, putEntry, deleteEntry, getClassSubjects, addSubject,
+  getBellSchedules, getClassSchedules, setClassSchedule,
+  type TimetableView, type ClassSubjects, type BellSchedule,
 } from '../../../services/timetableApi';
 
 interface AcademicYearOpt { id: string; label: string; active: boolean }
@@ -16,8 +17,11 @@ interface Props {
   yearId?: string;
   years?: AcademicYearOpt[];
   embedded?: boolean;
-  onNeedBellSetup?: (classId: string) => void;
+  onManagePatterns?: () => void;
+  refreshSignal?: number;
 }
+
+const ADD_SUBJECT_VALUE = '__add_subject__';
 
 interface ClassOpt { id: string; name: string }
 interface SectionOpt { id: string; name: string }
@@ -27,10 +31,11 @@ function errMsg(err: unknown, fallback: string): string {
     || (err instanceof Error ? err.message : fallback);
 }
 
-export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, embedded, onNeedBellSetup }: Props) {
+export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, embedded, onManagePatterns, refreshSignal }: Props) {
   const { can } = usePermissions();
   const { user } = useAuth();
   const canRead = can('timetable:read');
+  const canManage = can('timetable:manage');
 
   const [classes, setClasses] = useState<ClassOpt[]>([]);
   const [sections, setSections] = useState<SectionOpt[]>([]);
@@ -51,6 +56,9 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
   const [editTeacherId, setEditTeacherId] = useState('');
   const [saving, setSaving] = useState(false);
   const [staffOptions, setStaffOptions] = useState<Array<{ id: number; name: string }>>([]);
+  const [schedules, setSchedules] = useState<BellSchedule[]>([]);
+  const [classScheduleRows, setClassScheduleRows] = useState<Array<{ classId: string; className: string; scheduleId: number | null }>>([]);
+  const [patternSaving, setPatternSaving] = useState(false);
 
   useEffect(() => {
     if (!canRead || !user?.branchId) { setStaffOptions([]); return; }
@@ -124,6 +132,57 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
       .then((r) => setSubjects(r.data))
       .catch(() => setSubjects(null));
   }, [classId, yearId]);
+
+  const loadPatterns = async () => {
+    try {
+      const [schedulesRes, classSchedulesRes] = await Promise.all([getBellSchedules(), getClassSchedules()]);
+      setSchedules(Array.isArray(schedulesRes.data) ? schedulesRes.data : []);
+      setClassScheduleRows(Array.isArray(classSchedulesRes.data) ? classSchedulesRes.data : []);
+    } catch {
+      setSchedules([]);
+      setClassScheduleRows([]);
+    }
+  };
+
+  useEffect(() => {
+    if (canRead) void loadPatterns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canRead, refreshSignal]);
+
+  const currentClassScheduleId = classScheduleRows.find((c) => c.classId === classId)?.scheduleId ?? null;
+  const selectedSchedule = schedules.find((s) => s.id === currentClassScheduleId) || null;
+
+  const handlePatternChange = async (scheduleId: string) => {
+    if (!classId || !scheduleId) return;
+    setPatternSaving(true);
+    setError('');
+    try {
+      await setClassSchedule(classId, Number(scheduleId));
+      await loadPatterns();
+      await load();
+    } catch (err: unknown) {
+      setError(errMsg(err, 'Could not set period pattern.'));
+    } finally {
+      setPatternSaving(false);
+    }
+  };
+
+  const handleSubjectSelectChange = async (value: string) => {
+    if (value === ADD_SUBJECT_VALUE) {
+      const name = window.prompt('New subject name');
+      if (!name || !name.trim()) return;
+      try {
+        await addSubject(classId, name.trim());
+        const res = await getClassSubjects(classId, yearId);
+        setSubjects(res.data);
+        setEditSubject(name.trim());
+      } catch (err: unknown) {
+        setError(errMsg(err, 'Could not add subject.'));
+      }
+      return;
+    }
+    setEditSubject(value);
+  };
 
   const selectedYear = years.find((y) => y.id === yearId) || null;
   const editable = !!(data?.editable && !readOnly);
@@ -222,6 +281,34 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
           ) : null}
         </div>
 
+        <div className="ck-actions-inline" style={{ flexWrap: 'wrap' }}>
+          <label className="ts" style={{ color: 'var(--ink3)' }}>Period pattern</label>
+          {canManage && editable ? (
+            <select
+              value={currentClassScheduleId != null ? String(currentClassScheduleId) : ''}
+              onChange={(e) => void handlePatternChange(e.target.value)}
+              disabled={!classId || patternSaving}
+            >
+              <option value="">Select a pattern…</option>
+              {schedules.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          ) : (
+            <span>{selectedSchedule?.name || '—'}</span>
+          )}
+          {canManage && onManagePatterns ? (
+            <button type="button" className="ck-btn ck-btn-ghost" onClick={onManagePatterns}>Manage patterns</button>
+          ) : null}
+        </div>
+        {selectedSchedule ? (
+          <div className="ts" style={{ color: 'var(--ink3)' }}>
+            {selectedSchedule.periods.length} period{selectedSchedule.periods.length === 1 ? '' : 's'}:{' '}
+            {[...selectedSchedule.periods]
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((p) => `${p.label} ${p.start}–${p.end}${p.isBreak ? ' (break)' : ''}`)
+              .join(', ')}
+          </div>
+        ) : null}
+
         {!data?.editable && !readOnly && data ? (
           <div className="ck-alert ck-alert-am">
             <span>!</span>
@@ -240,22 +327,21 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
               <div className="ck-alert ck-alert-am">
                 <span>i</span>
                 <div>
-                  This class has no bell schedule.
-                  {onNeedBellSetup ? (
+                  Pick a period pattern above to start.
+                  {canManage && onManagePatterns ? (
                     <>
                       {' '}
+                      No patterns yet?{' '}
                       <button
                         type="button"
                         className="ck-btn ck-btn-ghost"
                         style={{ padding: '2px 6px', textDecoration: 'underline' }}
-                        onClick={() => onNeedBellSetup(classId)}
+                        onClick={onManagePatterns}
                       >
-                        Set up this class's bell schedule →
+                        Create one →
                       </button>
                     </>
-                  ) : (
-                    ' Set one up in Setup → Bell schedules.'
-                  )}
+                  ) : null}
                 </div>
               </div>
             ) : data.periods.length === 0 ? (
@@ -277,8 +363,8 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
                           <div style={{ fontSize: 12, color: 'var(--ink3)' }}>{p.start}–{p.end}</div>
                         </td>
                         {p.isBreak ? (
-                          <td colSpan={data.days.length} style={{ color: 'var(--ink3)', fontStyle: 'italic', textAlign: 'center' }}>
-                            Break
+                          <td colSpan={data.days.length} style={{ color: 'var(--ink3)', fontStyle: 'italic', textAlign: 'center', background: 'var(--g1)' }}>
+                            ☕ Break
                           </td>
                         ) : (
                           data.days.map((day) => {
@@ -293,11 +379,12 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
                               >
                                 {isEditing ? (
                                   <div style={{ display: 'grid', gap: 6, minWidth: 160 }}>
-                                    <select value={editSubject} onChange={(e) => setEditSubject(e.target.value)}>
+                                    <select value={editSubject} onChange={(e) => void handleSubjectSelectChange(e.target.value)}>
                                       <option value="">Select subject</option>
                                       {(subjects?.subjects || []).map((s) => (
                                         <option key={s.id} value={s.subjectName}>{s.subjectName}</option>
                                       ))}
+                                      <option value={ADD_SUBJECT_VALUE}>+ Add subject…</option>
                                     </select>
                                     <select value={editTeacherId} onChange={(e) => setEditTeacherId(e.target.value)}>
                                       <option value="">No teacher</option>
