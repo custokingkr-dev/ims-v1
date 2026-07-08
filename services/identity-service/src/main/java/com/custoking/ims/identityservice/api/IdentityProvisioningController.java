@@ -2,6 +2,7 @@ package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.IdentityUserProvisioningRepository;
 import com.custoking.ims.identityservice.security.TenantContext;
+import com.custoking.ims.identityservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -39,6 +40,7 @@ public class IdentityProvisioningController {
             @PathVariable String role,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());
         return users.provisionSchoolUser(schoolId, role, stamped);
@@ -51,6 +53,7 @@ public class IdentityProvisioningController {
             @PathVariable Long zoneId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());
         return users.provisionZoneAdmin(zoneId, stamped);

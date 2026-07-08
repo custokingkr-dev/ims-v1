@@ -70,6 +70,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @Valid @RequestBody PasswordResetRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         users.resetPassword(id, req.password(), TenantContext.get().userId(), TenantContext.get().email());
     }
 
@@ -80,6 +81,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         users.disableUser(id, TenantContext.get().userId(), TenantContext.get().email());
     }
 
@@ -90,6 +92,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         users.enableUser(id, TenantContext.get().userId(), TenantContext.get().email());
     }
 

@@ -113,6 +113,7 @@ public class RbacReadController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @Valid @RequestBody CreateRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("name", req.name());
         body.put("description", req.description());
@@ -127,6 +128,7 @@ public class RbacReadController {
             @PathVariable Long roleId,
             @Valid @RequestBody UpdateRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         if (req.description() != null) body.put("description", req.description());
         if (req.permissions() != null) body.put("permissions", req.permissions());
@@ -140,6 +142,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @Valid @RequestBody AssignPlatformRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
         body.put("assignedBy", TenantContext.get().userId());
@@ -152,6 +155,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @Valid @RequestBody AssignSchoolRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
         body.put("schoolId", req.schoolId());
@@ -165,6 +169,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @Valid @RequestBody AssignZoneRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
         body.put("zoneId", req.zoneId());
@@ -179,6 +184,7 @@ public class RbacReadController {
             @PathVariable Long assignmentId,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = body == null ? new HashMap<>() : new HashMap<>(body);
         stamped.put("revokedBy", TenantContext.get().userId());
         commands.revokeAssignment(userId, assignmentId, stamped);
