@@ -85,6 +85,12 @@ class OutboxWriterIntegrationTest {
 
         InvoiceRow row = invoiceService.create(request);
 
+        // Task 3: the minted invoice id must carry the CURRENT year (not a hardcoded
+        // literal) so invoices minted in future years still read INV-<current-year>-...
+        assertThat(row.id())
+                .as("invoice id must be prefixed with the current year")
+                .startsWith("INV-" + java.time.Year.now().getValue() + "-0");
+
         try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner")) {
             assertThat(countInvoices(c, row.id()))
                     .as("invoice row must exist after commit")

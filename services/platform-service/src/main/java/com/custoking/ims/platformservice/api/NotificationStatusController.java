@@ -4,6 +4,7 @@ import com.custoking.ims.platformservice.persistence.NotificationDeliveryAttempt
 import com.custoking.ims.platformservice.persistence.NotificationDeliveryAttemptRepository;
 import com.custoking.ims.platformservice.persistence.NotificationInboxEvent;
 import com.custoking.ims.platformservice.persistence.NotificationInboxRepository;
+import com.custoking.ims.platformservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +38,7 @@ public class NotificationStatusController {
             @PathVariable String eventId,
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token) {
         requireValidToken(token, "notification:status:read");
+        TenantScope.requireSuperAdmin();
         NotificationInboxEvent event = inboxRepository.findById(eventId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification event not found"));
         List<DeliveryAttemptResponse> attempts = attemptRepository.findByEventIdOrderByAttemptedAtDesc(eventId)

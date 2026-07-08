@@ -12,9 +12,12 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Map;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -109,5 +112,84 @@ class RbacAuthorizationTest {
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
         verify(commands).revokeAssignment(eq(9L), eq(5L), anyMap());
+    }
+
+    // ---- userRoleAssignments (cross-school read) ----
+
+    @Test
+    void userRoleAssignments_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/user-role-assignments")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).userAssignments(any(), any(), anyInt());
+    }
+
+    @Test
+    void userRoleAssignments_superadmin_isAllowed() throws Exception {
+        when(reads.userAssignments(any(), any(), anyInt())).thenReturn(List.of());
+        mvc.perform(get("/api/v1/rbac/user-role-assignments")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(reads).userAssignments(any(), any(), anyInt());
+    }
+
+    // ---- users/{id}/roles (same unscoped cross-school assignments as user-role-assignments) ----
+
+    @Test
+    void userRoles_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/users/42/roles")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).userAssignments(any(), any(), anyInt());
+    }
+
+    @Test
+    void userRoles_superadmin_isAllowed() throws Exception {
+        when(reads.userAssignments(any(), any(), anyInt())).thenReturn(List.of());
+        mvc.perform(get("/api/v1/rbac/users/42/roles")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(reads).userAssignments(any(), any(), anyInt());
+    }
+
+    // ---- audit (cross-school read) ----
+
+    @Test
+    void audit_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/audit")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).audit(any(), any(), anyInt());
+    }
+
+    @Test
+    void audit_superadmin_isAllowed() throws Exception {
+        when(reads.audit(any(), any(), anyInt())).thenReturn(List.of());
+        mvc.perform(get("/api/v1/rbac/audit")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(reads).audit(any(), any(), anyInt());
+    }
+
+    // ---- roles (untouched read) — proves the guard is narrow ----
+
+    @Test
+    void roles_nonSuperadmin_isNotGated() throws Exception {
+        when(reads.roles()).thenReturn(List.of());
+        mvc.perform(get("/api/v1/rbac/roles")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isOk());
+        verify(reads).roles();
     }
 }
