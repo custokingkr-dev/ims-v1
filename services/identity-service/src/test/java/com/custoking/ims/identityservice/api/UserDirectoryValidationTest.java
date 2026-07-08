@@ -21,7 +21,9 @@ class UserDirectoryValidationTest {
 
     @BeforeEach
     void setUp() {
-        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "ADMIN", null, null));
+        // These tests assert request-mapping/response behavior, not authorization; the caller
+        // is set to SUPERADMIN so the (separately tested) requireSuperAdmin() gate is satisfied.
+        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "SUPERADMIN", null, null));
         users = mock(UserDirectoryReadRepository.class);
         UserDirectoryController controller = new UserDirectoryController(users, VALID_TOKEN);
         mvc = MockMvcBuilders.standaloneSetup(controller)

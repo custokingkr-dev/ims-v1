@@ -141,6 +141,7 @@ class IdentityControllersTest {
 
     @Test
     void rbacAssignSchoolRoleDelegatesBody() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         RbacCommandRepository commands = mock(RbacCommandRepository.class);
         RbacReadController controller = new RbacReadController(mock(RbacReadRepository.class), commands, "identity-token");
         Map<String, Object> result = Map.of("id", 44L);
@@ -174,7 +175,7 @@ class IdentityControllersTest {
 
     @Test
     void userDirectoryResetPasswordUsesAuthenticatedActorNotClientSuppliedFields() {
-        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "ADMIN", null, null));
+        TenantContext.set(new TenantContext(7L, "authenticated-admin@custoking.com", "SUPERADMIN", null, null));
         UserDirectoryReadRepository users = mock(UserDirectoryReadRepository.class);
         UserDirectoryController controller = new UserDirectoryController(users, "identity-token");
 

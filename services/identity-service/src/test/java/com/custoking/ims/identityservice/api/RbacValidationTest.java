@@ -2,6 +2,8 @@ package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.persistence.RbacCommandRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
+import com.custoking.ims.identityservice.security.TenantContext;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,12 +33,20 @@ class RbacValidationTest {
 
     @BeforeEach
     void setUp() {
+        // These tests assert request-mapping/response behavior, not authorization; the caller
+        // is set to SUPERADMIN so the (separately tested) requireSuperAdmin() gate is satisfied.
+        TenantContext.set(new TenantContext(1L, "sa@custoking.com", "SUPERADMIN", null, null));
         commands = mock(RbacCommandRepository.class);
         RbacReadRepository reads = mock(RbacReadRepository.class);
         RbacReadController controller = new RbacReadController(reads, commands, VALID_TOKEN);
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
+    }
+
+    @AfterEach
+    void cleanup() {
+        TenantContext.clear();
     }
 
     @Test
