@@ -315,6 +315,7 @@ function principalFromClaims(claims) {
     branchId: claims.sid ?? null,
     zoneId: claims.zid ?? null,
     permissions: Array.isArray(claims.perms) ? claims.perms : [],
+    operatorSchools: Array.isArray(claims.ops_schools) ? claims.ops_schools : [],
   };
 }
 
@@ -392,6 +393,8 @@ async function proxyToUrl(req, res, target, requestId, service, principal) {
     headers['x-authenticated-zone-id'] = stringOrEmpty(principal.zoneId);
     headers['x-authenticated-permissions'] =
       Array.isArray(principal.permissions) ? principal.permissions.join(',') : '';
+    headers['x-authenticated-operator-schools'] =
+      Array.isArray(principal.operatorSchools) ? principal.operatorSchools.join(',') : '';
   }
   await addCloudRunAuthorization(headers, target);
 
