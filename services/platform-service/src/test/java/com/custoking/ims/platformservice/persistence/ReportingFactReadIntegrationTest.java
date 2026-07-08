@@ -185,6 +185,7 @@ class ReportingFactReadIntegrationTest {
     @SuppressWarnings("unchecked")
     @Test
     void commandCenterSummary_schoolScope_kpisReadFactsOnly() {
+        seedActiveYear("ay_2025_26");
         seedCatalogOrder("ord-1", 100L, "BOOKS", "PROCESSING", 4000L);            // 1 active order
         seedFirefighting("ff-1", 100L, "APPROVED", 8000L);                        // open (non-FULFILLED)
         seedFirefighting("ff-2", 100L, "AWAITING_BURSAR", null);                  // open + pending approval
@@ -213,6 +214,7 @@ class ReportingFactReadIntegrationTest {
     void commandCenterSummary_attendanceTodayKpi_isScopedToRequestingSchool() {
         // School 100 has one attendance row today; school 200 (a different school) also has one.
         // The attendance_today KPI for school 100 must count ONLY school 100's sections, not both.
+        seedActiveYear("ay_2025_26");
         jdbcClient.sql("""
                 INSERT INTO reporting.fact_attendance_daily (id, school_id, attendance_date, academic_year_id, present_count, total_enrolled, updated_at)
                 VALUES ('ad-1', 100, CURRENT_DATE, 'ay_2025_26', 5, 10, now())
@@ -227,8 +229,62 @@ class ReportingFactReadIntegrationTest {
         assertEquals("1 sections", kpiValue(kpis, "attendance_today"));
     }
 
+    @SuppressWarnings("unchecked")
+    @Test
+    void commandCenterSummary_usesResolvedActiveYear_notHardcodedLiteral() {
+        // Active year is 'ay_2026_27' (NOT the historically hardcoded 'ay_2025_26'). Fee/attendance
+        // rows tagged with the active year must count; a row tagged with a different year must not,
+        // proving the query binds the resolved active year rather than a literal.
+        seedActiveYear("ay_2026_27");
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_fee_assignment (id, student_id, school_id, academic_year_id, net_payable, paid_amount, due_amount, status, updated_at)
+                VALUES ('fa-cur', 1, 100, 'ay_2026_27', 10000, 3000, 7000, 'PARTIAL', now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_fee_assignment (id, student_id, school_id, academic_year_id, net_payable, paid_amount, due_amount, status, updated_at)
+                VALUES ('fa-old', 2, 100, 'ay_2025_26', 10000, 2000, 8000, 'PARTIAL', now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily (id, school_id, attendance_date, academic_year_id, present_count, total_enrolled, updated_at)
+                VALUES ('ad-cur', 100, CURRENT_DATE, 'ay_2026_27', 5, 10, now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily (id, school_id, attendance_date, academic_year_id, present_count, total_enrolled, updated_at)
+                VALUES ('ad-old', 100, CURRENT_DATE, 'ay_2025_26', 5, 10, now())
+                """).update();
+
+        Map<String, Object> summary = reporting.commandCenterSummary(100L, false);
+        List<Map<String, Object>> kpis = (List<Map<String, Object>>) summary.get("kpis");
+        assertEquals("1 sections", kpiValue(kpis, "attendance_today"));
+        assertEquals("1 students overdue", kpiDelta(kpis, "fees_collected"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void commandCenterSummary_noActiveYear_kpisAreZeroWithoutError() {
+        // No reporting.dim_academic_year row at all (no active year resolvable). The overdue-count
+        // and attendance-sections KPIs must degrade to zero rather than throwing on a null bind.
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_fee_assignment (id, student_id, school_id, academic_year_id, net_payable, paid_amount, due_amount, status, updated_at)
+                VALUES ('fa-1', 1, 100, 'ay_2025_26', 10000, 3000, 7000, 'PARTIAL', now())
+                """).update();
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily (id, school_id, attendance_date, academic_year_id, present_count, total_enrolled, updated_at)
+                VALUES ('ad-1', 100, CURRENT_DATE, 'ay_2025_26', 5, 10, now())
+                """).update();
+
+        Map<String, Object> summary = reporting.commandCenterSummary(100L, false);
+        List<Map<String, Object>> kpis = (List<Map<String, Object>>) summary.get("kpis");
+        assertEquals("0 sections", kpiValue(kpis, "attendance_today"));
+        assertEquals("0 students overdue", kpiDelta(kpis, "fees_collected"));
+    }
+
     private static String kpiValue(List<Map<String, Object>> kpis, String key) {
         return (String) kpis.stream().filter(k -> key.equals(k.get("key"))).findFirst().orElseThrow().get("value");
+    }
+
+    private static String kpiDelta(List<Map<String, Object>> kpis, String key) {
+        return (String) kpis.stream().filter(k -> key.equals(k.get("key"))).findFirst().orElseThrow().get("delta");
     }
 
     // ---- Phase 2 read-swap coverage: feeDefaulters / lowAttendanceSections / lowAttendanceStudents /
