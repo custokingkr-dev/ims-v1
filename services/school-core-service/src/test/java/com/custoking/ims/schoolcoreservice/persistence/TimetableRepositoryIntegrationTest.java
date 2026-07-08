@@ -197,6 +197,28 @@ class TimetableRepositoryIntegrationTest {
     }
 
     @Test
+    void bulkUpsertSurfacesTeacherConflictOnTheReturnedGrid() throws Exception {
+        long schoolId = seedSchool(); String classId = seedClass(schoolId, "6");
+        String sec1 = seedSection(schoolId, classId, "6-A"); String sec2 = seedSection(schoolId, classId, "6-B");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        var sched = repo.createSchedule(schoolId, "Std");
+        long schedId = ((Number) sched.get("id")).longValue();
+        var p1 = repo.addPeriod(schoolId, schedId, "P1", "08:00", "08:45", false, 1);
+        long pid = ((Number) p1.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, schedId);
+        repo.addSubject(schoolId, classId, year, "Math");
+        long teacher = seedStaff(schoolId, "AB");
+        // sec1 has the teacher on Mon/P1; a bulk write assigning the same teacher to sec2 same slot conflicts.
+        repo.upsertEntry(schoolId, sec1, "Mon", pid, "Math", teacher);
+
+        var grid = repo.upsertEntries(schoolId, sec2, List.of(
+                Map.of("day", "Mon", "periodId", pid, "subjectName", "Math", "teacherId", teacher)));
+        // the bulk-returned grid must carry the double-booking warning (not swallow it), still saved
+        assertThat((String) grid.get("conflict")).contains("6-A");
+        assertThat((List<?>) repo.timetable(schoolId, sec2, year).get("entries")).hasSize(1);
+    }
+
+    @Test
     void swapPeriodOrderSwapsSortOrdersWithoutConstraintViolation() throws Exception {
         long schoolId = seedSchool();
         var sched = repo.createSchedule(schoolId, "Std");
