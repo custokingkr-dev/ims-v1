@@ -109,7 +109,20 @@ jobs:
           context: ${{ matrix.context }}
           build-args: ${{ matrix.build_args }}
           push: false
+          load: true
           tags: ${{ matrix.image }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan ${{ matrix.name }} for CRITICAL CVEs
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.image }}:ci
+          format: table
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+          vuln-type: os,library
 
   secret-scan:
     runs-on: ubuntu-latest
