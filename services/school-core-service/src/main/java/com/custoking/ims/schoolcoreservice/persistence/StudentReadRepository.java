@@ -218,12 +218,19 @@ public class StudentReadRepository {
             throw new IllegalArgumentException("Admission Number already exists");
         }
         String fullName = requireText(request.get("fullName"), "Full name is mandatory");
-        String className = str(firstPresent(request, "gradeLevel", "className"), "Class 9");
-        Map<String, Object> schoolClass = classByName(className)
-                .or(() -> classById(String.valueOf(classSortOrder(str(request.get("gradeLevel"), "9")))))
-                .orElseThrow(() -> new IllegalArgumentException("Class not found"));
-        Map<String, Object> section = getOrCreateSection(
-                schoolId, String.valueOf(schoolClass.get("id")), str(request.get("sectionName"), "A"));
+        String requestedClassId = str(firstPresent(request, "classId", "class_id"), "").trim();
+        Map<String, Object> schoolClass = requestedClassId.isBlank()
+                ? classByName(str(firstPresent(request, "gradeLevel", "className"), "Class 9"))
+                    .or(() -> classById(String.valueOf(classSortOrder(str(request.get("gradeLevel"), "9")))))
+                    .orElseThrow(() -> new IllegalArgumentException("Class not found"))
+                : classById(requestedClassId)
+                    .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        String classId = String.valueOf(schoolClass.get("id"));
+        String requestedSectionId = str(firstPresent(request, "sectionId", "section_id"), "").trim();
+        Map<String, Object> section = requestedSectionId.isBlank()
+                ? getOrCreateSection(schoolId, classId, str(request.get("sectionName"), "A"))
+                : sectionByIdForClassSchool(schoolId, classId, requestedSectionId)
+                    .orElseThrow(() -> new IllegalArgumentException("Selected section does not belong to the class and school"));
         String academicYearId = currentAcademicYearId();
         OffsetDateTime now = OffsetDateTime.now();
         Long id;
@@ -268,7 +275,7 @@ public class StudentReadRepository {
                     .param("createdAt", now)
                     .param("updatedAt", now)
                     .param("schoolId", schoolId)
-                    .param("classId", schoolClass.get("id"))
+                    .param("classId", classId)
                     .param("sectionId", section.get("id"))
                     .param("academicYearId", academicYearId)
                     .query(Long.class)
@@ -1570,6 +1577,18 @@ public class StudentReadRepository {
         return jdbc.sql("SELECT id, name, sort_order FROM tenant_school.school_classes WHERE id = :id")
                 .param("id", id)
                 .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name"), "sortOrder", rs.getInt("sort_order")))
+                .optional();
+    }
+
+    private Optional<Map<String, Object>> sectionByIdForClassSchool(Long schoolId, String classId, String sectionId) {
+        return jdbc.sql("""
+                SELECT id, name FROM tenant_school.school_sections
+                WHERE id = :sectionId AND school_class_id = :classId AND school_id = :schoolId
+                """)
+                .param("sectionId", sectionId)
+                .param("classId", classId)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name")))
                 .optional();
     }
 

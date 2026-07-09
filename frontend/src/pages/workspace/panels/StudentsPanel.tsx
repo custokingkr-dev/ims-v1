@@ -1,12 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
 import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
-import { STUDENT_PHOTO_MAX_LABEL, validateStudentPhotoFile } from '../../../features/students';
+import {
+  emptyStudentProfileForm,
+  STUDENT_PHOTO_MAX_LABEL,
+  studentDetailToProfileForm,
+  studentProfileFormToUpdatePayload,
+  type StudentClassOption,
+  type StudentProfileFormState,
+  type StudentSectionOption,
+  validateStudentPhotoFile,
+} from '../../../features/students';
 import { ModuleShell, Info } from '../ui';
 import { formatAddress, initials } from '../utils';
 import type { PanelKey } from '../config';
+import { StudentProfileForm } from './StudentProfileForm';
 
 interface Props {
   setPanel: (key: PanelKey) => void;
@@ -30,10 +40,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentDetailLimited, setStudentDetailLimited] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Record<string, any>>({});
+  const [form, setForm] = useState<StudentProfileFormState>(emptyStudentProfileForm());
   const [modalError, setModalError] = useState<string | null>(null);
-  const [classOptions, setClassOptions] = useState<Array<{ id: string; name: string }>>([]);
-  const [sectionOptions, setSectionOptions] = useState<Array<{ id: string; name: string }>>([]);
+  const [classOptions, setClassOptions] = useState<StudentClassOption[]>([]);
+  const [sectionOptions, setSectionOptions] = useState<StudentSectionOption[]>([]);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage) => {
     try {
@@ -71,26 +81,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
   const enterEditMode = (detail: any) => {
     setModalError(null);
-    setForm({
-      fullName: detail.fullName ?? '',
-      rollNo: detail.rollNo ?? '',
-      admissionNumber: detail.admissionNumber ?? '',
-      boardRegistrationNumber: detail.boardRegistrationNumber ?? '',
-      dateOfBirth: detail.dateOfBirth ?? '',
-      gender: detail.gender ?? '',
-      fatherName: detail.fatherName ?? '',
-      fatherContact: detail.fatherContact ?? '',
-      motherName: detail.motherName ?? '',
-      phone: detail.phone ?? '',
-      houseNumber: detail.address?.houseNumber ?? '',
-      street: detail.address?.street ?? '',
-      locality: detail.address?.locality ?? '',
-      city: detail.address?.city ?? '',
-      state: detail.address?.state ?? '',
-      pinCode: detail.address?.pinCode ?? '',
-      classId: detail.classId ?? '',
-      sectionId: detail.sectionId ?? '',
-    });
+    setForm(studentDetailToProfileForm(detail));
     setEditing(true);
     void api.get('/classes', { params: schoolScopedParams })
       .then((r) => setClassOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setClassOptions([]));
@@ -161,8 +152,16 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
   const onClassChange = (classId: string) => {
     setForm((f) => ({ ...f, classId, sectionId: '' }));
+    if (!classId) {
+      setSectionOptions([]);
+      return;
+    }
     void api.get(`/classes/${encodeURIComponent(classId)}/sections`, { params: schoolScopedParams })
       .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
+  };
+
+  const updateStudentForm = (patch: Partial<StudentProfileFormState>) => {
+    setForm((f) => ({ ...f, ...patch }));
   };
 
   const saveStudent = async () => {
@@ -170,7 +169,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setSaving(true);
     setModalError(null);
     try {
-      await api.put(`/workspace/students/${studentDetail.id}`, { ...form, ...(schoolScopedParams || {}) });
+      await api.put(`/workspace/students/${studentDetail.id}`, { ...studentProfileFormToUpdatePayload(form), ...(schoolScopedParams || {}) });
       const res = await api.get(`/students/${studentDetail.id}/workspace`);
       setStudentDetail(res.data);
       setEditing(false);
@@ -394,30 +393,15 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                     <button type="button" className="ck-btn ck-btn-ghost" disabled={editPhotoBusy} onClick={() => editPhotoInputRef.current?.click()}>{editPhotoBusy ? 'Uploading…' : 'Change photo'}</button>
                     <div className="ts">JPG, PNG or WEBP · up to {STUDENT_PHOTO_MAX_LABEL}</div>
                   </div>
-                  <label>Full name<input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
-                  <label>Admission No<input value={form.admissionNumber} onChange={(e) => setForm({ ...form, admissionNumber: e.target.value })} /></label>
-                  <label>Roll No<input value={form.rollNo} onChange={(e) => setForm({ ...form, rollNo: e.target.value })} /></label>
-                  <label>Board Reg No<input value={form.boardRegistrationNumber} onChange={(e) => setForm({ ...form, boardRegistrationNumber: e.target.value })} /></label>
-                  <label>Class<select value={form.classId} onChange={(e) => onClassChange(e.target.value)}>
-                    <option value="">Select class</option>
-                    {classOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select></label>
-                  <label>Section<select value={form.sectionId} onChange={(e) => setForm({ ...form, sectionId: e.target.value })} disabled={!form.classId}>
-                    <option value="">Select section</option>
-                    {sectionOptions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select></label>
-                  <label>Date of birth<input type="date" value={form.dateOfBirth || ''} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} /></label>
-                  <label>Gender<input value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} /></label>
-                  <label>Father name<input value={form.fatherName} onChange={(e) => setForm({ ...form, fatherName: e.target.value })} /></label>
-                  <label>Father contact<input value={form.fatherContact} onChange={(e) => setForm({ ...form, fatherContact: e.target.value })} /></label>
-                  <label>Mother name<input value={form.motherName} onChange={(e) => setForm({ ...form, motherName: e.target.value })} /></label>
-                  <label>Phone<input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></label>
-                  <label>House / building<input value={form.houseNumber} onChange={(e) => setForm({ ...form, houseNumber: e.target.value })} /></label>
-                  <label>Street<input value={form.street} onChange={(e) => setForm({ ...form, street: e.target.value })} /></label>
-                  <label>Locality<input value={form.locality} onChange={(e) => setForm({ ...form, locality: e.target.value })} /></label>
-                  <label>City<input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></label>
-                  <label>State<input value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })} /></label>
-                  <label>PIN code<input value={form.pinCode} onChange={(e) => setForm({ ...form, pinCode: e.target.value })} /></label>
+                  <div style={{ gridColumn: '1/-1' }}>
+                    <StudentProfileForm
+                      form={form}
+                      classes={classOptions}
+                      sections={sectionOptions}
+                      onChange={updateStudentForm}
+                      onClassChange={onClassChange}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="ck-student-modal-grid">

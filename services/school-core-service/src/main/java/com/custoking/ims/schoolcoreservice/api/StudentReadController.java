@@ -112,6 +112,8 @@ public class StudentReadController {
         params.put("admissionNo", req.admissionNumber());
         params.put("fullName", req.fullName());
         params.put("schoolId", req.schoolId());
+        if (req.classId() != null) params.put("classId", req.classId());
+        if (req.sectionId() != null) params.put("sectionId", req.sectionId());
         if (req.gradeLevel() != null) params.put("gradeLevel", req.gradeLevel());
         if (req.className() != null) params.put("className", req.className());
         if (req.sectionName() != null) params.put("sectionName", req.sectionName());

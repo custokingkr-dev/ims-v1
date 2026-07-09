@@ -1,14 +1,8 @@
 import { useState } from 'react';
 import type { StudentDetail, StudentFilters, StudentFormState, StudentsView } from './types';
+import { emptyStudentProfileForm } from './profileForm';
 
-const DEFAULT_FORM: StudentFormState = {
-  admissionNumber: '', boardRegistrationNumber: '', fullName: '',
-  dateOfBirth: '', gender: 'Male', gradeLevel: 'Class 9', sectionName: 'A',
-  academicYear: '2025–26', admissionDate: '', houseNumber: '', street: '',
-  locality: '', city: 'Hyderabad', state: 'Telangana', pinCode: '',
-  fatherName: '', fatherContactNumber: '', paymentSchedule: 'Monthly',
-  manualDiscountOverride: '0',
-};
+const DEFAULT_FORM: StudentFormState = emptyStudentProfileForm();
 
 const DEFAULT_VIEW: StudentsView = {
   items: [], filteredCount: 0, filteredSections: 0,
@@ -26,7 +20,7 @@ export function useStudentFeature() {
   const [studentModalLoading, setStudentModalLoading] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
 
-  const resetStudentForm = () => setStudentForm(DEFAULT_FORM);
+  const resetStudentForm = () => setStudentForm(emptyStudentProfileForm());
 
   return {
     studentForm, setStudentForm, resetStudentForm,

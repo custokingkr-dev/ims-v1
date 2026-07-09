@@ -95,7 +95,7 @@ class StudentValidationTest {
                         .header("X-Student-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
                         .content("{\"admissionNumber\":\"ADM-001\",\"fullName\":\"Aarav Sharma\"," +
-                                 "\"schoolId\":4,\"sectionName\":\"B\",\"gender\":\"Male\"}"))
+                                 "\"schoolId\":4,\"classId\":\"9\",\"sectionId\":\"4-9-A\",\"gender\":\"Male\"}"))
                 .andExpect(status().isOk());
 
         @SuppressWarnings("unchecked")
@@ -106,7 +106,8 @@ class StudentValidationTest {
         assertEquals("ADM-001", captured.get("admissionNo"));
         assertEquals("Aarav Sharma", captured.get("fullName"));
         assertEquals(4L, captured.get("schoolId"));
-        assertEquals("B", captured.get("sectionName"));
+        assertEquals("9", captured.get("classId"));
+        assertEquals("4-9-A", captured.get("sectionId"));
         assertEquals("Male", captured.get("gender"));
     }
 

@@ -12,6 +12,8 @@ public record CreateStudentRequest(
         @NotBlank String admissionNumber,
         @NotBlank String fullName,
         Long schoolId,
+        String classId,
+        String sectionId,
         String gradeLevel,
         String className,
         String sectionName,
