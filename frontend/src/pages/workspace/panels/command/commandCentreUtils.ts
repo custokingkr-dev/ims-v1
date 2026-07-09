@@ -82,7 +82,7 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
   // ── 4. Year-end Promotion Review ──────────────────────────────────────────
   // Workspace does not carry promotion-readiness data — card omitted (no real source).
 
-  // ── 5. Supply Orders Awaiting Approval ────────────────────────────────────
+  // ── 5. Urgent Procurement Orders Awaiting Approval ────────────────────────
   const submittedOrders = ws.orders?.filter(o => o.status === 'SUBMITTED') ?? [];
   if (submittedOrders.length > 0) {
     const totalValue = submittedOrders.reduce(
@@ -95,8 +95,8 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       urgency: 'high',
       confidence: 93,
       code: `ORD-PENDING-${submittedOrders.length}`,
-      title: `${submittedOrders.length} supply order${submittedOrders.length !== 1 ? 's' : ''} awaiting approval`,
-      why: `${submittedOrders.length} submitted order${submittedOrders.length !== 1 ? 's' : ''} need approval. Delays extend vendor lead time and risk stock-outs.`,
+      title: `${submittedOrders.length} urgent procurement order${submittedOrders.length !== 1 ? 's' : ''} awaiting approval`,
+      why: `${submittedOrders.length} urgent procurement order${submittedOrders.length !== 1 ? 's' : ''} need approval. Delays extend vendor lead time and risk stock-outs.`,
       impact: totalValue > 0
         ? `₹${totalValue.toLocaleString('en-IN')} pending approval`
         : `${submittedOrders.length} orders pending`,
@@ -130,7 +130,7 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
     });
   }
 
-  // ── 7. Firefighting Requests Missing Quotation ────────────────────────────
+  // ── 7. Urgent Procurement Requests Missing Quotation ──────────────────────
   const ffOpen = ws.firefighting?.requests?.filter(r => r.status === 'OPEN') ?? [];
   if (ffOpen.length > 0) {
     cards.push({
@@ -139,7 +139,7 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       urgency: 'high',
       confidence: 91,
       code: `FF-OPEN-${ffOpen.length}`,
-      title: `${ffOpen.length} firefighting request${ffOpen.length !== 1 ? 's' : ''} awaiting quotation`,
+      title: `${ffOpen.length} urgent procurement request${ffOpen.length !== 1 ? 's' : ''} awaiting quotation`,
       why: `${ffOpen.length} open request${ffOpen.length !== 1 ? 's' : ''} need a quotation before they can proceed to approval. Safety SLAs may be at risk.`,
       impact: 'Safety compliance · quotation needed',
       state: 'OPEN → IN_REVIEW',
@@ -150,7 +150,7 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
     });
   }
 
-  // ── 8. Firefighting Approvals Pending ─────────────────────────────────────
+  // ── 8. Urgent Procurement Approvals Pending ───────────────────────────────
   const ffInReview = ws.firefighting?.requests?.filter(r => r.status === 'IN_REVIEW') ?? [];
   const ffApprovalCount = ffInReview.length > 0
     ? ffInReview.length
@@ -163,7 +163,7 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       urgency: 'critical',
       confidence: 97,
       code: `FF-APPROVE-${ffApprovalCount}`,
-      title: `${ffApprovalCount} firefighting request${ffApprovalCount !== 1 ? 's' : ''} pending approval`,
+      title: `${ffApprovalCount} urgent procurement request${ffApprovalCount !== 1 ? 's' : ''} pending approval`,
       why: `${ffApprovalCount} request${ffApprovalCount !== 1 ? 's' : ''} in review need sign-off. Safety equipment cannot be dispatched without approval.`,
       impact: 'Safety dispatch blocked · act now',
       state: 'IN_REVIEW → APPROVED',

@@ -75,8 +75,8 @@ function MarkPaidModal({ item, onClose, onConfirm }: MarkPaidModalProps) {
 // ── Row ───────────────────────────────────────────────────────────────────────
 
 const SOURCE_LABEL: Record<string, string> = {
-  CATALOG_ORDER: 'Supply Order',
-  FIREFIGHTING: 'Firefighting',
+  CATALOG_ORDER: 'Supply OS Order',
+  FIREFIGHTING: 'Urgent Procurement',
 };
 
 function DueRow({ item, canPay, onMarkPaid }: { item: VendorDueItem; canPay: boolean; onMarkPaid: (item: VendorDueItem) => void }) {
@@ -158,12 +158,12 @@ export function VendorDuesDrawer({ open, onClose }: Props) {
           <>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
               <div style={{ flex: 1, background: '#e3f2fd', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontSize: 11, color: '#1565c0', fontWeight: 600 }}>Supply Orders</div>
+                <div style={{ fontSize: 11, color: '#1565c0', fontWeight: 600 }}>Supply OS Orders</div>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{data.catalogOrderCount}</div>
                 <div style={{ fontSize: 12, color: '#444' }}>{rupees(data.catalogOrderTotalPaise)}</div>
               </div>
               <div style={{ flex: 1, background: '#fff3e0', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontSize: 11, color: '#b35c00', fontWeight: 600 }}>Firefighting</div>
+                <div style={{ fontSize: 11, color: '#b35c00', fontWeight: 600 }}>Urgent Procurement</div>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{data.firefightingCount}</div>
                 <div style={{ fontSize: 12, color: '#444' }}>{rupees(data.firefightingTotalPaise)}</div>
               </div>

@@ -286,6 +286,10 @@ export default function UnifiedWorkspacePage() {
     : filterNavSectionsForModules(rawNavSections, activeModules);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
   const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel);
+  const dashboardModuleAccess = {
+    erp: isPlatformAdmin || activeModules.has('ERP'),
+    supplyOs: isPlatformAdmin || activeModules.has('SUPPLY_OS'),
+  };
 
   const isFire = panel.startsWith('ff-');
   // liveOrders is a PageResponse envelope; fall back to workspace snapshot for first render
@@ -446,7 +450,13 @@ export default function UnifiedWorkspacePage() {
             </ModuleShell>
           )}
 
-          {panelAllowed && panel === 'home' && workspace && <HomePanel workspace={workspace} setPanel={setPanel} />}
+          {panelAllowed && panel === 'home' && workspace && (
+            <HomePanel
+              workspace={workspace}
+              setPanel={setPanel}
+              moduleAccess={dashboardModuleAccess}
+            />
+          )}
 
           {panelAllowed && panel === 'students' && <StudentsPanel setPanel={setPanel} onRefresh={refresh} />}
 

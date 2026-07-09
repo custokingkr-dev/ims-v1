@@ -52,7 +52,7 @@ export const MOCK_SUGGESTIONS: SuggestedAction[] = [
     urgency: 'high',
     confidence: 95,
     code: 'ORD-2025-338',
-    title: 'Approve 3 supply orders — lab consumables',
+    title: 'Approve 3 urgent procurement orders — lab consumables',
     why: 'Consumption is running 1.4× forecast at 3 schools; reorder point breached. Orders sit in SUBMITTED awaiting zone-admin decision. Vendor lead time 7 days.',
     impact: '₹2.1L · averts 12 lab cancellations',
     state: 'SUBMITTED → APPROVED',
@@ -132,6 +132,6 @@ export const MOCK_BROADCASTS: Broadcast[] = [
     whenShort: 'in 5 days',
     audience: 'Grades 1–5 parents · 638',
     channels: ['WhatsApp', 'Email'],
-    note: 'Linked to fulfilled supply order ORD-2025-301.',
+    note: 'Linked to fulfilled Supply OS order ORD-2025-301.',
   },
 ];

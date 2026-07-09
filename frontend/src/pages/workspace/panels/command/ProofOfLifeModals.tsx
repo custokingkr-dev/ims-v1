@@ -463,7 +463,7 @@ function FfQuotationViewModal({ workspace, onClose }: PolModalProps) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {inReview.length === 0 && (
           <div style={{ color: 'var(--ink3)', fontSize: 13 }}>
-            No requests currently in review. Check the Firefighting panel for current status.
+            No requests currently in review. Check the Urgent Procurement panel for current status.
           </div>
         )}
         {inReview.map(req => {

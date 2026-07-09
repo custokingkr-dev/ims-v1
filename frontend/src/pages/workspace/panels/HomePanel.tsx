@@ -35,6 +35,14 @@ import { StudentReviewDrawer } from '../dashboard/drawers/StudentReviewDrawer';
 import { LowAttendanceDrawer } from '../dashboard/drawers/LowAttendanceDrawer';
 import { VendorDuesDrawer } from '../dashboard/drawers/VendorDuesDrawer';
 import { ReorderSignalsDrawer } from '../dashboard/drawers/ReorderSignalsDrawer';
+import {
+  canAccessDashboardModule,
+  dashboardFilterLabel,
+  dashboardModuleLabel,
+  filterKeysForDashboardAccess,
+  matchesDashboardFilter,
+  type DashboardModuleAccess,
+} from './dashboardAccess';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -43,6 +51,7 @@ import { ReorderSignalsDrawer } from '../dashboard/drawers/ReorderSignalsDrawer'
 interface Props {
   workspace: WorkspaceData;
   setPanel: (key: PanelKey) => void;
+  moduleAccess: DashboardModuleAccess;
 }
 
 interface FeedItem {
@@ -100,11 +109,11 @@ interface DailyBriefData {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MODULE_LABEL: Record<ActionModule, string> = {
-  fees:         'Fees & Finance',
-  students:     'Student Lifecycle',
-  supply:       'Supply Orders',
-  firefighting: 'Firefighting',
-  attendance:   'Attendance',
+  fees:         dashboardModuleLabel('fees'),
+  students:     dashboardModuleLabel('students'),
+  supply:       dashboardModuleLabel('supply'),
+  firefighting: dashboardModuleLabel('firefighting'),
+  attendance:   dashboardModuleLabel('attendance'),
 };
 
 const CHANNEL_ICON: Record<string, string> = {
@@ -112,8 +121,7 @@ const CHANNEL_ICON: Record<string, string> = {
 };
 
 
-type FilterKey = 'all' | ActionModule;
-const FILTER_KEYS: FilterKey[] = ['all', 'fees', 'students', 'supply', 'firefighting', 'attendance'];
+type FilterKey = ReturnType<typeof filterKeysForDashboardAccess>[number];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Backend → frontend type mappers
@@ -269,8 +277,8 @@ interface KpiDef {
   panelKey: PanelKey;
 }
 
-function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
-  return [
+function buildKpis(d: WorkspaceData['dashboard'], moduleAccess: DashboardModuleAccess): KpiDef[] {
+  const kpis: KpiDef[] = [
     {
       id: 'students', label: 'Total Students',
       value: String(d.students), unit: '', sub: `${d.sections} sections`,
@@ -295,7 +303,7 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
       panelKey: 'fees',
     },
     {
-      id: 'firefighting', label: 'Firefighting',
+      id: 'firefighting', label: 'Urgent Procurement',
       value: String(d.firefightingActive), unit: '',
       sub: `${d.pendingApprovals} need approval`,
       delta: d.pendingApprovals, deltaInvertBad: true, module: 'firefighting',
@@ -303,6 +311,7 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
       panelKey: 'ff-dashboard',
     },
   ];
+  return kpis.filter((k) => canAccessDashboardModule(k.module, moduleAccess));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -311,15 +320,28 @@ function buildKpis(d: WorkspaceData['dashboard']): KpiDef[] {
 
 // §1 + §2: Greeting + Critical alert — combined header block
 function GreetingHeader({
-  workspace, criticalAction, onAcceptCritical,
+  workspace, criticalAction, moduleAccess, onAcceptCritical,
 }: {
   workspace: WorkspaceData;
   criticalAction: CommandCentreCard | null;
+  moduleAccess: DashboardModuleAccess;
   onAcceptCritical: (a: CommandCentreCard) => void;
 }) {
   const { can } = usePermissions();
   const h = new Date().getHours();
   const d = workspace.dashboard;
+  const summaryParts: string[] = [];
+  if (moduleAccess.erp) {
+    if (d.feeOverdueCount > 0) summaryParts.push(`${d.feeOverdueCount} students have overdue fees`);
+    summaryParts.push(`${d.students} students enrolled`);
+    summaryParts.push(`${d.attendancePercent}% attendance today`);
+  }
+  if (moduleAccess.supplyOs) {
+    summaryParts.push(`${d.pendingApprovals} urgent procurement approvals pending`);
+  }
+  const summary = summaryParts.length > 0
+    ? `${summaryParts.join('; ')}.`
+    : 'Dashboard access is limited for this school.';
 
   return (
     <>
@@ -336,10 +358,7 @@ function GreetingHeader({
             {greeting(h)}, <em>Command Center</em>
           </h1>
           <p className="ck-command-subtitle">
-            {d.feeOverdueCount > 0
-              ? `${d.feeOverdueCount} students have overdue fees · ${d.pendingApprovals} firefighting approvals pending · ${d.attendancePercent}% attendance today.`
-              : `${d.students} students enrolled · ${d.attendancePercent}% present today · ${d.pendingApprovals} approvals pending.`
-            }
+            {summary}
           </p>
           {criticalAction && (
             <div className="ck-command-crit-badge" style={{ marginTop: 10 }}>
@@ -375,12 +394,14 @@ function GreetingHeader({
 
 // §3: Pulse KPIs with sparklines
 function PulseKpis({
-  workspace, setPanel,
+  workspace, setPanel, moduleAccess,
 }: {
   workspace: WorkspaceData;
   setPanel: (k: PanelKey) => void;
+  moduleAccess: DashboardModuleAccess;
 }) {
-  const kpis = buildKpis(workspace.dashboard);
+  const kpis = buildKpis(workspace.dashboard, moduleAccess);
+  if (kpis.length === 0) return null;
   // Color map for sparkline — maps to CSS var literal values
   const SPARK_COLORS: Record<ActionModule, string> = {
     fees: '#1a6840', students: '#1a4fa8', supply: '#5b2d8a',
@@ -426,10 +447,11 @@ function PulseKpis({
 
 // §3b: Action Insights — real-time metrics from backend command-center endpoint
 function ActionInsightsSection({
-  metrics, setPanel, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
+  metrics, setPanel, moduleAccess, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
 }: {
   metrics: DashboardCommandCenterResponse | null;
   setPanel: (k: PanelKey) => void;
+  moduleAccess: DashboardModuleAccess;
   onOpenFeeDefaulters: () => void;
   onOpenClassPhotography: () => void;
   onOpenStudentReview: () => void;
@@ -437,7 +459,7 @@ function ActionInsightsSection({
   onOpenVendorDues: () => void;
   onOpenReorderSignals: () => void;
 }) {
-  if (!metrics) return null;
+  if (!metrics || (!moduleAccess.erp && !moduleAccess.supplyOs)) return null;
 
   const { fees, photography, lifecycle, attendance, vendorDues, reorderSignals } = metrics;
   const overdueRupees = fees.totalOverdueAmountPaise / 100;
@@ -453,6 +475,8 @@ function ActionInsightsSection({
         <span className="ck-command-ai-badge">LIVE</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+        {moduleAccess.erp && (
+          <>
         <ActionInsightCard
           module="fees"
           title="Fee Defaulters"
@@ -475,6 +499,10 @@ function ActionInsightsSection({
           ctaLabel="View Sections"
           onCta={onOpenLowAttendance}
         />
+          </>
+        )}
+        {moduleAccess.supplyOs && (
+          <>
         <ActionInsightCard
           module="photography"
           title="Class Photography"
@@ -487,6 +515,10 @@ function ActionInsightsSection({
           ctaLabel="View Payments"
           onCta={onOpenClassPhotography}
         />
+          </>
+        )}
+        {moduleAccess.erp && (
+          <>
         <ActionInsightCard
           module="students"
           title="Student Lifecycle"
@@ -498,10 +530,14 @@ function ActionInsightsSection({
           ctaLabel="Review Students"
           onCta={onOpenStudentReview}
         />
+          </>
+        )}
+        {moduleAccess.supplyOs && (
+          <>
         <ActionInsightCard
           module="orders"
           title="Vendor Payment Dues"
-          description="Approved orders and firefighting requests with outstanding vendor payment."
+          description="Approved orders and urgent procurement requests with outstanding vendor payment."
           metrics={[
             { value: (vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0), label: 'unpaid orders', variant: ((vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0)) > 0 ? 'warn' : 'ok' },
             ...(vendorDues?.totalDuesPaise > 0 ? [{ value: `₹${(vendorDues.totalDuesPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'total due', variant: 'warn' as const }] : []),
@@ -519,6 +555,8 @@ function ActionInsightsSection({
           ctaLabel="View Signals"
           onCta={onOpenReorderSignals}
         />
+          </>
+        )}
       </div>
     </section>
   );
@@ -526,9 +564,10 @@ function ActionInsightsSection({
 
 // §4: Priority Queue — AI-ranked suggested next steps
 function PriorityQueue({
-  actions, onAccept, onDismiss, onPrimaryModal, onSecondary, setPanel,
+  actions, moduleAccess, onAccept, onDismiss, onPrimaryModal, onSecondary, setPanel,
 }: {
   actions: CommandCentreCard[];
+  moduleAccess: DashboardModuleAccess;
   onAccept: (a: CommandCentreCard) => void;
   onDismiss: (a: CommandCentreCard) => void;
   onPrimaryModal: (a: CommandCentreCard) => void;
@@ -537,6 +576,12 @@ function PriorityQueue({
 }) {
   const { can } = usePermissions();
   const [filter, setFilter] = useState<FilterKey>('all');
+  const filterKeys = filterKeysForDashboardAccess(moduleAccess);
+  const activeFilter = filterKeys.includes(filter) ? filter : 'all';
+
+  useEffect(() => {
+    if (!filterKeys.includes(filter)) setFilter('all');
+  }, [filter, moduleAccess.erp, moduleAccess.supplyOs]);
 
   const canAct = (a: CommandCentreCard): boolean => {
     switch (a.module) {
@@ -561,8 +606,8 @@ function PriorityQueue({
   };
 
   // Only show actions the current user can see (hide completely if no permission)
-  const visible = actions.filter(a => canAct(a));
-  const shown = filter === 'all' ? visible : visible.filter(a => a.module === filter);
+  const visible = actions.filter(a => canAccessDashboardModule(a.module, moduleAccess) && canAct(a));
+  const shown = visible.filter(a => matchesDashboardFilter(a.module, activeFilter));
 
   return (
     <section>
@@ -573,13 +618,14 @@ function PriorityQueue({
       </div>
 
       <div className="ck-command-chips">
-        {FILTER_KEYS.map(f => {
-          const label = f === 'all' ? 'All modules' : MODULE_LABEL[f];
-          const isOn = filter === f;
+        {filterKeys.map(f => {
+          const label = dashboardFilterLabel(f);
+          const isOn = activeFilter === f;
+          const onClass = f === 'urgentProcurement' ? 'on-firefighting' : `on-${f}`;
           return (
             <button
               key={f}
-              className={`ck-command-chip ${isOn ? `on-${f}` : ''}`}
+              className={`ck-command-chip ${isOn ? onClass : ''}`}
               onClick={() => setFilter(f)}
               aria-pressed={isOn}
             >
@@ -978,7 +1024,7 @@ function ToastBanner({ toast }: { toast: Toast }) {
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function HomePanel({ workspace, setPanel }: Props) {
+export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
 
   // Action insights — structured metrics from /dashboard/command-center
   const [commandCenterMetrics, setCommandCenterMetrics] = useState<DashboardCommandCenterResponse | null>(null);
@@ -1171,7 +1217,10 @@ export function HomePanel({ workspace, setPanel }: Props) {
     showToast({ ok: true, txt: 'Broadcast saved as draft' });
   }, [showToast]);
 
-  const criticalAction = actions.find(a => a.urgency === 'critical') ?? null;
+  const dashboardActions = actions.filter((a) => canAccessDashboardModule(a.module, moduleAccess));
+  const visibleBroadcasts = broadcasts.filter((b) => canAccessDashboardModule(b.module, moduleAccess));
+  const visibleFeed = feed.filter((f) => canAccessDashboardModule(f.module, moduleAccess));
+  const criticalAction = dashboardActions.find(a => a.urgency === 'critical') ?? null;
 
   return (
     <>
@@ -1179,6 +1228,7 @@ export function HomePanel({ workspace, setPanel }: Props) {
       <GreetingHeader
         workspace={workspace}
         criticalAction={criticalAction}
+        moduleAccess={moduleAccess}
         onAcceptCritical={a => {
           handleAccept(a);
           setPanel(panelForCard(a, mod => {
@@ -1195,13 +1245,14 @@ export function HomePanel({ workspace, setPanel }: Props) {
       />
 
       {/* §3 Pulse KPIs */}
-      <PulseKpis workspace={workspace} setPanel={setPanel} />
+      <PulseKpis workspace={workspace} setPanel={setPanel} moduleAccess={moduleAccess} />
 
       {/* §4 + §5 + §6 — main 2-column grid */}
       {/* §3b Action Insights */}
       <ActionInsightsSection
         metrics={commandCenterMetrics}
         setPanel={setPanel}
+        moduleAccess={moduleAccess}
         onOpenFeeDefaulters={() => setShowFeeDefaulters(true)}
         onOpenClassPhotography={() => setShowClassPhotography(true)}
         onOpenStudentReview={() => setShowStudentReview(true)}
@@ -1214,7 +1265,8 @@ export function HomePanel({ workspace, setPanel }: Props) {
         {/* LEFT: Priority Queue + Broadcast (full-width on narrow) */}
         <div className="ck-command-left">
           <PriorityQueue
-            actions={actions}
+            actions={dashboardActions}
+            moduleAccess={moduleAccess}
             onAccept={handleAccept}
             onDismiss={handleDismiss}
             onPrimaryModal={handlePrimaryModal}
@@ -1225,7 +1277,7 @@ export function HomePanel({ workspace, setPanel }: Props) {
           {/* §5 Broadcast Channel (moves into left col on narrow screens) */}
           <div className="ck-command-broadcast-left-slot">
             <BroadcastChannel
-              broadcasts={broadcasts}
+              broadcasts={visibleBroadcasts}
               onSend={handleSendBroadcast}
               onApprove={handleApproveBroadcast}
               onCompose={() => setShowCompose(true)}
@@ -1236,10 +1288,10 @@ export function HomePanel({ workspace, setPanel }: Props) {
         {/* RIGHT: Signal Feed + Daily Brief */}
         <aside className="ck-command-right">
           {/* §6 Live Signal Feed */}
-          <SignalFeed feed={feed} pollKey={pollKey} />
+          <SignalFeed feed={visibleFeed} pollKey={pollKey} />
 
           {/* Daily Brief */}
-          <DailyBrief brief={brief} actions={actions} />
+          <DailyBrief brief={brief} actions={dashboardActions} />
         </aside>
       </div>
 
