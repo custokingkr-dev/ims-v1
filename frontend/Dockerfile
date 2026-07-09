@@ -9,6 +9,7 @@ RUN npm ci && npm run build
 FROM nginx:1.27-alpine
 ENV API_UPSTREAM=http://api-gateway:80
 ENV NGINX_RESOLVER="127.0.0.11 valid=10s ipv6=off"
+RUN apk upgrade --no-cache libcrypto3 libssl3
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80
