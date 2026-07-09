@@ -100,6 +100,17 @@ export type StagedPhoto =
   | { kind: 'embedded'; bytes: Uint8Array; contentType: string }
   | { kind: 'link'; url: string };
 
+interface ImportStructurePreview {
+  currentClassCount: number;
+  currentSectionCount: number;
+  requiredClassCount: number;
+  requiredSectionCount: number;
+  requiresStructureUpdate: boolean;
+  missingClasses?: string[];
+  missingSections?: string[];
+  unsupportedClasses?: string[];
+}
+
 // Phase B: after students are inserted, attach each staged photo to its new student record.
 // Photo failures are recorded as skips — never thrown — so a bad photo never fails the data import.
 export async function attachPhotos(
@@ -148,12 +159,14 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   const [bulkImportError, setBulkImportError] = useState('');
   const [bulkImportWarning, setBulkImportWarning] = useState('');
   const [bulkImportFileName, setBulkImportFileName] = useState('');
-  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; phone: string; status: string; statusTone: string; description?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
+  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
   const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; pct?: number; inserted?: number; skipped?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null>(null);
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
   const [saving, setSaving] = useState('');
   const stagedPhotosRef = useRef<Map<string, StagedPhoto>>(new Map());
+  const stagedRowsRef = useRef<Record<string, string | number>[]>([]);
+  const stagedFileRef = useRef<File | null>(null);
 
   // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
   const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
@@ -163,6 +176,15 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
     if (!sheet) return [];
     const json = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '', raw: false });
     return json.map((row, index) => ({ ...row, __rowNumber: index + 2 }));
+  };
+
+  const previewImportFile = async (file: File, rows: Record<string, string | number>[]) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('rowsJson', JSON.stringify(rows));
+    if (_params?.schoolId) fd.append('schoolId', String(_params.schoolId));
+    const res = await api.post('/students/import/upload-preview', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    setBulkImportPreview(res.data as typeof bulkImportPreview);
   };
 
   const handleBulkImportFile = async (file: File) => {
@@ -177,6 +199,8 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
     try {
       const rows = await parseRows(file);
       if (rows.length > 500) { setBulkImportWarning('Maximum 500 rows per import. Please reduce the file and try again.'); return; }
+      stagedRowsRef.current = rows;
+      stagedFileRef.current = file;
 
       const embedded = await extractXlsxPhotos(file); // Map<admissionNo, {bytes, contentType}>
       const stagedByAdmission = new Map<string, StagedPhoto>();
@@ -193,14 +217,43 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       setBulkImportFileName(file.name);
       setSaving('previewing');
       try {
-        const res = await api.post('/students/import/preview', { rows });
-        setBulkImportPreview(res.data as typeof bulkImportPreview);
+        await previewImportFile(file, rows);
       } finally {
         setSaving('');
       }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not parse and preview this file.');
       setBulkImportError(msg);
+    }
+  };
+
+  const updateStructureAndRevalidate = async () => {
+    const structure = bulkImportPreview?.structure;
+    const file = stagedFileRef.current;
+    if (!structure || !file) return;
+    if (!_params?.schoolId) {
+      setBulkImportToast({ type: 'error', message: 'School structure can only be updated from a school-scoped account.' });
+      return;
+    }
+    if ((structure.unsupportedClasses || []).length > 0) {
+      setBulkImportToast({ type: 'error', message: `Unsupported classes in file: ${structure.unsupportedClasses?.join(', ')}` });
+      return;
+    }
+    try {
+      setSaving('structure-update');
+      setBulkImportToast(null);
+      await api.put(`/schools/${_params.schoolId}/structure`, {
+        classCount: structure.requiredClassCount,
+        sectionCount: structure.requiredSectionCount,
+      });
+      await onRefresh();
+      await previewImportFile(file, stagedRowsRef.current);
+      setBulkImportToast({ type: 'success', message: 'School structure updated. The file was revalidated.' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not update school structure.');
+      setBulkImportToast({ type: 'error', message: msg });
+    } finally {
+      setSaving('');
     }
   };
 
@@ -311,9 +364,29 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       </div>
       {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
       {saving === 'photos' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Uploading photos, please wait…</div></div> : null}
+      {saving === 'structure-update' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Updating school structure and revalidating file…</div></div> : null}
       {bulkImportError ? <div className="ck-alert ck-alert-r" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportError}</div></div> : null}
       {bulkImportWarning ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>!</span><div>{bulkImportWarning}</div></div> : null}
       {bulkImportToast ? <div className={`ck-alert ${bulkImportToast.type === 'success' ? 'ck-alert-g' : 'ck-alert-r'}`} style={{ marginTop: 16 }}><span>{bulkImportToast.type === 'success' ? '✓' : '!'}</span><div>{bulkImportToast.message}</div></div> : null}
+      {bulkImportPreview?.structure?.requiresStructureUpdate ? (
+        <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}>
+          <span>!</span>
+          <div>
+            <strong>File has classes or sections beyond this school setup.</strong>
+            <div>
+              Current setup: {bulkImportPreview.structure.currentClassCount} classes and {bulkImportPreview.structure.currentSectionCount} sections.
+              File needs up to {bulkImportPreview.structure.requiredClassCount} classes and {bulkImportPreview.structure.requiredSectionCount} sections.
+            </div>
+            {(bulkImportPreview.structure.missingClasses || []).length ? <div>Missing classes: {bulkImportPreview.structure.missingClasses?.join(', ')}</div> : null}
+            {(bulkImportPreview.structure.missingSections || []).length ? <div>Missing sections: {bulkImportPreview.structure.missingSections?.join(', ')}</div> : null}
+            <div className="ck-actions-inline" style={{ marginTop: 10 }}>
+              <button className="ck-btn ck-btn-g" type="button" disabled={saving === 'structure-update'} onClick={() => void updateStructureAndRevalidate()}>
+                Increase setup and revalidate
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
       {bulkImportProgress ? <div className="ck-card" style={{ marginTop: 16 }}><div className="ck-form-body"><div className="ck-progress-wrap"><div className="ck-progress-label"><span>Import progress</span><strong>{bulkImportProgress.pct}%</strong></div><div className="ck-progress-bar"><div className="ck-progress-fill" style={{ width: `${bulkImportProgress.pct || 0}%` }} /></div></div>{bulkImportProgress.done ? <div className="ts">Done · {bulkImportProgress.inserted} inserted · {bulkImportProgress.skipped} skipped</div> : null}</div></div> : null}
       {bulkImportPreview ? (
         <div className="ck-card" style={{ marginTop: 16 }}>
@@ -322,13 +395,13 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
               <div className="ck-card-t">Preview — {bulkImportPreview.rows?.length || 0} rows detected</div>
               <div className="ck-import-badges"><span className="ck-status sg">{bulkImportPreview.validCount || 0} valid</span><span className="ck-status sr">{bulkImportPreview.errorCount || 0} errors</span><span className="ck-status sam">{bulkImportPreview.warningCount || 0} warnings</span></div>
             </div>
-            <button className="ck-btn ck-btn-g" disabled={(bulkImportPreview.validCount || 0) === 0 || Boolean(bulkImportProgress?.done) || saving === 'bulk-import-confirm'} onClick={() => void confirmBulkImport()}>{bulkImportProgress?.done ? 'Done' : saving === 'bulk-import-confirm' ? 'Importing…' : `Import ${bulkImportPreview.validCount || 0} valid rows`}</button>
+            <button className="ck-btn ck-btn-g" disabled={(bulkImportPreview.validCount || 0) === 0 || Boolean(bulkImportProgress?.done) || saving === 'bulk-import-confirm' || Boolean(bulkImportPreview.structure?.requiresStructureUpdate)} onClick={() => void confirmBulkImport()}>{bulkImportProgress?.done ? 'Done' : saving === 'bulk-import-confirm' ? 'Importing…' : `Import ${bulkImportPreview.validCount || 0} valid rows`}</button>
           </div>
           <div className="ck-table-wrap">
             <table className="ck-table">
               <thead><tr><th>#</th><th>Name</th><th>Class</th><th>Section</th><th>Admission No.</th><th>Phone</th><th>Status</th></tr></thead>
               <tbody>
-                {(bulkImportPreview.rows || []).map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description}</div> : null}</td></tr>)}
+                {(bulkImportPreview.rows || []).map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description || row.message}</div> : null}</td></tr>)}
               </tbody>
             </table>
           </div>

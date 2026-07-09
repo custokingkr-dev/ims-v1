@@ -105,6 +105,31 @@ public class StudentPhotoStorage {
     }
 
     /**
+     * Stores the original student-import file for auditability. Local/test environments may not
+     * configure the private bucket; in that case the import still proceeds and returns null while
+     * the DB keeps row-level import evidence.
+     */
+    public String uploadImportFile(long schoolId, String batchId, byte[] data, String contentType, String fileName) {
+        if (!isEnabled() || data == null || data.length == 0) {
+            return null;
+        }
+        String safeName = sanitizeFileName(fileName);
+        String key = "student-imports/" + schoolId + "/" + batchId + "/" + sha256(data) + "-" + safeName;
+        try {
+            BlobInfo blob = BlobInfo.newBuilder(bucket, key)
+                    .setContentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream")
+                    .setCacheControl("private, max-age=0, no-store")
+                    .build();
+            storage().create(blob, data);
+            return key;
+        } catch (RuntimeException ex) {
+            log.error("Failed to store student import file (bucket={}, key={})", bucket, key, ex);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Could not store the import file: " + ex.getClass().getSimpleName() + ": " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
      * Convert a stored value to something an {@code <img src>} can load: null stays null, an
      * existing {@code http(s)} URL (legacy/external) is returned as-is, and a GCS object key is
      * turned into a fresh signed URL. Returns null if signing fails (so the UI shows a placeholder).
@@ -223,5 +248,18 @@ public class StudentPhotoStorage {
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    public static String sha256Hex(byte[] data) {
+        return sha256(data == null ? new byte[0] : data);
+    }
+
+    private static String sanitizeFileName(String fileName) {
+        String raw = StringUtils.hasText(fileName) ? fileName.trim() : "students-import";
+        String safe = raw.replaceAll("[^A-Za-z0-9._-]", "_");
+        if (safe.length() > 160) {
+            safe = safe.substring(safe.length() - 160);
+        }
+        return safe.isBlank() ? "students-import" : safe;
     }
 }

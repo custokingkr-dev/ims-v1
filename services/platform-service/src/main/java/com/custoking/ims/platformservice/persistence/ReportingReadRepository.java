@@ -246,20 +246,141 @@ public class ReportingReadRepository {
     }
 
     public Map<String, Object> summary(Long schoolId) {
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>();
         if (schoolId == null) {
-            return Map.of(
-                    "openActions", count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN'"),
-                    "feedItems", count("SELECT count(*) FROM reporting.command_center_feed"),
-                    "invoices", count("SELECT count(*) FROM reporting.billing_invoice_read"),
-                    "academicEvents", count("SELECT count(*) FROM reporting.academic_events"),
-                    "broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts"));
+            result.put("openActions", count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN'"));
+            result.put("feedItems", count("SELECT count(*) FROM reporting.command_center_feed"));
+            result.put("invoices", count("SELECT count(*) FROM reporting.billing_invoice_read"));
+            result.put("academicEvents", count("SELECT count(*) FROM reporting.academic_events"));
+            result.put("broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts"));
+            addWorkspaceDashboardSummary(result, null);
+            return result;
         }
-        return Map.of(
-                "openActions", count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN' AND school_id = :schoolId", schoolId),
-                "feedItems", count("SELECT count(*) FROM reporting.command_center_feed WHERE school_id = :schoolId", schoolId),
-                "invoices", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE school_id = :schoolId", schoolId),
-                "academicEvents", count("SELECT count(*) FROM reporting.academic_events WHERE school_id = :schoolId", schoolId),
-                "broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts WHERE school_id = :schoolId", schoolId));
+        result.put("openActions", count("SELECT count(*) FROM reporting.command_center_actions WHERE status = 'OPEN' AND school_id = :schoolId", schoolId));
+        result.put("feedItems", count("SELECT count(*) FROM reporting.command_center_feed WHERE school_id = :schoolId", schoolId));
+        result.put("invoices", count("SELECT count(*) FROM reporting.billing_invoice_read WHERE school_id = :schoolId", schoolId));
+        result.put("academicEvents", count("SELECT count(*) FROM reporting.academic_events WHERE school_id = :schoolId", schoolId));
+        result.put("broadcasts", count("SELECT count(*) FROM notification.notification_broadcasts WHERE school_id = :schoolId", schoolId));
+        addWorkspaceDashboardSummary(result, schoolId);
+        return result;
+    }
+
+    private void addWorkspaceDashboardSummary(Map<String, Object> result, Long schoolId) {
+        String yearId = activeAcademicYearId();
+        String schoolName = schoolId == null
+                ? "All Schools"
+                : jdbc.sql("SELECT name FROM reporting.dim_school WHERE id = :schoolId")
+                    .param("schoolId", schoolId)
+                    .query(String.class)
+                    .optional()
+                    .orElse("School");
+        String academicYearLabel = yearId == null
+                ? "No active academic year"
+                : jdbc.sql("SELECT label FROM reporting.dim_academic_year WHERE id = :yearId")
+                    .param("yearId", yearId)
+                    .query(String.class)
+                    .optional()
+                    .orElse(yearId);
+        long students = schoolId == null
+                ? count("SELECT count(*) FROM reporting.dim_student WHERE active IS DISTINCT FROM false")
+                : count("SELECT count(*) FROM reporting.dim_student WHERE school_id = :schoolId AND active IS DISTINCT FROM false", schoolId);
+        long sections = schoolId == null
+                ? count("SELECT count(*) FROM reporting.dim_section WHERE active IS DISTINCT FROM false")
+                : count("SELECT count(*) FROM reporting.dim_section WHERE school_id = :schoolId AND active IS DISTINCT FROM false", schoolId);
+
+        long attendancePresent = 0L;
+        long attendanceTotal = 0L;
+        long feeCollected = 0L;
+        long feeTarget = 0L;
+        long feeOverdueCount = 0L;
+        long firefightingActive = schoolId == null
+                ? count("SELECT count(*) FROM reporting.fact_firefighting_request WHERE status <> 'FULFILLED'")
+                : count("SELECT count(*) FROM reporting.fact_firefighting_request WHERE school_id = :schoolId AND status <> 'FULFILLED'", schoolId);
+        long pendingApprovals = schoolId == null
+                ? count("SELECT count(*) FROM reporting.fact_firefighting_request WHERE status IN ('AWAITING_PRINCIPAL', 'AWAITING_BURSAR')")
+                : count("SELECT count(*) FROM reporting.fact_firefighting_request WHERE school_id = :schoolId AND status IN ('AWAITING_PRINCIPAL', 'AWAITING_BURSAR')", schoolId);
+
+        if (yearId != null) {
+            if (schoolId == null) {
+                attendancePresent = countAmount("""
+                        SELECT COALESCE(SUM(present_count), 0)
+                        FROM reporting.fact_attendance_daily
+                        WHERE attendance_date = CURRENT_DATE
+                          AND academic_year_id = :yearId
+                        """, "yearId", yearId);
+                attendanceTotal = countAmount("""
+                        SELECT COALESCE(SUM(total_enrolled), 0)
+                        FROM reporting.fact_attendance_daily
+                        WHERE attendance_date = CURRENT_DATE
+                          AND academic_year_id = :yearId
+                        """, "yearId", yearId);
+                feeCollected = countAmount("""
+                        SELECT COALESCE(SUM(p.amount), 0)
+                        FROM reporting.fact_payment p
+                        JOIN reporting.fact_fee_assignment fa ON fa.id = p.assignment_id
+                        WHERE fa.academic_year_id = :yearId
+                        """, "yearId", yearId);
+                feeTarget = countAmount("""
+                        SELECT COALESCE(SUM(net_payable), 0)
+                        FROM reporting.fact_fee_assignment
+                        WHERE academic_year_id = :yearId
+                        """, "yearId", yearId);
+                feeOverdueCount = count("""
+                        SELECT count(*)
+                        FROM reporting.fact_fee_assignment
+                        WHERE academic_year_id = :yearId
+                          AND net_payable > paid_amount
+                        """, yearId);
+            } else {
+                attendancePresent = countAmount("""
+                        SELECT COALESCE(SUM(present_count), 0)
+                        FROM reporting.fact_attendance_daily
+                        WHERE attendance_date = CURRENT_DATE
+                          AND academic_year_id = :yearId
+                          AND school_id = :schoolId
+                        """, yearId, schoolId);
+                attendanceTotal = countAmount("""
+                        SELECT COALESCE(SUM(total_enrolled), 0)
+                        FROM reporting.fact_attendance_daily
+                        WHERE attendance_date = CURRENT_DATE
+                          AND academic_year_id = :yearId
+                          AND school_id = :schoolId
+                        """, yearId, schoolId);
+                feeCollected = countAmount("""
+                        SELECT COALESCE(SUM(p.amount), 0)
+                        FROM reporting.fact_payment p
+                        JOIN reporting.fact_fee_assignment fa ON fa.id = p.assignment_id
+                        WHERE fa.academic_year_id = :yearId
+                          AND p.school_id = :schoolId
+                        """, yearId, schoolId);
+                feeTarget = countAmount("""
+                        SELECT COALESCE(SUM(net_payable), 0)
+                        FROM reporting.fact_fee_assignment
+                        WHERE academic_year_id = :yearId
+                          AND school_id = :schoolId
+                        """, yearId, schoolId);
+                feeOverdueCount = count("""
+                        SELECT count(*)
+                        FROM reporting.fact_fee_assignment
+                        WHERE academic_year_id = :yearId
+                          AND school_id = :schoolId
+                          AND net_payable > paid_amount
+                        """, yearId, schoolId);
+            }
+        }
+
+        long attendancePercent = attendanceTotal == 0 ? 0 : Math.round(attendancePresent * 100.0 / attendanceTotal);
+        result.put("schoolName", schoolName);
+        result.put("schoolMeta", academicYearLabel);
+        result.put("students", students);
+        result.put("sections", sections);
+        result.put("attendancePercent", attendancePercent);
+        result.put("attendancePresent", attendancePresent);
+        result.put("feeCollectedLakh", lakh(feeCollected));
+        result.put("feeTargetLakh", lakh(feeTarget));
+        result.put("feeOverdueCount", feeOverdueCount);
+        result.put("firefightingActive", firefightingActive);
+        result.put("pendingApprovals", pendingApprovals);
     }
 
     public Map<String, Object> vendorDues(Long schoolId) {
@@ -708,7 +829,7 @@ public class ReportingReadRepository {
                 SELECT COALESCE(SUM(paid_amount), 0)
                 FROM reporting.event_student_contributions
                 WHERE event_id = :eventId
-                """, String.valueOf(event.get("eventId")));
+                """, "eventId", String.valueOf(event.get("eventId")));
         long target = longValue(event.get("targetAmount"));
         return row(
                 "eventId", event.get("eventId"),
@@ -828,6 +949,10 @@ public class ReportingReadRepository {
         return jdbc.sql(sql).param("schoolId", schoolId).query(Long.class).single();
     }
 
+    private long count(String sql, String yearId) {
+        return jdbc.sql(sql).param("yearId", yearId).query(Long.class).single();
+    }
+
     private long count(String sql, String yearId, Long schoolId) {
         return jdbc.sql(sql).param("yearId", yearId).param("schoolId", schoolId).query(Long.class).single();
     }
@@ -840,12 +965,17 @@ public class ReportingReadRepository {
         return jdbc.sql(sql).param("schoolId", schoolId).query(Long.class).single();
     }
 
+    private long countAmount(String sql, String paramName, String value) {
+        return jdbc.sql(sql).param(paramName, value).query(Long.class).single();
+    }
+
     private long countAmount(String sql, String yearId, Long schoolId) {
         return jdbc.sql(sql).param("yearId", yearId).param("schoolId", schoolId).query(Long.class).single();
     }
 
-    private long countAmount(String sql, String eventId) {
-        return jdbc.sql(sql).param("eventId", eventId).query(Long.class).single();
+    private static double lakh(long paise) {
+        double value = paise / 100.0 / 100000.0;
+        return Math.round(value * 100.0) / 100.0;
     }
 
     private static long longValue(Object value) {

@@ -55,14 +55,18 @@ public class ReportingPublicCompatibilityController {
         Long scope = TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> summary = reporting.summary(scope);
         LinkedHashMap<String, Object> response = new LinkedHashMap<>();
-        response.put("school", Map.of("name", "Custoking School", "meta", "Service workspace", "students", number(summary.get("students")), "sections", number(summary.get("sections"))));
+        response.put("school", Map.of(
+                "name", text(summary.get("schoolName"), "Custoking School"),
+                "meta", text(summary.get("schoolMeta"), "Service workspace"),
+                "students", number(summary.get("students")),
+                "sections", number(summary.get("sections"))));
         response.put("dashboard", Map.of(
                         "students", number(summary.get("students")),
                         "sections", number(summary.get("sections")),
                         "attendancePercent", number(summary.get("attendancePercent")),
-                        "attendancePresent", 0,
-                        "feeCollectedLakh", 0,
-                        "feeTargetLakh", 0,
+                        "attendancePresent", number(summary.get("attendancePresent")),
+                        "feeCollectedLakh", number(summary.get("feeCollectedLakh")),
+                        "feeTargetLakh", number(summary.get("feeTargetLakh")),
                         "feeOverdueCount", number(summary.get("feeOverdueCount")),
                         "firefightingActive", number(summary.get("firefightingActive")),
                         "pendingApprovals", number(summary.get("pendingApprovals"))));
@@ -228,6 +232,11 @@ public class ReportingPublicCompatibilityController {
         if (value instanceof Number number) return number.doubleValue();
         if (value == null || String.valueOf(value).isBlank()) return 0;
         return Double.parseDouble(String.valueOf(value));
+    }
+
+    private String text(Object value, String fallback) {
+        if (value == null || String.valueOf(value).isBlank()) return fallback;
+        return String.valueOf(value);
     }
 
     private Long actorSchoolId(Map<String, Object> body) {

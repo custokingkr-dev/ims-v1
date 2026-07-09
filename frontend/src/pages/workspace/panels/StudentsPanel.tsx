@@ -23,6 +23,39 @@ interface Props {
   onRefresh: () => void;
 }
 
+interface AcademicYearOption {
+  id: string;
+  label: string;
+  active?: boolean;
+}
+
+interface StudentHistoryPayload {
+  enrollments?: Array<Record<string, any>>;
+  imports?: Array<Record<string, any>>;
+  promotions?: Array<Record<string, any>>;
+}
+
+interface PromotionBatchItem {
+  id: string;
+  studentName: string;
+  admissionNumber: string;
+  sourceClassName?: string;
+  sourceSectionName?: string;
+  targetClassName?: string;
+  targetSectionName?: string;
+  action?: string;
+  status?: string;
+  reason?: string;
+}
+
+interface PromotionBatch {
+  id: string;
+  status: string;
+  promoted?: number;
+  skipped?: number;
+  items?: PromotionBatchItem[];
+}
+
 export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -44,6 +77,18 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [modalError, setModalError] = useState<string | null>(null);
   const [classOptions, setClassOptions] = useState<StudentClassOption[]>([]);
   const [sectionOptions, setSectionOptions] = useState<StudentSectionOption[]>([]);
+  const [studentHistory, setStudentHistory] = useState<StudentHistoryPayload | null>(null);
+  const [studentHistoryLoading, setStudentHistoryLoading] = useState(false);
+  const [studentHistoryError, setStudentHistoryError] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [promotionOpen, setPromotionOpen] = useState(false);
+  const [promotionClasses, setPromotionClasses] = useState<StudentClassOption[]>([]);
+  const [promotionSections, setPromotionSections] = useState<StudentSectionOption[]>([]);
+  const [promotionYears, setPromotionYears] = useState<AcademicYearOption[]>([]);
+  const [promotionForm, setPromotionForm] = useState({ sourceClassId: '', sourceSectionId: '', targetAcademicYearId: '' });
+  const [promotionBatch, setPromotionBatch] = useState<PromotionBatch | null>(null);
+  const [promotionLoading, setPromotionLoading] = useState(false);
+  const [promotionError, setPromotionError] = useState<string | null>(null);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage) => {
     try {
@@ -97,6 +142,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setStudentDetailLimited(false);
     setEditing(false);
     setModalError(null);
+    setStudentHistory(null);
+    setStudentHistoryError(null);
     let detail = student;
     try {
       setStudentModalOpen(true);
@@ -118,6 +165,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setStudentModalOpen(false);
     setEditing(false);
     setModalError(null);
+    setStudentHistory(null);
+    setStudentHistoryError(null);
   };
 
   // NOTE: GET /api/v1/students/{id}/workspace returns the rich `workspaceStudentDetail`
@@ -182,6 +231,141 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   };
 
+  const loadStudentHistory = async () => {
+    if (!studentDetail?.id) return;
+    try {
+      setStudentHistoryLoading(true);
+      setStudentHistoryError(null);
+      const res = await api.get(`/students/${studentDetail.id}/history`);
+      setStudentHistory(res.data || {});
+    } catch (err: unknown) {
+      setStudentHistoryError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load student history.'));
+    } finally {
+      setStudentHistoryLoading(false);
+    }
+  };
+
+  const deleteStudent = async () => {
+    if (!studentDetail?.id) return;
+    const ok = window.confirm(`Delete ${studentDetail.fullName || studentDetail.name}? This keeps the history but removes the student from active lists.`);
+    if (!ok) return;
+    try {
+      setDeleteBusy(true);
+      setModalError(null);
+      await api.delete(`/students/${studentDetail.id}`, { data: { reason: 'Deleted from Students tab' } });
+      closeStudentModal();
+      await loadStudents(studentFilters, studentsPage);
+      onRefresh();
+    } catch (err: unknown) {
+      setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.'));
+    } finally {
+      setDeleteBusy(false);
+    }
+  };
+
+  const loadPromotionSections = async (classId: string) => {
+    if (!classId) {
+      setPromotionSections([]);
+      setPromotionForm((f) => ({ ...f, sourceClassId: '', sourceSectionId: '' }));
+      return;
+    }
+    setPromotionForm((f) => ({ ...f, sourceClassId: classId, sourceSectionId: '' }));
+    try {
+      const res = await api.get(`/classes/${encodeURIComponent(classId)}/sections`, { params: schoolScopedParams });
+      setPromotionSections(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setPromotionSections([]);
+    }
+  };
+
+  const openPromotionWizard = async () => {
+    setPromotionOpen(true);
+    setPromotionError(null);
+    setPromotionBatch(null);
+    setPromotionLoading(true);
+    try {
+      const [classesRes, yearsRes] = await Promise.all([
+        api.get('/classes', { params: schoolScopedParams }),
+        api.get('/academic-years'),
+      ]);
+      const classes = Array.isArray(classesRes.data) ? classesRes.data : [];
+      const years = Array.isArray(yearsRes.data) ? yearsRes.data : [];
+      setPromotionClasses(classes);
+      setPromotionYears(years);
+      const firstClassId = classes[0]?.id || '';
+      const targetYearId = years.find((y: AcademicYearOption) => !y.active)?.id || years.find((y: AcademicYearOption) => y.active)?.id || years[0]?.id || '';
+      setPromotionForm({ sourceClassId: firstClassId, sourceSectionId: '', targetAcademicYearId: targetYearId });
+      if (firstClassId) {
+        const sectionsRes = await api.get(`/classes/${encodeURIComponent(firstClassId)}/sections`, { params: schoolScopedParams });
+        setPromotionSections(Array.isArray(sectionsRes.data) ? sectionsRes.data : []);
+      } else {
+        setPromotionSections([]);
+      }
+    } catch (err: unknown) {
+      setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not open promotion setup.'));
+    } finally {
+      setPromotionLoading(false);
+    }
+  };
+
+  const createPromotionBatch = async () => {
+    if (!promotionForm.targetAcademicYearId) {
+      setPromotionError('Select a target academic year.');
+      return;
+    }
+    try {
+      setPromotionLoading(true);
+      setPromotionError(null);
+      const res = await api.post('/students/promotion-batches', {
+        ...promotionForm,
+        ...(schoolScopedParams || {}),
+      });
+      setPromotionBatch(res.data);
+    } catch (err: unknown) {
+      setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not create promotion batch.'));
+    } finally {
+      setPromotionLoading(false);
+    }
+  };
+
+  const updatePromotionItem = async (itemId: string, action: 'PROMOTE' | 'HOLD') => {
+    if (!promotionBatch?.id) return;
+    try {
+      setPromotionLoading(true);
+      setPromotionError(null);
+      const res = await api.patch(`/students/promotion-batches/${encodeURIComponent(promotionBatch.id)}/items/${encodeURIComponent(itemId)}`, {
+        action,
+        reason: action === 'HOLD' ? 'Held from promotion wizard' : '',
+      });
+      setPromotionBatch(res.data);
+    } catch (err: unknown) {
+      setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not update promotion item.'));
+    } finally {
+      setPromotionLoading(false);
+    }
+  };
+
+  const applyPromotionBatch = async () => {
+    if (!promotionBatch?.id) return;
+    const count = (promotionBatch.items || []).filter((item) => (item.action || '').toUpperCase() === 'PROMOTE').length;
+    const ok = window.confirm(`Apply promotion for ${count} student${count === 1 ? '' : 's'}?`);
+    if (!ok) return;
+    try {
+      setPromotionLoading(true);
+      setPromotionError(null);
+      const res = await api.post(`/students/promotion-batches/${encodeURIComponent(promotionBatch.id)}/apply`);
+      setPromotionBatch(res.data);
+      await loadStudents(studentFilters, studentsPage);
+      onRefresh();
+    } catch (err: unknown) {
+      setPromotionError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not apply promotion batch.'));
+    } finally {
+      setPromotionLoading(false);
+    }
+  };
+
+  const displayDate = (value: unknown) => value ? String(value).slice(0, 10) : '-';
+
   function feeStatusClass(status: string): string {
     switch ((status ?? '').toLowerCase()) {
       case 'paid':    return 'sg spaid';
@@ -199,6 +383,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
         subtitle={`${studentsView.filteredCount || 0} enrolled · ${studentsView.filteredSections || 0} sections · Academic year 2024–25`}
         actions={
           <>
+            {can('student:update') && schoolScopedParams ? <button className="ck-btn ck-btn-ghost" onClick={() => void openPromotionWizard()}>Promote class</button> : null}
             <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import</button>
             <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>+ Add student</button>
           </>
@@ -453,6 +638,65 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       </span>
                     </div>
                   </div>
+                  {studentHistoryLoading ? (
+                    <div className="ck-form-card">
+                      <div className="ck-form-body">
+                        <div className="ts">Loading lifecycle history...</div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {studentHistoryError ? (
+                    <div className="ck-alert ck-alert-r">
+                      <span>!</span>
+                      <div>{studentHistoryError}</div>
+                    </div>
+                  ) : null}
+                  {studentHistory ? (
+                    <div className="ck-form-card" style={{ gridColumn: '1 / -1' }}>
+                      <div className="ck-form-head">Lifecycle history</div>
+                      <div className="ck-form-body">
+                        <div className="tb" style={{ marginBottom: 8 }}>Class history</div>
+                        {(studentHistory.enrollments || []).length ? (
+                          <div className="ck-table-wrap">
+                            <table className="ck-table">
+                              <thead><tr><th>From</th><th>To</th><th>Class</th><th>Status</th><th>Reason</th></tr></thead>
+                              <tbody>
+                                {(studentHistory.enrollments || []).map((entry, index) => (
+                                  <tr key={entry.id || index}>
+                                    <td>{displayDate(entry.effectiveFrom)}</td>
+                                    <td>{displayDate(entry.effectiveTo)}</td>
+                                    <td>{entry.className || '-'} {entry.sectionName ? `- ${entry.sectionName}` : ''}</td>
+                                    <td><span className="ck-status sgr">{entry.status || '-'}</span></td>
+                                    <td>{entry.reason || entry.sourceType || '-'}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : <div className="ts">No class history recorded yet.</div>}
+                        {(studentHistory.imports || []).length ? (
+                          <>
+                            <div className="tb" style={{ margin: '14px 0 8px' }}>Import evidence</div>
+                            {(studentHistory.imports || []).map((entry, index) => (
+                              <div key={`${entry.batchId || index}`} className="ts" style={{ marginBottom: 6 }}>
+                                Row {entry.rowNumber} in {entry.fileName || 'uploaded file'} - {entry.status || '-'} on {displayDate(entry.appliedAt || entry.createdAt)}
+                              </div>
+                            ))}
+                          </>
+                        ) : null}
+                        {(studentHistory.promotions || []).length ? (
+                          <>
+                            <div className="tb" style={{ margin: '14px 0 8px' }}>Promotion batches</div>
+                            {(studentHistory.promotions || []).map((entry, index) => (
+                              <div key={`${entry.batchId || index}`} className="ts" style={{ marginBottom: 6 }}>
+                                {entry.action || '-'} - {entry.status || '-'} to {entry.targetAcademicYearId || '-'} on {displayDate(entry.appliedAt || entry.createdAt)}
+                              </div>
+                            ))}
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
@@ -463,8 +707,116 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   <button className="ck-btn ck-btn-g" onClick={saveStudent} disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button>
                 </>
               ) : (
-                <button className="ck-btn ck-btn-ghost" onClick={closeStudentModal}>Close</button>
+                <>
+                  <button className="ck-btn ck-btn-ghost" onClick={() => void loadStudentHistory()} disabled={studentHistoryLoading || !studentDetail}>{studentHistoryLoading ? 'Loading...' : 'History'}</button>
+                  {can('student:update') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => enterEditMode(studentDetail)}>Edit</button> : null}
+                  {can('student:delete') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => void deleteStudent()} disabled={deleteBusy}>{deleteBusy ? 'Deleting...' : 'Delete'}</button> : null}
+                  <button className="ck-btn ck-btn-ghost" onClick={closeStudentModal}>Close</button>
+                </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {promotionOpen && (
+        <div className="ck-modal-bg" onClick={() => setPromotionOpen(false)}>
+          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 980 }}>
+            <div className="ck-modal-h">
+              <div className="ck-modal-title">Promote students</div>
+              <button className="ck-modal-x" onClick={() => setPromotionOpen(false)}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              {promotionError ? (
+                <div className="ck-alert ck-alert-r" style={{ marginBottom: 12 }}>
+                  <span>!</span>
+                  <div>{promotionError}</div>
+                </div>
+              ) : null}
+              <div className="ck-form-grid ck-fg-3">
+                <div className="ck-field">
+                  <label>Source class</label>
+                  <select value={promotionForm.sourceClassId} onChange={(e) => void loadPromotionSections(e.target.value)} disabled={promotionLoading}>
+                    <option value="">All classes</option>
+                    {promotionClasses.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="ck-field">
+                  <label>Source section</label>
+                  <select value={promotionForm.sourceSectionId} onChange={(e) => setPromotionForm((f) => ({ ...f, sourceSectionId: e.target.value }))} disabled={promotionLoading || !promotionForm.sourceClassId}>
+                    <option value="">All sections</option>
+                    {promotionSections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div className="ck-field">
+                  <label>Target academic year</label>
+                  <select value={promotionForm.targetAcademicYearId} onChange={(e) => setPromotionForm((f) => ({ ...f, targetAcademicYearId: e.target.value }))} disabled={promotionLoading}>
+                    <option value="">Select year</option>
+                    {promotionYears.map((y) => <option key={y.id} value={y.id}>{y.label}{y.active ? ' (current)' : ''}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="ck-actions-inline" style={{ marginTop: 12 }}>
+                <button className="ck-btn ck-btn-g" onClick={() => void createPromotionBatch()} disabled={promotionLoading || !promotionForm.targetAcademicYearId}>
+                  {promotionLoading ? 'Working...' : promotionBatch ? 'Rebuild preview' : 'Create preview'}
+                </button>
+              </div>
+
+              {promotionBatch ? (
+                <div className="ck-form-card" style={{ marginTop: 16 }}>
+                  <div className="ck-form-head">
+                    Preview - {promotionBatch.items?.length || 0} students - {promotionBatch.status}
+                  </div>
+                  <div className="ck-form-body">
+                    {promotionBatch.status === 'APPLIED' ? (
+                      <div className="ck-alert ck-alert-g" style={{ marginBottom: 12 }}>
+                        <span>✓</span>
+                        <div>{promotionBatch.promoted || 0} promoted. {promotionBatch.skipped || 0} skipped.</div>
+                      </div>
+                    ) : null}
+                    <div className="ck-table-wrap">
+                      <table className="ck-table">
+                        <thead>
+                          <tr>
+                            <th>Student</th>
+                            <th>From</th>
+                            <th>To</th>
+                            <th>Action</th>
+                            <th />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(promotionBatch.items || []).slice(0, 100).map((item) => {
+                            const action = (item.action || '').toUpperCase();
+                            return (
+                              <tr key={item.id}>
+                                <td>
+                                  <div className="tb">{item.studentName}</div>
+                                  <div className="ts">{item.admissionNumber}</div>
+                                </td>
+                                <td>{item.sourceClassName || '-'} {item.sourceSectionName ? `- ${item.sourceSectionName}` : ''}</td>
+                                <td>{item.targetClassName || '-'} {item.targetSectionName ? `- ${item.targetSectionName}` : ''}</td>
+                                <td><span className={`ck-status ${action === 'PROMOTE' ? 'sg' : 'sam'}`}>{item.action || '-'}</span></td>
+                                <td>
+                                  <div className="ck-actions-inline">
+                                    <button className="ck-btn ck-btn-ghost ck-btn-sm" disabled={promotionLoading || promotionBatch.status !== 'DRAFT' || action === 'PROMOTE'} onClick={() => void updatePromotionItem(item.id, 'PROMOTE')}>Promote</button>
+                                    <button className="ck-btn ck-btn-ghost ck-btn-sm" disabled={promotionLoading || promotionBatch.status !== 'DRAFT' || action === 'HOLD'} onClick={() => void updatePromotionItem(item.id, 'HOLD')}>Hold</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    {(promotionBatch.items || []).length > 100 ? <div className="ts" style={{ marginTop: 8 }}>Showing first 100 students. Apply still processes the full batch.</div> : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="ck-modal-foot">
+              {promotionBatch && promotionBatch.status === 'DRAFT' ? <button className="ck-btn ck-btn-g" onClick={() => void applyPromotionBatch()} disabled={promotionLoading || (promotionBatch.items || []).length === 0}>Apply promotion</button> : null}
+              <button className="ck-btn ck-btn-ghost" onClick={() => setPromotionOpen(false)}>Close</button>
             </div>
           </div>
         </div>

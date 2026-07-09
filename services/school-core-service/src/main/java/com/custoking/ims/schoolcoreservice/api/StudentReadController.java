@@ -20,7 +20,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -30,6 +32,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 
@@ -44,6 +48,7 @@ public class StudentReadController {
 
     private final StudentReadRepository students;
     private final ImageUrlFetcher fetcher;
+    private final ObjectMapper objectMapper = new ObjectMapper();
     private final String readToken;
 
     public StudentReadController(
@@ -152,6 +157,27 @@ public class StudentReadController {
         return execute(() -> students.attachPhoto(id, data, file.getContentType()));
     }
 
+    @DeleteMapping("/{id}")
+    public Map<String, Object> delete(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        requireToken(token, "student:write");
+        Long schoolId = students.schoolIdForStudent(id);
+        TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> students.deleteStudent(id, body == null ? Map.of() : body));
+    }
+
+    @GetMapping("/{id}/history")
+    public Map<String, Object> history(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id) {
+        requireToken(token, "student:read");
+        Long schoolId = students.schoolIdForStudent(id);
+        TenantScope.resolveSchoolId(schoolId);
+        return execute(() -> students.studentHistory(id));
+    }
+
     @PostMapping("/{id}/photo-from-url")
     public ResponseEntity<Map<String, Object>> attachPhotoFromUrl(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
@@ -191,6 +217,39 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody PreviewImportRequest req) {
         return previewImport(token, req);
+    }
+
+    @PostMapping(value = "/import/upload-preview", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public Map<String, Object> previewImportWithFile(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("rowsJson") String rowsJson,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "student:write");
+        if (file.getSize() > 50L * 1024L * 1024L) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum file size is 50 MB");
+        }
+        List<Map<String, Object>> rows;
+        try {
+            rows = objectMapper.readValue(rowsJson, new TypeReference<>() {});
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not parse import rows", ex);
+        }
+        byte[] data;
+        try {
+            data = file.getBytes();
+        } catch (IOException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read the uploaded file", ex);
+        }
+        Map<String, Object> params = new HashMap<>();
+        if (schoolId != null) params.put("schoolId", schoolId);
+        params.put("rows", rows);
+        params.put("originalFileName", file.getOriginalFilename());
+        params.put("originalFileContentType", file.getContentType());
+        params.put("originalFileSize", file.getSize());
+        params.put("originalFileBytes", data);
+        applyResolvedSchool(params);
+        return execute(() -> students.previewImport(params));
     }
 
     @PostMapping("/imports/confirm")
@@ -237,6 +296,48 @@ public class StudentReadController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=student-import-template.xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(body.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @PostMapping("/promotion-batches")
+    public Map<String, Object> createPromotionBatch(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "student:write");
+        Map<String, Object> params = new HashMap<>(request);
+        applyResolvedSchool(params);
+        return execute(() -> students.createPromotionBatch(params));
+    }
+
+    @GetMapping("/promotion-batches/{batchId}")
+    public Map<String, Object> promotionBatch(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable String batchId) {
+        requireToken(token, "student:read");
+        Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
+        TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
+        return batch;
+    }
+
+    @PatchMapping("/promotion-batches/{batchId}/items/{itemId}")
+    public Map<String, Object> updatePromotionBatchItem(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable String batchId,
+            @PathVariable String itemId,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "student:write");
+        Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
+        TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
+        return execute(() -> students.updatePromotionBatchItem(batchId, itemId, request));
+    }
+
+    @PostMapping("/promotion-batches/{batchId}/apply")
+    public Map<String, Object> applyPromotionBatch(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable String batchId) {
+        requireToken(token, "student:write");
+        Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
+        TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
+        return execute(() -> students.applyPromotionBatch(batchId));
     }
 
     @PostMapping("/reviews/id-card/initiate")

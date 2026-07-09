@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -284,6 +285,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        recordEnrollmentFromCurrentStudent(id, "Enrolled", "STUDENT_CREATE", String.valueOf(id));
         emitStudentUpserted(id);
         return studentDetail(id);
     }
@@ -291,10 +293,18 @@ public class StudentReadRepository {
     @Transactional
     public Map<String, Object> updateStudent(Long id, Map<String, Object> request) {
         Map<String, Object> current = jdbc.sql("""
-                SELECT id, school_id FROM student.students WHERE id = :id AND deleted_at IS NULL
+                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no
+                FROM student.students
+                WHERE id = :id AND deleted_at IS NULL
                 """)
                 .param("id", id)
-                .query((rs, n) -> row("id", rs.getLong("id"), "schoolId", rs.getLong("school_id")))
+                .query((rs, n) -> row(
+                        "id", rs.getLong("id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "classId", rs.getString("class_id"),
+                        "sectionId", rs.getString("section_id"),
+                        "rollNo", rs.getString("roll_no")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
         Long studentSchool = longValue(current.get("schoolId"), null);
@@ -377,6 +387,15 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        if (!classId.equals(str(current.get("classId"), ""))
+                || !sectionId.equals(str(current.get("sectionId"), ""))) {
+            closeActiveEnrollment(id, "Placement changed from student profile edit");
+            recordEnrollment(id, studentSchool, str(current.get("academicYearId"), currentAcademicYearId()),
+                    classId, sectionId, str(request.get("rollNo"), ""), "ACTIVE",
+                    "TRANSFERRED", "STUDENT_UPDATE", String.valueOf(id));
+        } else {
+            refreshActiveEnrollmentRollNo(id, str(request.get("rollNo"), ""));
+        }
         emitStudentUpserted(id);
         return studentDetail(id);
     }
@@ -409,6 +428,81 @@ public class StudentReadRepository {
                 .single();
         Long schoolId = ((Number) row.get("schoolId")).longValue();
         outbox.append("student.upserted.v1", "StudentUpserted:" + id, "Student", String.valueOf(id), schoolId, row);
+    }
+
+    private void recordEnrollment(Long studentId, Long schoolId, String academicYearId, String classId,
+                                  String sectionId, String rollNo, String status, String reason,
+                                  String sourceType, String sourceId) {
+        jdbc.sql("""
+                INSERT INTO student.student_enrollments (
+                    id, student_id, school_id, academic_year_id, class_id, section_id, roll_no,
+                    status, effective_from, reason, source_type, source_id, created_by, created_at, updated_at
+                ) VALUES (
+                    :id, :studentId, :schoolId, :academicYearId, :classId, :sectionId, :rollNo,
+                    :status, CURRENT_DATE, :reason, :sourceType, :sourceId, :createdBy, now(), now()
+                )
+                """)
+                .param("id", UUID.randomUUID().toString())
+                .param("studentId", studentId)
+                .param("schoolId", schoolId)
+                .param("academicYearId", academicYearId)
+                .param("classId", classId)
+                .param("sectionId", sectionId)
+                .param("rollNo", rollNo)
+                .param("status", status)
+                .param("reason", reason)
+                .param("sourceType", sourceType)
+                .param("sourceId", sourceId)
+                .param("createdBy", actorId())
+                .update();
+    }
+
+    private void recordEnrollmentFromCurrentStudent(Long studentId, String reason, String sourceType, String sourceId) {
+        Map<String, Object> current = jdbc.sql("""
+                SELECT school_id, academic_year_id, class_id, section_id, roll_no
+                FROM student.students
+                WHERE id = :studentId
+                """)
+                .param("studentId", studentId)
+                .query((rs, n) -> row(
+                        "schoolId", rs.getLong("school_id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "classId", rs.getString("class_id"),
+                        "sectionId", rs.getString("section_id"),
+                        "rollNo", rs.getString("roll_no")))
+                .single();
+        recordEnrollment(studentId, longValue(current.get("schoolId"), null),
+                str(current.get("academicYearId"), currentAcademicYearId()),
+                str(current.get("classId"), ""), str(current.get("sectionId"), ""),
+                str(current.get("rollNo"), ""), "ACTIVE", reason, sourceType, sourceId);
+    }
+
+    private void closeActiveEnrollment(Long studentId, String reason) {
+        jdbc.sql("""
+                UPDATE student.student_enrollments
+                SET status = CASE WHEN status = 'ACTIVE' THEN 'ENDED' ELSE status END,
+                    effective_to = COALESCE(effective_to, CURRENT_DATE),
+                    reason = COALESCE(:reason, reason),
+                    updated_at = now()
+                WHERE student_id = :studentId
+                  AND effective_to IS NULL
+                """)
+                .param("studentId", studentId)
+                .param("reason", reason)
+                .update();
+    }
+
+    private void refreshActiveEnrollmentRollNo(Long studentId, String rollNo) {
+        jdbc.sql("""
+                UPDATE student.student_enrollments
+                SET roll_no = :rollNo, updated_at = now()
+                WHERE student_id = :studentId
+                  AND status = 'ACTIVE'
+                  AND effective_to IS NULL
+                """)
+                .param("studentId", studentId)
+                .param("rollNo", rollNo)
+                .update();
     }
 
     public Long schoolIdForStudent(Long id) {
@@ -446,6 +540,8 @@ public class StudentReadRepository {
 
         String batchId = UUID.randomUUID().toString();
         String fileToken = UUID.randomUUID().toString();
+        ImportFileEvidence fileEvidence = importFileEvidence(schoolId, batchId, request);
+        Map<String, Object> structure = importStructureAnalysis(rawRows, schoolId);
         int valid = 0;
         int errors = 0;
         int warnings = 0;
@@ -464,15 +560,21 @@ public class StudentReadRepository {
                     "admissionNo", normalized.get("admissionNo"),
                     "phone", normalized.get("phone"),
                     "status", validation.status(),
+                    "statusTone", validation.error() ? "sr" : validation.warning() ? "sam" : "sg",
+                    "description", validation.message(),
                     "message", validation.message()));
         }
         jdbc.sql("""
                         INSERT INTO student.import_batches
                             (id, file_token, total_rows, valid_count, error_count, warning_count,
-                             status, pct, inserted, skipped, created_at)
+                             status, pct, inserted, skipped, created_at, school_id,
+                             original_file_name, original_file_sha256, original_file_size,
+                             original_file_content_type, original_file_object_path, uploaded_by)
                         VALUES
                             (:id, :fileToken, :totalRows, :validCount, :errorCount, :warningCount,
-                             'PREVIEWED', 0, 0, 0, :createdAt)
+                             'PREVIEWED', 0, 0, 0, :createdAt, :schoolId,
+                             :originalFileName, :originalFileSha256, :originalFileSize,
+                             :originalFileContentType, :originalFileObjectPath, :uploadedBy)
                         """)
                 .param("id", batchId)
                 .param("fileToken", fileToken)
@@ -481,6 +583,13 @@ public class StudentReadRepository {
                 .param("errorCount", errors)
                 .param("warningCount", warnings)
                 .param("createdAt", OffsetDateTime.now())
+                .param("schoolId", schoolId)
+                .param("originalFileName", fileEvidence.fileName())
+                .param("originalFileSha256", fileEvidence.sha256())
+                .param("originalFileSize", fileEvidence.size())
+                .param("originalFileContentType", fileEvidence.contentType())
+                .param("originalFileObjectPath", fileEvidence.objectPath())
+                .param("uploadedBy", actorId())
                 .update();
         for (int i = 0; i < rawRows.size(); i++) {
             Map<String, Object> normalized = normalizeImportRow(rawRows.get(i));
@@ -507,7 +616,10 @@ public class StudentReadRepository {
                     .update();
         }
         return row("rows", previewRows, "fileToken", fileToken,
-                "validCount", valid, "errorCount", errors, "warningCount", warnings);
+                "validCount", valid, "errorCount", errors, "warningCount", warnings,
+                "batchId", batchId,
+                "originalFileStored", fileEvidence.objectPath() != null,
+                "structure", structure);
     }
 
     @Transactional
@@ -544,6 +656,16 @@ public class StudentReadRepository {
                         .param("batchId", batchId)
                         .param("studentId", studentId)
                         .update();
+                jdbc.sql("""
+                        UPDATE student.import_rows
+                        SET applied_student_id = :studentId, applied_at = now(), status = 'Imported'
+                        WHERE id = :rowId
+                        """)
+                        .param("studentId", studentId)
+                        .param("rowId", row.id())
+                        .update();
+                recordEnrollmentFromCurrentStudent(studentId, "Imported from batch " + batchId, "IMPORT", batchId);
+                emitStudentUpserted(studentId);
                 inserted++;
                 insertedStudents.add(row("admissionNo", normalized.get("admissionNo"), "studentId", studentId));
             } catch (Exception ex) {
@@ -554,13 +676,15 @@ public class StudentReadRepository {
         jdbc.sql("""
                         UPDATE student.import_batches
                         SET pct = 100, status = 'DONE', inserted = :inserted, skipped = :skipped,
-                            completed_at = :completedAt, skipped_json = :skippedJson
+                            completed_at = :completedAt, skipped_json = :skippedJson,
+                            verified_student_count = :verifiedStudentCount
                         WHERE id = :batchId
                         """)
                 .param("inserted", inserted)
                 .param("skipped", skipped)
                 .param("completedAt", OffsetDateTime.now())
                 .param("skippedJson", toJson(skippedRows))
+                .param("verifiedStudentCount", inserted)
                 .param("batchId", batchId)
                 .update();
         return row("batchId", batchId,
@@ -596,6 +720,304 @@ public class StudentReadRepository {
         }
         return row("pct", batch.pct(), "done", "DONE".equalsIgnoreCase(batch.status()),
                 "inserted", batch.inserted(), "skipped", batch.skipped(), "skippedRows", skippedRows);
+    }
+
+    @Transactional
+    public Map<String, Object> deleteStudent(Long id, Map<String, Object> request) {
+        Map<String, Object> current = jdbc.sql("""
+                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no, deleted_at
+                FROM student.students
+                WHERE id = :id
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "id", rs.getLong("id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "classId", rs.getString("class_id"),
+                        "sectionId", rs.getString("section_id"),
+                        "rollNo", rs.getString("roll_no"),
+                        "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class)))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        if (current.get("deletedAt") != null) {
+            throw new IllegalArgumentException("Student is already deleted");
+        }
+        String reason = str(request.get("reason"), "Deleted from Students tab");
+        jdbc.sql("""
+                UPDATE student.students
+                SET deleted_at = now(),
+                    deleted_by = :deletedBy,
+                    deleted_reason = :reason,
+                    updated_at = now(),
+                    version = version + 1
+                WHERE id = :id
+                """)
+                .param("id", id)
+                .param("deletedBy", actorId() == null ? null : String.valueOf(actorId()))
+                .param("reason", reason)
+                .update();
+        closeActiveEnrollment(id, reason);
+        recordEnrollment(id, longValue(current.get("schoolId"), null),
+                str(current.get("academicYearId"), currentAcademicYearId()),
+                str(current.get("classId"), ""), str(current.get("sectionId"), ""),
+                str(current.get("rollNo"), ""), "DELETED", reason, "STUDENT_DELETE", String.valueOf(id));
+        emitStudentUpserted(id);
+        return row("id", id, "deleted", true, "reason", reason);
+    }
+
+    public Map<String, Object> studentHistory(Long id) {
+        Map<String, Object> student = jdbc.sql("""
+                SELECT id, school_id, admission_no, full_name, deleted_at, deleted_reason
+                FROM student.students
+                WHERE id = :id
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "id", rs.getLong("id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "admissionNumber", rs.getString("admission_no"),
+                        "fullName", rs.getString("full_name"),
+                        "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class),
+                        "deletedReason", rs.getString("deleted_reason")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        List<Map<String, Object>> enrollments = jdbc.sql("""
+                SELECT e.id, e.academic_year_id, ay.label AS academic_year,
+                       e.class_id, sc.name AS class_name, e.section_id, ss.name AS section_name,
+                       e.roll_no, e.status, e.effective_from, e.effective_to, e.reason,
+                       e.source_type, e.source_id, e.created_by, e.created_at
+                FROM student.student_enrollments e
+                LEFT JOIN tenant_school.academic_years ay ON ay.id = e.academic_year_id
+                LEFT JOIN tenant_school.school_classes sc ON sc.id = e.class_id
+                LEFT JOIN tenant_school.school_sections ss ON ss.id = e.section_id
+                WHERE e.student_id = :id
+                ORDER BY e.effective_from DESC NULLS LAST, e.created_at DESC
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "id", rs.getString("id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "academicYear", rs.getString("academic_year"),
+                        "classId", rs.getString("class_id"),
+                        "className", rs.getString("class_name"),
+                        "sectionId", rs.getString("section_id"),
+                        "sectionName", rs.getString("section_name"),
+                        "rollNo", rs.getString("roll_no"),
+                        "status", rs.getString("status"),
+                        "effectiveFrom", rs.getObject("effective_from", LocalDate.class),
+                        "effectiveTo", rs.getObject("effective_to", LocalDate.class),
+                        "reason", rs.getString("reason"),
+                        "sourceType", rs.getString("source_type"),
+                        "sourceId", rs.getString("source_id"),
+                        "createdBy", rs.getObject("created_by"),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class)))
+                .list();
+        List<Map<String, Object>> importRows = jdbc.sql("""
+                SELECT ir.batch_id, ir.row_no, ir.status, ir.message, ir.applied_at,
+                       ib.original_file_name, ib.created_at
+                FROM student.import_rows ir
+                JOIN student.import_batches ib ON ib.id = ir.batch_id
+                WHERE ir.applied_student_id = :id
+                   OR EXISTS (
+                       SELECT 1 FROM student.students s
+                       WHERE s.id = :id AND s.import_batch_id = ir.batch_id
+                         AND lower(s.admission_no) = lower(ir.admission_no)
+                   )
+                ORDER BY ib.created_at DESC, ir.row_no ASC
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "batchId", rs.getString("batch_id"),
+                        "rowNumber", rs.getInt("row_no"),
+                        "status", rs.getString("status"),
+                        "message", rs.getString("message"),
+                        "appliedAt", rs.getObject("applied_at", OffsetDateTime.class),
+                        "fileName", rs.getString("original_file_name"),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class)))
+                .list();
+        List<Map<String, Object>> promotions = jdbc.sql("""
+                SELECT i.batch_id, i.action, i.status, i.reason, i.created_at,
+                       b.source_academic_year_id, b.target_academic_year_id, b.applied_at
+                FROM student.student_promotion_batch_items i
+                JOIN student.student_promotion_batches b ON b.id = i.batch_id
+                WHERE i.student_id = :id
+                ORDER BY i.created_at DESC
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "batchId", rs.getString("batch_id"),
+                        "action", rs.getString("action"),
+                        "status", rs.getString("status"),
+                        "reason", rs.getString("reason"),
+                        "sourceAcademicYearId", rs.getString("source_academic_year_id"),
+                        "targetAcademicYearId", rs.getString("target_academic_year_id"),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class),
+                        "appliedAt", rs.getObject("applied_at", OffsetDateTime.class)))
+                .list();
+        return row("student", student, "enrollments", enrollments, "imports", importRows, "promotions", promotions);
+    }
+
+    @Transactional
+    public Map<String, Object> createPromotionBatch(Map<String, Object> request) {
+        Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
+        requireSchool(schoolId);
+        String sourceAcademicYearId = str(request.get("sourceAcademicYearId"), currentAcademicYearId());
+        String targetAcademicYearId = requireText(request.get("targetAcademicYearId"), "targetAcademicYearId is required");
+        String sourceClassId = str(request.get("sourceClassId"), "").trim();
+        String sourceSectionId = str(request.get("sourceSectionId"), "").trim();
+        String batchId = UUID.randomUUID().toString();
+        jdbc.sql("""
+                INSERT INTO student.student_promotion_batches (
+                    id, school_id, source_academic_year_id, target_academic_year_id,
+                    source_class_id, source_section_id, status, notes, created_by, created_at
+                ) VALUES (
+                    :id, :schoolId, :sourceYear, :targetYear, :sourceClassId, :sourceSectionId,
+                    'DRAFT', :notes, :createdBy, now()
+                )
+                """)
+                .param("id", batchId)
+                .param("schoolId", schoolId)
+                .param("sourceYear", sourceAcademicYearId)
+                .param("targetYear", targetAcademicYearId)
+                .param("sourceClassId", blankToNull(sourceClassId))
+                .param("sourceSectionId", blankToNull(sourceSectionId))
+                .param("notes", str(request.get("notes"), ""))
+                .param("createdBy", actorId())
+                .update();
+
+        StringBuilder sql = new StringBuilder("""
+                SELECT id, class_id, section_id
+                FROM student.students
+                WHERE school_id = :schoolId
+                  AND academic_year_id = :sourceYear
+                  AND deleted_at IS NULL
+                """);
+        if (!sourceClassId.isBlank()) sql.append(" AND class_id = :sourceClassId");
+        if (!sourceSectionId.isBlank()) sql.append(" AND section_id = :sourceSectionId");
+        sql.append(" ORDER BY full_name, id");
+        var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId).param("sourceYear", sourceAcademicYearId);
+        if (!sourceClassId.isBlank()) spec = spec.param("sourceClassId", sourceClassId);
+        if (!sourceSectionId.isBlank()) spec = spec.param("sourceSectionId", sourceSectionId);
+        List<Map<String, Object>> students = spec.query((rs, n) -> row(
+                "id", rs.getLong("id"),
+                "classId", rs.getString("class_id"),
+                "sectionId", rs.getString("section_id"))).list();
+        for (Map<String, Object> student : students) {
+            String currentClassId = str(student.get("classId"), "");
+            String currentSectionId = str(student.get("sectionId"), "");
+            String targetClassId = str(request.get("targetClassId"), "").trim();
+            if (targetClassId.isBlank()) {
+                targetClassId = nextClassId(currentClassId).orElse("");
+            }
+            String targetSectionId = str(request.get("targetSectionId"), "").trim();
+            if (targetSectionId.isBlank() && !targetClassId.isBlank()) {
+                String resolvedTargetClassId = targetClassId;
+                targetSectionId = matchingSectionForTargetClass(schoolId, resolvedTargetClassId, currentSectionId)
+                        .or(() -> firstActiveSection(schoolId, resolvedTargetClassId))
+                        .orElse("");
+            }
+            String action = (!targetClassId.isBlank() && !targetSectionId.isBlank()) ? "PROMOTE" : "HOLD";
+            jdbc.sql("""
+                    INSERT INTO student.student_promotion_batch_items (
+                        id, batch_id, school_id, student_id, source_class_id, source_section_id,
+                        target_class_id, target_section_id, action, status, created_at, updated_at
+                    ) VALUES (
+                        :id, :batchId, :schoolId, :studentId, :sourceClassId, :sourceSectionId,
+                        :targetClassId, :targetSectionId, :action, 'PENDING', now(), now()
+                    )
+                    """)
+                    .param("id", UUID.randomUUID().toString())
+                    .param("batchId", batchId)
+                    .param("schoolId", schoolId)
+                    .param("studentId", longValue(student.get("id"), null))
+                    .param("sourceClassId", currentClassId)
+                    .param("sourceSectionId", currentSectionId)
+                    .param("targetClassId", blankToNull(targetClassId))
+                    .param("targetSectionId", blankToNull(targetSectionId))
+                    .param("action", action)
+                    .update();
+        }
+        return promotionBatchDetail(batchId);
+    }
+
+    @Transactional
+    public Map<String, Object> updatePromotionBatchItem(String batchId, String itemId, Map<String, Object> request) {
+        requireDraftPromotionBatch(batchId);
+        jdbc.sql("""
+                UPDATE student.student_promotion_batch_items
+                SET target_class_id = COALESCE(:targetClassId, target_class_id),
+                    target_section_id = COALESCE(:targetSectionId, target_section_id),
+                    action = COALESCE(:action, action),
+                    reason = COALESCE(:reason, reason),
+                    updated_at = now()
+                WHERE id = :itemId AND batch_id = :batchId
+                """)
+                .param("batchId", batchId)
+                .param("itemId", itemId)
+                .param("targetClassId", blankToNull(str(request.get("targetClassId"), "")))
+                .param("targetSectionId", blankToNull(str(request.get("targetSectionId"), "")))
+                .param("action", blankToNull(str(request.get("action"), "")))
+                .param("reason", blankToNull(str(request.get("reason"), "")))
+                .update();
+        return promotionBatchDetail(batchId);
+    }
+
+    @Transactional
+    public Map<String, Object> applyPromotionBatch(String batchId) {
+        Map<String, Object> batch = requireDraftPromotionBatch(batchId);
+        String targetYear = str(batch.get("targetAcademicYearId"), "");
+        List<Map<String, Object>> items = promotionBatchItems(batchId);
+        int promoted = 0;
+        int skipped = 0;
+        for (Map<String, Object> item : items) {
+            String action = str(item.get("action"), "PROMOTE");
+            String targetClassId = str(item.get("targetClassId"), "");
+            String targetSectionId = str(item.get("targetSectionId"), "");
+            Long studentId = longValue(item.get("studentId"), null);
+            if (!"PROMOTE".equalsIgnoreCase(action) || targetClassId.isBlank() || targetSectionId.isBlank() || studentId == null) {
+                jdbc.sql("UPDATE student.student_promotion_batch_items SET status = 'SKIPPED', updated_at = now() WHERE id = :id")
+                        .param("id", item.get("id"))
+                        .update();
+                skipped++;
+                continue;
+            }
+            jdbc.sql("""
+                    UPDATE student.students
+                    SET class_id = :classId,
+                        section_id = :sectionId,
+                        academic_year_id = :academicYearId,
+                        updated_at = now(),
+                        updated_by = :updatedBy,
+                        version = version + 1
+                    WHERE id = :studentId AND deleted_at IS NULL
+                    """)
+                    .param("studentId", studentId)
+                    .param("classId", targetClassId)
+                    .param("sectionId", targetSectionId)
+                    .param("academicYearId", targetYear)
+                    .param("updatedBy", actorId() == null ? null : String.valueOf(actorId()))
+                    .update();
+            closeActiveEnrollment(studentId, "Promoted by batch " + batchId);
+            recordEnrollmentFromCurrentStudent(studentId, "Promoted by batch " + batchId, "PROMOTION", batchId);
+            emitStudentUpserted(studentId);
+            jdbc.sql("UPDATE student.student_promotion_batch_items SET status = 'APPLIED', updated_at = now() WHERE id = :id")
+                    .param("id", item.get("id"))
+                    .update();
+            promoted++;
+        }
+        jdbc.sql("""
+                UPDATE student.student_promotion_batches
+                SET status = 'APPLIED', applied_by = :appliedBy, applied_at = now()
+                WHERE id = :batchId
+                """)
+                .param("batchId", batchId)
+                .param("appliedBy", actorId())
+                .update();
+        Map<String, Object> detail = promotionBatchDetail(batchId);
+        detail.put("promoted", promoted);
+        detail.put("skipped", skipped);
+        return detail;
     }
 
     @Transactional
@@ -1573,6 +1995,231 @@ public class StudentReadRepository {
         }
     }
 
+    private ImportFileEvidence importFileEvidence(Long schoolId, String batchId, Map<String, Object> request) {
+        Object bytesValue = request.get("originalFileBytes");
+        byte[] bytes = bytesValue instanceof byte[] data ? data : null;
+        if (bytes == null || bytes.length == 0) {
+            return new ImportFileEvidence(
+                    str(request.get("originalFileName"), null),
+                    null,
+                    longValue(request.get("originalFileSize"), null),
+                    str(request.get("originalFileContentType"), null),
+                    null);
+        }
+        String fileName = str(request.get("originalFileName"), "students-import");
+        String contentType = str(request.get("originalFileContentType"), "application/octet-stream");
+        String objectPath = photoStorage.uploadImportFile(schoolId, batchId, bytes, contentType, fileName);
+        return new ImportFileEvidence(fileName, StudentPhotoStorage.sha256Hex(bytes), (long) bytes.length, contentType, objectPath);
+    }
+
+    private Map<String, Object> importStructureAnalysis(List<Map<String, Object>> rawRows, Long schoolId) {
+        Map<String, Object> school = jdbc.sql("""
+                SELECT COALESCE(configured_class_count, 12) AS class_count,
+                       COALESCE(configured_section_count, 2) AS section_count
+                FROM tenant_school.schools
+                WHERE id = :schoolId
+                """)
+                .param("schoolId", schoolId)
+                .query((rs, n) -> row(
+                        "classCount", rs.getInt("class_count"),
+                        "sectionCount", rs.getInt("section_count")))
+                .optional()
+                .orElse(row("classCount", 12, "sectionCount", 2));
+        int currentClassCount = ((Number) school.get("classCount")).intValue();
+        int currentSectionCount = ((Number) school.get("sectionCount")).intValue();
+        int requiredClassCount = currentClassCount;
+        int requiredSectionCount = currentSectionCount;
+        List<String> missingClasses = new ArrayList<>();
+        List<String> missingSections = new ArrayList<>();
+        List<String> unsupportedClasses = new ArrayList<>();
+
+        for (Map<String, Object> rawRow : rawRows) {
+            Map<String, Object> normalized = normalizeImportRow(rawRow);
+            String className = str(normalized.get("className"), "").trim();
+            Optional<Map<String, Object>> schoolClass = classByName(className);
+            if (schoolClass.isPresent()) {
+                int sortOrder = ((Number) schoolClass.get().getOrDefault("sortOrder", 0)).intValue();
+                if (sortOrder > requiredClassCount) requiredClassCount = sortOrder;
+                if (sortOrder > currentClassCount && !missingClasses.contains(className)) {
+                    missingClasses.add(className);
+                }
+                if (sortOrder > 12 && !unsupportedClasses.contains(className)) {
+                    unsupportedClasses.add(className);
+                }
+            }
+            String sectionName = str(normalized.get("sectionName"), "").trim();
+            int sectionIndex = sectionIndex(sectionName);
+            if (sectionIndex > requiredSectionCount) requiredSectionCount = sectionIndex;
+            if (sectionIndex > currentSectionCount && !sectionName.isBlank() && !missingSections.contains(sectionName)) {
+                missingSections.add(sectionName);
+            }
+        }
+
+        return row(
+                "currentClassCount", currentClassCount,
+                "currentSectionCount", currentSectionCount,
+                "requiredClassCount", requiredClassCount,
+                "requiredSectionCount", requiredSectionCount,
+                "requiresStructureUpdate", requiredClassCount > currentClassCount || requiredSectionCount > currentSectionCount,
+                "missingClasses", missingClasses,
+                "missingSections", missingSections,
+                "unsupportedClasses", unsupportedClasses);
+    }
+
+    public Map<String, Object> promotionBatchDetail(String batchId) {
+        Map<String, Object> batch = jdbc.sql("""
+                SELECT id, school_id, source_academic_year_id, target_academic_year_id,
+                       source_class_id, source_section_id, status, notes, created_by, created_at,
+                       applied_by, applied_at
+                FROM student.student_promotion_batches
+                WHERE id = :batchId
+                """)
+                .param("batchId", batchId)
+                .query((rs, n) -> row(
+                        "id", rs.getString("id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "sourceAcademicYearId", rs.getString("source_academic_year_id"),
+                        "targetAcademicYearId", rs.getString("target_academic_year_id"),
+                        "sourceClassId", rs.getString("source_class_id"),
+                        "sourceSectionId", rs.getString("source_section_id"),
+                        "status", rs.getString("status"),
+                        "notes", rs.getString("notes"),
+                        "createdBy", rs.getObject("created_by"),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class),
+                        "appliedBy", rs.getObject("applied_by"),
+                        "appliedAt", rs.getObject("applied_at", OffsetDateTime.class)))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Promotion batch not found"));
+        batch.put("items", promotionBatchItems(batchId));
+        return batch;
+    }
+
+    private List<Map<String, Object>> promotionBatchItems(String batchId) {
+        return jdbc.sql("""
+                SELECT i.id, i.student_id, s.full_name, s.admission_no,
+                       i.source_class_id, sc.name AS source_class_name,
+                       i.source_section_id, ss.name AS source_section_name,
+                       i.target_class_id, tc.name AS target_class_name,
+                       i.target_section_id, ts.name AS target_section_name,
+                       i.action, i.status, i.reason
+                FROM student.student_promotion_batch_items i
+                JOIN student.students s ON s.id = i.student_id
+                LEFT JOIN tenant_school.school_classes sc ON sc.id = i.source_class_id
+                LEFT JOIN tenant_school.school_sections ss ON ss.id = i.source_section_id
+                LEFT JOIN tenant_school.school_classes tc ON tc.id = i.target_class_id
+                LEFT JOIN tenant_school.school_sections ts ON ts.id = i.target_section_id
+                WHERE i.batch_id = :batchId
+                ORDER BY lower(s.full_name), s.id
+                """)
+                .param("batchId", batchId)
+                .query((rs, n) -> row(
+                        "id", rs.getString("id"),
+                        "studentId", rs.getLong("student_id"),
+                        "studentName", rs.getString("full_name"),
+                        "admissionNumber", rs.getString("admission_no"),
+                        "sourceClassId", rs.getString("source_class_id"),
+                        "sourceClassName", rs.getString("source_class_name"),
+                        "sourceSectionId", rs.getString("source_section_id"),
+                        "sourceSectionName", rs.getString("source_section_name"),
+                        "targetClassId", rs.getString("target_class_id"),
+                        "targetClassName", rs.getString("target_class_name"),
+                        "targetSectionId", rs.getString("target_section_id"),
+                        "targetSectionName", rs.getString("target_section_name"),
+                        "action", rs.getString("action"),
+                        "status", rs.getString("status"),
+                        "reason", rs.getString("reason")))
+                .list();
+    }
+
+    private Map<String, Object> requireDraftPromotionBatch(String batchId) {
+        Map<String, Object> batch = jdbc.sql("""
+                SELECT id, school_id, target_academic_year_id, status
+                FROM student.student_promotion_batches
+                WHERE id = :batchId
+                """)
+                .param("batchId", batchId)
+                .query((rs, n) -> row(
+                        "id", rs.getString("id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "targetAcademicYearId", rs.getString("target_academic_year_id"),
+                        "status", rs.getString("status")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Promotion batch not found"));
+        if (!"DRAFT".equalsIgnoreCase(str(batch.get("status"), ""))) {
+            throw new IllegalArgumentException("Promotion batch is not editable");
+        }
+        return batch;
+    }
+
+    private Optional<String> nextClassId(String classId) {
+        Integer sortOrder = jdbc.sql("SELECT sort_order FROM tenant_school.school_classes WHERE id = :classId")
+                .param("classId", classId)
+                .query(Integer.class)
+                .optional()
+                .orElse(null);
+        if (sortOrder == null) return Optional.empty();
+        return jdbc.sql("""
+                SELECT id
+                FROM tenant_school.school_classes
+                WHERE sort_order > :sortOrder
+                ORDER BY sort_order, name
+                LIMIT 1
+                """)
+                .param("sortOrder", sortOrder)
+                .query(String.class)
+                .optional();
+    }
+
+    private Optional<String> matchingSectionForTargetClass(Long schoolId, String targetClassId, String sourceSectionId) {
+        String sourceName = jdbc.sql("SELECT name FROM tenant_school.school_sections WHERE id = :sourceSectionId")
+                .param("sourceSectionId", sourceSectionId)
+                .query(String.class)
+                .optional()
+                .orElse("");
+        if (sourceName.isBlank()) return Optional.empty();
+        return jdbc.sql("""
+                SELECT id
+                FROM tenant_school.school_sections
+                WHERE school_id = :schoolId
+                  AND school_class_id = :targetClassId
+                  AND lower(name) = lower(:sourceName)
+                  AND active = true
+                ORDER BY id
+                LIMIT 1
+                """)
+                .param("schoolId", schoolId)
+                .param("targetClassId", targetClassId)
+                .param("sourceName", sourceName)
+                .query(String.class)
+                .optional();
+    }
+
+    private Optional<String> firstActiveSection(Long schoolId, String classId) {
+        return jdbc.sql("""
+                SELECT id
+                FROM tenant_school.school_sections
+                WHERE school_id = :schoolId
+                  AND school_class_id = :classId
+                  AND active = true
+                ORDER BY name, id
+                LIMIT 1
+                """)
+                .param("schoolId", schoolId)
+                .param("classId", classId)
+                .query(String.class)
+                .optional();
+    }
+
+    private Long actorId() {
+        return TenantContext.get().userId();
+    }
+
+    private String blankToNull(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
     private Optional<Map<String, Object>> classById(String id) {
         return jdbc.sql("SELECT id, name, sort_order FROM tenant_school.school_classes WHERE id = :id")
                 .param("id", id)
@@ -1741,6 +2388,17 @@ public class StudentReadRepository {
         return digits.isBlank() ? 0 : Integer.parseInt(digits);
     }
 
+    private int sectionIndex(String sectionName) {
+        String normalized = str(sectionName, "").trim().toUpperCase(Locale.ROOT);
+        if (normalized.matches("[A-Z]")) {
+            return normalized.charAt(0) - 'A' + 1;
+        }
+        if (normalized.matches("\\d+")) {
+            return Integer.parseInt(normalized);
+        }
+        return 0;
+    }
+
     private String joinAddress(String... parts) {
         return Arrays.stream(parts).filter(value -> value != null && !value.isBlank()).collect(Collectors.joining(", "));
     }
@@ -1769,6 +2427,8 @@ public class StudentReadRepository {
     }
 
     private record ImportValidation(String status, String message, boolean valid, boolean error, boolean warning) {}
+
+    private record ImportFileEvidence(String fileName, String sha256, Long size, String contentType, String objectPath) {}
 
     private record ReviewCounts(long total, long completed, long pending, long needsCorrection, double percent) {}
 }

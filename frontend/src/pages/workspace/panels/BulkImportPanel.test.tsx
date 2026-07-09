@@ -38,9 +38,10 @@ describe('BulkImportPanel Excel format', () => {
     const input = document.querySelector('input[type=file]') as HTMLInputElement;
     await userEvent.upload(input, file);
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/import/preview', expect.objectContaining({
-      rows: expect.arrayContaining([expect.objectContaining({ Name: 'Aya', Class: '1', AdmissionNo: 'A-1' })]),
-    })));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/import/upload-preview', expect.any(FormData), expect.objectContaining({ headers: expect.any(Object) })));
+    const previewCall = vi.mocked(api.post).mock.calls.find(([url]) => url === '/students/import/upload-preview');
+    const fd = previewCall?.[1] as FormData;
+    expect(JSON.parse(String(fd.get('rowsJson')))).toEqual(expect.arrayContaining([expect.objectContaining({ Name: 'Aya', Class: '1', AdmissionNo: 'A-1' })]));
   });
 
   it('extracts an embedded image and maps it to the row anchored in the Photo column', async () => {
@@ -100,7 +101,7 @@ describe('BulkImportPanel Excel format', () => {
     const file = new File([await wb.xlsx.writeBuffer()], 'roster.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
     vi.mocked(api.post).mockImplementation((url: string) => {
-      if (url === '/students/import/preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Aya', className: '1', sectionName: 'A', admissionNo: 'A-1', phone: '', status: 'Valid' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
+      if (url === '/students/import/upload-preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Aya', className: '1', sectionName: 'A', admissionNo: 'A-1', phone: '', status: 'Valid', statusTone: 'sg' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
       if (url === '/students/import/confirm') return Promise.resolve({ data: { done: true, inserted: 1, skipped: 0, skippedRows: [], insertedStudents: [{ admissionNo: 'A-1', studentId: 11 }] } });
       if (url === '/students/11/photo') return Promise.resolve({ data: { ok: true } });
       return Promise.resolve({ data: {} });
