@@ -6,19 +6,11 @@ This runbook covers application rollback for the physically split Cloud Run serv
 
 | Local name | Cloud Run service | Image |
 | --- | --- | --- |
-| backend | custoking-backend | custoking-backend |
 | identity-service | custoking-identity-service | custoking-identity-service |
-| tenant-school-service | custoking-tenant-school-service | custoking-tenant-school-service |
-| student-service | custoking-student-service | custoking-student-service |
-| attendance-service | custoking-attendance-service | custoking-attendance-service |
-| fee-service | custoking-fee-service | custoking-fee-service |
-| catalog-service | custoking-catalog-service | custoking-catalog-service |
-| workflow-service | custoking-workflow-service | custoking-workflow-service |
-| firefighting-service | custoking-firefighting-service | custoking-firefighting-service |
-| reporting-service | custoking-reporting-service | custoking-reporting-service |
+| school-core-service | custoking-school-core-service | custoking-school-core-service |
+| operations-service | custoking-operations-service | custoking-operations-service |
+| platform-service | custoking-platform-service | custoking-platform-service |
 | billing-service | custoking-billing-service | custoking-billing-service |
-| audit-service | custoking-audit-service | custoking-audit-service |
-| notification-service | custoking-notification-service | custoking-notification-service |
 | frontend | custoking-frontend | custoking-frontend |
 | api-gateway | custoking-api-gateway | custoking-api-gateway |
 
@@ -76,20 +68,19 @@ powershell -ExecutionPolicy Bypass -File scripts\smoke-deployment-readiness.ps1 
 
 ## Coupled Rollbacks
 
-Use coupled rollback when a backend revision and service revision changed a request contract together. Roll back in this order:
+Use coupled rollback when a domain service revision and gateway/frontend revision changed a request contract together. Roll back in this order:
 
-1. Private extracted service.
-2. Backend/BFF.
-3. API gateway only if route or upstream environment changed.
-4. Frontend only if the browser contract changed.
+1. Private domain service.
+2. API gateway only if route or upstream environment changed.
+3. Frontend only if the browser contract changed.
 
-After every coupled rollback, re-run the read-only deployment smoke and check backend `/actuator/health` plus gateway `/gateway-health`.
+After every coupled rollback, re-run the read-only deployment smoke and check the affected Java service `/actuator/health` plus gateway `/gateway-health`.
 
 ## Notification Provider Failure
 
 If MSG91 delivery fails but the application is otherwise healthy:
 
-1. Set notification-service to dry-run only for the affected environment if duplicate provider sends are possible.
+1. Set platform-service notification delivery to dry-run only for the affected environment if duplicate provider sends are possible.
 2. Pause Pub/Sub push delivery if needed.
 3. Keep inbox retry state intact.
 4. Resume delivery after provider status and templates are confirmed.

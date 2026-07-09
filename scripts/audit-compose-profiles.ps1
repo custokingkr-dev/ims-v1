@@ -21,7 +21,7 @@ $coreServices = @(
 $fullOnlyServices = @(
     "platform-service",
     "operations-service",
-    "billing-service",
+    "billing-service"
 )
 
 foreach ($service in $coreServices) {

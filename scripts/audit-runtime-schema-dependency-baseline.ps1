@@ -11,12 +11,40 @@ $baselineFile = Resolve-Path (Join-Path $repoRoot $BaselinePath)
 $baseline = Get-Content -Raw -Path $baselineFile | ConvertFrom-Json
 $violations = New-Object System.Collections.Generic.List[string]
 
-$ownedSchemas = @{}
-foreach ($property in $baseline.ownedSchemas.PSObject.Properties) {
-    $ownedSchemas[$property.Name] = [string]$property.Value
+function Convert-ToStringArray {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+    if ($Value -is [System.Array]) {
+        return @($Value | ForEach-Object { [string]$_ })
+    }
+    return @([string]$Value)
 }
 
-$schemaNames = @($ownedSchemas.Values | Sort-Object -Unique)
+function Get-SqlSchemaReferencePatterns {
+    param([string]$Schema)
+
+    $escapedSchema = [regex]::Escape($Schema)
+    $patterns = New-Object System.Collections.Generic.List[string]
+    [void]$patterns.Add('\bFROM\s+' + $escapedSchema + '\.')
+    [void]$patterns.Add('\bJOIN\s+' + $escapedSchema + '\.')
+    [void]$patterns.Add('\bUPDATE\s+' + $escapedSchema + '\.')
+    [void]$patterns.Add('\bINTO\s+' + $escapedSchema + '\.')
+    [void]$patterns.Add('\bDELETE\s+FROM\s+' + $escapedSchema + '\.')
+    [void]$patterns.Add('\bTRUNCATE\s+(?:TABLE\s+)?' + $escapedSchema + '\.')
+    [void]$patterns.Add('\bREFERENCES\s+' + $escapedSchema + '\.')
+    [void]$patterns.Add('\b(?:nextval|currval|setval)\s*\(\s*[''"]' + $escapedSchema + '\.')
+    return $patterns.ToArray()
+}
+
+$ownedSchemas = @{}
+foreach ($property in $baseline.ownedSchemas.PSObject.Properties) {
+    $ownedSchemas[$property.Name] = @(Convert-ToStringArray $property.Value)
+}
+
+$schemaNames = @($ownedSchemas.Values | ForEach-Object { $_ } | Sort-Object -Unique)
 $detected = @{}
 
 foreach ($service in Get-ChildItem -Path $servicesRootPath -Directory) {
@@ -33,14 +61,17 @@ foreach ($service in Get-ChildItem -Path $servicesRootPath -Directory) {
     foreach ($file in Get-ChildItem -Path $javaRoot -Recurse -Filter "*.java") {
         $source = Get-Content -Raw -Path $file.FullName
         foreach ($schema in $schemaNames) {
-            if ($source -match "\b$([regex]::Escape($schema))\.") {
-                [void]$serviceSchemas.Add($schema)
+            foreach ($pattern in (Get-SqlSchemaReferencePatterns $schema)) {
+                if ($source -match $pattern) {
+                    [void]$serviceSchemas.Add($schema)
+                    break
+                }
             }
         }
     }
 
-    $ownedSchema = $ownedSchemas[$service.Name]
-    $detected[$service.Name] = @($serviceSchemas | Where-Object { $_ -ne $ownedSchema } | Sort-Object)
+    $serviceOwnedSchemas = @($ownedSchemas[$service.Name])
+    $detected[$service.Name] = @($serviceSchemas | Where-Object { $_ -notin $serviceOwnedSchemas } | Sort-Object)
 }
 
 foreach ($serviceName in ($ownedSchemas.Keys | Sort-Object)) {

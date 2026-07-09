@@ -4,9 +4,22 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $servicesRoot = Join-Path $repoRoot "services"
 $schemaBaselinePath = Join-Path $repoRoot "docs/RUNTIME_SCHEMA_DEPENDENCY_BASELINE.json"
 $schemaBaseline = Get-Content -Raw -Path $schemaBaselinePath | ConvertFrom-Json
+
+function Convert-ToStringArray {
+    param($Value)
+
+    if ($null -eq $Value) {
+        return @()
+    }
+    if ($Value -is [System.Array]) {
+        return @($Value | ForEach-Object { [string]$_ })
+    }
+    return @([string]$Value)
+}
+
 $ownedSchemas = @{}
 foreach ($property in $schemaBaseline.ownedSchemas.PSObject.Properties) {
-    $ownedSchemas[$property.Name] = [string]$property.Value
+    $ownedSchemas[$property.Name] = @(Convert-ToStringArray $property.Value)
 }
 $violations = New-Object System.Collections.Generic.List[string]
 
@@ -33,10 +46,10 @@ foreach ($file in Get-ChildItem -Path $servicesRoot -Recurse -Include "applicati
     if ($file.Extension -eq ".sql") {
         $serviceName = $relativePath.Split("/")[1]
         if ($ownedSchemas.ContainsKey($serviceName)) {
-            $ownedSchema = $ownedSchemas[$serviceName]
+            $serviceOwnedSchemas = @($ownedSchemas[$serviceName])
             foreach ($match in [regex]::Matches($source, '\bREFERENCES\s+([a-z][a-z0-9_]*)\.')) {
                 $referencedSchema = $match.Groups[1].Value
-                if ($referencedSchema -ne $ownedSchema) {
+                if ($referencedSchema -notin $serviceOwnedSchemas) {
                     $violations.Add("Service migrations must not create hard cross-service foreign keys: $relativePath references $referencedSchema")
                 }
             }
