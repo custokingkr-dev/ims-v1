@@ -70,7 +70,7 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
-      SCHOOLCORE_DB_SCHEMA: "tenant_school,student,attendance,fee,catalog"
+      SCHOOL_CORE_DATASOURCE_SCHEMAS: "tenant_school,student,attendance,fee,catalog"
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
       STUDENT_READ_TOKEN: local-dev-student-token
       ATTENDANCE_READ_TOKEN: local-dev-attendance-token

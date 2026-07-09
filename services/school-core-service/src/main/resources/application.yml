@@ -14,7 +14,7 @@ spring:
       connection-timeout: ${DB_POOL_CONNECTION_TIMEOUT_MS:30000}
       validation-timeout: ${DB_POOL_VALIDATION_TIMEOUT_MS:5000}
       data-source-properties:
-        currentSchema: ${SCHOOLCORE_DB_SCHEMA:tenant_school,student,attendance,fee,catalog}
+        currentSchema: ${SCHOOL_CORE_DATASOURCE_SCHEMAS:tenant_school,student,attendance,fee,catalog}
   jpa:
     hibernate:
       ddl-auto: validate

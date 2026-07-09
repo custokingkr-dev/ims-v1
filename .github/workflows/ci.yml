@@ -180,7 +180,9 @@ jobs:
 
           docker compose up -d postgres
           wait_healthy postgres custoking-postgres
-          docker compose up -d identity-service school-core-service operations-service platform-service billing-service frontend api-gateway
+          docker compose up -d identity-service school-core-service operations-service platform-service billing-service
+          pwsh ./scripts/ensure-app-rt-local.ps1 -TimeoutSeconds 300 -RequiredSchemas identity,tenant_school,student,attendance,fee,catalog,workflow,firefighting,reporting,notification,audit,billing
+          docker compose up -d frontend api-gateway
           wait_healthy identity-service custoking-identity-service
           wait_healthy school-core-service custoking-school-core-service
           wait_healthy operations-service custoking-operations-service
