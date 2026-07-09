@@ -3,6 +3,7 @@ import api from '../../../services/api';
 import Paginator from '../../../components/Paginator';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
+import { STUDENT_PHOTO_MAX_LABEL, validateStudentPhotoFile } from '../../../features/students';
 import { ModuleShell, Info } from '../ui';
 import { formatAddress, initials } from '../utils';
 import type { PanelKey } from '../config';
@@ -68,18 +69,57 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openStudentModal = async (student: any) => {
+  const enterEditMode = (detail: any) => {
+    setModalError(null);
+    setForm({
+      fullName: detail.fullName ?? '',
+      rollNo: detail.rollNo ?? '',
+      admissionNumber: detail.admissionNumber ?? '',
+      boardRegistrationNumber: detail.boardRegistrationNumber ?? '',
+      dateOfBirth: detail.dateOfBirth ?? '',
+      gender: detail.gender ?? '',
+      fatherName: detail.fatherName ?? '',
+      fatherContact: detail.fatherContact ?? '',
+      motherName: detail.motherName ?? '',
+      phone: detail.phone ?? '',
+      houseNumber: detail.address?.houseNumber ?? '',
+      street: detail.address?.street ?? '',
+      locality: detail.address?.locality ?? '',
+      city: detail.address?.city ?? '',
+      state: detail.address?.state ?? '',
+      pinCode: detail.address?.pinCode ?? '',
+      classId: detail.classId ?? '',
+      sectionId: detail.sectionId ?? '',
+    });
+    setEditing(true);
+    void api.get('/classes', { params: schoolScopedParams })
+      .then((r) => setClassOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setClassOptions([]));
+    if (detail.classId) {
+      void api.get(`/classes/${encodeURIComponent(detail.classId)}/sections`, { params: schoolScopedParams })
+        .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
+    } else {
+      setSectionOptions([]);
+    }
+  };
+
+  const openStudentModal = async (student: any, editMode = false) => {
     setStudentDetailLimited(false);
+    setEditing(false);
+    setModalError(null);
+    let detail = student;
     try {
       setStudentModalOpen(true);
       setStudentModalLoading(true);
       const res = await api.get(`/students/${student.id}/workspace`);
-      setStudentDetail(res.data);
+      detail = res.data;
+      setStudentDetail(detail);
     } catch {
-      setStudentDetail(student);
+      detail = student;
+      setStudentDetail(detail);
       setStudentDetailLimited(true);
     } finally {
       setStudentModalLoading(false);
+      if (editMode) enterEditMode(detail);
     }
   };
 
@@ -99,8 +139,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
   const uploadEditPhoto = async (file: File) => {
     if (!studentDetail) return;
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) { setModalError('Only JPG, PNG, or WEBP files are allowed.'); return; }
-    if (file.size > 2 * 1024 * 1024) { setModalError('Photo must be 2MB or smaller.'); return; }
+    const validationError = validateStudentPhotoFile(file);
+    if (validationError) { setModalError(validationError); return; }
     setEditPhotoBusy(true);
     setModalError(null);
     try {
@@ -116,38 +156,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     } finally {
       setEditPhotoBusy(false);
       if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
-    }
-  };
-
-  const startEdit = () => {
-    if (!studentDetail) return;
-    setModalError(null);
-    setForm({
-      fullName: studentDetail.fullName ?? '',
-      rollNo: studentDetail.rollNo ?? '',
-      admissionNumber: studentDetail.admissionNumber ?? '',
-      boardRegistrationNumber: studentDetail.boardRegistrationNumber ?? '',
-      dateOfBirth: studentDetail.dateOfBirth ?? '',
-      gender: studentDetail.gender ?? '',
-      fatherName: studentDetail.fatherName ?? '',
-      fatherContact: studentDetail.fatherContact ?? '',
-      motherName: studentDetail.motherName ?? '',
-      phone: studentDetail.phone ?? '',
-      houseNumber: studentDetail.address?.houseNumber ?? '',
-      street: studentDetail.address?.street ?? '',
-      locality: studentDetail.address?.locality ?? '',
-      city: studentDetail.address?.city ?? '',
-      state: studentDetail.address?.state ?? '',
-      pinCode: studentDetail.address?.pinCode ?? '',
-      classId: studentDetail.classId ?? '',
-      sectionId: studentDetail.sectionId ?? '',
-    });
-    setEditing(true);
-    void api.get('/classes', { params: schoolScopedParams })
-      .then((r) => setClassOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setClassOptions([]));
-    if (studentDetail.classId) {
-      void api.get(`/classes/${encodeURIComponent(studentDetail.classId)}/sections`, { params: schoolScopedParams })
-        .then((r) => setSectionOptions(Array.isArray(r.data) ? r.data : [])).catch(() => setSectionOptions([]));
     }
   };
 
@@ -320,7 +328,12 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                         </div>
                       </td>
                       <td>
-                        <button className="ck-btn ck-btn-ghost" onClick={() => openStudentModal(student)}>View</button>
+                        <div className="ck-actions-inline">
+                          <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student)}>View</button>
+                          {can('student:update') && (
+                            <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student, true)}>Edit</button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
@@ -365,9 +378,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Student details</div>
-              {can('student:update') && !editing && studentDetail && (
-                <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={startEdit}>Edit</button>
-              )}
               <button className="ck-modal-x" onClick={closeStudentModal}>×</button>
             </div>
             <div className="ck-modal-body">
@@ -382,7 +392,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(studentDetail.fullName || studentDetail.name)}</div>}
                     <input ref={editPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadEditPhoto(f); }} />
                     <button type="button" className="ck-btn ck-btn-ghost" disabled={editPhotoBusy} onClick={() => editPhotoInputRef.current?.click()}>{editPhotoBusy ? 'Uploading…' : 'Change photo'}</button>
-                    <div className="ts">JPG, PNG or WEBP · up to 2MB</div>
+                    <div className="ts">JPG, PNG or WEBP · up to {STUDENT_PHOTO_MAX_LABEL}</div>
                   </div>
                   <label>Full name<input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} /></label>
                   <label>Admission No<input value={form.admissionNumber} onChange={(e) => setForm({ ...form, admissionNumber: e.target.value })} /></label>

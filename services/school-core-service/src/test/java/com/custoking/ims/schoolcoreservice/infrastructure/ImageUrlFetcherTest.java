@@ -153,7 +153,7 @@ class ImageUrlFetcherTest {
         // Registering it in a real Spring context reproduces that wiring path without a DB.
         try (AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext()) {
             ctx.getEnvironment().getPropertySources()
-                    .addFirst(new MapPropertySource("test", Map.of("student.photo.max-bytes", "2097152")));
+                    .addFirst(new MapPropertySource("test", Map.of("student.photo.max-bytes", "5242880")));
             ctx.register(ImageUrlFetcher.class);
             ctx.refresh();
             assertThat(ctx.getBean(ImageUrlFetcher.class)).isNotNull();

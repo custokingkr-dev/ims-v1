@@ -61,7 +61,7 @@ public class StudentPhotoStorage {
             @Value("${student.photo.bucket:}") String bucket,
             @Value("${student.photo.signed-url-ttl-minutes:60}") int ttlMinutes,
             @Value("${student.photo.dimension:512}") int dimension,
-            @Value("${student.photo.max-bytes:2097152}") long maxBytes,
+            @Value("${student.photo.max-bytes:5242880}") long maxBytes,
             @Value("${student.photo.signer-sa:}") String signerSa) {
         this.bucket = bucket == null ? "" : bucket.trim();
         this.ttlMinutes = ttlMinutes > 0 ? ttlMinutes : 60;

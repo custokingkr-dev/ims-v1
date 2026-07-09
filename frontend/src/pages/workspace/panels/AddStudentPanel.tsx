@@ -1,5 +1,6 @@
 import { DragEvent, useEffect, useRef, useState } from 'react';
 import api from '../../../services/api';
+import { STUDENT_PHOTO_MAX_LABEL, validateStudentPhotoFile } from '../../../features/students';
 import { ModuleShell, Field } from '../ui';
 import type { PanelKey } from '../config';
 
@@ -81,8 +82,8 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
   const resetStudentForm = () => { setStudentForm(emptyForm()); resetPhotoState(); setPhotoFeedback(null); };
 
   const validateImageFile = (file: File) => {
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Only JPG, PNG, or WEBP files are allowed.');
-    if (file.size > 2 * 1024 * 1024) throw new Error('Photo must be 2MB or smaller.');
+    const error = validateStudentPhotoFile(file);
+    if (error) throw new Error(error);
   };
 
   const selectPhoto = (file: File) => {
@@ -223,11 +224,11 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
           <div className="ck-photo-panel">
             <div className="ck-photo-panel-copy">
               <h3>Student profile photo</h3>
-              <p>Upload a clear face photo. Accepted formats: JPG, PNG, WEBP. Maximum 2MB.</p>
+              <p>Upload a clear face photo. Accepted formats: JPG, PNG, WEBP. Maximum {STUDENT_PHOTO_MAX_LABEL}.</p>
             </div>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) selectPhoto(file); }} />
             <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoPreviewUrl ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
-              <div className="ck-photo-drop-icon">🖼</div><div className="ck-photo-drop-title">Drag and drop the student photo here</div><div className="ck-photo-drop-sub">JPG, PNG or WEBP · up to 2MB</div>
+              <div className="ck-photo-drop-icon">🖼</div><div className="ck-photo-drop-title">Drag and drop the student photo here</div><div className="ck-photo-drop-sub">JPG, PNG or WEBP · up to {STUDENT_PHOTO_MAX_LABEL}</div>
               <div className="ck-actions-inline"><button type="button" className="ck-btn ck-btn-g" onClick={() => fileInputRef.current?.click()}>Browse file</button>{photoFile ? <button type="button" className="ck-btn ck-btn-ghost" onClick={resetPhotoState}>Remove photo</button> : null}</div>
             </div>
             {photoError ? <div className="ck-photo-error">{photoError}</div> : null}

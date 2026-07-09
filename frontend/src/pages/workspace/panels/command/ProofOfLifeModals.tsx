@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../../components/Modal';
+import { STUDENT_PHOTO_MAX_LABEL } from '../../../../features/students';
 import type { CommandCentreCard } from './commandCentreTypes';
 import type { PolCode } from './commandCentreTypes';
 import type { WorkspaceData } from '../../../../types/workspace';
@@ -170,7 +171,7 @@ function ProfileUploadModal({ card, onClose }: PolModalProps) {
         <div style={{ border: '2px dashed var(--border)', borderRadius: 8, padding: '32px 16px', textAlign: 'center', color: 'var(--ink3)', fontSize: 13 }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>📷</div>
           <div>Drag &amp; drop photos here, or click to browse</div>
-          <div style={{ fontSize: 11, marginTop: 6 }}>JPEG or PNG · max 2 MB per photo · named by admission number</div>
+          <div style={{ fontSize: 11, marginTop: 6 }}>JPEG or PNG · max {STUDENT_PHOTO_MAX_LABEL} per photo · named by admission number</div>
         </div>
         <div className="ck-info-row">
           <span className="ck-label">Missing photos</span>

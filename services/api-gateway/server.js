@@ -35,8 +35,9 @@ const CSP = process.env.GATEWAY_CSP
 const HSTS = process.env.GATEWAY_HSTS || 'max-age=63072000; includeSubDomains; preload';
 const REFERRER_POLICY = process.env.GATEWAY_REFERRER_POLICY || 'strict-origin-when-cross-origin';
 
-// Max request body size in bytes (0 disables the check). Default 5 MiB.
-const MAX_BODY_BYTES = Number(process.env.GATEWAY_MAX_BODY_BYTES || 5 * 1024 * 1024);
+// Max request body size in bytes (0 disables the check). Default 8 MiB to allow
+// 5 MiB file uploads plus multipart envelope overhead.
+const MAX_BODY_BYTES = Number(process.env.GATEWAY_MAX_BODY_BYTES || 8 * 1024 * 1024);
 
 // Global token-bucket rate limit, keyed by bearer token (else client IP). 0 RPS disables it.
 const RATE_LIMIT_RPS = Number(process.env.GATEWAY_RATE_LIMIT_RPS || 50);

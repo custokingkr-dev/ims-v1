@@ -90,6 +90,7 @@ export const ADMIN_NAV_SECTIONS: Array<{
   {
     title: 'Supply OS',
     items: [
+      { key: 'home',      label: 'Dashboard',      icon: '◼', module: 'SUPPLY_OS' },
       { key: 'catalog',   label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
       { key: 'orders',    label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
       { key: 'planning',  label: 'Annual plan',    icon: '🗓', module: 'SUPPLY_OS' },
@@ -125,6 +126,7 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
   {
     title: 'Supply OS',
     items: [
+      { key: 'home', label: 'Dashboard', icon: '◼', module: 'SUPPLY_OS' },
       { key: 'catalog', label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
       { key: 'orders',  label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
       { key: 'ff-dashboard', label: 'Urgent Pipeline', icon: '📋', module: 'SUPPLY_OS' },

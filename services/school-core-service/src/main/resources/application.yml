@@ -23,8 +23,8 @@ spring:
     enabled: false
   servlet:
     multipart:
-      max-file-size: ${STUDENT_PHOTO_MAX_FILE_SIZE:2MB}
-      max-request-size: ${STUDENT_PHOTO_MAX_FILE_SIZE:2MB}
+      max-file-size: ${STUDENT_PHOTO_MAX_FILE_SIZE:5MB}
+      max-request-size: ${STUDENT_PHOTO_MAX_REQUEST_SIZE:6MB}
 
 flyway:
   url: ${FLYWAY_URL:${spring.datasource.url}}
@@ -73,7 +73,7 @@ student:
     bucket: ${STUDENT_PHOTO_BUCKET:}
     signed-url-ttl-minutes: ${STUDENT_PHOTO_SIGNED_URL_TTL_MINUTES:60}
     dimension: ${STUDENT_PHOTO_DIMENSION:512}
-    max-bytes: ${STUDENT_PHOTO_MAX_BYTES:2097152}
+    max-bytes: ${STUDENT_PHOTO_MAX_BYTES:5242880}
     # Runtime SA to sign V4 URLs via IAM; blank -> resolved from the metadata server on Cloud Run.
     signer-sa: ${STUDENT_PHOTO_SIGNER_SA:}
 

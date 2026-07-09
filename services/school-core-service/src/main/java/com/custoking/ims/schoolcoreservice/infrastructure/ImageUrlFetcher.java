@@ -31,7 +31,7 @@ public class ImageUrlFetcher {
     private final boolean allowLoopbackForTest;
 
     @Autowired
-    public ImageUrlFetcher(@Value("${student.photo.max-bytes:2097152}") long maxBytes) {
+    public ImageUrlFetcher(@Value("${student.photo.max-bytes:5242880}") long maxBytes) {
         this(maxBytes, false);
     }
     private ImageUrlFetcher(long maxBytes, boolean allowLoopbackForTest) {

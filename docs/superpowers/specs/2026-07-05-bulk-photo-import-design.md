@@ -107,7 +107,7 @@ Body: `{ "url": "https://…" }`. Behavior:
     address: `127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`,
     `169.254.0.0/16` (incl. `169.254.169.254`), `::1`, `fc00::/7`, `fe80::/10`.
   - Follow at most **3 redirects**, re-validating the host on each hop.
-  - **Connect + read timeout 5s**; **max download 2MB** (`student.photo.max-bytes`);
+  - **Connect + read timeout 5s**; **max download 5 MB** (`student.photo.max-bytes`);
     require an **image `Content-Type`** (`image/jpeg|png|webp`).
 - **Success:** `StudentPhotoStorage.upload(schoolId, studentId, bytes, contentType)` →
   set `photo_url` → return `{ photoUrl: <display url> }`.
@@ -138,7 +138,7 @@ Body: `{ "url": "https://…" }`. Behavior:
 
 ## Limits & failure handling
 
-- Per-photo size cap **2MB** (`student.photo.max-bytes`); larger embedded images are
+- Per-photo size cap **5 MB** (`student.photo.max-bytes`); larger embedded images are
   downscaled client-side before upload; oversized links rejected server-side (422).
 - File-size cap **50MB** (was 5MB); row cap **500** (unchanged).
 - Data import is **authoritative and independent**: a student is created even if the photo

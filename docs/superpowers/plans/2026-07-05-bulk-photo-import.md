@@ -12,7 +12,7 @@
 
 - Never persist a raw external URL. Links are fetched server-side into our GCS; inaccessible links are skipped with a reason.
 - Photos are best-effort: the student data import succeeds and is never rolled back by a photo failure.
-- Per-photo max **2MB** (`student.photo.max-bytes`); image content-types **`image/jpeg`, `image/png`, `image/webp`** only; resize target **512px** (handled by `StudentPhotoStorage.upload`).
+- Per-photo max **5 MB** (`student.photo.max-bytes`); image content-types **`image/jpeg`, `image/png`, `image/webp`** only; resize target **512px** (handled by `StudentPhotoStorage.upload`).
 - SSRF: allow only `http`/`https`; reject loopback/private/link-local ranges and the metadata IP (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fc00::/7`, `fe80::/10`); ≤3 redirects (re-validate host each hop); connect+read timeout **5s**.
 - `photo-from-url` failures return **422** with a `reason` in `{unreachable, not_an_image, too_large, blocked_host, timeout, invalid_url}`.
 - Formats: data import `.xlsx/.xls/.ods/.csv`; **embedded** photos `.xlsx` only; **link** column any format. File cap **50MB**, row cap **500**.
@@ -176,7 +176,7 @@ public class ImageUrlFetcher {
     private final long maxBytes;
     private final boolean allowLoopbackForTest;
 
-    public ImageUrlFetcher(@Value("${student.photo.max-bytes:2097152}") long maxBytes) {
+    public ImageUrlFetcher(@Value("${student.photo.max-bytes:5242880}") long maxBytes) {
         this(maxBytes, false);
     }
     private ImageUrlFetcher(long maxBytes, boolean allowLoopbackForTest) {
@@ -798,7 +798,7 @@ export async function attachPhotos(
   return { attached, skipped };
 }
 ```
-> Embedded photos are uploaded via the existing multipart endpoint, which resizes server-side (2MB cap enforced there). Client-side downscaling of very large embedded images is out of scope for this task; the 2MB server cap rejects oversized ones, which surface as a skip.
+> Embedded photos are uploaded via the existing multipart endpoint, which resizes server-side (5 MB cap enforced there). Client-side downscaling of very large embedded images is out of scope for this task; the 5 MB server cap rejects oversized ones, which surface as a skip.
 
 - [ ] **Step 4: Run test to verify it passes**
 
