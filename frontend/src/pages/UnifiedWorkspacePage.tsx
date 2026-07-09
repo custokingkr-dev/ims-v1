@@ -8,7 +8,7 @@ import {
   type PanelKey, type WorkspaceData,
   ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
   SUPERADMIN_NAV_SECTIONS, TEACHER_NAV_SECTIONS, VIEWER_NAV_SECTIONS,
-  ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES, withDerivedModuleGroups,
+  ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES, filterNavSectionsForModules, withDerivedModuleGroups,
 } from './workspace/config';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
@@ -283,12 +283,7 @@ export default function UnifiedWorkspacePage() {
   // Items without a `module` field, and everything for platform admins, are always shown.
   const navSections = isPlatformAdmin
     ? rawNavSections
-    : rawNavSections
-        .map(section => ({
-          ...section,
-          items: section.items.filter(item => !item.module || activeModules.has(item.module)),
-        }))
-        .filter(section => section.items.length > 0);
+    : filterNavSectionsForModules(rawNavSections, activeModules);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
   const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel);
 

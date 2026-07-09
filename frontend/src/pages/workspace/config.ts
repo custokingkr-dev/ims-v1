@@ -82,6 +82,32 @@ export type PanelKey =
   | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog'
   | 'za-overview' | 'za-schools';
 
+export type WorkspaceNavItem = { key: PanelKey; label: string; icon: string; module?: ModuleCode };
+
+export type WorkspaceNavSection = {
+  title: string;
+  fire?: boolean;
+  items: WorkspaceNavItem[];
+};
+
+export function filterNavSectionsForModules(
+  sections: WorkspaceNavSection[],
+  activeModules: Set<string>,
+): WorkspaceNavSection[] {
+  const seenPanelKeys = new Set<PanelKey>();
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (item.module && !activeModules.has(item.module)) return false;
+        if (seenPanelKeys.has(item.key)) return false;
+        seenPanelKeys.add(item.key);
+        return true;
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
 export const ADMIN_NAV_SECTIONS: Array<{
   title: string;
   fire?: boolean;
