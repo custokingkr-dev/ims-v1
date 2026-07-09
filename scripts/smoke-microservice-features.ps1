@@ -68,6 +68,25 @@ ON CONFLICT (id) DO UPDATE SET
     school_class_id = EXCLUDED.school_class_id,
     school_id = EXCLUDED.school_id;
 
+INSERT INTO tenant_school.school_module_entitlements
+    (school_id, module_code, enabled, plan, notes, updated_at)
+SELECT 1, module_code, true, 'E2E', 'E2E smoke baseline', now()
+FROM (VALUES
+    ('STUDENTS'),
+    ('ATTENDANCE'),
+    ('FEES'),
+    ('INVOICES'),
+    ('PAYMENTS'),
+    ('ORDERS'),
+    ('FIREFIGHTING'),
+    ('REPORTS')
+) AS modules(module_code)
+ON CONFLICT (school_id, module_code) DO UPDATE SET
+    enabled = EXCLUDED.enabled,
+    plan = EXCLUDED.plan,
+    notes = EXCLUDED.notes,
+    updated_at = EXCLUDED.updated_at;
+
 INSERT INTO student.students
     (id, admission_no, roll_no, full_name, dob, gender, father_name,
      father_contact, phone, address, fee_status, attendance_percent,
