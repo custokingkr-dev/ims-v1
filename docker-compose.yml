@@ -71,6 +71,7 @@ services:
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       SCHOOL_CORE_DATASOURCE_SCHEMAS: "tenant_school,student,attendance,fee,catalog"
+      SCHOOL_CORE_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
       STUDENT_READ_TOKEN: local-dev-student-token
       ATTENDANCE_READ_TOKEN: local-dev-attendance-token
@@ -101,6 +102,7 @@ services:
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       OPERATIONS_DB_SCHEMA: "workflow,firefighting"
+      OPERATIONS_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
       FIREFIGHTING_READ_TOKEN: local-dev-firefighting-token
     ports:
@@ -163,6 +165,7 @@ services:
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
       BILLING_DB_SCHEMA: billing
+      BILLING_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
       BILLING_SERVICE_TOKEN: local-dev-billing-token
     ports:
       - "8092:8080"
