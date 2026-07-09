@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Stores student photos in a private Cloud Storage bucket and serves them via short-lived V4
- * signed URLs. Photos are faces of minors (sensitive PII), so the bucket is never public.
+ * signed URLs. Photos are faces of minors (sensitive PII), so the bucket stays private-only.
  *
  * <p>Uploads are resized/compressed to a small JPEG (the cost + latency lever); objects are
  * content-addressed and written with an immutable long cache header, so browsers cache them and
