@@ -90,6 +90,13 @@ export type WorkspaceNavSection = {
   items: WorkspaceNavItem[];
 };
 
+const OVERVIEW_NAV_SECTION: WorkspaceNavSection = {
+  title: 'Overview',
+  items: [
+    { key: 'home', label: 'Dashboard', icon: '◼' },
+  ],
+};
+
 export function filterNavSectionsForModules(
   sections: WorkspaceNavSection[],
   activeModules: Set<string>,
@@ -108,15 +115,11 @@ export function filterNavSectionsForModules(
     .filter((section) => section.items.length > 0);
 }
 
-export const ADMIN_NAV_SECTIONS: Array<{
-  title: string;
-  fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
-}> = [
+export const ADMIN_NAV_SECTIONS: WorkspaceNavSection[] = [
+  OVERVIEW_NAV_SECTION,
   {
     title: 'Supply OS',
     items: [
-      { key: 'home',      label: 'Dashboard',      icon: '◼', module: 'SUPPLY_OS' },
       { key: 'catalog',   label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
       { key: 'orders',    label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
       { key: 'planning',  label: 'Annual plan',    icon: '🗓', module: 'SUPPLY_OS' },
@@ -129,7 +132,6 @@ export const ADMIN_NAV_SECTIONS: Array<{
   {
     title: 'ERP',
     items: [
-      { key: 'home',       label: 'Dashboard',   icon: '◼', module: 'ERP' },
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'addstudent', label: 'Add student', icon: '➕', module: 'ERP' },
       { key: 'bulkimport', label: 'Bulk import', icon: '📥', module: 'ERP' },
@@ -144,15 +146,11 @@ export const ADMIN_NAV_SECTIONS: Array<{
 ];
 
 // OPERATIONS role: daily ops access - no finance, no user management
-export const OPERATIONS_NAV_SECTIONS: Array<{
-  title: string;
-  fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
-}> = [
+export const OPERATIONS_NAV_SECTIONS: WorkspaceNavSection[] = [
+  OVERVIEW_NAV_SECTION,
   {
     title: 'Supply OS',
     items: [
-      { key: 'home', label: 'Dashboard', icon: '◼', module: 'SUPPLY_OS' },
       { key: 'catalog', label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
       { key: 'orders',  label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
       { key: 'ff-dashboard', label: 'Urgent Pipeline', icon: '📋', module: 'SUPPLY_OS' },
@@ -163,7 +161,6 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
   {
     title: 'ERP',
     items: [
-      { key: 'home',       label: 'Dashboard',   icon: '◼', module: 'ERP' },
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
       { key: 'addstudent', label: 'Add student', icon: '➕', module: 'ERP' },
@@ -171,15 +168,11 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
   },
 ];
 
-export const ACCOUNTANT_NAV_SECTIONS: Array<{
-  title: string;
-  fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
-}> = [
+export const ACCOUNTANT_NAV_SECTIONS: WorkspaceNavSection[] = [
+  OVERVIEW_NAV_SECTION,
   {
     title: 'Finance',
     items: [
-      { key: 'home',         label: 'Dashboard',         icon: '◼', module: 'ERP' },
       { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'ERP' },
       { key: 'feestructure', label: 'Fee Configuration', icon: '▦', module: 'ERP' },
       { key: 'orders',       label: 'School Orders',     icon: '□', module: 'SUPPLY_OS' },
@@ -187,15 +180,11 @@ export const ACCOUNTANT_NAV_SECTIONS: Array<{
   },
 ];
 
-export const TEACHER_NAV_SECTIONS: Array<{
-  title: string;
-  fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
-}> = [
+export const TEACHER_NAV_SECTIONS: WorkspaceNavSection[] = [
+  OVERVIEW_NAV_SECTION,
   {
     title: 'Classroom',
     items: [
-      { key: 'home',       label: 'Dashboard',  icon: '◼', module: 'ERP' },
       { key: 'students',   label: 'Students',   icon: '△', module: 'ERP' },
       { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ERP' },
       { key: 'timetable',  label: 'Timetable',  icon: '▤', module: 'ERP' },
@@ -203,15 +192,11 @@ export const TEACHER_NAV_SECTIONS: Array<{
   },
 ];
 
-export const VIEWER_NAV_SECTIONS: Array<{
-  title: string;
-  fire?: boolean;
-  items: Array<{ key: PanelKey; label: string; icon: string; module?: ModuleCode }>;
-}> = [
+export const VIEWER_NAV_SECTIONS: WorkspaceNavSection[] = [
+  OVERVIEW_NAV_SECTION,
   {
     title: 'Read only',
     items: [
-      { key: 'home',       label: 'Dashboard',  icon: '◼', module: 'ERP' },
       { key: 'students',   label: 'Students',   icon: '△', module: 'ERP' },
       { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ERP' },
       { key: 'fees',       label: 'Fees',       icon: '₹', module: 'ERP' },
