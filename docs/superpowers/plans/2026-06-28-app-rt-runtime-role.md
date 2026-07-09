@@ -1,5 +1,9 @@
 # `app_rt` Unprivileged Runtime Role — Implementation Plan
 
+> Historical snapshot: this plan was written against the previous greenfield
+> project state. Keep its stale project identifiers only as implementation
+> history; current deploy/observability work uses project `custoking`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Introduce an unprivileged Postgres runtime role `app_rt` (subject to RLS) and cut the application runtime over to it, while `appuser` (prod) / `postgres` (local) remains the owner + Flyway role.

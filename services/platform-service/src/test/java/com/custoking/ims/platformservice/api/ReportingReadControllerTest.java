@@ -205,6 +205,22 @@ class ReportingReadControllerTest {
     }
 
     @Test
+    void pubSubRecordsTraceContextAttributesFromPubSubMessage() throws Exception {
+        ReportingEventInboxRepository inbox = mock(ReportingEventInboxRepository.class);
+        ObjectMapper mapper = new ObjectMapper();
+        ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "push-token");
+        when(inbox.exists("event-1")).thenReturn(false);
+
+        pubSub.receiveReportingEvent(null, "push-token", pubSubEnvelopeWithTrace(mapper));
+
+        ArgumentCaptor<ReportingEventInboxRecord> captor = ArgumentCaptor.forClass(ReportingEventInboxRecord.class);
+        verify(inbox).record(captor.capture());
+        assertThat(captor.getValue().traceParent())
+                .isEqualTo("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
+        assertThat(captor.getValue().traceState()).isEqualTo("vendor=value");
+    }
+
+    @Test
     void pubSubDecodesPubSubMessageDataAndSkipsExistingEvent() throws Exception {
         ReportingEventInboxRepository inbox = mock(ReportingEventInboxRepository.class);
         ObjectMapper mapper = new ObjectMapper();
@@ -259,6 +275,23 @@ class ReportingReadControllerTest {
                   "message": {
                     "messageId": "pubsub-message-1",
                     "data": "%s"
+                  }
+                }
+                """.formatted(data));
+    }
+
+    private JsonNode pubSubEnvelopeWithTrace(ObjectMapper mapper) throws Exception {
+        String data = Base64.getEncoder().encodeToString(
+                mapper.writeValueAsString(directEnvelope(mapper)).getBytes(StandardCharsets.UTF_8));
+        return mapper.readTree("""
+                {
+                  "message": {
+                    "messageId": "pubsub-message-1",
+                    "data": "%s",
+                    "attributes": {
+                      "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+                      "tracestate": "vendor=value"
+                    }
                   }
                 }
                 """.formatted(data));

@@ -1,0 +1,37 @@
+.git/
+.git/**
+
+# Local tooling and editor state
+.claude/
+.idea/
+.superpowers/
+.vscode/
+.tools/
+
+# Dependency and build outputs
+node_modules/
+**/node_modules/
+target/
+**/target/
+dist/
+**/dist/
+build/
+**/build/
+coverage/
+playwright-report/
+test-results/
+
+# Terraform local state/work dirs
+.terraform/
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Local artifacts and logs
+artifacts/
+artifacts-*.json
+artifacts-*.md
+promotion-artifacts/
+*.log
+*.tmp

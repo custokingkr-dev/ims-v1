@@ -2,6 +2,10 @@
 
 **Source task:** `docs/superpowers/plans/2026-06-28-architecture-remediation-program.md` § Phase 3, Task 3.2 (`P2-2`) — "Indexing, partition attendance, drop dead objects." **Right-sized after measuring prod:** the headline items (partition + perf index-tuning) are premature at current scale and are explicitly deferred with documented thresholds; the safe, valuable subset is done now.
 
+> Historical snapshot: this design includes one-off production job parameters
+> from the previous project state. Keep those identifiers only as recorded
+> execution history; current deploy/observability work uses project `custoking`.
+
 ## Why right-sized (measured evidence, 2026-07-04)
 
 Read-only prod query (`custoking_ims_v1`, via a Cloud Run psql job) showed the data is tiny:

@@ -37,6 +37,25 @@ management:
       show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
       probes:
         enabled: true
+  tracing:
+    sampling:
+      probability: ${OTEL_TRACES_SAMPLER_ARG:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}}
+  otlp:
+    # spring-boot-starter-opentelemetry transitively pulls in
+    # io.micrometer:micrometer-registry-otlp, which auto-enables an OTLP
+    # *metrics* exporter (pushing to a http://localhost:4318 default) as soon
+    # as it is on the classpath. This task only asked for tracing; explicitly
+    # disable the metrics exporter here so it stays opt-in via env var,
+    # keeping behavior scoped and avoiding unrequested background network
+    # calls to a collector that (by default) doesn't exist.
+    metrics:
+      export:
+        enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
 
 reporting:
   read-token: ${REPORTING_READ_TOKEN:}

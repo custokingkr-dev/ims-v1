@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const { context, trace } = require('@opentelemetry/api');
 
 for (const name of [
   'IDENTITY_SERVICE_TOKEN',
@@ -24,6 +25,8 @@ process.env.GATEWAY_AUTH_MODE = 'enforce';
 process.env.GATEWAY_CLOUD_RUN_AUTH = 'never';
 process.env.GATEWAY_CORS_ALLOWED_ORIGINS = 'https://app.custoking.com';
 process.env.GATEWAY_MAX_BODY_BYTES = '1024';
+process.env.OTEL_SDK_DISABLED = 'true';
+process.env.GCP_PROJECT = 'custoking-test';
 
 const {
   server,
@@ -41,6 +44,9 @@ const {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  currentTraceFields,
+  cloudLoggingTraceFields,
+  parseTraceparentHeader,
   verifyJwtLocally,
   principalFromClaims,
   authenticate,
@@ -134,6 +140,53 @@ test('outbound headers strip hop-by-hop request headers and add forwarding metad
   assert.equal(headers['x-request-id'], 'request-1');
   assert.equal(headers['x-forwarded-for'], '10.0.0.1, 10.0.0.2');
   assert.equal(headers['x-forwarded-proto'], 'http');
+});
+
+test('outbound headers replace inbound traceparent with the active gateway span context', () => {
+  const spanContext = {
+    traceId: '0af7651916cd43dd8448eb211c80319c',
+    spanId: 'b7ad6b7169203331',
+    traceFlags: 1,
+  };
+  const span = trace.wrapSpanContext(spanContext);
+
+  const activeContext = trace.setSpan(context.active(), span);
+  const headers = outboundHeaders({
+    headers: {
+      traceparent: '00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-01',
+    },
+    socket: { remoteAddress: '10.0.0.2' },
+  }, 'request-1', activeContext);
+
+  assert.equal(headers.traceparent, '00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01');
+});
+
+test('trace helpers expose Cloud Logging trace correlation fields', () => {
+  const spanContext = {
+    traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+    spanId: '00f067aa0ba902b7',
+    traceFlags: 1,
+  };
+  const span = trace.wrapSpanContext(spanContext);
+
+  const activeContext = trace.setSpan(context.active(), span);
+  const fields = currentTraceFields({ headers: {} }, activeContext);
+  assert.deepEqual(fields, spanContext);
+  assert.deepEqual(cloudLoggingTraceFields(fields), {
+    traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+    spanId: '00f067aa0ba902b7',
+    'logging.googleapis.com/trace': 'projects/custoking-test/traces/4bf92f3577b34da6a3ce929d0e0e4736',
+    'logging.googleapis.com/spanId': '00f067aa0ba902b7',
+  });
+});
+
+test('trace helpers fall back to a valid incoming traceparent header', () => {
+  assert.deepEqual(parseTraceparentHeader('00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'), {
+    traceId: '4bf92f3577b34da6a3ce929d0e0e4736',
+    spanId: '00f067aa0ba902b7',
+    traceFlags: 1,
+  });
+  assert.equal(parseTraceparentHeader('00-00000000000000000000000000000000-00f067aa0ba902b7-01'), null);
 });
 
 test('hop header helpers classify request and response headers', () => {

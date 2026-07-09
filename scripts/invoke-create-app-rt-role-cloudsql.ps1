@@ -1,5 +1,5 @@
 param(
-    [string]$Project = "custoking-ims",
+    [string]$Project = "custoking",
     [string]$Region = "asia-south2",
     [string]$HostAddress = "10.116.0.3",
     [int]$Port = 5432,

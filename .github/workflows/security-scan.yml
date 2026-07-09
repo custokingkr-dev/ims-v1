@@ -1,0 +1,89 @@
+# Deep, informational container vulnerability scan.
+#
+# This is layered with two other scanners:
+#   1. GCP Artifact Analysis auto-scans every image pushed to Artifact Registry
+#      (always-on, no workflow needed).
+#   2. ci.yml runs a BLOCKING per-PR Trivy CRITICAL gate on changed images.
+#
+# This workflow is the third layer: a weekly (and on-demand) deep scan across
+# ALL build units, reporting HIGH+CRITICAL findings to the GitHub Security tab.
+# It never fails the run — it is informational only.
+name: Security / Deep Scan
+
+on:
+  schedule:
+    - cron: "0 21 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: identity-service
+            context: ./services/identity-service
+            image: custoking-identity-service
+            build_args: ""
+          - name: school-core-service
+            context: ./services/school-core-service
+            image: custoking-school-core-service
+            build_args: ""
+          - name: operations-service
+            context: ./services/operations-service
+            image: custoking-operations-service
+            build_args: ""
+          - name: platform-service
+            context: ./services/platform-service
+            image: custoking-platform-service
+            build_args: ""
+          - name: billing-service
+            context: ./services/billing-service
+            image: custoking-billing-service
+            build_args: ""
+          - name: api-gateway
+            context: ./services/api-gateway
+            image: custoking-api-gateway
+            build_args: ""
+          - name: frontend
+            context: ./frontend
+            image: custoking-frontend
+            build_args: "VITE_API_BASE_URL=/api/v1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          build-args: ${{ matrix.build_args }}
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: ${{ matrix.image }}:scan
+
+      - name: Trivy scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ matrix.image }}:scan
+          format: sarif
+          output: trivy-${{ matrix.name }}.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 0
+          vuln-type: os,library
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.name }}.sarif
+          category: ${{ matrix.name }}

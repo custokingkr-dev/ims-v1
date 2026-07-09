@@ -157,10 +157,10 @@ powershell -ExecutionPolicy Bypass -File scripts\audit-legacy-public-retirement-
 Production direct private-service smoke:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\ensure-direct-service-smoke-identity.ps1 -ProjectId custoking-ims -Region asia-south2
-powershell -ExecutionPolicy Bypass -File scripts\new-direct-service-smoke-job.ps1 -ProjectId custoking-ims -Region asia-south2 -OutputPath artifacts\direct-service-smoke-job.generated.yaml
-gcloud run jobs replace artifacts\direct-service-smoke-job.generated.yaml --project=custoking-ims --region=asia-south2
-gcloud run jobs execute ims-direct-service-smoke --project=custoking-ims --region=asia-south2 --wait
+powershell -ExecutionPolicy Bypass -File scripts\ensure-direct-service-smoke-identity.ps1 -ProjectId custoking -Region asia-south2
+powershell -ExecutionPolicy Bypass -File scripts\new-direct-service-smoke-job.ps1 -ProjectId custoking -Region asia-south2 -OutputPath artifacts\direct-service-smoke-job.generated.yaml
+gcloud run jobs replace artifacts\direct-service-smoke-job.generated.yaml --project=custoking --region=asia-south2
+gcloud run jobs execute ims-direct-service-smoke --project=custoking --region=asia-south2 --wait
 ```
 
 Gateway read/write smokes require production user tokens:
@@ -194,7 +194,7 @@ GitHub Actions deployment:
 Manual Cloud Build deployment:
 
 ```powershell
-gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2,_DEPLOY_SERVICES=frontend --project=custoking-ims .
+gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2,_DEPLOY_SERVICES=frontend --project=custoking .
 ```
 
 Cloud Build builds and deploys the selected service. Use `_DEPLOY_SERVICES=all` for the previous all-service rollout.

@@ -49,6 +49,7 @@ class StudentReviewCompletionIntegrationTest {
                         id BIGSERIAL PRIMARY KEY,
                         event_key TEXT, event_type TEXT, aggregate_type TEXT, aggregate_id TEXT,
                         school_id BIGINT, payload JSONB, status TEXT DEFAULT 'PENDING',
+                        trace_parent TEXT, trace_state TEXT,
                         created_at TIMESTAMPTZ DEFAULT now())
                     """);
         } catch (Exception e) { throw new RuntimeException(e); }

@@ -1,5 +1,9 @@
 # Production Readiness Review And Overhaul Plan
 
+> Historical snapshot: this document records the pre-greenfield `custoking-ims`
+> environment as it existed on 2026-06-26. Do not use the project names,
+> service account names, or bucket names in this file for current deployment.
+
 Generated: 2026-06-26
 
 ## Verification Evidence

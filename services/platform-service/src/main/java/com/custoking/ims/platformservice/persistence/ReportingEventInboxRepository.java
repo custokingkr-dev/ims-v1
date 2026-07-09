@@ -32,7 +32,8 @@ public class ReportingEventInboxRepository {
     public List<ReportingEventInboxProjectionRow> findReceivedForProjection(int batchSize) {
         return jdbc.sql("""
                         SELECT event_id, event_type, aggregate_type, aggregate_id,
-                               school_id, actor_user_id, occurred_at, received_at, payload
+                               school_id, actor_user_id, occurred_at, received_at, payload,
+                               trace_parent, trace_state
                         FROM reporting.reporting_event_inbox
                         WHERE status = 'RECEIVED'
                         ORDER BY received_at ASC
@@ -48,7 +49,9 @@ public class ReportingEventInboxRepository {
                         rs.getObject("actor_user_id", Long.class),
                         rs.getObject("occurred_at", OffsetDateTime.class),
                         rs.getObject("received_at", OffsetDateTime.class),
-                        rs.getString("payload")))
+                        rs.getString("payload"),
+                        rs.getString("trace_parent"),
+                        rs.getString("trace_state")))
                 .list();
     }
 
@@ -57,10 +60,12 @@ public class ReportingEventInboxRepository {
         jdbc.sql("""
                         INSERT INTO reporting.reporting_event_inbox (
                             event_id, event_key, event_type, event_version, aggregate_type, aggregate_id,
-                            school_id, actor_user_id, occurred_at, received_at, status, envelope, payload
+                            school_id, actor_user_id, occurred_at, received_at, status, envelope, payload,
+                            trace_parent, trace_state
                         ) VALUES (
                             :eventId, :eventKey, :eventType, :eventVersion, :aggregateType, :aggregateId,
-                            :schoolId, :actorUserId, :occurredAt, :receivedAt, 'RECEIVED', :envelope, :payload
+                            :schoolId, :actorUserId, :occurredAt, :receivedAt, 'RECEIVED', :envelope, :payload,
+                            :traceParent, :traceState
                         )
                         ON CONFLICT (event_id) DO NOTHING
                         """)
@@ -76,6 +81,8 @@ public class ReportingEventInboxRepository {
                 .param("receivedAt", event.receivedAt())
                 .param("envelope", event.envelope())
                 .param("payload", event.payload())
+                .param("traceParent", event.traceParent())
+                .param("traceState", event.traceState())
                 .update();
     }
 
@@ -120,8 +127,26 @@ public class ReportingEventInboxRepository {
             Optional<OffsetDateTime> occurredAt,
             OffsetDateTime receivedAt,
             String envelope,
-            String payload
+            String payload,
+            String traceParent,
+            String traceState
     ) {
+        public ReportingEventInboxRecord(
+                String eventId,
+                String eventKey,
+                String eventType,
+                String eventVersion,
+                String aggregateType,
+                String aggregateId,
+                Long schoolId,
+                Long actorUserId,
+                Optional<OffsetDateTime> occurredAt,
+                OffsetDateTime receivedAt,
+                String envelope,
+                String payload) {
+            this(eventId, eventKey, eventType, eventVersion, aggregateType, aggregateId,
+                    schoolId, actorUserId, occurredAt, receivedAt, envelope, payload, null, null);
+        }
     }
 
     public record ReportingEventInboxProjectionRow(
@@ -133,7 +158,9 @@ public class ReportingEventInboxRepository {
             Long actorUserId,
             OffsetDateTime occurredAt,
             OffsetDateTime receivedAt,
-            String payload
+            String payload,
+            String traceParent,
+            String traceState
     ) {
     }
 }

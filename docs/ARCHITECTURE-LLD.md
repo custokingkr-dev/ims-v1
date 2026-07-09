@@ -89,10 +89,10 @@ powershell -ExecutionPolicy Bypass -File scripts\audit-legacy-compatibility-clou
 Direct private service smoke:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\ensure-direct-service-smoke-identity.ps1 -ProjectId custoking-ims -Region asia-south2
-powershell -ExecutionPolicy Bypass -File scripts\new-direct-service-smoke-job.ps1 -ProjectId custoking-ims -Region asia-south2 -OutputPath artifacts\direct-service-smoke-job.generated.yaml
-gcloud run jobs replace artifacts\direct-service-smoke-job.generated.yaml --project=custoking-ims --region=asia-south2
-gcloud run jobs execute ims-direct-service-smoke --project=custoking-ims --region=asia-south2 --wait
+powershell -ExecutionPolicy Bypass -File scripts\ensure-direct-service-smoke-identity.ps1 -ProjectId custoking -Region asia-south2
+powershell -ExecutionPolicy Bypass -File scripts\new-direct-service-smoke-job.ps1 -ProjectId custoking -Region asia-south2 -OutputPath artifacts\direct-service-smoke-job.generated.yaml
+gcloud run jobs replace artifacts\direct-service-smoke-job.generated.yaml --project=custoking --region=asia-south2
+gcloud run jobs execute ims-direct-service-smoke --project=custoking --region=asia-south2 --wait
 ```
 
 Gateway smokes require production tokens or credentials:

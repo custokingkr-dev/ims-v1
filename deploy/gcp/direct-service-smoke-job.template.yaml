@@ -3,7 +3,7 @@ kind: Job
 metadata:
   name: ims-direct-service-smoke
   labels:
-    app.kubernetes.io/name: custoking-ims
+    app.kubernetes.io/name: custoking
     app.kubernetes.io/component: production-smoke
 spec:
   template:

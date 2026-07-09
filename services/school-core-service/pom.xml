@@ -77,6 +77,29 @@
             <artifactId>logstash-logback-encoder</artifactId>
             <version>8.0</version>
         </dependency>
+        <!-- OpenTelemetry tracing: under Spring Boot 4.0, tracing autoconfiguration
+             was split out of spring-boot-actuator-autoconfigure into a dedicated
+             starter. This single starter wires the Micrometer Tracing OTel bridge,
+             the OTel SDK, and the OTLP exporter/autoconfiguration together (all
+             version-managed by the Spring Boot 4.0.7 BOM; no explicit versions). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-opentelemetry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry.contrib</groupId>
+            <artifactId>opentelemetry-gcp-auth-extension</artifactId>
+            <version>1.56.0-alpha</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.37.1</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

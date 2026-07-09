@@ -1,5 +1,5 @@
 param(
-    [string]$ProjectId = "custoking-ims",
+    [string]$ProjectId = "custoking",
     [string]$OutputJson = "secret-manager-evidence.json",
     [string]$GcloudPath = "gcloud",
     [switch]$Mock

@@ -109,4 +109,27 @@ class PubSubDomainEventPublisherTest {
         assertThat(message.getData()).isEqualTo(
                 ByteString.copyFromUtf8(message.getData().toString(StandardCharsets.UTF_8)));
     }
+
+    @Test
+    void buildMessage_addsW3cTraceContextAttributesWhenPresent() {
+        EventEnvelope envelope = new EventEnvelope(
+                "ims.event-envelope.v1",
+                "id-3",
+                "key-3",
+                "billing.invoice-upserted.v1",
+                "v1",
+                "SuperadminInvoice",
+                "3",
+                OffsetDateTime.now(ZoneOffset.UTC),
+                4L,
+                "{\"a\":1}",
+                "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+                "vendor=value");
+
+        PubsubMessage message = PubSubDomainEventPublisher.buildMessage(envelope, objectMapper);
+
+        assertThat(message.getAttributesMap())
+                .containsEntry("traceparent", "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01")
+                .containsEntry("tracestate", "vendor=value");
+    }
 }
