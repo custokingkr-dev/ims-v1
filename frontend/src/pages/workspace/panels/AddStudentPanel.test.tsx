@@ -43,7 +43,7 @@ describe('AddStudentPanel class/section dropdowns', () => {
     // Details section) renders before the Class select (Academic Details
     // section), so Class is the second combobox on the page, not the first.
     const classSelect = screen.getAllByRole('combobox')[1];
-    fireEvent.change(classSelect, { target: { value: 'Class 1' } });
+    fireEvent.change(classSelect, { target: { value: 'c1' } });
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith('/classes/c1/sections', { params: { active: true } }));
   });
@@ -52,7 +52,7 @@ describe('AddStudentPanel class/section dropdowns', () => {
     render(<AddStudentPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
     await waitFor(() => expect(screen.getByRole('option', { name: 'Class 1' })).toBeInTheDocument());
     const classSelect = screen.getAllByRole('combobox')[1] as HTMLSelectElement;
-    await waitFor(() => expect(classSelect.value).toBe('Class 1'));
+    await waitFor(() => expect(classSelect.value).toBe('c1'));
     expect(classSelect.value).not.toBe('Class 9');
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith('/classes/c1/sections', { params: { active: true } }));
