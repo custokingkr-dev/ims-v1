@@ -302,7 +302,13 @@ function requiresUserAuth(pathname) {
   ].some((publicPath) => pathname === publicPath || pathname.startsWith(`${publicPath}/`));
 }
 
-// Verify an HS512 JWT locally with the shared secret — no network call.
+const HMAC_JWT_ALGORITHMS = {
+  HS256: 'sha256',
+  HS384: 'sha384',
+  HS512: 'sha512',
+};
+
+// Verify an HMAC JWT locally with the shared secret; no network call.
 // Returns the decoded claims, or null on any failure. `nowSeconds` is injectable for tests.
 function verifyJwtLocally(token, secret, nowSeconds) {
   if (typeof token !== 'string' || typeof secret !== 'string' || !secret) return null;
@@ -317,9 +323,10 @@ function verifyJwtLocally(token, secret, nowSeconds) {
   } catch {
     return null;
   }
-  // Enforce HS512 only — rejects "none" and algorithm-confusion attacks.
-  if (!header || header.alg !== 'HS512') return null;
-  const expected = crypto.createHmac('sha512', secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
+  // Allow only HMAC JWT algorithms emitted by the identity service; reject "none" and asymmetric algs.
+  const digest = header && HMAC_JWT_ALGORITHMS[header.alg];
+  if (!digest) return null;
+  const expected = crypto.createHmac(digest, secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
   // base64url signatures are ASCII, so comparing the encoded text byte-for-byte is equivalent to comparing raw bytes.
   const provided = Buffer.from(sigB64);
   const expectedBuf = Buffer.from(expected);
@@ -345,7 +352,7 @@ function principalFromClaims(claims) {
   };
 }
 
-// Resolve the caller's principal. Prefers local HS512 verification; falls back to
+// Resolve the caller's principal. Prefers local HMAC JWT verification; falls back to
 // introspection for un-enriched legacy tokens or when local verify is off/misconfigured.
 // `opts` overrides are for deterministic unit tests.
 async function authenticate(req, requestId, opts = {}) {

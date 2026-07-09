@@ -430,11 +430,24 @@ test('isClientSpoofableHeader flags gateway-only headers', () => {
 
 // --- Local JWT verification (Task 2.3) ---
 
-function signHS512(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
+const TEST_HMAC_DIGESTS = {
+  HS256: 'sha256',
+  HS384: 'sha384',
+  HS512: 'sha512',
+};
+
+function signJwt(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
   const h = Buffer.from(JSON.stringify(header)).toString('base64url');
   const p = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig = crypto.createHmac('sha512', secret).update(`${h}.${p}`).digest('base64url');
+  const sig = crypto
+    .createHmac(TEST_HMAC_DIGESTS[header.alg] || 'sha512', secret)
+    .update(`${h}.${p}`)
+    .digest('base64url');
   return `${h}.${p}.${sig}`;
+}
+
+function signHS512(payload, secret, header = { alg: 'HS512', typ: 'JWT' }) {
+  return signJwt(payload, secret, header);
 }
 
 const JWT_SECRET = 'test-jwt-secret-at-least-32-characters-long';
@@ -443,6 +456,13 @@ const enrichedClaims = { sub: 'a@b.com', role: 'ADMIN', uid: 42, sid: 7, zid: 3,
 
 test('verifyJwtLocally accepts a valid enriched HS512 token', () => {
   const token = signHS512(enrichedClaims, JWT_SECRET);
+  const claims = verifyJwtLocally(token, JWT_SECRET, NOW);
+  assert.equal(claims.uid, 42);
+  assert.equal(claims.ver, 2);
+});
+
+test('verifyJwtLocally accepts a valid enriched HS256 token', () => {
+  const token = signJwt(enrichedClaims, JWT_SECRET, { alg: 'HS256', typ: 'JWT' });
   const claims = verifyJwtLocally(token, JWT_SECRET, NOW);
   assert.equal(claims.uid, 42);
   assert.equal(claims.ver, 2);
