@@ -18,7 +18,7 @@ substitutions:
   _FLYWAY_DB_USER: appuser
   _VPC_NETWORK: default
   _VPC_SUBNET: default
-  _VPC_EGRESS: all-traffic
+  _VPC_EGRESS: private-ranges-only
   _FRONTEND_SERVICE: custoking-frontend
   _API_GATEWAY_SERVICE: custoking-api-gateway
   # Base Pub/Sub topic name; billing's relay publishes to "<base>-${_ENV}", created by the
