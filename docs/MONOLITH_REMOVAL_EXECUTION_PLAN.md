@@ -57,7 +57,7 @@ The recent successful local verification before this plan:
 
 ## Context-Sized Execution Phases
 
-Use this section as the primary execution structure for Codex 5.5 Spark with a 128k context limit. Do not try to perform the entire removal in one reasoning pass. Execute one phase packet at a time, write a short handoff note at the end of each phase, then start the next phase from that handoff and this document.
+Use this section as the primary execution structure for a high-context implementation worker. Do not try to perform the entire removal in one reasoning pass. Execute one phase packet at a time, write a short handoff note at the end of each phase, then start the next phase from that handoff and this document.
 
 Each phase packet has:
 

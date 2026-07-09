@@ -15,7 +15,7 @@
 - Superadmin-only for ALL listed endpoints. Do NOT gate the `GET` read endpoints (`GET /users`, `GET /users/{id}` are already tenant-scoped; `/rbac` reads are an out-of-scope follow-up — leave them exactly as-is).
 - Add `TenantScope.requireSuperAdmin();` immediately AFTER the existing `requireToken(...)` line in each endpoint (so an invalid service token still 401s first, then a non-superadmin caller 403s).
 - Backend TDD. Mirror existing controller tests for the auth assertions: `services/identity-service/.../api/compat/IdentityPublicCompatibilityControllerTest.java` shows the non-superadmin→403 / superadmin→ok pattern for identity; `services/platform-service/.../api/compat/ReportingApprovalsCompatibilityControllerTest.java` is the platform test to extend.
-- Do NOT commit `.claude/settings.local.json`.
+- Do not commit local tool settings.
 - Build/test (Windows Bash tool): `JAVA_HOME='C:\Program Files\Java\jdk-25.0.3' PATH="$JAVA_HOME/bin:$PATH" ./mvnw.cmd -f services/<svc>/pom.xml -q -Dtest=<T> test`. identity-service also needs `APP_JWT_SECRET`/`APP_AADHAR_SECRET` only for full app boot — controller unit/MockMvc tests do not.
 
 ---

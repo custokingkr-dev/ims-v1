@@ -30,7 +30,7 @@ public class NotificationStatusController {
                                         @Value("${notification.status.token:}") String statusToken) {
         this.inboxRepository = inboxRepository;
         this.attemptRepository = attemptRepository;
-        this.statusToken = statusToken;
+        this.statusToken = statusToken == null ? "" : statusToken.trim();
     }
 
     @GetMapping("/{eventId}")

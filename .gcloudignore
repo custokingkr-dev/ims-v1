@@ -2,7 +2,7 @@
 .git/**
 
 # Local tooling and editor state
-.claude/
+.c*/
 .idea/
 .superpowers/
 .vscode/

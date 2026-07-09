@@ -159,7 +159,7 @@ harder services.
   spike didn't need to touch container-usage code itself.
 - **No behavior/perf regression testing was in scope for this spike** — only "compiles, unit/
   integration suite green, boots and reports healthy" was verified. Broader smoke/perf testing
-  should still run per-service during the actual rollout, per the standard checklist in `CLAUDE.md`.
+  should still run per-service during the actual rollout, per the standard checklist in `DEVELOPMENT_GUIDE.md`.
 
 ---
 

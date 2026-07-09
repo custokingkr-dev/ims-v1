@@ -97,7 +97,7 @@ const routes = [
   route('identity', '/api/v1/auth/'),
   route('identity', '/api/v1/rbac/'),
   route('identity', '/api/v1/users'),
-  route('identity', /^\/api\/v1\/schools\/[^/]+\/(admin|operations-user)$/),
+  route('identity', /^\/api\/v1\/schools\/[^/]+\/(admin|operations-user)$/, { methods: ['POST'] }),
   route('identity', /^\/api\/v1\/zones\/[^/]+\/admin$/),
   route('tenant', '/api/v1/classes/'),
   route('tenant', '/api/v1/classes'),
@@ -219,7 +219,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const matched = routes.find((candidate) => candidate.matches(parsed.pathname));
+    const matched = routes.find((candidate) => candidate.matches(parsed.pathname, req.method));
     if (matched) {
       matchedService = matched.service;
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
@@ -263,11 +263,15 @@ if (require.main === module) {
   });
 }
 
-function route(service, matcher) {
+function route(service, matcher, options = {}) {
+  const allowedMethods = Array.isArray(options.methods)
+    ? new Set(options.methods.map((method) => method.toUpperCase()))
+    : null;
   return {
     service,
     rewritePrefix: null,
-    matches(pathname) {
+    matches(pathname, method) {
+      if (allowedMethods && method && !allowedMethods.has(method.toUpperCase())) return false;
       if (matcher instanceof RegExp) return matcher.test(pathname);
       return pathname === matcher
         || pathname.startsWith(matcher.endsWith('/') ? matcher : `${matcher}/`);

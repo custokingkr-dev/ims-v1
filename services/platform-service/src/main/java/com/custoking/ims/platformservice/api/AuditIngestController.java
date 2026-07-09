@@ -41,7 +41,7 @@ public class AuditIngestController {
             AuditEventRepository repository,
             @Value("${audit.ingest-token:}") String ingestToken) {
         this.repository = repository;
-        this.ingestToken = ingestToken;
+        this.ingestToken = ingestToken == null ? "" : ingestToken.trim();
     }
 
     @PostMapping

@@ -30,7 +30,7 @@
 - Trace sampling: **100% dev, 20% prod** (env-driven).
 - Integration/BOLA/migration suites run on **push-to-main + nightly**, not per-PR.
 - `prevent_self_review` stays **off** on prod.
-- Commit trailer: `Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>`; never stage `.claude/settings.local.json`.
+- Commit messages should not include tool-specific co-author trailers; never stage local tool settings.
 - Java build: `$env:JAVA_HOME='C:\Program Files\Java\jdk-25.0.3'`; `.\mvnw.cmd -f services\<svc>\pom.xml test`.
 - Workflows validated with `actionlint`; Terraform with `terraform validate` + `terraform plan` (no apply in CI without approval).
 

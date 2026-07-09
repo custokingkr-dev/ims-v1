@@ -27,7 +27,7 @@
 | 17 | **API standards** | ⚠️ Partial | All controllers | Versioned `/api/v1` ✅. `@Valid` on DTO inputs ✅. `GlobalExceptionHandler` consistent envelope ✅. Missing: `ApiErrorResponse` record type, `X-Request-Id` echo in response, sort-field allowlist. |
 | 18 | **Secrets / configuration** | ✅ Done | `application-prod.yml`, `ApplicationSecurityValidator` | No hardcoded secrets. Startup fails without required secrets. Backend startup bootstrap has been removed. |
 | 19 | **CI/CD pipeline** | ⚠️ Partial | `.github/workflows/ci.yml` | JaCoCo, OWASP, Gitleaks, Trivy, npm audit, fresh-DB Flyway ✅. `npm test` (Vitest) **not wired** in CI. No SBOM generation. |
-| 20 | **Documentation** | ❌ Missing | `README.md`, `CLAUDE.md` | `CLAUDE.md` thorough. Missing: `docs/tenant-isolation.md`, `docs/workflow-transitions.md`, `docs/runbook.md`, `docs/rbac.md`, `CONTRIBUTING.md`. |
+| 20 | **Documentation** | ❌ Missing | `README.md`, `DEVELOPMENT_GUIDE.md` | `DEVELOPMENT_GUIDE.md` thorough. Missing: `docs/tenant-isolation.md`, `docs/workflow-transitions.md`, `docs/runbook.md`, `docs/rbac.md`, `CONTRIBUTING.md`. |
 
 ---
 
@@ -87,7 +87,7 @@ This is a mature MVP, not a greenfield project. The core security stack (BCrypt,
 | 9 | Performance & scalability | ❌ | **Biggest real gap.** `StudentRepository.findBySchool_IdOrderByFullNameAsc` returns all students unbounded. `FeeAssignmentRepository.findByAcademicYear_IdAndStudent_School_Id` returns all fee records. `SupplyOrderRepository` has no `findBySchool_Id` with `Pageable`. No `Page<>` responses anywhere. N+1 not confirmed but `WorkspaceService.workspace()` fetches entire student list + attendance + fees in one request — will degrade. | `StudentRepository.java`, `FeeAssignmentRepository.java`, `SupplyOrderRepository.java`, `WorkspaceService.java` |
 | 10 | Configuration & deployment readiness | ✅⚠️ | Dockerfiles exist, CI/CD is thorough. **No `backend/.env.example`** (only `frontend/.env.example` exists). GitHub Actions pinned to `@v4` tags, not commit SHAs — minor but noted. `trivy-action@master` is floating (security risk). No Dependabot/Renovate config found. | `.github/workflows/ci.yml`, `frontend/.env.example` |
 | 11 | Testing | ❌ | **Biggest gap by volume.** 7 test files for 184 source files. `CrossSchoolAccessTest` is excellent (28 scenarios). `ControllerSecurityTest` is good. **0 frontend tests.** No Vitest/RTL in `package.json`. JaCoCo is configured to collect but **no `check` goal / minimum threshold** — CI passes regardless of coverage. | `backend/src/test/`, `frontend/package.json` (no test runner) |
-| 12 | Documentation | ⚠️ | README exists (143 lines) with architecture, local setup, basic testing. Missing: `docs/` directory, `docs/rbac.md`, `docs/tenant-isolation.md`, `docs/runbook.md`, `CONTRIBUTING.md`, PR template, backend `.env.example`, GCP Cloud Run deployment notes, credential rotation procedure. | `README.md`, `CLAUDE.md` |
+| 12 | Documentation | ⚠️ | README exists (143 lines) with architecture, local setup, basic testing. Missing: `docs/` directory, `docs/rbac.md`, `docs/tenant-isolation.md`, `docs/runbook.md`, `CONTRIBUTING.md`, PR template, backend `.env.example`, GCP Cloud Run deployment notes, credential rotation procedure. | `README.md`, `DEVELOPMENT_GUIDE.md` |
 
 ---
 
@@ -280,7 +280,7 @@ This is a mature MVP, not a greenfield project. The core security stack (BCrypt,
 
 **Confirmed present:**
 - `README.md` (143 lines): architecture, local setup, testing, env vars section
-- `CLAUDE.md`: detailed developer notes (architecture, entity APIs, checklist)
+- `DEVELOPMENT_GUIDE.md`: detailed developer notes (architecture, entity APIs, checklist)
 - `PRD.md`: product requirements
 
 **Missing:**

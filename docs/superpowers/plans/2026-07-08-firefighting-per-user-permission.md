@@ -17,7 +17,7 @@
 - operations guard `TenantScope.requirePermission(code)`: **superadmin bypasses**; any non-superadmin **lacking the code → 403** "You do not have permission to approve firefighting requests". *(REVISED after a security review: the original transitional "empty set → allow" was a permanent fail-open and was removed — the guard now fails closed on an empty OR code-lacking set. See commit `0fd0abd`. The Task 3 snippets below still show the original transitional branch; the shipped code omits it. Accepted trade-off: non-superadmin approvers with a pre-ver-3 token are denied for ≤15 min post-deploy until token refresh.)*
 - Scope: guard only `approve-bursar`, `approve-principal`, `reject`. `approve-custoking` keeps `requireSuperAdmin()`. Create / read / submit / fulfill / vendor-paid unchanged.
 - Backend gets tests (TDD). Gateway gets `node --test` tests. No FE tests (repo convention) — verify with `npm run build`.
-- Do NOT commit `.claude/settings.local.json`.
+- Do not commit local tool settings.
 - Backend build/test (Windows Bash tool): `JAVA_HOME='C:\Program Files\Java\jdk-25.0.3' PATH="$JAVA_HOME/bin:$PATH" ./mvnw.cmd -f services/<svc>/pom.xml -q -Dtest=<T> test`. Gateway: `cd services/api-gateway && node --test server.test.js`. Frontend: `cd frontend && npm run build`.
 
 ---

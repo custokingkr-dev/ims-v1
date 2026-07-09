@@ -32,7 +32,7 @@ public class AuditPublicCompatibilityController {
             AuditEventRepository repository,
             @Value("${audit.ingest-token:}") String ingestToken) {
         this.repository = repository;
-        this.ingestToken = ingestToken;
+        this.ingestToken = ingestToken == null ? "" : ingestToken.trim();
     }
 
     @GetMapping("/api/v1/audit-logs")

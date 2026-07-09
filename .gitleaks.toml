@@ -30,7 +30,7 @@ paths = [
 # on the rest of those files (unlike a path allowlist).
 # The integration-test JWT value is also a self-describing dummy used in Spring
 # context tests; keep the exact literal allowlisted instead of suppressing paths.
-# Claude local settings history contains command templates with tracked-variable
+# Local tool settings history contains command templates with tracked-variable
 # placeholders, not real bearer tokens.
 regexes = [
   '''replace_with[A-Za-z0-9_]*''',

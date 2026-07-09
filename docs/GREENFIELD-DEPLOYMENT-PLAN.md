@@ -29,6 +29,117 @@ push to main ─► release.yml
 
 ---
 
+## Current status as of 2026-07-09
+
+This plan is no longer theoretical. The `custoking` project and the `dev` environment are
+live, and the release pipeline has successfully built and deployed the current image set
+to dev.
+
+Completed:
+
+- `custoking-db-dev` and `custoking-db-prod` exist with private IPs and databases
+  `custoking_dev` / `custoking_prod`.
+- GitHub repo variables and `dev` / `prod` environment variables point at project
+  `custoking`, region `asia-south2`, and the correct Cloud SQL private hosts.
+- The 17 environment-suffixed application secrets exist for both `dev` and `prod`.
+- `app_rt` production privilege posture has been audited successfully.
+- Reporting and notification Pub/Sub topics exist for both environments.
+- The latest release built the images once and deployed all seven `-dev` Cloud Run
+  services successfully.
+- The latest release is waiting at the protected `prod` GitHub Environment gate and will
+  promote the same image tag to prod when approved.
+
+Still required before declaring prod ready:
+
+- No `-prod` Cloud Run services exist yet. The first prod promotion must create all seven:
+  identity, school-core, operations, platform, billing, api-gateway, and frontend.
+- Prod Pub/Sub push subscriptions do not exist yet. They must be created only after
+  `custoking-platform-service-prod` exists, because the push endpoints need its URL.
+- The release workflow currently skips direct service smoke and does not enable gateway
+  smoke by default. Treat first prod deployment as deploy-only until the prod seed and smoke
+  path below are completed.
+- Prod is greenfield from a business-data perspective. Gateway smoke requires at least one
+  school/class/section and a valid superadmin/operator path; seed that before running smoke.
+- `deploy/gcp/direct-service-smoke-job.template.yaml` and older direct-smoke helper scripts
+  still assume unsuffixed secret names. Do not enable direct service smoke until those tools
+  are updated for `-$ENV` secrets.
+
+## Production rollout from the current state
+
+1. Approve the waiting `prod` Environment gate for the current release when ready to create
+   the first prod Cloud Run revisions. This runs `deploy.yml` with `environment=prod`,
+   `skip_build=true`, and the same image tag already validated in dev.
+2. After the deploy job finishes, verify all prod services are ready:
+
+   ```bash
+   gcloud run services list --project=custoking --region=asia-south2 \
+     --filter='metadata.name~"-prod$"'
+   ```
+
+3. Create prod Pub/Sub push subscriptions after resolving the platform URL. Keep token
+   values in shell variables and never print them:
+
+   ```bash
+   export PROJECT=custoking
+   export REGION=asia-south2
+   export ENV=prod
+   PROJNUM="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+   COMPUTE_SA="${PROJNUM}-compute@developer.gserviceaccount.com"
+   PLATFORM_URL="$(gcloud run services describe custoking-platform-service-prod \
+     --region="$REGION" --format='value(status.url)' --project="$PROJECT")"
+   RPT_TOKEN="$(gcloud secrets versions access latest --secret=reporting-read-token-prod --project="$PROJECT")"
+   NTF_TOKEN="$(gcloud secrets versions access latest --secret=notification-status-token-prod --project="$PROJECT")"
+
+   gcloud beta services identity create --service=pubsub.googleapis.com --project="$PROJECT"
+   gcloud iam service-accounts add-iam-policy-binding "$COMPUTE_SA" --project="$PROJECT" \
+     --member="serviceAccount:service-${PROJNUM}@gcp-sa-pubsub.iam.gserviceaccount.com" \
+     --role="roles/iam.serviceAccountTokenCreator"
+   gcloud run services add-iam-policy-binding custoking-platform-service-prod --region="$REGION" \
+     --member="serviceAccount:$COMPUTE_SA" --role="roles/run.invoker" --project="$PROJECT"
+
+   gcloud pubsub subscriptions create ims-reporting-service-push-prod \
+     --topic=ims-reporting-events-v1-prod \
+     --push-endpoint="${PLATFORM_URL}/api/v1/pubsub/reporting-events?token=${RPT_TOKEN}" \
+     --push-auth-service-account="$COMPUTE_SA" \
+     --push-auth-token-audience="$PLATFORM_URL" \
+     --ack-deadline=30 --project="$PROJECT"
+
+   gcloud pubsub subscriptions create ims-notification-service-push-prod \
+     --topic=ims-notifications-events-v1-prod \
+     --push-endpoint="${PLATFORM_URL}/api/v1/pubsub/notifications?token=${NTF_TOKEN}" \
+     --push-auth-service-account="$COMPUTE_SA" \
+     --push-auth-token-audience="$PLATFORM_URL" \
+     --ack-deadline=30 --project="$PROJECT"
+   ```
+
+4. Seed prod with the real first tenant or a minimal controlled tenant. Do this before live
+   gateway smoke; otherwise `scripts/invoke-production-gateway-smoke.ps1` fails because it
+   requires existing school data.
+5. Run prod smoke through the public gateway after seed data exists:
+
+   ```powershell
+   $gateway = gcloud run services describe custoking-api-gateway-prod `
+     --region asia-south2 --project custoking --format='value(status.url)'
+   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-production-gateway-smoke.ps1 `
+     -GatewayBaseUrl $gateway
+   ```
+
+6. Apply observability Terraform to prod after service creation, using the same module already
+   validated in dev:
+
+   ```bash
+   cd deploy/gcp/observability
+   terraform init
+   terraform plan -var env=prod
+   terraform apply -var env=prod
+   ```
+
+7. Post-deploy checks: verify Cloud Run readiness, recent error logs, Cloud Trace traffic,
+   Pub/Sub subscription backlog, and billing outbox publisher logs. Only then mark prod
+   operational.
+
+---
+
 ## Prerequisites
 
 - `gcloud` authenticated as a project **Owner** (or Editor + Project IAM Admin) on `custoking`.

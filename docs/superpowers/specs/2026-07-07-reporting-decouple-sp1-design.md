@@ -12,7 +12,7 @@ The billing→reporting path is already event-decoupled; every other source emit
 builds the missing event-emission engine in school-core and uses it to give reporting local copies
 of the school "dimension" data (schools, sections, academic years), so later SPs can project the
 facts (fee/student/attendance/catalog) and join them against these local dims. Boundary rule
-(CLAUDE.md): cross-service access only via HTTP APIs or Pub/Sub event projection — SP1 removes two
+(`DEVELOPMENT_GUIDE.md`): cross-service access only via HTTP APIs or Pub/Sub event projection — SP1 removes two
 direct cross-schema reads and lays the dimension groundwork.
 
 ---

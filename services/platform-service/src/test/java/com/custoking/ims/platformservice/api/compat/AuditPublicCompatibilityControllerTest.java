@@ -84,4 +84,22 @@ class AuditPublicCompatibilityControllerTest {
                 .andExpect(status().isUnauthorized());
         verify(repository, never()).findAll(any(Specification.class), any(Pageable.class));
     }
+
+    @Test
+    void auditLogs_configuredTokenIsTrimmedBeforeComparison() throws Exception {
+        AuditEventRepository localRepository = mock(AuditEventRepository.class);
+        MockMvc localMvc = MockMvcBuilders
+                .standaloneSetup(new AuditPublicCompatibilityController(localRepository, "tok\n"))
+                .addFilters(new TenantContextFilter())
+                .build();
+        when(localRepository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        localMvc.perform(get("/api/v1/audit-logs")
+                        .header("X-Audit-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+
+        verify(localRepository).findAll(any(Specification.class), any(Pageable.class));
+    }
 }

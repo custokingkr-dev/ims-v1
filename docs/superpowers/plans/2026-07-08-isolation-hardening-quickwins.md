@@ -13,7 +13,7 @@
 - Spec: `docs/superpowers/specs/2026-07-08-isolation-hardening-quickwins-design.md`.
 - B/C use the EXISTING per-service `TenantScope.requireSuperAdmin()` (throws 403 "superadmin required" when `TenantContext.get().isSuperAdmin()` is false; role from `X-Authenticated-Role`, already populated by each service's `TenantContextFilter`). No new plumbing.
 - Do NOT touch the hardcoded `academic_year_id = 'ay_2025_26'` (separate deferred follow-up). Do NOT gate the RBAC reference reads (`/rbac/roles`, `/rbac/permissions`, `/rbac/role-permissions`) or the per-user reads.
-- Backend TDD. Do NOT commit `.claude/settings.local.json`.
+- Backend TDD. Do not commit local tool settings.
 - Build/test (Windows Bash tool): `JAVA_HOME='C:\Program Files\Java\jdk-25.0.3' PATH="$JAVA_HOME/bin:$PATH" ./mvnw.cmd -f services/<svc>/pom.xml -q -Dtest=<T> test`.
 
 ---

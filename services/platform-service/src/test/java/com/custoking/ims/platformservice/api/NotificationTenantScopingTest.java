@@ -35,6 +35,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Judgment calls documented inline:
  * - NotificationLogCommandController (POST /api/v1/notifications/logs): system-internal ingestion,
  *   NOT guarded. Proven to work without a superadmin context in this test.
+ * - NotificationBroadcastCommandController list is tenant-scoped: school admins can read their
+ *   own school's broadcasts, cross-school reads are fail-closed.
  * - SenderProfileController: ALL guards are UNCONDITIONAL. The Msg91 delivery path reads
  *   sender profiles in-process via SenderProfileRepository — there is no legitimate
  *   header-less HTTP caller of this controller. A header-less HTTP request is fail-closed → 403.
@@ -72,11 +74,26 @@ class NotificationTenantScopingTest {
     @AfterEach
     void clearContext() { TenantContext.clear(); }
 
-    // --- broadcast endpoint: non-superadmin blocked ---
+    // --- broadcast endpoint: tenant-scoped list ---
 
     @Test
-    void nonSuperadmin_isForbiddenOnBroadcastList() throws Exception {
+    void schoolAdmin_canListOwnSchoolBroadcasts() throws Exception {
+        when(broadcasts.list(eq(10L), isNull(), anyInt())).thenReturn(List.of());
+
         broadcastMvc.perform(get("/api/v1/notifications/broadcasts")
+                        .param("schoolId", "10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isOk());
+
+        verify(broadcasts).list(eq(10L), isNull(), anyInt());
+    }
+
+    @Test
+    void schoolAdmin_isForbiddenOnCrossSchoolBroadcastList() throws Exception {
+        broadcastMvc.perform(get("/api/v1/notifications/broadcasts")
+                        .param("schoolId", "99")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10"))

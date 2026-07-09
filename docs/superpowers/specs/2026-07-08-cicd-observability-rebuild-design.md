@@ -7,7 +7,7 @@ follow-ups. See
 `docs/superpowers/plans/2026-07-08-cicd-observability-rebuild.md` for the live
 progress evidence.
 
-**Author:** (pairing) Shubham + Claude
+**Author:** Shubham
 
 ---
 

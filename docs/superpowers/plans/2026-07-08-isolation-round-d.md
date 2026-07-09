@@ -12,7 +12,7 @@
 
 - Specs: `docs/superpowers/specs/2026-07-08-notification-rls-design.md`, `…-billing-rls-design.md`.
 - Standard policy shape verbatim from `reporting/V6__enable_rls.sql`. `app_rt` already has the grants for both schemas (no GRANT statements needed in the migrations).
-- Backend TDD. Do NOT commit `.claude/settings.local.json`.
+- Backend TDD. Do not commit local tool settings.
 - Build/test: `JAVA_HOME='C:\Program Files\Java\jdk-25.0.3' PATH="$JAVA_HOME/bin:$PATH" ./mvnw.cmd -f services/<svc>/pom.xml -q -Dtest=<T> test`.
 
 ---

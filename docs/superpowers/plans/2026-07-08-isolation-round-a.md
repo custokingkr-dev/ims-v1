@@ -12,7 +12,7 @@
 
 - Specs: `docs/superpowers/specs/2026-07-08-academic-year-resolution-design.md`, `docs/superpowers/specs/2026-07-08-tenant-school-rls-backstop-design.md`.
 - RLS policy shape is copied verbatim from the spec; `app_rt` already has grants (no new GRANT needed). Datasource (`TenantAwareDataSource`) is already live in school-core.
-- Backend TDD. Do NOT commit `.claude/settings.local.json`.
+- Backend TDD. Do not commit local tool settings.
 - Build/test (Windows Bash tool): `JAVA_HOME='C:\Program Files\Java\jdk-25.0.3' PATH="$JAVA_HOME/bin:$PATH" ./mvnw.cmd -f services/<svc>/pom.xml -q -Dtest=<T> test`.
 
 ---

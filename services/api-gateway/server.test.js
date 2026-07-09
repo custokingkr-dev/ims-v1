@@ -202,10 +202,11 @@ test('stringOrEmpty normalizes nullable principal fields', () => {
   assert.equal(stringOrEmpty(4), '4');
 });
 
-test('school admin + operations-user route to identity, not tenant', () => {
-  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
-  assert.equal(resolve('/api/v1/schools/12/admin'), 'identity');
-  assert.equal(resolve('/api/v1/schools/12/operations-user'), 'identity');
+test('school admin reads route to tenant and provisioning writes route to identity', () => {
+  const resolve = (p, method = 'GET') => routes.find((r) => r.matches(p, method))?.service;
+  assert.equal(resolve('/api/v1/schools/12/admin', 'GET'), 'tenant');
+  assert.equal(resolve('/api/v1/schools/12/admin', 'POST'), 'identity');
+  assert.equal(resolve('/api/v1/schools/12/operations-user', 'POST'), 'identity');
   assert.equal(resolve('/api/v1/schools/12/modules'), 'tenant'); // unchanged
   assert.equal(resolve('/api/v1/schools'), 'tenant');            // unchanged
 });

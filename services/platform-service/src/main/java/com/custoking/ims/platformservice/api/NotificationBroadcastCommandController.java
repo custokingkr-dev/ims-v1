@@ -64,8 +64,8 @@ public class NotificationBroadcastCommandController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "notification:read");
-        TenantScope.requireSuperAdmin();
-        return broadcasts.list(schoolId, status, limit);
+        Long resolvedSchoolId = TenantScope.resolveSchoolId(schoolId);
+        return broadcasts.list(resolvedSchoolId, status, limit);
     }
 
     /**

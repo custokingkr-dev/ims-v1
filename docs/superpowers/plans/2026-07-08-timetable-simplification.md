@@ -15,7 +15,7 @@
 - Past-year immutability stays (`YearLockedException → 409`). Teacher-per-slot stays. Non-admin view stays read-only (`editable=false`). Breaks (`isBreak`) are never assignable.
 - Backend endpoint guards mirror the existing single-entry endpoint: `requireToken("tenant-school:write")` + `TenantScope.requireSchoolAdmin()`.
 - No FE unit tests (repo convention) — verify with `cd frontend && npm run build`. Backend gets tests (TDD).
-- Do NOT commit `.claude/settings.local.json`.
+- Do not commit local tool settings.
 
 ---
 

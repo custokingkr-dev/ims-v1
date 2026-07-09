@@ -15,7 +15,7 @@
 - Claim name `ops_schools` (JSON array of school-id numbers); header `x-authenticated-operator-schools` (CSV; part of the already-spoof-stripped `x-authenticated-` set). Keep token `ver=3` (additive claim).
 - Enforcement is school-core catalog only (that's the sole place `isOperations()`/`resolvePlatformReadScope` grants cross-school access today). Superadmin unchanged. An operator with an empty set sees/acts on NO schools (fail closed).
 - Do NOT fix the `permissionCodes()` union (separate follow-up; harmless for a same-role-everywhere operator).
-- Backend/gateway TDD; FE verified via `npm run build`. Do NOT commit `.claude/settings.local.json`.
+- Backend/gateway TDD; FE verified via `npm run build`. Do not commit local tool settings.
 - Build/test: `JAVA_HOME='C:\Program Files\Java\jdk-25.0.3' PATH="$JAVA_HOME/bin:$PATH" ./mvnw.cmd -f services/<svc>/pom.xml -q -Dtest=<T> test`; gateway `cd services/api-gateway && node --test server.test.js`; FE `cd frontend && npm run build`.
 
 ---

@@ -45,8 +45,8 @@ Thumbs.db
 *.suo
 *.user
 
-# Claude Code local tool settings
-.claude/
+# Local dot-c tool state
+.c*/
 
 # Coverage and test reports
 coverage/
