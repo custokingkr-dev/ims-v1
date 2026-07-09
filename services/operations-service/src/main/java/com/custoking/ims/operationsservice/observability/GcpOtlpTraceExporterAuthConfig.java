@@ -21,7 +21,24 @@ class GcpOtlpTraceExporterAuthConfig {
     @Bean
     OtlpHttpSpanExporterBuilderCustomizer gcpOtlpTraceExporterAuthCustomizer() {
         GoogleCredentialsHeaders headers = new GoogleCredentialsHeaders();
-        return (OtlpHttpSpanExporterBuilder builder) -> builder.setHeaders(headers::get);
+        return (OtlpHttpSpanExporterBuilder builder) -> {
+            if (exportsToGoogleTelemetry()) {
+                builder.setHeaders(headers::get);
+            }
+        };
+    }
+
+    private static boolean exportsToGoogleTelemetry() {
+        String tracesEndpoint = System.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT");
+        String baseEndpoint = System.getenv("OTEL_EXPORTER_OTLP_ENDPOINT");
+        String springEndpoint = System.getenv("MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT");
+        return containsGoogleTelemetryHost(tracesEndpoint)
+                || containsGoogleTelemetryHost(baseEndpoint)
+                || containsGoogleTelemetryHost(springEndpoint);
+    }
+
+    private static boolean containsGoogleTelemetryHost(String endpoint) {
+        return endpoint != null && endpoint.contains("telemetry.googleapis.com");
     }
 
     private static final class GoogleCredentialsHeaders {
