@@ -50,9 +50,11 @@ public class RbacReadRepository {
         StringBuilder sql = new StringBuilder("""
                 SELECT ura.id, ura.user_id, ura.role_id, r.name AS role_name, ura.assigned_at,
                        ura.assigned_by, ura.revoked_by, ura.revoked_at, ura.school_id, ura.zone_id,
-                       ura.active, ura.valid_from, ura.valid_until
+                       ura.active, ura.valid_from, ura.valid_until,
+                       u.email AS user_email, u.full_name AS user_full_name
                 FROM identity.user_role_assignments ura
                 JOIN identity.roles r ON r.id = ura.role_id
+                LEFT JOIN identity.app_users u ON u.id = ura.user_id
                 WHERE 1=1
                 """);
         if (userId != null) sql.append(" AND ura.user_id = :userId");
@@ -155,10 +157,11 @@ public class RbacReadRepository {
     public record RolePermissionRow(Long roleId, String roleName, Long permissionId, String permissionCode) {}
 
     public record UserRoleAssignmentRow(Long id, Long userId, Long roleId, String roleName,
-                                        OffsetDateTime assignedAt, Long assignedBy, Long revokedBy,
-                                        OffsetDateTime revokedAt, Long schoolId, Long zoneId,
-                                        Boolean active, OffsetDateTime validFrom,
-                                        OffsetDateTime validUntil) {}
+                                         OffsetDateTime assignedAt, Long assignedBy, Long revokedBy,
+                                         OffsetDateTime revokedAt, Long schoolId, Long zoneId,
+                                         Boolean active, OffsetDateTime validFrom,
+                                         OffsetDateTime validUntil, String userEmail,
+                                         String userFullName) {}
 
     public record RbacAuditRow(Long id, String eventType, Long actorUserId, String actorEmail,
                                Long targetUserId, Long roleId, String roleName, String permissionCodes,

@@ -15,16 +15,9 @@ ims-v1/
 ├── services/
 │   ├── api-gateway/             Node.js route gateway (entry point; preserves /api/v1/** contract)
 │   ├── identity-service/        Login, JWT, refresh/logout, users, roles, RBAC      → identity schema
-│   ├── tenant-school-service/   Schools, zones, classes, sections, staff, modules   → tenant_school schema
-│   ├── student-service/         Student records, imports, review campaigns          → student schema
-│   ├── attendance-service/      Daily attendance summaries & records                → attendance schema
-│   ├── fee-service/             Fee bands/items, assignments, payments              → fee schema
-│   ├── catalog-service/         Catalog items, orders, annual plans, supply orders  → catalog schema
-│   ├── workflow-service/        Workflow definitions, instances, steps, actions     → workflow schema
-│   ├── firefighting-service/    Firefighting requests, quotes, approvals            → firefighting schema
-│   ├── reporting-service/       Command center & reporting projections             → reporting schema
-│   ├── notification-service/    MSG91 email/SMS/WhatsApp delivery, broadcasts       → notification schema
-│   ├── audit-service/           Audit ingestion & read models                      → audit schema
+│   ├── school-core-service/     Tenant school + student + attendance + fee + catalog schemas
+│   ├── operations-service/      Workflow + urgent procurement schemas
+│   ├── platform-service/        Reporting + notification + audit schemas
 │   └── billing-service/         Superadmin invoices, order sequences               → billing schema
 ├── frontend/                    React 18 + Vite + TypeScript SPA
 ├── deploy/gcp/                  Cloud Run / GCP deployment assets
@@ -51,17 +44,26 @@ service by pointing the root wrapper at its `pom.xml`.
 
 ```bash
 # Windows
-$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.11'; $env:Path="$env:JAVA_HOME\bin;$env:Path"
+$env:JAVA_HOME='C:\Program Files\Java\jdk-25.0.3'; $env:Path="$env:JAVA_HOME\bin;$env:Path"
 .\mvnw.cmd -f services\identity-service\pom.xml -DskipTests compile
 .\mvnw.cmd -f services\identity-service\pom.xml test
 
 # POSIX
+export JAVA_HOME=/path/to/jdk-25
 ./mvnw -f services/identity-service/pom.xml -DskipTests compile
 ./mvnw -f services/identity-service/pom.xml test
 ```
 
 The identity-service needs `APP_JWT_SECRET` (≥32 chars) and `APP_AADHAR_SECRET`
 (≥16 chars) set to start (enforced at boot).
+
+Repository helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\invoke-microservice-tests.ps1 -Services identity-service
+```
+
+The helper detects JDK 25+ and uses the root Maven wrapper.
 
 ### API gateway (Node.js)
 
@@ -74,12 +76,19 @@ node --test server.test.js     # unit tests (no build step; plain Node http serv
 
 ```bash
 npm ci
-npm run dev          # dev server (proxies /api → gateway)
+npm run dev          # dev server (proxies /api -> gateway)
 npm test             # vitest run
 npm run build        # production build to dist/
 ```
 
-### Local full stack (root) — docker-compose with profiles
+### Local full stack (root) - docker-compose with profiles
+
+Prefer the setup script for local Docker runs because it validates JDK 25+, handles
+stale local data cleanup, and applies `app_rt` runtime DB grants after migrations:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1 -ComposeProfile core -SkipDependencyInstall
+```
 
 ```bash
 # Database only
@@ -88,18 +97,16 @@ docker compose up -d postgres
 # Core stack: login, school/student, attendance, fees, frontend, gateway
 docker compose --profile core up -d --build
 
-# Full split-service stack (everything) — needed for complete migration smoke
+# Full split-service stack (everything) - needed for complete migration smoke
 docker compose --profile full up -d --build
 ```
 
-Local service ports (each container listens on 8080 internally; host mappings differ):
-gateway `80`, notification `8081`, audit `8082`, identity `8083`, tenant-school `8084`,
-student `8085`, attendance `8086`, fee `8087`, catalog `8088`, workflow `8089`,
-firefighting `8090`, reporting `8091`, billing `8092`.
+Local service ports:
+gateway `80`, identity `8083`, school-core `8084`, operations `8089`, platform `8091`,
+billing `8092`, postgres `5432`.
 
-> **Tilt note:** `Tiltfile` drives `docker-compose.yml`. Because every domain service is
-> profile-gated, `tilt up` must enable a compose profile (e.g. pass `profiles=['full']`
-> to `docker_compose(...)`), otherwise Tilt cannot resolve the profile-gated resources.
+> **Tilt note:** `Tiltfile` drives `docker-compose.yml` and defaults to the `full`
+> profile. Set `TILT_COMPOSE_PROFILE=core` for the lighter local stack.
 
 ### Migration / boundary gate (PowerShell)
 
@@ -182,8 +189,10 @@ flows through permission codes:
 
 ### Module Entitlements
 
-Schools subscribe to modules (STUDENTS, FEES, ATTENDANCE, ORDERS, FIREFIGHTING, PAYMENTS,
-INVOICES, REPORTS). Module-gated endpoints check the school's entitlement before running
+The database still stores legacy module entitlement codes (`STUDENTS`, `FEES`,
+`ATTENDANCE`, `ORDERS`, `FIREFIGHTING`, `PAYMENTS`, `INVOICES`, `REPORTS`). The current
+superadmin UI groups them as `SUPPLY_OS` (`ORDERS`, `FIREFIGHTING`) and `ERP` (all other
+module codes). Module-gated endpoints check the school's entitlement before running
 business logic; platform admins bypass entitlement checks.
 
 ### Frontend Auth
@@ -255,7 +264,7 @@ Registry, deploys Cloud Run services, and wires Secret Manager values.
 
 ## Migration State (where this branch is)
 
-This branch (`microservices-boundary-foundation`) is mid-decomposition. The detailed
+This branch (`main`) is the current compact split-service implementation. The detailed
 plan and acceptance gates live in:
 
 - `docs/ARCHITECTURE-HLD.md` / `docs/ARCHITECTURE-LLD.md` — current target architecture

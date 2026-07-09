@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -17,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -27,8 +29,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TenantSchoolPublicCompatibilityControllerTest {
 
     private final SchoolStructureReadRepository schools = mock(SchoolStructureReadRepository.class);
+    private final ModuleEntitlementGuard moduleGuard = mock(ModuleEntitlementGuard.class);
     private final TenantSchoolPublicCompatibilityController controller =
-            new TenantSchoolPublicCompatibilityController(schools, "tok");
+            new TenantSchoolPublicCompatibilityController(schools, moduleGuard, "tok");
 
     /** MockMvc harness with the real TenantContextFilter for HTTP-header-driven scope tests. */
     private final MockMvc mvc = MockMvcBuilders
@@ -87,5 +90,20 @@ class TenantSchoolPublicCompatibilityControllerTest {
                         .content("{\"schoolId\":99,\"name\":\"Asha\"}"))
                 .andExpect(status().isForbidden());
         verify(schools, never()).addStaff(eq(99L), any());
+    }
+
+    @Test
+    void addStaffFromWorkspace_withoutErp_isForbidden() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "ERP module is not enabled for this school"))
+                .when(moduleGuard).requireErpEnabled(10L);
+
+        mvc.perform(post("/api/v1/workspace/staff")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":10,\"name\":\"Asha\"}"))
+                .andExpect(status().isForbidden());
+        verify(schools, never()).addStaff(eq(10L), any());
     }
 }

@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -17,12 +18,15 @@ import java.util.Map;
 public class TenantSchoolPublicCompatibilityController {
 
     private final SchoolStructureReadRepository schools;
+    private final ModuleEntitlementGuard moduleGuard;
     private final String readToken;
 
     public TenantSchoolPublicCompatibilityController(
             SchoolStructureReadRepository schools,
+            ModuleEntitlementGuard moduleGuard,
             @Value("${tenant-school.read-token:}") String readToken) {
         this.schools = schools;
+        this.moduleGuard = moduleGuard;
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
@@ -36,6 +40,7 @@ public class TenantSchoolPublicCompatibilityController {
         if (resolvedSchoolId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
         }
+        moduleGuard.requireErpEnabled(resolvedSchoolId);
         try {
             return schools.addStaff(resolvedSchoolId, request);
         } catch (IllegalArgumentException ex) {

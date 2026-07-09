@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.TimetableRepository;
 import com.custoking.ims.schoolcoreservice.persistence.YearLockedException;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -22,8 +23,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TimetableControllerTest {
 
     private final TimetableRepository timetable = mock(TimetableRepository.class);
+    private final ModuleEntitlementGuard moduleGuard = mock(ModuleEntitlementGuard.class);
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new TimetableController(timetable, "tok"))
+            .standaloneSetup(new TimetableController(timetable, moduleGuard, "tok"))
             .addFilters(new TenantContextFilter())
             .build();
 
@@ -70,6 +72,27 @@ class TimetableControllerTest {
                                 ]}
                                 """))
                 .andExpect(status().isForbidden());
+        verify(timetable, never()).upsertEntries(anyLong(), anyString(), anyList());
+    }
+
+    @Test
+    void bulkUpsert_schoolAdminWithoutErp_isForbidden() throws Exception {
+        doThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "ERP module is not enabled for this school"))
+                .when(moduleGuard).requireErpEnabled(10L);
+
+        mvc.perform(put(BULK_URL)
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sectionId":"sec-1","entries":[
+                                  {"day":"Mon","periodId":1,"subjectName":"Math"}
+                                ]}
+                                """))
+                .andExpect(status().isForbidden());
+
         verify(timetable, never()).upsertEntries(anyLong(), anyString(), anyList());
     }
 

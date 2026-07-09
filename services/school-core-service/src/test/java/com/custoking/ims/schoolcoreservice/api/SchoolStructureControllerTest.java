@@ -6,6 +6,7 @@ import com.custoking.ims.schoolcoreservice.persistence.StructureInUseException;
 import com.custoking.ims.schoolcoreservice.persistence.ModuleEntitlementReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -24,11 +25,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SchoolStructureControllerTest {
 
     private final SchoolStructureReadRepository structure = mock(SchoolStructureReadRepository.class);
+    private final ModuleEntitlementGuard moduleGuard = mock(ModuleEntitlementGuard.class);
     private final MockMvc mvc = MockMvcBuilders
             .standaloneSetup(new TenantSchoolController(
                     mock(SchoolRepository.class),
                     mock(ZoneRepository.class),
                     mock(ModuleEntitlementReadRepository.class),
+                    moduleGuard,
                     structure,
                     mock(ZoneCommandRepository.class),
                     "tok"))
@@ -143,5 +146,21 @@ class SchoolStructureControllerTest {
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
         verify(structure).sections(99L, null, Boolean.FALSE);
+    }
+
+    @Test
+    void schoolAdmin_sectionsBlockedWhenErpDisabled() throws Exception {
+        doThrow(new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "ERP module is not enabled for this school"))
+                .when(moduleGuard).requireErpEnabled(10L);
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .get("/api/v1/sections?schoolId=10")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+
+        verify(structure, never()).sections(anyLong(), any(), any());
     }
 }

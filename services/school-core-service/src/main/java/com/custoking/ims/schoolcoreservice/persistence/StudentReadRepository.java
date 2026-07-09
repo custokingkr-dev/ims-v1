@@ -1220,8 +1220,28 @@ public class StudentReadRepository {
     }
 
     private Optional<Map<String, Object>> classByName(String className) {
-        return jdbc.sql("SELECT id, name, sort_order FROM tenant_school.school_classes WHERE lower(name) = lower(:name)")
-                .param("name", className)
+        String requestedName = str(className, "").trim();
+        int requestedSortOrder = classSortOrder(requestedName);
+        String numericName = requestedSortOrder > 0 ? String.valueOf(requestedSortOrder) : "";
+        return jdbc.sql("""
+                SELECT id, name, sort_order
+                FROM tenant_school.school_classes
+                WHERE lower(name) = lower(:name)
+                   OR (:sortOrder > 0 AND lower(name) = lower(:numericName))
+                   OR (:sortOrder > 0 AND sort_order = :sortOrder)
+                ORDER BY
+                    CASE
+                        WHEN lower(name) = lower(:name) THEN 0
+                        WHEN :sortOrder > 0 AND lower(name) = lower(:numericName) THEN 1
+                        ELSE 2
+                    END,
+                    sort_order ASC,
+                    id ASC
+                LIMIT 1
+                """)
+                .param("name", requestedName)
+                .param("numericName", numericName)
+                .param("sortOrder", requestedSortOrder)
                 .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name"), "sortOrder", rs.getInt("sort_order")))
                 .optional();
     }
@@ -1560,6 +1580,8 @@ public class StudentReadRepository {
         Optional<Map<String, Object>> existing = jdbc.sql("""
                 SELECT id, name FROM tenant_school.school_sections
                 WHERE school_id = :schoolId AND school_class_id = :classId AND lower(name) = lower(:name)
+                ORDER BY active DESC, id ASC
+                LIMIT 1
                 """)
                 .param("schoolId", schoolId)
                 .param("classId", classId)

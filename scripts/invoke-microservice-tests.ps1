@@ -6,43 +6,9 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 . (Join-Path $PSScriptRoot "microservice-test-catalog.ps1")
+. (Join-Path $PSScriptRoot "local-java.ps1")
 
 $catalog = @(Get-MicroserviceTestCatalog)
-
-function Resolve-JavaHome {
-    if ($env:JAVA_HOME -and (Test-Path (Join-Path $env:JAVA_HOME "bin/javac.exe"))) {
-        return $env:JAVA_HOME
-    }
-
-    $javaCommand = Get-Command java -ErrorAction SilentlyContinue
-    if ($javaCommand) {
-        $candidate = Split-Path -Parent (Split-Path -Parent $javaCommand.Source)
-        if (Test-Path (Join-Path $candidate "bin/javac.exe")) {
-            return $candidate
-        }
-    }
-
-    $candidateRoots = @(
-        "C:\Program Files\Eclipse Adoptium",
-        "C:\Program Files\Java",
-        "C:\Program Files\Microsoft",
-        "C:\Program Files\Amazon Corretto",
-        "C:\Program Files\JetBrains"
-    )
-
-    foreach ($root in $candidateRoots) {
-        if (-not (Test-Path $root)) {
-            continue
-        }
-        $javac = Get-ChildItem -Path $root -Recurse -Filter javac.exe -ErrorAction SilentlyContinue |
-            Select-Object -First 1
-        if ($javac) {
-            return Split-Path -Parent (Split-Path -Parent $javac.FullName)
-        }
-    }
-
-    return $null
-}
 
 if ($Services -and $Services.Count -gt 0) {
     $requested = @{}
@@ -72,17 +38,17 @@ foreach ($service in $selected) {
     Write-Host "==> test $($service.Name)"
     Push-Location $servicePath
     try {
-        if ($service.Tool -eq "maven" -and -not (Get-Command mvn -ErrorAction SilentlyContinue)) {
+        if ($service.Tool -eq "maven") {
             $mavenWrapper = Join-Path $repoRoot "mvnw.cmd"
             if (-not (Test-Path $mavenWrapper)) {
-                throw "Maven is not on PATH and backend Maven wrapper was not found."
+                throw "Root Maven wrapper was not found: $mavenWrapper"
             }
-            $javaHome = Resolve-JavaHome
-            if (-not $javaHome) {
-                throw "Java/JDK is not configured. Install JDK 21 or set JAVA_HOME to a JDK before running Maven service tests."
-            }
+            $javaHome = Resolve-RequiredJavaHome -MinimumMajor 25
             $previousJavaHome = $env:JAVA_HOME
+            $previousPath = $env:Path
             $env:JAVA_HOME = $javaHome
+            $env:Path = "$javaHome\bin;$env:Path"
+            Write-Host "Using JAVA_HOME=$javaHome"
             & $mavenWrapper -B -f (Join-Path $servicePath "pom.xml") test --no-transfer-progress
         } else {
             $command = @($service.Command)
@@ -95,6 +61,10 @@ foreach ($service in $selected) {
         if (Get-Variable -Name previousJavaHome -Scope Local -ErrorAction SilentlyContinue) {
             $env:JAVA_HOME = $previousJavaHome
             Remove-Variable -Name previousJavaHome -Scope Local -ErrorAction SilentlyContinue
+        }
+        if (Get-Variable -Name previousPath -Scope Local -ErrorAction SilentlyContinue) {
+            $env:Path = $previousPath
+            Remove-Variable -Name previousPath -Scope Local -ErrorAction SilentlyContinue
         }
         Pop-Location
     }

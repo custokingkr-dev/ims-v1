@@ -3,6 +3,39 @@ import api from '../../../services/api';
 import { ModuleShell, Field, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
+type RoleAssignmentRow = {
+  userId: number;
+  userEmail?: string;
+  userFullName?: string;
+  schoolId: number | null;
+  roleName: string;
+  active: boolean;
+};
+
+function addEmailOnce(list: string[], email?: string) {
+  if (!email) return;
+  if (!list.some((value) => value.toLowerCase() === email.toLowerCase())) {
+    list.push(email);
+  }
+}
+
+function accountEmails(school: any, listField: 'adminEmails' | 'operatorEmails', fallbackField: 'adminEmail' | 'operationsEmail') {
+  const emails = Array.isArray(school[listField]) ? school[listField] : [];
+  if (emails.length > 0) return emails;
+  return school[fallbackField] ? [school[fallbackField]] : [];
+}
+
+function renderEmailList(emails: string[]) {
+  if (emails.length === 0) return <span style={{ color: 'var(--ink3)' }}>-</span>;
+  return (
+    <div style={{ display: 'grid', gap: 4, minWidth: 180 }}>
+      {emails.map((email) => (
+        <span key={email} style={{ overflowWrap: 'anywhere', fontSize: 13 }}>{email}</span>
+      ))}
+    </div>
+  );
+}
+
 export function SaSchoolsPanel() {
   const [saSchools, setSaSchools] = useState<any[]>([]);
   const [saSchoolsLoading, setSaSchoolsLoading] = useState(false);
@@ -53,8 +86,23 @@ export function SaSchoolsPanel() {
   const loadSaSchools = async () => {
     setSaSchoolsLoading(true); setSaSchoolsError('');
     try {
-      const res = await api.get('/sa/schools');
-      setSaSchools(Array.isArray(res.data) ? res.data : []);
+      const [schoolsRes, assignmentsRes] = await Promise.all([
+        api.get('/sa/schools'),
+        api.get<RoleAssignmentRow[]>('/rbac/user-role-assignments', { params: { active: true, limit: 500 } })
+          .catch(() => ({ data: [] as RoleAssignmentRow[] })),
+      ]);
+      const schools = Array.isArray(schoolsRes.data) ? schoolsRes.data : [];
+      const accountMap: Record<number, { adminEmails: string[]; operatorEmails: string[] }> = {};
+      for (const row of assignmentsRes.data || []) {
+        if (row.schoolId == null || row.active === false) continue;
+        const role = (row.roleName || '').toUpperCase();
+        if (role !== 'ADMIN' && role !== 'OPERATIONS') continue;
+        const bucket = accountMap[row.schoolId] ?? { adminEmails: [], operatorEmails: [] };
+        if (role === 'ADMIN') addEmailOnce(bucket.adminEmails, row.userEmail || `user #${row.userId}`);
+        if (role === 'OPERATIONS') addEmailOnce(bucket.operatorEmails, row.userEmail || `user #${row.userId}`);
+        accountMap[row.schoolId] = bucket;
+      }
+      setSaSchools(schools.map((school: any) => ({ ...school, ...(accountMap[school.id] ?? {}) })));
     } catch (e: any) {
       setSaSchoolsError(e?.response?.data?.message || 'Failed to load schools.');
     } finally {
@@ -95,12 +143,13 @@ export function SaSchoolsPanel() {
           const activeSchools = saSchools.filter((s: any) => s.active).length;
           const totalOrders = saSchools.reduce((n: number, s: any) => n + (s.ordersYTD ?? 0), 0);
           const totalGmvPaise = saSchools.reduce((n: number, s: any) => n + Number(s.gmvYTD ?? 0), 0);
+          const pendingSetup = saSchools.filter((s: any) => accountEmails(s, 'adminEmails', 'adminEmail').length === 0).length;
           return (
             <div className="ck-stats ck-s4" style={{ marginBottom: 18 }}>
               <Stat label="Active schools" value={activeSchools} sub={`${saSchools.length} total onboarded`} pill="Platform" tone="blue" />
               <Stat label="Orders YTD" value={totalOrders} sub="Supply orders across all schools" pill="All schools" tone="green" />
               <Stat label="Order value YTD" value={`₹${formatMoney(totalGmvPaise / 100)}`} sub="Platform GMV" pill="Gross" tone="orange" />
-              <Stat label="Pending setup" value={saSchools.filter((s: any) => !s.adminEmail).length} sub="Schools without admin user" pill={saSchools.filter((s: any) => !s.adminEmail).length > 0 ? 'Action needed' : 'All set'} tone={saSchools.filter((s: any) => !s.adminEmail).length > 0 ? 'red' : 'green'} />
+              <Stat label="Pending setup" value={pendingSetup} sub="Schools without admin user" pill={pendingSetup > 0 ? 'Action needed' : 'All set'} tone={pendingSetup > 0 ? 'red' : 'green'} />
             </div>
           );
         })()}
@@ -108,10 +157,10 @@ export function SaSchoolsPanel() {
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
           : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
           : <table className="ck-table">
-            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Admin</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={10}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={11}><div className="ts">No schools found.</div></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'}</div></td>
@@ -119,7 +168,8 @@ export function SaSchoolsPanel() {
                     <td>{school.city || '—'}</td>
                     <td>{school.configuredClassCount ?? '—'}</td>
                     <td>{school.configuredSectionCount ?? '—'}</td>
-                    <td>{school.adminEmail || '—'}</td>
+                    <td>{renderEmailList(accountEmails(school, 'adminEmails', 'adminEmail'))}</td>
+                    <td>{renderEmailList(accountEmails(school, 'operatorEmails', 'operationsEmail'))}</td>
                     <td>{school.ordersYTD ?? 0}</td>
                     <td>₹{formatMoney(Number(school.gmvYTD || 0) / 100)}</td>
                     <td>{school.erpSince || '—'}</td>

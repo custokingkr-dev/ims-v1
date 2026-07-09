@@ -9,6 +9,7 @@ import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadReposi
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneEntity;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -33,12 +34,14 @@ class TenantSchoolControllerTest {
     private final SchoolRepository schools = mock(SchoolRepository.class);
     private final ZoneRepository zones = mock(ZoneRepository.class);
     private final ModuleEntitlementReadRepository modules = mock(ModuleEntitlementReadRepository.class);
+    private final ModuleEntitlementGuard moduleGuard = mock(ModuleEntitlementGuard.class);
     private final SchoolStructureReadRepository structure = mock(SchoolStructureReadRepository.class);
     private final ZoneCommandRepository zoneCommands = mock(ZoneCommandRepository.class);
     private final TenantSchoolController controller = new TenantSchoolController(
             schools,
             zones,
             modules,
+            moduleGuard,
             structure,
             zoneCommands,
             "tenant-token");

@@ -5,6 +5,7 @@ import com.custoking.ims.schoolcoreservice.persistence.SchoolRepository;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -24,11 +25,12 @@ class TenantSchoolTenantScopingTest {
     private final SchoolRepository schools = mock(SchoolRepository.class);
     private final ZoneRepository zones = mock(ZoneRepository.class);
     private final ModuleEntitlementReadRepository modules = mock(ModuleEntitlementReadRepository.class);
+    private final ModuleEntitlementGuard moduleGuard = mock(ModuleEntitlementGuard.class);
     private final SchoolStructureReadRepository structure = mock(SchoolStructureReadRepository.class);
     private final ZoneCommandRepository zoneCommands = mock(ZoneCommandRepository.class);
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new TenantSchoolController(schools, zones, modules, structure, zoneCommands, "tok"))
+            .standaloneSetup(new TenantSchoolController(schools, zones, modules, moduleGuard, structure, zoneCommands, "tok"))
             .addFilters(new TenantContextFilter())
             .build();
 

@@ -7,6 +7,8 @@ export const ROLE_LABELS = {
 } as const;
 
 export const MODULE_LABELS: Record<string, string> = {
+  SUPPLY_OS:    'Supply OS',
+  ERP:          'ERP',
   FIREFIGHTING: 'Urgent Procurement',
   STUDENTS:     'Students',
   FEES:         'Fees',

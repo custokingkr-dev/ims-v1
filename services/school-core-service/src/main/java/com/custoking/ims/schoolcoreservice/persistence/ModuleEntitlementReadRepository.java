@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -86,6 +87,29 @@ public class ModuleEntitlementReadRepository {
                 .param("moduleCode", normalizeModule(moduleCode))
                 .query(ModuleEntitlementRow.class)
                 .single();
+    }
+
+    public boolean anyEnabled(Long schoolId, Collection<String> moduleCodes) {
+        if (schoolId == null || moduleCodes == null || moduleCodes.isEmpty()) {
+            return false;
+        }
+        List<String> normalizedCodes = moduleCodes.stream()
+                .map(this::normalizeModule)
+                .distinct()
+                .toList();
+        return Boolean.TRUE.equals(jdbc.sql("""
+                        SELECT EXISTS (
+                            SELECT 1
+                            FROM tenant_school.school_module_entitlements
+                            WHERE school_id = :schoolId
+                              AND module_code IN (:moduleCodes)
+                              AND enabled = true
+                        )
+                        """)
+                .param("schoolId", schoolId)
+                .param("moduleCodes", normalizedCodes)
+                .query(Boolean.class)
+                .single());
     }
 
     private String normalizeModule(String moduleCode) {

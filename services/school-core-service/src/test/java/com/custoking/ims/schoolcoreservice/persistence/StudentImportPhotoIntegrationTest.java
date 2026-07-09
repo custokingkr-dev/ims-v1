@@ -101,4 +101,62 @@ class StudentImportPhotoIntegrationTest {
         assertThat(inserted.get(0).get("admissionNo")).isEqualTo("IMP-1");
         assertThat(((Number) inserted.get(0).get("studentId")).longValue()).isPositive();
     }
+
+    @Test
+    void confirmImport_toleratesDuplicateSectionRows() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        jdbc.sql("""
+                        INSERT INTO tenant_school.school_sections
+                            (id, name, teacher_name, active, school_class_id, school_id)
+                        VALUES (:id, 'A', '', true, 'c1', :schoolId)
+                        """)
+                .param("id", schoolId + "-c1-A-duplicate")
+                .param("schoolId", schoolId)
+                .update();
+        StudentReadRepository repo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = repo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Duplicate Section", "Class", "1", "Section", "A",
+                        "AdmissionNo", "IMP-DUP-SECTION", "Gender", "Male",
+                        "Phone", "9876543210"))));
+        String fileToken = (String) preview.get("fileToken");
+
+        Map<String, Object> confirm = repo.confirmImport(Map.of("schoolId", schoolId, "fileToken", fileToken));
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> inserted =
+                (java.util.List<Map<String, Object>>) confirm.get("insertedStudents");
+        assertThat(inserted).hasSize(1);
+        assertThat(inserted.get(0).get("admissionNo")).isEqualTo("IMP-DUP-SECTION");
+    }
+
+    @Test
+    void confirmImport_acceptsClassLabelWithPrefix() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        StudentReadRepository repo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = repo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Class Label", "Class", "Class 4", "Section", "A",
+                        "AdmissionNo", "IMP-CLASS-LABEL", "Gender", "Female",
+                        "Phone", "9876543210"))));
+
+        assertThat(preview.get("validCount")).isEqualTo(1);
+        String fileToken = (String) preview.get("fileToken");
+
+        Map<String, Object> confirm = repo.confirmImport(Map.of("schoolId", schoolId, "fileToken", fileToken));
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> inserted =
+                (java.util.List<Map<String, Object>>) confirm.get("insertedStudents");
+        assertThat(inserted).hasSize(1);
+        assertThat(inserted.get(0).get("admissionNo")).isEqualTo("IMP-CLASS-LABEL");
+    }
 }

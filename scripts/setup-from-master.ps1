@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
     One-shot setup that migrates a laptop from the old monolith `master` stack to the
-    split-service `microservices-boundary-foundation` branch and brings the local stack up.
+    current `main` branch and brings the local split-service stack up.
 
 .DESCRIPTION
     Designed for a machine that was previously running the monolith (postgres + backend +
@@ -21,7 +21,7 @@
     powershell -ExecutionPolicy Bypass -File scripts\setup-from-master.ps1 -ComposeProfile core -KeepData
 #>
 param(
-    [string]$Branch = "microservices-boundary-foundation",
+    [string]$Branch = "main",
     [ValidateSet("core", "full")]
     [string]$ComposeProfile = "full",
     # By default the stale monolith Postgres volume is wiped. Pass -KeepData to retain it.
@@ -51,16 +51,19 @@ function Require-Command([string]$Name) {
 $serviceHealth = [ordered]@{
     "custoking-postgres"               = $null
     "custoking-identity-service"       = 8083
-        "custoking-school-core-service"   = 8084
+    "custoking-school-core-service"    = 8084
     "custoking-operations-service"     = 8089
-        "custoking-platform-service"     = 8091
+    "custoking-platform-service"       = 8091
     "custoking-billing-service"        = 8092
+    "custoking-frontend"               = $null
     "custoking-api-gateway"            = 80
 }
 # core profile is a subset.
 $coreContainers = @(
     "custoking-postgres",
     "custoking-identity-service",
+    "custoking-school-core-service",
+    "custoking-frontend",
     "custoking-api-gateway"
 )
 

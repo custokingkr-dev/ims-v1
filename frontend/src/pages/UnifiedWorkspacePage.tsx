@@ -8,7 +8,7 @@ import {
   type PanelKey, type WorkspaceData,
   ACCOUNTANT_NAV_SECTIONS, ADMIN_NAV_SECTIONS, OPERATIONS_NAV_SECTIONS,
   SUPERADMIN_NAV_SECTIONS, TEACHER_NAV_SECTIONS, VIEWER_NAV_SECTIONS,
-  ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES,
+  ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES, withDerivedModuleGroups,
 } from './workspace/config';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
@@ -74,19 +74,21 @@ export default function UnifiedWorkspacePage() {
     ? { schoolId: user.branchId }
     : undefined;
 
-  // activeModules: the school's active module entitlements, used to gate nav items tagged
-  // with a `module`. Platform admins bypass entitlement and always see everything.
-  // null = unknown (loading, or fetch failed) — treated as "show all module items" so a
-  // transient error never blanks out an entitled school's nav.
-  const [activeModules, setActiveModules] = useState<Set<string> | null>(null);
+  // activeModules: the school's active module entitlements. Platform admins bypass this.
+  // Fail closed: if entitlements cannot be loaded, school-scoped module features stay hidden.
+  const [activeModules, setActiveModules] = useState<Set<string>>(new Set());
   const [refreshNonce, setRefreshNonce] = useState(0);
   useEffect(() => {
-    if (!user?.branchId || isPlatformAdmin) return;
+    if (isPlatformAdmin) return;
+    if (!user?.branchId) {
+      setActiveModules(new Set());
+      return;
+    }
     api.get(`/schools/${user.branchId}/modules/active`)
-      .then((res) => setActiveModules(new Set(
+      .then((res) => setActiveModules(withDerivedModuleGroups(
         (Array.isArray(res.data) ? res.data : []).map((m: any) => String(m.moduleCode).toUpperCase())
       )))
-      .catch(() => setActiveModules(null));
+      .catch(() => setActiveModules(new Set()));
   }, [user?.branchId, isPlatformAdmin, refreshNonce]);
 
   // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
@@ -284,20 +286,21 @@ export default function UnifiedWorkspacePage() {
     : rawNavSections
         .map(section => ({
           ...section,
-          items: section.items.filter(item => !item.module || activeModules === null || activeModules.has(item.module)),
+          items: section.items.filter(item => !item.module || activeModules.has(item.module)),
         }))
         .filter(section => section.items.length > 0);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
+  const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel);
 
   const isFire = panel.startsWith('ff-');
   // liveOrders is a PageResponse envelope; fall back to workspace snapshot for first render
   const orderRows: any[] = (liveOrders?.content) ?? workspace?.orders ?? [];
 
   useEffect(() => {
-    if (!allowedPanelKeys.includes(panel)) {
-      setPanel(defaultPanel);
+    if (!panelAllowed) {
+      setPanel(allowedPanelKeys.includes(defaultPanel) ? defaultPanel : (allowedPanelKeys[0] ?? panel));
     }
-  }, [allowedPanelKeys.join('|'), defaultPanel, panel]);
+  }, [allowedPanelKeys.join('|'), defaultPanel, panel, panelAllowed]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!workspace && workspaceError) {
@@ -438,25 +441,35 @@ export default function UnifiedWorkspacePage() {
         </div>
 
         <div className="ck-content">
-          {panel === 'home' && workspace && <HomePanel workspace={workspace} setPanel={setPanel} />}
+          {!panelAllowed && !isPlatformAdmin && (
+            <ModuleShell title="Module unavailable" subtitle="This module is not enabled for this school.">
+              <div className="ck-card">
+                <div style={{ padding: 24, color: 'var(--ink2)' }}>
+                  Ask the platform superadmin to enable ERP or Supply OS for this school.
+                </div>
+              </div>
+            </ModuleShell>
+          )}
 
-          {panel === 'students' && <StudentsPanel setPanel={setPanel} onRefresh={refresh} />}
+          {panelAllowed && panel === 'home' && workspace && <HomePanel workspace={workspace} setPanel={setPanel} />}
 
-          {panel === 'fees' && <FeesPanel workspace={workspace} onRefresh={refresh} />}
+          {panelAllowed && panel === 'students' && <StudentsPanel setPanel={setPanel} onRefresh={refresh} />}
 
-          {panel === 'feestructure' && <FeeStructurePanel onRefresh={refresh} />}
+          {panelAllowed && panel === 'fees' && <FeesPanel workspace={workspace} onRefresh={refresh} />}
 
-          {panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} />}
+          {panelAllowed && panel === 'feestructure' && <FeeStructurePanel onRefresh={refresh} />}
 
-          {panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
+          {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} />}
 
-          {panel === 'bulkimport' && <BulkImportPanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
+          {panelAllowed && panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 
-          {panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
+          {panelAllowed && panel === 'bulkimport' && <BulkImportPanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
-          {panel === 'timetable' && <TimetableModule readOnly={isTeacher} staff={workspace?.staff} />}
+          {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
-          {panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
+          {panelAllowed && panel === 'timetable' && <TimetableModule readOnly={isTeacher} staff={workspace?.staff} />}
+
+          {panelAllowed && panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
 
           {(panel === 'za-overview' || panel === 'za-schools') && (
             <ModuleShell
@@ -471,7 +484,7 @@ export default function UnifiedWorkspacePage() {
             </ModuleShell>
           )}
 
-          {panel === 'catalog' && <CatalogPanel setPanel={setPanel} />}
+          {panelAllowed && panel === 'catalog' && <CatalogPanel setPanel={setPanel} />}
 
           {panel === 'orders' && isPlatformAdmin && (
             <SaOrderApprovalsPanel
@@ -503,11 +516,11 @@ export default function UnifiedWorkspacePage() {
           {panel === 'sa-revenue' && isPlatformAdmin && <SaRevenuePanel />}
           {panel === 'sa-catalog' && isPlatformAdmin && <SaCatalogPanel />}
 
-          {panel === 'orders' && isOperations && (
+          {panelAllowed && panel === 'orders' && isOperations && (
             <SaAllOrdersPanel onNewOrder={() => setPanel('catalog')} canManage={false} />
           )}
 
-          {panel === 'orders' && !isPlatformAdmin && !isOperations && (
+          {panelAllowed && panel === 'orders' && !isPlatformAdmin && !isOperations && (
             <AdminOrdersPanel
               orders={orderRows}
               stats={liveOrderStats}
@@ -540,25 +553,25 @@ export default function UnifiedWorkspacePage() {
             />
           )}
 
-          {panel === 'planning' && workspace && <PlanningPanel workspace={workspace} onRefresh={refresh} setPanel={setPanel} />}
+          {panelAllowed && panel === 'planning' && workspace && <PlanningPanel workspace={workspace} onRefresh={refresh} setPanel={setPanel} />}
 
-          {panel === 'ff-dashboard' && (
+          {panelAllowed && panel === 'ff-dashboard' && (
             <FirefightingDashboardPanel
               isSuperAdmin={isPlatformAdmin}
               setPanel={setPanel}
               onOpenFfDraft={(code) => { setFfEditingCode(code); setPanel('ff-new'); }}
             />
           )}
-          {panel === 'ff-new' && (
+          {panelAllowed && panel === 'ff-new' && (
             <FirefightingNewPanel editingCode={ffEditingCode} setPanel={setPanel} onRefresh={refresh} />
           )}
-          {panel === 'ff-approvals' && (
+          {panelAllowed && panel === 'ff-approvals' && (
             <FirefightingApprovalsPanel
               isSuperAdmin={isPlatformAdmin}
               onRefresh={refresh}
             />
           )}
-          {panel === 'ff-orders' && (
+          {panelAllowed && panel === 'ff-orders' && (
             <FirefightingOrdersPanel
               isSuperAdmin={isPlatformAdmin}
               onRefresh={refresh}

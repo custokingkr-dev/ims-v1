@@ -27,34 +27,85 @@ Primary services:
 | `frontend/` | React/Vite SPA |
 | `services/api-gateway/` | Programmable route gateway with JWT introspection and Cloud Run service-token support |
 | `services/identity-service/` | Auth, users, RBAC |
-| `services/tenant-school-service/` | Schools, zones, classes, sections, staff, modules |
-| `services/student-service/` | Students, imports, review campaigns |
-| `services/attendance-service/` | Attendance |
-| `services/fee-service/` | Fees and payments |
-| `services/catalog-service/` | Catalog, orders, annual plans |
-| `services/workflow-service/` | Workflow engine data |
-| `services/firefighting-service/` | Firefighting workflow |
-| `services/reporting-service/` | Command center/reporting projections |
-| `services/notification-service/` | MSG91 notification delivery |
-| `services/audit-service/` | Audit events |
+| `services/school-core-service/` | Schools, zones, students, attendance, fees, catalog, supply orders |
+| `services/operations-service/` | Workflow and urgent procurement |
+| `services/platform-service/` | Reporting, notification, audit projections |
 | `services/billing-service/` | Superadmin billing |
 
 ## Local Development
 
 Prerequisites:
 
-- Java 21
+- JDK 25+
 - Node 20+
 - Docker Desktop with WSL2
 - Google Cloud SDK for deployment scripts
 
+Recommended Windows runtime location:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\configure-windows-runtime.ps1
+```
+
+Run this after cloning the repo. It creates `D:\Projects\Runtime` by default
+and points future IntelliJ IDEA launches at runtime/config/cache/log directories
+under that location. If the laptop does not have a D: drive, pass
+`-RuntimeRoot "<path>"`. Close IntelliJ IDEA before copying existing IDE state:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\configure-windows-runtime.ps1 -MigrateIntelliJ
+```
+
+Docker Desktop's supported disk move is **Settings -> Resources -> Advanced ->
+Disk image location**. Set it to `D:\Projects\Runtime\Docker`. If Docker
+Desktop does not expose that setting on a laptop, the script can move the large
+Docker WSL data disk through a Windows junction after Docker is shut down. The
+fallback script requires Docker Desktop to have created
+`%LOCALAPPDATA%\Docker\wsl\disk` at least once:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\configure-windows-runtime.ps1 -MoveDockerDisk
+```
+
+Normal WSL distros should be installed or moved under `D:\Projects\Runtime\WSL`.
+Do not rely on moving Docker Desktop's small `docker-desktop` WSL main distro;
+Docker Desktop manages it and may recreate it under `%LOCALAPPDATA%` at startup.
+
+### New laptop setup
+
+For a new laptop, run the bootstrap script first:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1
+```
+
+Then start the lightweight local stack:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1 -ComposeProfile core -SkipDependencyInstall
+```
+
+Starting a compose profile also applies the local `app_rt` runtime grants after service
+migrations complete. Local compose disables OTLP export by default; dev/prod deployments
+set the Cloud Trace OTLP endpoint separately.
+
+If the laptop has stale Custoking containers or an old local database volume, reset the
+local compose state and remove orphans:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1 -ComposeProfile core -SkipDependencyInstall -ResetData -RemoveOrphans
+```
+
+`-ResetData` deletes the local compose Postgres volume, so use it only for disposable
+developer data.
+
 ### Migrating a laptop from the old monolith `master`
 
 If a machine was previously running the monolith stack (postgres + backend + frontend on
-ports 5432/8080/80), use the setup script to tear that down, switch to this branch, and
-bring the split-service stack up cleanly. It removes the orphaned `custoking-backend`
-container, wipes the stale Postgres volume by default, checks out the branch, and waits
-for every service to report healthy.
+ports 5432/8080/80), use the migration script to tear that down and bring the current
+split-service stack up cleanly. It removes the orphaned `custoking-backend` container,
+wipes the stale Postgres volume by default, checks out `main`, and waits for services to
+report healthy.
 
 ```powershell
 # Windows / PowerShell
@@ -67,8 +118,11 @@ powershell -ExecutionPolicy Bypass -File scripts\setup-from-master.ps1
 ```
 
 Common flags (`-ComposeProfile`/`--profile core|full`, `-KeepData`/`--keep-data`,
-`-Force`/`--force` to auto-stash local edits, `-SkipBuild`/`--skip-build`). Pass
-`-KeepData`/`--keep-data` only if you want to retain the existing database volume.
+`-Force`/`--force` to auto-stash local edits, `-SkipBuild`/`--skip-build`). For
+`setup-local-dev.ps1`, use `-ResetData` for disposable local database resets and
+`-RemoveOrphans` to clean old local containers. Pass `-KeepData`/`--keep-data` only if
+you want to retain the existing database volume when using the old-monolith migration
+script.
 
 Frontend:
 
@@ -127,7 +181,7 @@ $env:TILT_COMPOSE_PROFILE='core'
 tilt up
 ```
 
-`tilt up` also runs the `local-dev-users` setup resource. It creates or refreshes one
+`tilt up` also runs the `local-runtime-grants` and `local-dev-users` setup resources. They apply runtime DB grants and create or refresh one
 local login per role and prints the credentials in Tilt logs. See
 [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md#tilt) for the full credential table.
 
@@ -138,10 +192,16 @@ For a complete setup guide, use [docs/LOCAL-SETUP.md](docs/LOCAL-SETUP.md).
 Compile changed Java services:
 
 ```powershell
-$env:JAVA_HOME='C:\Program Files\Java\jdk-21.0.11'
+$env:JAVA_HOME='C:\Program Files\Java\jdk-25.0.3'
 $env:Path="$env:JAVA_HOME\bin;$env:Path"
-.\mvnw.cmd -f services\catalog-service\pom.xml -DskipTests compile
-.\mvnw.cmd -f services\tenant-school-service\pom.xml -DskipTests compile
+.\mvnw.cmd -f services\identity-service\pom.xml -DskipTests compile
+.\mvnw.cmd -f services\school-core-service\pom.xml -DskipTests compile
+```
+
+Or use the repo test runner, which detects JDK 25+ and uses the root Maven wrapper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\invoke-microservice-tests.ps1 -Services identity-service
 ```
 
 Static and migration guardrails:
@@ -186,7 +246,7 @@ npm run build
 GitHub Actions deployment:
 
 1. Open **Actions -> Deploy to GCP**.
-2. Choose `production` or `staging`.
+2. Choose `prod` or `dev`.
 3. Leave `commit_sha` empty to deploy the workflow commit, or provide an image tag.
 4. Choose `deploy_services`; default `frontend` deploys one service only.
 5. Choose `all` only for an approved full fleet rollout.

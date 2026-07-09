@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.persistence;
 
 import com.custoking.ims.identityservice.infrastructure.TenantSchoolClient;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,8 +35,16 @@ public class IdentityUserProvisioningRepository {
         Long assignedBy = optionalLong(body.get("assignedBy"));
         String branchName = tenantSchool.school(schoolId).name();
 
-        retireSchoolUsers(schoolId, normalizedRole, assignedBy);
-        Long userId = createSchoolUser(fullName, email, temporaryPassword, normalizedRole, schoolId, branchName);
+        ExistingUser existing = activeUserByEmail(email);
+        Long userId;
+        if (existing != null) {
+            if (!"OPERATIONS".equals(normalizedRole) || !"OPERATIONS".equalsIgnoreCase(existing.role())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "email is already used by an active account");
+            }
+            userId = existing.id();
+        } else {
+            userId = createSchoolUser(fullName, email, temporaryPassword, normalizedRole, schoolId, branchName);
+        }
         assignScopedRole(userId, normalizedRole, schoolId, null, assignedBy);
 
         return Map.of(
@@ -67,21 +76,6 @@ public class IdentityUserProvisioningRepository {
                 "zoneId", zoneId,
                 "zoneName", zoneName
         );
-    }
-
-    private void retireSchoolUsers(Long schoolId, String role, Long assignedBy) {
-        List<Long> userIds = jdbc.sql("""
-                        SELECT id
-                        FROM identity.app_users
-                        WHERE branch_id = :schoolId
-                          AND UPPER(role) = :role
-                          AND deleted_at IS NULL
-                        """)
-                .param("schoolId", schoolId)
-                .param("role", role)
-                .query(Long.class)
-                .list();
-        retireUsers(userIds, assignedBy);
     }
 
     private void retireZoneAdmins(Long zoneId, Long assignedBy) {
@@ -130,19 +124,23 @@ public class IdentityUserProvisioningRepository {
 
     private Long createSchoolUser(String fullName, String email, String temporaryPassword,
                                   String role, Long schoolId, String schoolName) {
-        return jdbc.sql("""
-                        INSERT INTO identity.app_users (full_name, email, password_hash, role, branch_id, branch_name, created_at)
-                        VALUES (:fullName, :email, :passwordHash, :role, :schoolId, :schoolName, now())
-                        RETURNING id
-                        """)
-                .param("fullName", fullName)
-                .param("email", email)
-                .param("passwordHash", passwordEncoder.encode(temporaryPassword))
-                .param("role", role)
-                .param("schoolId", schoolId)
-                .param("schoolName", schoolName)
-                .query(Long.class)
-                .single();
+        try {
+            return jdbc.sql("""
+                            INSERT INTO identity.app_users (full_name, email, password_hash, role, branch_id, branch_name, created_at)
+                            VALUES (:fullName, :email, :passwordHash, :role, :schoolId, :schoolName, now())
+                            RETURNING id
+                            """)
+                    .param("fullName", fullName)
+                    .param("email", email)
+                    .param("passwordHash", passwordEncoder.encode(temporaryPassword))
+                    .param("role", role)
+                    .param("schoolId", schoolId)
+                    .param("schoolName", schoolName)
+                    .query(Long.class)
+                    .single();
+        } catch (DuplicateKeyException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "email is already used by an active account", ex);
+        }
     }
 
     private Long createZoneUser(String fullName, String email, String temporaryPassword,
@@ -167,6 +165,9 @@ public class IdentityUserProvisioningRepository {
                 .query(Long.class)
                 .optional()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "role not found"));
+        if (activeAssignmentExists(userId, roleId, schoolId, zoneId)) {
+            return;
+        }
         jdbc.sql("""
                         INSERT INTO identity.user_role_assignments
                             (user_id, role_id, school_id, zone_id, assigned_at, assigned_by, active, valid_from)
@@ -179,6 +180,44 @@ public class IdentityUserProvisioningRepository {
                 .param("zoneId", zoneId)
                 .param("assignedBy", assignedBy)
                 .update();
+    }
+
+    private boolean activeAssignmentExists(Long userId, Long roleId, Long schoolId, Long zoneId) {
+        return Boolean.TRUE.equals(jdbc.sql("""
+                        SELECT EXISTS (
+                            SELECT 1
+                            FROM identity.user_role_assignments
+                            WHERE user_id = :userId
+                              AND role_id = :roleId
+                              AND active = true
+                              AND revoked_at IS NULL
+                              AND school_id IS NOT DISTINCT FROM :schoolId
+                              AND zone_id IS NOT DISTINCT FROM :zoneId
+                              AND (valid_from IS NULL OR valid_from <= now())
+                              AND (valid_until IS NULL OR valid_until > now())
+                        )
+                        """)
+                .param("userId", userId)
+                .param("roleId", roleId)
+                .param("schoolId", schoolId)
+                .param("zoneId", zoneId)
+                .query(Boolean.class)
+                .single());
+    }
+
+    private ExistingUser activeUserByEmail(String email) {
+        return jdbc.sql("""
+                        SELECT id, role
+                        FROM identity.app_users
+                        WHERE lower(email) = :email
+                          AND deleted_at IS NULL
+                        ORDER BY id
+                        LIMIT 1
+                        """)
+                .param("email", email.toLowerCase(Locale.ROOT))
+                .query(ExistingUser.class)
+                .optional()
+                .orElse(null);
     }
 
     private String normalizeSchoolRole(String role) {
@@ -206,4 +245,6 @@ public class IdentityUserProvisioningRepository {
         }
         return Long.parseLong(value.toString());
     }
+
+    private record ExistingUser(Long id, String role) {}
 }

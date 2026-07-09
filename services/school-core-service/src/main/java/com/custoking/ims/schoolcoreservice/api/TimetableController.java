@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.TimetableRepository;
 import com.custoking.ims.schoolcoreservice.persistence.YearLockedException;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,12 +26,15 @@ import java.util.Map;
 public class TimetableController {
 
     private final TimetableRepository timetable;
+    private final ModuleEntitlementGuard moduleGuard;
     private final String readToken;
 
     public TimetableController(
             TimetableRepository timetable,
+            ModuleEntitlementGuard moduleGuard,
             @Value("${tenant-school.read-token:}") String readToken) {
         this.timetable = timetable;
+        this.moduleGuard = moduleGuard;
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
@@ -39,7 +43,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestParam(value = "schoolId", required = false) Long schoolIdParam) {
         requireToken(token, "tenant-school:read");
-        Long schoolId = TenantScope.resolveSchoolId(schoolIdParam);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
         return timetable.bellSchedules(schoolId);
     }
 
@@ -49,7 +53,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         String name = requireText(request.get("name"), "name is required");
         try {
             return timetable.createSchedule(schoolId, name);
@@ -65,7 +69,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         String name = requireText(request.get("name"), "name is required");
         try {
             timetable.renameSchedule(schoolId, id, name);
@@ -80,7 +84,7 @@ public class TimetableController {
             @PathVariable("id") long id) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         try {
             timetable.deleteSchedule(schoolId, id);
         } catch (YearLockedException ex) {
@@ -95,7 +99,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         try {
             return timetable.addPeriod(schoolId, scheduleId,
                     requireText(request.get("label"), "label is required"),
@@ -116,7 +120,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         try {
             timetable.updatePeriod(schoolId, periodId,
                     requireText(request.get("label"), "label is required"),
@@ -136,7 +140,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         long idA = longValue(request.get("idA"),
                 () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "idA is required"));
         long idB = longValue(request.get("idB"),
@@ -155,7 +159,7 @@ public class TimetableController {
             @PathVariable("periodId") long periodId) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         try {
             timetable.deletePeriod(schoolId, periodId);
         } catch (YearLockedException ex) {
@@ -168,7 +172,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestParam(value = "schoolId", required = false) Long schoolIdParam) {
         requireToken(token, "tenant-school:read");
-        Long schoolId = TenantScope.resolveSchoolId(schoolIdParam);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
         return timetable.classSchedules(schoolId);
     }
 
@@ -179,7 +183,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         long scheduleId = longValue(request.get("scheduleId"),
                 () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "scheduleId is required"));
         try {
@@ -195,7 +199,7 @@ public class TimetableController {
             @PathVariable("classId") String classId) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         timetable.deleteClassSchedule(schoolId, classId);
     }
 
@@ -206,7 +210,7 @@ public class TimetableController {
             @RequestParam(value = "classId") String classId,
             @RequestParam(value = "yearId", required = false) String yearIdParam) {
         requireToken(token, "tenant-school:read");
-        Long schoolId = TenantScope.resolveSchoolId(schoolIdParam);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
         String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
         return timetable.classSubjects(schoolId, classId, yearId);
     }
@@ -217,7 +221,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         String classId = requireText(request.get("classId"), "classId is required");
         String subjectName = requireText(request.get("subjectName"), "subjectName is required");
         String yearId = timetable.activeYearId(schoolId);
@@ -236,7 +240,7 @@ public class TimetableController {
             @PathVariable("id") long id) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         try {
             timetable.deleteSubject(schoolId, id);
         } catch (YearLockedException ex) {
@@ -253,7 +257,7 @@ public class TimetableController {
             @RequestParam(value = "sectionId") String sectionId,
             @RequestParam(value = "yearId", required = false) String yearIdParam) {
         requireToken(token, "tenant-school:read");
-        Long schoolId = TenantScope.resolveSchoolId(schoolIdParam);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
         String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
         Map<String, Object> grid = timetable.timetable(schoolId, sectionId, yearId);
         if (!isAdmin()) {
@@ -268,7 +272,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         String sectionId = requireText(request.get("sectionId"), "sectionId is required");
         String day = requireText(request.get("day"), "day is required");
         long periodId = longValue(request.get("periodId"),
@@ -292,7 +296,7 @@ public class TimetableController {
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         String sectionId = requireText(request.get("sectionId"), "sectionId is required");
         Object entriesRaw = request.get("entries");
         if (!(entriesRaw instanceof List<?> rawList)) {
@@ -332,7 +336,7 @@ public class TimetableController {
             @RequestParam(value = "periodId") long periodId) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSchoolAdmin();
-        Long schoolId = TenantScope.resolveSchoolId(null);
+        Long schoolId = resolveOwnErpSchoolId();
         try {
             timetable.deleteEntry(schoolId, sectionId, day, periodId);
         } catch (YearLockedException ex) {
@@ -347,6 +351,18 @@ public class TimetableController {
         }
         String role = ctx.role();
         return role != null && (role.equalsIgnoreCase("ADMIN") || role.equalsIgnoreCase("SCHOOL_ADMIN"));
+    }
+
+    private Long resolveErpSchoolId(Long requestedSchoolId) {
+        Long schoolId = TenantScope.resolveSchoolId(requestedSchoolId);
+        moduleGuard.requireErpEnabled(schoolId);
+        return schoolId;
+    }
+
+    private Long resolveOwnErpSchoolId() {
+        Long schoolId = TenantScope.resolveSchoolId(null);
+        moduleGuard.requireErpEnabled(schoolId);
+        return schoolId;
     }
 
     private void requireToken(String token, String requiredScope) {

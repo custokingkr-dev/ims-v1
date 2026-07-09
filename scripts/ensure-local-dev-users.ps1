@@ -18,6 +18,9 @@ function Invoke-Psql {
         Set-Content -LiteralPath $tmp -Value $Sql -NoNewline -Encoding UTF8
         docker cp $tmp "${PostgresContainer}:/tmp/ims-local-dev-users.sql" | Out-Null
         docker exec $PostgresContainer psql -v ON_ERROR_STOP=1 -U $DbUser -d $Database -f /tmp/ims-local-dev-users.sql
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to seed local development users (exit $LASTEXITCODE)."
+        }
     } finally {
         Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue
     }
@@ -315,21 +318,31 @@ VALUES
 ON CONFLICT (id) DO UPDATE SET school_id = EXCLUDED.school_id;
 
 -- BOLA probe targets: one known firefighting request per school.
-INSERT INTO firefighting.firefighting_requests (code, estimated_budget, school_id, created_at)
-VALUES
-    ('ff-bola-a', 0, 1, now()),
-    ('ff-bola-b', 0, 2, now())
-ON CONFLICT (code) DO UPDATE SET school_id = EXCLUDED.school_id;
+DO `$`$
+BEGIN
+    IF to_regclass('firefighting.firefighting_requests') IS NOT NULL THEN
+        INSERT INTO firefighting.firefighting_requests (code, estimated_budget, school_id, created_at)
+        VALUES
+            ('ff-bola-a', 0, 1, now()),
+            ('ff-bola-b', 0, 2, now())
+        ON CONFLICT (code) DO UPDATE SET school_id = EXCLUDED.school_id;
+    END IF;
+END `$`$;
 
 -- BOLA probe targets: one known PENDING workflow instance per school. school_id is NOT NULL.
 -- workflow_instances.id is BIGSERIAL, so the marker (wf-bola-a/wf-bola-b) is carried in entity_id,
 -- which surfaces in the /api/v1/workflows/pending response body for the marker-backed gate.
-INSERT INTO workflow.workflow_instances (id, definition_id, entity_type, entity_id, school_id, current_step, status, initiated_at, version)
-VALUES
-    (9100001, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-a', 1, 0, 'PENDING', now(), 0),
-    (9100002, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-b', 2, 0, 'PENDING', now(), 0)
-ON CONFLICT (id) DO UPDATE SET school_id = EXCLUDED.school_id, status = 'PENDING', entity_id = EXCLUDED.entity_id;
-SELECT setval(pg_get_serial_sequence('workflow.workflow_instances', 'id'), COALESCE((SELECT max(id) FROM workflow.workflow_instances), 0) + 1, false);
+DO `$`$
+BEGIN
+    IF to_regclass('workflow.workflow_instances') IS NOT NULL THEN
+        INSERT INTO workflow.workflow_instances (id, definition_id, entity_type, entity_id, school_id, current_step, status, initiated_at, version)
+        VALUES
+            (9100001, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-a', 1, 0, 'PENDING', now(), 0),
+            (9100002, 'SUPPLY_ORDER_DEFAULT', 'SUPPLY_ORDER', 'wf-bola-b', 2, 0, 'PENDING', now(), 0)
+        ON CONFLICT (id) DO UPDATE SET school_id = EXCLUDED.school_id, status = 'PENDING', entity_id = EXCLUDED.entity_id;
+        PERFORM setval(pg_get_serial_sequence('workflow.workflow_instances', 'id'), COALESCE((SELECT max(id) FROM workflow.workflow_instances), 0) + 1, false);
+    END IF;
+END `$`$;
 
 SELECT setval('seq_app_users', COALESCE((SELECT max(id) FROM identity.app_users), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('identity.roles', 'id'), COALESCE((SELECT max(id) FROM identity.roles), 0) + 1, false);

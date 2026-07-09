@@ -3,11 +3,14 @@
 
 export type WorkspaceData = any;
 
-export type ModuleCode =
+export type LegacyModuleCode =
   | 'STUDENTS' | 'ATTENDANCE' | 'FEES' | 'INVOICES'
   | 'PAYMENTS' | 'ORDERS' | 'FIREFIGHTING' | 'REPORTS';
 
-export const ALL_MODULES: Array<{ code: ModuleCode; label: string; icon: string; desc: string }> = [
+export type ModuleGroupCode = 'SUPPLY_OS' | 'ERP';
+export type ModuleCode = LegacyModuleCode | ModuleGroupCode;
+
+export const ALL_MODULES: Array<{ code: LegacyModuleCode; label: string; icon: string; desc: string }> = [
   { code: 'STUDENTS',     label: 'Students',     icon: '🎓', desc: 'Student records, enrollment, bulk import' },
   { code: 'ATTENDANCE',   label: 'Attendance',   icon: '✓',  desc: 'Daily attendance tracking' },
   { code: 'FEES',         label: 'Fees',         icon: '₹',  desc: 'Fee collection and structure management' },
@@ -17,6 +20,59 @@ export const ALL_MODULES: Array<{ code: ModuleCode; label: string; icon: string;
   { code: 'FIREFIGHTING', label: 'Urgent Procurement', icon: '🚨', desc: 'Non-catalog urgent procurement' },
   { code: 'REPORTS',      label: 'Reports',      icon: '📊', desc: 'Analytics and export reports' },
 ];
+
+export const MODULE_GROUPS: Array<{
+  code: ModuleGroupCode;
+  label: string;
+  icon: string;
+  desc: string;
+  moduleCodes: LegacyModuleCode[];
+}> = [
+  {
+    code: 'SUPPLY_OS',
+    label: 'Supply OS',
+    icon: '📦',
+    desc: 'Supply Details and Urgent Procurement',
+    moduleCodes: ['ORDERS', 'FIREFIGHTING'],
+  },
+  {
+    code: 'ERP',
+    label: 'ERP',
+    icon: '🏫',
+    desc: 'Students, attendance, fees, invoices, payments, and reports',
+    moduleCodes: ['STUDENTS', 'ATTENDANCE', 'FEES', 'INVOICES', 'PAYMENTS', 'REPORTS'],
+  },
+];
+
+export const MODULE_CHILD_CODES = MODULE_GROUPS.flatMap((group) => group.moduleCodes);
+
+export function expandModuleGroupSelections(selections: Record<string, boolean>): Record<LegacyModuleCode, boolean> {
+  const expanded = Object.fromEntries(ALL_MODULES.map((module) => [module.code, false])) as Record<LegacyModuleCode, boolean>;
+  for (const group of MODULE_GROUPS) {
+    for (const code of group.moduleCodes) {
+      expanded[code] = !!selections[group.code];
+    }
+  }
+  return expanded;
+}
+
+export function groupModuleSelections(moduleCodes: Iterable<string>): Record<ModuleGroupCode, boolean> {
+  const normalized = new Set(Array.from(moduleCodes).map((code) => String(code).toUpperCase()));
+  return Object.fromEntries(
+    MODULE_GROUPS.map((group) => [
+      group.code,
+      normalized.has(group.code) || group.moduleCodes.some((code) => normalized.has(code)),
+    ])
+  ) as Record<ModuleGroupCode, boolean>;
+}
+
+export function withDerivedModuleGroups(moduleCodes: Iterable<string>): Set<string> {
+  const normalized = new Set(Array.from(moduleCodes).map((code) => String(code).toUpperCase()));
+  for (const [groupCode, enabled] of Object.entries(groupModuleSelections(normalized))) {
+    if (enabled) normalized.add(groupCode);
+  }
+  return normalized;
+}
 
 export type PanelKey =
   | 'home' | 'students' | 'fees' | 'feestructure' | 'attendance' | 'timetable'
@@ -34,49 +90,28 @@ export const ADMIN_NAV_SECTIONS: Array<{
   {
     title: 'Supply OS',
     items: [
-      { key: 'catalog',   label: 'Catalog',       icon: '⊞', module: 'ORDERS' },
-      { key: 'orders',    label: 'School Orders', icon: '📦', module: 'ORDERS' },
-      { key: 'planning',  label: 'Annual plan',   icon: '🗓', module: 'ORDERS' },
+      { key: 'catalog',   label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
+      { key: 'orders',    label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
+      { key: 'planning',  label: 'Annual plan',    icon: '🗓', module: 'SUPPLY_OS' },
+      { key: 'ff-dashboard', label: 'Urgent Pipeline', icon: '📋', module: 'SUPPLY_OS' },
+      { key: 'ff-new',       label: 'Urgent request',  icon: '➕', module: 'SUPPLY_OS' },
+      { key: 'ff-approvals', label: 'Urgent approvals', icon: '✅', module: 'SUPPLY_OS' },
+      { key: 'ff-orders',    label: 'Urgent orders',   icon: '📦', module: 'SUPPLY_OS' },
     ],
   },
   {
-    title: 'Urgent Procurement',
-    fire: true,
+    title: 'ERP',
     items: [
-      { key: 'ff-dashboard', label: 'Request Pipeline', icon: '📋', module: 'FIREFIGHTING' },
-      { key: 'ff-new',       label: 'New request',    icon: '➕', module: 'FIREFIGHTING' },
-      { key: 'ff-approvals', label: 'Approvals',      icon: '✅', module: 'FIREFIGHTING' },
-      { key: 'ff-orders',    label: 'Placed orders',  icon: '📦', module: 'FIREFIGHTING' },
-    ],
-  },
-  {
-    title: 'Overview',
-    items: [
-      { key: 'home', label: 'Dashboard', icon: '◼' },
-    ],
-  },
-  {
-    title: 'Academics',
-    items: [
-      { key: 'students',   label: 'Students',    icon: '🎓', module: 'STUDENTS' },
-      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'STUDENTS' },
-      { key: 'bulkimport', label: 'Bulk import', icon: '📥', module: 'STUDENTS' },
-      { key: 'attendance', label: 'Attendance',  icon: '✓',  module: 'ATTENDANCE' },
-      { key: 'timetable',  label: 'Timetable',   icon: '📅' },
-    ],
-  },
-  {
-    title: 'Finance',
-    items: [
-      { key: 'fees',         label: 'Fee Collections',   icon: '₹',  module: 'FEES' },
-      { key: 'feestructure', label: 'Fee Configuration', icon: '📐', module: 'FEES' },
-    ],
-  },
-  {
-    title: 'Setup',
-    items: [
-      { key: 'staff',      label: 'Staff & HR',            icon: '👥' },
-      { key: 'classsetup', label: 'Class & section setup', icon: '🏫' },
+      { key: 'home',       label: 'Dashboard',   icon: '◼', module: 'ERP' },
+      { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
+      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'ERP' },
+      { key: 'bulkimport', label: 'Bulk import', icon: '📥', module: 'ERP' },
+      { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
+      { key: 'timetable',  label: 'Timetable',   icon: '📅', module: 'ERP' },
+      { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'ERP' },
+      { key: 'feestructure', label: 'Fee Configuration', icon: '📐', module: 'ERP' },
+      { key: 'staff',      label: 'Staff & HR',            icon: '👥', module: 'ERP' },
+      { key: 'classsetup', label: 'Class & section setup', icon: '🏫', module: 'ERP' },
     ],
   },
 ];
@@ -90,26 +125,20 @@ export const OPERATIONS_NAV_SECTIONS: Array<{
   {
     title: 'Supply OS',
     items: [
-      { key: 'catalog', label: 'Catalog',        icon: '⊞', module: 'ORDERS' },
-      { key: 'orders',  label: 'All Orders', icon: '📦', module: 'ORDERS' },
+      { key: 'catalog', label: 'Supply Details', icon: '⊞', module: 'SUPPLY_OS' },
+      { key: 'orders',  label: 'School Orders',  icon: '📦', module: 'SUPPLY_OS' },
+      { key: 'ff-dashboard', label: 'Urgent Pipeline', icon: '📋', module: 'SUPPLY_OS' },
+      { key: 'ff-new',       label: 'Urgent request',  icon: '➕', module: 'SUPPLY_OS' },
+      { key: 'ff-orders',    label: 'Urgent orders',   icon: '📦', module: 'SUPPLY_OS' },
     ],
   },
   {
-    title: 'Urgent Procurement',
-    fire: true,
+    title: 'ERP',
     items: [
-      { key: 'ff-dashboard', label: 'Request Pipeline', icon: '📋', module: 'FIREFIGHTING' },
-      { key: 'ff-new',       label: 'New request',   icon: '➕', module: 'FIREFIGHTING' },
-      { key: 'ff-orders',    label: 'Placed orders', icon: '📦', module: 'FIREFIGHTING' },
-    ],
-  },
-  {
-    title: 'School ERP',
-    items: [
-      { key: 'home',       label: 'Dashboard',   icon: '◼' },
-      { key: 'students',   label: 'Students',    icon: '🎓', module: 'STUDENTS' },
-      { key: 'attendance', label: 'Attendance',  icon: '✓',  module: 'ATTENDANCE' },
-      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'STUDENTS' },
+      { key: 'home',       label: 'Dashboard',   icon: '◼', module: 'ERP' },
+      { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
+      { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
+      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'ERP' },
     ],
   },
 ];
@@ -122,10 +151,10 @@ export const ACCOUNTANT_NAV_SECTIONS: Array<{
   {
     title: 'Finance',
     items: [
-      { key: 'home',         label: 'Dashboard',         icon: '◼' },
-      { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'FEES' },
-      { key: 'feestructure', label: 'Fee Configuration', icon: '▦', module: 'FEES' },
-      { key: 'orders',       label: 'School Orders',     icon: '□', module: 'ORDERS' },
+      { key: 'home',         label: 'Dashboard',         icon: '◼', module: 'ERP' },
+      { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'ERP' },
+      { key: 'feestructure', label: 'Fee Configuration', icon: '▦', module: 'ERP' },
+      { key: 'orders',       label: 'School Orders',     icon: '□', module: 'SUPPLY_OS' },
     ],
   },
 ];
@@ -138,10 +167,10 @@ export const TEACHER_NAV_SECTIONS: Array<{
   {
     title: 'Classroom',
     items: [
-      { key: 'home',       label: 'Dashboard',  icon: '◼' },
-      { key: 'students',   label: 'Students',   icon: '△', module: 'STUDENTS' },
-      { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ATTENDANCE' },
-      { key: 'timetable',  label: 'Timetable',  icon: '▤' },
+      { key: 'home',       label: 'Dashboard',  icon: '◼', module: 'ERP' },
+      { key: 'students',   label: 'Students',   icon: '△', module: 'ERP' },
+      { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ERP' },
+      { key: 'timetable',  label: 'Timetable',  icon: '▤', module: 'ERP' },
     ],
   },
 ];
@@ -154,11 +183,11 @@ export const VIEWER_NAV_SECTIONS: Array<{
   {
     title: 'Read only',
     items: [
-      { key: 'home',       label: 'Dashboard',  icon: '◼' },
-      { key: 'students',   label: 'Students',   icon: '△', module: 'STUDENTS' },
-      { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ATTENDANCE' },
-      { key: 'fees',       label: 'Fees',       icon: '₹', module: 'FEES' },
-      { key: 'orders',     label: 'Orders',     icon: '□', module: 'ORDERS' },
+      { key: 'home',       label: 'Dashboard',  icon: '◼', module: 'ERP' },
+      { key: 'students',   label: 'Students',   icon: '△', module: 'ERP' },
+      { key: 'attendance', label: 'Attendance', icon: '✓', module: 'ERP' },
+      { key: 'fees',       label: 'Fees',       icon: '₹', module: 'ERP' },
+      { key: 'orders',     label: 'Orders',     icon: '□', module: 'SUPPLY_OS' },
     ],
   },
 ];

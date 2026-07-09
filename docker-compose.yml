@@ -42,6 +42,9 @@ services:
       APP_REFRESH_TOKEN_EXPIRATION_MS: "604800000"
       APP_COOKIE_SECURE: "false"
       APP_COOKIE_SAME_SITE: Strict
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "false"
+      OTEL_SDK_DISABLED: "true"
+      OTEL_TRACES_EXPORTER: none
       IDENTITY_DB_SCHEMA: identity
       IDENTITY_INTROSPECTION_TOKEN: local-dev-identity-token
       TENANT_SCHOOL_BASE_URL: http://school-core-service:8080
@@ -70,6 +73,9 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "false"
+      OTEL_SDK_DISABLED: "true"
+      OTEL_TRACES_EXPORTER: none
       SCHOOL_CORE_DATASOURCE_SCHEMAS: "tenant_school,student,attendance,fee,catalog"
       SCHOOL_CORE_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
       TENANT_SCHOOL_READ_TOKEN: local-dev-tenant-school-token
@@ -101,6 +107,9 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "false"
+      OTEL_SDK_DISABLED: "true"
+      OTEL_TRACES_EXPORTER: none
       OPERATIONS_DB_SCHEMA: "workflow,firefighting"
       OPERATIONS_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
@@ -128,6 +137,9 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "false"
+      OTEL_SDK_DISABLED: "true"
+      OTEL_TRACES_EXPORTER: none
       PLATFORM_DB_SCHEMA: "reporting,notification,audit"
       REPORTING_READ_TOKEN: local-dev-reporting-token
       REPORTING_PUBSUB_PUSH_TOKEN: local-dev-reporting-token
@@ -164,6 +176,9 @@ services:
       FLYWAY_USERNAME: postgres
       FLYWAY_PASSWORD: root
       SPRING_PROFILES_ACTIVE: prod
+      MANAGEMENT_TRACING_EXPORT_OTLP_ENABLED: "false"
+      OTEL_SDK_DISABLED: "true"
+      OTEL_TRACES_EXPORTER: none
       BILLING_DB_SCHEMA: billing
       BILLING_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
       BILLING_SERVICE_TOKEN: local-dev-billing-token
@@ -216,6 +231,8 @@ services:
       BILLING_SERVICE_TOKEN: local-dev-billing-token
       GATEWAY_AUTH_MODE: permissive
       GATEWAY_CLOUD_RUN_AUTH: never
+      OTEL_SDK_DISABLED: "true"
+      OTEL_TRACES_EXPORTER: none
       APP_JWT_SECRET: "local-dev-jwt-secret-key-32-chars-minimum"
       GATEWAY_LOCAL_JWT_VERIFY: enabled
     ports:

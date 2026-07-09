@@ -10,6 +10,7 @@ import com.custoking.ims.schoolcoreservice.persistence.ModuleEntitlementReadRepo
 import com.custoking.ims.schoolcoreservice.persistence.ZoneEntity;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -40,6 +41,7 @@ public class TenantSchoolController {
     private final SchoolRepository schools;
     private final ZoneRepository zones;
     private final ModuleEntitlementReadRepository modules;
+    private final ModuleEntitlementGuard moduleGuard;
     private final SchoolStructureReadRepository structure;
     private final ZoneCommandRepository zoneCommands;
     private final String readToken;
@@ -48,12 +50,14 @@ public class TenantSchoolController {
             SchoolRepository schools,
             ZoneRepository zones,
             ModuleEntitlementReadRepository modules,
+            ModuleEntitlementGuard moduleGuard,
             SchoolStructureReadRepository structure,
             ZoneCommandRepository zoneCommands,
             @Value("${tenant-school.read-token:}") String readToken) {
         this.schools = schools;
         this.zones = zones;
         this.modules = modules;
+        this.moduleGuard = moduleGuard;
         this.structure = structure;
         this.zoneCommands = zoneCommands;
         this.readToken = readToken == null ? "" : readToken.trim();
@@ -120,6 +124,7 @@ public class TenantSchoolController {
         requireToken(token, "tenant-school:write");
         Long resolvedId = TenantScope.resolveSchoolId(id); // superadmin bypass; own-school admin; else 403
         TenantScope.requireSchoolAdmin();
+        moduleGuard.requireErpEnabled(resolvedId);
         int classCount = intInRange(body.get("classCount"), 1, 12, "classCount");
         int sectionCount = intInRange(body.get("sectionCount"), 1, 26, "sectionCount");
         try {
@@ -193,6 +198,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
+        moduleGuard.requireErpEnabled(resolvedId);
         return structure.sections(resolvedId, classId, active == null ? Boolean.TRUE : active);
     }
 
@@ -202,6 +208,7 @@ public class TenantSchoolController {
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
+        moduleGuard.requireErpEnabled(resolvedId);
         return structure.staff(resolvedId);
     }
 
@@ -212,6 +219,7 @@ public class TenantSchoolController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
         TenantScope.requireSuperAdmin();
+        moduleGuard.requireErpEnabled(id);
         return runCommand(() -> structure.addStaff(id, body));
     }
 
@@ -223,6 +231,7 @@ public class TenantSchoolController {
         // schoolId gets the full global list.
         requireToken(token, "tenant-school:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        moduleGuard.requireErpEnabled(scope);
         return structure.classes(scope);
     }
 
@@ -234,6 +243,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
+        moduleGuard.requireErpEnabled(schoolId);
         return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
     }
 
@@ -245,6 +255,7 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
+        moduleGuard.requireErpEnabled(schoolId);
         return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
     }
 
