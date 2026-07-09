@@ -46,6 +46,12 @@ public class NotificationInboxEvent {
     @Column(name = "last_error")
     private String lastError;
 
+    @Column(name = "trace_parent")
+    private String traceParent;
+
+    @Column(name = "trace_state")
+    private String traceState;
+
     public String getEventId() { return eventId; }
     public void setEventId(String eventId) { this.eventId = eventId; }
     public String getEventType() { return eventType; }
@@ -66,4 +72,8 @@ public class NotificationInboxEvent {
     public void setProcessedAt(OffsetDateTime processedAt) { this.processedAt = processedAt; }
     public String getLastError() { return lastError; }
     public void setLastError(String lastError) { this.lastError = lastError; }
+    public String getTraceParent() { return traceParent; }
+    public void setTraceParent(String traceParent) { this.traceParent = traceParent; }
+    public String getTraceState() { return traceState; }
+    public void setTraceState(String traceState) { this.traceState = traceState; }
 }

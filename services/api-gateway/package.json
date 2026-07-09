@@ -1,0 +1,19 @@
+{
+  "name": "custoking-api-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test server.test.js"
+  },
+  "dependencies": {
+    "@google-cloud/opentelemetry-cloud-trace-exporter": "^3.0.0",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.78.0",
+    "@opentelemetry/sdk-node": "^0.220.0"
+  },
+  "overrides": {
+    "google-auth-library": "^10.9.0",
+    "gaxios": "^7.1.4"
+  }
+}

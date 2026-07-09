@@ -1,8 +1,10 @@
 package com.custoking.ims.platformservice.application;
 
 import com.custoking.ims.platformservice.application.projection.ReportingEventProjector;
+import com.custoking.ims.platformservice.observability.TraceContextBridge;
 import com.custoking.ims.platformservice.persistence.ReportingCommandRepository;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -23,16 +25,28 @@ public class ReportingEventInboxProcessor {
     private final ReportingEventInboxRepository inbox;
     private final ReportingCommandRepository commands;
     private final Map<String, ReportingEventProjector> projectorsByEventType;
+    private final TraceContextBridge traceContextBridge;
     private final int batchSize;
 
     public ReportingEventInboxProcessor(
             ReportingEventInboxRepository inbox,
             ReportingCommandRepository commands,
             List<ReportingEventProjector> projectors,
+            int batchSize) {
+        this(inbox, commands, projectors, TraceContextBridge.noop(), batchSize);
+    }
+
+    @Autowired
+    public ReportingEventInboxProcessor(
+            ReportingEventInboxRepository inbox,
+            ReportingCommandRepository commands,
+            List<ReportingEventProjector> projectors,
+            TraceContextBridge traceContextBridge,
             @Value("${reporting.event-projection.batch-size:50}") int batchSize) {
         this.inbox = inbox;
         this.commands = commands;
         this.projectorsByEventType = indexByEventType(projectors);
+        this.traceContextBridge = traceContextBridge;
         this.batchSize = batchSize;
     }
 
@@ -59,22 +73,30 @@ public class ReportingEventInboxProcessor {
         int processed = 0;
         for (var event : inbox.findReceivedForProjection(batchSize)) {
             try {
-                String eventType = event.eventType() == null ? "" : event.eventType();
-                ReportingEventProjector projector = projectorsByEventType.get(eventType);
-                if (projector != null && projector.feedWorthy()
-                        && !commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
-                    commands.recordProjectedFeed(toFeedCommand(event));
-                }
-                if (projector != null) {
-                    projector.project(event);
-                }
-                inbox.markProcessed(event.eventId());
+                traceContextBridge.runInSpan(
+                        "reporting.project " + safe(event.eventType(), "event"),
+                        event.traceParent(),
+                        event.traceState(),
+                        () -> processOne(event));
                 processed++;
             } catch (RuntimeException ex) {
                 inbox.markFailed(event.eventId(), ex.getMessage());
             }
         }
         return processed;
+    }
+
+    private void processOne(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+        String eventType = event.eventType() == null ? "" : event.eventType();
+        ReportingEventProjector projector = projectorsByEventType.get(eventType);
+        if (projector != null && projector.feedWorthy()
+                && !commands.feedSourceExists(SOURCE_TYPE, event.eventId())) {
+            commands.recordProjectedFeed(toFeedCommand(event));
+        }
+        if (projector != null) {
+            projector.project(event);
+        }
+        inbox.markProcessed(event.eventId());
     }
 
     private ReportingCommandRepository.ProjectedFeedCommand toFeedCommand(

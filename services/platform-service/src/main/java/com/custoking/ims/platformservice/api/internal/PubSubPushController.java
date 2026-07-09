@@ -1,10 +1,12 @@
 package com.custoking.ims.platformservice.api.internal;
 
 import com.custoking.ims.platformservice.application.NotificationInboxProcessor;
+import com.custoking.ims.platformservice.observability.TraceContextBridge;
 import com.custoking.ims.platformservice.persistence.NotificationInboxEvent;
 import com.custoking.ims.platformservice.persistence.NotificationInboxRepository;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,15 +29,26 @@ public class PubSubPushController {
     private final NotificationInboxProcessor inboxProcessor;
     private final ObjectMapper objectMapper;
     private final String pushToken;
+    private final TraceContextBridge traceContextBridge;
 
     public PubSubPushController(NotificationInboxRepository inboxRepository,
                                 NotificationInboxProcessor inboxProcessor,
                                 ObjectMapper objectMapper,
-                                @Value("${notification.pubsub.push-token:}") String pushToken) {
+                                String pushToken) {
+        this(inboxRepository, inboxProcessor, objectMapper, pushToken, TraceContextBridge.noop());
+    }
+
+    @Autowired
+    public PubSubPushController(NotificationInboxRepository inboxRepository,
+                                NotificationInboxProcessor inboxProcessor,
+                                ObjectMapper objectMapper,
+                                @Value("${notification.pubsub.push-token:}") String pushToken,
+                                TraceContextBridge traceContextBridge) {
         this.inboxRepository = inboxRepository;
         this.inboxProcessor = inboxProcessor;
         this.objectMapper = objectMapper;
         this.pushToken = pushToken;
+        this.traceContextBridge = traceContextBridge;
     }
 
     @PostMapping("/notifications")
@@ -57,6 +70,14 @@ public class PubSubPushController {
         if (eventId == null || eventId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing event id");
         }
+        String traceParent = attribute(message, "traceparent");
+        String traceState = attribute(message, "tracestate");
+        String resolvedEventId = eventId;
+        traceContextBridge.runInSpan("pubsub.receive notifications", traceParent, traceState,
+                () -> receiveNotificationMessage(message, resolvedEventId, traceParent, traceState));
+    }
+
+    private void receiveNotificationMessage(JsonNode message, String eventId, String traceParent, String traceState) {
         JsonNode decodedPayload = decodePayload(message);
         JsonNode deliveryPayload = canonicalPayload(decodedPayload);
 
@@ -76,6 +97,8 @@ public class PubSubPushController {
         event.setAggregateType(firstText(attribute(message, "aggregateType"), text(decodedPayload, "aggregateType")));
         event.setAggregateId(firstText(attribute(message, "aggregateId"), text(decodedPayload, "aggregateId")));
         event.setPayload(toJson(deliveryPayload));
+        event.setTraceParent(traceParent);
+        event.setTraceState(traceState);
         inboxRepository.save(event);
 
         inboxProcessor.process(event);

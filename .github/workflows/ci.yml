@@ -76,6 +76,14 @@ jobs:
         working-directory: ${{ matrix.path }}
         run: npm ci --include=dev
 
+      - name: Install Node service dependencies
+        if: matrix.tool == 'node'
+        working-directory: ${{ matrix.path }}
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --include=dev
+          fi
+
       - name: Audit frontend dependencies
         if: matrix.tool == 'npm'
         working-directory: ${{ matrix.path }}

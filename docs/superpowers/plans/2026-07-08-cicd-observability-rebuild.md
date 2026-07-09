@@ -8,6 +8,17 @@
 
 **Tech Stack:** GitHub Actions, Cloud Build, `gcloud`, Trivy, Docker Buildx (GHA cache), Spring Boot 4.0.7 `spring-boot-starter-opentelemetry` (Java 25), OpenTelemetry JS SDK, `@google-cloud/opentelemetry-cloud-trace-exporter`, Terraform (google provider), PowerShell smoke scripts.
 
+## Progress Update - 2026-07-09
+
+- Phase 1 implementation is present in the working tree: workflow inventory is now 4 files (`ci.yml`, `deploy.yml`, `release.yml`, `security-scan.yml`), the stale `whole-application-validation.yml` and `security-container-scan.yml` workflows are gone, `ci.yml` has Buildx + Trivy + integration gating, and `deploy.yml` resolves the env-suffixed gateway before running the whole-application smoke.
+- Phase 2 implementation is present and deployed to dev: all five Spring services have the Spring Boot OpenTelemetry starter, OTLP exporter, GCP OTLP auth customizer, trace-correlated JSON logging, Pub/Sub trace-context propagation, and tracing tests; the Node gateway has OTel bootstrap, Cloud Trace export, trace-correlated logs, and propagation tests.
+- Final dev deployment is Cloud Build `8635e808-357b-4df8-b384-712d22b0ef7b`, image tag `observability-otel-auth-20260709025955-1960232`, with live revisions `school-core 00063-995`, `identity 00054-mzm`, `operations 00052-969`, `platform 00051-2sm`, `billing 00052-9mz`, `api-gateway 00052-qks`, and `frontend 00102-fdb`.
+- Runtime verification passed for the observability acceptance path: `/gateway-health` returned 200, `scripts\smoke-gateway-routes.ps1` passed 31/31, authenticated gateway smoke generated real traffic with 36/39 route checks passing, Cloud Trace returned 498 recent traces, and trace `fb369bec85534b5f6ebbccd16ba815b2` links gateway logs/spans to `custoking-school-core-service-dev` logs/spans for `/api/v1/fee-structure`.
+- Final-revision log scan shows `auth403=0` for all Java services and the gateway. Remaining exporter noise is intermittent timeout warnings only (`school-core=2`, `identity=1`, `platform=4` in the recent window).
+- Phase 3 Terraform is applied to dev under `deploy/gcp/observability/`: dashboards, uptime checks, alert policies, async log-based metrics, Monitoring services, availability/latency SLOs, burn-rate alerts, Monitoring OIDC invoker grants, and runtime trace-writer IAM. Dev state uses `gs://custoking-terraform-state` with prefix `observability/dev`.
+- Validation completed on 2026-07-09: Terraform `fmt -recursive -check`, `validate`, and token-backed `plan -var env=dev` all passed with `No changes`; `scripts\audit-observability-runbook.ps1` passed; duplicate Flyway source-version scan passed; active legacy-project reference scan found 0 active/unclassified hits; `git diff --check` had no whitespace errors; gateway tests passed 55/55.
+- Remaining non-code/non-observability follow-ups: install/run `actionlint` locally or rely on CI-side workflow parse validation, open draft PR validation, commit the working tree, promote/apply to prod when ready, and decide whether the three authenticated-smoke route mismatches (`GET /api/v1/schools/{id}/admin` 405, notifications 403, audit logs 401) need route/permission fixes.
+
 ## Global Constraints
 
 - **Do NOT regress live dev deploys.** `release.yml`/`deploy.yml`/`cloudbuild.yaml` are keep-and-verify; validate any deploy-path change against dev before prod.
@@ -75,18 +86,18 @@
 - [ ] **Step 4:** `actionlint` both workflows → clean. Draft-PR validation that `integration` is skipped on PR and present on push.
 - [ ] **Step 5:** Commit.
 
-### Task 4: Repo hygiene — scrub `custoking-ims`, fix `deploy/gcp/README.md`
+### Task 4: Repo hygiene — scrub stale legacy-project references, fix `deploy/gcp/README.md`
 
 **Files:**
 - Modify: `deploy/gcp/README.md`
-- Grep-and-fix: any remaining `custoking-ims` / `755376288593` references
+- Grep-and-fix: any remaining legacy project ID / legacy project number references
 
-**Interfaces:** Produces: zero `custoking-ims` references in the repo (except historical docs explicitly marked as such).
+**Interfaces:** Produces: zero stale legacy-project references in active source/config; any retained historical references are explicitly marked.
 
-- [ ] **Step 1 (test-first):** `grep -rn "custoking-ims\|755376288593" --include=*.yml --include=*.yaml --include=*.md --include=*.json .` — record all hits.
-- [ ] **Step 2:** Rewrite `deploy/gcp/README.md`: 5 merged services (identity, school-core, operations, platform, billing) + gateway + frontend; correct 17-secret `-${_ENV}` list (incl. `app-rt-password`); source bucket `gs://custoking-github-deploy-source`; project `custoking`.
-- [ ] **Step 3:** Fix any non-historical `custoking-ims` hits. Leave clearly-historical `docs/MONOLITH_*`/migration docs untouched.
-- [ ] **Step 4:** Re-run the grep from Step 1 → only intentional historical hits remain. Commit.
+- [x] **Step 1 (test-first):** Scan for legacy project ID / legacy project number references and record all hits.
+- [x] **Step 2:** Confirm `deploy/gcp/README.md` documents the 5 merged services (identity, school-core, operations, platform, billing) + gateway + frontend; correct 17-secret `-${_ENV}` list (incl. `app-rt-password`); source bucket `gs://custoking-github-deploy-source`; project `custoking`.
+- [x] **Step 3:** Fix non-historical legacy project hits and remove stale ignored preflight artifacts. Leave only explicitly marked historical docs.
+- [x] **Step 4:** Re-run the scan → only intentional historical hits remain. Commit.
 
 ---
 

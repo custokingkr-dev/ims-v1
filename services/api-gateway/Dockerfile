@@ -1,6 +1,8 @@
 FROM node:20-alpine
 WORKDIR /app
-COPY server.js ./
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY tracing.js server.js ./
 ENV NODE_ENV=production
 ENV PORT=80
 EXPOSE 80

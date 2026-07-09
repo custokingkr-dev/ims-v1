@@ -145,10 +145,16 @@ jobs:
           : "${DB_HOST:?set DB_HOST on the '${ENV_NAME}' GitHub Environment}"
           : "${DB_NAME:?set DB_NAME on the '${ENV_NAME}' GitHub Environment}"
 
+          if [[ "${ENV_NAME}" == "prod" ]]; then
+            OTEL_SAMPLE="0.2"
+          else
+            OTEL_SAMPLE="1.0"
+          fi
+
           gcloud config set project "${GCP_PROJECT_ID}"
           BUILD_ID="$(gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }} \
+            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }},_OTEL_SAMPLE=${OTEL_SAMPLE} \
             --project="${GCP_PROJECT_ID}" \
             --gcs-source-staging-dir="${CLOUD_BUILD_SOURCE_STAGING_DIR}" \
             --async \

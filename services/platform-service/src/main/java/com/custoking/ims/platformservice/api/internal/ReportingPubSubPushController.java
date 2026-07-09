@@ -1,9 +1,11 @@
 package com.custoking.ims.platformservice.api.internal;
 
+import com.custoking.ims.platformservice.observability.TraceContextBridge;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository.ReportingEventInboxRecord;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -30,14 +32,25 @@ public class ReportingPubSubPushController {
     private final ReportingEventInboxRepository inbox;
     private final ObjectMapper objectMapper;
     private final String pushToken;
+    private final TraceContextBridge traceContextBridge;
 
     public ReportingPubSubPushController(
             ReportingEventInboxRepository inbox,
             ObjectMapper objectMapper,
-            @Value("${reporting.pubsub.push-token:${reporting.read-token:}}") String pushToken) {
+            String pushToken) {
+        this(inbox, objectMapper, pushToken, TraceContextBridge.noop());
+    }
+
+    @Autowired
+    public ReportingPubSubPushController(
+            ReportingEventInboxRepository inbox,
+            ObjectMapper objectMapper,
+            @Value("${reporting.pubsub.push-token:${reporting.read-token:}}") String pushToken,
+            TraceContextBridge traceContextBridge) {
         this.inbox = inbox;
         this.objectMapper = objectMapper;
         this.pushToken = pushToken == null ? "" : pushToken.trim();
+        this.traceContextBridge = traceContextBridge;
     }
 
     @PostMapping("/reporting-events")
@@ -49,6 +62,13 @@ public class ReportingPubSubPushController {
         requireToken(token != null ? token : tokenParam, "reporting:ingest");
 
         JsonNode message = inboundEnvelope.path("message");
+        String traceParent = attribute(message, "traceparent");
+        String traceState = attribute(message, "tracestate");
+        traceContextBridge.runInSpan("pubsub.receive reporting-events", traceParent, traceState,
+                () -> recordReportingEvent(inboundEnvelope, message, traceParent, traceState));
+    }
+
+    private void recordReportingEvent(JsonNode inboundEnvelope, JsonNode message, String traceParent, String traceState) {
         JsonNode eventEnvelope = message.isMissingNode() ? inboundEnvelope : decodeData(message);
         if (!ENVELOPE_VERSION.equals(firstText(text(eventEnvelope, "schemaVersion"), text(eventEnvelope, "schema")))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported reporting event envelope");
@@ -79,7 +99,9 @@ public class ReportingPubSubPushController {
                 offsetDateTime(eventEnvelope, "occurredAt"),
                 OffsetDateTime.now(),
                 toJson(eventEnvelope),
-                payload.isMissingNode() || payload.isNull() ? "{}" : toJson(payload)
+                payload.isMissingNode() || payload.isNull() ? "{}" : toJson(payload),
+                traceParent,
+                traceState
         ));
     }
 

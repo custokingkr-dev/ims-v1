@@ -1,7 +1,12 @@
 # CI/CD Rebuild + GCP-Native Observability — Design
 
 **Date:** 2026-07-08
-**Status:** Draft for review
+**Status:** Implemented for dev as of 2026-07-09; production promotion,
+draft-PR workflow validation, and local `actionlint` validation remain as
+follow-ups. See
+`docs/superpowers/plans/2026-07-08-cicd-observability-rebuild.md` for the live
+progress evidence.
+
 **Author:** (pairing) Shubham + Claude
 
 ---
@@ -30,7 +35,7 @@ Five workflows exist today:
 | `deploy.yml` | **Keep, working.** Reusable WIF → `gcloud builds submit cloudbuild.yaml` build-once; env-parameterized; direct-service smoke. Powers live dev deploys. |
 | `release.yml` | **Keep, working.** push main → deploy-dev → gated promote-prod (same digest). Per-job concurrency fix already in place. |
 | `security-container-scan.yml` | **Fold in.** Weekly/manual Trivy, one service at a time, rebuilds from scratch. Merge into the new security workflow + PR gate. |
-| `whole-application-validation.yml` | **Delete.** Hardcodes the DELETED `custoking-ims` project (old number `755376288593`), triggers on 15 workflows that no longer exist, resolves an un-suffixed `custoking-api-gateway` name. Its *valuable* content (full-stack integration smoke, tenant-isolation BOLA gate, migration boundary audit) moves onto the pipeline. |
+| `whole-application-validation.yml` | **Delete.** Hardcodes the deleted legacy project and old project number, triggers on 15 workflows that no longer exist, resolves an un-suffixed `custoking-api-gateway` name. Its *valuable* content (full-stack integration smoke, tenant-isolation BOLA gate, migration boundary audit) moves onto the pipeline. |
 
 Observability today: a manual runbook only (`curl` health, PowerShell smokes). **No**
 structured-log/trace correlation config, **no** tracing instrumentation, **no**
@@ -111,7 +116,7 @@ Target workflow set (4 files replace 5):
 ### A6. Deletions / doc fixes
 - Delete `whole-application-validation.yml` and `security-container-scan.yml`.
 - Rewrite `deploy/gcp/README.md` to the 5-merged-service reality + correct 17-secret,
-  `-${_ENV}`-suffixed list; drop all `custoking-ims` references.
+  `-${_ENV}`-suffixed list; drop all stale legacy-project references.
 
 ---
 
@@ -181,7 +186,7 @@ Deploy-chain changes are surgical (dev is live — must not regress deploys).
 ## Acceptance criteria
 
 - 4 workflows only; `whole-application-validation.yml` + `security-container-scan.yml` gone;
-  zero `custoking-ims` references in the repo.
+  zero stale legacy-project references in active source/config.
 - PR gate: per-service tests + docker build (cached) + Trivy CVE (blocks on CRITICAL) +
   gitleaks. Integration/BOLA/migration run on main + nightly.
 - A request through the dev gateway produces a **single Cloud Trace waterfall** spanning

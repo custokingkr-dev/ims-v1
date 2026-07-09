@@ -1,5 +1,10 @@
 # DB Cleanup + Scaling Thresholds Implementation Plan
 
+> Historical snapshot: this implementation plan includes one-off production job
+> parameters from the previous project state. Keep those identifiers only as
+> recorded execution history; current deploy/observability work uses project
+> `custoking`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Do the right-sized subset of Phase 3 Task 3.2 — remove two verified-dead `public.*` orphan tables, audit index/constraint correctness (fix only genuine gaps), and document DB scaling thresholds — deferring partitioning and speculative index-tuning as premature at current prod scale.

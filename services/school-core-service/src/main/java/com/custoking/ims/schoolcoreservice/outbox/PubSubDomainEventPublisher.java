@@ -102,15 +102,17 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
 
         String envelopeJson = objectMapper.writeValueAsString(root);
 
-        return PubsubMessage.newBuilder()
+        PubsubMessage.Builder builder = PubsubMessage.newBuilder()
                 .setData(ByteString.copyFromUtf8(envelopeJson))
                 .putAllAttributes(java.util.Map.of(
                         "eventId", nullToEmpty(envelope.eventId()),
                         "eventKey", nullToEmpty(envelope.eventKey()),
                         "eventType", nullToEmpty(envelope.eventType()),
                         "aggregateType", nullToEmpty(envelope.aggregateType()),
-                        "aggregateId", nullToEmpty(envelope.aggregateId())))
-                .build();
+                        "aggregateId", nullToEmpty(envelope.aggregateId())));
+        putIfPresent(builder, "traceparent", envelope.traceParent());
+        putIfPresent(builder, "tracestate", envelope.traceState());
+        return builder.build();
     }
 
     private static JsonNode parsePayload(String payloadJson, ObjectMapper objectMapper) {
@@ -122,6 +124,12 @@ public class PubSubDomainEventPublisher implements DomainEventPublisher {
 
     private static String nullToEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    private static void putIfPresent(PubsubMessage.Builder builder, String key, String value) {
+        if (value != null && !value.isBlank()) {
+            builder.putAttributes(key, value);
+        }
     }
 
     private static String resolveProjectId(String configuredProjectId) {

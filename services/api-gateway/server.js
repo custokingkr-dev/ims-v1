@@ -1,7 +1,10 @@
 'use strict';
 
+require('./tracing');
+
 const http = require('http');
 const crypto = require('crypto');
+const { context: otelContext, trace: otelTrace } = require('@opentelemetry/api');
 const { randomUUID } = crypto;
 
 const PORT = Number(process.env.PORT || 80);
@@ -160,9 +163,25 @@ const routes = [
 const idTokenCache = new Map();
 
 const server = http.createServer(async (req, res) => {
+  let requestId = req.headers['x-request-id'] || randomUUID();
+  let parsed = null;
+  let matchedService = null;
+  const startedAt = process.hrtime.bigint();
+  const traceFields = currentTraceFields(req);
+  res.on('finish', () => {
+    const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
+    logJson('INFO', 'gateway.request', {
+      requestId,
+      method: req.method,
+      path: parsed ? parsed.pathname : undefined,
+      status: res.statusCode,
+      durationMs: Math.round(durationMs),
+      upstreamService: matchedService,
+    }, traceFields);
+  });
+
   try {
-    const requestId = req.headers['x-request-id'] || randomUUID();
-    const parsed = new URL(req.url, 'http://gateway.local');
+    parsed = new URL(req.url, 'http://gateway.local');
 
     setSecurityHeaders(res);
 
@@ -202,6 +221,7 @@ const server = http.createServer(async (req, res) => {
 
     const matched = routes.find((candidate) => candidate.matches(parsed.pathname));
     if (matched) {
+      matchedService = matched.service;
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
         const principal = await authenticate(req, requestId);
         if (!principal) {
@@ -220,9 +240,15 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    matchedService = 'frontend';
     await proxyFrontend(req, res, parsed, requestId);
   } catch (error) {
-    console.error('gateway.error', error);
+    logJson('ERROR', 'gateway.error', {
+      requestId,
+      path: parsed ? parsed.pathname : undefined,
+      error: error && error.message ? error.message : String(error),
+      stack: error && error.stack ? error.stack : undefined,
+    }, traceFields);
     if (!res.headersSent) {
       sendJson(res, 502, { message: 'Gateway upstream error' });
     } else {
@@ -427,7 +453,7 @@ async function proxyToUrl(req, res, target, requestId, service, principal) {
   res.end();
 }
 
-function outboundHeaders(req, requestId) {
+function outboundHeaders(req, requestId, activeContext = otelContext.active()) {
   const headers = {};
   for (const [key, value] of Object.entries(req.headers)) {
     if (!isRequestHopHeader(key) && !isClientSpoofableHeader(key)) {
@@ -437,6 +463,10 @@ function outboundHeaders(req, requestId) {
   headers['x-request-id'] = requestId;
   headers['x-forwarded-for'] = appendForwardedFor(req);
   headers['x-forwarded-proto'] = req.headers['x-forwarded-proto'] || 'https';
+  const spanContext = activeSpanContext(activeContext);
+  if (spanContext) {
+    headers.traceparent = formatTraceparent(spanContext);
+  }
   return headers;
 }
 
@@ -593,6 +623,78 @@ function sendJson(res, status, payload) {
   res.end(JSON.stringify(payload));
 }
 
+function logJson(severity, message, fields = {}, traceFields = {}) {
+  const record = {
+    severity,
+    message,
+    ...fields,
+    ...cloudLoggingTraceFields(traceFields),
+  };
+  for (const [key, value] of Object.entries(record)) {
+    if (value === undefined || value === null || value === '') {
+      delete record[key];
+    }
+  }
+  console.log(JSON.stringify(record));
+}
+
+function currentTraceFields(req, activeContext = otelContext.active()) {
+  const spanContext = activeSpanContext(activeContext) || parseTraceparentHeader(req && req.headers && req.headers.traceparent);
+  if (!spanContext) return {};
+  return {
+    traceId: spanContext.traceId,
+    spanId: spanContext.spanId,
+    traceFlags: spanContext.traceFlags,
+  };
+}
+
+function cloudLoggingTraceFields(fields) {
+  if (!fields || !fields.traceId) return {};
+  const project = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT_ID || 'custoking';
+  const result = {
+    traceId: fields.traceId,
+    spanId: fields.spanId,
+    'logging.googleapis.com/trace': `projects/${project}/traces/${fields.traceId}`,
+  };
+  if (fields.spanId) {
+    result['logging.googleapis.com/spanId'] = fields.spanId;
+  }
+  return result;
+}
+
+function activeSpanContext(activeContext = otelContext.active()) {
+  const span = otelTrace.getSpan(activeContext);
+  if (!span || typeof span.spanContext !== 'function') return null;
+  const spanContext = span.spanContext();
+  return isValidTraceContext(spanContext) ? spanContext : null;
+}
+
+function parseTraceparentHeader(value) {
+  const header = Array.isArray(value) ? value[0] : value;
+  if (typeof header !== 'string') return null;
+  const match = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})(?:-.+)?$/i.exec(header.trim());
+  if (!match) return null;
+  const spanContext = {
+    traceId: match[1].toLowerCase(),
+    spanId: match[2].toLowerCase(),
+    traceFlags: Number.parseInt(match[3], 16),
+  };
+  return isValidTraceContext(spanContext) ? spanContext : null;
+}
+
+function formatTraceparent(spanContext) {
+  const flags = (spanContext.traceFlags || 0).toString(16).padStart(2, '0').slice(-2);
+  return `00-${spanContext.traceId}-${spanContext.spanId}-${flags}`;
+}
+
+function isValidTraceContext(spanContext) {
+  return !!spanContext
+    && /^[0-9a-f]{32}$/i.test(spanContext.traceId || '')
+    && /^[0-9a-f]{16}$/i.test(spanContext.spanId || '')
+    && !/^0+$/.test(spanContext.traceId)
+    && !/^0+$/.test(spanContext.spanId);
+}
+
 function envUrl(name, fallback) {
   return new URL(process.env[name] || fallback);
 }
@@ -627,6 +729,12 @@ module.exports = {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  logJson,
+  currentTraceFields,
+  cloudLoggingTraceFields,
+  activeSpanContext,
+  parseTraceparentHeader,
+  formatTraceparent,
   verifyJwtLocally,
   principalFromClaims,
   authenticate,

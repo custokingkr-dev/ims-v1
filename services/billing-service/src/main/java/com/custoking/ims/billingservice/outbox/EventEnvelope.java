@@ -19,5 +19,22 @@ public record EventEnvelope(
         String aggregateId,
         OffsetDateTime occurredAt,
         Long schoolId,
-        String payloadJson) {
+        String payloadJson,
+        String traceParent,
+        String traceState) {
+
+    public EventEnvelope(
+            String schemaVersion,
+            String eventId,
+            String eventKey,
+            String eventType,
+            String eventVersion,
+            String aggregateType,
+            String aggregateId,
+            OffsetDateTime occurredAt,
+            Long schoolId,
+            String payloadJson) {
+        this(schemaVersion, eventId, eventKey, eventType, eventVersion, aggregateType,
+                aggregateId, occurredAt, schoolId, payloadJson, null, null);
+    }
 }

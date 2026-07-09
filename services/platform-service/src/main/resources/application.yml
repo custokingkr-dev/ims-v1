@@ -40,9 +40,12 @@ management:
   tracing:
     sampling:
       probability: ${OTEL_TRACES_SAMPLER_ARG:1.0}
-  otlp:
+  opentelemetry:
     tracing:
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:}
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:${OTEL_EXPORTER_OTLP_ENDPOINT:}}
+  otlp:
     # spring-boot-starter-opentelemetry transitively pulls in
     # io.micrometer:micrometer-registry-otlp, which auto-enables an OTLP
     # *metrics* exporter (pushing to a http://localhost:4318 default) as soon

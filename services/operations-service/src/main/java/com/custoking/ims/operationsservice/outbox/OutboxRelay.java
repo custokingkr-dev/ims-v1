@@ -67,7 +67,7 @@ public class OutboxRelay {
     public int publishBatch() {
         List<OutboxRow> rows = jdbc.sql("""
                         SELECT id::text AS id, event_key, event_type, aggregate_type, aggregate_id,
-                               school_id, occurred_at, payload::text AS payload
+                               school_id, occurred_at, payload::text AS payload, trace_parent, trace_state
                         FROM %s
                         WHERE published_at IS NULL
                         ORDER BY id
@@ -99,7 +99,9 @@ public class OutboxRelay {
                 row.aggregateId(),
                 row.occurredAt(),
                 row.schoolId(),
-                row.payload());
+                row.payload(),
+                row.traceParent(),
+                row.traceState());
     }
 
     private String qualifiedTable(String schema) {
@@ -122,6 +124,8 @@ public class OutboxRelay {
             String aggregateId,
             Long schoolId,
             OffsetDateTime occurredAt,
-            String payload) {
+            String payload,
+            String traceParent,
+            String traceState) {
     }
 }
