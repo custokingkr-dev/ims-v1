@@ -91,9 +91,9 @@ ON CONFLICT (id) DO UPDATE SET
 
 INSERT INTO fee.fee_bands
     (id, name, class_from, class_to, discount, active_schedules_csv,
-     created_at, updated_at, academic_year_id)
+     created_at, updated_at, academic_year_id, school_id)
 VALUES
-    ('band-1-5', 'E2E Class 1-5', 1, 5, 0, 'Annual', now(), now(), 'ay_2024_25')
+    ('band-1-5', 'E2E Class 1-5', 1, 5, 0, 'Annual', now(), now(), 'ay_2024_25', 1)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     class_from = EXCLUDED.class_from,
@@ -101,6 +101,7 @@ ON CONFLICT (id) DO UPDATE SET
     discount = EXCLUDED.discount,
     active_schedules_csv = EXCLUDED.active_schedules_csv,
     academic_year_id = EXCLUDED.academic_year_id,
+    school_id = EXCLUDED.school_id,
     updated_at = now();
 
 SELECT setval('tenant_school.seq_schools', COALESCE((SELECT MAX(id) FROM tenant_school.schools), 0) + 1, false);
