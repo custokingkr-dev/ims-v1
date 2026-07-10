@@ -159,4 +159,58 @@ class StudentImportPhotoIntegrationTest {
         assertThat(inserted).hasSize(1);
         assertThat(inserted.get(0).get("admissionNo")).isEqualTo("IMP-CLASS-LABEL");
     }
+
+    @Test
+    void previewImport_marksInactiveSectionAsSetupUpdateNeeded() throws Exception {
+        long schoolId = seedSchool(2, 2);
+        repo.updateStructure(schoolId, 2, 1);
+        StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Inactive Section", "Class", "1", "Section", "B",
+                        "AdmissionNo", "IMP-INACTIVE-SECTION", "Gender", "Female",
+                        "Phone", "9876543210"))));
+
+        assertThat(preview.get("validCount")).isEqualTo(0);
+        assertThat(preview.get("errorCount")).isEqualTo(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> structure = (Map<String, Object>) preview.get("structure");
+        assertThat(structure.get("requiresStructureUpdate")).isEqualTo(true);
+        assertThat((java.util.List<String>) structure.get("missingSections")).contains("B");
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> rows = (java.util.List<Map<String, Object>>) preview.get("rows");
+        assertThat(rows.get(0).get("status")).isEqualTo("Setup update needed");
+    }
+
+    @Test
+    void confirmImport_rejectsInactiveSectionIfStructureChangedAfterPreview() throws Exception {
+        long schoolId = seedSchool(2, 2);
+        StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Shrunk Section", "Class", "1", "Section", "B",
+                        "AdmissionNo", "IMP-SHRUNK-SECTION", "Gender", "Male",
+                        "Phone", "9876543210"))));
+        assertThat(preview.get("validCount")).isEqualTo(1);
+        repo.updateStructure(schoolId, 2, 1);
+
+        Map<String, Object> confirm = studentRepo.confirmImport(Map.of(
+                "schoolId", schoolId,
+                "fileToken", preview.get("fileToken")));
+
+        assertThat(confirm.get("inserted")).isEqualTo(0);
+        assertThat(confirm.get("skipped")).isEqualTo(1);
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> skippedRows =
+                (java.util.List<Map<String, Object>>) confirm.get("skippedRows");
+        assertThat(String.valueOf(skippedRows.get(0).get("reason"))).contains("not active");
+    }
 }

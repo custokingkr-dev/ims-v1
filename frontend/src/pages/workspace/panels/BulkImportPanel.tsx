@@ -12,8 +12,8 @@ interface Props {
 // Shown to schools and used to generate a real .xlsx template.
 const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; note: string }> = [
   { key: 'Name', required: true, example: 'Aryan Mehta', note: 'Student full name' },
-  { key: 'Class', required: true, example: '9', note: 'Class / grade (e.g. 1–12)' },
-  { key: 'Section', required: true, example: 'B', note: 'Section letter' },
+  { key: 'Class', required: true, example: '9', note: 'Must match an active class in this school setup' },
+  { key: 'Section', required: true, example: 'B', note: 'Must match an active section in this school setup' },
   { key: 'AdmissionNo', required: true, example: 'ADM-1001', note: 'Unique admission number' },
   { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Format YYYY-MM-DD' },
   { key: 'Gender', required: false, example: 'Male', note: 'Male / Female / Other' },

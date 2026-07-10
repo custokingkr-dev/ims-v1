@@ -1924,20 +1924,14 @@ public class StudentReadRepository {
         if (duplicate != null && duplicate > 0) {
             return new ImportValidation("Duplicate", "Admission number already exists", false, true, false);
         }
-        Long sectionCount = jdbc.sql("""
-                        SELECT COUNT(*)
-                        FROM tenant_school.school_sections
-                        WHERE school_id = :schoolId
-                          AND school_class_id = :classId
-                          AND lower(name) = lower(:sectionName)
-                        """)
-                .param("schoolId", schoolId)
-                .param("classId", schoolClass.get().get("id"))
-                .param("sectionName", str(normalized.get("sectionName"), ""))
-                .query(Long.class)
-                .single();
-        if (sectionCount == null || sectionCount == 0) {
-            return new ImportValidation("Section not found", "Section value not found for the school", false, true, false);
+        Optional<Map<String, Object>> section = activeSectionByNameForClassSchool(
+                schoolId,
+                String.valueOf(schoolClass.get().get("id")),
+                str(normalized.get("sectionName"), ""));
+        if (section.isEmpty()) {
+            return new ImportValidation("Setup update needed",
+                    "Class section is not active for this school's configured setup",
+                    false, true, false);
         }
         if (!str(normalized.get("phone"), "").replaceAll("\\D+", "").matches("\\d{10}")) {
             return new ImportValidation("Warning", "Phone is unusual format", true, false, true);
@@ -1948,8 +1942,11 @@ public class StudentReadRepository {
     private Long insertImportedStudent(Map<String, Object> normalized, Long schoolId, String batchId) {
         Map<String, Object> schoolClass = classByName(str(normalized.get("className"), ""))
                 .orElseThrow(() -> new IllegalArgumentException("Class not found"));
-        Map<String, Object> section = getOrCreateSection(schoolId, String.valueOf(schoolClass.get("id")),
-                str(normalized.get("sectionName"), "A"));
+        Map<String, Object> section = activeSectionByNameForClassSchool(
+                schoolId,
+                String.valueOf(schoolClass.get("id")),
+                str(normalized.get("sectionName"), "A"))
+                .orElseThrow(() -> new IllegalArgumentException("Class section is not active for this school's configured setup"));
         String academicYearId = currentAcademicYearId();
         String admissionNo = str(normalized.get("admissionNo"), "");
         Long duplicate = jdbc.sql("SELECT COUNT(*) FROM student.students WHERE lower(admission_no) = lower(:admissionNo) AND school_id = :schoolId")
@@ -2266,6 +2263,26 @@ public class StudentReadRepository {
                 .param("sectionId", sectionId)
                 .param("classId", classId)
                 .param("schoolId", schoolId)
+                .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name")))
+                .optional();
+    }
+
+    private Optional<Map<String, Object>> activeSectionByNameForClassSchool(Long schoolId, String classId, String requestedSectionName) {
+        String sectionName = str(requestedSectionName, "").trim();
+        if (sectionName.isBlank()) return Optional.empty();
+        return jdbc.sql("""
+                SELECT id, name
+                FROM tenant_school.school_sections
+                WHERE school_id = :schoolId
+                  AND school_class_id = :classId
+                  AND lower(name) = lower(:name)
+                  AND active = true
+                ORDER BY id ASC
+                LIMIT 1
+                """)
+                .param("schoolId", schoolId)
+                .param("classId", classId)
+                .param("name", sectionName)
                 .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name")))
                 .optional();
     }

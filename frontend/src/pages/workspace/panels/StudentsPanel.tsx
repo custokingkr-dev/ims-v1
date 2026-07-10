@@ -490,19 +490,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                             : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(student.fullName)}</div>
                           }
                           <div>
-                            <div className="ck-student-name-row">
-                              <span className="tb">{student.fullName}</span>
-                              {can('student:delete') ? (
-                                <button
-                                  type="button"
-                                  className="ck-btn ck-btn-ghost ck-btn-sm ck-student-delete-inline"
-                                  disabled={deleteBusyId === student.id}
-                                  onClick={() => void deleteStudent(student, { closeModal: false })}
-                                >
-                                  {deleteBusyId === student.id ? 'Deleting...' : 'Delete'}
-                                </button>
-                              ) : null}
-                            </div>
+                            <div className="tb">{student.fullName}</div>
                             <div className="ts">{student.classSection} · {student.academicYear}</div>
                           </div>
                         </div>
@@ -536,6 +524,16 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                           {can('student:update') && (
                             <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student, true)}>Edit</button>
                           )}
+                          {can('student:delete') ? (
+                            <button
+                              type="button"
+                              className="ck-btn ck-btn-ghost ck-btn-sm ck-student-delete-inline"
+                              disabled={deleteBusyId === student.id}
+                              onClick={() => void deleteStudent(student, { closeModal: false })}
+                            >
+                              {deleteBusyId === student.id ? 'Deleting...' : 'Delete'}
+                            </button>
+                          ) : null}
                         </div>
                       </td>
                     </tr>
