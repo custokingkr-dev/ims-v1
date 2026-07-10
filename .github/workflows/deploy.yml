@@ -206,7 +206,9 @@ jobs:
               "__DIRECT_SMOKE_SERVICE_ACCOUNT__": os.environ["DIRECT_SMOKE_SERVICE_ACCOUNT"],
               "__CATALOG_URL__": os.environ["CATALOG_URL"],
               "__TENANT_URL__": os.environ["TENANT_URL"],
-              "__SMOKE_SCHOOL_ID__": os.environ.get("SMOKE_SCHOOL_ID", "4"),
+              "__SMOKE_SCHOOL_ID__": os.environ.get("SMOKE_SCHOOL_ID", ""),
+              "__CATALOG_TOKEN_SECRET__": f"catalog-read-token-{os.environ['ENV_NAME']}",
+              "__TENANT_TOKEN_SECRET__": f"tenant-school-read-token-{os.environ['ENV_NAME']}",
           }
           for key, value in values.items():
               template = template.replace(key, value.replace("\\", "\\\\").replace('"', '\\"'))
@@ -223,8 +225,17 @@ jobs:
         shell: bash
         env:
           ENV_NAME: ${{ inputs.environment }}
+          DB_HOST: ${{ vars.DB_HOST }}
+          DB_NAME: ${{ vars.DB_NAME }}
         run: |
           set -euo pipefail
+          : "${DB_HOST:?set DB_HOST on the '${ENV_NAME}' GitHub Environment}"
+          : "${DB_NAME:?set DB_NAME on the '${ENV_NAME}' GitHub Environment}"
+          DB_HOST_ONLY="${DB_HOST%%:*}"
+          DB_PORT="5432"
+          if [[ "${DB_HOST}" == *":"* ]]; then
+            DB_PORT="${DB_HOST##*:}"
+          fi
           URL="$(gcloud run services describe "custoking-api-gateway-${ENV_NAME}" \
             --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')"
           echo "gateway_url=${URL}"
@@ -232,6 +243,10 @@ jobs:
             -Project "${GCP_PROJECT_ID}" \
             -Region "${GCP_REGION}" \
             -GatewayBaseUrl "${URL}" \
+            -HostAddress "${DB_HOST_ONLY}" \
+            -Port "${DB_PORT}" \
+            -Database "${DB_NAME}" \
+            -PasswordSecret "db-password-${ENV_NAME}" \
             -Gcloud "gcloud"
 
       - name: Print Cloud Run URLs

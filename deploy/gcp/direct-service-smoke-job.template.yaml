@@ -27,7 +27,7 @@ spec:
 
                   CATALOG_URL = os.environ["CATALOG_URL"].rstrip("/")
                   TENANT_URL = os.environ["TENANT_URL"].rstrip("/")
-                  SCHOOL_ID = os.environ.get("SMOKE_SCHOOL_ID", "4")
+                  SCHOOL_ID = os.environ.get("SMOKE_SCHOOL_ID", "").strip()
                   META = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience={}&format=full"
 
                   def request(url, headers=None, method="GET", body=None):
@@ -65,6 +65,13 @@ spec:
                       **auth_ctx,
                   }
 
+                  if not SCHOOL_ID:
+                      status, payload = request(f"{TENANT_URL}/api/v1/schools", tenant_headers)
+                      schools = json.loads(payload)
+                      if not schools:
+                          raise RuntimeError("no school available for direct service smoke")
+                      SCHOOL_ID = str(schools[0]["id"])
+
                   status, payload = request(f"{CATALOG_URL}/api/v1/catalog/annual-plan?schoolId={SCHOOL_ID}", catalog_headers)
                   print("catalog annual-plan", status, payload[:500])
 
@@ -92,10 +99,10 @@ spec:
                 - name: CATALOG_TOKEN
                   valueFrom:
                     secretKeyRef:
-                      name: catalog-read-token
+                      name: __CATALOG_TOKEN_SECRET__
                       key: latest
                 - name: TENANT_TOKEN
                   valueFrom:
                     secretKeyRef:
-                      name: tenant-school-read-token
+                      name: __TENANT_TOKEN_SECRET__
                       key: latest

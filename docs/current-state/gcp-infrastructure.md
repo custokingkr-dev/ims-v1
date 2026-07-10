@@ -299,7 +299,12 @@ Live jobs:
 - `ims-seed-dev`
 - `ims-seedfull-dev`
 
-`ims-direct-service-smoke` exists, but the live job list showed status `False` with no latest created execution name. The deploy workflows currently set `run_direct_smoke: false`.
+`ims-direct-service-smoke` exists. The release workflow now enables direct-service smoke and replaces this job from `deploy/gcp/direct-service-smoke-job.template.yaml` during each deploy.
+
+Verified live IAM for the direct smoke runtime:
+
+- `direct-service-smoke@custoking.iam.gserviceaccount.com` has `roles/run.invoker` on `custoking-school-core-service-dev` and `custoking-school-core-service-prod`.
+- It has `roles/secretmanager.secretAccessor` on `catalog-read-token-dev`, `tenant-school-read-token-dev`, `catalog-read-token-prod`, and `tenant-school-read-token-prod`.
 
 ## Notification Delivery Runtime
 

@@ -79,24 +79,26 @@ Required follow-up:
 
 - Either create/update the custom role and cut over IAM, or update docs/source to reflect the intentional predefined-role model.
 
-### Direct Service Smoke Is Not Automated
+### Direct Service Smoke Was Re-Enabled And Needs Next-Run Evidence
 
-`release.yml` sets:
+`release.yml` now requests:
 
 ```yaml
-run_direct_smoke: false
+run_direct_smoke: true
+run_gateway_smoke: true
 ```
 
-The live job `ims-direct-service-smoke` exists, but the job list showed no latest execution and status `False`.
+The direct smoke job template now uses env-suffixed secrets (`catalog-read-token-<env>`, `tenant-school-read-token-<env>`), and the deployed gateway smoke receives the GitHub environment's `DB_HOST`, `DB_NAME`, and `db-password-<env>` secret.
 
 Impact:
 
-- Private service direct smoke is not a current release gate.
+- The smoke gates are part of the next main-line release path.
+- Evidence from the next dev/prod deployment run must be captured to confirm both smoke gates pass in live CI/CD.
 
 Required follow-up:
 
-- Update the direct smoke job/template for env-suffixed secrets if needed.
-- Re-enable `run_direct_smoke` once verified.
+- Confirm the next release run shows successful direct-service and gateway smoke steps for dev and prod.
+- If a smoke step fails, fix the smoke setup rather than disabling the gate.
 
 ### Terraform CLI Not Found on Current PATH
 

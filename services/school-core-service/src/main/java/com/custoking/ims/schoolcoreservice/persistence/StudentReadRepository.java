@@ -1915,6 +1915,12 @@ public class StudentReadRepository {
         if (schoolClass.isEmpty()) {
             return new ImportValidation("Class not found", "Class value not found in the system", false, true, false);
         }
+        Optional<Map<String, Object>> activeClass = activeClassForSchool(schoolId, schoolClass.get());
+        if (activeClass.isEmpty()) {
+            return new ImportValidation("Setup update needed",
+                    "Class is not active for this school's configured setup",
+                    false, true, false);
+        }
         String admissionNo = str(normalized.get("admissionNo"), "");
         Long duplicate = jdbc.sql("SELECT COUNT(*) FROM student.students WHERE lower(admission_no) = lower(:admissionNo) AND school_id = :schoolId")
                 .param("admissionNo", admissionNo)
@@ -1926,7 +1932,7 @@ public class StudentReadRepository {
         }
         Optional<Map<String, Object>> section = activeSectionByNameForClassSchool(
                 schoolId,
-                String.valueOf(schoolClass.get().get("id")),
+                String.valueOf(activeClass.get().get("id")),
                 str(normalized.get("sectionName"), ""));
         if (section.isEmpty()) {
             return new ImportValidation("Setup update needed",
@@ -1942,9 +1948,11 @@ public class StudentReadRepository {
     private Long insertImportedStudent(Map<String, Object> normalized, Long schoolId, String batchId) {
         Map<String, Object> schoolClass = classByName(str(normalized.get("className"), ""))
                 .orElseThrow(() -> new IllegalArgumentException("Class not found"));
+        Map<String, Object> activeClass = activeClassForSchool(schoolId, schoolClass)
+                .orElseThrow(() -> new IllegalArgumentException("Class is not active for this school's configured setup"));
         Map<String, Object> section = activeSectionByNameForClassSchool(
                 schoolId,
-                String.valueOf(schoolClass.get("id")),
+                String.valueOf(activeClass.get("id")),
                 str(normalized.get("sectionName"), "A"))
                 .orElseThrow(() -> new IllegalArgumentException("Class section is not active for this school's configured setup"));
         String academicYearId = currentAcademicYearId();
@@ -1984,7 +1992,7 @@ public class StudentReadRepository {
                 .param("createdAt", now)
                 .param("updatedAt", now)
                 .param("schoolId", schoolId)
-                .param("classId", schoolClass.get("id"))
+                .param("classId", activeClass.get("id"))
                 .param("sectionId", section.get("id"))
                 .param("academicYearId", academicYearId)
                 .query(Long.class)
@@ -2264,6 +2272,27 @@ public class StudentReadRepository {
                 .param("classId", classId)
                 .param("schoolId", schoolId)
                 .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name")))
+                .optional();
+    }
+
+    private Optional<Map<String, Object>> activeClassForSchool(Long schoolId, Map<String, Object> schoolClass) {
+        String classId = String.valueOf(schoolClass.get("id"));
+        return jdbc.sql("""
+                SELECT sc.id, sc.name, sc.sort_order
+                FROM tenant_school.school_classes sc
+                WHERE sc.id = :classId
+                  AND EXISTS (
+                      SELECT 1
+                      FROM tenant_school.school_sections ss
+                      WHERE ss.school_id = :schoolId
+                        AND ss.school_class_id = sc.id
+                        AND ss.active = true
+                  )
+                LIMIT 1
+                """)
+                .param("schoolId", schoolId)
+                .param("classId", classId)
+                .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name"), "sortOrder", rs.getInt("sort_order")))
                 .optional();
     }
 

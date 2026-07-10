@@ -7,7 +7,7 @@
 - A school's active classes are derived from `schools.configured_class_count`: the first N catalog rows by `sort_order, name`.
 - A school's active sections are derived from `schools.configured_section_count`: sections `A` through that count, uniformly for every active class.
 - `PUT /api/v1/schools/{id}/structure` currently accepts `classCount` in `1..12` and `sectionCount` in `1..26`.
-- Bulk import resolves the uploaded `Class` value against the global catalog, then resolves `Section` against this school's active section rows.
+- Bulk import resolves the uploaded `Class` value against the global catalog, verifies that class has an active section row for the school, then resolves `Section` against this school's active section rows.
 
 ## Problem
 
@@ -15,16 +15,21 @@ The product now needs classes before `1`, but the current count-first model cann
 
 Example: if pre-class-1 catalog rows are inserted with lower sort order than `1`, an existing school with `configured_class_count = 12` would no longer mean classes `1..12`; it would mean the first 12 rows in the new catalog ordering. That would unintentionally deactivate higher numeric classes for existing schools unless the migration also changes the structure model.
 
-No source-of-truth labels for pre-class-1 classes are present in the repo. Do not invent labels such as Nursery/LKG/UKG without an explicit product decision.
+The product-provided pre-class-1 sequence is:
+
+1. One class bucket for `Nursery / Pre-Nursery / Playgroup`.
+2. `LKG (Lower Kindergarten)`.
+3. `UKG (Upper Kindergarten)`.
+4. Numeric classes `1` through `12`.
 
 ## Required Product Decisions
 
-1. Canonical pre-class-1 class labels and ordering.
-2. Whether every school gets those classes by default, or only schools that explicitly select them.
+1. Exact stable id and display label for the combined `Nursery / Pre-Nursery / Playgroup` bucket, and whether uploads should accept all three labels as aliases.
+2. Whether every school gets pre-primary classes by default, or only schools that explicitly select them.
 3. Whether "No. of classes" should continue to mean a total count, or whether school setup should become an explicit class checklist.
 4. Whether section count remains uniform for every class, or sections can vary per class.
 5. Existing-school migration rule for `configured_class_count = 12` so current class `1..12` schools are preserved.
-6. Fee structure behavior for any non-numeric classes, because fee setup currently has class range dropdowns hardcoded to `1..12`.
+6. Fee structure behavior for pre-primary classes, because fee setup currently stores integer `class_from` / `class_to` ranges and the UI class range dropdowns are hardcoded to `1..12`.
 
 ## Recommended Implementation
 
@@ -38,4 +43,4 @@ No source-of-truth labels for pre-class-1 classes are present in the repo. Do no
 
 ## Shipped Stopgap
 
-Bulk import validation now requires the section row to be active for the school's configured setup before previewing a row as valid, and confirm import rechecks the same condition. This prevents imports into inactive leftover sections after a school structure shrink.
+Bulk import validation now requires the class to be active for the school and the section row to be active for that class before previewing a row as valid. Confirm import rechecks both conditions. This prevents imports into inactive classes/sections after a school structure shrink.

@@ -92,13 +92,15 @@ Jobs:
   - `environment=dev`
   - `commit_sha=${{ github.sha }}`
   - `deploy_services=all` unless overridden
-  - `run_direct_smoke=false`
+  - `run_direct_smoke=true`
+  - `run_gateway_smoke=true`
   - `skip_build=false`
 - `promote-prod`
   - Needs successful dev deploy.
   - Uses the same commit SHA.
   - `environment=prod`
-  - `run_direct_smoke=false`
+  - `run_direct_smoke=true`
+  - `run_gateway_smoke=true`
   - `skip_build=true`
 
 Concurrency:
@@ -140,6 +142,13 @@ Required variables:
   - `DB_NAME`
 
 Deployment submits `cloudbuild.yaml` with substitutions and polls Cloud Build until terminal status.
+
+After Cloud Build deploys the target environment, the main-line release workflow now runs:
+
+- A private direct-service smoke job using `ims-direct-service-smoke`.
+- A deployed gateway smoke against `custoking-api-gateway-<env>`.
+
+The smoke steps use env-suffixed secrets such as `catalog-read-token-dev`, `tenant-school-read-token-prod`, and `db-password-<env>`.
 
 ### `.github/workflows/security-scan.yml`
 
@@ -281,9 +290,9 @@ Prod promotion should use the same `_COMMIT_SHA` as dev and `_SKIP_BUILD=true`.
 
 ## Direct Service Smoke State
 
-The reusable deploy workflow supports direct-service smoke, but `release.yml` currently sets `run_direct_smoke=false` for both dev and prod.
+The reusable deploy workflow supports direct-service smoke, and `release.yml` now sets `run_direct_smoke=true` for both dev and prod.
 
-The live job `ims-direct-service-smoke` exists, but the live job list showed no latest execution and status `False`. Treat direct private-service smoke as present but not part of the automated release gate until updated and re-enabled.
+The live job `ims-direct-service-smoke` exists. The workflow replaces it from `deploy/gcp/direct-service-smoke-job.template.yaml` on each deploy and injects env-suffixed secrets for the target environment.
 
 ## Artifact Warning
 

@@ -187,6 +187,32 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
+    void previewImport_marksInactiveClassAsSetupUpdateNeeded() throws Exception {
+        long schoolId = seedSchool(2, 1);
+        StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Inactive Class", "Class", "3", "Section", "A",
+                        "AdmissionNo", "IMP-INACTIVE-CLASS", "Gender", "Female",
+                        "Phone", "9876543210"))));
+
+        assertThat(preview.get("validCount")).isEqualTo(0);
+        assertThat(preview.get("errorCount")).isEqualTo(1);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> structure = (Map<String, Object>) preview.get("structure");
+        assertThat(structure.get("requiresStructureUpdate")).isEqualTo(true);
+        assertThat((java.util.List<String>) structure.get("missingClasses")).contains("3");
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> rows = (java.util.List<Map<String, Object>>) preview.get("rows");
+        assertThat(rows.get(0).get("status")).isEqualTo("Setup update needed");
+        assertThat(rows.get(0).get("description")).isEqualTo("Class is not active for this school's configured setup");
+    }
+
+    @Test
     void confirmImport_rejectsInactiveSectionIfStructureChangedAfterPreview() throws Exception {
         long schoolId = seedSchool(2, 2);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
@@ -212,5 +238,33 @@ class StudentImportPhotoIntegrationTest {
         java.util.List<Map<String, Object>> skippedRows =
                 (java.util.List<Map<String, Object>>) confirm.get("skippedRows");
         assertThat(String.valueOf(skippedRows.get(0).get("reason"))).contains("not active");
+    }
+
+    @Test
+    void confirmImport_rejectsInactiveClassIfStructureChangedAfterPreview() throws Exception {
+        long schoolId = seedSchool(3, 1);
+        StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Shrunk Class", "Class", "3", "Section", "A",
+                        "AdmissionNo", "IMP-SHRUNK-CLASS", "Gender", "Male",
+                        "Phone", "9876543210"))));
+        assertThat(preview.get("validCount")).isEqualTo(1);
+        repo.updateStructure(schoolId, 2, 1);
+
+        Map<String, Object> confirm = studentRepo.confirmImport(Map.of(
+                "schoolId", schoolId,
+                "fileToken", preview.get("fileToken")));
+
+        assertThat(confirm.get("inserted")).isEqualTo(0);
+        assertThat(confirm.get("skipped")).isEqualTo(1);
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> skippedRows =
+                (java.util.List<Map<String, Object>>) confirm.get("skippedRows");
+        assertThat(String.valueOf(skippedRows.get(0).get("reason"))).contains("Class is not active");
     }
 }
