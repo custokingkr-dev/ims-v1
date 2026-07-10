@@ -283,6 +283,7 @@ Verified project-level IAM bindings for `github-actions-sa`:
 
 - `roles/cloudbuild.builds.editor`
 - `roles/iam.serviceAccountUser`
+- `roles/logging.viewer`
 - `roles/run.developer`
 - `roles/storage.admin`
 
