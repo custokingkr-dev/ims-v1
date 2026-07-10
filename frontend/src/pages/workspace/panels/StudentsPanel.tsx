@@ -80,7 +80,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentHistory, setStudentHistory] = useState<StudentHistoryPayload | null>(null);
   const [studentHistoryLoading, setStudentHistoryLoading] = useState(false);
   const [studentHistoryError, setStudentHistoryError] = useState<string | null>(null);
-  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteBusyId, setDeleteBusyId] = useState<string | number | null>(null);
   const [promotionOpen, setPromotionOpen] = useState(false);
   const [promotionClasses, setPromotionClasses] = useState<StudentClassOption[]>([]);
   const [promotionSections, setPromotionSections] = useState<StudentSectionOption[]>([]);
@@ -245,21 +245,28 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   };
 
-  const deleteStudent = async () => {
-    if (!studentDetail?.id) return;
-    const ok = window.confirm(`Delete ${studentDetail.fullName || studentDetail.name}? This keeps the history but removes the student from active lists.`);
+  const deleteStudent = async (student: any = studentDetail, options: { closeModal?: boolean } = {}) => {
+    if (!student?.id) return;
+    const name = student.fullName || student.name || 'this student';
+    const ok = window.confirm(`Delete ${name}? If the student has completed at least one academic year, their lifecycle history will remain preserved. This removes the student from active lists.`);
     if (!ok) return;
     try {
-      setDeleteBusy(true);
+      setDeleteBusyId(student.id);
       setModalError(null);
-      await api.delete(`/students/${studentDetail.id}`, { data: { reason: 'Deleted from Students tab' } });
-      closeStudentModal();
+      if (options.closeModal === false) setStudentsError(null);
+      await api.delete(`/students/${student.id}`, { data: { reason: 'Deleted from Students tab' } });
+      if (options.closeModal !== false) closeStudentModal();
       await loadStudents(studentFilters, studentsPage);
       onRefresh();
     } catch (err: unknown) {
-      setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.'));
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.');
+      if (options.closeModal === false) {
+        setStudentsError(message);
+      } else {
+        setModalError(message);
+      }
     } finally {
-      setDeleteBusy(false);
+      setDeleteBusyId(null);
     }
   };
 
@@ -483,7 +490,19 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                             : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(student.fullName)}</div>
                           }
                           <div>
-                            <div className="tb">{student.fullName}</div>
+                            <div className="ck-student-name-row">
+                              <span className="tb">{student.fullName}</span>
+                              {can('student:delete') ? (
+                                <button
+                                  type="button"
+                                  className="ck-btn ck-btn-ghost ck-btn-sm ck-student-delete-inline"
+                                  disabled={deleteBusyId === student.id}
+                                  onClick={() => void deleteStudent(student, { closeModal: false })}
+                                >
+                                  {deleteBusyId === student.id ? 'Deleting...' : 'Delete'}
+                                </button>
+                              ) : null}
+                            </div>
                             <div className="ts">{student.classSection} · {student.academicYear}</div>
                           </div>
                         </div>
@@ -710,7 +729,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 <>
                   <button className="ck-btn ck-btn-ghost" onClick={() => void loadStudentHistory()} disabled={studentHistoryLoading || !studentDetail}>{studentHistoryLoading ? 'Loading...' : 'History'}</button>
                   {can('student:update') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => enterEditMode(studentDetail)}>Edit</button> : null}
-                  {can('student:delete') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => void deleteStudent()} disabled={deleteBusy}>{deleteBusy ? 'Deleting...' : 'Delete'}</button> : null}
+                  {can('student:delete') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => void deleteStudent(studentDetail)} disabled={deleteBusyId === studentDetail.id}>{deleteBusyId === studentDetail.id ? 'Deleting...' : 'Delete'}</button> : null}
                   <button className="ck-btn ck-btn-ghost" onClick={closeStudentModal}>Close</button>
                 </>
               )}

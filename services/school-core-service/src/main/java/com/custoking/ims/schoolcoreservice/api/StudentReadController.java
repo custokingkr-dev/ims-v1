@@ -173,7 +173,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "student:read");
-        Long schoolId = students.schoolIdForStudent(id);
+        Long schoolId = students.schoolIdForStudentIncludingDeleted(id);
         TenantScope.resolveSchoolId(schoolId);
         return execute(() -> students.studentHistory(id));
     }

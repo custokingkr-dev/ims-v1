@@ -378,6 +378,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 }
 .ck-alert-re { background:var(--re1); border:1px solid #f5c0bc; color:var(--re); }
 .ck-student-cell { display:flex; align-items:center; gap:12px; }
+.ck-student-name-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ck-student-delete-inline { padding:3px 8px; font-size:11px; color:var(--re); border-color:#f5c0bc; }
 .ck-student-avatar { width:42px; height:42px; border-radius:50%; object-fit:cover; border:1px solid var(--border); background:#f4f2ec; flex-shrink:0; }
 .ck-student-avatar-fallback { display:grid; place-items:center; font-size:12px; font-weight:700; color:var(--g); background:var(--g1); }
 .ck-photo-panel { margin-top:18px; border:1px solid var(--border); border-radius:14px; padding:16px; background:#fcfbf8; }

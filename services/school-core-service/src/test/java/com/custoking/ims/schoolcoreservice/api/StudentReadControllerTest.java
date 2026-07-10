@@ -124,6 +124,23 @@ class StudentReadControllerTest {
         verify(students).list(4L, "class-10", "section-b", 100);
     }
 
+    @Test
+    void historyAllowsSoftDeletedStudentsForPreservedLifecycleLookup() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null));
+        Map<String, Object> history = Map.of(
+                "student", Map.of("id", 42L),
+                "completedAcademicYears", 1L,
+                "historyPreserved", true);
+        when(students.schoolIdForStudentIncludingDeleted(42L)).thenReturn(10L);
+        when(students.studentHistory(42L)).thenReturn(history);
+
+        Map<String, Object> response = controller.history("student-token", 42L);
+
+        assertThat(response).isSameAs(history);
+        verify(students).schoolIdForStudentIncludingDeleted(42L);
+        verify(students, never()).schoolIdForStudent(42L);
+    }
+
     private StudentRow studentRow(Long id, String fullName) {
         return new StudentRow(
                 id,

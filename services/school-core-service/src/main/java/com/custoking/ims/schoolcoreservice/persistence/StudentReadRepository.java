@@ -505,8 +505,32 @@ public class StudentReadRepository {
                 .update();
     }
 
+    private long completedAcademicYearCount(Long studentId) {
+        Long appliedPromotionCount = jdbc.sql("""
+                SELECT COUNT(DISTINCT b.source_academic_year_id)
+                FROM student.student_promotion_batch_items i
+                JOIN student.student_promotion_batches b ON b.id = i.batch_id
+                WHERE i.student_id = :studentId
+                  AND i.status = 'APPLIED'
+                  AND i.action = 'PROMOTE'
+                  AND b.status = 'APPLIED'
+                """)
+                .param("studentId", studentId)
+                .query(Long.class)
+                .single();
+        return appliedPromotionCount == null ? 0L : appliedPromotionCount;
+    }
+
     public Long schoolIdForStudent(Long id) {
         return jdbc.sql("SELECT school_id FROM student.students WHERE id = :id AND deleted_at IS NULL")
+                .param("id", id)
+                .query(Long.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("student not found"));
+    }
+
+    public Long schoolIdForStudentIncludingDeleted(Long id) {
+        return jdbc.sql("SELECT school_id FROM student.students WHERE id = :id")
                 .param("id", id)
                 .query(Long.class)
                 .optional()
@@ -743,6 +767,8 @@ public class StudentReadRepository {
         if (current.get("deletedAt") != null) {
             throw new IllegalArgumentException("Student is already deleted");
         }
+        long completedAcademicYears = completedAcademicYearCount(id);
+        boolean historyPreserved = completedAcademicYears > 0;
         String reason = str(request.get("reason"), "Deleted from Students tab");
         jdbc.sql("""
                 UPDATE student.students
@@ -763,7 +789,9 @@ public class StudentReadRepository {
                 str(current.get("classId"), ""), str(current.get("sectionId"), ""),
                 str(current.get("rollNo"), ""), "DELETED", reason, "STUDENT_DELETE", String.valueOf(id));
         emitStudentUpserted(id);
-        return row("id", id, "deleted", true, "reason", reason);
+        return row("id", id, "deleted", true, "reason", reason,
+                "completedAcademicYears", completedAcademicYears,
+                "historyPreserved", historyPreserved);
     }
 
     public Map<String, Object> studentHistory(Long id) {
@@ -855,7 +883,10 @@ public class StudentReadRepository {
                         "createdAt", rs.getObject("created_at", OffsetDateTime.class),
                         "appliedAt", rs.getObject("applied_at", OffsetDateTime.class)))
                 .list();
-        return row("student", student, "enrollments", enrollments, "imports", importRows, "promotions", promotions);
+        long completedAcademicYears = completedAcademicYearCount(id);
+        return row("student", student, "enrollments", enrollments, "imports", importRows, "promotions", promotions,
+                "completedAcademicYears", completedAcademicYears,
+                "historyPreserved", student.get("deletedAt") == null || completedAcademicYears > 0);
     }
 
     @Transactional

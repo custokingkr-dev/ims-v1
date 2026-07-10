@@ -186,6 +186,7 @@ VALUES
     ('staff:manage', 'Manage staff', now()),
     ('staff:read', 'Read staff', now()),
     ('student:create', 'Create students', now()),
+    ('student:delete', 'Delete students', now()),
     ('student:import', 'Import students', now()),
     ('student:read', 'Read students', now()),
     ('student:update', 'Update students', now()),
