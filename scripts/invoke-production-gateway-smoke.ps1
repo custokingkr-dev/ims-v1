@@ -9,6 +9,7 @@ param(
     [string]$Database = "custoking_ims_v1",
     [string]$DbUser = "appuser",
     [string]$PasswordSecret = "db-password",
+    [string]$CloudBuildId,
     [string]$Network = "default",
     [string]$Subnet = "default",
     [long]$PreferredSchoolId = 4,
@@ -342,6 +343,7 @@ try {
         -Region $Region `
         -Environment $Environment `
         -DeploymentSmokeJson $OutputJson `
+        -CloudBuildId $CloudBuildId `
         -LegacyCompatibilityJson $LegacyCompatibilityJson `
         -GatewayBaseUrl $GatewayBaseUrl `
         -GcloudPath $Gcloud `

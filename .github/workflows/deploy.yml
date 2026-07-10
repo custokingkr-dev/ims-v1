@@ -280,6 +280,7 @@ jobs:
           URL="$(gcloud run services describe "custoking-api-gateway-${ENV_NAME}" \
             --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" --format='value(status.url)')"
           echo "gateway_url=${URL}"
+          CLOUD_BUILD_ID="$(cat deployment-evidence/cloud-build-id.txt)"
           pwsh ./scripts/invoke-production-gateway-smoke.ps1 \
             -Project "${GCP_PROJECT_ID}" \
             -Region "${GCP_REGION}" \
@@ -289,6 +290,10 @@ jobs:
             -Port "${DB_PORT}" \
             -Database "${DB_NAME}" \
             -PasswordSecret "db-password-${ENV_NAME}" \
+            -CloudBuildId "${CLOUD_BUILD_ID}" \
+            -OutputJson "deployment-evidence/deployment-smoke.json" \
+            -PreflightJson "deployment-evidence/real-environment-readiness-final.json" \
+            -PreflightMarkdown "deployment-evidence/real-environment-readiness-final.md" \
             -Gcloud "gcloud"
 
       - name: Print Cloud Run URLs

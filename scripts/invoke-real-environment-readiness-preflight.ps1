@@ -4,6 +4,7 @@ param(
     [ValidateSet("dev", "prod")]
     [string]$Environment = "dev",
     [string]$DeploymentSmokeJson,
+    [string]$CloudBuildId,
     [string]$LegacyCompatibilityJson,
     [string]$GatewayBaseUrl,
     [string]$GcloudPath = "gcloud",
@@ -120,13 +121,21 @@ try {
 }
 
 try {
-    $builds = @(Invoke-GcloudJson builds list "--project=$ProjectId" "--limit=1" "--sort-by=~createTime" "--format=json")
-    $latestBuild = @($builds | Select-Object -First 1)
-    $latestBuildId = if ($latestBuild) { $latestBuild.id } else { "" }
-    $latestBuildStatus = if ($latestBuild) { $latestBuild.status } else { "" }
-    Add-Check "latest cloud build" ($latestBuildStatus -eq "SUCCESS") "id=$latestBuildId status=$latestBuildStatus"
+    if (-not [string]::IsNullOrWhiteSpace($CloudBuildId)) {
+        $build = Invoke-GcloudJson builds describe $CloudBuildId "--project=$ProjectId" "--format=json"
+        $buildId = $build.id
+        $buildStatus = $build.status
+        Add-Check "deployment cloud build" ($buildStatus -eq "SUCCESS") "id=$buildId status=$buildStatus"
+    } else {
+        $builds = @(Invoke-GcloudJson builds list "--project=$ProjectId" "--limit=1" "--sort-by=~createTime" "--format=json")
+        $latestBuild = @($builds | Select-Object -First 1)
+        $latestBuildId = if ($latestBuild) { $latestBuild.id } else { "" }
+        $latestBuildStatus = if ($latestBuild) { $latestBuild.status } else { "" }
+        Add-Check "latest cloud build" ($latestBuildStatus -eq "SUCCESS") "id=$latestBuildId status=$latestBuildStatus"
+    }
 } catch {
-    Add-Check "latest cloud build" $false $_.Exception.Message
+    $name = if ([string]::IsNullOrWhiteSpace($CloudBuildId)) { "latest cloud build" } else { "deployment cloud build" }
+    Add-Check $name $false $_.Exception.Message
 }
 
 $deploymentSmokePassed = $false
@@ -196,6 +205,9 @@ Write-Host "Created real environment preflight: $OutputJson"
 Write-Host "Created real environment preflight markdown: $OutputMarkdown"
 Write-Host "Ready for real bundle: $ready"
 Write-Host "Blockers: $($blockers.Count)"
+foreach ($check in $checks) {
+    Write-Host "Preflight check: $($check.name) passed=$($check.passed) severity=$($check.severity) detail=$($check.detail)"
+}
 
 if (-not $ready) {
     exit 1
