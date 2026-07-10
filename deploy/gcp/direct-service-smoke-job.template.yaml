@@ -23,11 +23,20 @@ spec:
                 - |
                   import json
                   import os
+                  import urllib.error
                   import urllib.request
 
-                  CATALOG_URL = os.environ["CATALOG_URL"].rstrip("/")
-                  TENANT_URL = os.environ["TENANT_URL"].rstrip("/")
+                  def required_env(name):
+                      value = os.environ[name].strip()
+                      if not value:
+                          raise RuntimeError(f"{name} is empty")
+                      return value
+
+                  CATALOG_URL = required_env("CATALOG_URL").rstrip("/")
+                  TENANT_URL = required_env("TENANT_URL").rstrip("/")
                   SCHOOL_ID = os.environ.get("SMOKE_SCHOOL_ID", "").strip()
+                  CATALOG_TOKEN = required_env("CATALOG_TOKEN")
+                  TENANT_TOKEN = required_env("TENANT_TOKEN")
                   META = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience={}&format=full"
 
                   def request(url, headers=None, method="GET", body=None):
@@ -36,14 +45,18 @@ spec:
                       if body is not None:
                           merged_headers["Content-Type"] = "application/json"
                       req = urllib.request.Request(url, data=data, headers=merged_headers, method=method)
-                      with urllib.request.urlopen(req, timeout=30) as response:
-                          return response.status, response.read().decode()
+                      try:
+                          with urllib.request.urlopen(req, timeout=30) as response:
+                              return response.status, response.read().decode()
+                      except urllib.error.HTTPError as exc:
+                          payload = exc.read().decode(errors="replace")
+                          raise RuntimeError(f"{method} {url} failed with HTTP {exc.code}: {payload[:1000]}") from exc
 
                   def identity_token(audience):
                       status, token = request(META.format(audience), {"Metadata-Flavor": "Google"})
                       if status != 200 or not token:
                           raise RuntimeError("identity token missing")
-                      return token
+                      return token.strip()
 
                   # Direct calls bypass the gateway, so they must inject the authenticated
                   # context the gateway normally supplies (post-Phase-1 TenantContext requires
@@ -56,12 +69,12 @@ spec:
                   }
                   catalog_headers = {
                       "Authorization": "Bearer " + identity_token(CATALOG_URL),
-                      "X-Catalog-Service-Token": os.environ["CATALOG_TOKEN"],
+                      "X-Catalog-Service-Token": CATALOG_TOKEN,
                       **auth_ctx,
                   }
                   tenant_headers = {
                       "Authorization": "Bearer " + identity_token(TENANT_URL),
-                      "X-Tenant-School-Token": os.environ["TENANT_TOKEN"],
+                      "X-Tenant-School-Token": TENANT_TOKEN,
                       **auth_ctx,
                   }
 

@@ -1,13 +1,15 @@
 param(
     [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
+    [ValidateSet("dev", "prod")]
+    [string]$Environment = "dev",
     [string]$Repository = "custoking",
     [string]$CommitSha,
     [string]$DeployServices = "frontend",
     [string]$ArtifactDirectory = "artifacts/gcp-deployment",
     [string]$GcloudPath = "gcloud",
     [string]$DirectSmokeServiceAccount,
-    [string]$SmokeSchoolId = "4",
+    [string]$SmokeSchoolId = "",
     [switch]$SkipLocalVerification,
     [switch]$SkipCloudBuild,
     [switch]$SkipDirectSmoke,
@@ -96,7 +98,7 @@ if (-not $SkipCloudBuild) {
     }
 }
 
-$gatewayBaseUrl = (& $GcloudPath run services describe custoking-api-gateway "--project=$ProjectId" "--region=$Region" "--format=value(status.url)").Trim()
+$gatewayBaseUrl = (& $GcloudPath run services describe "custoking-api-gateway-$Environment" "--project=$ProjectId" "--region=$Region" "--format=value(status.url)").Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($gatewayBaseUrl)) {
     throw "Could not resolve custoking-api-gateway URL."
 }
@@ -107,6 +109,7 @@ if (-not $SkipDirectSmoke) {
         powershell -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts/ensure-direct-service-smoke-identity.ps1") `
             -ProjectId $ProjectId `
             -Region $Region `
+            -Environments @($Environment) `
             -GcloudPath $GcloudPath `
             -DirectSmokeServiceAccount $DirectSmokeServiceAccount
     }
@@ -114,6 +117,7 @@ if (-not $SkipDirectSmoke) {
         powershell -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts/new-direct-service-smoke-job.ps1") `
             -ProjectId $ProjectId `
             -Region $Region `
+            -Environment $Environment `
             -GcloudPath $GcloudPath `
             -DirectSmokeServiceAccount $DirectSmokeServiceAccount `
             -SmokeSchoolId $SmokeSchoolId `

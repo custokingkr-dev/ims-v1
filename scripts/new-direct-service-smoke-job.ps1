@@ -1,10 +1,12 @@
 param(
     [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
+    [ValidateSet("dev", "prod")]
+    [string]$Environment = "dev",
     [string]$TemplatePath = "deploy/gcp/direct-service-smoke-job.template.yaml",
     [string]$OutputPath = "artifacts/direct-service-smoke-job.generated.yaml",
     [string]$DirectSmokeServiceAccount,
-    [string]$SmokeSchoolId = "4",
+    [string]$SmokeSchoolId = "",
     [string]$GcloudPath = "gcloud"
 )
 
@@ -50,11 +52,15 @@ if (-not (Test-Path -LiteralPath $outputDirectory)) {
     New-Item -ItemType Directory -Path $outputDirectory | Out-Null
 }
 
-$catalogUrl = Invoke-GcloudValue run services describe custoking-school-core-service `
+$schoolCoreService = "custoking-school-core-service-$Environment"
+$catalogTokenSecret = "catalog-read-token-$Environment"
+$tenantTokenSecret = "tenant-school-read-token-$Environment"
+
+$catalogUrl = Invoke-GcloudValue run services describe $schoolCoreService `
     "--project=$ProjectId" `
     "--region=$Region" `
     "--format=value(status.url)"
-$tenantUrl = Invoke-GcloudValue run services describe custoking-school-core-service `
+$tenantUrl = Invoke-GcloudValue run services describe $schoolCoreService `
     "--project=$ProjectId" `
     "--region=$Region" `
     "--format=value(status.url)"
@@ -64,9 +70,12 @@ $content = $content.Replace("__DIRECT_SMOKE_SERVICE_ACCOUNT__", (Escape-YamlValu
 $content = $content.Replace("__CATALOG_URL__", (Escape-YamlValue $catalogUrl))
 $content = $content.Replace("__TENANT_URL__", (Escape-YamlValue $tenantUrl))
 $content = $content.Replace("__SMOKE_SCHOOL_ID__", (Escape-YamlValue $SmokeSchoolId))
+$content = $content.Replace("__CATALOG_TOKEN_SECRET__", (Escape-YamlValue $catalogTokenSecret))
+$content = $content.Replace("__TENANT_TOKEN_SECRET__", (Escape-YamlValue $tenantTokenSecret))
 $content | Set-Content -Path $output -Encoding UTF8
 
 Write-Host "Generated direct service smoke job: $output"
+Write-Host "Environment: $Environment"
 Write-Host "Catalog URL: $catalogUrl"
 Write-Host "Tenant URL: $tenantUrl"
 Write-Host "Service account: $DirectSmokeServiceAccount"

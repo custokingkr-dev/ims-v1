@@ -1,6 +1,7 @@
 param(
     [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
+    [string[]]$Environments = @("dev", "prod"),
     [string]$DirectSmokeServiceAccount,
     [string]$GcloudPath = "gcloud"
 )
@@ -59,7 +60,8 @@ if (-not $serviceAccountExists) {
     Start-Sleep -Seconds 10
 }
 
-foreach ($service in @("custoking-school-core-service")) {
+foreach ($environment in $Environments) {
+    $service = "custoking-school-core-service-$environment"
     Invoke-GcloudWithRetry -CommandArgs @(
         "run", "services", "add-iam-policy-binding", $service,
         "--project=$ProjectId",
@@ -67,15 +69,15 @@ foreach ($service in @("custoking-school-core-service")) {
         "--member=serviceAccount:$DirectSmokeServiceAccount",
         "--role=roles/run.invoker"
     )
-}
 
-foreach ($secret in @("catalog-read-token", "tenant-school-read-token")) {
-    Invoke-GcloudWithRetry -CommandArgs @(
-        "secrets", "add-iam-policy-binding", $secret,
-        "--project=$ProjectId",
-        "--member=serviceAccount:$DirectSmokeServiceAccount",
-        "--role=roles/secretmanager.secretAccessor"
-    )
+    foreach ($secret in @("catalog-read-token-$environment", "tenant-school-read-token-$environment")) {
+        Invoke-GcloudWithRetry -CommandArgs @(
+            "secrets", "add-iam-policy-binding", $secret,
+            "--project=$ProjectId",
+            "--member=serviceAccount:$DirectSmokeServiceAccount",
+            "--role=roles/secretmanager.secretAccessor"
+        )
+    }
 }
 
 Write-Host "Direct service smoke identity is ready: $DirectSmokeServiceAccount"

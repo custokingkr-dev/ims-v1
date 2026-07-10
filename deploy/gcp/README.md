@@ -90,8 +90,8 @@ gcloud iam roles update githubDeployRuntimeOperator --project=custoking --file=d
 ## Validate
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\ensure-direct-service-smoke-identity.ps1 -ProjectId custoking -Region asia-south2
-powershell -ExecutionPolicy Bypass -File scripts\new-direct-service-smoke-job.ps1 -ProjectId custoking -Region asia-south2 -OutputPath artifacts\direct-service-smoke-job.generated.yaml
+powershell -ExecutionPolicy Bypass -File scripts\ensure-direct-service-smoke-identity.ps1 -ProjectId custoking -Region asia-south2 -Environments dev,prod
+powershell -ExecutionPolicy Bypass -File scripts\new-direct-service-smoke-job.ps1 -ProjectId custoking -Region asia-south2 -Environment dev -OutputPath artifacts\direct-service-smoke-job.generated.yaml
 gcloud run jobs replace artifacts\direct-service-smoke-job.generated.yaml --project=custoking --region=asia-south2
 gcloud run jobs execute ims-direct-service-smoke --project=custoking --region=asia-south2 --wait
 ```

@@ -148,7 +148,7 @@ After Cloud Build deploys the target environment, the main-line release workflow
 - A private direct-service smoke job using `ims-direct-service-smoke`.
 - A deployed gateway smoke against `custoking-api-gateway-<env>`.
 
-The smoke steps use env-suffixed secrets such as `catalog-read-token-dev`, `tenant-school-read-token-prod`, and `db-password-<env>`.
+The smoke steps use env-suffixed secrets such as `catalog-read-token-dev`, `tenant-school-read-token-prod`, and `db-password-<env>`. Direct-service smoke normalizes secret values before using them as HTTP headers, so a trailing CR/LF in Secret Manager does not break the smoke job before the service call is made.
 
 ### `.github/workflows/security-scan.yml`
 
