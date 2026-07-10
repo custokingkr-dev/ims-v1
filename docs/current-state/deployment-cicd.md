@@ -1,6 +1,6 @@
 # Deployment and CI/CD
 
-Last verified: 2026-07-10.
+Last verified: 2026-07-11.
 
 ## Deployment Model
 
@@ -124,7 +124,7 @@ Inputs:
 
 Uses keyless auth:
 
-- `google-github-actions/auth@v2`
+- `google-github-actions/auth@v3`
 - Workload Identity Provider from repo variable `WORKLOAD_IDENTITY_PROVIDER`
 - Service account from repo variable `DEPLOY_SERVICE_ACCOUNT`
 

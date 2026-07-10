@@ -48,8 +48,8 @@
 - Produces: a `scan` job that fails on CRITICAL fixable CVEs; `build` job emits a local image the `scan` job consumes (or Trivy builds from the same context).
 
 - [ ] **Step 1 (test-first):** add `actionlint` validation. Install actionlint locally (`go install github.com/rhysd/actionlint/cmd/actionlint@latest` or the pinned binary) and run `actionlint .github/workflows/ci.yml`. Expected: clean before AND after edits (catches YAML/expression errors).
-- [ ] **Step 2:** In `docker-build` job, replace any Kaniko/plain build with `docker/setup-buildx-action@v3` + `docker/build-push-action@v6` using `cache-from: type=gha` / `cache-to: type=gha,mode=max`, `push: false`, `load: true`, tag `:ci`. Keep the per-service matrix + path filtering.
-- [ ] **Step 3:** Add a `scan` step/job after build: `aquasecurity/trivy-action@0.28.0` (or pinned) `image-ref: <local :ci image>`, `severity: CRITICAL`, `ignore-unfixed: true`, `exit-code: 1`, `vuln-type: os,library`. Run per built image (matrix).
+- [ ] **Step 2:** In `docker-build` job, replace any Kaniko/plain build with `docker/setup-buildx-action@v4` + `docker/build-push-action@v7` using `cache-from: type=gha` / `cache-to: type=gha,mode=max`, `push: false`, `load: true`, tag `:ci`. Keep the per-service matrix + path filtering.
+- [ ] **Step 3:** Add a `scan` step/job after build: `aquasecurity/trivy-action@v0.36.0` (or pinned) `image-ref: <local :ci image>`, `severity: CRITICAL`, `ignore-unfixed: true`, `exit-code: 1`, `vuln-type: os,library`. Run per built image (matrix).
 - [ ] **Step 4:** Ensure `ci-result` gate requires `scan` success (or skip when no services changed).
 - [ ] **Step 5:** `actionlint .github/workflows/ci.yml` → clean. Push to a scratch branch, open a draft PR, confirm the workflow parses and the matrix runs (GitHub-side validation).
 - [ ] **Step 6:** Commit.
