@@ -74,9 +74,14 @@ public class StudentReadRepository {
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
                                                  String feeStatus, int page, int size) {
+        return workspaceStudents(schoolId, className, sectionName, feeStatus, page, size, false);
+    }
+
+    public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
+                                                 String feeStatus, int page, int size, boolean deleted) {
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 500));
-        List<Map<String, Object>> all = workspaceStudentRows(schoolId, className, sectionName, feeStatus);
+        List<Map<String, Object>> all = workspaceStudentRows(schoolId, className, sectionName, feeStatus, deleted);
         List<Map<String, Object>> items = all.stream()
                 .skip((long) safePage * safeSize)
                 .limit(safeSize)
@@ -92,6 +97,7 @@ public class StudentReadRepository {
                 "totalPages", (int) Math.ceil(all.size() / (double) safeSize),
                 "filteredCount", all.size(),
                 "filteredSections", filteredSections,
+                "deleted", deleted,
                 "filters", row("classes", classesForSchool(schoolId),
                         "sections", sectionNamesForSchool(schoolId),
                         "feeStatuses", List.of("Paid", "Overdue", "Pending", "Partial")));
@@ -99,11 +105,17 @@ public class StudentReadRepository {
 
     public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
                                                           String feeStatus) {
+        return workspaceStudentRows(schoolId, className, sectionName, feeStatus, false);
+    }
+
+    public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
+                                                          String feeStatus, boolean deleted) {
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
                        s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
                        s.photo_url, s.fee_status, s.attendance_percent, s.school_id,
+                       s.deleted_at, s.deleted_reason,
                        sc.id AS class_id, sc.name AS class_name, sc.sort_order,
                        ss.id AS section_id, ss.name AS section_name,
                        ay.label AS academic_year_label
@@ -111,7 +123,10 @@ public class StudentReadRepository {
                 JOIN tenant_school.school_classes sc ON sc.id = s.class_id
                 JOIN tenant_school.school_sections ss ON ss.id = s.section_id
                 JOIN tenant_school.academic_years ay ON ay.id = s.academic_year_id
-                WHERE s.deleted_at IS NULL
+                WHERE
+                """)
+                .append(deleted ? " s.deleted_at IS NOT NULL" : " s.deleted_at IS NULL")
+                .append("""
                   AND s.school_id = :schoolId
                 """);
         if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
@@ -142,6 +157,8 @@ public class StudentReadRepository {
                     "fatherName", rs.getString("father_name"),
                     "fatherContact", rs.getString("father_contact"),
                     "feeStatus", rs.getString("fee_status"),
+                    "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class),
+                    "deletedReason", rs.getString("deleted_reason"),
                     "attendancePercent", attendance == null ? 0 : round(attendance));
         }).list();
     }
@@ -152,12 +169,13 @@ public class StudentReadRepository {
                        s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
                        s.photo_url, s.fee_status, s.attendance_percent, s.school_id, s.class_id, s.section_id,
+                       s.deleted_at, s.deleted_reason,
                        sc.name AS class_name, ss.name AS section_name, ay.label AS academic_year_label
                 FROM student.students s
                 JOIN tenant_school.school_classes sc ON sc.id = s.class_id
                 JOIN tenant_school.school_sections ss ON ss.id = s.section_id
                 JOIN tenant_school.academic_years ay ON ay.id = s.academic_year_id
-                WHERE s.id = :id AND s.deleted_at IS NULL
+                WHERE s.id = :id
                 """)
                 .param("id", id)
                 .query((rs, rowNum) -> {
@@ -196,6 +214,9 @@ public class StudentReadRepository {
                             "state", rs.getString("state"),
                             "pinCode", rs.getString("pin_code"),
                             "full", rs.getString("address")));
+                    detail.put("deletedAt", rs.getObject("deleted_at", OffsetDateTime.class));
+                    detail.put("deletedReason", rs.getString("deleted_reason"));
+                    detail.put("fee", currentFeeForStudent(id));
                     return detail;
                 })
                 .optional()
@@ -866,9 +887,13 @@ public class StudentReadRepository {
                 .list();
         List<Map<String, Object>> promotions = jdbc.sql("""
                 SELECT i.batch_id, i.action, i.status, i.reason, i.created_at,
-                       b.source_academic_year_id, b.target_academic_year_id, b.applied_at
+                       b.source_academic_year_id, source_ay.label AS source_academic_year,
+                       b.target_academic_year_id, target_ay.label AS target_academic_year,
+                       b.applied_at
                 FROM student.student_promotion_batch_items i
                 JOIN student.student_promotion_batches b ON b.id = i.batch_id
+                LEFT JOIN tenant_school.academic_years source_ay ON source_ay.id = b.source_academic_year_id
+                LEFT JOIN tenant_school.academic_years target_ay ON target_ay.id = b.target_academic_year_id
                 WHERE i.student_id = :id
                 ORDER BY i.created_at DESC
                 """)
@@ -879,14 +904,145 @@ public class StudentReadRepository {
                         "status", rs.getString("status"),
                         "reason", rs.getString("reason"),
                         "sourceAcademicYearId", rs.getString("source_academic_year_id"),
+                        "sourceAcademicYear", rs.getString("source_academic_year"),
                         "targetAcademicYearId", rs.getString("target_academic_year_id"),
+                        "targetAcademicYear", rs.getString("target_academic_year"),
                         "createdAt", rs.getObject("created_at", OffsetDateTime.class),
                         "appliedAt", rs.getObject("applied_at", OffsetDateTime.class)))
                 .list();
+        List<Map<String, Object>> feeAssignments = feeTablesAvailable() ? jdbc.sql("""
+                SELECT fa.id, fa.academic_year_id, ay.label AS academic_year,
+                       fa.schedule, fa.band_discount, fa.manual_discount, fa.surcharge,
+                       fa.net_payable, fa.paid_amount,
+                       GREATEST(fa.net_payable - fa.paid_amount, 0) AS due_amount,
+                       fa.assigned_by, fa.assigned_at, fa.updated_by, fa.updated_at,
+                       fb.id AS band_id, fb.name AS plan_name
+                FROM fee.fee_assignments fa
+                LEFT JOIN tenant_school.academic_years ay ON ay.id = fa.academic_year_id
+                LEFT JOIN fee.fee_bands fb ON fb.id = fa.band_id
+                WHERE fa.student_id = :id
+                ORDER BY fa.assigned_at DESC NULLS LAST, fa.updated_at DESC NULLS LAST
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "id", rs.getString("id"),
+                        "assignmentId", rs.getString("id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "academicYear", rs.getString("academic_year"),
+                        "bandId", rs.getString("band_id"),
+                        "planName", rs.getString("plan_name"),
+                        "schedule", rs.getString("schedule"),
+                        "bandDiscountPercent", rs.getDouble("band_discount"),
+                        "manualDiscountPercent", rs.getDouble("manual_discount"),
+                        "surchargePercent", rs.getDouble("surcharge"),
+                        "netPayablePaise", rs.getLong("net_payable"),
+                        "paidAmountPaise", rs.getLong("paid_amount"),
+                        "dueAmountPaise", rs.getLong("due_amount"),
+                        "status", rs.getLong("due_amount") <= 0 ? "Paid" : "Overdue",
+                        "assignedBy", rs.getObject("assigned_by"),
+                        "assignedAt", rs.getObject("assigned_at", OffsetDateTime.class),
+                        "updatedBy", rs.getObject("updated_by"),
+                        "updatedAt", rs.getObject("updated_at", OffsetDateTime.class)))
+                .list() : List.of();
+        List<Map<String, Object>> feePayments = feeTablesAvailable() ? jdbc.sql("""
+                SELECT p.id, p.assignment_id, p.amount, p.mode, p.notes, p.paid_at,
+                       p.recorded_by, p.receipt_number, p.created_at,
+                       fa.academic_year_id, ay.label AS academic_year,
+                       fb.id AS band_id, fb.name AS plan_name
+                FROM fee.payment_records p
+                LEFT JOIN fee.fee_assignments fa ON fa.id = p.assignment_id
+                LEFT JOIN tenant_school.academic_years ay ON ay.id = fa.academic_year_id
+                LEFT JOIN fee.fee_bands fb ON fb.id = fa.band_id
+                WHERE p.student_id = :id
+                ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC NULLS LAST
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "id", rs.getString("id"),
+                        "paymentId", rs.getString("id"),
+                        "assignmentId", rs.getString("assignment_id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "academicYear", rs.getString("academic_year"),
+                        "bandId", rs.getString("band_id"),
+                        "planName", rs.getString("plan_name"),
+                        "amountPaise", rs.getLong("amount"),
+                        "mode", rs.getString("mode"),
+                        "notes", rs.getString("notes"),
+                        "paidAt", rs.getObject("paid_at", OffsetDateTime.class),
+                        "recordedBy", rs.getObject("recorded_by"),
+                        "receiptNumber", rs.getString("receipt_number"),
+                        "createdAt", rs.getObject("created_at", OffsetDateTime.class)))
+                .list() : List.of();
         long completedAcademicYears = completedAcademicYearCount(id);
         return row("student", student, "enrollments", enrollments, "imports", importRows, "promotions", promotions,
+                "feeAssignments", feeAssignments, "feePayments", feePayments,
+                "historyYears", historyYears(enrollments, promotions, feeAssignments, feePayments),
                 "completedAcademicYears", completedAcademicYears,
                 "historyPreserved", student.get("deletedAt") == null || completedAcademicYears > 0);
+    }
+
+    private Map<String, Object> currentFeeForStudent(Long studentId) {
+        if (!feeTablesAvailable()) {
+            return row("assigned", false, "status", "Pending");
+        }
+        String currentYearId = currentAcademicYearId();
+        return jdbc.sql("""
+                SELECT fa.id, fa.academic_year_id, ay.label AS academic_year,
+                       fa.schedule, fa.net_payable, fa.paid_amount,
+                       GREATEST(fa.net_payable - fa.paid_amount, 0) AS due_amount,
+                       fb.id AS band_id, fb.name AS plan_name
+                FROM fee.fee_assignments fa
+                LEFT JOIN tenant_school.academic_years ay ON ay.id = fa.academic_year_id
+                LEFT JOIN fee.fee_bands fb ON fb.id = fa.band_id
+                WHERE fa.student_id = :studentId
+                ORDER BY CASE WHEN fa.academic_year_id = :currentYearId THEN 0 ELSE 1 END,
+                         fa.assigned_at DESC NULLS LAST,
+                         fa.updated_at DESC NULLS LAST
+                LIMIT 1
+                """)
+                .param("studentId", studentId)
+                .param("currentYearId", currentYearId)
+                .query((rs, n) -> row(
+                        "assigned", true,
+                        "assignmentId", rs.getString("id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "academicYear", rs.getString("academic_year"),
+                        "bandId", rs.getString("band_id"),
+                        "planName", rs.getString("plan_name"),
+                        "schedule", rs.getString("schedule"),
+                        "netPayablePaise", rs.getLong("net_payable"),
+                        "paidAmountPaise", rs.getLong("paid_amount"),
+                        "dueAmountPaise", rs.getLong("due_amount"),
+                        "status", rs.getLong("due_amount") <= 0 ? "Paid" : "Overdue"))
+                .optional()
+                .orElseGet(() -> row("assigned", false, "status", "Pending"));
+    }
+
+    private boolean feeTablesAvailable() {
+        Boolean available = jdbc.sql("SELECT to_regclass('fee.fee_assignments') IS NOT NULL")
+                .query(Boolean.class)
+                .single();
+        return Boolean.TRUE.equals(available);
+    }
+
+    private List<Map<String, Object>> historyYears(List<Map<String, Object>>... groups) {
+        LinkedHashMap<String, String> years = new LinkedHashMap<>();
+        for (List<Map<String, Object>> group : groups) {
+            for (Map<String, Object> entry : group) {
+                addHistoryYear(years, entry.get("academicYearId"), entry.get("academicYear"));
+                addHistoryYear(years, entry.get("sourceAcademicYearId"), entry.get("sourceAcademicYear"));
+                addHistoryYear(years, entry.get("targetAcademicYearId"), entry.get("targetAcademicYear"));
+            }
+        }
+        return years.entrySet().stream()
+                .map(entry -> row("id", entry.getKey(), "label", entry.getValue()))
+                .toList();
+    }
+
+    private void addHistoryYear(LinkedHashMap<String, String> years, Object id, Object label) {
+        String yearId = str(id, "").trim();
+        if (yearId.isBlank()) return;
+        years.putIfAbsent(yearId, str(label, yearId));
     }
 
     @Transactional

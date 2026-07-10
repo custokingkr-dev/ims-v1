@@ -219,7 +219,7 @@ public class FeeReadRepository {
                 .param("id", id)
                 .param("name", requireText(firstPresent(request, "itemName", "name"), "Item name is required"))
                 .param("frequency", textOrDefault(request.get("frequency"), "Annual"))
-                .param("amount", toPaise(request.get("amount")))
+                .param("amount", moneyToPaise(request))
                 .param("createdAt", now)
                 .param("updatedAt", now)
                 .param("bandId", bandId)
@@ -243,7 +243,7 @@ public class FeeReadRepository {
                 .param("frequency", request.containsKey("frequency")
                         ? textOrDefault(request.get("frequency"), "Annual")
                         : item.get("frequency"))
-                .param("amount", request.containsKey("amount") ? toPaise(request.get("amount")) : item.get("amount"))
+                .param("amount", request.containsKey("amount") || request.containsKey("amountPaise") ? moneyToPaise(request) : item.get("amount"))
                 .param("updatedAt", OffsetDateTime.now())
                 .update();
         return bandWithItems(String.valueOf(item.get("bandId")));
@@ -322,6 +322,7 @@ public class FeeReadRepository {
                         WHERE s.school_id = :schoolId
                           AND s.class_id = :classId
                           AND s.section_id = :sectionId
+                          AND s.deleted_at IS NULL
                           AND fa.academic_year_id = :academicYearId
                           AND GREATEST(fa.net_payable - fa.paid_amount, 0) > 0
                         ORDER BY s.full_name ASC
@@ -371,6 +372,7 @@ public class FeeReadRepository {
                         FROM fee.payment_records p
                         JOIN student.students s ON s.id = p.student_id
                         WHERE s.school_id = :schoolId
+                          AND s.deleted_at IS NULL
                         """)
                 .param("schoolId", schoolId)
                 .query(Long.class)
@@ -381,6 +383,7 @@ public class FeeReadRepository {
                         JOIN student.students s ON s.id = fa.student_id
                         WHERE fa.academic_year_id = :academicYearId
                           AND s.school_id = :schoolId
+                          AND s.deleted_at IS NULL
                         """)
                 .param("academicYearId", academicYearId)
                 .param("schoolId", schoolId)
@@ -401,6 +404,7 @@ public class FeeReadRepository {
                         ) fi ON fi.band_id = fb.id
                         WHERE fa.academic_year_id = :academicYearId
                           AND s.school_id = :schoolId
+                          AND s.deleted_at IS NULL
                         ORDER BY s.full_name ASC
                         """)
                 .param("academicYearId", academicYearId)
@@ -426,6 +430,7 @@ public class FeeReadRepository {
                         JOIN student.students s ON s.id = fa.student_id
                         WHERE fa.academic_year_id = :academicYearId
                           AND s.school_id = :schoolId
+                          AND s.deleted_at IS NULL
                           AND GREATEST(fa.net_payable - fa.paid_amount, 0) > 0
                         """)
                 .param("academicYearId", academicYearId)
@@ -538,7 +543,7 @@ public class FeeReadRepository {
     @Transactional
     public Map<String, Object> recordPayment(Map<String, Object> request) {
         long studentId = longValue(request.get("studentId"), -1);
-        long amount = longValue(request.get("amount"), 0);
+        long amount = paymentAmountToPaise(request);
         if (studentId <= 0) {
             throw new IllegalArgumentException("Student id is required");
         }
@@ -580,6 +585,12 @@ public class FeeReadRepository {
         Long actorId = request.get("actorId") != null ? longValue(request.get("actorId"), 0) : null;
         String receiptNumber = "RCPT-" + System.currentTimeMillis();
         String assignmentId = String.valueOf(assignment.get("id"));
+        long netPayable = longValue(assignment.get("netPayable"), 0);
+        long paidAmount = longValue(assignment.get("paidAmount"), 0);
+        long remainingDue = Math.max(0, netPayable - paidAmount);
+        if (amount > remainingDue) {
+            throw new IllegalArgumentException("Amount exceeds the remaining due");
+        }
 
         jdbc.sql("""
                 INSERT INTO fee.payment_records(id, amount, mode, notes, paid_at, recorded_by, receipt_number,
@@ -690,6 +701,7 @@ public class FeeReadRepository {
                 WHERE s.school_id = :schoolId
                   AND s.class_id = :classId
                   AND s.section_id = :sectionId
+                  AND s.deleted_at IS NULL
                   AND fa.academic_year_id = :academicYearId
                 """);
         if (overdueOnly) sql.append(" AND GREATEST(fa.net_payable - fa.paid_amount, 0) > 0");
@@ -701,19 +713,40 @@ public class FeeReadRepository {
                 .param("sectionId", sectionId)
                 .param("academicYearId", academicYearId)
                 .query((rs, rowNum) -> {
+                    long totalAnnualFee = rs.getLong("total_annual_fee");
+                    double bandDiscountPercent = rs.getDouble("band_discount");
+                    double manualDiscountPercent = rs.getDouble("manual_discount");
+                    double surchargePercent = rs.getDouble("surcharge");
+                    long bandDiscountAmount = percentageAmount(totalAnnualFee, bandDiscountPercent);
+                    long manualDiscountAmount = percentageAmount(totalAnnualFee, manualDiscountPercent);
+                    long approvedDiscount = bandDiscountAmount + manualDiscountAmount;
+                    long surchargeAmount = "Annual".equalsIgnoreCase(rs.getString("schedule"))
+                            ? 0
+                            : percentageAmount(totalAnnualFee, surchargePercent);
                     long due = Math.max(0, rs.getLong("net_payable") - rs.getLong("paid_amount"));
                     return row(
+                            "assignmentId", rs.getString("id"),
                             "studentId", rs.getLong("student_id"),
                             "paymentId", textOrDefault(rs.getString("latest_payment_id"), ""),
                             "student", rs.getString("student_name"),
                             "admissionNumber", textOrDefault(rs.getString("admission_no"), ""),
                             "planName", rs.getString("plan_name"),
                             "schedule", rs.getString("schedule"),
-                            "totalAnnualFee", rs.getLong("total_annual_fee"),
-                            "discounts", round(rs.getDouble("band_discount") + rs.getDouble("manual_discount")),
-                            "surcharge", round(rs.getDouble("surcharge")),
+                            "totalAnnualFee", totalAnnualFee,
+                            "totalAnnualFeePaise", totalAnnualFee,
+                            "approvedDiscount", approvedDiscount,
+                            "approvedDiscountPaise", approvedDiscount,
+                            "discounts", approvedDiscount,
+                            "discountPercent", round(bandDiscountPercent + manualDiscountPercent),
+                            "surchargeAmount", surchargeAmount,
+                            "surchargeAmountPaise", surchargeAmount,
+                            "surcharge", surchargeAmount,
+                            "surchargePercent", round(surchargePercent),
                             "paid", rs.getLong("paid_amount"),
+                            "paidPaise", rs.getLong("paid_amount"),
                             "due", due,
+                            "dueAmount", due,
+                            "dueAmountPaise", due,
                             "status", due <= 0 ? "Paid" : "Overdue");
                 })
                 .list();
@@ -914,7 +947,7 @@ public class FeeReadRepository {
     }
 
     private Long studentSchoolId(long studentId) {
-        return jdbc.sql("SELECT school_id FROM student.students WHERE id = :studentId")
+        return jdbc.sql("SELECT school_id FROM student.students WHERE id = :studentId AND deleted_at IS NULL")
                 .param("studentId", studentId)
                 .query(Long.class)
                 .optional()
@@ -1066,12 +1099,32 @@ public class FeeReadRepository {
         return Math.round(value * 10.0) / 10.0;
     }
 
-    private long toPaise(Object value) {
+    private long moneyToPaise(Map<String, Object> request) {
+        Object explicitPaise = firstPresent(request, "amountPaise", "paise");
+        if (explicitPaise != null) {
+            return Math.max(0, longValue(explicitPaise, 0));
+        }
+        return rupeesToPaise(request.get("amount"));
+    }
+
+    private long rupeesToPaise(Object value) {
         double amount = doubleValue(value, 0);
         if (!Double.isFinite(amount) || amount < 0) {
             return 0;
         }
-        return Math.round(amount > 100_000 ? amount : amount * 100.0);
+        return Math.round(amount * 100.0);
+    }
+
+    private long paymentAmountToPaise(Map<String, Object> request) {
+        Object explicitPaise = firstPresent(request, "amountPaise", "paise");
+        if (explicitPaise != null) {
+            return Math.max(0, longValue(explicitPaise, 0));
+        }
+        Object explicitRupees = firstPresent(request, "amountRupees", "rupees");
+        if (explicitRupees != null) {
+            return rupeesToPaise(explicitRupees);
+        }
+        return Math.max(0, longValue(request.get("amount"), 0));
     }
 
     private OffsetDateTime parsePaidAt(Object value) {

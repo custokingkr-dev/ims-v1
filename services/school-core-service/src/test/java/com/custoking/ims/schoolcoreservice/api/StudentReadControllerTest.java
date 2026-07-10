@@ -18,6 +18,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -37,24 +38,24 @@ class StudentReadControllerTest {
 
     @Test
     void listRejectsInvalidTokenBeforeQuerying() {
-        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, 0, 25))
+        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, false, 0, 25))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        verify(students, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt());
+        verify(students, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
     }
 
     @Test
     void listDelegatesFiltersToWorkspaceStudents() {
         TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
         Map<String, Object> workspace = Map.of("items", List.of(), "filteredCount", 42);
-        when(students.workspaceStudents(4L, "9", "A", "Pending", 0, 25)).thenReturn(workspace);
+        when(students.workspaceStudents(4L, "9", "A", "Pending", 0, 25, false)).thenReturn(workspace);
 
-        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", 0, 25);
+        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", false, 0, 25);
 
         assertThat(response).isSameAs(workspace);
-        verify(students).workspaceStudents(4L, "9", "A", "Pending", 0, 25);
+        verify(students).workspaceStudents(4L, "9", "A", "Pending", 0, 25, false);
     }
 
     @Test
@@ -72,6 +73,8 @@ class StudentReadControllerTest {
 
     @Test
     void workspaceStudentMapsValidationFailureToBadRequest() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
+        when(students.schoolIdForStudentIncludingDeleted(404L)).thenReturn(4L);
         when(students.workspaceStudentDetail(404L)).thenThrow(new IllegalArgumentException("Student not found"));
 
         assertThatThrownBy(() -> controller.workspaceStudent("student-token", 404L))

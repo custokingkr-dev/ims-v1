@@ -136,6 +136,84 @@ class FeeOutboxEmissionIntegrationTest {
     }
 
     @Test
+    void recordPaymentAcceptsExplicitAmountPaisePayload() {
+        repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
+
+        Map<String, Object> payment = repo.recordPayment(Map.of("studentId", 1L, "amountPaise", 123456L));
+
+        Long storedAmount = jdbc.sql("SELECT amount FROM fee.payment_records WHERE id = :id")
+                .param("id", payment.get("paymentId"))
+                .query(Long.class)
+                .single();
+        assertThat(storedAmount).isEqualTo(123456L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void feeReportReturnsDiscountAndSurchargeAsPaiseAmountsWithPercentFieldsSeparate() {
+        repo.assignFeePlan(Map.of(
+                "studentId", 1L,
+                "bandId", "band-1",
+                "schedule", "Monthly",
+                "bandDiscount", 10.0,
+                "manualDiscount", 5.0,
+                "surcharge", 2.0));
+
+        Map<String, Object> report = repo.feeReport("c1", "s1", null, 10L);
+        Map<String, Object> row = ((java.util.List<Map<String, Object>>) report.get("content")).get(0);
+
+        assertThat(row.get("totalAnnualFeePaise")).isEqualTo(500000L);
+        assertThat(row.get("approvedDiscountPaise")).isEqualTo(75000L);
+        assertThat(row.get("discounts")).isEqualTo(75000L);
+        assertThat(row.get("discountPercent")).isEqualTo(15.0);
+        assertThat(row.get("surchargeAmountPaise")).isEqualTo(10000L);
+        assertThat(row.get("surchargePercent")).isEqualTo(2.0);
+        assertThat(row.get("dueAmountPaise")).isEqualTo(435000L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void activeFeeOperationsIgnoreSoftDeletedStudentsButReceiptsRemainReadable() {
+        repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
+        Map<String, Object> payment = repo.recordPayment(Map.of("studentId", 1L, "amount", 125000L));
+        jdbc.sql("UPDATE student.students SET deleted_at = now(), deleted_reason = 'Transferred' WHERE id = 1")
+                .update();
+
+        assertThat((java.util.List<Map<String, Object>>) repo.feeReport("c1", "s1", null, 10L).get("content"))
+                .isEmpty();
+        assertThat((java.util.List<Map<String, Object>>) repo.feeOverdue("c1", "s1", null, 10L).get("content"))
+                .isEmpty();
+        assertThat(((Number) repo.feeOverdueCount(null, 10L).get("count")).longValue()).isZero();
+        assertThat((java.util.List<Map<String, Object>>) repo.feeReminderRequests("c1", "s1", null, 10L, 99L).get("content"))
+                .isEmpty();
+
+        Map<String, Object> module = repo.feesModule(null, 10L);
+        Map<String, Object> summary = (Map<String, Object>) module.get("summary");
+        assertThat(summary.get("collected")).isEqualTo(0L);
+        assertThat(summary.get("target")).isEqualTo(0L);
+        assertThat((java.util.List<Map<String, Object>>) module.get("records")).isEmpty();
+
+        Map<String, Object> receipt = repo.receiptByPaymentId(String.valueOf(payment.get("paymentId")));
+        assertThat(receipt.get("amount")).isEqualTo(125000L);
+
+        assertThatThrownBy(() -> repo.recordPayment(Map.of("studentId", 1L, "amount", 1L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Student not found");
+        assertThatThrownBy(() -> repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Student not found");
+    }
+
+    @Test
+    void recordPaymentRejectsAmountGreaterThanRemainingDue() {
+        repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
+
+        assertThatThrownBy(() -> repo.recordPayment(Map.of("studentId", 1L, "amount", 500001L)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("remaining due");
+    }
+
+    @Test
     void failedRecordPaymentEmitsNoEvent() {
         long before = countOutbox("payment.recorded.v1");
         assertThatThrownBy(() -> repo.recordPayment(Map.of("studentId", 1L, "amount", 0L)))

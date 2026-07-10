@@ -15,6 +15,14 @@ export function formatMoney(value: any): string {
   return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
+export function formatPaise(value: any): string {
+  return formatMoney(Number(value || 0) / 100);
+}
+
+export function paiseToRupeeInput(value: any): string {
+  return (Number(value || 0) / 100).toFixed(2);
+}
+
 export function formatLakh(value: any): string {
   const n = typeof value === 'number' ? value : Number(value || 0);
   return n >= 100000 ? `${(n / 100000).toFixed(1)}L` : formatMoney(n);

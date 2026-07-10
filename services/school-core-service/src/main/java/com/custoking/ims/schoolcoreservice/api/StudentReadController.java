@@ -69,11 +69,12 @@ public class StudentReadController {
             @RequestParam(name = "class", required = false) String className,
             @RequestParam(name = "section", required = false) String sectionName,
             @RequestParam(required = false) String feeStatus,
+            @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
+        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
     }
 
     @GetMapping("/{id}")
@@ -92,11 +93,12 @@ public class StudentReadController {
             @RequestParam(required = false) String className,
             @RequestParam(required = false) String sectionName,
             @RequestParam(required = false) String feeStatus,
+            @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
+        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
     }
 
     @GetMapping("/{id}/workspace")
@@ -104,6 +106,8 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "student:read");
+        Long schoolId = students.schoolIdForStudentIncludingDeleted(id);
+        TenantScope.resolveSchoolId(schoolId);
         return execute(() -> students.workspaceStudentDetail(id));
     }
 

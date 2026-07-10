@@ -14,7 +14,7 @@ import {
   validateStudentPhotoFile,
 } from '../../../features/students';
 import { ModuleShell, Info } from '../ui';
-import { formatAddress, initials } from '../utils';
+import { formatAddress, formatPaise, initials } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 
@@ -30,9 +30,12 @@ interface AcademicYearOption {
 }
 
 interface StudentHistoryPayload {
+  historyYears?: Array<{ id: string; label: string }>;
   enrollments?: Array<Record<string, any>>;
   imports?: Array<Record<string, any>>;
   promotions?: Array<Record<string, any>>;
+  feeAssignments?: Array<Record<string, any>>;
+  feePayments?: Array<Record<string, any>>;
 }
 
 interface PromotionBatchItem {
@@ -62,6 +65,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
+  const [studentListMode, setStudentListMode] = useState<'active' | 'archived'>('active');
   const [studentsPage, setStudentsPage] = useState(0);
   const PAGE_SIZE = 50;
   const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
@@ -80,6 +84,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentHistory, setStudentHistory] = useState<StudentHistoryPayload | null>(null);
   const [studentHistoryLoading, setStudentHistoryLoading] = useState(false);
   const [studentHistoryError, setStudentHistoryError] = useState<string | null>(null);
+  const [historyYearFilter, setHistoryYearFilter] = useState('all');
+  const [historySearchInput, setHistorySearchInput] = useState('');
+  const [historySearch, setHistorySearch] = useState('');
   const [deleteBusyId, setDeleteBusyId] = useState<string | number | null>(null);
   const [promotionOpen, setPromotionOpen] = useState(false);
   const [promotionClasses, setPromotionClasses] = useState<StudentClassOption[]>([]);
@@ -90,7 +97,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
 
-  const loadStudents = async (filters = studentFilters, page = studentsPage) => {
+  const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode) => {
     try {
       setStudentsLoading(true);
       setStudentsError(null);
@@ -98,6 +105,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       if (filters.className !== 'All') params.class = filters.className;
       if (filters.sectionName !== 'All') params.section = filters.sectionName;
       if (filters.feeStatus !== 'All') params.feeStatus = filters.feeStatus;
+      if (mode === 'archived') params.deleted = true;
       const res = await api.get('/students', { params: { ...params, ...(schoolScopedParams || {}) } });
       setStudentsView(res.data);
     } catch {
@@ -111,16 +119,22 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const applyFilters = (filters: typeof studentFilters) => {
     setStudentFilters(filters);
     setStudentsPage(0);
-    loadStudents(filters, 0);
+    loadStudents(filters, 0, studentListMode);
   };
 
   const handlePageChange = (page: number) => {
     setStudentsPage(page);
-    loadStudents(studentFilters, page);
+    loadStudents(studentFilters, page, studentListMode);
+  };
+
+  const switchStudentListMode = (mode: 'active' | 'archived') => {
+    setStudentListMode(mode);
+    setStudentsPage(0);
+    loadStudents(studentFilters, 0, mode);
   };
 
   useEffect(() => {
-    loadStudents(studentFilters, 0);
+    loadStudents(studentFilters, 0, studentListMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -144,6 +158,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setModalError(null);
     setStudentHistory(null);
     setStudentHistoryError(null);
+    setHistoryYearFilter('all');
+    setHistorySearchInput('');
+    setHistorySearch('');
     let detail = student;
     try {
       setStudentModalOpen(true);
@@ -167,6 +184,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setModalError(null);
     setStudentHistory(null);
     setStudentHistoryError(null);
+    setHistoryYearFilter('all');
+    setHistorySearchInput('');
+    setHistorySearch('');
   };
 
   // NOTE: GET /api/v1/students/{id}/workspace returns the rich `workspaceStudentDetail`
@@ -237,7 +257,13 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setStudentHistoryLoading(true);
       setStudentHistoryError(null);
       const res = await api.get(`/students/${studentDetail.id}/history`);
-      setStudentHistory(res.data || {});
+      const payload = res.data || {};
+      setStudentHistory(payload);
+      setHistoryYearFilter((current) => {
+        if (current === 'all') return current;
+        const years = Array.isArray(payload.historyYears) ? payload.historyYears : [];
+        return years.some((year: { id: string }) => year.id === current) ? current : 'all';
+      });
     } catch (err: unknown) {
       setStudentHistoryError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not load student history.'));
     } finally {
@@ -256,7 +282,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       if (options.closeModal === false) setStudentsError(null);
       await api.delete(`/students/${student.id}`, { data: { reason: 'Deleted from Students tab' } });
       if (options.closeModal !== false) closeStudentModal();
-      await loadStudents(studentFilters, studentsPage);
+      await loadStudents(studentFilters, studentsPage, studentListMode);
       onRefresh();
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.');
@@ -373,6 +399,43 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
   const displayDate = (value: unknown) => value ? String(value).slice(0, 10) : '-';
 
+  const textForSearch = (entry: Record<string, any>) =>
+    Object.values(entry)
+      .filter((value) => value != null)
+      .map((value) => typeof value === 'object' ? JSON.stringify(value) : String(value))
+      .join(' ')
+      .toLowerCase();
+
+  const matchesHistorySearch = (entry: Record<string, any>) => {
+    const needle = historySearch.trim().toLowerCase();
+    return !needle || textForSearch(entry).includes(needle);
+  };
+
+  const matchesHistoryYear = (entry: Record<string, any>, keys = ['academicYearId']) => {
+    if (historyYearFilter === 'all') return true;
+    return keys.some((key) => String(entry[key] || '') === historyYearFilter);
+  };
+
+  const filteredHistory = {
+    enrollments: (studentHistory?.enrollments || [])
+      .filter((entry) => matchesHistoryYear(entry))
+      .filter(matchesHistorySearch),
+    imports: (studentHistory?.imports || [])
+      .filter((entry) => matchesHistoryYear(entry))
+      .filter(matchesHistorySearch),
+    promotions: (studentHistory?.promotions || [])
+      .filter((entry) => matchesHistoryYear(entry, ['sourceAcademicYearId', 'targetAcademicYearId']))
+      .filter(matchesHistorySearch),
+    feeAssignments: (studentHistory?.feeAssignments || [])
+      .filter((entry) => matchesHistoryYear(entry))
+      .filter(matchesHistorySearch),
+    feePayments: (studentHistory?.feePayments || [])
+      .filter((entry) => matchesHistoryYear(entry))
+      .filter(matchesHistorySearch),
+  };
+
+  const historyResultCount = Object.values(filteredHistory).reduce((sum, items) => sum + items.length, 0);
+
   function feeStatusClass(status: string): string {
     switch ((status ?? '').toLowerCase()) {
       case 'paid':    return 'sg spaid';
@@ -387,7 +450,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     <>
       <ModuleShell
         title="Students"
-        subtitle={`${studentsView.filteredCount || 0} enrolled · ${studentsView.filteredSections || 0} sections · Academic year 2024–25`}
+        subtitle={`${studentsView.filteredCount || 0} ${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections · Academic year 2024-25`}
         actions={
           <>
             {can('student:update') && schoolScopedParams ? <button className="ck-btn ck-btn-ghost" onClick={() => void openPromotionWizard()}>Promote class</button> : null}
@@ -406,6 +469,22 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
         {/* Change 1: Improved filter bar */}
         <div className="ck-card-h-wrap" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: '#fbfaf8' }}>
           <div className="ck-card-inline-filters">
+            <div className="ck-actions-inline" aria-label="Student list mode">
+              <button
+                type="button"
+                className={`ck-btn ck-btn-sm ${studentListMode === 'active' ? 'ck-btn-g' : 'ck-btn-ghost'}`}
+                onClick={() => switchStudentListMode('active')}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                className={`ck-btn ck-btn-sm ${studentListMode === 'archived' ? 'ck-btn-g' : 'ck-btn-ghost'}`}
+                onClick={() => switchStudentListMode('archived')}
+              >
+                Archived
+              </button>
+            </div>
             <select
               value={studentFilters.className}
               onChange={e => applyFilters({ ...studentFilters, className: e.target.value, sectionName: 'All' })}
@@ -441,7 +520,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             </select>
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 'auto', flexShrink: 0 }}>
-            {studentsLoading ? '…' : `${studentsView.filteredCount ?? studentsView.items?.length ?? 0} students`}
+            {studentsLoading ? '...' : `${studentsView.filteredCount ?? studentsView.items?.length ?? 0} ${studentListMode === 'archived' ? 'archived' : 'students'}`}
           </div>
         </div>
 
@@ -481,6 +560,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             {!studentsLoading && (
               <tbody>
                 {(studentsView.items || []).map((student: any) => {
+                  const archived = Boolean(student.deletedAt);
                   return (
                     <tr key={student.id}>
                       <td>
@@ -491,7 +571,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                           }
                           <div>
                             <div className="tb">{student.fullName}</div>
-                            <div className="ts">{student.classSection} · {student.academicYear}</div>
+                            <div className="ts">{student.classSection} · {student.academicYear}{archived ? ` · Deleted${student.deletedReason ? `: ${student.deletedReason}` : ''}` : ''}</div>
                           </div>
                         </div>
                       </td>
@@ -521,10 +601,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <td>
                         <div className="ck-actions-inline">
                           <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student)}>View</button>
-                          {can('student:update') && (
+                          {can('student:update') && !archived ? (
                             <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student, true)}>Edit</button>
-                          )}
-                          {can('student:delete') ? (
+                          ) : null}
+                          {can('student:delete') && !archived ? (
                             <button
                               type="button"
                               className="ck-btn ck-btn-ghost ck-btn-sm ck-student-delete-inline"
@@ -551,7 +631,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
                 {studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
                   ? 'No students match these filters'
-                  : 'No students enrolled yet'}
+                  : studentListMode === 'archived' ? 'No archived students yet' : 'No students enrolled yet'}
               </div>
               <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 14, maxWidth: 320, margin: '0 auto 14px' }}>
                 {studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
@@ -613,6 +693,12 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <div>Showing limited data — full student details could not be loaded.</div>
                     </div>
                   )}
+                  {studentDetail.deletedAt ? (
+                    <div className="ck-alert ck-alert-am">
+                      <span>!</span>
+                      <div>Archived student{studentDetail.deletedReason ? `: ${studentDetail.deletedReason}` : ''}</div>
+                    </div>
+                  ) : null}
                   <div className="ck-student-modal-hero">
                     {studentDetail.photoUrl
                       ? <img src={studentDetail.photoUrl} alt={studentDetail.name} className="ck-student-avatar ck-student-avatar-lg" />
@@ -653,6 +739,19 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <span className={`ck-status ${feeStatusClass(studentDetail.feeStatus ?? '')}`}>
                         {studentDetail.feeStatus ?? 'Unknown'}
                       </span>
+                      {studentDetail.fee?.assigned ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div className="tb">{studentDetail.fee.planName || 'Assigned fee plan'} · {studentDetail.fee.schedule || '-'}</div>
+                          <div className="ts">{studentDetail.fee.academicYear || studentDetail.fee.academicYearId || 'Current year'}</div>
+                          <div className="ck-form-grid ck-fg-3" style={{ marginTop: 10 }}>
+                            <Info label="Net payable" value={`₹${formatPaise(studentDetail.fee.netPayablePaise)}`} />
+                            <Info label="Paid" value={`₹${formatPaise(studentDetail.fee.paidAmountPaise)}`} />
+                            <Info label="Due" value={`₹${formatPaise(studentDetail.fee.dueAmountPaise)}`} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="ts" style={{ marginTop: 10 }}>No fee plan is assigned to this student yet.</div>
+                      )}
                     </div>
                   </div>
                   {studentHistoryLoading ? (
@@ -670,16 +769,44 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   ) : null}
                   {studentHistory ? (
                     <div className="ck-form-card" style={{ gridColumn: '1 / -1' }}>
-                      <div className="ck-form-head">Lifecycle history</div>
+                      <div className="ck-form-head ck-card-h-wrap">
+                        <span>Student history</span>
+                        <span className="ts">{historyResultCount} record{historyResultCount === 1 ? '' : 's'}</span>
+                      </div>
                       <div className="ck-form-body">
+                        <div className="ck-card-inline-filters" style={{ marginBottom: 14 }}>
+                          <select
+                            value={historyYearFilter}
+                            onChange={(event) => setHistoryYearFilter(event.target.value)}
+                            aria-label="Filter history by academic year"
+                          >
+                            <option value="all">All years</option>
+                            {(studentHistory.historyYears || []).map((year) => (
+                              <option key={year.id} value={year.id}>{year.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            value={historySearchInput}
+                            onChange={(event) => setHistorySearchInput(event.target.value)}
+                            onKeyDown={(event) => { if (event.key === 'Enter') setHistorySearch(historySearchInput); }}
+                            placeholder="Search history"
+                            aria-label="Search student history"
+                            style={{ minWidth: 220 }}
+                          />
+                          <button className="ck-btn ck-btn-ghost ck-btn-sm" type="button" onClick={() => setHistorySearch(historySearchInput)}>Search</button>
+                          {historySearch ? (
+                            <button className="ck-btn ck-btn-ghost ck-btn-sm" type="button" onClick={() => { setHistorySearch(''); setHistorySearchInput(''); }}>Clear</button>
+                          ) : null}
+                        </div>
                         <div className="tb" style={{ marginBottom: 8 }}>Class history</div>
-                        {(studentHistory.enrollments || []).length ? (
+                        {filteredHistory.enrollments.length ? (
                           <div className="ck-table-wrap">
                             <table className="ck-table">
-                              <thead><tr><th>From</th><th>To</th><th>Class</th><th>Status</th><th>Reason</th></tr></thead>
+                              <thead><tr><th>Year</th><th>From</th><th>To</th><th>Class</th><th>Status</th><th>Reason</th></tr></thead>
                               <tbody>
-                                {(studentHistory.enrollments || []).map((entry, index) => (
+                                {filteredHistory.enrollments.map((entry, index) => (
                                   <tr key={entry.id || index}>
+                                    <td>{entry.academicYear || entry.academicYearId || '-'}</td>
                                     <td>{displayDate(entry.effectiveFrom)}</td>
                                     <td>{displayDate(entry.effectiveTo)}</td>
                                     <td>{entry.className || '-'} {entry.sectionName ? `- ${entry.sectionName}` : ''}</td>
@@ -691,26 +818,72 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                             </table>
                           </div>
                         ) : <div className="ts">No class history recorded yet.</div>}
-                        {(studentHistory.imports || []).length ? (
+                        {filteredHistory.feeAssignments.length ? (
+                          <>
+                            <div className="tb" style={{ margin: '14px 0 8px' }}>Fee assignments</div>
+                            <div className="ck-table-wrap">
+                              <table className="ck-table">
+                                <thead><tr><th>Year</th><th>Plan</th><th>Schedule</th><th className="col-money">Net</th><th className="col-money">Paid</th><th className="col-money">Due</th><th>Status</th></tr></thead>
+                                <tbody>
+                                  {filteredHistory.feeAssignments.map((entry, index) => (
+                                    <tr key={entry.assignmentId || entry.id || index}>
+                                      <td>{entry.academicYear || entry.academicYearId || '-'}</td>
+                                      <td>{entry.planName || '-'}</td>
+                                      <td>{entry.schedule || '-'}</td>
+                                      <td className="col-money">₹{formatPaise(entry.netPayablePaise)}</td>
+                                      <td className="col-money">₹{formatPaise(entry.paidAmountPaise)}</td>
+                                      <td className="col-money">₹{formatPaise(entry.dueAmountPaise)}</td>
+                                      <td><span className={`ck-status ${feeStatusClass(entry.status || '')}`}>{entry.status || '-'}</span></td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        ) : null}
+                        {filteredHistory.feePayments.length ? (
+                          <>
+                            <div className="tb" style={{ margin: '14px 0 8px' }}>Fee payments</div>
+                            <div className="ck-table-wrap">
+                              <table className="ck-table">
+                                <thead><tr><th>Year</th><th>Receipt</th><th>Plan</th><th>Mode</th><th>Paid at</th><th className="col-money">Amount</th></tr></thead>
+                                <tbody>
+                                  {filteredHistory.feePayments.map((entry, index) => (
+                                    <tr key={entry.paymentId || entry.id || index}>
+                                      <td>{entry.academicYear || entry.academicYearId || '-'}</td>
+                                      <td>{entry.receiptNumber || entry.paymentId || '-'}</td>
+                                      <td>{entry.planName || '-'}</td>
+                                      <td>{entry.mode || '-'}</td>
+                                      <td>{displayDate(entry.paidAt || entry.createdAt)}</td>
+                                      <td className="col-money">₹{formatPaise(entry.amountPaise)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </>
+                        ) : null}
+                        {filteredHistory.imports.length ? (
                           <>
                             <div className="tb" style={{ margin: '14px 0 8px' }}>Import evidence</div>
-                            {(studentHistory.imports || []).map((entry, index) => (
+                            {filteredHistory.imports.map((entry, index) => (
                               <div key={`${entry.batchId || index}`} className="ts" style={{ marginBottom: 6 }}>
                                 Row {entry.rowNumber} in {entry.fileName || 'uploaded file'} - {entry.status || '-'} on {displayDate(entry.appliedAt || entry.createdAt)}
                               </div>
                             ))}
                           </>
                         ) : null}
-                        {(studentHistory.promotions || []).length ? (
+                        {filteredHistory.promotions.length ? (
                           <>
                             <div className="tb" style={{ margin: '14px 0 8px' }}>Promotion batches</div>
-                            {(studentHistory.promotions || []).map((entry, index) => (
+                            {filteredHistory.promotions.map((entry, index) => (
                               <div key={`${entry.batchId || index}`} className="ts" style={{ marginBottom: 6 }}>
-                                {entry.action || '-'} - {entry.status || '-'} to {entry.targetAcademicYearId || '-'} on {displayDate(entry.appliedAt || entry.createdAt)}
+                                {entry.action || '-'} - {entry.status || '-'} from {entry.sourceAcademicYear || entry.sourceAcademicYearId || '-'} to {entry.targetAcademicYear || entry.targetAcademicYearId || '-'} on {displayDate(entry.appliedAt || entry.createdAt)}
                               </div>
                             ))}
                           </>
                         ) : null}
+                        {historyResultCount === 0 ? <div className="ts" style={{ marginTop: 12 }}>No history records match the selected filters.</div> : null}
                       </div>
                     </div>
                   ) : null}
@@ -725,10 +898,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 </>
               ) : (
                 <>
-                  <button className="ck-btn ck-btn-ghost" onClick={() => void loadStudentHistory()} disabled={studentHistoryLoading || !studentDetail}>{studentHistoryLoading ? 'Loading...' : 'History'}</button>
-                  {can('student:update') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => enterEditMode(studentDetail)}>Edit</button> : null}
-                  {can('student:delete') && studentDetail ? <button className="ck-btn ck-btn-ghost" onClick={() => void deleteStudent(studentDetail)} disabled={deleteBusyId === studentDetail.id}>{deleteBusyId === studentDetail.id ? 'Deleting...' : 'Delete'}</button> : null}
-                  <button className="ck-btn ck-btn-ghost" onClick={closeStudentModal}>Close</button>
+                  <button className="ck-btn ck-btn-ghost" onClick={() => void loadStudentHistory()} disabled={studentHistoryLoading || !studentDetail}>{studentHistoryLoading ? 'Loading...' : studentHistory ? 'Reload history' : 'History'}</button>
                 </>
               )}
             </div>
