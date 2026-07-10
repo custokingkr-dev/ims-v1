@@ -294,10 +294,13 @@ jobs:
       - name: Print Cloud Run URLs
         if: always()
         shell: bash
+        env:
+          ENV_NAME: ${{ inputs.environment }}
         run: |
           mkdir -p deployment-evidence
           gcloud run services list \
             --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" \
+            --filter="metadata.name~\"-${ENV_NAME}$\"" \
             --format="table(metadata.name,status.url,status.latestReadyRevisionName)" \
             | tee deployment-evidence/cloud-run-services.txt
 
@@ -365,6 +368,8 @@ jobs:
                       services.append((parts[0], parts[1], parts[2]))
 
           env_name = meta.get("environment", "unknown")
+          if env_name != "unknown":
+              services = [item for item in services if item[0].endswith(f"-{env_name}")]
           deploy_tag = meta.get("deploy_tag", "unknown")
           short_sha = deploy_tag[:12] if deploy_tag != "unknown" else deploy_tag
           job_status = os.environ.get("JOB_STATUS", "unknown")

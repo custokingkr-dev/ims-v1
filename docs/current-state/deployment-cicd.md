@@ -156,7 +156,7 @@ summary. The summary contains:
 - Deployment inputs: environment, tag, selected services, build-skip mode, and workflow run URL.
 - Stage timings for Cloud Build, direct-service smoke, and gateway smoke/preflight.
 - Cloud Build ID, status, and log URL when available.
-- Current Cloud Run service URLs and latest ready revisions.
+- Current target-environment Cloud Run service URLs and latest ready revisions.
 
 The smoke steps use env-suffixed secrets such as `catalog-read-token-dev`, `tenant-school-read-token-prod`, and `db-password-<env>`. Direct-service smoke normalizes secret values before using them as HTTP headers, so a trailing CR/LF in Secret Manager does not break the smoke job before the service call is made.
 
