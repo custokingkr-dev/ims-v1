@@ -157,6 +157,7 @@ Invoke-Step "real environment readiness preflight" {
         "-File", (Join-Path $repoRoot "scripts/invoke-real-environment-readiness-preflight.ps1"),
         "-ProjectId", $ProjectId,
         "-Region", $Region,
+        "-Environment", $Environment,
         "-GatewayBaseUrl", $gatewayBaseUrl,
         "-GcloudPath", $GcloudPath,
         "-OutputJson", (Join-Path $artifactRoot "real-environment-readiness-preflight.json"),

@@ -1,6 +1,8 @@
 param(
     [string]$ProjectId = "custoking",
     [string]$Region = "asia-south2",
+    [ValidateSet("dev", "prod")]
+    [string]$Environment = "dev",
     [string]$DeploymentSmokeJson,
     [string]$LegacyCompatibilityJson,
     [string]$GatewayBaseUrl,
@@ -80,16 +82,14 @@ try {
 
 try {
     $services = @(Invoke-GcloudJson run services list "--project=$ProjectId" "--region=$Region" "--format=json")
-    $expectedServices = @((Get-MicroserviceBuildCatalog) | ForEach-Object { $_.Image })
+    $expectedServices = @((Get-MicroserviceBuildCatalog) | ForEach-Object { "$($_.Image)-$Environment" })
     $serviceNames = @($services | ForEach-Object { $_.metadata.name })
     $missingServices = @($expectedServices | Where-Object { $serviceNames -notcontains $_ })
     Add-Check "cloud run service inventory" ($missingServices.Count -eq 0) "services=$($serviceNames.Count) missing=$($missingServices -join ', ')"
 
-    if ([string]::IsNullOrWhiteSpace($GatewayBaseUrl) -and $gateway) {
-        $GatewayBaseUrl = $gateway.status.url
-    }
+    $gatewayServiceName = "custoking-api-gateway-$Environment"
     if ([string]::IsNullOrWhiteSpace($GatewayBaseUrl)) {
-        $GatewayBaseUrl = & $GcloudPath run services describe custoking-api-gateway "--project=$ProjectId" "--region=$Region" "--format=value(status.url)"
+        $GatewayBaseUrl = & $GcloudPath run services describe $gatewayServiceName "--project=$ProjectId" "--region=$Region" "--format=value(status.url)"
         if ($LASTEXITCODE -ne 0) {
             $GatewayBaseUrl = ""
         }
@@ -101,7 +101,7 @@ try {
 }
 
 try {
-    $gatewayDescription = Invoke-GcloudJson run services describe custoking-api-gateway "--project=$ProjectId" "--region=$Region" "--format=json"
+    $gatewayDescription = Invoke-GcloudJson run services describe "custoking-api-gateway-$Environment" "--project=$ProjectId" "--region=$Region" "--format=json"
     $gatewayEnv = @($gatewayDescription.spec.template.spec.containers[0].env)
     $backendUpstreams = @($gatewayEnv | Where-Object { $_.name -like "*_UPSTREAM" -and "$($_.value)" -like "*custoking-backend*" })
     Add-Check "gateway service-only upstreams" ($backendUpstreams.Count -eq 0) "backendUpstreams=$($backendUpstreams.Count)"
@@ -112,7 +112,7 @@ try {
 try {
     $secrets = @(Invoke-GcloudJson secrets list "--project=$ProjectId" "--format=json")
     $secretNames = @($secrets | ForEach-Object { Split-Path $_.name -Leaf })
-    $requiredSecrets = @((Get-SecretManagerCatalog) | ForEach-Object { $_.Name })
+    $requiredSecrets = @((Get-SecretManagerCatalog) | ForEach-Object { "$($_.Name)-$Environment" })
     $missingSecrets = @($requiredSecrets | Where-Object { $secretNames -notcontains $_ })
     Add-Check "required secret names" ($missingSecrets.Count -eq 0) "missing=$($missingSecrets -join ', ')"
 } catch {
@@ -169,6 +169,7 @@ $ready = $blockers.Count -eq 0
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
     projectId = $ProjectId
     region = $Region
+    environment = $Environment
     gatewayBaseUrl = $GatewayBaseUrl
     readyForRealBundle = $ready
     blockerCount = $blockers.Count
@@ -180,6 +181,7 @@ $lines.Add("# Real Environment Readiness Preflight")
 $lines.Add("")
 $lines.Add("- Project: $ProjectId")
 $lines.Add("- Region: $Region")
+$lines.Add("- Environment: $Environment")
 $lines.Add("- Gateway: $GatewayBaseUrl")
 $lines.Add("- Ready for real bundle: $ready")
 $lines.Add("- Blockers: $($blockers.Count)")

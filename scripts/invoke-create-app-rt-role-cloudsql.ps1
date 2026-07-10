@@ -27,12 +27,13 @@ $auditB64  = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($auditSql)
 $createStep = "printf '%s' '$createB64' | base64 -d > /tmp/create.sql && psql -v ON_ERROR_STOP=1 -v app_rt_password=`"`$APP_RT_PASSWORD`" -v owner=$Owner -v set_superuser=1 -h $HostAddress -p $Port -U $ConnectUser -d $Database -f /tmp/create.sql"
 $auditStep  = "printf '%s' '$auditB64' | base64 -d > /tmp/audit.sql && psql -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $ConnectUser -d $Database -f /tmp/audit.sql"
 $script = if ($AuditOnly) { $auditStep } else { "$createStep && $auditStep" }
+$jobArgs = "-c,$script"
 
 $job = "ims-app-rt-" + (Get-Date -Format "yyyyMMddHHmmss")
 try {
     & $Gcloud run jobs create $job `
         --project=$Project --region=$Region `
-        --image=postgres:16-alpine --command=sh --args=-c,$script `
+        --image=postgres:16-alpine --command=sh "--args=$jobArgs" `
         --set-env-vars=PGSSLMODE=disable `
         --set-secrets="PGPASSWORD=${ConnectPasswordSecret}:latest,APP_RT_PASSWORD=${AppRtPasswordSecret}:latest" `
         --network=$Network --subnet=$Subnet --vpc-egress=private-ranges-only `

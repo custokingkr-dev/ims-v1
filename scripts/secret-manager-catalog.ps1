@@ -2,9 +2,7 @@ function Get-SecretManagerCatalog {
     @(
         [pscustomobject]@{ Name = "db-password"; Purpose = "Database password for appuser (single app + Flyway DB user)" }
         [pscustomobject]@{ Name = "app-rt-password"; Purpose = "Database password for app_rt (unprivileged runtime role; owner/Flyway uses db-password)" }
-        [pscustomobject]@{ Name = "aadhar-secret"; Purpose = "Aadhaar data encryption/signing secret" }
         [pscustomobject]@{ Name = "jwt-secret"; Purpose = "JWT signing secret shared by backend and identity-service" }
-        [pscustomobject]@{ Name = "notification-pubsub-push-token"; Purpose = "Notification Pub/Sub push defense-in-depth token" }
         [pscustomobject]@{ Name = "notification-status-token"; Purpose = "Notification status/read internal token" }
         [pscustomobject]@{ Name = "msg91-auth-key"; Purpose = "MSG91 provider auth key" }
         [pscustomobject]@{ Name = "audit-ingest-token"; Purpose = "Audit service ingest internal token" }

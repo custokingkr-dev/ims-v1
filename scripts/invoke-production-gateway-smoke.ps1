@@ -1,6 +1,8 @@
 param(
     [string]$Project = "custoking",
     [string]$Region = "asia-south2",
+    [ValidateSet("dev", "prod")]
+    [string]$Environment = "dev",
     [string]$GatewayBaseUrl = "https://custoking-api-gateway-xkv7oenbna-em.a.run.app",
     [string]$HostAddress = "10.116.0.3",
     [int]$Port = 5432,
@@ -40,6 +42,7 @@ function Invoke-CloudSqlJob {
     $job = $NamePrefix + "-" + (Get-Date -Format "yyyyMMddHHmmss") + "-" + ((New-Guid).ToString("n").Substring(0, 5))
     $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Sql))
     $script = "printf '%s' '$encodedSql' | base64 -d > /tmp/smoke.sql && psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/smoke.sql | sed 's/^/$Marker|/'"
+    $jobArgs = "-c,$script"
 
     try {
         & $Gcloud run jobs create $job `
@@ -47,7 +50,7 @@ function Invoke-CloudSqlJob {
             --region=$Region `
             --image=postgres:16-alpine `
             --command=sh `
-            --args=-c,$script `
+            "--args=$jobArgs" `
             --set-env-vars=PGSSLMODE=disable `
             --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
             --network=$Network `
@@ -60,12 +63,20 @@ function Invoke-CloudSqlJob {
         Start-Sleep -Seconds 3
 
         $filter = "resource.type=`"cloud_run_job`" AND resource.labels.job_name=`"$job`""
-        return & $Gcloud logging read $filter `
-            --project=$Project `
-            --freshness=30m `
-            --order=asc `
-            --limit=300 `
-            --format="value(textPayload)"
+        $lines = @()
+        for ($attempt = 1; $attempt -le 12; $attempt++) {
+            $lines = @(& $Gcloud logging read $filter `
+                --project=$Project `
+                --freshness=30m `
+                --order=asc `
+                --limit=300 `
+                --format="value(textPayload)")
+            if (@($lines | Where-Object { $_ -like "$Marker|*" }).Count -gt 0) {
+                return $lines
+            }
+            Start-Sleep -Seconds 5
+        }
+        return $lines
     } finally {
         $previousErrorActionPreference = $ErrorActionPreference
         $ErrorActionPreference = "Continue"
@@ -297,6 +308,7 @@ try {
     & (Join-Path $PSScriptRoot "invoke-real-environment-readiness-preflight.ps1") `
         -ProjectId $Project `
         -Region $Region `
+        -Environment $Environment `
         -DeploymentSmokeJson $OutputJson `
         -LegacyCompatibilityJson $LegacyCompatibilityJson `
         -GatewayBaseUrl $GatewayBaseUrl `

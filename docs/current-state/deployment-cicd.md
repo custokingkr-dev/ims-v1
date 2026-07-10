@@ -150,7 +150,7 @@ After Cloud Build deploys the target environment, the main-line release workflow
 
 The smoke steps use env-suffixed secrets such as `catalog-read-token-dev`, `tenant-school-read-token-prod`, and `db-password-<env>`. Direct-service smoke normalizes secret values before using them as HTTP headers, so a trailing CR/LF in Secret Manager does not break the smoke job before the service call is made.
 
-The deployed gateway smoke provisions temporary smoke users through a private Cloud Run SQL job and reads that job's stdout from Cloud Logging to obtain the selected school/student context. The GitHub deploy service account therefore needs log-entry read permission; live IAM currently grants `roles/logging.viewer`.
+The deployed gateway smoke provisions temporary smoke users through a private Cloud Run SQL job and reads that job's stdout from Cloud Logging to obtain the selected school/student context. The GitHub deploy service account therefore needs log-entry read permission; live IAM currently grants `roles/logging.viewer`. The final real-environment preflight is environment-aware and validates `custoking-*-dev` / `custoking-*-prod` Cloud Run services plus `-dev` / `-prod` secrets.
 
 ### `.github/workflows/security-scan.yml`
 

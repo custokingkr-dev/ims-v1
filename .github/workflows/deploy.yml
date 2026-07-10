@@ -242,6 +242,7 @@ jobs:
           pwsh ./scripts/invoke-production-gateway-smoke.ps1 \
             -Project "${GCP_PROJECT_ID}" \
             -Region "${GCP_REGION}" \
+            -Environment "${ENV_NAME}" \
             -GatewayBaseUrl "${URL}" \
             -HostAddress "${DB_HOST_ONLY}" \
             -Port "${DB_PORT}" \

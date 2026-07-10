@@ -109,6 +109,7 @@ ORDER BY domain, public_table;
 $job = "ims-legacy-audit-" + (Get-Date -Format "yyyyMMddHHmmss")
 $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($sql))
 $script = "printf '%s' '$encodedSql' | base64 -d > /tmp/audit.sql && psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/audit.sql | sed 's/^/IMS_AUDIT_ROW|/'"
+$jobArgs = "-c,$script"
 
 try {
     & $Gcloud run jobs create $job `
@@ -116,7 +117,7 @@ try {
         --region=$Region `
         --image=postgres:16-alpine `
         --command=sh `
-        --args=-c,$script `
+        "--args=$jobArgs" `
         --set-env-vars=PGSSLMODE=disable `
         --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
         --network=$Network `
@@ -129,12 +130,19 @@ try {
     Start-Sleep -Seconds 3
 
     $filter = "resource.type=`"cloud_run_job`" AND resource.labels.job_name=`"$job`""
-    $logLines = & $Gcloud logging read $filter `
-        --project=$Project `
-        --freshness=30m `
-        --order=asc `
-        --limit=300 `
-        --format="value(textPayload)"
+    $logLines = @()
+    for ($attempt = 1; $attempt -le 12; $attempt++) {
+        $logLines = @(& $Gcloud logging read $filter `
+            --project=$Project `
+            --freshness=30m `
+            --order=asc `
+            --limit=300 `
+            --format="value(textPayload)")
+        if (@($logLines | Where-Object { $_ -like "IMS_AUDIT_ROW|*" }).Count -gt 0) {
+            break
+        }
+        Start-Sleep -Seconds 5
+    }
 
     $rows = @()
     foreach ($line in $logLines) {
