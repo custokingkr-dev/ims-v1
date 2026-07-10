@@ -67,6 +67,8 @@ steps:
         }
 
         built_any=false
+        pids=()
+        labels=()
         for item in "$${services[@]}"; do
           IFS=: read -r name context image <<< "$${item}"
           if ! selected "$${name}" "$${image}"; then
@@ -74,12 +76,30 @@ steps:
             continue
           fi
           built_any=true
-          docker build -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}" "$${context}"
-          docker push "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}"
+          (
+            set -euo pipefail
+            target="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/$${image}:${_COMMIT_SHA}"
+            echo "Building and pushing $${name} -> $${target}"
+            docker build -t "$${target}" "$${context}"
+            docker push "$${target}"
+          ) &
+          pids+=("$$!")
+          labels+=("$${name}")
         done
 
         if [ "$${built_any}" != "true" ]; then
           echo "No services matched _DEPLOY_SERVICES=${_DEPLOY_SERVICES}" >&2
+          exit 1
+        fi
+
+        failed=false
+        for i in "$${!pids[@]}"; do
+          if ! wait "$${pids[$$i]}"; then
+            echo "Build failed for $${labels[$$i]}" >&2
+            failed=true
+          fi
+        done
+        if [ "$${failed}" = "true" ]; then
           exit 1
         fi
 
@@ -131,6 +151,21 @@ steps:
             --set-secrets="$${secrets}"
         }
 
+        wait_for_parallel_deploys() {
+          local failed=false
+          for i in "$${!pids[@]}"; do
+            if ! wait "$${pids[$$i]}"; then
+              echo "Deploy failed for $${labels[$$i]}" >&2
+              failed=true
+            fi
+          done
+          pids=()
+          labels=()
+          if [ "$${failed}" = "true" ]; then
+            exit 1
+          fi
+        }
+
         # school-core-service = tenant_school + student + attendance + fee + catalog (Phase 2 merge #3).
         # SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps it to
         # school-core.outbox.pubsub.topic-id, which @ConditionalOnProperty gates the real PubSub relay on.
@@ -145,9 +180,13 @@ steps:
         if [ -z "$${TENANT_SCHOOL_URL}" ]; then
           TENANT_SCHOOL_URL="http://school-core-service:8080"
         fi
+        pids=()
+        labels=()
         deploy_service identity-service custoking-identity-service-${_ENV} custoking-identity-service "OTEL_SERVICE_NAME=identity-service,IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,APP_JWT_SECRET=jwt-secret-${_ENV}:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest" \
-          "--min-instances=1"
+          "--min-instances=1" &
+        pids+=("$$!")
+        labels+=("identity-service")
 
         # operations-service = workflow + firefighting (OPERATIONS_DB_SCHEMA default has a comma, set in yml).
         # OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps it to
@@ -157,7 +196,19 @@ steps:
         # polls while alive.
         deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OTEL_SERVICE_NAME=operations-service,OPERATIONS_MERGED=true,OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID,OPERATIONS_TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH=auto" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest,OPERATIONS_TENANT_SCHOOL_TOKEN=tenant-school-read-token-${_ENV}:latest" \
-          "--min-instances=1"
+          "--min-instances=1" &
+        pids+=("$$!")
+        labels+=("operations-service")
+
+        # billing does not depend on identity, operations, or platform. Deploy it in the same wave
+        # after school-core so the common database migrations still run before downstream checks.
+        deploy_service billing-service custoking-billing-service-${_ENV} custoking-billing-service "OTEL_SERVICE_NAME=billing-service,BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest" \
+          "--min-instances=1" &
+        pids+=("$$!")
+        labels+=("billing-service")
+
+        wait_for_parallel_deploys
 
         # platform-service = reporting + notification + audit (PLATFORM_DB_SCHEMA default set in yml).
         # Reporting's approvals endpoint writes decisions into the owning services over HTTP
@@ -170,14 +221,6 @@ steps:
         fi
         deploy_service platform-service custoking-platform-service-${_ENV} custoking-platform-service "OTEL_SERVICE_NAME=platform-service,MSG91_DRY_RUN=true,SCHOOL_CORE_URL=$${TENANT_SCHOOL_URL},OPERATIONS_URL=$${OPERATIONS_URL}" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,REPORTING_READ_TOKEN=reporting-read-token-${_ENV}:latest,AUDIT_INGEST_TOKEN=audit-ingest-token-${_ENV}:latest,NOTIFICATION_STATUS_TOKEN=notification-status-token-${_ENV}:latest,MSG91_AUTH_KEY=msg91-auth-key-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest"
-
-        # billing-service. BILLING_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps
-        # this env var to billing.outbox.pubsub.topic-id, the property @ConditionalOnProperty gates the
-        # real PubSubDomainEventPublisher on. Wrong name -> no-op publisher silently drops events.
-        # --min-instances=1: the @Scheduled outbox relay only polls while an instance is alive.
-        deploy_service billing-service custoking-billing-service-${_ENV} custoking-billing-service "OTEL_SERVICE_NAME=billing-service,BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest" \
-          "--min-instances=1"
 
   # ---- Deploy frontend + gateway (env-suffixed, upstreams resolved per env) ------------------
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
@@ -244,3 +287,6 @@ steps:
         else
           echo "Skipping api-gateway; not selected by _DEPLOY_SERVICES=${_DEPLOY_SERVICES}"
         fi
+
+options:
+  machineType: E2_HIGHCPU_8

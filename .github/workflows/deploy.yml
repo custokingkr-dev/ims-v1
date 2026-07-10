@@ -128,6 +128,32 @@ jobs:
             echo "value=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Initialize deployment evidence
+        shell: bash
+        env:
+          ENV_NAME: ${{ inputs.environment }}
+          DEPLOY_TAG: ${{ steps.tag.outputs.value }}
+          DEPLOY_SERVICES: ${{ inputs.deploy_services }}
+          SKIP_BUILD: ${{ inputs.skip_build }}
+          RUN_DIRECT_SMOKE: ${{ inputs.run_direct_smoke }}
+          RUN_GATEWAY_SMOKE: ${{ inputs.run_gateway_smoke }}
+        run: |
+          set -euo pipefail
+          mkdir -p deployment-evidence
+          started_epoch="$(date -u +%s)"
+          {
+            echo "environment=${ENV_NAME}"
+            echo "deploy_tag=${DEPLOY_TAG}"
+            echo "deploy_services=${DEPLOY_SERVICES}"
+            echo "skip_build=${SKIP_BUILD}"
+            echo "run_direct_smoke=${RUN_DIRECT_SMOKE}"
+            echo "run_gateway_smoke=${RUN_GATEWAY_SMOKE}"
+            echo "workflow_run_url=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo "started_epoch=${started_epoch}"
+            echo "started_at_utc=$(date -u +%FT%TZ)"
+          } > deployment-evidence/deployment-meta.env
+          : > deployment-evidence/timings.env
+
       - name: Submit build and deploy via Cloud Build
         shell: bash
         env:
@@ -137,9 +163,11 @@ jobs:
           DB_HOST: ${{ vars.DB_HOST }}
           DB_NAME: ${{ vars.DB_NAME }}
           SKIP_BUILD: ${{ inputs.skip_build }}
+          DEPLOY_TAG: ${{ steps.tag.outputs.value }}
         run: |
           set -euo pipefail
           mkdir -p deployment-evidence
+          echo "cloud_build_started_epoch=$(date -u +%s)" >> deployment-evidence/timings.env
 
           : "${GCP_PROJECT_ID:?set the GCP_PROJECT_ID repo variable}"
           : "${DB_HOST:?set DB_HOST on the '${ENV_NAME}' GitHub Environment}"
@@ -154,7 +182,7 @@ jobs:
           gcloud config set project "${GCP_PROJECT_ID}"
           BUILD_ID="$(gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${{ steps.tag.outputs.value }},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }},_OTEL_SAMPLE=${OTEL_SAMPLE} \
+            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${DEPLOY_TAG},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }},_OTEL_SAMPLE=${OTEL_SAMPLE} \
             --project="${GCP_PROJECT_ID}" \
             --gcs-source-staging-dir="${CLOUD_BUILD_SOURCE_STAGING_DIR}" \
             --async \
@@ -168,12 +196,19 @@ jobs:
             echo "Cloud Build ${BUILD_ID} status=${STATUS}"
             gcloud builds describe "${BUILD_ID}" --project="${GCP_PROJECT_ID}" --format=json > deployment-evidence/cloud-build.json
             case "${STATUS}" in
-              SUCCESS) exit 0 ;;
-              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED) exit 1 ;;
+              SUCCESS)
+                echo "cloud_build_finished_epoch=$(date -u +%s)" >> deployment-evidence/timings.env
+                exit 0
+                ;;
+              FAILURE|INTERNAL_ERROR|TIMEOUT|CANCELLED|EXPIRED)
+                echo "cloud_build_finished_epoch=$(date -u +%s)" >> deployment-evidence/timings.env
+                exit 1
+                ;;
             esac
             sleep 30
           done
           echo "Cloud Build ${BUILD_ID} did not finish within workflow polling window."
+          echo "cloud_build_finished_epoch=$(date -u +%s)" >> deployment-evidence/timings.env
           exit 1
 
       - name: Run direct service smoke
@@ -184,6 +219,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p deployment-evidence
+          echo "direct_smoke_started_epoch=$(date -u +%s)" >> deployment-evidence/timings.env
+          trap 'echo "direct_smoke_finished_epoch=$(date -u +%s)" >> deployment-evidence/timings.env' EXIT
 
           if ! gcloud iam service-accounts describe "${DIRECT_SMOKE_SERVICE_ACCOUNT}" \
             --project="${GCP_PROJECT_ID}" >/dev/null 2>&1; then
@@ -229,6 +266,10 @@ jobs:
           DB_NAME: ${{ vars.DB_NAME }}
         run: |
           set -euo pipefail
+          mkdir -p deployment-evidence
+          echo "gateway_smoke_started_epoch=$(date -u +%s)" >> deployment-evidence/timings.env
+          trap 'echo "gateway_smoke_finished_epoch=$(date -u +%s)" >> deployment-evidence/timings.env' EXIT
+
           : "${DB_HOST:?set DB_HOST on the '${ENV_NAME}' GitHub Environment}"
           : "${DB_NAME:?set DB_NAME on the '${ENV_NAME}' GitHub Environment}"
           DB_HOST_ONLY="${DB_HOST%%:*}"
@@ -259,6 +300,139 @@ jobs:
             --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}" \
             --format="table(metadata.name,status.url,status.latestReadyRevisionName)" \
             | tee deployment-evidence/cloud-run-services.txt
+
+      - name: Write deployment summary
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          mkdir -p deployment-evidence
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = Path("deployment-evidence")
+
+          def read_env(path: Path) -> dict[str, str]:
+              values: dict[str, str] = {}
+              if not path.exists():
+                  return values
+              for raw in path.read_text().splitlines():
+                  if not raw or raw.startswith("#") or "=" not in raw:
+                      continue
+                  key, value = raw.split("=", 1)
+                  values[key] = value
+              return values
+
+          def duration(start: str | None, end: str | None) -> str:
+              try:
+                  seconds = int(end or "") - int(start or "")
+              except ValueError:
+                  return "n/a"
+              if seconds < 0:
+                  return "n/a"
+              minutes, seconds = divmod(seconds, 60)
+              return f"{minutes}m {seconds:02d}s"
+
+          meta = read_env(evidence / "deployment-meta.env")
+          timings = read_env(evidence / "timings.env")
+
+          build_id = ""
+          build_status = "unknown"
+          build_log = ""
+          build_json = evidence / "cloud-build.json"
+          if build_json.exists():
+              try:
+                  data = json.loads(build_json.read_text())
+                  build_id = data.get("id") or ""
+                  build_status = data.get("status") or "unknown"
+                  build_log = data.get("logUrl") or ""
+              except json.JSONDecodeError:
+                  build_status = "unreadable"
+          id_file = evidence / "cloud-build-id.txt"
+          if not build_id and id_file.exists():
+              build_id = id_file.read_text().strip()
+
+          services = []
+          services_file = evidence / "cloud-run-services.txt"
+          if services_file.exists():
+              for line in services_file.read_text().splitlines():
+                  parts = line.split()
+                  if len(parts) >= 3 and parts[0] != "NAME":
+                      services.append((parts[0], parts[1], parts[2]))
+
+          env_name = meta.get("environment", "unknown")
+          deploy_tag = meta.get("deploy_tag", "unknown")
+          short_sha = deploy_tag[:12] if deploy_tag != "unknown" else deploy_tag
+          job_status = os.environ.get("JOB_STATUS", "unknown")
+          direct_gate = "enabled" if meta.get("run_direct_smoke") == "true" and meta.get("deploy_services") != "frontend" else "skipped"
+          gateway_gate = "enabled" if meta.get("run_gateway_smoke") == "true" and meta.get("deploy_services") != "frontend" else "skipped"
+
+          lines = [
+              f"# {env_name.upper()} Deployment",
+              "",
+              "```mermaid",
+              "flowchart LR",
+              f'  A["Commit<br/>{short_sha}"] --> B["Cloud Build<br/>{build_status}"]',
+              f'  B --> C["Cloud Run<br/>{env_name} services"]',
+              f'  C --> D["Direct smoke<br/>{direct_gate}"]',
+              f'  D --> E["Gateway smoke<br/>{gateway_gate}"]',
+              f'  E --> F["Evidence<br/>{job_status}"]',
+              "```",
+              "",
+              "## Deployment Inputs",
+              "",
+              "| Field | Value |",
+              "| --- | --- |",
+              f"| Environment | `{env_name}` |",
+              f"| Commit/tag | `{deploy_tag}` |",
+              f"| Services | `{meta.get('deploy_services', 'unknown')}` |",
+              f"| Skip build | `{meta.get('skip_build', 'unknown')}` |",
+              f"| Workflow | {meta.get('workflow_run_url', 'unknown')} |",
+              "",
+              "## Stage Timings",
+              "",
+              "| Stage | Gate | Duration |",
+              "| --- | --- | --- |",
+              f"| Cloud Build deploy | `{build_status}` | {duration(timings.get('cloud_build_started_epoch'), timings.get('cloud_build_finished_epoch'))} |",
+              f"| Direct service smoke | `{direct_gate}` | {duration(timings.get('direct_smoke_started_epoch'), timings.get('direct_smoke_finished_epoch'))} |",
+              f"| Gateway smoke + preflight | `{gateway_gate}` | {duration(timings.get('gateway_smoke_started_epoch'), timings.get('gateway_smoke_finished_epoch'))} |",
+          ]
+
+          if build_id or build_log:
+              lines.extend([
+                  "",
+                  "## Cloud Build",
+                  "",
+                  "| Field | Value |",
+                  "| --- | --- |",
+                  f"| Build ID | `{build_id or 'unknown'}` |",
+                  f"| Status | `{build_status}` |",
+                  f"| Logs | {build_log or 'n/a'} |",
+              ])
+
+          if services:
+              lines.extend([
+                  "",
+                  "## Cloud Run Revisions",
+                  "",
+                  "| Service | URL | Latest ready revision |",
+                  "| --- | --- | --- |",
+              ])
+              for name, url, revision in services:
+                  lines.append(f"| `{name}` | {url} | `{revision}` |")
+
+          lines.append("")
+          summary = evidence / "deployment-summary.md"
+          summary.write_text("\n".join(lines))
+          PY
+          cat deployment-evidence/deployment-summary.md
+          if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+            cat deployment-evidence/deployment-summary.md >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
       - name: Upload deployment evidence
         if: always()

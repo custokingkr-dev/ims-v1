@@ -148,9 +148,21 @@ After Cloud Build deploys the target environment, the main-line release workflow
 - A private direct-service smoke job using `ims-direct-service-smoke`.
 - A deployed gateway smoke against `custoking-api-gateway-<env>`.
 
+Every deploy writes `deployment-evidence/deployment-summary.md`, uploads it in the
+deployment evidence artifact, and appends the same markdown to the GitHub Actions job
+summary. The summary contains:
+
+- A Mermaid flow diagram for commit -> Cloud Build -> Cloud Run -> direct smoke -> gateway smoke -> evidence.
+- Deployment inputs: environment, tag, selected services, build-skip mode, and workflow run URL.
+- Stage timings for Cloud Build, direct-service smoke, and gateway smoke/preflight.
+- Cloud Build ID, status, and log URL when available.
+- Current Cloud Run service URLs and latest ready revisions.
+
 The smoke steps use env-suffixed secrets such as `catalog-read-token-dev`, `tenant-school-read-token-prod`, and `db-password-<env>`. Direct-service smoke normalizes secret values before using them as HTTP headers, so a trailing CR/LF in Secret Manager does not break the smoke job before the service call is made.
 
-The deployed gateway smoke provisions temporary smoke users through a private Cloud Run SQL job and reads that job's stdout from Cloud Logging to obtain the selected school/student context. The GitHub deploy service account therefore needs log-entry read permission and Secret Manager metadata read permission; live IAM currently grants `roles/logging.viewer` and `roles/secretmanager.viewer`. The final real-environment preflight is environment-aware and validates `custoking-*-dev` / `custoking-*-prod` Cloud Run services plus `-dev` / `-prod` secrets. The old legacy-compatibility artifact is warning-only in this CD smoke because the checked-in local artifact is from the older `custoking-ims` project, not the current `custoking` project.
+The deployed gateway smoke provisions temporary smoke users through a private reusable Cloud Run SQL job named `ims-gateway-smoke-sql-<env>` and reads that job's stdout from Cloud Logging to obtain the selected school/student context. The job is created only when missing; each smoke run passes the SQL as execution args and uses a unique log marker, then retires the smoke users through the same job. This avoids creating and deleting two one-off Cloud Run jobs on every deploy while keeping the same database setup and cleanup behavior.
+
+The GitHub deploy service account therefore needs log-entry read permission and Secret Manager metadata read permission; live IAM currently grants `roles/logging.viewer` and `roles/secretmanager.viewer`. The final real-environment preflight is environment-aware and validates `custoking-*-dev` / `custoking-*-prod` Cloud Run services plus `-dev` / `-prod` secrets. The old legacy-compatibility artifact is warning-only in this CD smoke because the checked-in local artifact is from the older `custoking-ims` project, not the current `custoking` project.
 
 ### `.github/workflows/security-scan.yml`
 
@@ -190,7 +202,16 @@ Build units:
 - `frontend` -> `custoking-frontend`
 - `api-gateway` -> `custoking-api-gateway`
 
-Cloud Build deploys selected Spring services first, then frontend/gateway. When deploying the gateway, it resolves current env-specific upstream Cloud Run URLs and writes them into gateway env vars.
+Cloud Build uses `E2_HIGHCPU_8` and builds/pushes selected Docker images in parallel when `_SKIP_BUILD=false`. Prod promotion still uses `_SKIP_BUILD=true`, so it reuses the already-built image tag and does not rebuild images.
+
+Cloud Build deploys selected Spring services before frontend/gateway, but not all Spring services are serial anymore:
+
+- `school-core-service` deploys first because other services read its Cloud Run URL.
+- `identity-service`, `operations-service`, and `billing-service` deploy in parallel after `school-core-service`.
+- `platform-service` deploys after that wave because it needs both school-core and operations URLs.
+- Frontend and gateway remain ordered because the frontend is initially pointed at the current gateway URL, the gateway needs current upstream URLs and CORS origin, then frontend is updated to the new gateway URL.
+
+When deploying the gateway, Cloud Build resolves current env-specific upstream Cloud Run URLs and writes them into gateway env vars.
 
 ## Deployed Service Config From Cloud Build
 

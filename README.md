@@ -251,6 +251,11 @@ GitHub Actions deployment:
 4. Choose `deploy_services`; default `frontend` deploys one service only.
 5. Choose `all` only for an approved full fleet rollout.
 
+Each deploy writes a visual GitHub Actions summary and uploads `deployment-evidence/`,
+including the Mermaid deploy flow, stage timings, Cloud Build ID/log URL, smoke gate
+durations, and current Cloud Run revisions. See `docs/current-state/deployment-cicd.md`
+for the detailed CI/CD model.
+
 Manual Cloud Build deployment:
 
 ```powershell

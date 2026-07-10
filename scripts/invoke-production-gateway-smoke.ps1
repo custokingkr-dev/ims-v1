@@ -26,10 +26,47 @@ $bcryptPasswordHash = '$2a$10$J7RjqxrkPBk31.tolxpMkO0LHevKKGCNi6AsSPAsGeHtnyvHfm
 $superEmail = "prod-smoke-superadmin@custoking.local"
 $adminEmail = "prod-smoke-admin@custoking.local"
 $context = $null
+$script:CloudSqlJobName = "ims-gateway-smoke-sql-$Environment"
+$script:CloudSqlJobEnsured = $false
 
 function ConvertTo-SqlLiteral {
     param([string]$Value)
     "'" + ($Value -replace "'", "''") + "'"
+}
+
+function Ensure-CloudSqlJob {
+    if ($script:CloudSqlJobEnsured) {
+        return
+    }
+
+    $describeExitCode = 1
+    $previousErrorActionPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $Gcloud run jobs describe $script:CloudSqlJobName `
+            --project=$Project `
+            --region=$Region *> $null
+        $describeExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    if ($describeExitCode -ne 0) {
+        & $Gcloud run jobs create $script:CloudSqlJobName `
+            --project=$Project `
+            --region=$Region `
+            --image=postgres:16-alpine `
+            --command=sh `
+            --set-env-vars=PGSSLMODE=disable `
+            --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
+            --network=$Network `
+            --subnet=$Subnet `
+            --vpc-egress=private-ranges-only `
+            --max-retries=0 `
+            --tasks=1 | Write-Output
+    }
+
+    $script:CloudSqlJobEnsured = $true
 }
 
 function Invoke-CloudSqlJob {
@@ -39,53 +76,48 @@ function Invoke-CloudSqlJob {
         [string]$Marker
     )
 
-    $job = $NamePrefix + "-" + (Get-Date -Format "yyyyMMddHHmmss") + "-" + ((New-Guid).ToString("n").Substring(0, 5))
+    $executionMarker = $Marker + "-" + ((New-Guid).ToString("n").Substring(0, 8))
     $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Sql))
-    $script = "printf '%s' '$encodedSql' | base64 -d > /tmp/smoke.sql && psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/smoke.sql | sed 's/^/$Marker|/'"
+    $script = "printf '%s' '$encodedSql' | base64 -d > /tmp/smoke.sql && psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/smoke.sql | sed 's/^/$executionMarker|/'"
     $jobArgs = "-c,$script"
 
-    try {
-        & $Gcloud run jobs create $job `
+    Ensure-CloudSqlJob
+
+    Write-Host "Executing $NamePrefix through reusable Cloud Run job $script:CloudSqlJobName"
+    & $Gcloud run jobs execute $script:CloudSqlJobName `
+        --project=$Project `
+        --region=$Region `
+        "--args=$jobArgs" `
+        --wait | Write-Output
+    Start-Sleep -Seconds 1
+
+    $filter = "resource.type=`"cloud_run_job`" AND resource.labels.job_name=`"$($script:CloudSqlJobName)`" AND textPayload:`"$executionMarker`""
+    $lines = @()
+    for ($attempt = 1; $attempt -le 10; $attempt++) {
+        $lines = @(& $Gcloud logging read $filter `
             --project=$Project `
-            --region=$Region `
-            --image=postgres:16-alpine `
-            --command=sh `
-            "--args=$jobArgs" `
-            --set-env-vars=PGSSLMODE=disable `
-            --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
-            --network=$Network `
-            --subnet=$Subnet `
-            --vpc-egress=private-ranges-only `
-            --max-retries=0 `
-            --tasks=1 | Write-Output
-
-        & $Gcloud run jobs execute $job --project=$Project --region=$Region --wait | Write-Output
-        Start-Sleep -Seconds 3
-
-        $filter = "resource.type=`"cloud_run_job`" AND resource.labels.job_name=`"$job`""
-        $lines = @()
-        for ($attempt = 1; $attempt -le 12; $attempt++) {
-            $lines = @(& $Gcloud logging read $filter `
-                --project=$Project `
-                --freshness=30m `
-                --order=asc `
-                --limit=300 `
-                --format="value(textPayload)")
-            if (@($lines | Where-Object { $_ -like "$Marker|*" }).Count -gt 0) {
-                return $lines
-            }
-            Start-Sleep -Seconds 5
+            --freshness=30m `
+            --order=asc `
+            --limit=100 `
+            --format="value(textPayload)")
+        if (@($lines | Where-Object { $_ -like "$executionMarker|*" }).Count -gt 0) {
+            return @($lines | ForEach-Object {
+                if ($_ -like "$executionMarker|*") {
+                    $Marker + "|" + $_.Substring(("$executionMarker|").Length)
+                } else {
+                    $_
+                }
+            })
         }
-        return $lines
-    } finally {
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
-        try {
-            & $Gcloud run jobs delete $job --project=$Project --region=$Region --quiet *> $null
-        } finally {
-            $ErrorActionPreference = $previousErrorActionPreference
-        }
+        Start-Sleep -Seconds 2
     }
+    return @($lines | ForEach-Object {
+        if ($_ -like "$executionMarker|*") {
+            $Marker + "|" + $_.Substring(("$executionMarker|").Length)
+        } else {
+            $_
+        }
+    })
 }
 
 function Provision-SmokeUsers {
