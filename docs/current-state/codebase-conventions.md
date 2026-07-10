@@ -1,6 +1,6 @@
 # Codebase and Conventions
 
-Last verified: 2026-07-09.
+Last verified: 2026-07-10.
 
 ## Repository Layout
 
@@ -29,7 +29,7 @@ Verified from package and pom files:
 - Java services use Spring Boot parent `4.0.7`.
 - Java services set `java.version` to `25`.
 - Frontend uses React `18.3.1`, Vite `6.2.0`, TypeScript `5.7.2`, Vitest `3.2.0`.
-- Gateway uses Node 20 in CI and CommonJS source.
+- Gateway uses Node 24 LTS in CI and CommonJS source.
 - PostgreSQL driver is used by Spring services.
 - Flyway is used for service-owned schema migrations.
 - Testcontainers PostgreSQL is used in Java tests.

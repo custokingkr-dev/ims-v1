@@ -3,7 +3,7 @@
 React + Vite frontend for Custoking IMS.
 
 ## Requirements
-- Node.js 20+
+- Node.js 24 LTS (`>=24 <25`) with npm 11
 
 ## Run
 ```bash

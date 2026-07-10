@@ -202,7 +202,10 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       stagedRowsRef.current = rows;
       stagedFileRef.current = file;
 
-      const embedded = await extractXlsxPhotos(file); // Map<admissionNo, {bytes, contentType}>
+      const hasPhotoColumn = rows.some((row) =>
+        Object.keys(row).some((key) => key.trim().toLowerCase() === 'photo' || key.trim().toLowerCase() === 'photourl')
+      );
+      const embedded = hasPhotoColumn ? await extractXlsxPhotos(file) : new Map<string, { bytes: Uint8Array; contentType: string }>();
       const stagedByAdmission = new Map<string, StagedPhoto>();
       rows.forEach((row) => {
         const admissionNo = String(row['AdmissionNo'] ?? row['admissionNo'] ?? '').trim();

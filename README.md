@@ -37,7 +37,7 @@ Primary services:
 Prerequisites:
 
 - JDK 25+
-- Node 20+
+- Node.js 24 LTS (`>=24 <25`) with npm 11
 - Docker Desktop with WSL2
 - Google Cloud SDK for deployment scripts
 

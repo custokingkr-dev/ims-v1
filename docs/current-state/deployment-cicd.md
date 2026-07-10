@@ -1,6 +1,6 @@
 # Deployment and CI/CD
 
-Last verified: 2026-07-09.
+Last verified: 2026-07-10.
 
 ## Deployment Model
 
@@ -22,7 +22,7 @@ Local setup is documented in `docs/LOCAL-SETUP.md`.
 Current local build requirements:
 
 - JDK 25 or newer for Java services.
-- Node.js 20 or newer for frontend and API gateway.
+- Node.js 24 LTS (`>=24 <25`) with npm 11 for frontend and API gateway.
 - Docker Desktop / Docker Compose for the local service stack.
 - Root Maven wrapper `mvnw.cmd` / `mvnw`; no global Maven install is required.
 
@@ -62,8 +62,8 @@ Jobs:
   - Produces service and Docker matrices.
 - `service-test`
   - Java services: Temurin Java 25, Maven tests.
-  - Node gateway: Node 20, `node --test server.test.js`.
-  - Frontend: Node 20, `npm ci --include=dev`, `npm audit --audit-level=critical`, `npm test`, `npm run build`.
+  - Node gateway: Node 24, `node --test server.test.js`.
+  - Frontend: Node 24, `npm ci --include=dev`, `npm audit --audit-level=critical`, `npm test`, `npm run build`.
 - `docker-build`
   - Builds changed Docker images with Buildx.
   - Runs Trivy on changed images.

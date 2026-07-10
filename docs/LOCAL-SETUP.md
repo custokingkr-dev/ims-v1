@@ -1,6 +1,6 @@
 # Local Setup
 
-Last verified: 2026-07-09.
+Last verified: 2026-07-10.
 
 This guide covers running the current compact split-service repository locally and setting it up on a new developer laptop.
 
@@ -33,7 +33,7 @@ Install:
 - Git
 - Docker Desktop with WSL2 enabled on Windows
 - JDK 25 or newer
-- Node.js 20 or newer
+- Node.js 24 LTS (`>=24 <25`) with npm 11
 - PowerShell 7 or Windows PowerShell 5.1
 - Optional: Tilt
 - Optional for deployment work only: Google Cloud CLI, Terraform
@@ -137,7 +137,7 @@ git checkout main
 powershell -ExecutionPolicy Bypass -File scripts\setup-local-dev.ps1
 ```
 
-This verifies Git, Docker, Node, npm, and JDK 25+, creates `.env` from `.env.example` if needed, installs frontend and gateway dependencies, and validates the core compose profile.
+This verifies Git, Docker, Node.js 24 LTS, npm 11, and JDK 25+, creates `.env` from `.env.example` if needed, installs frontend and gateway dependencies, and validates the core compose profile.
 
 3. Start the lightweight local app stack:
 

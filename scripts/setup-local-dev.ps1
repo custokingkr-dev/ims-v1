@@ -21,6 +21,18 @@ function Require-Command {
     }
 }
 
+function Assert-NodeRuntime {
+    $versionText = (node --version).Trim()
+    if ($versionText -notmatch '^v(?<major>\d+)\.') {
+        throw "Unable to parse Node.js version from '$versionText'."
+    }
+
+    $major = [int]$Matches.major
+    if ($major -ne 24) {
+        throw "Node.js 24 LTS is required for frontend and api-gateway stability. Current version: $versionText. Install Node.js 24 and retry."
+    }
+}
+
 function Run-Step {
     param(
         [string]$Name,
@@ -49,6 +61,7 @@ try {
         Require-Command docker
         Require-Command node
         Require-Command npm
+        Assert-NodeRuntime
         $javaHome = Resolve-RequiredJavaHome -MinimumMajor 25
         $script:ResolvedJavaHome = $javaHome
         Write-Host "Using JAVA_HOME=$javaHome"
