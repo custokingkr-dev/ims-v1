@@ -19,4 +19,5 @@ includedPermissions:
   - run.tasks.get
   - run.tasks.list
   - secretmanager.secrets.get
+  - secretmanager.secrets.list
   - secretmanager.versions.get

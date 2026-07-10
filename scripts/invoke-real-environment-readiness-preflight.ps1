@@ -152,7 +152,7 @@ if ($legacyPath -and (Test-Path $legacyPath)) {
         Add-Check "legacy compatibility artifact" $false "invalid JSON: $($_.Exception.Message)"
     }
 } else {
-    Add-Check "legacy compatibility artifact" $false "missing LegacyCompatibilityJson; generate with audit-legacy-compatibility-state.ps1"
+    Add-Check "legacy compatibility artifact" $false "missing LegacyCompatibilityJson; optional for env-suffixed CD smoke" "warning"
 }
 
 $hasSuperToken = -not [string]::IsNullOrWhiteSpace($env:IMS_SMOKE_SUPERADMIN_TOKEN)

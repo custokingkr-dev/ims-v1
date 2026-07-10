@@ -285,6 +285,7 @@ Verified project-level IAM bindings for `github-actions-sa`:
 - `roles/iam.serviceAccountUser`
 - `roles/logging.viewer`
 - `roles/run.developer`
+- `roles/secretmanager.viewer`
 - `roles/storage.admin`
 
 Verified drift: the source file `deploy/gcp/github-deploy-runtime-operator-role.yaml` exists, but no project custom role was found by `gcloud iam roles list --project=custoking`, and `githubDeployRuntimeOperator` could not be described. Deploys are currently succeeding with predefined project-level roles.
