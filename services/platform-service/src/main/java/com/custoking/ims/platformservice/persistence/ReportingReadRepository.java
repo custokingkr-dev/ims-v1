@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -266,7 +267,9 @@ public class ReportingReadRepository {
     }
 
     private void addWorkspaceDashboardSummary(Map<String, Object> result, Long schoolId) {
-        String yearId = activeAcademicYearId();
+        String yearId = currentAcademicYearId(schoolId);
+        int academicYearStartMonth = schoolYearStartMonth(schoolId, "academic_year_start_month");
+        int financialYearStartMonth = schoolYearStartMonth(schoolId, "financial_year_start_month");
         String schoolName = schoolId == null
                 ? "All Schools"
                 : jdbc.sql("SELECT name FROM reporting.dim_school WHERE id = :schoolId")
@@ -280,7 +283,7 @@ public class ReportingReadRepository {
                     .param("yearId", yearId)
                     .query(String.class)
                     .optional()
-                    .orElse(yearId);
+                    .orElse(academicYearLabel(yearId));
         long students = schoolId == null
                 ? count("SELECT count(*) FROM reporting.dim_student WHERE active IS DISTINCT FROM false")
                 : count("SELECT count(*) FROM reporting.dim_student WHERE school_id = :schoolId AND active IS DISTINCT FROM false", schoolId);
@@ -372,6 +375,8 @@ public class ReportingReadRepository {
         long attendancePercent = attendanceTotal == 0 ? 0 : Math.round(attendancePresent * 100.0 / attendanceTotal);
         result.put("schoolName", schoolName);
         result.put("schoolMeta", academicYearLabel);
+        result.put("academicYearStartMonth", academicYearStartMonth);
+        result.put("financialYearStartMonth", financialYearStartMonth);
         result.put("students", students);
         result.put("sections", sections);
         result.put("attendancePercent", attendancePercent);
@@ -529,7 +534,7 @@ public class ReportingReadRepository {
                             "firefightingCount", 0L, "firefightingTotalPaise", 0L, "totalDuesPaise", 0L),
                     Map.of("alertCount", 0));
         }
-        String yearId = activeAcademicYearId();
+        String yearId = currentAcademicYearId(schoolId);
         if (yearId == null) {
             return dashboardCommandCenterRow(
                     0L, 0L, 0,
@@ -605,7 +610,7 @@ public class ReportingReadRepository {
         if (schoolId == null) {
             return row("date", effectiveDate, "thresholdPercent", 75, "sections", List.of());
         }
-        String yearId = activeAcademicYearId();
+        String yearId = currentAcademicYearId(schoolId);
         if (yearId == null) {
             return row("date", effectiveDate, "thresholdPercent", 75, "sections", List.of());
         }
@@ -689,7 +694,7 @@ public class ReportingReadRepository {
         if (schoolId == null) {
             return feeDefaulterRow(0L, 0L, 0, List.of(), pageNumber, pageSize, 0L);
         }
-        String yearId = activeAcademicYearId();
+        String yearId = currentAcademicYearId(schoolId);
         if (yearId == null) {
             return feeDefaulterRow(0L, 0L, 0, List.of(), pageNumber, pageSize, 0L);
         }
@@ -871,7 +876,7 @@ public class ReportingReadRepository {
                 FROM reporting.fact_payment
                 WHERE school_id = :schoolId
                 """, schoolId);
-        String yearId = activeAcademicYearId();
+        String yearId = currentAcademicYearId(schoolId);
         long overdueCount = yearId == null ? 0L : count("""
                 SELECT count(*)
                 FROM reporting.fact_fee_assignment
@@ -939,6 +944,58 @@ public class ReportingReadRepository {
                 .query(String.class)
                 .list();
         return activeYears.isEmpty() ? null : activeYears.get(0);
+    }
+
+    private String currentAcademicYearId(Long schoolId) {
+        if (schoolId == null) {
+            return activeAcademicYearId();
+        }
+        Optional<Integer> configuredStartMonth = configuredSchoolYearStartMonth(schoolId, "academic_year_start_month");
+        if (configuredStartMonth.isEmpty()) {
+            return activeAcademicYearId();
+        }
+        LocalDate today = LocalDate.now();
+        int startMonth = configuredStartMonth.get();
+        int startYear = today.getMonthValue() >= startMonth ? today.getYear() : today.getYear() - 1;
+        int endYear = startYear + 1;
+        return "ay_" + startYear + "_" + String.valueOf(endYear).substring(2);
+    }
+
+    private int schoolYearStartMonth(Long schoolId, String column) {
+        if (schoolId == null) {
+            return 4;
+        }
+        return configuredSchoolYearStartMonth(schoolId, column).orElse(4);
+    }
+
+    private Optional<Integer> configuredSchoolYearStartMonth(Long schoolId, String column) {
+        String sql = switch (column) {
+            case "academic_year_start_month" -> """
+                    SELECT academic_year_start_month
+                    FROM reporting.dim_school
+                    WHERE id = :schoolId
+                    LIMIT 1
+                    """;
+            case "financial_year_start_month" -> """
+                    SELECT financial_year_start_month
+                    FROM reporting.dim_school
+                    WHERE id = :schoolId
+                    LIMIT 1
+                    """;
+            default -> throw new IllegalArgumentException("Unsupported year-start column: " + column);
+        };
+        return jdbc.sql(sql)
+                .param("schoolId", schoolId)
+                .query(Integer.class)
+                .optional()
+                .filter(month -> month >= 1 && month <= 12);
+    }
+
+    private static String academicYearLabel(String yearId) {
+        if (yearId == null || !yearId.matches("ay_\\d{4}_\\d{2}")) {
+            return yearId;
+        }
+        return yearId.substring(3, 7) + "-" + yearId.substring(8, 10);
     }
 
     private long count(String sql) {

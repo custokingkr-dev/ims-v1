@@ -61,7 +61,9 @@ public class ReferenceDimensionProjector implements ReportingEventProjector {
         String city = PayloadJson.textOrNull(payload, "city");
         String state = PayloadJson.textOrNull(payload, "state");
         boolean active = PayloadJson.boolOrFalse(payload, "active");
-        dims.upsertSchool(id, name, shortCode, city, state, active);
+        Integer academicYearStartMonth = PayloadJson.intOrNull(payload, "academicYearStartMonth");
+        Integer financialYearStartMonth = PayloadJson.intOrNull(payload, "financialYearStartMonth");
+        dims.upsertSchool(id, name, shortCode, city, state, active, academicYearStartMonth, financialYearStartMonth);
     }
 
     private void projectSection(ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {

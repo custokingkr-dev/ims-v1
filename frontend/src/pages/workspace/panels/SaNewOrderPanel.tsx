@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 import { currentFinancialYearLabel, formatMoney, computeSaOrderValue, EVENT_RATES } from '../utils';
@@ -9,7 +9,6 @@ interface Props {
 }
 
 export function SaNewOrderPanel({ onOrderCreated }: Props) {
-  const currentYearLabel = currentFinancialYearLabel();
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -18,6 +17,14 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
   const [eventItems, setEventItems] = useState<Array<{ type: string; qty: string; notes: string }>>([]);
   const [schoolOptions, setSchoolOptions] = useState<any[]>([]);
   const [schoolLoadError, setSchoolLoadError] = useState('');
+  const selectedSchool = useMemo(
+    () => schoolOptions.find((school) => String(school.id) === String(form.schoolId)),
+    [schoolOptions, form.schoolId]
+  );
+  const currentYearLabel = currentFinancialYearLabel(
+    new Date(),
+    Number(selectedSchool?.financialYearStartMonth || 4)
+  );
 
   useEffect(() => {
     api.get('/sa/schools')

@@ -9,6 +9,7 @@ import java.util.Optional;
 final class AcademicCalendar {
 
     static final int DEFAULT_ACADEMIC_YEAR_START_MONTH = 4;
+    static final int DEFAULT_FINANCIAL_YEAR_START_MONTH = 4;
 
     private AcademicCalendar() {
     }
@@ -18,8 +19,17 @@ final class AcademicCalendar {
     }
 
     static FinancialYear currentFinancialYear(LocalDate date) {
-        int startYear = date.getMonthValue() >= 4 ? date.getYear() : date.getYear() - 1;
+        return currentFinancialYear(date, DEFAULT_FINANCIAL_YEAR_START_MONTH);
+    }
+
+    static FinancialYear currentFinancialYear(LocalDate date, int startMonth) {
+        int normalizedStartMonth = normalizeMonth(startMonth);
+        int startYear = date.getMonthValue() >= normalizedStartMonth ? date.getYear() : date.getYear() - 1;
         return new FinancialYear(startYear, startYear + 1);
+    }
+
+    static FinancialYear currentFinancialYear(JdbcClient jdbc, Long schoolId) {
+        return currentFinancialYear(LocalDate.now(), financialYearStartMonth(jdbc, schoolId));
     }
 
     static String currentAcademicYearId() {
@@ -132,6 +142,23 @@ final class AcademicCalendar {
                 .optional()
                 .map(AcademicCalendar::normalizeMonth)
                 .orElse(DEFAULT_ACADEMIC_YEAR_START_MONTH);
+    }
+
+    static int financialYearStartMonth(JdbcClient jdbc, Long schoolId) {
+        if (schoolId == null) {
+            return DEFAULT_FINANCIAL_YEAR_START_MONTH;
+        }
+        return jdbc.sql("""
+                SELECT financial_year_start_month
+                FROM tenant_school.schools
+                WHERE id = :schoolId
+                LIMIT 1
+                """)
+                .param("schoolId", schoolId)
+                .query(Integer.class)
+                .optional()
+                .map(AcademicCalendar::normalizeMonth)
+                .orElse(DEFAULT_FINANCIAL_YEAR_START_MONTH);
     }
 
     private static int normalizeMonth(int month) {

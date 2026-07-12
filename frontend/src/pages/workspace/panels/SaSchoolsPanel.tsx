@@ -36,7 +36,7 @@ function renderEmailList(emails: string[]) {
   );
 }
 
-const ACADEMIC_YEAR_MONTHS = [
+const YEAR_START_MONTHS = [
   ['1', 'January'],
   ['2', 'February'],
   ['3', 'March'],
@@ -53,7 +53,12 @@ const ACADEMIC_YEAR_MONTHS = [
 
 function academicStartLabel(value?: number | string) {
   const month = String(value || 4);
-  return ACADEMIC_YEAR_MONTHS.find(([id]) => id === month)?.[1] || 'April';
+  return YEAR_START_MONTHS.find(([id]) => id === month)?.[1] || 'April';
+}
+
+function financialStartLabel(value?: number | string) {
+  const month = String(value || 4);
+  return YEAR_START_MONTHS.find(([id]) => id === month)?.[1] || 'April';
 }
 
 export function SaSchoolsPanel() {
@@ -61,7 +66,7 @@ export function SaSchoolsPanel() {
   const [saSchoolsLoading, setSaSchoolsLoading] = useState(false);
   const [saSchoolsError, setSaSchoolsError] = useState('');
   const [saOnboardOpen, setSaOnboardOpen] = useState(false);
-  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2', academicYearStartMonth: '4' });
+  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -140,16 +145,18 @@ export function SaSchoolsPanel() {
     const classCount = Number(saOnboardForm.classCount || 0);
     const sectionCount = Number(saOnboardForm.sectionCount || 0);
     const academicYearStartMonth = Number(saOnboardForm.academicYearStartMonth || 0);
+    const financialYearStartMonth = Number(saOnboardForm.financialYearStartMonth || 0);
     if (!Number.isInteger(classCount) || classCount < 1 || classCount > 12) errors.classCount = 'Classes must be between 1 and 12';
     if (!Number.isInteger(sectionCount) || sectionCount < 1 || sectionCount > 26) errors.sectionCount = 'Sections must be between 1 and 26';
     if (!Number.isInteger(academicYearStartMonth) || academicYearStartMonth < 1 || academicYearStartMonth > 12) errors.academicYearStartMonth = 'Select a valid start month';
+    if (!Number.isInteger(financialYearStartMonth) || financialYearStartMonth < 1 || financialYearStartMonth > 12) errors.financialYearStartMonth = 'Select a valid start month';
     if (Object.keys(errors).length) { setSaOnboardErrors(errors); return; }
     setSaOnboardErrors({}); setSaOnboardSaving(true);
     try {
-      await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth });
+      await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
       setToast(`${saOnboardForm.name} onboarded successfully`);
       setSaOnboardOpen(false);
-      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2', academicYearStartMonth: '4' });
+      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
       await loadSaSchools();
     } catch (e: any) {
       setSaOnboardErrors({ _: e?.response?.data?.message || 'Save failed. Please try again.' });
@@ -179,10 +186,10 @@ export function SaSchoolsPanel() {
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
           : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
           : <table className="ck-table">
-            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={12}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={13}><div className="ts">No schools found.</div></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'}</div></td>
@@ -191,6 +198,7 @@ export function SaSchoolsPanel() {
                     <td>{school.configuredClassCount ?? '—'}</td>
                     <td>{school.configuredSectionCount ?? '—'}</td>
                     <td>{academicStartLabel(school.academicYearStartMonth)}</td>
+                    <td>{financialStartLabel(school.financialYearStartMonth)}</td>
                     <td>{renderEmailList(accountEmails(school, 'adminEmails', 'adminEmail'))}</td>
                     <td>{renderEmailList(accountEmails(school, 'operatorEmails', 'operationsEmail'))}</td>
                     <td>{school.ordersYTD ?? 0}</td>
@@ -228,9 +236,15 @@ export function SaSchoolsPanel() {
                 </Field>
                 <Field label="Academic year starts *">
                   <select value={saOnboardForm.academicYearStartMonth} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, academicYearStartMonth: e.target.value })}>
-                    {ACADEMIC_YEAR_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    {YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
                   {saOnboardErrors.academicYearStartMonth ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.academicYearStartMonth}</div> : null}
+                </Field>
+                <Field label="Financial year starts *">
+                  <select value={saOnboardForm.financialYearStartMonth} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, financialYearStartMonth: e.target.value })}>
+                    {YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  </select>
+                  {saOnboardErrors.financialYearStartMonth ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.financialYearStartMonth}</div> : null}
                 </Field>
                 <Field label="Contact email"><input value={saOnboardForm.contactEmail} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, contactEmail: e.target.value })} /></Field>
                 <Field label="Contact phone"><input value={saOnboardForm.contactPhone} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, contactPhone: e.target.value })} /></Field>

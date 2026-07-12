@@ -203,6 +203,7 @@ class TenantSchoolControllerTest {
                 0L,
                 0L,
                 4,
+                4,
                 "Jun 2026")));
 
         Object response = controller.schoolAdmin("tenant-token", 4L);
@@ -275,6 +276,7 @@ class TenantSchoolControllerTest {
         when(school.getConfiguredClassCount()).thenReturn(12);
         when(school.getConfiguredSectionCount()).thenReturn(2);
         when(school.getAcademicYearStartMonth()).thenReturn(4);
+        when(school.getFinancialYearStartMonth()).thenReturn(4);
         when(school.getCreatedAt()).thenReturn(OffsetDateTime.parse("2026-06-01T00:00:00Z"));
         return school;
     }

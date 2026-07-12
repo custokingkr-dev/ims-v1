@@ -140,10 +140,16 @@ class ReportingReadControllerTest {
                 "attendancePercent", 91.5,
                 "feeOverdueCount", 3,
                 "firefightingActive", 2,
-                "pendingApprovals", 1));
+                "pendingApprovals", 1,
+                "academicYearStartMonth", 6,
+                "financialYearStartMonth", 7));
         Map<String, Object> response = compat.workspace("reporting-token", 4L);
 
         assertThat(response).containsKeys("school", "dashboard", "students", "fees", "attendance");
+        assertThat(response.get("school"))
+                .asInstanceOf(MAP)
+                .containsEntry("academicYearStartMonth", 6.0)
+                .containsEntry("financialYearStartMonth", 7.0);
         assertThat(response.get("dashboard"))
                 .asInstanceOf(MAP)
                 .containsEntry("students", 125.0)

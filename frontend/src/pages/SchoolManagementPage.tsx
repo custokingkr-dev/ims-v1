@@ -21,6 +21,7 @@ type SchoolRow = {
   adminEmail?: string;
   operationsEmail?: string;
   academicYearStartMonth?: number;
+  financialYearStartMonth?: number;
 };
 
 type ModuleEntitlement = {
@@ -57,7 +58,8 @@ const defaultSchoolForm = {
   contactPhone: '',
   classCount: '12',
   sectionCount: '2',
-  academicYearStartMonth: '4'
+  academicYearStartMonth: '4',
+  financialYearStartMonth: '4'
 };
 
 const defaultAdminForm = {
@@ -77,7 +79,7 @@ const defaultModuleSelections = (): Record<string, boolean> =>
 
 const emptyAccounts: SchoolAccounts = { admins: [], operators: [] };
 
-const ACADEMIC_YEAR_MONTHS = [
+const YEAR_START_MONTHS = [
   ['1', 'January'],
   ['2', 'February'],
   ['3', 'March'],
@@ -94,7 +96,12 @@ const ACADEMIC_YEAR_MONTHS = [
 
 function academicStartLabel(value?: number | string) {
   const month = String(value || 4);
-  return ACADEMIC_YEAR_MONTHS.find(([id]) => id === month)?.[1] || 'April';
+  return YEAR_START_MONTHS.find(([id]) => id === month)?.[1] || 'April';
+}
+
+function financialStartLabel(value?: number | string) {
+  const month = String(value || 4);
+  return YEAR_START_MONTHS.find(([id]) => id === month)?.[1] || 'April';
 }
 
 function addAccountOnce(list: AccountSummary[], account: AccountSummary) {
@@ -267,6 +274,7 @@ export default function SchoolManagementPage() {
         classCount: Number(schoolForm.classCount || 12),
         sectionCount: Number(schoolForm.sectionCount || 2),
         academicYearStartMonth: Number(schoolForm.academicYearStartMonth || 4),
+        financialYearStartMonth: Number(schoolForm.financialYearStartMonth || 4),
       });
       const schoolId = res.data?.id;
       if (schoolId) {
@@ -374,6 +382,7 @@ export default function SchoolManagementPage() {
                 <th>Short Code</th>
                 <th>City</th>
                 <th>Academic Start</th>
+                <th>Financial Start</th>
                 <th>Admin Emails</th>
                 <th>Operator Emails</th>
                 <th>Status</th>
@@ -382,10 +391,10 @@ export default function SchoolManagementPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={8}>Loading schools...</td></tr>
+                <tr><td colSpan={9}>Loading schools...</td></tr>
               )}
               {!loading && schools.length === 0 && (
-                <tr><td colSpan={8}>No schools created yet.</td></tr>
+                <tr><td colSpan={9}>No schools created yet.</td></tr>
               )}
               {schools.map((school) => {
                 const accounts = accountsFor(school);
@@ -395,6 +404,7 @@ export default function SchoolManagementPage() {
                     <td>{school.shortCode}</td>
                     <td>{school.city || '-'}</td>
                     <td>{academicStartLabel(school.academicYearStartMonth)}</td>
+                    <td>{financialStartLabel(school.financialYearStartMonth)}</td>
                     <td>{renderAccountEmails(accounts.admins, school.adminEmail)}</td>
                     <td>{renderAccountEmails(accounts.operators, school.operationsEmail)}</td>
                     <td><span className="badge">{school.active ? 'Active' : 'Inactive'}</span></td>
@@ -439,7 +449,8 @@ export default function SchoolManagementPage() {
                   <div className="ck-field"><label>State</label><input value={schoolForm.state} onChange={(e) => setSchoolForm((s) => ({ ...s, state: e.target.value }))} /></div>
                   <div className="ck-field"><label>No. of Classes</label><input type="number" min={1} max={12} value={schoolForm.classCount} onChange={(e) => setSchoolForm((s) => ({ ...s, classCount: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Sections per Class</label><input type="number" min={1} max={26} value={schoolForm.sectionCount} onChange={(e) => setSchoolForm((s) => ({ ...s, sectionCount: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Academic Year Starts</label><select value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{ACADEMIC_YEAR_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                  <div className="ck-field"><label>Academic Year Starts</label><select value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                  <div className="ck-field"><label>Financial Year Starts</label><select value={schoolForm.financialYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, financialYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
                   <div className="ck-field"><label>Contact Email</label><input type="email" value={schoolForm.contactEmail} onChange={(e) => setSchoolForm((s) => ({ ...s, contactEmail: e.target.value }))} /></div>
                   <div className="ck-field"><label>Contact Phone</label><input value={schoolForm.contactPhone} onChange={(e) => setSchoolForm((s) => ({ ...s, contactPhone: e.target.value }))} /></div>
                 </div>

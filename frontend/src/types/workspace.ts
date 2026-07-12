@@ -127,6 +127,8 @@ export interface WorkspaceSchool {
   name: string;
   meta: string;
   students?: number;
+  academicYearStartMonth?: number;
+  financialYearStartMonth?: number;
 }
 
 export interface WorkspaceDashboard {

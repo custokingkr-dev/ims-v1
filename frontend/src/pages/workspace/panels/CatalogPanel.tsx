@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Search, Sparkles, XCircle } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -8,30 +8,39 @@ import { formatMoney, toPaise, todayIso, financialYearOptions } from '../utils';
 import { CATALOG_TILES } from '../config';
 import type { PanelKey } from '../config';
 
-const FY_OPTIONS = financialYearOptions();
-
 interface Props {
   setPanel: (key: PanelKey) => void;
+  financialYearStartMonth?: number;
 }
 
-export function CatalogPanel({ setPanel }: Props) {
+export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
   const today = todayIso();
+  const fyOptions = useMemo(
+    () => financialYearOptions(4, Number(financialYearStartMonth || 4)),
+    [financialYearStartMonth]
+  );
 
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogSaving, setCatalogSaving] = useState(false);
   const [catalogNotice, setCatalogNotice] = useState<{ type: 'success' | 'error' | 'draft'; msg: string } | null>(null);
 
-  const [uniformForm, setUniformForm] = useState({ academicYear: FY_OPTIONS[0], requiredByDate: '', classGroup: 'Class 6–8', logoOnUniform: 'Yes — school logo embroidered', specialInstructions: '', items: [{ name: 'Shirt (white)', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 320 }, { name: 'Trousers / skirt', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 480 }, { name: 'PE T-shirt', sizeBreakdown: 'S:30 M:50 L:20', qty: 100, unitPrice: 220 }] });
+  const [uniformForm, setUniformForm] = useState({ academicYear: fyOptions[0], requiredByDate: '', classGroup: 'Class 6–8', logoOnUniform: 'Yes — school logo embroidered', specialInstructions: '', items: [{ name: 'Shirt (white)', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 320 }, { name: 'Trousers / skirt', sizeBreakdown: 'S:20 M:60 L:15 XL:5', qty: 100, unitPrice: 480 }, { name: 'PE T-shirt', sizeBreakdown: 'S:30 M:50 L:20', qty: 100, unitPrice: 220 }] });
   const [notebookForm, setNotebookForm] = useState({ numStudents: 487, notebooksPerStudent: 6, requiredByDate: '', coverLogo: 'School logo — printed', delivery: 'Deliver to school', schoolNameOnSpine: 'Yes', items: [{ type: 'Ruled notebook', size: 'A4', pages: '120', qty: 1200, unitPrice: 45 }, { type: 'School diary', size: 'A5', pages: '200 pg', qty: 487, unitPrice: 80 }, { type: 'Graph notebook', size: 'A4', pages: '60 pg', qty: 300, unitPrice: 28 }] });
   const [stationeryForm, setStationeryForm] = useState({ packType: 'Per-student kit', numKits: 487, requiredByDate: '', items: [{ name: 'Ball pen (blue)', brand: 'Reynolds 045', perKit: 2, unitPrice: 6 }, { name: 'Pencil HB', brand: 'Natraj 621', perKit: 2, unitPrice: 5 }, { name: 'Eraser', brand: 'Apsara Non-dust', perKit: 1, unitPrice: 8 }, { name: 'Scale 30cm', brand: 'Camlin', perKit: 1, unitPrice: 12 }] });
   const [idCardForm, setIdCardForm] = useState({ studentCount: 487, staffCount: 68, spareCards: 20, lanyardIncluded: 'Yes — with hook', requiredByDate: '' });
   const [housekeepingForm, setHousekeepingForm] = useState({ contractType: 'Weekly — 3 days', startDate: '', duration: '3 months', staffRequired: 4 });
   const [eventsForm, setEventsForm] = useState({ eventName: '', eventDate: '', deliveryDeadline: '', items: [{ name: 'Trophy — gold', spec: '6 inch, resin base', qty: 20, unitPrice: 480 }, { name: 'Certificate', spec: 'A4, GSM 150, colour', qty: 200, unitPrice: 35 }, { name: 'Stage backdrop', spec: '12×8 ft, flex print', qty: 1, unitPrice: 4800 }] });
   const [healthForm, setHealthForm] = useState({ requiredByDate: '', deliveryTo: 'Main office', items: [{ name: 'First aid kit (standard)', qty: 6, unitPrice: 850 }, { name: 'Hand sanitizer 500ml', qty: 24, unitPrice: 180 }, { name: 'Disposable gloves (box 100)', qty: 10, unitPrice: 250 }] });
+
+  useEffect(() => {
+    setUniformForm((form) => fyOptions.includes(form.academicYear)
+      ? form
+      : { ...form, academicYear: fyOptions[0] });
+  }, [fyOptions]);
 
   const calcUniform = () => { const subtotalRs = uniformForm.items.reduce((s, r) => s + r.qty * r.unitPrice, 0); const gstRs = Math.round(subtotalRs * 0.05); return { subtotalRs, gstRs, totalRs: subtotalRs + gstRs }; };
   const calcNotebook = () => { const subtotalRs = notebookForm.items.reduce((s, r) => s + r.qty * r.unitPrice, 0); const gstRs = Math.round(subtotalRs * 0.12); return { subtotalRs, gstRs, totalRs: subtotalRs + gstRs }; };
@@ -216,7 +225,7 @@ export function CatalogPanel({ setPanel }: Props) {
                         <div className="ck-form-head">Order details</div>
                         <div className="ck-form-body">
                           <div className="ck-form-grid ck-fg-2" style={{ marginBottom: 18 }}>
-                            <div className="field"><label>Academic year</label><select value={uniformForm.academicYear} onChange={(e) => setUniformForm((f) => ({ ...f, academicYear: e.target.value }))}>{FY_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
+                            <div className="field"><label>Academic year</label><select value={uniformForm.academicYear} onChange={(e) => setUniformForm((f) => ({ ...f, academicYear: e.target.value }))}>{fyOptions.map((y) => <option key={y} value={y}>{y}</option>)}</select></div>
                             <div className="field"><label>Required by date *</label><input type="date" min={today} value={uniformForm.requiredByDate} onChange={(e) => setUniformForm((f) => ({ ...f, requiredByDate: e.target.value }))} /></div>
                             <div className="field"><label>Class group</label><select value={uniformForm.classGroup} onChange={(e) => setUniformForm((f) => ({ ...f, classGroup: e.target.value }))}><option>Class 1–5</option><option>Class 6–8</option><option>Class 9–10</option><option>Class 11–12</option><option>All classes</option></select></div>
                             <div className="field"><label>Logo on uniform</label><select value={uniformForm.logoOnUniform} onChange={(e) => setUniformForm((f) => ({ ...f, logoOnUniform: e.target.value }))}><option>Yes — school logo embroidered</option><option>Yes — printed logo</option><option>No logo</option></select></div>

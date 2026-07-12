@@ -489,7 +489,12 @@ export default function UnifiedWorkspacePage() {
             </ModuleShell>
           )}
 
-          {panelAllowed && panel === 'catalog' && <CatalogPanel setPanel={setPanel} />}
+          {panelAllowed && panel === 'catalog' && (
+            <CatalogPanel
+              setPanel={setPanel}
+              financialYearStartMonth={workspace?.school?.financialYearStartMonth}
+            />
+          )}
 
           {panel === 'orders' && isPlatformAdmin && (
             <SaOrderApprovalsPanel

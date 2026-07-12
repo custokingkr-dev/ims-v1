@@ -58,6 +58,8 @@ public class ReportingPublicCompatibilityController {
         response.put("school", Map.of(
                 "name", text(summary.get("schoolName"), "Custoking School"),
                 "meta", text(summary.get("schoolMeta"), "Service workspace"),
+                "academicYearStartMonth", number(summary.getOrDefault("academicYearStartMonth", 4)),
+                "financialYearStartMonth", number(summary.getOrDefault("financialYearStartMonth", 4)),
                 "students", number(summary.get("students")),
                 "sections", number(summary.get("sections"))));
         response.put("dashboard", Map.of(

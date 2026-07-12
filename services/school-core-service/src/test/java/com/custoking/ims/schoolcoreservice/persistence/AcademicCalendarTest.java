@@ -25,6 +25,15 @@ class AcademicCalendarTest {
     }
 
     @Test
+    void financialYearCanStartInConfiguredMonth() {
+        AcademicCalendar.FinancialYear may = AcademicCalendar.currentFinancialYear(LocalDate.of(2026, 5, 31), 6);
+        AcademicCalendar.FinancialYear june = AcademicCalendar.currentFinancialYear(LocalDate.of(2026, 6, 1), 6);
+
+        assertThat(may.label()).isEqualTo("2025-26");
+        assertThat(june.label()).isEqualTo("2026-27");
+    }
+
+    @Test
     void academicYearCanStartInConfiguredMonth() {
         AcademicCalendar.AcademicYear may = AcademicCalendar.currentAcademicYear(LocalDate.of(2026, 5, 31), 6);
         AcademicCalendar.AcademicYear june = AcademicCalendar.currentAcademicYear(LocalDate.of(2026, 6, 1), 6);

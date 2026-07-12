@@ -140,8 +140,9 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
   const [modal, setModal] = useState<ModalData | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [planBusy, setPlanBusy] = useState(false);
-  const currentYearLabel = currentFinancialYearLabel();
-  const planningYearTabs = financialYearHistoryOptions(3);
+  const financialYearStartMonth = Number(workspace.school?.financialYearStartMonth || 4);
+  const currentYearLabel = currentFinancialYearLabel(new Date(), financialYearStartMonth);
+  const planningYearTabs = financialYearHistoryOptions(3, new Date(), financialYearStartMonth);
   const planningStartYear = Number(currentYearLabel.slice(0, 4)) || new Date().getFullYear();
 
   const studentCount = workspace.school?.students ?? workspace.dashboard?.students ?? '—';

@@ -22,12 +22,15 @@ public class DimensionProjectionRepository {
     }
 
     @Transactional
-    public void upsertSchool(long id, String name, String shortCode, String city, String state, boolean active) {
+    public void upsertSchool(long id, String name, String shortCode, String city, String state, boolean active,
+                             Integer academicYearStartMonth, Integer financialYearStartMonth) {
         jdbc.sql("""
                         INSERT INTO reporting.dim_school (
-                            id, name, short_code, city, state, active, updated_at
+                            id, name, short_code, city, state, active,
+                            academic_year_start_month, financial_year_start_month, updated_at
                         ) VALUES (
-                            :id, :name, :shortCode, :city, :state, :active, now()
+                            :id, :name, :shortCode, :city, :state, :active,
+                            :academicYearStartMonth, :financialYearStartMonth, now()
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             name = EXCLUDED.name,
@@ -35,6 +38,8 @@ public class DimensionProjectionRepository {
                             city = EXCLUDED.city,
                             state = EXCLUDED.state,
                             active = EXCLUDED.active,
+                            academic_year_start_month = EXCLUDED.academic_year_start_month,
+                            financial_year_start_month = EXCLUDED.financial_year_start_month,
                             updated_at = now()
                         """)
                 .param("id", id)
@@ -43,7 +48,13 @@ public class DimensionProjectionRepository {
                 .param("city", city)
                 .param("state", state)
                 .param("active", active)
+                .param("academicYearStartMonth", normalizeMonth(academicYearStartMonth))
+                .param("financialYearStartMonth", normalizeMonth(financialYearStartMonth))
                 .update();
+    }
+
+    private static int normalizeMonth(Integer month) {
+        return month != null && month >= 1 && month <= 12 ? month : 4;
     }
 
     @Transactional

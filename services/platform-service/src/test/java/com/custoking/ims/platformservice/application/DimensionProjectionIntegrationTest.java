@@ -94,7 +94,8 @@ class DimensionProjectionIntegrationTest {
     }
 
     private void feedSchoolEvent(String eventId, long schoolId) {
-        String payload = "{\"id\":" + schoolId + ",\"name\":\"S7\",\"shortCode\":\"S7\",\"active\":true}";
+        String payload = "{\"id\":" + schoolId + ",\"name\":\"S7\",\"shortCode\":\"S7\",\"active\":true,"
+                + "\"academicYearStartMonth\":6,\"financialYearStartMonth\":4}";
         String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"school.upserted.v1\","
                 + "\"payload\":" + payload + "}";
         inbox.record(new ReportingEventInboxRecord(
@@ -134,13 +135,15 @@ class DimensionProjectionIntegrationTest {
         assertEquals(1, processed);
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "SELECT name, short_code, active FROM reporting.dim_school WHERE id = ?")) {
+                     "SELECT name, short_code, active, academic_year_start_month, financial_year_start_month FROM reporting.dim_school WHERE id = ?")) {
             ps.setLong(1, 7L);
             try (ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "expected a dim_school row for id 7");
                 assertEquals("S7", rs.getString("name"));
                 assertEquals("S7", rs.getString("short_code"));
                 assertTrue(rs.getBoolean("active"));
+                assertEquals(6, rs.getInt("academic_year_start_month"));
+                assertEquals(4, rs.getInt("financial_year_start_month"));
             }
         }
     }

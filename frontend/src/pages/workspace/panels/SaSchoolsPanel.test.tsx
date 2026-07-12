@@ -13,7 +13,7 @@ describe('SaSchoolsPanel structure edit', () => {
   beforeEach(() => {
     vi.mocked(api.get).mockResolvedValue({ data: [
       { id: 7, name: 'Demo School', shortCode: 'DEMO', city: 'Hyd', active: true,
-        configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
+        configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, financialYearStartMonth: 4, adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
     ] });
     vi.mocked(api.put).mockReset();
     vi.mocked(api.post).mockReset();

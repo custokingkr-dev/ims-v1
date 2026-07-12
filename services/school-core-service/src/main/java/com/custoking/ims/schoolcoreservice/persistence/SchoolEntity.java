@@ -33,6 +33,7 @@ public class SchoolEntity {
     private Integer configuredClassCount;
     private Integer configuredSectionCount;
     private Integer academicYearStartMonth;
+    private Integer financialYearStartMonth;
     private OffsetDateTime createdAt;
 
     public Long getId() { return id; }
@@ -46,5 +47,6 @@ public class SchoolEntity {
     public Integer getConfiguredClassCount() { return configuredClassCount; }
     public Integer getConfiguredSectionCount() { return configuredSectionCount; }
     public Integer getAcademicYearStartMonth() { return academicYearStartMonth; }
+    public Integer getFinancialYearStartMonth() { return financialYearStartMonth; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }

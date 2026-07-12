@@ -52,8 +52,8 @@ export function todayIso(): string {
  * FY runs April–March, so before April the current FY started the previous year.
  * Returns `count` consecutive years, current first (e.g. ["2026–27","2027–28",…]).
  */
-export function financialYearOptions(count = 4): string[] {
-  return sharedFinancialYearOptions(count);
+export function financialYearOptions(count = 4, startMonth?: number): string[] {
+  return sharedFinancialYearOptions(count, new Date(), 0, startMonth);
 }
 
 export function formatAddress(address: any): string {
