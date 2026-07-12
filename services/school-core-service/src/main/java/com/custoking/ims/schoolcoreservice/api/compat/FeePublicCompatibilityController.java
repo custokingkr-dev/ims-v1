@@ -118,9 +118,10 @@ public class FeePublicCompatibilityController {
     @GetMapping("/api/v1/fee-structure/match")
     public Map<String, Object> matchBand(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestParam String classId) {
+            @RequestParam String classId,
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return run(() -> fees.matchBand(classId));
+        return run(() -> fees.matchBand(classId, TenantScope.resolveSchoolId(schoolId)));
     }
 
     @GetMapping(value = "/api/v1/fee-structure/export", produces = MediaType.APPLICATION_PDF_VALUE)

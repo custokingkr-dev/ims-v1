@@ -1,5 +1,3 @@
-import { currentFinancialYearLabel } from '../../utils/academicCalendar';
-
 export interface StudentClassOption {
   id: string;
   name: string;
@@ -67,7 +65,7 @@ export function emptyStudentProfileForm(): StudentProfileFormState {
     gender: 'Male',
     classId: '',
     sectionId: '',
-    academicYear: currentFinancialYearLabel(),
+    academicYear: 'Current academic year',
     admissionDate: '',
     fatherName: '',
     fatherContact: '',
@@ -94,7 +92,7 @@ export function studentDetailToProfileForm(detail: Record<string, any>): Student
     gender: text(detail.gender, 'Male'),
     classId: text(detail.classId),
     sectionId: text(detail.sectionId),
-    academicYear: text(detail.academicYear, currentFinancialYearLabel()),
+    academicYear: text(detail.academicYear, 'Current academic year'),
     admissionDate: text(detail.admissionDate),
     fatherName: text(detail.fatherName),
     fatherContact: text(detail.fatherContact ?? detail.fatherContactNumber ?? detail.parentPhone),
@@ -128,7 +126,9 @@ function compactPayload(form: StudentProfileFormState): StudentProfilePayload {
   put(payload, 'boardRegistrationNumber', form.boardRegistrationNumber);
   put(payload, 'dateOfBirth', form.dateOfBirth);
   put(payload, 'gender', form.gender);
-  put(payload, 'academicYear', form.academicYear);
+  if (form.academicYear.trim() !== 'Current academic year') {
+    put(payload, 'academicYear', form.academicYear);
+  }
   put(payload, 'admissionDate', form.admissionDate);
   put(payload, 'fatherName', form.fatherName);
   put(payload, 'fatherContact', form.fatherContact);

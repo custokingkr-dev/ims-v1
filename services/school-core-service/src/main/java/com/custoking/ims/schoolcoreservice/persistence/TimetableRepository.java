@@ -345,7 +345,9 @@ public class TimetableRepository {
     }
 
     public String activeYearId(Long schoolId) {
-        return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
+        return schoolId == null
+                ? AcademicCalendar.activeOrCurrentAcademicYearId(jdbc)
+                : AcademicCalendar.currentAcademicYearId(jdbc, schoolId);
     }
 
     public Map<String, Object> classSubjects(Long schoolId, String classId, String yearId) {

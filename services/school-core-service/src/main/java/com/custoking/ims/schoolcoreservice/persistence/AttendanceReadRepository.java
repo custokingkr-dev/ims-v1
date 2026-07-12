@@ -85,7 +85,7 @@ public class AttendanceReadRepository {
     }
 
     public Map<String, Object> dailySummary(LocalDate date, Long schoolId) {
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         List<Map<String, Object>> sections = jdbc.sql("""
                 SELECT ss.id, ss.name, ss.teacher_name, ss.school_class_id, sc.name AS class_name,
                        ad.total_enrolled, ad.present_count, ad.absent_count,
@@ -166,7 +166,6 @@ public class AttendanceReadRepository {
         YearMonth ym = YearMonth.parse(month);   // invalid → DateTimeParseException → 400 at controller
         LocalDate first = ym.atDay(1);
         LocalDate last = ym.atEndOfMonth();
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> section = sectionRecord(sectionId);
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
@@ -175,6 +174,7 @@ public class AttendanceReadRepository {
         if (schoolId != null && !schoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
+        String academicYearId = currentAcademicYearId(sectionSchoolId);
 
         List<Map<String, Object>> days = new ArrayList<>();
         for (LocalDate d = first; !d.isAfter(last); d = d.plusDays(1)) {
@@ -270,7 +270,6 @@ public class AttendanceReadRepository {
         if (from.isAfter(to)) {
             throw new IllegalArgumentException("from must be on or before to");
         }
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> student = jdbc.sql("""
                 SELECT s.id, s.admission_no, s.roll_no, s.full_name, s.school_id,
                        sec.name AS section_name, sc.name AS class_name
@@ -293,6 +292,7 @@ public class AttendanceReadRepository {
         if (schoolId != null && !schoolId.equals(studentSchoolId)) {
             throw new SecurityException("You do not have access to this student");
         }
+        String academicYearId = currentAcademicYearId(studentSchoolId);
 
         int[] buckets = new int[4]; // P, L, E, A
         List<Map<String, Object>> days = jdbc.sql("""
@@ -338,7 +338,7 @@ public class AttendanceReadRepository {
         if (from.isAfter(to)) {
             throw new IllegalArgumentException("from must be on or before to");
         }
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         String scopeFilter = schoolId == null ? "" : " AND ad.school_id = :schoolId";
         var spec = jdbc.sql("""
                 SELECT ss.id AS section_id, ss.school_class_id AS class_id, ss.name AS section_name,
@@ -394,7 +394,6 @@ public class AttendanceReadRepository {
     }
 
     public Map<String, Object> sectionRegister(LocalDate date, String classId, String sectionId, Long schoolId) {
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> section = sectionRecord(sectionId);
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
@@ -403,6 +402,7 @@ public class AttendanceReadRepository {
         if (schoolId != null && !schoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
+        String academicYearId = currentAcademicYearId(sectionSchoolId);
         Map<String, Object> daily = dailyRecord(date, sectionId, academicYearId);
         List<Map<String, Object>> students = jdbc.sql("""
                 SELECT s.id, s.admission_no, s.roll_no, s.full_name, s.photo_url,
@@ -463,7 +463,7 @@ public class AttendanceReadRepository {
     }
 
     private List<Map<String, Object>> absenteeRows(LocalDate date, String classId, String sectionId, Long schoolId) {
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id AS student_id, s.full_name, s.admission_no, s.roll_no,
                        s.school_id, ar.class_id, ar.section_id,
@@ -509,7 +509,6 @@ public class AttendanceReadRepository {
 
     @Transactional
     public Map<String, Object> notifyAbsentees(LocalDate date, String classId, String sectionId, Long schoolId, Long actorId) {
-        String academicYearId = currentAcademicYearId();
         List<Map<String, Object>> students = absenteeRows(date, classId, sectionId, schoolId);
         Map<Long, String> schoolNameCache = new java.util.HashMap<>();
         String dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
@@ -518,6 +517,7 @@ public class AttendanceReadRepository {
             if (Boolean.TRUE.equals(s.get("alreadyQueued"))) { skippedAlreadyQueued++; continue; }
             if (!Boolean.TRUE.equals(s.get("hasContact"))) { skippedNoContact++; continue; }
             long rowSchoolId = longNum(s.get("schoolId"), 0);
+            String academicYearId = currentAcademicYearId(rowSchoolId);
             String schoolName = schoolNameFor(rowSchoolId, schoolNameCache);
             String message = "Dear Parent, " + s.get("fullName") + " (" + s.get("classSection")
                     + ") was marked absent on " + dateLabel + " at " + schoolName
@@ -547,7 +547,6 @@ public class AttendanceReadRepository {
     }
 
     public Map<String, Object> sectionInfo(LocalDate date, String sectionId, Long schoolId) {
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> section = jdbc.sql("""
                 SELECT id, teacher_name, school_id
                 FROM tenant_school.school_sections
@@ -563,6 +562,7 @@ public class AttendanceReadRepository {
         if (schoolId != null && sectionSchoolId != null && !schoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
+        String academicYearId = currentAcademicYearId(sectionSchoolId);
         Map<String, Object> record = jdbc.sql("""
                 SELECT present_count, recorded_at, updated_at
                 FROM %s
@@ -587,7 +587,6 @@ public class AttendanceReadRepository {
         LocalDate date = LocalDate.parse(str(request.get("date"), LocalDate.now().toString()));
         String classId = requireText(request.get("classId"), "Class not found");
         String sectionId = requireText(request.get("sectionId"), "Section not found");
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> schoolClass = classRecord(classId);
         Map<String, Object> section = sectionRecord(sectionId);
         Long sectionSchoolId = requireSectionSchool(section, sectionId);
@@ -595,6 +594,7 @@ public class AttendanceReadRepository {
         if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
+        String academicYearId = currentAcademicYearId(sectionSchoolId);
         int total = (int) longNum(request.get("totalEnrolled"), countStudents(sectionId));
         int present = (int) longNum(request.get("presentCount"), 0);
         if (present < 0 || present > total) {
@@ -669,7 +669,6 @@ public class AttendanceReadRepository {
         String classId = requireText(request.get("classId"), "Class not found");
         String sectionId = requireText(request.get("sectionId"), "Section not found");
         Long actorId = request.get("actorId") != null ? longNum(request.get("actorId"), 0) : null;
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> section = sectionRecord(sectionId);
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
@@ -679,6 +678,7 @@ public class AttendanceReadRepository {
         if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
+        String academicYearId = currentAcademicYearId(sectionSchoolId);
         Map<String, Object> existingDaily = dailyRecord(date, sectionId, academicYearId);
         if (existingDaily != null && Boolean.TRUE.equals(existingDaily.get("locked"))) {
             throw new IllegalArgumentException("Attendance is locked for this section");
@@ -744,7 +744,6 @@ public class AttendanceReadRepository {
         LocalDate date = LocalDate.parse(str(request.get("date"), LocalDate.now().toString()));
         String classId = requireText(request.get("classId"), "Class not found");
         String sectionId = requireText(request.get("sectionId"), "Section not found");
-        String academicYearId = currentAcademicYearId();
         Map<String, Object> section = sectionRecord(sectionId);
         if (!classId.equals(section.get("classId"))) {
             throw new IllegalArgumentException("Section does not belong to class");
@@ -754,6 +753,7 @@ public class AttendanceReadRepository {
         if (requestedSchoolId != null && !requestedSchoolId.equals(sectionSchoolId)) {
             throw new SecurityException("You do not have access to this section");
         }
+        String academicYearId = currentAcademicYearId(sectionSchoolId);
         int total = (int) countStudents(sectionId);
         int present = countStatus(date, sectionId, academicYearId, "PRESENT");
         int late = countStatus(date, sectionId, academicYearId, "LATE");
@@ -772,7 +772,7 @@ public class AttendanceReadRepository {
     @Transactional
     public Map<String, Object> submitAttendanceDay(String dateText, Long schoolId, Long actorId) {
         LocalDate date = parseDate(dateText);
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         String schoolPredicate = schoolId == null ? "" : """
                 AND EXISTS (
                     SELECT 1
@@ -869,6 +869,10 @@ public class AttendanceReadRepository {
 
     private String currentAcademicYearId() {
         return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
+    }
+
+    private String currentAcademicYearId(Long schoolId) {
+        return schoolId == null ? currentAcademicYearId() : AcademicCalendar.currentAcademicYearId(jdbc, schoolId);
     }
 
     private Map<String, Object> classRecord(String classId) {

@@ -253,7 +253,7 @@ public class StudentReadRepository {
                 ? getOrCreateSection(schoolId, classId, str(request.get("sectionName"), "A"))
                 : sectionByIdForClassSchool(schoolId, classId, requestedSectionId)
                     .orElseThrow(() -> new IllegalArgumentException("Selected section does not belong to the class and school"));
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         OffsetDateTime now = OffsetDateTime.now();
         Long id;
         try {
@@ -411,7 +411,7 @@ public class StudentReadRepository {
         if (!classId.equals(str(current.get("classId"), ""))
                 || !sectionId.equals(str(current.get("sectionId"), ""))) {
             closeActiveEnrollment(id, "Placement changed from student profile edit");
-            recordEnrollment(id, studentSchool, str(current.get("academicYearId"), currentAcademicYearId()),
+            recordEnrollment(id, studentSchool, str(current.get("academicYearId"), currentAcademicYearId(studentSchool)),
                     classId, sectionId, str(request.get("rollNo"), ""), "ACTIVE",
                     "TRANSFERRED", "STUDENT_UPDATE", String.valueOf(id));
         } else {
@@ -493,7 +493,7 @@ public class StudentReadRepository {
                         "rollNo", rs.getString("roll_no")))
                 .single();
         recordEnrollment(studentId, longValue(current.get("schoolId"), null),
-                str(current.get("academicYearId"), currentAcademicYearId()),
+                str(current.get("academicYearId"), currentAcademicYearId(longValue(current.get("schoolId"), null))),
                 str(current.get("classId"), ""), str(current.get("sectionId"), ""),
                 str(current.get("rollNo"), ""), "ACTIVE", reason, sourceType, sourceId);
     }
@@ -806,7 +806,7 @@ public class StudentReadRepository {
                 .update();
         closeActiveEnrollment(id, reason);
         recordEnrollment(id, longValue(current.get("schoolId"), null),
-                str(current.get("academicYearId"), currentAcademicYearId()),
+                str(current.get("academicYearId"), currentAcademicYearId(longValue(current.get("schoolId"), null))),
                 str(current.get("classId"), ""), str(current.get("sectionId"), ""),
                 str(current.get("rollNo"), ""), "DELETED", reason, "STUDENT_DELETE", String.valueOf(id));
         emitStudentUpserted(id);
@@ -985,7 +985,7 @@ public class StudentReadRepository {
         if (!feeTablesAvailable()) {
             return row("assigned", false, "status", "Pending");
         }
-        String currentYearId = currentAcademicYearId();
+        String currentYearId = currentAcademicYearId(studentSchoolId(studentId));
         return jdbc.sql("""
                 SELECT fa.id, fa.academic_year_id, ay.label AS academic_year,
                        fa.schedule, fa.net_payable, fa.paid_amount,
@@ -1049,7 +1049,7 @@ public class StudentReadRepository {
     public Map<String, Object> createPromotionBatch(Map<String, Object> request) {
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
         requireSchool(schoolId);
-        String sourceAcademicYearId = str(request.get("sourceAcademicYearId"), currentAcademicYearId());
+        String sourceAcademicYearId = str(request.get("sourceAcademicYearId"), currentAcademicYearId(schoolId));
         String targetAcademicYearId = requireText(request.get("targetAcademicYearId"), "targetAcademicYearId is required");
         String sourceClassId = str(request.get("sourceClassId"), "").trim();
         String sourceSectionId = str(request.get("sourceSectionId"), "").trim();
@@ -1222,7 +1222,7 @@ public class StudentReadRepository {
         if (active != null && active > 0) {
             throw new IllegalArgumentException("An active ID Card Details review campaign already exists for this school");
         }
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         String academicYearLabel = jdbc.sql("SELECT label FROM tenant_school.academic_years WHERE id = :id")
                 .param("id", academicYearId)
                 .query(String.class)
@@ -1264,7 +1264,7 @@ public class StudentReadRepository {
         if (active != null && active > 0) {
             throw new IllegalArgumentException("An active Full Name Verification campaign already exists for this school");
         }
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         String academicYearLabel = jdbc.sql("SELECT label FROM tenant_school.academic_years WHERE id = :id")
                 .param("id", academicYearId)
                 .query(String.class)
@@ -2111,7 +2111,7 @@ public class StudentReadRepository {
                 String.valueOf(activeClass.get("id")),
                 str(normalized.get("sectionName"), "A"))
                 .orElseThrow(() -> new IllegalArgumentException("Class section is not active for this school's configured setup"));
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         String admissionNo = str(normalized.get("admissionNo"), "");
         Long duplicate = jdbc.sql("SELECT COUNT(*) FROM student.students WHERE lower(admission_no) = lower(:admissionNo) AND school_id = :schoolId")
                 .param("admissionNo", admissionNo)
@@ -2503,6 +2503,18 @@ public class StudentReadRepository {
 
     private String currentAcademicYearId() {
         return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
+    }
+
+    private String currentAcademicYearId(Long schoolId) {
+        return schoolId == null ? currentAcademicYearId() : AcademicCalendar.currentAcademicYearId(jdbc, schoolId);
+    }
+
+    private Long studentSchoolId(Long studentId) {
+        return jdbc.sql("SELECT school_id FROM student.students WHERE id = :studentId")
+                .param("studentId", studentId)
+                .query(Long.class)
+                .optional()
+                .orElse(null);
     }
 
     private void requireSchool(Long schoolId) {

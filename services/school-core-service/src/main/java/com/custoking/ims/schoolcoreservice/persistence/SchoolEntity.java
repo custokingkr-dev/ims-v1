@@ -32,6 +32,7 @@ public class SchoolEntity {
     private boolean active;
     private Integer configuredClassCount;
     private Integer configuredSectionCount;
+    private Integer academicYearStartMonth;
     private OffsetDateTime createdAt;
 
     public Long getId() { return id; }
@@ -44,5 +45,6 @@ public class SchoolEntity {
     public boolean isActive() { return active; }
     public Integer getConfiguredClassCount() { return configuredClassCount; }
     public Integer getConfiguredSectionCount() { return configuredSectionCount; }
+    public Integer getAcademicYearStartMonth() { return academicYearStartMonth; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }

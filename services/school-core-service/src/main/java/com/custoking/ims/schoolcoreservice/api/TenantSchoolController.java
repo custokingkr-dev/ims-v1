@@ -481,6 +481,7 @@ public class TenantSchoolController {
             boolean active,
             Integer configuredClassCount,
             Integer configuredSectionCount,
+            Integer academicYearStartMonth,
             OffsetDateTime createdAt) {
         static SchoolResponse from(SchoolEntity school) {
             return new SchoolResponse(
@@ -494,6 +495,7 @@ public class TenantSchoolController {
                     school.isActive(),
                     school.getConfiguredClassCount(),
                     school.getConfiguredSectionCount(),
+                    school.getAcademicYearStartMonth(),
                     school.getCreatedAt());
         }
     }

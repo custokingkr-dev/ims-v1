@@ -7,6 +7,8 @@ import java.util.Optional;
 
 final class AcademicCalendar {
 
+    static final int DEFAULT_ACADEMIC_YEAR_START_MONTH = 4;
+
     private AcademicCalendar() {
     }
 
@@ -20,14 +22,34 @@ final class AcademicCalendar {
     }
 
     static String currentAcademicYearId() {
-        return currentFinancialYear().academicYearId();
+        return currentAcademicYear(DEFAULT_ACADEMIC_YEAR_START_MONTH).id();
+    }
+
+    static AcademicYear currentAcademicYear(int startMonth) {
+        return currentAcademicYear(LocalDate.now(), startMonth);
+    }
+
+    static AcademicYear currentAcademicYear(LocalDate date, int startMonth) {
+        int normalizedStartMonth = normalizeMonth(startMonth);
+        int startYear = date.getMonthValue() >= normalizedStartMonth ? date.getYear() : date.getYear() - 1;
+        int endYear = startYear + 1;
+        String suffix = String.valueOf(endYear).substring(2);
+        return new AcademicYear("ay_" + startYear + "_" + suffix, startYear + "-" + suffix);
+    }
+
+    static AcademicYear currentAcademicYear(JdbcClient jdbc, Long schoolId) {
+        return ensureAcademicYear(jdbc, currentAcademicYear(academicYearStartMonth(jdbc, schoolId)));
+    }
+
+    static String currentAcademicYearId(JdbcClient jdbc, Long schoolId) {
+        return currentAcademicYear(jdbc, schoolId).id();
     }
 
     static AcademicYear activeOrCurrentAcademicYear(JdbcClient jdbc) {
         return activeAcademicYear(jdbc)
                 .orElseGet(() -> {
-                    FinancialYear current = currentFinancialYear();
-                    return new AcademicYear(current.academicYearId(), current.label());
+                    AcademicYear current = currentAcademicYear(DEFAULT_ACADEMIC_YEAR_START_MONTH);
+                    return ensureAcademicYear(jdbc, current);
                 });
     }
 
@@ -60,6 +82,39 @@ final class AcademicCalendar {
                 .param("academicYearId", academicYearId)
                 .query((rs, rowNum) -> new AcademicYear(rs.getString("id"), rs.getString("label")))
                 .optional();
+    }
+
+    static AcademicYear ensureAcademicYear(JdbcClient jdbc, AcademicYear year) {
+        jdbc.sql("""
+                INSERT INTO tenant_school.academic_years (id, label, active)
+                VALUES (:id, :label, false)
+                ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label
+                """)
+                .param("id", year.id())
+                .param("label", year.label())
+                .update();
+        return year;
+    }
+
+    static int academicYearStartMonth(JdbcClient jdbc, Long schoolId) {
+        if (schoolId == null) {
+            return DEFAULT_ACADEMIC_YEAR_START_MONTH;
+        }
+        return jdbc.sql("""
+                SELECT academic_year_start_month
+                FROM tenant_school.schools
+                WHERE id = :schoolId
+                LIMIT 1
+                """)
+                .param("schoolId", schoolId)
+                .query(Integer.class)
+                .optional()
+                .map(AcademicCalendar::normalizeMonth)
+                .orElse(DEFAULT_ACADEMIC_YEAR_START_MONTH);
+    }
+
+    private static int normalizeMonth(int month) {
+        return month >= 1 && month <= 12 ? month : DEFAULT_ACADEMIC_YEAR_START_MONTH;
     }
 
     record AcademicYear(String id, String label) {

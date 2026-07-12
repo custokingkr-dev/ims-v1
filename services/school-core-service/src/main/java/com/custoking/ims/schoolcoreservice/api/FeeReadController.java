@@ -80,9 +80,10 @@ public class FeeReadController {
     @GetMapping("/structure/match")
     public Map<String, Object> matchBand(
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
-            @RequestParam String classId) {
+            @RequestParam String classId,
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return execute(() -> fees.matchBand(classId));
+        return execute(() -> fees.matchBand(classId, TenantScope.resolveSchoolId(schoolId)));
     }
 
     @GetMapping(value = "/structure/export", produces = MediaType.APPLICATION_PDF_VALUE)

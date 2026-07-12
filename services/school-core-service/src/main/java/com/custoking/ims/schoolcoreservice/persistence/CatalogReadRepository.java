@@ -200,7 +200,7 @@ public class CatalogReadRepository {
     }
 
     public Map<String, Object> annualPlan(Long schoolId) {
-        String yearLabel = AcademicCalendar.activeOrCurrentAcademicYear(jdbc).label();
+        String yearLabel = AcademicCalendar.currentAcademicYear(jdbc, schoolId).label();
         List<AnnualPlanItemRow> items = jdbc.sql("""
                 SELECT id, term_name, category, description, quantity, estimated_amount,
                        status, linked_order_id, created_at, school_id, academic_year_id
@@ -468,7 +468,7 @@ public class CatalogReadRepository {
         requireSchool(schoolId);
         String id = trimToNull(str(request.get("id"), ""));
         if (id == null) id = UUID.randomUUID().toString();
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         String category = str(request.get("category"), "STATIONERY");
         boolean exists = jdbc.sql("SELECT count(*) FROM catalog.annual_plan_items WHERE id = :id")
                 .param("id", id).query(Long.class).single() > 0;
@@ -620,6 +620,10 @@ public class CatalogReadRepository {
 
     private String currentAcademicYearId() {
         return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
+    }
+
+    private String currentAcademicYearId(Long schoolId) {
+        return schoolId == null ? currentAcademicYearId() : AcademicCalendar.currentAcademicYearId(jdbc, schoolId);
     }
 
     private String nextCatalogOrderId() {

@@ -3,15 +3,15 @@ import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Field } from '../ui';
-import { currentAcademicYearId, currentFinancialYearLabel, formatMoney } from '../utils';
+import { formatMoney } from '../utils';
 
 interface Props {
   onRefresh: () => void;
 }
 
 const defaultFeeStructureData = () => ({
-  academicYear: currentFinancialYearLabel(),
-  academicYearId: currentAcademicYearId(),
+  academicYear: 'Current academic year',
+  academicYearId: '',
   bands: [],
 });
 
@@ -304,7 +304,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     setFeeAssignForm((prev) => ({ ...prev, studentId }));
     if (!studentId || !assignSelection.classId) { setFeeAssignHint(''); return; }
     try {
-      const res = await api.get('/fee-structure/match', { params: { classId: assignSelection.classId } });
+      const res = await api.get('/fee-structure/match', { params: { classId: assignSelection.classId, ...(schoolScopedParams || {}) } });
       const band = res.data || {};
       const schedules = Array.isArray(band.activeSchedules) ? band.activeSchedules : [];
       setFeeAssignForm((prev) => ({
@@ -364,7 +364,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   return (
     <ModuleShell
       title="Fee Configuration"
-      subtitle={`Define class bands, fee items and payment schedules · Academic year ${feeStructureData.academicYear || currentFinancialYearLabel()}`}
+      subtitle={`Define class bands, fee items and payment schedules · Academic year ${feeStructureData.academicYear || 'Current'}`}
       actions={
         <>
           <button className="ck-btn ck-btn-ghost" onClick={exportFeeStructurePdf}>Export PDF</button>

@@ -59,7 +59,7 @@ public class FeeReadRepository {
     }
 
     public Map<String, Object> feeStructure(String academicYearId, Long schoolId) {
-        Map<String, Object> year = academicYear(academicYearId);
+        Map<String, Object> year = academicYear(academicYearId, schoolId);
         StringBuilder sql = new StringBuilder("SELECT id FROM fee.fee_bands WHERE academic_year_id = :academicYearId");
         if (schoolId != null) sql.append(" AND school_id = :schoolId");
         sql.append(" ORDER BY class_from ASC, name ASC");
@@ -69,21 +69,24 @@ public class FeeReadRepository {
         return row("academicYearId", year.get("id"), "academicYear", year.get("label"), "bands", bands);
     }
 
-    public Map<String, Object> matchBand(String classId) {
+    public Map<String, Object> matchBand(String classId, Long schoolId) {
         int sort = classSortOrder(classId);
-        String academicYearId = currentAcademicYearId();
-        return jdbc.sql("""
+        String academicYearId = currentAcademicYearId(schoolId);
+        String schoolPredicate = schoolId == null ? "" : " AND school_id = :schoolId";
+        var spec = jdbc.sql("""
                         SELECT id
                         FROM fee.fee_bands
                         WHERE academic_year_id = :academicYearId
                           AND class_from <= :sort
                           AND class_to >= :sort
+                          %s
                         ORDER BY class_from ASC, name ASC
                         LIMIT 1
-                        """)
+                        """.formatted(schoolPredicate))
                 .param("academicYearId", academicYearId)
-                .param("sort", sort)
-                .query(String.class)
+                .param("sort", sort);
+        if (schoolId != null) spec = spec.param("schoolId", schoolId);
+        return spec.query(String.class)
                 .optional()
                 .map(this::bandWithItems)
                 .orElseGet(this::row);
@@ -107,8 +110,8 @@ public class FeeReadRepository {
         String schedules = schedulesCsv(request.get("schedules"), true);
         String id = UUID.randomUUID().toString();
         OffsetDateTime now = OffsetDateTime.now();
-        String academicYearId = currentAcademicYearId();
         Long schoolId = requireSchool(request.get("schoolId"));
+        String academicYearId = currentAcademicYearId(schoolId);
 
         jdbc.sql("""
                 INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, active_schedules_csv,
@@ -464,8 +467,8 @@ public class FeeReadRepository {
         }
         String bandId = requireText(request.get("bandId"), "Band id is required");
         String schedule = requireText(request.get("schedule"), "Payment schedule is required");
-        String academicYearId = currentAcademicYearId();
         Long schoolId = studentSchoolId(studentId);
+        String academicYearId = resolveAcademicYearId(textOrDefault(request.get("academicYearId"), ""), schoolId);
         Map<String, Object> band = bandRecord(bandId);
 
         String assignmentId = jdbc.sql("""
@@ -551,7 +554,7 @@ public class FeeReadRepository {
             throw new IllegalArgumentException("Amount must be greater than zero");
         }
         Long schoolId = studentSchoolId(studentId);
-        String academicYearId = currentAcademicYearId();
+        String academicYearId = currentAcademicYearId(schoolId);
         Map<String, Object> assignment = jdbc.sql("""
                 SELECT id, net_payable, paid_amount FROM fee.fee_assignments
                 WHERE student_id = :studentId AND academic_year_id = :academicYearId
@@ -814,13 +817,27 @@ public class FeeReadRepository {
         return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
     }
 
+    private String currentAcademicYearId(Long schoolId) {
+        return schoolId == null ? currentAcademicYearId() : AcademicCalendar.currentAcademicYearId(jdbc, schoolId);
+    }
+
     private String resolveAcademicYearId(String academicYearId) {
         return academicYearId == null || academicYearId.isBlank() ? currentAcademicYearId() : academicYearId;
     }
 
+    private String resolveAcademicYearId(String academicYearId, Long schoolId) {
+        return academicYearId == null || academicYearId.isBlank() ? currentAcademicYearId(schoolId) : academicYearId;
+    }
+
     private Map<String, Object> academicYear(String academicYearId) {
+        return academicYear(academicYearId, null);
+    }
+
+    private Map<String, Object> academicYear(String academicYearId, Long schoolId) {
         AcademicCalendar.AcademicYear year = AcademicCalendar.academicYear(jdbc, academicYearId)
-                .orElseGet(() -> AcademicCalendar.activeOrCurrentAcademicYear(jdbc));
+                .orElseGet(() -> schoolId == null
+                        ? AcademicCalendar.activeOrCurrentAcademicYear(jdbc)
+                        : AcademicCalendar.currentAcademicYear(jdbc, schoolId));
         return row("id", year.id(), "label", year.label());
     }
 

@@ -152,6 +152,7 @@ public class SchoolStructureReadRepository {
     public List<SuperadminSchoolStatsRow> schoolStats() {
         return jdbc.sql("""
                         SELECT s.id, s.name, s.short_code, s.city, s.active, s.created_at,
+                               s.academic_year_start_month,
                                '' AS admin_email,
                                0 AS orders_ytd,
                                0 AS gmv_ytd
@@ -167,6 +168,7 @@ public class SchoolStructureReadRepository {
                         rs.getString("admin_email") == null ? "" : rs.getString("admin_email"),
                         rs.getLong("orders_ytd"),
                         rs.getLong("gmv_ytd"),
+                        rs.getObject("academic_year_start_month", Integer.class),
                         erpSince(rs.getObject("created_at", OffsetDateTime.class))))
                 .list();
     }
@@ -184,13 +186,15 @@ public class SchoolStructureReadRepository {
         }
         int classCount = boundedInt(request.get("classCount"), 12, 1, 12);
         int sectionCount = boundedInt(request.get("sectionCount"), 2, 1, 26);
+        int academicYearStartMonth = boundedInt(
+                request.get("academicYearStartMonth"), AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH, 1, 12);
         Long id = jdbc.sql("""
                 INSERT INTO tenant_school.schools (
                     name, short_code, city, state, contact_email, contact_phone, active,
-                    configured_class_count, configured_section_count, created_at
+                    configured_class_count, configured_section_count, academic_year_start_month, created_at
                 ) VALUES (
                     :name, :shortCode, :city, :state, :contactEmail, :contactPhone, true,
-                    :classCount, :sectionCount, :createdAt
+                    :classCount, :sectionCount, :academicYearStartMonth, :createdAt
                 )
                 RETURNING id
                 """)
@@ -202,6 +206,7 @@ public class SchoolStructureReadRepository {
                 .param("contactPhone", trimToNull(str(request.get("contactPhone"), "")))
                 .param("classCount", classCount)
                 .param("sectionCount", sectionCount)
+                .param("academicYearStartMonth", academicYearStartMonth)
                 .param("createdAt", OffsetDateTime.now())
                 .query(Long.class)
                 .single();
@@ -218,12 +223,16 @@ public class SchoolStructureReadRepository {
                 UPDATE tenant_school.schools
                 SET name = COALESCE(:name, name),
                     city = :city,
+                    academic_year_start_month = COALESCE(:academicYearStartMonth, academic_year_start_month),
                     active = COALESCE(:active, active)
                 WHERE id = :schoolId
                 """)
                 .param("schoolId", schoolId)
                 .param("name", trimToNull(str(request.get("name"), "")))
                 .param("city", request.containsKey("city") ? trimToNull(str(request.get("city"), "")) : currentSchoolCity(schoolId))
+                .param("academicYearStartMonth", request.containsKey("academicYearStartMonth")
+                        ? boundedInt(request.get("academicYearStartMonth"), AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH, 1, 12)
+                        : null)
                 .param("active", request.get("active"))
                 .update();
         Map<String, Object> details = schoolDetails(schoolId);
@@ -240,6 +249,7 @@ public class SchoolStructureReadRepository {
         payload.put("city", details.get("city"));
         payload.put("state", details.get("state"));
         payload.put("active", details.get("active"));
+        payload.put("academicYearStartMonth", details.get("academicYearStartMonth"));
         outbox.append("school.upserted.v1", "SchoolUpserted:" + id, "School", String.valueOf(id), id, payload);
     }
 
@@ -402,7 +412,7 @@ public class SchoolStructureReadRepository {
     private Map<String, Object> schoolDetails(Long schoolId) {
         return jdbc.sql("""
                 SELECT id, name, short_code, city, state, active,
-                       configured_class_count, configured_section_count
+                       configured_class_count, configured_section_count, academic_year_start_month
                 FROM tenant_school.schools
                 WHERE id = :schoolId
                 """)
@@ -415,7 +425,8 @@ public class SchoolStructureReadRepository {
                         "state", rs.getString("state") == null ? "" : rs.getString("state"),
                         "active", rs.getBoolean("active"),
                         "configuredClassCount", rs.getObject("configured_class_count"),
-                        "configuredSectionCount", rs.getObject("configured_section_count")))
+                        "configuredSectionCount", rs.getObject("configured_section_count"),
+                        "academicYearStartMonth", rs.getObject("academic_year_start_month", Integer.class)))
                 .single();
     }
 
@@ -557,5 +568,6 @@ public class SchoolStructureReadRepository {
             String adminEmail,
             Long ordersYTD,
             Long gmvYTD,
+            Integer academicYearStartMonth,
             String erpSince) {}
 }
