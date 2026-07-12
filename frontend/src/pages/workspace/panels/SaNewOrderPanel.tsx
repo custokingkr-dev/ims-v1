@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
-import { formatMoney, computeSaOrderValue, EVENT_RATES } from '../utils';
+import { currentFinancialYearLabel, formatMoney, computeSaOrderValue, EVENT_RATES } from '../utils';
 import { SA_NEW_ORDER_CATEGORIES } from '../config';
 
 interface Props {
@@ -9,6 +9,7 @@ interface Props {
 }
 
 export function SaNewOrderPanel({ onOrderCreated }: Props) {
+  const currentYearLabel = currentFinancialYearLabel();
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -114,7 +115,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
               {activeCat === 'UNIFORMS' && (
                 <>
                   <Field label="Academic year *" error={errors.academicYear}>
-                    <input value={form.academicYear || ''} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} placeholder="2025-26" />
+                    <input value={form.academicYear || ''} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} placeholder={currentYearLabel} />
                   </Field>
                   <Field label="Total units">
                     <input type="number" min="0" value={form.size_m || ''} onChange={(e) => setForm({ ...form, size_m: e.target.value })} placeholder="Enter total units" />
@@ -124,7 +125,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
               {activeCat === 'NOTEBOOKS' && (
                 <>
                   <Field label="Academic year">
-                    <input value={form.academicYear || ''} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} placeholder="2025-26" />
+                    <input value={form.academicYear || ''} onChange={(e) => setForm({ ...form, academicYear: e.target.value })} placeholder={currentYearLabel} />
                   </Field>
                   <Field label="Delivery date *" error={errors.deliveryDate}>
                     <input type="date" value={form.deliveryDate || ''} onChange={(e) => setForm({ ...form, deliveryDate: e.target.value })} />

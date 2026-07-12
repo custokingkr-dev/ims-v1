@@ -811,10 +811,7 @@ public class FeeReadRepository {
     }
 
     private String currentAcademicYearId() {
-        return jdbc.sql("SELECT id FROM tenant_school.academic_years WHERE active = true ORDER BY id LIMIT 1")
-                .query(String.class)
-                .optional()
-                .orElseThrow(() -> new IllegalArgumentException("No active academic year configured"));
+        return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
     }
 
     private String resolveAcademicYearId(String academicYearId) {
@@ -822,19 +819,9 @@ public class FeeReadRepository {
     }
 
     private Map<String, Object> academicYear(String academicYearId) {
-        String sql = (academicYearId == null || academicYearId.isBlank())
-                ? "SELECT id, label FROM tenant_school.academic_years WHERE active = true ORDER BY id LIMIT 1"
-                : "SELECT id, label FROM tenant_school.academic_years WHERE id = :academicYearId LIMIT 1";
-        var spec = jdbc.sql(sql);
-        if (academicYearId != null && !academicYearId.isBlank()) {
-            spec = spec.param("academicYearId", academicYearId);
-        }
-        return spec.query((rs, rowNum) -> row("id", rs.getString("id"), "label", rs.getString("label")))
-                .optional()
-                .orElseGet(() -> jdbc.sql("SELECT id, label FROM tenant_school.academic_years WHERE active = true ORDER BY id LIMIT 1")
-                        .query((rs, rowNum) -> row("id", rs.getString("id"), "label", rs.getString("label")))
-                        .optional()
-                        .orElseThrow(() -> new IllegalArgumentException("No active academic year configured")));
+        AcademicCalendar.AcademicYear year = AcademicCalendar.academicYear(jdbc, academicYearId)
+                .orElseGet(() -> AcademicCalendar.activeOrCurrentAcademicYear(jdbc));
+        return row("id", year.id(), "label", year.label());
     }
 
     private Map<String, Object> bandWithItems(String id) {

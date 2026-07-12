@@ -868,10 +868,7 @@ public class AttendanceReadRepository {
     }
 
     private String currentAcademicYearId() {
-        return jdbc.sql("SELECT id FROM tenant_school.academic_years WHERE active = true ORDER BY id LIMIT 1")
-                .query(String.class)
-                .optional()
-                .orElseThrow(() -> new IllegalArgumentException("No active academic year configured"));
+        return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
     }
 
     private Map<String, Object> classRecord(String classId) {

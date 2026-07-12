@@ -38,28 +38,28 @@ class StudentTenantScopingTest {
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10"))
                 .andExpect(status().isForbidden());
-        verify(repo, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt());
+        verify(repo, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
     }
 
     @Test
     void omittedSchoolId_scopesToAuthenticatedSchool() throws Exception {
-        when(repo.workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt())).thenReturn(Map.of());
+        when(repo.workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt(), eq(false))).thenReturn(Map.of());
         mvc.perform(get("/api/v1/students")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10"))
                 .andExpect(status().isOk());
-        verify(repo).workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt());
+        verify(repo).workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt(), eq(false));
     }
 
     @Test
     void superadmin_canTargetAnySchool() throws Exception {
-        when(repo.workspaceStudents(eq(99L), any(), any(), any(), anyInt(), anyInt())).thenReturn(Map.of());
+        when(repo.workspaceStudents(eq(99L), any(), any(), any(), anyInt(), anyInt(), eq(false))).thenReturn(Map.of());
         mvc.perform(get("/api/v1/students?schoolId=99")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
-        verify(repo).workspaceStudents(eq(99L), any(), any(), any(), anyInt(), anyInt());
+        verify(repo).workspaceStudents(eq(99L), any(), any(), any(), anyInt(), anyInt(), eq(false));
     }
 
     @Test

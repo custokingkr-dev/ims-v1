@@ -1,10 +1,15 @@
 import { useRef, useState } from 'react';
+import { currentAcademicYearId, currentFinancialYearLabel } from '../../utils/academicCalendar';
 import type { BandForm, FeeAssignForm, FeeFilters, FeeStructureData, PaymentForm, SelectionState } from './types';
 
 const DEFAULT_PAYMENT_FORM: PaymentForm = { studentId: '', studentName: '', amount: '', paymentMode: 'UPI', notes: '' };
 const DEFAULT_ASSIGN_FORM: FeeAssignForm = { studentId: '', bandId: '', paymentSchedule: '', bandDiscount: '0', manualDiscount: '0', surcharge: '2' };
 const DEFAULT_BAND_FORM: BandForm = { name: '', classFrom: '1', classTo: '5', discount: '0', schedules: ['Annual'] };
-const DEFAULT_FEE_STRUCTURE: FeeStructureData = { academicYear: '2025–26', academicYearId: 'ay_2024_25', bands: [] };
+const DEFAULT_FEE_STRUCTURE: FeeStructureData = {
+  academicYear: currentFinancialYearLabel(),
+  academicYearId: currentAcademicYearId(),
+  bands: [],
+};
 const DEFAULT_SELECTION: SelectionState = { classId: '', sectionId: '', studentId: '' };
 
 /** Encapsulates all fee-domain state for UnifiedWorkspacePage. */

@@ -13,6 +13,11 @@ $bcryptPasswordHash = '$2a$10$J7RjqxrkPBk31.tolxpMkO0LHevKKGCNi6AsSPAsGeHtnyvHfm
 $runId = (Get-Date -Format "yyyyMMddHHmmss")
 $loginTestIp = "127.0.0.$([int](Get-Date -Format 'ss') + 10)"
 $results = New-Object System.Collections.Generic.List[object]
+$now = Get-Date
+$fyStartYear = if ($now.Month -ge 4) { $now.Year } else { $now.Year - 1 }
+$fyEndSuffix = ($fyStartYear + 1).ToString().Substring(2)
+$AcademicYearId = "ay_${fyStartYear}_${fyEndSuffix}"
+$AcademicYearLabel = "${fyStartYear}-${fyEndSuffix}"
 
 function Invoke-Psql {
     param([string]$Sql)
@@ -28,8 +33,12 @@ function Invoke-Psql {
 
 function Ensure-E2eBaseline {
     $sql = @"
+UPDATE tenant_school.academic_years
+SET active = false
+WHERE id <> '$AcademicYearId';
+
 INSERT INTO tenant_school.academic_years (id, label, active)
-VALUES ('ay_2024_25', '2025-26', true)
+VALUES ('$AcademicYearId', '$AcademicYearLabel', true)
 ON CONFLICT (id) DO UPDATE SET
     label = EXCLUDED.label,
     active = EXCLUDED.active;
@@ -96,7 +105,7 @@ VALUES
     (1, 'E2E-001', '1', 'E2E Student', '2015-01-01', 'NA',
      'E2E Parent', '9999999999', '9999999999', 'E2E Address',
      'PENDING', 100, now(), now(), now(), 1, '1', '1A',
-     'ay_2024_25', 0, 'e2e', 'e2e')
+     '$AcademicYearId', 0, 'e2e', 'e2e')
 ON CONFLICT (id) DO UPDATE SET
     admission_no = EXCLUDED.admission_no,
     roll_no = EXCLUDED.roll_no,
@@ -112,7 +121,7 @@ INSERT INTO fee.fee_bands
     (id, name, class_from, class_to, discount, active_schedules_csv,
      created_at, updated_at, academic_year_id, school_id)
 VALUES
-    ('band-1-5', 'E2E Class 1-5', 1, 5, 0, 'Annual', now(), now(), 'ay_2024_25', 1)
+    ('band-1-5', 'E2E Class 1-5', 1, 5, 0, 'Annual', now(), now(), '$AcademicYearId', 1)
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     class_from = EXCLUDED.class_from,

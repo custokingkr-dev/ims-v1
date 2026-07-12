@@ -200,12 +200,7 @@ public class CatalogReadRepository {
     }
 
     public Map<String, Object> annualPlan(Long schoolId) {
-        String yearLabel = jdbc.sql("""
-                SELECT label FROM tenant_school.academic_years
-                WHERE active = true
-                ORDER BY id DESC
-                LIMIT 1
-                """).query(String.class).optional().orElse("Current Academic Year");
+        String yearLabel = AcademicCalendar.activeOrCurrentAcademicYear(jdbc).label();
         List<AnnualPlanItemRow> items = jdbc.sql("""
                 SELECT id, term_name, category, description, quantity, estimated_amount,
                        status, linked_order_id, created_at, school_id, academic_year_id
@@ -624,11 +619,7 @@ public class CatalogReadRepository {
     }
 
     private String currentAcademicYearId() {
-        return jdbc.sql("""
-                SELECT id FROM tenant_school.academic_years
-                ORDER BY active DESC, id DESC
-                LIMIT 1
-                """).query(String.class).single();
+        return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
     }
 
     private String nextCatalogOrderId() {

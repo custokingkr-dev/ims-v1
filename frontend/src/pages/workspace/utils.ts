@@ -1,6 +1,19 @@
 // Pure utility functions shared across workspace panels.
 // No React state dependencies — safe to import anywhere.
 
+import {
+  financialYearOptions as sharedFinancialYearOptions,
+} from '../../utils/academicCalendar';
+
+export {
+  currentAcademicYearId,
+  currentFinancialYear,
+  currentFinancialYearLabel,
+  financialYearForStartYear,
+  financialYearHistoryOptions,
+  financialYearStartYear,
+} from '../../utils/academicCalendar';
+
 export const EVENT_RATES: Record<string, number> = {
   Trophy: 500,
   Medal: 150,
@@ -40,12 +53,7 @@ export function todayIso(): string {
  * Returns `count` consecutive years, current first (e.g. ["2026–27","2027–28",…]).
  */
 export function financialYearOptions(count = 4): string[] {
-  const now = new Date();
-  const startYear = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
-  return Array.from({ length: count }, (_, i) => {
-    const s = startYear + i;
-    return `${s}–${String(s + 1).slice(-2)}`;
-  });
+  return sharedFinancialYearOptions(count);
 }
 
 export function formatAddress(address: any): string {

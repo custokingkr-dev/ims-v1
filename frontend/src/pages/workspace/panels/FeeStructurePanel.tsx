@@ -3,11 +3,17 @@ import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Field } from '../ui';
-import { formatMoney } from '../utils';
+import { currentAcademicYearId, currentFinancialYearLabel, formatMoney } from '../utils';
 
 interface Props {
   onRefresh: () => void;
 }
+
+const defaultFeeStructureData = () => ({
+  academicYear: currentFinancialYearLabel(),
+  academicYearId: currentAcademicYearId(),
+  bands: [],
+});
 
 export function FeeStructurePanel({ onRefresh }: Props) {
   const { user } = useAuth();
@@ -16,7 +22,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
 
   const [saving, setSaving] = useState('');
   const [feeClasses, setFeeClasses] = useState<any[]>([]);
-  const [feeStructureData, setFeeStructureData] = useState<any>({ academicYear: '2025–26', academicYearId: 'ay_2024_25', bands: [] });
+  const [feeStructureData, setFeeStructureData] = useState<any>(() => defaultFeeStructureData());
   const [feeStructureLoading, setFeeStructureLoading] = useState(false);
   const [feeStructureError, setFeeStructureError] = useState('');
   const [feeStructureToast, setFeeStructureToast] = useState('');
@@ -60,8 +66,8 @@ export function FeeStructurePanel({ onRefresh }: Props) {
     try {
       setFeeStructureLoading(true);
       setFeeStructureError('');
-      const res = await api.get('/fee-structure', { params: { academicYearId: 'ay_2024_25' } });
-      setFeeStructureData(res.data || { academicYear: '2025–26', academicYearId: 'ay_2024_25', bands: [] });
+      const res = await api.get('/fee-structure', { params: schoolScopedParams });
+      setFeeStructureData(res.data || defaultFeeStructureData());
       setExpandedBandIds([]);
       const firstBandId = res.data?.bands?.[0]?.id || '';
       setFeeItemForm((prev) => ({ ...prev, bandId: prev.bandId || firstBandId }));
@@ -129,7 +135,10 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   const exportFeeStructurePdf = async () => {
     try {
       setFeeStructureError('');
-      const res = await api.get('/fee-structure/export', { params: { academicYearId: feeStructureData.academicYearId || 'ay_2024_25', format: 'pdf' }, responseType: 'blob' });
+      const params = feeStructureData.academicYearId
+        ? { academicYearId: feeStructureData.academicYearId, format: 'pdf' }
+        : { format: 'pdf' };
+      const res = await api.get('/fee-structure/export', { params, responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
@@ -355,7 +364,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   return (
     <ModuleShell
       title="Fee Configuration"
-      subtitle={`Define class bands, fee items and payment schedules · Academic year ${feeStructureData.academicYear || '2025–26'}`}
+      subtitle={`Define class bands, fee items and payment schedules · Academic year ${feeStructureData.academicYear || currentFinancialYearLabel()}`}
       actions={
         <>
           <button className="ck-btn ck-btn-ghost" onClick={exportFeeStructurePdf}>Export PDF</button>

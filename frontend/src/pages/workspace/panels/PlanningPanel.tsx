@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { ModuleShell } from '../ui';
 import { Modal } from '../../../components/Modal';
 import type { WorkspaceData, PanelKey } from '../../workspace/config';
-import { formatMoney } from '../utils';
+import { currentFinancialYearLabel, financialYearHistoryOptions, formatMoney } from '../utils';
 import api from '../../../services/api';
 
 /** Parse display amount strings like "₹1,80,000" → 180000. Returns 0 on non-numeric. */
@@ -50,7 +50,7 @@ const AI_SUGGESTIONS: AiSuggestion[] = [
   { label: 'Lab equipment', conf: '90% conf.', confCls: 'ap-is-conf-high', sub: 'Recurring FF · 2 yrs in a row', budget: '₹1,80,000', source: 'Source: firefighting history', modal: { title: 'Lab Equipment (AI suggested)', desc: 'Raised as firefighting urgently 2 consecutive years. Planning now avoids 18% emergency premium.', amount: '₹1,80,000', type: 'ff', deadline: 'Jun 15' } },
   { label: 'Housekeeping supplies', conf: '85%', confCls: 'ap-is-conf-high', sub: 'Past orders · Term 1 + 3', budget: '₹38,400', source: 'Source: catalog order history', modal: { title: 'Housekeeping supplies (AI suggested)', desc: 'Ordered every Term 1 and Term 3 for last 2 years. Scale 1.04× for enrolment growth.', amount: '₹38,400', type: 'supply', deadline: 'Jun 1' } },
   { label: 'Sports jerseys', conf: '75%', confCls: 'ap-is-conf-med', sub: 'Pre-Sports Day · Oct pattern', budget: '₹28,800', source: 'Source: catalog order history', modal: { title: 'Sports jerseys (AI suggested)', desc: 'Pre-Sports Day order placed every October for 2 years. 4 houses × ~24 students each.', amount: '₹28,800', type: 'event', deadline: 'Oct 20' } },
-  { label: 'Furniture', conf: '60%', confCls: 'ap-is-conf-med', sub: 'Recurring FF · class expansion', budget: '₹96,000', source: 'Source: firefighting history', modal: { title: 'Furniture (AI suggested)', desc: '2 firefighting requests for chairs and desks in 2024–25. Class 6 expansion likely needs 24 new units.', amount: '₹96,000', type: 'ff', deadline: 'Jul 1' } },
+  { label: 'Furniture', conf: '60%', confCls: 'ap-is-conf-med', sub: 'Recurring FF · class expansion', budget: '₹96,000', source: 'Source: firefighting history', modal: { title: 'Furniture (AI suggested)', desc: '2 urgent furniture requests in the last completed year. Class 6 expansion likely needs 24 new units.', amount: '₹96,000', type: 'ff', deadline: 'Jul 1' } },
 ];
 
 interface EventItem { icon: string; name: string; qty: string; price: string; }
@@ -95,7 +95,7 @@ const EVENTS: EventCard[] = [
       { icon: '🍎', name: 'F&B — students + parents', qty: '×300 pax', price: '₹7,000' },
     ],
     total: '₹58,200', footer: 'Last year: ₹51,200', orderBtn: 'Add to plan',
-    modal: { title: 'Sports Day — add to plan', desc: 'Adding Sports Day package to 2025–26 annual plan. Jerseys must be ordered by Oct 20 for Nov 14 event.', amount: '₹58,200', type: 'event', deadline: 'Oct 20' },
+    modal: { title: 'Sports Day — add to plan', desc: 'Adding Sports Day package to the annual plan. Jerseys must be ordered by Oct 20 for Nov 14 event.', amount: '₹58,200', type: 'event', deadline: 'Oct 20' },
   },
   {
     icon: '📝', title: 'Exam stationery — 3 terms', date: 'T1: Jul 28 · T2: Oct 6 · Annual: Dec 8',
@@ -140,6 +140,9 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
   const [modal, setModal] = useState<ModalData | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [planBusy, setPlanBusy] = useState(false);
+  const currentYearLabel = currentFinancialYearLabel();
+  const planningYearTabs = financialYearHistoryOptions(3);
+  const planningStartYear = Number(currentYearLabel.slice(0, 4)) || new Date().getFullYear();
 
   const studentCount = workspace.school?.students ?? workspace.dashboard?.students ?? '—';
 
@@ -243,9 +246,9 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
       {/* Year tabs + stats */}
       <div className="ap-subheader">
         <div className="ap-year-tabs">
-          {['2023–24', '2024–25', '2025–26'].map(y => (
-            <button key={y} className={`ap-ytab${y === '2025–26' ? ' on' : ''}`}
-              onClick={() => { if (y !== '2025–26') showToast(`Year ${y} view — coming soon`); }}>
+          {planningYearTabs.map(y => (
+            <button key={y} className={`ap-ytab${y === currentYearLabel ? ' on' : ''}`}
+              onClick={() => { if (y !== currentYearLabel) showToast(`Year ${y} view - coming soon`); }}>
               {y}
             </button>
           ))}
@@ -304,7 +307,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
             <div className="ap-tl-header">
               <div>
                 <div className="ap-tl-title">Full-year planning timeline</div>
-                <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>Apr 2025 – Dec 2025 · Click any bar for detail</div>
+                <div style={{ fontSize: 11, color: 'var(--ink3)', marginTop: 2 }}>Apr {planningStartYear} - Dec {planningStartYear} · Click any bar for detail</div>
               </div>
               <div className="ap-tl-filters">
                 {(['all', 'supply', 'school', 'event', 'exam', 'ff'] as BarFilter[]).map(f => (
@@ -376,7 +379,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
         {show('all') && (
           <div className="ap-budget-row">
             {[
-              { label: 'Annual budget snapshot', val: '₹15,93,200', sub: 'Total planned 2025–26', fill: '60%', color: 'var(--g)' },
+              { label: 'Annual budget snapshot', val: '₹15,93,200', sub: `Total planned ${currentYearLabel}`, fill: '60%', color: 'var(--g)' },
               { label: 'Supply orders', val: '₹8,60,000', sub: 'Uniforms, books, ID', fill: '62%', color: 'var(--b)' },
               { label: 'Events', val: '₹1,98,000', sub: '4 events this year', fill: '22%', color: 'var(--am)' },
               { label: 'Office / non-acad.', val: '₹92,000', sub: 'Housekeeping, health', fill: '15%', color: 'var(--pu)' },
@@ -535,7 +538,7 @@ export function PlanningPanel({ workspace, onRefresh: _onRefresh, setPanel }: Pr
           <div>
             <div className="ap-sec-head">
               <div>
-                <div className="ap-sec-title">Exam planner — 2025–26</div>
+                <div className="ap-sec-title">Exam planner - {currentYearLabel}</div>
                 <div className="ap-sec-sub">3 exam windows this year · All stationery pre-orderable in one batch</div>
               </div>
             </div>

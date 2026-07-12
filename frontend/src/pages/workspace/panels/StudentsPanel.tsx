@@ -14,7 +14,7 @@ import {
   validateStudentPhotoFile,
 } from '../../../features/students';
 import { ModuleShell, Info } from '../ui';
-import { formatAddress, formatPaise, initials } from '../utils';
+import { currentFinancialYearLabel, formatAddress, formatPaise, initials } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 
@@ -450,7 +450,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     <>
       <ModuleShell
         title="Students"
-        subtitle={`${studentsView.filteredCount || 0} ${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections · Academic year 2024-25`}
+        subtitle={`${studentsView.filteredCount || 0} ${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections · Academic year ${currentFinancialYearLabel()}`}
         actions={
           <>
             {can('student:update') && schoolScopedParams ? <button className="ck-btn ck-btn-ghost" onClick={() => void openPromotionWizard()}>Promote class</button> : null}

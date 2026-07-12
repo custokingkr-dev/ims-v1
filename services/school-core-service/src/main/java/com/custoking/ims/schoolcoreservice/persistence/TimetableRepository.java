@@ -345,13 +345,7 @@ public class TimetableRepository {
     }
 
     public String activeYearId(Long schoolId) {
-        return jdbc.sql("""
-                SELECT id FROM tenant_school.academic_years
-                ORDER BY active DESC, id DESC LIMIT 1
-                """)
-                .query(String.class)
-                .optional()
-                .orElse(null);
+        return AcademicCalendar.activeOrCurrentAcademicYearId(jdbc);
     }
 
     public Map<String, Object> classSubjects(Long schoolId, String classId, String yearId) {
