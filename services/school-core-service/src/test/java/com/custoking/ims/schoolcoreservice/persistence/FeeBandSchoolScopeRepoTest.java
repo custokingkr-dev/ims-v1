@@ -53,15 +53,18 @@ class FeeBandSchoolScopeRepoTest {
 
         try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
              Statement st = c.createStatement()) {
+            AcademicCalendar.AcademicYear academicYear =
+                    AcademicCalendar.currentAcademicYear(AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH);
             // Unprivileged runtime role, subject to RLS.
             st.execute("CREATE ROLE app_rt LOGIN PASSWORD 'app_rt' NOINHERIT NOCREATEROLE NOCREATEDB NOBYPASSRLS");
             st.execute("GRANT USAGE ON SCHEMA fee TO app_rt");
             st.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA fee TO app_rt");
             st.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA fee TO app_rt");
             st.execute("GRANT USAGE ON SCHEMA tenant_school TO app_rt");
-            st.execute("GRANT SELECT ON ALL TABLES IN SCHEMA tenant_school TO app_rt");
+            st.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA tenant_school TO app_rt");
 
-            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('AY-2024', '2024-25', true)");
+            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('"
+                    + academicYear.id() + "', '" + academicYear.label() + "', true)");
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -167,10 +170,13 @@ class FeeBandSchoolScopeRepoTest {
         // but the assignment is still tagged school_id=10 so app_rt/school-10 context can see it).
         try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
              Statement st = c.createStatement()) {
+            String academicYearId = AcademicCalendar.currentAcademicYear(
+                    AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH).id();
             st.execute("INSERT INTO fee.fee_assignments" +
                     "(id, band_discount, manual_discount, surcharge, net_payable, paid_amount, " +
                     " student_id, band_id, academic_year_id, version, school_id) VALUES " +
-                    "('" + UUID.randomUUID() + "', 0.0, 0.0, 0.0, 5000, 0, 1, '" + bandId + "', 'AY-2024', 0, 10)");
+                    "('" + UUID.randomUUID() + "', 0.0, 0.0, 0.0, 5000, 0, 1, '" + bandId + "', '"
+                            + academicYearId + "', 0, 10)");
         }
 
         assertThatThrownBy(() -> repo.deleteBand(bandId))

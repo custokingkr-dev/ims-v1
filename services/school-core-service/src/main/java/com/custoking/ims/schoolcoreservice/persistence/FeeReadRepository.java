@@ -296,12 +296,12 @@ public class FeeReadRepository {
     }
 
     public Map<String, Object> feeReport(String classId, String sectionId, String academicYearId, Long schoolId) {
-        academicYearId = resolveAcademicYearId(academicYearId);
+        academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         return row("content", feeReportRows(classId, sectionId, academicYearId, schoolId, false));
     }
 
     public Map<String, Object> feeOverdue(String classId, String sectionId, String academicYearId, Long schoolId) {
-        academicYearId = resolveAcademicYearId(academicYearId);
+        academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         return row("content", feeReportRows(classId, sectionId, academicYearId, schoolId, true).stream()
                 .map(row -> row(
                         "student", row.get("student"),
@@ -313,7 +313,7 @@ public class FeeReadRepository {
 
     public Map<String, Object> feeReminderRequests(
             String classId, String sectionId, String academicYearId, Long schoolId, Long actorId) {
-        academicYearId = resolveAcademicYearId(academicYearId);
+        academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         List<Map<String, Object>> requests = jdbc.sql("""
                         SELECT fa.id AS assignment_id, fa.academic_year_id,
                                GREATEST(fa.net_payable - fa.paid_amount, 0) AS due_amount,
@@ -369,7 +369,7 @@ public class FeeReadRepository {
     }
 
     public Map<String, Object> feesModule(String academicYearId, Long schoolId) {
-        academicYearId = resolveAcademicYearId(academicYearId);
+        academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         Long collected = jdbc.sql("""
                         SELECT COALESCE(SUM(p.amount), 0)
                         FROM fee.payment_records p
@@ -426,7 +426,7 @@ public class FeeReadRepository {
     }
 
     public Map<String, Object> feeOverdueCount(String academicYearId, Long schoolId) {
-        academicYearId = resolveAcademicYearId(academicYearId);
+        academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         Long count = jdbc.sql("""
                         SELECT COUNT(*)
                         FROM fee.fee_assignments fa

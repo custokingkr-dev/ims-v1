@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.LocalDate;
@@ -85,14 +86,34 @@ final class AcademicCalendar {
     }
 
     static AcademicYear ensureAcademicYear(JdbcClient jdbc, AcademicYear year) {
-        jdbc.sql("""
-                INSERT INTO tenant_school.academic_years (id, label, active)
-                VALUES (:id, :label, false)
-                ON CONFLICT (id) DO UPDATE SET label = EXCLUDED.label
+        int updated = jdbc.sql("""
+                UPDATE tenant_school.academic_years
+                SET label = :label
+                WHERE id = :id
                 """)
                 .param("id", year.id())
                 .param("label", year.label())
                 .update();
+        if (updated == 0) {
+            try {
+                jdbc.sql("""
+                        INSERT INTO tenant_school.academic_years (id, label, active)
+                        VALUES (:id, :label, false)
+                        """)
+                        .param("id", year.id())
+                        .param("label", year.label())
+                        .update();
+            } catch (DataIntegrityViolationException ignored) {
+                jdbc.sql("""
+                        UPDATE tenant_school.academic_years
+                        SET label = :label
+                        WHERE id = :id
+                        """)
+                        .param("id", year.id())
+                        .param("label", year.label())
+                        .update();
+            }
+        }
         return year;
     }
 

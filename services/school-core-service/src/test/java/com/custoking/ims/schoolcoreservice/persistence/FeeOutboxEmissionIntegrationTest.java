@@ -54,6 +54,8 @@ class FeeOutboxEmissionIntegrationTest {
 
     @BeforeEach
     void resetData() throws Exception {
+        AcademicCalendar.AcademicYear academicYear =
+                AcademicCalendar.currentAcademicYear(AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH);
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             st.execute("DELETE FROM fee.payment_records");
             st.execute("DELETE FROM fee.fee_assignments");
@@ -62,11 +64,12 @@ class FeeOutboxEmissionIntegrationTest {
             st.execute("DELETE FROM tenant_school.outbox_events");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.academic_years");
-            st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES ('ay1', '2025-26', true)");
+            st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES ('"
+                    + academicYear.id() + "', '" + academicYear.label() + "', true)");
             st.execute("INSERT INTO student.students (id, admission_no, full_name, school_id, class_id, section_id, academic_year_id) " +
-                    "VALUES (1, 'A-1', 'Test Student', 10, 'c1', 's1', 'ay1')");
+                    "VALUES (1, 'A-1', 'Test Student', 10, 'c1', 's1', '" + academicYear.id() + "')");
             st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, academic_year_id, school_id) " +
-                    "VALUES ('band-1', 'Band 1', 1, 5, 0.0, 'ay1', 10)");
+                    "VALUES ('band-1', 'Band 1', 1, 5, 0.0, '" + academicYear.id() + "', 10)");
             st.execute("INSERT INTO fee.fee_items(id, name, frequency, amount, band_id, school_id) " +
                     "VALUES ('item-1', 'Tuition', 'Annual', 500000, 'band-1', 10)");
         }

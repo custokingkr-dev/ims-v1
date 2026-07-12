@@ -54,6 +54,8 @@ class AttendanceLateLeaveRoundTripTest {
 
     @BeforeEach
     void seed() throws Exception {
+        AcademicCalendar.AcademicYear academicYear =
+                AcademicCalendar.currentAcademicYear(AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH);
         try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
             st.execute("DELETE FROM attendance.attendance_student_records");
             st.execute("DELETE FROM attendance.attendance_daily");
@@ -63,7 +65,8 @@ class AttendanceLateLeaveRoundTripTest {
             st.execute("DELETE FROM tenant_school.schools");
             st.execute("DELETE FROM tenant_school.academic_years");
 
-            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('AY','2024-25',true)");
+            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('"
+                    + academicYear.id() + "','" + academicYear.label() + "',true)");
             st.execute("INSERT INTO tenant_school.schools(id, name, short_code, active, created_at) " +
                     "VALUES (1,'Test School','TST',true, now())");
             st.execute("INSERT INTO tenant_school.school_classes(id, name, sort_order) VALUES ('c1','Class 1',1)");
@@ -73,13 +76,15 @@ class AttendanceLateLeaveRoundTripTest {
             for (int i = 1; i <= 4; i++) {
                 st.execute("INSERT INTO student.students" +
                         "(id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
-                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','AY')");
+                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','"
+                                + academicYear.id() + "')");
             }
         }
     }
 
     @Test
     void saveThenRead_computesBuckets_andWritesLateLeaveToDaily() {
+        String academicYearId = AcademicCalendar.currentAcademicYearId(JdbcClient.create(ds), 1L);
         // P, Late, Leave, Absent — one each.
         repo.saveSectionRegister(Map.of(
                 "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
@@ -101,8 +106,9 @@ class AttendanceLateLeaveRoundTripTest {
         // late_count / leave_count persisted on the day rollup.
         Map<String, Object> daily = JdbcClient.create(ds).sql(
                 "SELECT present_count, absent_count, late_count, leave_count FROM attendance.attendance_daily " +
-                "WHERE section_id = 's1' AND attendance_date = :d AND academic_year_id = 'AY'")
+                "WHERE section_id = 's1' AND attendance_date = :d AND academic_year_id = :academicYearId")
                 .param("d", DAY)
+                .param("academicYearId", academicYearId)
                 .query((rs, n) -> Map.<String, Object>of(
                         "present", rs.getInt("present_count"),
                         "absent", rs.getInt("absent_count"),

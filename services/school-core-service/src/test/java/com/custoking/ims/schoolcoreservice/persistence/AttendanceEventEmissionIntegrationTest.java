@@ -60,6 +60,8 @@ class AttendanceEventEmissionIntegrationTest {
 
     @BeforeEach
     void seed() throws Exception {
+        AcademicCalendar.AcademicYear academicYear =
+                AcademicCalendar.currentAcademicYear(AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH);
         try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
             st.execute("DELETE FROM attendance.attendance_student_records");
             st.execute("DELETE FROM attendance.attendance_daily");
@@ -70,7 +72,8 @@ class AttendanceEventEmissionIntegrationTest {
             st.execute("DELETE FROM tenant_school.schools");
             st.execute("DELETE FROM tenant_school.academic_years");
 
-            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('AY','2024-25',true)");
+            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('"
+                    + academicYear.id() + "','" + academicYear.label() + "',true)");
             st.execute("INSERT INTO tenant_school.schools(id, name, short_code, active, created_at) " +
                     "VALUES (1,'Test School','TST',true, now())");
             st.execute("INSERT INTO tenant_school.school_classes(id, name, sort_order) VALUES ('c1','Class 1',1)");
@@ -79,7 +82,8 @@ class AttendanceEventEmissionIntegrationTest {
             for (int i = 1; i <= 4; i++) {
                 st.execute("INSERT INTO student.students" +
                         "(id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
-                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','AY')");
+                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','"
+                                + academicYear.id() + "')");
             }
         }
     }
@@ -93,6 +97,7 @@ class AttendanceEventEmissionIntegrationTest {
 
     @Test
     void saveSectionRegisterEmitsAttendanceDailyUpsertedInSameTransaction() {
+        String academicYearId = AcademicCalendar.currentAcademicYearId(JdbcClient.create(ds), 1L);
         Map<String, Object> result = repo.saveSectionRegister(Map.of(
                 "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
                 "records", List.of(
@@ -124,7 +129,7 @@ class AttendanceEventEmissionIntegrationTest {
         String payload = String.valueOf(row.get("payload"));
         assertThat(payload).contains("\"sectionId\": \"s1\"")
                 .contains("\"classId\": \"c1\"")
-                .contains("\"academicYearId\": \"AY\"")
+                .contains("\"academicYearId\": \"" + academicYearId + "\"")
                 .contains("\"presentCount\": 1")
                 .contains("\"lateCount\": 1")
                 .contains("\"leaveCount\": 1")
