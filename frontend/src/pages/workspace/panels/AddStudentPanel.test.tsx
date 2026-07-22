@@ -57,4 +57,12 @@ describe('AddStudentPanel class/section dropdowns', () => {
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith('/classes/c1/sections', { params: { active: true } }));
   });
+
+  it('passes school scope when loading classes and sections', async () => {
+    render(<AddStudentPanel setPanel={vi.fn()} onRefresh={vi.fn()} schoolScopedParams={{ schoolId: 7 }} />);
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith('/classes', { params: { schoolId: 7 } }));
+    await waitFor(() =>
+      expect(api.get).toHaveBeenCalledWith('/classes/c1/sections', { params: { schoolId: 7, active: true } }));
+  });
 });

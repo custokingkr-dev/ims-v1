@@ -16,9 +16,10 @@ import { StudentProfileForm } from './StudentProfileForm';
 interface Props {
   setPanel: (key: PanelKey) => void;
   onRefresh: () => Promise<void>;
+  schoolScopedParams?: { schoolId: number };
 }
 
-export function AddStudentPanel({ setPanel, onRefresh }: Props) {
+export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams }: Props) {
   const [studentForm, setStudentForm] = useState<StudentProfileFormState>(emptyStudentProfileForm());
   const [saving, setSaving] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -32,14 +33,15 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [classes, setClasses] = useState<StudentClassOption[]>([]);
   const [sections, setSections] = useState<StudentSectionOption[]>([]);
+  const schoolId = schoolScopedParams?.schoolId;
 
   useEffect(() => {
     let alive = true;
-    void api.get<StudentClassOption[]>('/classes')
+    void api.get<StudentClassOption[]>('/classes', { params: schoolScopedParams })
       .then((res) => { if (alive) setClasses(Array.isArray(res.data) ? res.data : []); })
       .catch(() => { if (alive) setClasses([]); });
     return () => { alive = false; };
-  }, []);
+  }, [schoolId]);
 
   useEffect(() => {
     if (classes.length === 0) return;
@@ -55,11 +57,14 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
       return;
     }
     let alive = true;
-    void api.get<StudentSectionOption[]>(`/classes/${encodeURIComponent(studentForm.classId)}/sections`, { params: { active: true } })
+    void api.get<StudentSectionOption[]>(
+      `/classes/${encodeURIComponent(studentForm.classId)}/sections`,
+      { params: { ...(schoolScopedParams || {}), active: true } },
+    )
       .then((res) => { if (alive) setSections(Array.isArray(res.data) ? res.data : []); })
       .catch(() => { if (alive) setSections([]); });
     return () => { alive = false; };
-  }, [studentForm.classId]);
+  }, [studentForm.classId, schoolId]);
 
   useEffect(() => {
     setStudentForm((prev) => {
@@ -160,7 +165,7 @@ export function AddStudentPanel({ setPanel, onRefresh }: Props) {
 
       const studentResponse = await api.post<{ student?: { id: number }; id?: number }>(
         '/workspace/students',
-        studentProfileFormToCreatePayload(studentForm),
+        { ...studentProfileFormToCreatePayload(studentForm), ...(schoolScopedParams || {}) },
       );
       const createdStudent = (studentResponse.data as { student?: { id: number }; id?: number })?.student || studentResponse.data;
       if (photoFile) {

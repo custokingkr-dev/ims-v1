@@ -464,7 +464,7 @@ export default function UnifiedWorkspacePage() {
 
           {panelAllowed && panel === 'feestructure' && <FeeStructurePanel onRefresh={refresh} />}
 
-          {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} />}
+          {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
           {panelAllowed && panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 
