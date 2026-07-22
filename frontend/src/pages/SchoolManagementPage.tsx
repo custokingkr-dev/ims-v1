@@ -56,7 +56,7 @@ const defaultSchoolForm = {
   state: '',
   contactEmail: '',
   contactPhone: '',
-  classCount: '12',
+  classCount: '15',
   sectionCount: '2',
   academicYearStartMonth: '4',
   financialYearStartMonth: '4'
@@ -93,6 +93,8 @@ const YEAR_START_MONTHS = [
   ['11', 'November'],
   ['12', 'December'],
 ] as const;
+
+const MAX_CLASS_COUNT = 15;
 
 function academicStartLabel(value?: number | string) {
   const month = String(value || 4);
@@ -271,7 +273,7 @@ export default function SchoolManagementPage() {
       setError('');
       const res = await api.post<{ id: number }>('/schools', {
         ...schoolForm,
-        classCount: Number(schoolForm.classCount || 12),
+        classCount: Number(schoolForm.classCount || MAX_CLASS_COUNT),
         sectionCount: Number(schoolForm.sectionCount || 2),
         academicYearStartMonth: Number(schoolForm.academicYearStartMonth || 4),
         financialYearStartMonth: Number(schoolForm.financialYearStartMonth || 4),
@@ -447,7 +449,7 @@ export default function SchoolManagementPage() {
                   <div className="ck-field"><label>Short Code</label><input value={schoolForm.shortCode} onChange={(e) => setSchoolForm((s) => ({ ...s, shortCode: e.target.value.toUpperCase() }))} required /></div>
                   <div className="ck-field"><label>City</label><input value={schoolForm.city} onChange={(e) => setSchoolForm((s) => ({ ...s, city: e.target.value }))} /></div>
                   <div className="ck-field"><label>State</label><input value={schoolForm.state} onChange={(e) => setSchoolForm((s) => ({ ...s, state: e.target.value }))} /></div>
-                  <div className="ck-field"><label>No. of Classes</label><input type="number" min={1} max={12} value={schoolForm.classCount} onChange={(e) => setSchoolForm((s) => ({ ...s, classCount: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>No. of Classes</label><input type="number" min={1} max={MAX_CLASS_COUNT} value={schoolForm.classCount} onChange={(e) => setSchoolForm((s) => ({ ...s, classCount: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Sections per Class</label><input type="number" min={1} max={26} value={schoolForm.sectionCount} onChange={(e) => setSchoolForm((s) => ({ ...s, sectionCount: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Academic Year Starts</label><select value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
                   <div className="ck-field"><label>Financial Year Starts</label><select value={schoolForm.financialYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, financialYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>

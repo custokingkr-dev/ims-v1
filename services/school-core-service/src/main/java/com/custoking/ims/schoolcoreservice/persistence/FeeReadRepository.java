@@ -1175,6 +1175,26 @@ public class FeeReadRepository {
 
     private int classSortOrder(String classId) {
         String value = String.valueOf(classId);
+        Integer catalogLevel = jdbc.sql("""
+                        SELECT
+                            CASE
+                                WHEN lower(id) = 'pre-primary' THEN -2
+                                WHEN lower(id) = 'lkg' THEN -1
+                                WHEN lower(id) = 'ukg' THEN 0
+                                WHEN name ~ '^[0-9]+$' THEN name::int
+                                WHEN id ~ '^[0-9]+$' THEN id::int
+                                ELSE sort_order
+                            END
+                        FROM tenant_school.school_classes
+                        WHERE id = :id
+                        """)
+                .param("id", value)
+                .query(Integer.class)
+                .optional()
+                .orElse(null);
+        if (catalogLevel != null) {
+            return catalogLevel;
+        }
         long digits = 0;
         boolean foundDigit = false;
         for (int i = 0; i < value.length(); i++) {

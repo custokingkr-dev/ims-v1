@@ -1837,25 +1837,34 @@ public class StudentReadRepository {
 
     private Optional<Map<String, Object>> classByName(String className) {
         String requestedName = str(className, "").trim();
+        String canonicalName = canonicalClassLookupName(requestedName);
         int requestedSortOrder = classSortOrder(requestedName);
         String numericName = requestedSortOrder > 0 ? String.valueOf(requestedSortOrder) : "";
         return jdbc.sql("""
                 SELECT id, name, sort_order
                 FROM tenant_school.school_classes
                 WHERE lower(name) = lower(:name)
+                   OR lower(id) = lower(:name)
+                   OR lower(id) = lower(:canonicalName)
+                   OR lower(name) = lower(:canonicalName)
                    OR (:sortOrder > 0 AND lower(name) = lower(:numericName))
-                   OR (:sortOrder > 0 AND sort_order = :sortOrder)
+                   OR (:sortOrder > 0 AND lower(id) = lower(:numericName))
                 ORDER BY
                     CASE
                         WHEN lower(name) = lower(:name) THEN 0
-                        WHEN :sortOrder > 0 AND lower(name) = lower(:numericName) THEN 1
-                        ELSE 2
+                        WHEN lower(id) = lower(:name) THEN 1
+                        WHEN lower(id) = lower(:canonicalName) THEN 2
+                        WHEN lower(name) = lower(:canonicalName) THEN 3
+                        WHEN :sortOrder > 0 AND lower(name) = lower(:numericName) THEN 4
+                        WHEN :sortOrder > 0 AND lower(id) = lower(:numericName) THEN 5
+                        ELSE 6
                     END,
                     sort_order ASC,
                     id ASC
                 LIMIT 1
                 """)
                 .param("name", requestedName)
+                .param("canonicalName", canonicalName)
                 .param("numericName", numericName)
                 .param("sortOrder", requestedSortOrder)
                 .query((rs, rowNum) -> row("id", rs.getString("id"), "name", rs.getString("name"), "sortOrder", rs.getInt("sort_order")))
@@ -2206,17 +2215,18 @@ public class StudentReadRepository {
 
     private Map<String, Object> importStructureAnalysis(List<Map<String, Object>> rawRows, Long schoolId) {
         Map<String, Object> school = jdbc.sql("""
-                SELECT COALESCE(configured_class_count, 12) AS class_count,
+                SELECT COALESCE(configured_class_count, :defaultClassCount) AS class_count,
                        COALESCE(configured_section_count, 2) AS section_count
                 FROM tenant_school.schools
                 WHERE id = :schoolId
                 """)
                 .param("schoolId", schoolId)
+                .param("defaultClassCount", SchoolStructureReadRepository.DEFAULT_CONFIGURED_CLASS_COUNT)
                 .query((rs, n) -> row(
                         "classCount", rs.getInt("class_count"),
                         "sectionCount", rs.getInt("section_count")))
                 .optional()
-                .orElse(row("classCount", 12, "sectionCount", 2));
+                .orElse(row("classCount", SchoolStructureReadRepository.DEFAULT_CONFIGURED_CLASS_COUNT, "sectionCount", 2));
         int currentClassCount = ((Number) school.get("classCount")).intValue();
         int currentSectionCount = ((Number) school.get("sectionCount")).intValue();
         int requiredClassCount = currentClassCount;
@@ -2235,7 +2245,8 @@ public class StudentReadRepository {
                 if (sortOrder > currentClassCount && !missingClasses.contains(className)) {
                     missingClasses.add(className);
                 }
-                if (sortOrder > 12 && !unsupportedClasses.contains(className)) {
+                if (sortOrder > SchoolStructureReadRepository.MAX_CONFIGURED_CLASS_COUNT
+                        && !unsupportedClasses.contains(className)) {
                     unsupportedClasses.add(className);
                 }
             }
@@ -2549,12 +2560,13 @@ public class StudentReadRepository {
 
     private List<String> classesForSchool(Long schoolId) {
         return jdbc.sql("""
-                SELECT DISTINCT sc.name
+                SELECT sc.name
                 FROM tenant_school.school_sections ss
                 JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
                 WHERE ss.school_id = :schoolId
                   AND ss.active = true
-                ORDER BY sc.name
+                GROUP BY sc.name
+                ORDER BY min(sc.sort_order), sc.name
                 """)
                 .param("schoolId", schoolId)
                 .query(String.class)
@@ -2628,6 +2640,18 @@ public class StudentReadRepository {
     private int classSortOrder(String classId) {
         String digits = String.valueOf(classId).replaceAll("\\D+", "");
         return digits.isBlank() ? 0 : Integer.parseInt(digits);
+    }
+
+    private String canonicalClassLookupName(String className) {
+        String normalized = className == null ? "" : className.trim().toLowerCase(Locale.ROOT);
+        normalized = normalized.replaceAll("[_\\-]+", " ").replaceAll("\\s+", " ");
+        return switch (normalized) {
+            case "nursery", "pre nursery", "prenursery", "playgroup", "play group", "pre primary",
+                    "preprimary", "nursery pre nursery playgroup" -> "pre-primary";
+            case "lkg", "lower kindergarten" -> "lkg";
+            case "ukg", "upper kindergarten" -> "ukg";
+            default -> className;
+        };
     }
 
     private int sectionIndex(String sectionName) {

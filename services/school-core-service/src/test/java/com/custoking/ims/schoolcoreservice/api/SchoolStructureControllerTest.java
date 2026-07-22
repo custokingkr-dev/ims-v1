@@ -80,6 +80,18 @@ class SchoolStructureControllerTest {
     }
 
     @Test
+    void classCountFifteen_isAllowed() throws Exception {
+        when(structure.updateStructure(7L, 15, 2)).thenReturn(Map.of("id", 7L));
+        mvc.perform(put("/api/v1/schools/7/structure")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"classCount\":15,\"sectionCount\":2}"))
+                .andExpect(status().isOk());
+        verify(structure).updateStructure(7L, 15, 2);
+    }
+
+    @Test
     void schoolAdmin_editingAnotherSchool_isForbidden() throws Exception {
         mvc.perform(put("/api/v1/schools/99/structure")
                         .header("X-Tenant-School-Token", "tok")
@@ -109,7 +121,7 @@ class SchoolStructureControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "SUPERADMIN")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"classCount\":13,\"sectionCount\":2}"))
+                        .content("{\"classCount\":16,\"sectionCount\":2}"))
                 .andExpect(status().isBadRequest());
         verify(structure, never()).updateStructure(anyLong(), anyInt(), anyInt());
     }

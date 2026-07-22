@@ -15,6 +15,29 @@ const defaultFeeStructureData = () => ({
   bands: [],
 });
 
+const FALLBACK_FEE_CLASS_OPTIONS = [
+  { value: -2, label: 'Nursery / Pre-Nursery / Playgroup', sortOrder: 1 },
+  { value: -1, label: 'LKG (Lower Kindergarten)', sortOrder: 2 },
+  { value: 0, label: 'UKG (Upper Kindergarten)', sortOrder: 3 },
+  ...Array.from({ length: 12 }, (_, i) => ({
+    value: i + 1,
+    label: String(i + 1),
+    sortOrder: i + 4,
+  })),
+];
+
+function feeClassValue(row: any) {
+  const id = String(row?.id ?? '').toLowerCase();
+  if (id === 'pre-primary') return -2;
+  if (id === 'lkg') return -1;
+  if (id === 'ukg') return 0;
+  const name = String(row?.name ?? '').trim();
+  if (/^\d+$/.test(name)) return Number(name);
+  const idDigits = String(row?.id ?? '').match(/\d+/)?.[0];
+  if (idDigits) return Number(idDigits);
+  return Number(row?.sortOrder ?? 0);
+}
+
 export function FeeStructurePanel({ onRefresh }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -42,6 +65,26 @@ export function FeeStructurePanel({ onRefresh }: Props) {
   const [feeAssignForm, setFeeAssignForm] = useState({ studentId: '', bandId: '', paymentSchedule: '', bandDiscount: '0', manualDiscount: '0', surcharge: '2' });
   const [feeAssignHint, setFeeAssignHint] = useState('');
   const [feeAssignError, setFeeAssignError] = useState('');
+
+  const feeClassOptions = (feeClasses.length ? feeClasses : FALLBACK_FEE_CLASS_OPTIONS)
+    .map((row: any) => ({
+      value: feeClassValue(row),
+      label: String(row?.label ?? row?.name ?? row?.value),
+      sortOrder: Number(row?.sortOrder ?? feeClassValue(row)),
+    }))
+    .filter((row, index, all) => all.findIndex((item) => item.value === row.value) === index)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.value - b.value);
+
+  const feeClassLabel = (value: unknown) => {
+    const numeric = Number(value);
+    return feeClassOptions.find((row) => row.value === numeric)?.label ?? String(value);
+  };
+
+  const feeBandRangeLabel = (classFrom: unknown, classTo: unknown) => {
+    const from = feeClassLabel(classFrom);
+    const to = feeClassLabel(classTo);
+    return from === to ? from : `${from}-${to}`;
+  };
 
   const discountTimers = useRef<Record<string, number>>({});
   const feeToastTimerRef = useRef<number | null>(null);
@@ -382,8 +425,8 @@ export function FeeStructurePanel({ onRefresh }: Props) {
           <div className="ck-form-body">
             <div className="ck-form-grid ck-fg-6">
               <Field label="Band name"><input value={bandForm.name} onChange={(e) => setBandForm((prev: any) => ({ ...prev, name: e.target.value }))} placeholder="Class 1–5" /></Field>
-              <Field label="Class from"><select value={bandForm.classFrom} onChange={(e) => setBandForm((prev: any) => ({ ...prev, classFrom: e.target.value }))}>{Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
-              <Field label="Class to"><select value={bandForm.classTo} onChange={(e) => setBandForm((prev: any) => ({ ...prev, classTo: e.target.value }))}>{Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+              <Field label="Class from"><select value={bandForm.classFrom} onChange={(e) => setBandForm((prev: any) => ({ ...prev, classFrom: e.target.value }))}>{feeClassOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+              <Field label="Class to"><select value={bandForm.classTo} onChange={(e) => setBandForm((prev: any) => ({ ...prev, classTo: e.target.value }))}>{feeClassOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
               <Field label="Discount %"><input type="number" min={0} max={100} value={bandForm.discount} onChange={(e) => setBandForm((prev: any) => ({ ...prev, discount: e.target.value }))} /></Field>
               <div className="ck-field">
                 <label>Payment schedules</label>
@@ -458,8 +501,8 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                   {isEditingBand ? (
                     <div className="ck-form-grid ck-fg-6" onClick={(e) => e.stopPropagation()}>
                       <Field label="Band name"><input value={band.editName ?? band.name} onChange={(e) => setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editName: e.target.value } : row) }))} /></Field>
-                      <Field label="Class from"><select value={band.editClassFrom ?? band.classFrom} onChange={(e) => setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editClassFrom: e.target.value } : row) }))}>{Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
-                      <Field label="Class to"><select value={band.editClassTo ?? band.classTo} onChange={(e) => setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editClassTo: e.target.value } : row) }))}>{Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}</select></Field>
+                      <Field label="Class from"><select value={band.editClassFrom ?? band.classFrom} onChange={(e) => setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editClassFrom: e.target.value } : row) }))}>{feeClassOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
+                      <Field label="Class to"><select value={band.editClassTo ?? band.classTo} onChange={(e) => setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editClassTo: e.target.value } : row) }))}>{feeClassOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></Field>
                       <Field label="Discount %"><input type="number" min={0} max={100} value={band.editDiscount ?? band.discount ?? 0} onChange={(e) => setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editDiscount: e.target.value } : row) }))} /></Field>
                       <div className="ck-field">
                         <label>Payment schedules</label>
@@ -479,7 +522,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                     </div>
                   ) : (
                     <>
-                      <div className="ck-fee-name" style={{ fontSize: 15, fontWeight: 500 }}>{band.name} <span className="ts">· Classes {band.classFrom}–{band.classTo}</span></div>
+                      <div className="ck-fee-name" style={{ fontSize: 15, fontWeight: 500 }}>{band.name} <span className="ts">· Classes {feeBandRangeLabel(band.classFrom, band.classTo)}</span></div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                         {['Monthly', 'Quarterly', 'Half-yearly', 'Annual'].map((schedule) => (
                           <button type="button" key={schedule} className={`ck-pill ${activeSchedules.includes(schedule) ? 'pg' : ''}`} style={{ border: activeSchedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: activeSchedules.includes(schedule) ? 'var(--g1)' : '#fff', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggleBandSchedule(band, schedule); }}>{schedule}</button>

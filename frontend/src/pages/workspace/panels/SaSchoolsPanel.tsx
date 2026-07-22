@@ -51,6 +51,8 @@ const YEAR_START_MONTHS = [
   ['12', 'December'],
 ] as const;
 
+const MAX_CLASS_COUNT = 15;
+
 function academicStartLabel(value?: number | string) {
   const month = String(value || 4);
   return YEAR_START_MONTHS.find(([id]) => id === month)?.[1] || 'April';
@@ -66,19 +68,19 @@ export function SaSchoolsPanel() {
   const [saSchoolsLoading, setSaSchoolsLoading] = useState(false);
   const [saSchoolsError, setSaSchoolsError] = useState('');
   const [saOnboardOpen, setSaOnboardOpen] = useState(false);
-  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
+  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [editSchool, setEditSchool] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ classCount: '12', sectionCount: '2' });
+  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2' });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
 
   const openEdit = (school: any) => {
     setEditSchool(school);
     setEditForm({
-      classCount: String(school.configuredClassCount ?? 12),
+      classCount: String(school.configuredClassCount ?? MAX_CLASS_COUNT),
       sectionCount: String(school.configuredSectionCount ?? 2),
     });
     setEditError('');
@@ -87,7 +89,7 @@ export function SaSchoolsPanel() {
   const submitEdit = async () => {
     const classCount = Number(editForm.classCount || 0);
     const sectionCount = Number(editForm.sectionCount || 0);
-    if (!Number.isInteger(classCount) || classCount < 1 || classCount > 12) { setEditError('Classes must be between 1 and 12'); return; }
+    if (!Number.isInteger(classCount) || classCount < 1 || classCount > MAX_CLASS_COUNT) { setEditError(`Classes must be between 1 and ${MAX_CLASS_COUNT}`); return; }
     if (!Number.isInteger(sectionCount) || sectionCount < 1 || sectionCount > 26) { setEditError('Sections must be between 1 and 26'); return; }
     setEditError(''); setEditSaving(true);
     try {
@@ -146,7 +148,7 @@ export function SaSchoolsPanel() {
     const sectionCount = Number(saOnboardForm.sectionCount || 0);
     const academicYearStartMonth = Number(saOnboardForm.academicYearStartMonth || 0);
     const financialYearStartMonth = Number(saOnboardForm.financialYearStartMonth || 0);
-    if (!Number.isInteger(classCount) || classCount < 1 || classCount > 12) errors.classCount = 'Classes must be between 1 and 12';
+    if (!Number.isInteger(classCount) || classCount < 1 || classCount > MAX_CLASS_COUNT) errors.classCount = `Classes must be between 1 and ${MAX_CLASS_COUNT}`;
     if (!Number.isInteger(sectionCount) || sectionCount < 1 || sectionCount > 26) errors.sectionCount = 'Sections must be between 1 and 26';
     if (!Number.isInteger(academicYearStartMonth) || academicYearStartMonth < 1 || academicYearStartMonth > 12) errors.academicYearStartMonth = 'Select a valid start month';
     if (!Number.isInteger(financialYearStartMonth) || financialYearStartMonth < 1 || financialYearStartMonth > 12) errors.financialYearStartMonth = 'Select a valid start month';
@@ -156,7 +158,7 @@ export function SaSchoolsPanel() {
       await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
       setToast(`${saOnboardForm.name} onboarded successfully`);
       setSaOnboardOpen(false);
-      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '12', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
+      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
       await loadSaSchools();
     } catch (e: any) {
       setSaOnboardErrors({ _: e?.response?.data?.message || 'Save failed. Please try again.' });
@@ -227,8 +229,8 @@ export function SaSchoolsPanel() {
                 <Field label="City *"><input value={saOnboardForm.city} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, city: e.target.value })} /></Field>
                 <Field label="State"><input value={saOnboardForm.state} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, state: e.target.value })} /></Field>
                 <Field label="No. of classes *">
-                  <input type="number" min={1} max={12} value={saOnboardForm.classCount} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, classCount: e.target.value })} />
-                  {saOnboardErrors.classCount ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.classCount}</div> : <div className="ts" style={{ marginTop: 6 }}>Creates classes 1 to {saOnboardForm.classCount || 12}</div>}
+                  <input type="number" min={1} max={MAX_CLASS_COUNT} value={saOnboardForm.classCount} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, classCount: e.target.value })} />
+                  {saOnboardErrors.classCount ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.classCount}</div> : <div className="ts" style={{ marginTop: 6 }}>Order: Nursery/Pre-Nursery/Playgroup, LKG, UKG, then 1 to 12</div>}
                 </Field>
                 <Field label="Sections per class *">
                   <input type="number" min={1} max={26} value={saOnboardForm.sectionCount} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, sectionCount: e.target.value })} />
@@ -268,7 +270,7 @@ export function SaSchoolsPanel() {
             <div className="ck-modal-body">
               {editError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{editError}</div></div>}
               <div className="ck-form-grid ck-fg-2">
-                <Field label="No. of classes *"><input type="number" min={1} max={12} value={editForm.classCount} onChange={(e) => setEditForm({ ...editForm, classCount: e.target.value })} /></Field>
+                <Field label="No. of classes *"><input type="number" min={1} max={MAX_CLASS_COUNT} value={editForm.classCount} onChange={(e) => setEditForm({ ...editForm, classCount: e.target.value })} /></Field>
                 <Field label="Sections per class *"><input type="number" min={1} max={26} value={editForm.sectionCount} onChange={(e) => setEditForm({ ...editForm, sectionCount: e.target.value })} /></Field>
               </div>
               <div className="ts" style={{ marginTop: 10 }}>Reducing a count is blocked if a removed class or section still has students.</div>

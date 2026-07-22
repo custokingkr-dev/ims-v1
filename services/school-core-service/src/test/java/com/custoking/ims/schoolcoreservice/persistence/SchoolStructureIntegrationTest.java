@@ -56,10 +56,13 @@ class SchoolStructureIntegrationTest {
             st.execute("DELETE FROM tenant_school.school_classes");
             st.execute("DELETE FROM tenant_school.academic_years");
             st.execute("DELETE FROM tenant_school.schools");
-            // 12 global classes named '1'..'12'
+            st.execute("INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES " +
+                    "('pre-primary', 'Nursery / Pre-Nursery / Playgroup', 1), " +
+                    "('lkg', 'LKG (Lower Kindergarten)', 2), " +
+                    "('ukg', 'UKG (Upper Kindergarten)', 3)");
             for (int i = 1; i <= 12; i++) {
                 st.execute("INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES " +
-                        "('c" + i + "', '" + i + "', " + i + ")");
+                        "('c" + i + "', '" + i + "', " + (i + 3) + ")");
             }
             st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES ('ay1', '2025-26', true)");
         }
@@ -136,10 +139,10 @@ class SchoolStructureIntegrationTest {
 
     @Test
     void shrink_classesWithStudents_throws() throws Exception {
-        long schoolId = seedSchool(12, 2);
+        long schoolId = seedSchool(15, 2);
         seedStudent(schoolId, "c8", schoolId + "-c8-A"); // class '8' occupied
 
-        assertThatThrownBy(() -> repo.updateStructure(schoolId, 5, 2))
+        assertThatThrownBy(() -> repo.updateStructure(schoolId, 7, 2))
                 .isInstanceOf(StructureInUseException.class)
                 .hasMessageContaining("8");
     }
@@ -178,15 +181,25 @@ class SchoolStructureIntegrationTest {
 
     @Test
     void classes_nullScope_returnsFullGlobalList() {
-        assertThat(repo.classes(null)).hasSize(12);
+        assertThat(repo.classes(null))
+                .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
+                .containsExactly(
+                        "Nursery / Pre-Nursery / Playgroup",
+                        "LKG (Lower Kindergarten)",
+                        "UKG (Upper Kindergarten)",
+                        "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
     }
 
     @Test
     void classes_schoolScope_returnsFirstNByConfiguredCount() throws Exception {
-        long schoolId = seedSchool(5, 2);
+        long schoolId = seedSchool(6, 2);
         assertThat(repo.classes(schoolId))
                 .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
-                .containsExactly("1", "2", "3", "4", "5");
+                .containsExactly(
+                        "Nursery / Pre-Nursery / Playgroup",
+                        "LKG (Lower Kindergarten)",
+                        "UKG (Upper Kindergarten)",
+                        "1", "2", "3");
     }
 
     @Test
@@ -203,13 +216,13 @@ class SchoolStructureIntegrationTest {
 
         assertThat(repo.classes(schoolId))
                 .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
-                .containsExactly("1", "8"); // first-1 (class 1) UNION class-with-students (class 8)
+                .containsExactly("Nursery / Pre-Nursery / Playgroup", "8");
     }
 
     @Test
     void workspaceFilters_excludeDeactivatedSectionsAfterShrink() throws Exception {
-        long schoolId = seedSchool(5, 3);
-        repo.updateStructure(schoolId, 3, 2); // classes 4-5 and section C deactivated
+        long schoolId = seedSchool(8, 3);
+        repo.updateStructure(schoolId, 6, 2); // classes 4-5 and section C deactivated
 
         var studentRepo = new StudentReadRepository(
                 jdbc, org.mockito.Mockito.mock(
@@ -222,6 +235,10 @@ class SchoolStructureIntegrationTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> filters = (Map<String, Object>) workspace.get("filters");
         assertThat((java.util.List<String>) filters.get("sections")).containsExactly("A", "B");
-        assertThat((java.util.List<String>) filters.get("classes")).containsExactly("1", "2", "3");
+        assertThat((java.util.List<String>) filters.get("classes")).containsExactly(
+                "Nursery / Pre-Nursery / Playgroup",
+                "LKG (Lower Kindergarten)",
+                "UKG (Upper Kindergarten)",
+                "1", "2", "3");
     }
 }

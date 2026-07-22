@@ -14,6 +14,9 @@ import java.util.Map;
 
 @Repository
 public class SchoolStructureReadRepository {
+    public static final int DEFAULT_CONFIGURED_CLASS_COUNT = 15;
+    public static final int MAX_CONFIGURED_CLASS_COUNT = 15;
+    public static final int MAX_CONFIGURED_SECTION_COUNT = 26;
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
@@ -185,8 +188,12 @@ public class SchoolStructureReadRepository {
         if (duplicate > 0) {
             throw new IllegalArgumentException("School short code already exists");
         }
-        int classCount = boundedInt(request.get("classCount"), 12, 1, 12);
-        int sectionCount = boundedInt(request.get("sectionCount"), 2, 1, 26);
+        int classCount = boundedInt(
+                request.get("classCount"),
+                DEFAULT_CONFIGURED_CLASS_COUNT,
+                1,
+                MAX_CONFIGURED_CLASS_COUNT);
+        int sectionCount = boundedInt(request.get("sectionCount"), 2, 1, MAX_CONFIGURED_SECTION_COUNT);
         int academicYearStartMonth = boundedInt(
                 request.get("academicYearStartMonth"), AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH, 1, 12);
         int financialYearStartMonth = boundedInt(

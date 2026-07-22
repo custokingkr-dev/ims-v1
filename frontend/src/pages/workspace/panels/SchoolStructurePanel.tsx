@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 
+const MAX_CLASS_COUNT = 15;
+
 export function SchoolStructurePanel({ schoolId, onSaved }: { schoolId?: number; onSaved: () => void }) {
   const [form, setForm] = useState({ classCount: '', sectionCount: '' });
   const [loading, setLoading] = useState(true);
@@ -17,7 +19,7 @@ export function SchoolStructurePanel({ schoolId, onSaved }: { schoolId?: number;
       .then((res) => {
         if (!alive) return;
         setForm({
-          classCount: String(res.data.configuredClassCount ?? 12),
+          classCount: String(res.data.configuredClassCount ?? MAX_CLASS_COUNT),
           sectionCount: String(res.data.configuredSectionCount ?? 2),
         });
       })
@@ -30,7 +32,7 @@ export function SchoolStructurePanel({ schoolId, onSaved }: { schoolId?: number;
     if (!schoolId) return;
     const classCount = Number(form.classCount || 0);
     const sectionCount = Number(form.sectionCount || 0);
-    if (!Number.isInteger(classCount) || classCount < 1 || classCount > 12) { setError('Classes must be between 1 and 12'); return; }
+    if (!Number.isInteger(classCount) || classCount < 1 || classCount > MAX_CLASS_COUNT) { setError(`Classes must be between 1 and ${MAX_CLASS_COUNT}`); return; }
     if (!Number.isInteger(sectionCount) || sectionCount < 1 || sectionCount > 26) { setError('Sections must be between 1 and 26'); return; }
     setError(''); setOk(''); setSaving(true);
     try {
@@ -54,10 +56,10 @@ export function SchoolStructurePanel({ schoolId, onSaved }: { schoolId?: number;
             {error && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{error}</div></div>}
             {ok && <div className="ck-alert ck-alert-g" style={{ marginBottom: 16 }}><span>✓</span><div>{ok}</div></div>}
             <div className="ck-form-grid ck-fg-2">
-              <Field label="No. of classes *"><input type="number" min={1} max={12} value={form.classCount} onChange={(e) => setForm({ ...form, classCount: e.target.value })} /></Field>
+              <Field label="No. of classes *"><input type="number" min={1} max={MAX_CLASS_COUNT} value={form.classCount} onChange={(e) => setForm({ ...form, classCount: e.target.value })} /></Field>
               <Field label="Sections per class *"><input type="number" min={1} max={26} value={form.sectionCount} onChange={(e) => setForm({ ...form, sectionCount: e.target.value })} /></Field>
             </div>
-            <div className="ts" style={{ marginTop: 10 }}>Reducing a count is blocked if a removed class or section still has students.</div>
+            <div className="ts" style={{ marginTop: 10 }}>Count order is Nursery/Pre-Nursery/Playgroup, LKG, UKG, then classes 1 to 12. Reducing a count is blocked if a removed class or section still has students.</div>
             <div className="ck-actions-inline" style={{ marginTop: 16 }}>
               <button className="ck-btn ck-btn-g" disabled={saving} onClick={() => void save()}>{saving ? 'Saving…' : 'Save changes'}</button>
             </div>

@@ -49,14 +49,21 @@ class TenantSchoolClassCatalogMigrationTest {
 
             assertThat(jdbc.sql("SELECT count(*) FROM tenant_school.school_classes")
                     .query(Long.class)
-                    .single()).isEqualTo(12L);
+                    .single()).isEqualTo(15L);
+            assertThat(jdbc.sql("""
+                            SELECT configured_class_count
+                            FROM tenant_school.schools
+                            WHERE id = 1
+                            """)
+                    .query(Integer.class)
+                    .single()).isEqualTo(6);
             assertThat(jdbc.sql("""
                             SELECT count(*)
                             FROM tenant_school.school_sections
                             WHERE school_id = 1 AND active = true
                             """)
                     .query(Long.class)
-                    .single()).isEqualTo(6L);
+                    .single()).isEqualTo(12L);
         }
     }
 }

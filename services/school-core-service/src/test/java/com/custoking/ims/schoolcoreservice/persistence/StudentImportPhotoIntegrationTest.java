@@ -55,10 +55,13 @@ class StudentImportPhotoIntegrationTest {
             st.execute("DELETE FROM tenant_school.school_classes");
             st.execute("DELETE FROM tenant_school.academic_years");
             st.execute("DELETE FROM tenant_school.schools");
-            // 12 global classes named '1'..'12'
+            st.execute("INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES " +
+                    "('pre-primary', 'Nursery / Pre-Nursery / Playgroup', 1), " +
+                    "('lkg', 'LKG (Lower Kindergarten)', 2), " +
+                    "('ukg', 'UKG (Upper Kindergarten)', 3)");
             for (int i = 1; i <= 12; i++) {
                 st.execute("INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES " +
-                        "('c" + i + "', '" + i + "', " + i + ")");
+                        "('c" + i + "', '" + i + "', " + (i + 3) + ")");
             }
             st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES ('ay1', '2025-26', true)");
         }
@@ -136,7 +139,7 @@ class StudentImportPhotoIntegrationTest {
 
     @Test
     void confirmImport_acceptsClassLabelWithPrefix() throws Exception {
-        long schoolId = seedSchool(5, 2);
+        long schoolId = seedSchool(7, 2);
         StudentReadRepository repo = new StudentReadRepository(jdbc,
                 org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
                 new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
@@ -161,9 +164,35 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
+    void confirmImport_acceptsPrePrimaryAlias() throws Exception {
+        long schoolId = seedSchool(3, 1);
+        StudentReadRepository repo = new StudentReadRepository(jdbc,
+                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = repo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", java.util.List.of(Map.of(
+                        "Name", "Imp Nursery", "Class", "Nursery", "Section", "A",
+                        "AdmissionNo", "IMP-NURSERY", "Gender", "Female",
+                        "Phone", "9876543210"))));
+
+        assertThat(preview.get("validCount")).isEqualTo(1);
+        String fileToken = (String) preview.get("fileToken");
+
+        Map<String, Object> confirm = repo.confirmImport(Map.of("schoolId", schoolId, "fileToken", fileToken));
+
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> inserted =
+                (java.util.List<Map<String, Object>>) confirm.get("insertedStudents");
+        assertThat(inserted).hasSize(1);
+        assertThat(inserted.get(0).get("admissionNo")).isEqualTo("IMP-NURSERY");
+    }
+
+    @Test
     void previewImport_marksInactiveSectionAsSetupUpdateNeeded() throws Exception {
-        long schoolId = seedSchool(2, 2);
-        repo.updateStructure(schoolId, 2, 1);
+        long schoolId = seedSchool(4, 2);
+        repo.updateStructure(schoolId, 4, 1);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
                 org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
                 new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
@@ -188,7 +217,7 @@ class StudentImportPhotoIntegrationTest {
 
     @Test
     void previewImport_marksInactiveClassAsSetupUpdateNeeded() throws Exception {
-        long schoolId = seedSchool(2, 1);
+        long schoolId = seedSchool(4, 1);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
                 org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
                 new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
@@ -214,7 +243,7 @@ class StudentImportPhotoIntegrationTest {
 
     @Test
     void confirmImport_rejectsInactiveSectionIfStructureChangedAfterPreview() throws Exception {
-        long schoolId = seedSchool(2, 2);
+        long schoolId = seedSchool(4, 2);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
                 org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
                 new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
@@ -226,7 +255,7 @@ class StudentImportPhotoIntegrationTest {
                         "AdmissionNo", "IMP-SHRUNK-SECTION", "Gender", "Male",
                         "Phone", "9876543210"))));
         assertThat(preview.get("validCount")).isEqualTo(1);
-        repo.updateStructure(schoolId, 2, 1);
+        repo.updateStructure(schoolId, 4, 1);
 
         Map<String, Object> confirm = studentRepo.confirmImport(Map.of(
                 "schoolId", schoolId,
@@ -242,7 +271,7 @@ class StudentImportPhotoIntegrationTest {
 
     @Test
     void confirmImport_rejectsInactiveClassIfStructureChangedAfterPreview() throws Exception {
-        long schoolId = seedSchool(3, 1);
+        long schoolId = seedSchool(6, 1);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
                 org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
                 new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
@@ -254,7 +283,7 @@ class StudentImportPhotoIntegrationTest {
                         "AdmissionNo", "IMP-SHRUNK-CLASS", "Gender", "Male",
                         "Phone", "9876543210"))));
         assertThat(preview.get("validCount")).isEqualTo(1);
-        repo.updateStructure(schoolId, 2, 1);
+        repo.updateStructure(schoolId, 5, 1);
 
         Map<String, Object> confirm = studentRepo.confirmImport(Map.of(
                 "schoolId", schoolId,
