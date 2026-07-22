@@ -17,9 +17,13 @@ describe('BulkImportPanel Excel format', () => {
     expect(screen.getAllByText('AdmissionNo').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Class').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Section').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('PhotoUrl').length).toBeGreaterThan(0);
 
     expect(screen.getAllByText('Optional').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Required').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getByText('Photo import options')).toBeInTheDocument();
+    expect(screen.getByText('.xlsx only')).toBeInTheDocument();
+    expect(screen.getByText(/Embedded images in these formats are not extracted/i)).toBeInTheDocument();
 
     // The real-.xlsx template action is present.
     expect(screen.getByRole('button', { name: /sample template/i })).toBeInTheDocument();
@@ -79,6 +83,32 @@ describe('BulkImportPanel Excel format', () => {
     expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData), expect.objectContaining({ headers: expect.any(Object) }));
     // link -> /students/22/photo-from-url
     expect(api.post).toHaveBeenCalledWith('/students/22/photo-from-url', { url: 'https://cdn/x.jpg' });
+  });
+
+  it('uses PhotoUrl when the optional Photo column is blank', async () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Name', 'Class', 'Section', 'AdmissionNo', 'Photo', 'PhotoUrl'],
+      ['Aya', '1', 'A', 'A-URL', '', 'https://cdn/aya.jpg'],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    const xlsxBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const file = new File([xlsxBuf], 'roster.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    vi.mocked(api.post).mockReset();
+    vi.mocked(api.post).mockImplementation((url: string) => {
+      if (url === '/students/import/upload-preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Aya', className: '1', sectionName: 'A', admissionNo: 'A-URL', phone: '', status: 'Valid', statusTone: 'sg' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
+      if (url === '/students/import/confirm') return Promise.resolve({ data: { done: true, inserted: 1, skipped: 0, skippedRows: [], insertedStudents: [{ admissionNo: 'A-URL', studentId: 11 }] } });
+      if (url === '/students/11/photo-from-url') return Promise.resolve({ data: { ok: true } });
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<BulkImportPanel onRefresh={vi.fn()} />);
+    await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
+    await screen.findByRole('button', { name: /import 1 valid rows/i });
+    await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/11/photo-from-url', { url: 'https://cdn/aya.jpg' }));
   });
 
   it('records a skip (not a throw) when a photo fails', async () => {

@@ -21,8 +21,37 @@ const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; n
   { key: 'Phone', required: true, example: '9876543210', note: '10-digit contact number' },
   { key: 'Address', required: false, example: 'Hyderabad', note: '' },
   { key: 'BoardRegistrationNo', required: false, example: 'BRN1001', note: '' },
-  { key: 'Photo', required: false, example: 'embedded image or https://…', note: 'Embedded image (.xlsx) or a public image link (any format) — optional' },
+  { key: 'Photo', required: false, example: 'embedded image', note: 'Embedded image in .xlsx only, anchored in this row cell' },
+  { key: 'PhotoUrl', required: false, example: 'https://school.example/photos/ADM-1001.jpg', note: 'Public https image link; works in .xlsx, .xls, .ods, and .csv' },
 ];
+
+const PHOTO_IMPORT_GUIDE = [
+  {
+    mode: 'Embedded image',
+    formats: '.xlsx only',
+    format: 'Insert the image inside the Photo cell on the student row. AdmissionNo must be filled on the same row.',
+  },
+  {
+    mode: 'Image link',
+    formats: '.xlsx, .xls, .ods, .csv',
+    format: 'Put a public https image URL in PhotoUrl, or in Photo if you are not embedding an image.',
+  },
+  {
+    mode: 'Not supported',
+    formats: '.xls, .ods, .csv',
+    format: 'Embedded images in these formats are not extracted. Use PhotoUrl for those files.',
+  },
+];
+
+function rowText(row: Record<string, string | number>, keys: string[]): string {
+  const wanted = new Set(keys.map((key) => key.trim().toLowerCase()));
+  for (const [key, value] of Object.entries(row)) {
+    if (!wanted.has(key.trim().toLowerCase())) continue;
+    const text = String(value ?? '').trim();
+    if (text) return text;
+  }
+  return '';
+}
 
 // Extracts embedded images from an .xlsx and maps each to its AdmissionNo, keeping only
 // images anchored in the Photo column. Joining by AdmissionNo (not row ordinal) avoids
@@ -203,15 +232,18 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       stagedFileRef.current = file;
 
       const hasPhotoColumn = rows.some((row) =>
-        Object.keys(row).some((key) => key.trim().toLowerCase() === 'photo' || key.trim().toLowerCase() === 'photourl')
+        Object.keys(row).some((key) => {
+          const header = key.trim().toLowerCase();
+          return header === 'photo' || header === 'photourl' || header === 'photo url';
+        })
       );
       const embedded = hasPhotoColumn ? await extractXlsxPhotos(file) : new Map<string, { bytes: Uint8Array; contentType: string }>();
       const stagedByAdmission = new Map<string, StagedPhoto>();
       rows.forEach((row) => {
-        const admissionNo = String(row['AdmissionNo'] ?? row['admissionNo'] ?? '').trim();
+        const admissionNo = rowText(row, ['AdmissionNo', 'Admission No', 'admissionNo']);
         if (!admissionNo) return;
         const emb = embedded.get(admissionNo);
-        const link = String(row['Photo'] ?? row['PhotoUrl'] ?? '').trim();
+        const link = rowText(row, ['Photo', 'PhotoUrl', 'Photo URL', 'photoUrl']);
         if (emb) stagedByAdmission.set(admissionNo, { kind: 'embedded', bytes: emb.bytes, contentType: emb.contentType });
         else if (/^https?:\/\//i.test(link)) stagedByAdmission.set(admissionNo, { kind: 'link', url: link });
       });
@@ -363,7 +395,24 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
             </tbody>
           </table>
         </div>
-        <div className="ts" style={{ padding: '0 16px 16px' }}>Download the sample template above for a ready-to-fill .xlsx. Add a photo per student by embedding an image in the Photo column of an .xlsx, or by putting a public image link in that column — photos are attached automatically after import.</div>
+        <div style={{ padding: '0 16px 16px' }}>
+          <div className="ck-card-t" style={{ margin: '4px 0 10px' }}>Photo import options</div>
+          <div className="ck-table-wrap">
+            <table className="ck-table">
+              <thead><tr><th>Photo source</th><th>File formats</th><th>Required format</th></tr></thead>
+              <tbody>
+                {PHOTO_IMPORT_GUIDE.map((item) => (
+                  <tr key={item.mode}>
+                    <td><strong>{item.mode}</strong></td>
+                    <td>{item.formats}</td>
+                    <td className="ts">{item.format}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="ts" style={{ marginTop: 10 }}>Students are imported first. Photos are attached after import by matching AdmissionNo to the inserted student.</div>
+        </div>
       </div>
       {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
       {saving === 'photos' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Uploading photos, please wait…</div></div> : null}
