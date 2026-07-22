@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
@@ -10,11 +11,19 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class StudentImportPhotoIntegrationTest {
 
@@ -79,6 +88,95 @@ class StudentImportPhotoIntegrationTest {
         // Generate the initial sections to match the seeded counts.
         repo.updateStructure(id, classCount, sectionCount);
         return id;
+    }
+
+    static String schoolUid(long schoolId) {
+        return jdbc.sql("SELECT school_uid::text FROM tenant_school.schools WHERE id = :schoolId")
+                .param("schoolId", schoolId)
+                .query(String.class)
+                .single();
+    }
+
+    @Test
+    void previewImport_storesOriginalFileUnderSchoolUidFolder() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        String schoolUid = schoolUid(schoolId);
+        byte[] original = "xlsx-bytes".getBytes(StandardCharsets.UTF_8);
+        StudentPhotoStorage photoStorage = mock(StudentPhotoStorage.class);
+        when(photoStorage.uploadImportFile(
+                eq(schoolUid),
+                anyString(),
+                same(original),
+                eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                eq("students.xlsx")))
+                .thenAnswer(invocation -> "schools/" + invocation.getArgument(0, String.class)
+                        + "/student-imports/" + invocation.getArgument(1, String.class) + "/evidence.xlsx");
+        StudentReadRepository studentRepo = new StudentReadRepository(
+                jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", List.of(Map.of(
+                        "Name", "Imp Evidence", "Class", "1", "Section", "A",
+                        "AdmissionNo", "IMP-EVIDENCE", "Gender", "Female",
+                        "Phone", "9876543210")),
+                "originalFileBytes", original,
+                "originalFileName", "students.xlsx",
+                "originalFileContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        String batchId = String.valueOf(preview.get("batchId"));
+
+        verify(photoStorage).uploadImportFile(
+                eq(schoolUid),
+                eq(batchId),
+                same(original),
+                eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                eq("students.xlsx"));
+        String objectPath = jdbc.sql("""
+                        SELECT original_file_object_path
+                        FROM student.import_batches
+                        WHERE id = :batchId
+                        """)
+                .param("batchId", batchId)
+                .query(String.class)
+                .single();
+        assertThat(preview.get("originalFileStored")).isEqualTo(true);
+        assertThat(objectPath).startsWith("schools/" + schoolUid + "/student-imports/" + batchId + "/");
+    }
+
+    @Test
+    void attachPhoto_storesPhotoUnderSchoolUidFolder() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        String schoolUid = schoolUid(schoolId);
+        Long studentId = jdbc.sql("""
+                        INSERT INTO student.students
+                            (admission_no, roll_no, full_name, gender, father_name, father_contact,
+                             phone, fee_status, attendance_percent, created_at, updated_at,
+                             school_id, class_id, section_id, academic_year_id)
+                        VALUES
+                            ('PHOTO-1', '1', 'Photo Student', 'Female', '', '',
+                             '9876543210', 'Pending', 0, now(), now(),
+                             :schoolId, 'c1', :sectionId, 'ay1')
+                        RETURNING id
+                        """)
+                .param("schoolId", schoolId)
+                .param("sectionId", schoolId + "-c1-A")
+                .query(Long.class)
+                .single();
+        byte[] photo = "photo-bytes".getBytes(StandardCharsets.UTF_8);
+        String key = "schools/" + schoolUid + "/students/" + studentId + "/photos/photo.jpg";
+        StudentPhotoStorage photoStorage = mock(StudentPhotoStorage.class);
+        when(photoStorage.upload(eq(schoolUid), eq(studentId), same(photo), eq("image/jpeg"))).thenReturn(key);
+        StudentReadRepository studentRepo = new StudentReadRepository(
+                jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        studentRepo.attachPhoto(studentId, photo, "image/jpeg");
+
+        verify(photoStorage).upload(eq(schoolUid), eq(studentId), same(photo), eq("image/jpeg"));
+        String stored = jdbc.sql("SELECT photo_url FROM student.students WHERE id = :studentId")
+                .param("studentId", studentId)
+                .query(String.class)
+                .single();
+        assertThat(stored).isEqualTo(key);
     }
 
     @Test

@@ -82,7 +82,7 @@ ON CONFLICT (id) DO UPDATE SET
     configured_section_count = EXCLUDED.configured_section_count;
 
 INSERT INTO tenant_school.school_classes (id, name, sort_order)
-VALUES ('1', '1', 1)
+VALUES ('1', '1', 4)
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, sort_order = EXCLUDED.sort_order;
 
 INSERT INTO tenant_school.school_sections (id, name, teacher_name, active, school_class_id, school_id)

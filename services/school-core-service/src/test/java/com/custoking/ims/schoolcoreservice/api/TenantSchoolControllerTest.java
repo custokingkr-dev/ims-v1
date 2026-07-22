@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -69,6 +70,7 @@ class TenantSchoolControllerTest {
 
         assertThat(response).hasSize(1);
         assertThat(response.getFirst().id()).isEqualTo(4L);
+        assertThat(response.getFirst().schoolUid()).isEqualTo(UUID.fromString("11111111-1111-4111-8111-111111111111"));
         assertThat(response.getFirst().name()).isEqualTo("Delhi Public School");
         assertThat(response.getFirst().shortCode()).isEqualTo("DPS");
     }
@@ -195,6 +197,7 @@ class TenantSchoolControllerTest {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         when(structure.schoolStats()).thenReturn(List.of(new SuperadminSchoolStatsRow(
                 4L,
+                UUID.fromString("11111111-1111-4111-8111-111111111111"),
                 "Delhi Public School",
                 "DPS",
                 "Delhi",
@@ -266,6 +269,7 @@ class TenantSchoolControllerTest {
     private SchoolEntity school(Long id, String name, String shortCode) {
         SchoolEntity school = mock(SchoolEntity.class);
         when(school.getId()).thenReturn(id);
+        when(school.getSchoolUid()).thenReturn(UUID.fromString("11111111-1111-4111-8111-111111111111"));
         when(school.getName()).thenReturn(name);
         when(school.getShortCode()).thenReturn(shortCode);
         when(school.getCity()).thenReturn("Delhi");

@@ -74,12 +74,24 @@ class ReferenceEventEmissionIntegrationTest {
         Map<String, Object> req = Map.of("name", "Test School", "shortCode", "TS", "active", true);
         var created = repo.createSchool(req);
         Long id = ((Number) created.get("id")).longValue();
+        String schoolUid = String.valueOf(created.get("schoolUid"));
 
-        var rows = jdbc.sql("SELECT event_type, event_key, payload FROM tenant_school.outbox_events WHERE aggregate_type='School' AND aggregate_id=:id")
+        var rows = jdbc.sql("""
+                        SELECT event_type, payload->>'schoolUid' AS school_uid
+                        FROM tenant_school.outbox_events
+                        WHERE aggregate_type='School' AND aggregate_id=:id
+                        """)
                 .param("id", id.toString())
-                .query((rs, n) -> rs.getString("event_type"))
+                .query((rs, n) -> Map.of(
+                        "eventType", rs.getString("event_type"),
+                        "schoolUid", rs.getString("school_uid")))
                 .list();
-        assertThat(rows).contains("school.upserted.v1");
+        assertThat(schoolUid).matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+        assertThat(rows)
+                .anySatisfy(row -> {
+                    assertThat(row.get("eventType")).isEqualTo("school.upserted.v1");
+                    assertThat(row.get("schoolUid")).isEqualTo(schoolUid);
+                });
     }
 
     @Test

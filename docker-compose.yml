@@ -112,6 +112,9 @@ services:
       OTEL_TRACES_EXPORTER: none
       OPERATIONS_DB_SCHEMA: "workflow,firefighting"
       OPERATIONS_OUTBOX_REQUIRE_REAL_PUBLISHER: "false"
+      OPERATIONS_TENANT_SCHOOL_BASE_URL: http://school-core-service:8080
+      OPERATIONS_TENANT_SCHOOL_TOKEN: local-dev-tenant-school-token
+      OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH: never
       WORKFLOW_READ_TOKEN: local-dev-workflow-token
       FIREFIGHTING_READ_TOKEN: local-dev-firefighting-token
     ports:

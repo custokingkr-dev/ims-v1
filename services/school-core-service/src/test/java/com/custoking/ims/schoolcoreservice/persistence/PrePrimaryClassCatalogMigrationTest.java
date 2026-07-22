@@ -108,4 +108,51 @@ class PrePrimaryClassCatalogMigrationTest {
             assertThat(prePrimaryEvents).isEqualTo(6);
         }
     }
+
+    @Test
+    void v21_normalizesNumericClassOrderAfterSeedDrift() {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
+        try (PostgreSQLContainer<?> pg = new PostgreSQLContainer<>("postgres:16")
+                .withUsername("owner")
+                .withPassword("owner")) {
+            pg.start();
+
+            Flyway.configure()
+                    .dataSource(pg.getJdbcUrl(), "owner", "owner")
+                    .schemas("tenant_school")
+                    .defaultSchema("tenant_school")
+                    .locations("classpath:db/migration/tenant_school")
+                    .target(MigrationVersion.fromVersion("20"))
+                    .load()
+                    .migrate();
+
+            DataSource dataSource = new DriverManagerDataSource(pg.getJdbcUrl(), "owner", "owner");
+            JdbcClient jdbc = JdbcClient.create(dataSource);
+            jdbc.sql("""
+                            UPDATE tenant_school.school_classes
+                            SET sort_order = 1
+                            WHERE id = '1'
+                            """)
+                    .update();
+
+            Flyway.configure()
+                    .dataSource(pg.getJdbcUrl(), "owner", "owner")
+                    .schemas("tenant_school")
+                    .defaultSchema("tenant_school")
+                    .locations("classpath:db/migration/tenant_school")
+                    .load()
+                    .migrate();
+
+            List<String> classIds = jdbc.sql("""
+                            SELECT id
+                            FROM tenant_school.school_classes
+                            ORDER BY sort_order, name
+                            LIMIT 5
+                            """)
+                    .query(String.class)
+                    .list();
+
+            assertThat(classIds).containsExactly("pre-primary", "lkg", "ukg", "1", "2");
+        }
+    }
 }

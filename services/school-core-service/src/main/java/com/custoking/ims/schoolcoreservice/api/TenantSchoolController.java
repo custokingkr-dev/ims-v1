@@ -33,6 +33,7 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -474,6 +475,7 @@ public class TenantSchoolController {
 
     public record SchoolResponse(
             Long id,
+            UUID schoolUid,
             String name,
             String shortCode,
             String city,
@@ -489,6 +491,7 @@ public class TenantSchoolController {
         static SchoolResponse from(SchoolEntity school) {
             return new SchoolResponse(
                     school.getId(),
+                    school.getSchoolUid(),
                     school.getName(),
                     school.getShortCode(),
                     school.getCity(),

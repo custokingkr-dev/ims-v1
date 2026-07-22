@@ -75,10 +75,11 @@ public class StudentPhotoStorage {
     }
 
     /** Validate + resize + store the image; returns the GCS object key to persist. */
-    public String upload(long schoolId, long studentId, byte[] data, String contentType) {
+    public String upload(String schoolStorageId, long studentId, byte[] data, String contentType) {
         if (!isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Photo storage is not configured");
         }
+        String folder = requireStorageFolder(schoolStorageId);
         if (data == null || data.length == 0) {
             throw new IllegalArgumentException("The photo file is empty");
         }
@@ -89,7 +90,7 @@ public class StudentPhotoStorage {
             throw new IllegalArgumentException("Only JPG, PNG or WEBP images are allowed");
         }
         byte[] resized = resize(data);
-        String key = "students/" + schoolId + "/" + studentId + "/" + sha256(resized) + ".jpg";
+        String key = studentPhotoObjectKey(folder, studentId, resized);
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
                     .setContentType("image/jpeg")
@@ -109,12 +110,12 @@ public class StudentPhotoStorage {
      * configure the private bucket; in that case the import still proceeds and returns null while
      * the DB keeps row-level import evidence.
      */
-    public String uploadImportFile(long schoolId, String batchId, byte[] data, String contentType, String fileName) {
+    public String uploadImportFile(String schoolStorageId, String batchId, byte[] data, String contentType, String fileName) {
         if (!isEnabled() || data == null || data.length == 0) {
             return null;
         }
-        String safeName = sanitizeFileName(fileName);
-        String key = "student-imports/" + schoolId + "/" + batchId + "/" + sha256(data) + "-" + safeName;
+        String folder = requireStorageFolder(schoolStorageId);
+        String key = importFileObjectKey(folder, batchId, data, fileName);
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
                     .setContentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream")
@@ -252,6 +253,28 @@ public class StudentPhotoStorage {
 
     public static String sha256Hex(byte[] data) {
         return sha256(data == null ? new byte[0] : data);
+    }
+
+    static String studentPhotoObjectKey(String schoolStorageId, long studentId, byte[] resized) {
+        String folder = requireStorageFolder(schoolStorageId);
+        return "schools/" + folder + "/students/" + studentId + "/photos/" + sha256(resized) + ".jpg";
+    }
+
+    static String importFileObjectKey(String schoolStorageId, String batchId, byte[] data, String fileName) {
+        String folder = requireStorageFolder(schoolStorageId);
+        return "schools/" + folder + "/student-imports/" + batchId + "/" + sha256(data) + "-"
+                + sanitizeFileName(fileName);
+    }
+
+    private static String requireStorageFolder(String schoolStorageId) {
+        String folder = schoolStorageId == null ? "" : schoolStorageId.trim();
+        if (!StringUtils.hasText(folder)) {
+            throw new IllegalArgumentException("School storage id is required");
+        }
+        if (!folder.matches("[A-Za-z0-9._-]+")) {
+            throw new IllegalArgumentException("School storage id contains invalid characters");
+        }
+        return folder;
     }
 
     private static String sanitizeFileName(String fileName) {

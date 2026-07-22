@@ -11,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 @Repository
 public class SchoolStructureReadRepository {
@@ -154,7 +155,7 @@ public class SchoolStructureReadRepository {
 
     public List<SuperadminSchoolStatsRow> schoolStats() {
         return jdbc.sql("""
-                        SELECT s.id, s.name, s.short_code, s.city, s.active, s.created_at,
+                        SELECT s.id, s.school_uid, s.name, s.short_code, s.city, s.active, s.created_at,
                                s.academic_year_start_month, s.financial_year_start_month,
                                '' AS admin_email,
                                0 AS orders_ytd,
@@ -164,6 +165,7 @@ public class SchoolStructureReadRepository {
                         """)
                 .query((rs, rowNum) -> new SuperadminSchoolStatsRow(
                         rs.getLong("id"),
+                        rs.getObject("school_uid", UUID.class),
                         rs.getString("name"),
                         rs.getString("short_code"),
                         rs.getString("city"),
@@ -260,6 +262,7 @@ public class SchoolStructureReadRepository {
         Long id = ((Number) details.get("id")).longValue();
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("id", details.get("id"));
+        payload.put("schoolUid", details.get("schoolUid"));
         payload.put("name", details.get("name"));
         payload.put("shortCode", details.get("shortCode"));
         payload.put("city", details.get("city"));
@@ -428,7 +431,7 @@ public class SchoolStructureReadRepository {
 
     private Map<String, Object> schoolDetails(Long schoolId) {
         return jdbc.sql("""
-                SELECT id, name, short_code, city, state, active,
+                SELECT id, school_uid, name, short_code, city, state, active,
                        configured_class_count, configured_section_count,
                        academic_year_start_month, financial_year_start_month
                 FROM tenant_school.schools
@@ -437,6 +440,7 @@ public class SchoolStructureReadRepository {
                 .param("schoolId", schoolId)
                 .query((rs, rowNum) -> row(
                         "id", rs.getLong("id"),
+                        "schoolUid", rs.getObject("school_uid", UUID.class),
                         "name", rs.getString("name"),
                         "shortCode", rs.getString("short_code"),
                         "city", rs.getString("city") == null ? "" : rs.getString("city"),
@@ -580,6 +584,7 @@ public class SchoolStructureReadRepository {
 
     public record SuperadminSchoolStatsRow(
             Long id,
+            UUID schoolUid,
             String name,
             String shortCode,
             String city,

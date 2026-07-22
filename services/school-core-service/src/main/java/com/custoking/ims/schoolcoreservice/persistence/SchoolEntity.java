@@ -9,6 +9,7 @@ import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "schools", schema = "tenant_school")
@@ -21,6 +22,9 @@ public class SchoolEntity {
 
     @Column(nullable = false)
     private String name;
+
+    @Column(name = "school_uid", nullable = false, updatable = false)
+    private UUID schoolUid;
 
     @Column(name = "short_code", nullable = false)
     private String shortCode;
@@ -37,6 +41,7 @@ public class SchoolEntity {
     private OffsetDateTime createdAt;
 
     public Long getId() { return id; }
+    public UUID getSchoolUid() { return schoolUid; }
     public String getName() { return name; }
     public String getShortCode() { return shortCode; }
     public String getCity() { return city; }

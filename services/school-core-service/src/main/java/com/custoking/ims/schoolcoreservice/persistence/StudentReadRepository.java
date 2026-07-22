@@ -560,12 +560,17 @@ public class StudentReadRepository {
 
     @Transactional
     public Map<String, Object> attachPhoto(Long id, byte[] data, String contentType) {
-        Long schoolId = jdbc.sql("SELECT school_id FROM student.students WHERE id = :id")
+        String schoolStorageId = jdbc.sql("""
+                        SELECT s.school_uid::text
+                        FROM student.students st
+                        JOIN tenant_school.schools s ON s.id = st.school_id
+                        WHERE st.id = :id
+                        """)
                 .param("id", id)
-                .query(Long.class)
+                .query(String.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
-        String key = photoStorage.upload(schoolId, id, data, contentType);
+        String key = photoStorage.upload(schoolStorageId, id, data, contentType);
         jdbc.sql("UPDATE student.students SET photo_url = :photoUrl, updated_at = :updatedAt WHERE id = :id")
                 .param("id", id)
                 .param("photoUrl", key)
@@ -579,13 +584,14 @@ public class StudentReadRepository {
         Long schoolId = longValue(request.get("schoolId"), null);
         if (schoolId == null) throw new IllegalArgumentException("School not found");
         requireSchool(schoolId);
+        String schoolStorageId = schoolStorageId(schoolId);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> rawRows = (List<Map<String, Object>>) request.getOrDefault("rows", List.of());
         if (rawRows.size() > 500) throw new IllegalArgumentException("Maximum 500 rows per import");
 
         String batchId = UUID.randomUUID().toString();
         String fileToken = UUID.randomUUID().toString();
-        ImportFileEvidence fileEvidence = importFileEvidence(schoolId, batchId, request);
+        ImportFileEvidence fileEvidence = importFileEvidence(schoolStorageId, batchId, request);
         Map<String, Object> structure = importStructureAnalysis(rawRows, schoolId);
         int valid = 0;
         int errors = 0;
@@ -2196,7 +2202,7 @@ public class StudentReadRepository {
         }
     }
 
-    private ImportFileEvidence importFileEvidence(Long schoolId, String batchId, Map<String, Object> request) {
+    private ImportFileEvidence importFileEvidence(String schoolStorageId, String batchId, Map<String, Object> request) {
         Object bytesValue = request.get("originalFileBytes");
         byte[] bytes = bytesValue instanceof byte[] data ? data : null;
         if (bytes == null || bytes.length == 0) {
@@ -2209,7 +2215,7 @@ public class StudentReadRepository {
         }
         String fileName = str(request.get("originalFileName"), "students-import");
         String contentType = str(request.get("originalFileContentType"), "application/octet-stream");
-        String objectPath = photoStorage.uploadImportFile(schoolId, batchId, bytes, contentType, fileName);
+        String objectPath = photoStorage.uploadImportFile(schoolStorageId, batchId, bytes, contentType, fileName);
         return new ImportFileEvidence(fileName, StudentPhotoStorage.sha256Hex(bytes), (long) bytes.length, contentType, objectPath);
     }
 
@@ -2536,6 +2542,14 @@ public class StudentReadRepository {
         if (count == null || count == 0) {
             throw new IllegalArgumentException("School not found");
         }
+    }
+
+    private String schoolStorageId(Long schoolId) {
+        return jdbc.sql("SELECT school_uid::text FROM tenant_school.schools WHERE id = :schoolId")
+                .param("schoolId", schoolId)
+                .query(String.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("School not found"));
     }
 
     private long countBySection(String sectionId) {
