@@ -17,9 +17,10 @@ interface Props {
   setPanel: (key: PanelKey) => void;
   onRefresh: () => Promise<void>;
   schoolScopedParams?: { schoolId: number };
+  canImportStudents?: boolean;
 }
 
-export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams }: Props) {
+export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canImportStudents = true }: Props) {
   const [studentForm, setStudentForm] = useState<StudentProfileFormState>(emptyStudentProfileForm());
   const [saving, setSaving] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -195,7 +196,7 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams }: Pro
     <ModuleShell
       title="Add student"
       subtitle="Capture complete student master data and validate unique IDs"
-      actions={<button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import instead</button>}
+      actions={canImportStudents ? <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import instead</button> : null}
     >
       {photoFeedback ? (
         <div className={`ck-alert ${photoFeedback.type === 'success' ? 'ck-alert-g' : 'ck-alert-re'}`}>

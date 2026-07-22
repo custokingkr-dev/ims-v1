@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -41,7 +42,22 @@ class FeeValidationTest {
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
-        TenantContext.set(new TenantContext(1L, "admin@school.test", "ADMIN", 10L, null));
+        TenantContext.set(new TenantContext(
+                1L,
+                "admin@school.test",
+                "ADMIN",
+                10L,
+                null,
+                Set.of(),
+                Set.of(
+                        "fee:read",
+                        "fee_structure:read",
+                        "payment:read",
+                        "fee_structure:manage",
+                        "fee:assign",
+                        "fee:collect",
+                        "payment:create",
+                        "notification:send")));
     }
 
     @AfterEach

@@ -4,6 +4,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class TenantScopeTest {
@@ -48,5 +50,30 @@ class TenantScopeTest {
     void emptyContext_isNotSuperadmin_andForbidsScopedAccess() {
         assertFalse(TenantContext.get().isSuperAdmin());
         assertThrows(ResponseStatusException.class, () -> TenantScope.resolveSchoolId(1L));
+    }
+
+    @Test
+    void nonSuperadminWithPermission_isAllowed() {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null, Set.of("user:read")));
+        assertDoesNotThrow(() -> TenantScope.requirePermission("user:read"));
+    }
+
+    @Test
+    void nonSuperadminWithoutPermission_isForbidden() {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null, Set.of("user:read")));
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> TenantScope.requirePermission("role:read"));
+        assertEquals(403, ex.getStatusCode().value());
+    }
+
+    @Test
+    void superadminBypassesPermissionCheck() {
+        TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+        assertDoesNotThrow(() -> TenantScope.requirePermission("role:assign"));
+    }
+
+    @Test
+    void permissionIfAuthenticated_allowsInternalServiceTokenOnlyCalls() {
+        assertDoesNotThrow(() -> TenantScope.requirePermissionIfAuthenticated("user:read"));
     }
 }

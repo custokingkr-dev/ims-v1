@@ -1,8 +1,10 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -28,12 +30,22 @@ public class FeePublicCompatibilityController {
 
     private final FeeReadRepository fees;
     private final String readToken;
+    private final ModuleEntitlementGuard moduleGuard;
+
+    @Autowired
+    public FeePublicCompatibilityController(
+            FeeReadRepository fees,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${fee.read-token:}") String readToken) {
+        this.fees = fees;
+        this.moduleGuard = moduleGuard;
+        this.readToken = readToken == null ? "" : readToken.trim();
+    }
 
     public FeePublicCompatibilityController(
             FeeReadRepository fees,
             @Value("${fee.read-token:}") String readToken) {
-        this.fees = fees;
-        this.readToken = readToken == null ? "" : readToken.trim();
+        this(fees, null, readToken);
     }
 
     @GetMapping("/api/v1/fee-structure")
@@ -42,7 +54,9 @@ public class FeePublicCompatibilityController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return run(() -> fees.feeStructure(academicYearId, TenantScope.resolveSchoolId(schoolId)));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return run(() -> fees.feeStructure(academicYearId, scope));
     }
 
     @PostMapping("/api/v1/fee-structure/item")
@@ -50,6 +64,8 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> fees.createItem(request));
     }
 
@@ -59,6 +75,8 @@ public class FeePublicCompatibilityController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> fees.updateItem(id, request));
     }
 
@@ -67,6 +85,8 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> Map.of("removed", true, "bandId", fees.deleteItem(id)));
     }
 
@@ -75,6 +95,7 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
         // Parse inside run(): a non-numeric schoolId throws NumberFormatException (an
         // IllegalArgumentException), which run() maps to 400 rather than a raw 500.
         return run(() -> {
@@ -82,6 +103,7 @@ public class FeePublicCompatibilityController {
                     : Long.valueOf(String.valueOf(request.get("schoolId")));
             Long scope = TenantScope.resolveSchoolId(requested);
             if (scope != null) request.put("schoolId", scope);
+            requireFeeModule(scope);
             return fees.createBand(request);
         });
     }
@@ -92,6 +114,8 @@ public class FeePublicCompatibilityController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> fees.updateBand(id, request));
     }
 
@@ -101,6 +125,8 @@ public class FeePublicCompatibilityController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> fees.patchBand(id, request));
     }
 
@@ -109,6 +135,8 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> {
             fees.deleteBand(id);
             return Map.of("removed", true, "bandId", id);
@@ -121,7 +149,9 @@ public class FeePublicCompatibilityController {
             @RequestParam String classId,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return run(() -> fees.matchBand(classId, TenantScope.resolveSchoolId(schoolId)));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return run(() -> fees.matchBand(classId, scope));
     }
 
     @GetMapping(value = "/api/v1/fee-structure/export", produces = MediaType.APPLICATION_PDF_VALUE)
@@ -130,6 +160,7 @@ public class FeePublicCompatibilityController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(defaultValue = "pdf") String format) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         if (!"pdf".equalsIgnoreCase(format)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF export is supported");
         }
@@ -144,6 +175,8 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee:assign");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> fees.assignFeePlan(request));
     }
 
@@ -152,6 +185,8 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "payment:create");
+        requireFeeModule(TenantContext.get().schoolId());
         return run(() -> fees.recordPayment(request));
     }
 
@@ -164,6 +199,7 @@ public class FeePublicCompatibilityController {
             @RequestParam Long schoolId) {
         requireToken(token, "fee:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
         return runObject(() -> fees.feeReport(classId, sectionId, academicYearId, scope).get("content"));
     }
 
@@ -176,6 +212,7 @@ public class FeePublicCompatibilityController {
             @RequestParam Long schoolId) {
         requireToken(token, "fee:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
         return runObject(() -> fees.feeOverdue(classId, sectionId, academicYearId, scope).get("content"));
     }
 
@@ -184,7 +221,9 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "notification:send");
         Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
+        requireFeeModule(scope);
         return run(() -> fees.feeReminderRequests(
                 text(request.get("classId")),
                 text(request.get("sectionId")),
@@ -198,7 +237,9 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "notification:send");
         Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
+        requireFeeModule(scope);
         return run(() -> fees.feeReminderRequests(
                 text(request.get("classId")),
                 text(request.get("sectionId")),
@@ -213,6 +254,7 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String paymentId) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return pdf(paymentId + ".pdf", fees.receiptPdfByPaymentId(paymentId));
     }
 
@@ -221,6 +263,7 @@ public class FeePublicCompatibilityController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String receiptNumber) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return pdf(receiptNumber + ".pdf", fees.receiptPdfByReceiptNumber(receiptNumber));
     }
 
@@ -229,6 +272,17 @@ public class FeePublicCompatibilityController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + filename)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(body);
+    }
+
+    private void requireFeeRead(Long schoolId) {
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:read", "fee_structure:read", "payment:read");
+        requireFeeModule(schoolId);
+    }
+
+    private void requireFeeModule(Long schoolId) {
+        if (moduleGuard != null) {
+            moduleGuard.requireModuleEnabled(schoolId, "FEES");
+        }
     }
 
     private void requireToken(String token, String requiredScope) {

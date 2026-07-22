@@ -47,6 +47,35 @@ class AuthSessionMigrationTest {
         }
     }
 
+    private boolean permissionExists(String code) throws SQLException {
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
+             PreparedStatement ps = c.prepareStatement(
+                     "SELECT 1 FROM identity.permissions WHERE code = ?")) {
+            ps.setString(1, code);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private boolean roleHasPermission(String role, String permission) throws SQLException {
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
+             PreparedStatement ps = c.prepareStatement(
+                     """
+                     SELECT 1
+                     FROM identity.roles r
+                     JOIN identity.role_permissions rp ON rp.role_id = r.id
+                     JOIN identity.permissions p ON p.id = rp.permission_id
+                     WHERE r.name = ? AND p.code = ?
+                     """)) {
+            ps.setString(1, role);
+            ps.setString(2, permission);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     @Test
     void columns_areNotNull() throws Exception {
         assertTrue(isNotNull("auth_sessions", "family_id"),
@@ -56,6 +85,19 @@ class AuthSessionMigrationTest {
     }
 
     // ── Part 2: backfill logic (fresh container, V1→V2) ─────────────────────
+    @Test
+    void defaultRbacSeed_containsWorkspacePermissionsAndRoleGrants() throws Exception {
+        assertTrue(permissionExists("timetable:read"));
+        assertTrue(permissionExists("timetable:manage"));
+        assertTrue(permissionExists("staff:manage"));
+        assertTrue(permissionExists("school:update"));
+        assertTrue(roleHasPermission("ADMIN", "school:update"));
+        assertTrue(roleHasPermission("ADMIN", "staff:manage"));
+        assertTrue(roleHasPermission("TEACHER", "timetable:read"));
+        assertTrue(roleHasPermission("OPERATIONS", "student:create"));
+        assertFalse(roleHasPermission("VIEWER", "staff:manage"));
+    }
+
     @Test
     void backfill_assignsFamilyAndActive() throws Exception {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");

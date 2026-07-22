@@ -84,10 +84,24 @@ class NotificationTenantScopingTest {
                         .param("schoolId", "10")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:read"))
                 .andExpect(status().isOk());
 
         verify(broadcasts).list(eq(10L), isNull(), anyInt());
+    }
+
+    @Test
+    void schoolAdmin_withoutNotificationReadCannotListOwnSchoolBroadcasts() throws Exception {
+        broadcastMvc.perform(get("/api/v1/notifications/broadcasts")
+                        .param("schoolId", "10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:send"))
+                .andExpect(status().isForbidden());
+
+        verify(broadcasts, never()).list(any(), any(), anyInt());
     }
 
     @Test
@@ -96,7 +110,8 @@ class NotificationTenantScopingTest {
                         .param("schoolId", "99")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:read"))
                 .andExpect(status().isForbidden());
 
         verify(broadcasts, never()).list(any(), any(), anyInt());
@@ -168,7 +183,8 @@ class NotificationTenantScopingTest {
         senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/99")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:read"))
                 .andExpect(status().isForbidden());
 
         verify(senderProfiles, never()).resolve(any());
@@ -183,10 +199,23 @@ class NotificationTenantScopingTest {
         senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/10")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:read"))
                 .andExpect(status().isOk());
 
         verify(senderProfiles).resolve(10L);
+    }
+
+    @Test
+    void schoolAdmin_withoutNotificationReadCannotReadOwnSchoolProfile() throws Exception {
+        senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/schools/10")
+                        .header("X-Notification-Service-Token", TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:send"))
+                .andExpect(status().isForbidden());
+
+        verify(senderProfiles, never()).resolve(any());
     }
 
     // --- SenderProfileController: superadmin may read any school profile ---
@@ -225,6 +254,7 @@ class NotificationTenantScopingTest {
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:send")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"authKey\":\"key\"}"))
                 .andExpect(status().isForbidden());
@@ -266,7 +296,8 @@ class NotificationTenantScopingTest {
         senderProfileMvc.perform(get("/api/v1/notifications/sender-profiles/default")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "notification:read"))
                 .andExpect(status().isForbidden());
 
         verify(senderProfiles, never()).defaultProfile();

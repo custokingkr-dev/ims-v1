@@ -51,6 +51,7 @@ class IdentityPublicCompatibilityControllerTest {
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "7")
+                        .header("X-Authenticated-Permissions", "user:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"a@b.c\"}"))
                 .andExpect(status().isForbidden());
@@ -78,6 +79,7 @@ class IdentityPublicCompatibilityControllerTest {
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "7")
+                        .header("X-Authenticated-Permissions", "user:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"b@c.d\"}"))
                 .andExpect(status().isForbidden());
@@ -105,6 +107,7 @@ class IdentityPublicCompatibilityControllerTest {
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "7")
+                        .header("X-Authenticated-Permissions", "user:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"c@d.e\"}"))
                 .andExpect(status().isForbidden());

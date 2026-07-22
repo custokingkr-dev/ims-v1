@@ -36,7 +36,8 @@ class StudentTenantScopingTest {
         mvc.perform(get("/api/v1/students?schoolId=99")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:read"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
     }
@@ -47,7 +48,8 @@ class StudentTenantScopingTest {
         mvc.perform(get("/api/v1/students")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:read"))
                 .andExpect(status().isOk());
         verify(repo).workspaceStudents(eq(10L), any(), any(), any(), anyInt(), anyInt(), eq(false));
     }

@@ -110,6 +110,7 @@ class FirefightingValidationTest {
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:create")
                         .contentType("application/json")
                         .content("{\"title\":\"Leaking roof\"}"))
                 .andExpect(status().isOk());
@@ -126,6 +127,7 @@ class FirefightingValidationTest {
                         .header("X-Firefighting-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:create")
                         .contentType("application/json")
                         .content("{\"title\":\"Leaking roof\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());

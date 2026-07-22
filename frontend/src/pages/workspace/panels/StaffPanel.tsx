@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { UserPlus, Users } from 'lucide-react';
 import api from '../../../services/api';
+import { usePermissions } from '../../../hooks/usePermissions';
 import { ModuleShell, Field } from '../ui';
 import { WorkspaceData } from '../../workspace/config';
 import { formatMoney } from '../utils';
@@ -28,6 +29,8 @@ const INITIAL_FORM = {
 };
 
 export function StaffPanel({ workspace, onRefresh }: Props) {
+  const { can } = usePermissions();
+  const canManageStaff = can('staff:manage');
   const [form, setForm] = useState(INITIAL_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -40,6 +43,10 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
   const submit = async () => {
     setError('');
     setNotice('');
+    if (!canManageStaff) {
+      setError('You do not have permission to add staff members.');
+      return;
+    }
     try {
       setSaving(true);
       await api.post('/workspace/staff', form);
@@ -59,45 +66,49 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
       title="Staff & HR"
       subtitle={`${rows.length} staff members - pending payroll Rs ${formatMoney(pendingPayroll)}`}
       actions={
-        <button className="ck-btn ck-btn-g ck-icon-btn" disabled={saving} onClick={submit}>
-          <UserPlus size={16} aria-hidden="true" />
-          <span>{saving ? 'Saving...' : 'Add staff'}</span>
-        </button>
+        canManageStaff ? (
+          <button className="ck-btn ck-btn-g ck-icon-btn" disabled={saving} onClick={submit}>
+            <UserPlus size={16} aria-hidden="true" />
+            <span>{saving ? 'Saving...' : 'Add staff'}</span>
+          </button>
+        ) : null
       }
     >
       {error && <div className="ck-alert ck-alert-re" style={{ marginBottom: 12 }}>{error}</div>}
       {notice && <div className="ck-alert ck-alert-g" style={{ marginBottom: 12 }}>{notice}</div>}
-      <div className="ck-card ck-compact-form-card" style={{ marginBottom: 16 }}>
-        <div className="ck-card-h">
-          <div className="ck-card-t">New staff member</div>
-        </div>
-        <div className="ck-form-body">
-          <div className="ck-form-grid ck-staff-grid">
-            <Field label="Name">
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-            </Field>
-            <Field label="Designation">
-              <input value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} />
-            </Field>
-            <Field label="Department">
-              <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-            </Field>
-            <Field label="Monthly salary">
-              <input
-                inputMode="numeric"
-                value={form.monthlySalary}
-                onChange={(e) => setForm({ ...form, monthlySalary: e.target.value })}
-              />
-            </Field>
-            <Field label="Payroll">
-              <select value={form.payrollStatus} onChange={(e) => setForm({ ...form, payrollStatus: e.target.value })}>
-                <option>Pending</option>
-                <option>Processed</option>
-              </select>
-            </Field>
+      {canManageStaff ? (
+        <div className="ck-card ck-compact-form-card" style={{ marginBottom: 16 }}>
+          <div className="ck-card-h">
+            <div className="ck-card-t">New staff member</div>
+          </div>
+          <div className="ck-form-body">
+            <div className="ck-form-grid ck-staff-grid">
+              <Field label="Name">
+                <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              </Field>
+              <Field label="Designation">
+                <input value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} />
+              </Field>
+              <Field label="Department">
+                <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+              </Field>
+              <Field label="Monthly salary">
+                <input
+                  inputMode="numeric"
+                  value={form.monthlySalary}
+                  onChange={(e) => setForm({ ...form, monthlySalary: e.target.value })}
+                />
+              </Field>
+              <Field label="Payroll">
+                <select value={form.payrollStatus} onChange={(e) => setForm({ ...form, payrollStatus: e.target.value })}>
+                  <option>Pending</option>
+                  <option>Processed</option>
+                </select>
+              </Field>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
 
       <div className="ck-card">
         <div className="ck-card-h">
@@ -108,7 +119,7 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
             <Users size={28} aria-hidden="true" />
             <div>
               <strong>No staff members yet</strong>
-              <span>Add your first staff member using the form above.</span>
+              <span>{canManageStaff ? 'Add your first staff member using the form above.' : 'No staff records are available for this school.'}</span>
             </div>
           </div>
         ) : (

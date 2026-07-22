@@ -44,7 +44,8 @@ class IdentityTenantScopingTest {
         usersMvc.perform(get("/api/v1/users?branchId=99")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
                 .andExpect(status().isForbidden());
         verify(users, never()).users(any(), anyLong(), any(), any(), anyInt());
     }
@@ -56,7 +57,8 @@ class IdentityTenantScopingTest {
         usersMvc.perform(get("/api/v1/users")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
                 .andExpect(status().isOk());
         verify(users).users(any(), eq(10L), any(), any(), anyInt());
     }
@@ -79,7 +81,8 @@ class IdentityTenantScopingTest {
         rbacMvc.perform(get("/api/v1/rbac/users/9/permissions?schoolId=99")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "permission:read"))
                 .andExpect(status().isForbidden());
         verify(rbac, never()).effectivePermissions(anyLong(), anyLong(), any());
     }
@@ -91,7 +94,8 @@ class IdentityTenantScopingTest {
         rbacMvc.perform(get("/api/v1/rbac/users/9/permissions?schoolId=10")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "permission:read"))
                 .andExpect(status().isOk());
         verify(rbac).effectivePermissions(eq(9L), eq(10L), isNull());
     }
@@ -115,7 +119,8 @@ class IdentityTenantScopingTest {
         rbacMvc.perform(get("/api/v1/rbac/users/9/permissions?zoneId=99")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "permission:read"))
                 .andExpect(status().isForbidden());
         verify(rbac, never()).effectivePermissions(anyLong(), any(), any());
     }
@@ -144,7 +149,8 @@ class IdentityTenantScopingTest {
         usersMvc.perform(get("/api/v1/users/7")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
                 .andExpect(status().isForbidden());
         verify(users).user(7L);
     }
@@ -159,7 +165,8 @@ class IdentityTenantScopingTest {
         usersMvc.perform(get("/api/v1/users/8")
                         .header("X-Identity-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
                 .andExpect(status().isOk());
         verify(users).user(8L);
     }

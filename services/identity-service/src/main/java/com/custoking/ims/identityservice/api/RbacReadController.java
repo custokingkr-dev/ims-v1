@@ -36,6 +36,14 @@ import java.util.Map;
 @RequestMapping("/api/v1/rbac")
 public class RbacReadController {
 
+    private static final String ROLE_READ = "role:read";
+    private static final String ROLE_CREATE = "role:create";
+    private static final String ROLE_UPDATE = "role:update";
+    private static final String ROLE_ASSIGN = "role:assign";
+    private static final String ROLE_REVOKE = "role:revoke";
+    private static final String PERMISSION_READ = "permission:read";
+    private static final String AUDIT_READ = "audit:read";
+
     private final RbacReadRepository rbac;
     private final RbacCommandRepository commands;
     private final TenantSchoolClient schoolClient;
@@ -55,12 +63,14 @@ public class RbacReadController {
     @GetMapping("/roles")
     public Object roles(@RequestHeader(value = "X-Identity-Service-Token", required = false) String token) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_READ);
         return rbac.roles();
     }
 
     @GetMapping("/permissions")
     public Object permissions(@RequestHeader(value = "X-Identity-Service-Token", required = false) String token) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(PERMISSION_READ);
         return rbac.permissions();
     }
 
@@ -69,6 +79,7 @@ public class RbacReadController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @RequestParam(required = false) Long roleId) {
         requireToken(token, "identity:read");
+        TenantScope.requireAnyPermissionIfAuthenticated(ROLE_READ, PERMISSION_READ);
         return rbac.rolePermissions(roleId);
     }
 
@@ -79,6 +90,7 @@ public class RbacReadController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_READ);
         TenantScope.requireSuperAdmin();
         return rbac.userAssignments(userId, active, limit);
     }
@@ -90,6 +102,7 @@ public class RbacReadController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_READ);
         // Same unscoped cross-school assignments as GET /user-role-assignments (both call
         // rbac.userAssignments); gate identically so enumerating userIds can't reconstruct
         // another school's role assignments. Per-user permissions read below IS school-scoped.
@@ -104,6 +117,7 @@ public class RbacReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) Long zoneId) {
         requireToken(token, "identity:read");
+        TenantScope.requireAnyPermissionIfAuthenticated(PERMISSION_READ, ROLE_READ);
         schoolId = TenantScope.resolveSchoolId(schoolId);
         zoneId = resolveZoneId(zoneId);
         return rbac.effectivePermissions(userId, schoolId, zoneId);
@@ -116,6 +130,7 @@ public class RbacReadController {
             @RequestParam(required = false) Long targetUserId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(AUDIT_READ);
         TenantScope.requireSuperAdmin();
         return rbac.audit(actorUserId, targetUserId, limit);
     }
@@ -126,6 +141,7 @@ public class RbacReadController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @Valid @RequestBody CreateRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_CREATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("name", req.name());
@@ -141,6 +157,7 @@ public class RbacReadController {
             @PathVariable Long roleId,
             @Valid @RequestBody UpdateRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_UPDATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         if (req.description() != null) body.put("description", req.description());
@@ -155,6 +172,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @Valid @RequestBody AssignPlatformRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_ASSIGN);
         TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
@@ -168,6 +186,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @Valid @RequestBody AssignSchoolRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_ASSIGN);
         TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
@@ -182,6 +201,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @Valid @RequestBody AssignZoneRoleRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_ASSIGN);
         TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("role", req.role());
@@ -197,6 +217,7 @@ public class RbacReadController {
             @PathVariable Long assignmentId,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_REVOKE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = body == null ? new HashMap<>() : new HashMap<>(body);
         stamped.put("revokedBy", TenantContext.get().userId());
@@ -209,6 +230,7 @@ public class RbacReadController {
             @PathVariable Long userId,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_ASSIGN);
         TenantScope.requireSuperAdmin();
         return commands.syncOperatorSchools(userId, extractSchoolIds(body), TenantContext.get().userId());
     }
@@ -218,6 +240,7 @@ public class RbacReadController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long userId) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(ROLE_READ);
         TenantScope.requireSuperAdmin();
         List<Long> schoolIds = rbac.operatorSchoolIds(userId);
         List<Map<String, Object>> result = new ArrayList<>();

@@ -43,6 +43,7 @@ class IdentityProvisioningAuthorizationTest {
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "4")
+                        .header("X-Authenticated-Permissions", "user:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"a@b.c\"}"))
                 .andExpect(status().isForbidden());
@@ -69,6 +70,7 @@ class IdentityProvisioningAuthorizationTest {
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "4")
+                        .header("X-Authenticated-Permissions", "user:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"z@b.c\"}"))
                 .andExpect(status().isForbidden());

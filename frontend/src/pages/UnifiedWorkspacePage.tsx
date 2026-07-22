@@ -41,7 +41,7 @@ import { SaInvoicesPanel } from './workspace/panels/SaInvoicesPanel';
 export default function UnifiedWorkspacePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const { can } = usePermissions();
+  const { can, canAny } = usePermissions();
 
   const role = user?.role;
   const isPlatformAdmin = role === 'SUPERADMIN' || can('platform:admin');
@@ -281,9 +281,40 @@ export default function UnifiedWorkspacePage() {
 
   // Filter out nav items gated by a module the school hasn't been entitled to.
   // Items without a `module` field, and everything for platform admins, are always shown.
-  const navSections = isPlatformAdmin
+  const panelPermissionAny = (key: PanelKey): string[] | null => {
+    switch (key) {
+      case 'students': return ['student:read'];
+      case 'addstudent': return ['student:create'];
+      case 'bulkimport': return ['student:import'];
+      case 'attendance': return ['attendance:read'];
+      case 'timetable': return ['timetable:read'];
+      case 'staff': return ['staff:read'];
+      case 'classsetup': return ['school:update'];
+      case 'fees': return ['fee:read', 'payment:read'];
+      case 'feestructure': return ['fee_structure:read', 'fee:read'];
+      case 'catalog': return ['order:read'];
+      case 'orders': return ['order:read'];
+      case 'planning': return ['plan:read', 'order:read'];
+      case 'ff-dashboard': return ['firefighting:read'];
+      case 'ff-new': return ['firefighting:create'];
+      case 'ff-approvals': return ['firefighting:approve'];
+      case 'ff-orders': return ['firefighting:read'];
+      default: return null;
+    }
+  };
+  const panelAllowedByPermission = (key: PanelKey) => {
+    if (isPlatformAdmin) return true;
+    const required = panelPermissionAny(key);
+    return !required || canAny(required);
+  };
+  const moduleFilteredSections = isPlatformAdmin
     ? rawNavSections
     : filterNavSectionsForModules(rawNavSections, activeModules);
+  const navSections = isPlatformAdmin
+    ? moduleFilteredSections
+    : moduleFilteredSections
+        .map(section => ({ ...section, items: section.items.filter(item => panelAllowedByPermission(item.key)) }))
+        .filter(section => section.items.length > 0);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
   const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel);
   const dashboardModuleAccess = {
@@ -464,7 +495,7 @@ export default function UnifiedWorkspacePage() {
 
           {panelAllowed && panel === 'feestructure' && <FeeStructurePanel onRefresh={refresh} />}
 
-          {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
+          {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canImportStudents={can('student:import')} />}
 
           {panelAllowed && panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 

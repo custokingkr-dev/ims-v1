@@ -20,11 +20,23 @@ public class ModuleEntitlementGuard {
     }
 
     public void requireErpEnabled(Long schoolId) {
-        if (TenantContext.get().isSuperAdmin()) {
+        TenantContext ctx = TenantContext.get();
+        if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) {
             return;
         }
         if (schoolId == null || !modules.anyEnabled(schoolId, ERP_MODULES)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "ERP module is not enabled for this school");
+        }
+    }
+
+    public void requireModuleEnabled(Long schoolId, String moduleCode) {
+        TenantContext ctx = TenantContext.get();
+        if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) {
+            return;
+        }
+        if (schoolId == null || moduleCode == null || moduleCode.isBlank()
+                || !modules.anyEnabled(schoolId, List.of(moduleCode))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, moduleCode + " module is not enabled for this school");
         }
     }
 }

@@ -41,6 +41,7 @@ class StudentPhotoFromUrlControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"url\":\"https://cdn.example.com/a.jpg\"}"))
                 .andExpect(status().isOk());
@@ -56,6 +57,7 @@ class StudentPhotoFromUrlControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"url\":\"https://x/y\"}"))
                 .andExpect(status().isUnprocessableEntity())
@@ -70,6 +72,7 @@ class StudentPhotoFromUrlControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"url\":\"https://x/y\"}"))
                 .andExpect(status().isForbidden());

@@ -22,6 +22,7 @@ import java.time.LocalDate;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -93,7 +94,7 @@ class ReportingReadControllerTest {
     @Test
     void dismissActionMapsNotFoundCommandToNotFound() {
         // ADMIN school 4 context: isSuperAdmin()=false, resolveSchoolId(4L)=4L.
-        TenantContext.set(new TenantContext(9L, "a@x", "ADMIN", 4L, null));
+        TenantContext.set(new TenantContext(9L, "a@x", "ADMIN", 4L, null, Set.of("workflow:act")));
         UUID actionId = UUID.fromString("22222222-2222-2222-2222-222222222222");
         when(commands.dismissAction(actionId, 9L, "duplicate", 4L, false))
                 .thenThrow(new IllegalArgumentException("Action not found"));
@@ -116,6 +117,7 @@ class ReportingReadControllerTest {
         // The DTO pre-validates required fields, so repo-level IllegalArgumentException still maps → 400.
         EventContributionReminderTargetsRequest req =
                 new EventContributionReminderTargetsRequest("event-1", 4L, null);
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         when(commands.eventPaymentReminderTargets(anyMap()))
                 .thenThrow(new IllegalArgumentException("Reminders can only be sent for ACTIVE events"));
 

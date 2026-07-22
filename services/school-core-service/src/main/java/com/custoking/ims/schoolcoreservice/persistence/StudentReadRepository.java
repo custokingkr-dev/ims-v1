@@ -647,10 +647,10 @@ public class StudentReadRepository {
             jdbc.sql("""
                             INSERT INTO student.import_rows
                                 (id, row_no, name, class_name, section_name, admission_no, phone,
-                                 status, message, raw_json, normalized_json, batch_id)
+                                 status, message, raw_json, normalized_json, batch_id, school_id)
                             VALUES
                                 (:id, :rowNo, :name, :className, :sectionName, :admissionNo, :phone,
-                                 :status, :message, :rawJson, :normalizedJson, :batchId)
+                                 :status, :message, :rawJson, :normalizedJson, :batchId, :schoolId)
                             """)
                     .param("id", UUID.randomUUID().toString())
                     .param("rowNo", i + 1)
@@ -664,6 +664,7 @@ public class StudentReadRepository {
                     .param("rawJson", toJson(rawRows.get(i)))
                     .param("normalizedJson", toJson(normalized))
                     .param("batchId", batchId)
+                    .param("schoolId", schoolId)
                     .update();
         }
         return row("rows", previewRows, "fileToken", fileToken,
@@ -678,8 +679,14 @@ public class StudentReadRepository {
         String fileToken = requireText(request.get("fileToken"), "Preview token not found");
         Long schoolId = longValue(request.get("schoolId"), null);
         if (schoolId == null) throw new IllegalArgumentException("School not found");
-        String batchId = jdbc.sql("SELECT id FROM student.import_batches WHERE file_token = :fileToken")
+        String batchId = jdbc.sql("""
+                        SELECT id
+                        FROM student.import_batches
+                        WHERE file_token = :fileToken
+                          AND school_id = :schoolId
+                        """)
                 .param("fileToken", fileToken)
+                .param("schoolId", schoolId)
                 .query(String.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Preview token not found"));
@@ -688,7 +695,7 @@ public class StudentReadRepository {
                 .param("jobId", jobId)
                 .param("batchId", batchId)
                 .update();
-        List<ImportRow> rows = importRows(batchId, null, 1000);
+        List<ImportRow> rows = importRows(schoolId, batchId, null, 1000);
         int inserted = 0;
         int skipped = 0;
         List<Map<String, Object>> skippedRows = new ArrayList<>();
@@ -749,15 +756,17 @@ public class StudentReadRepository {
                 "insertedStudents", insertedStudents);
     }
 
-    public Map<String, Object> importStatus(String jobId) {
+    public Map<String, Object> importStatus(String jobId, Long schoolId) {
         ImportBatchRow batch = jdbc.sql("""
                         SELECT id, file_token, job_id, total_rows, valid_count, error_count,
                                warning_count, status, pct, inserted, skipped, skipped_json,
                                created_at, completed_at
                         FROM student.import_batches
                         WHERE job_id = :jobId
+                          AND (:schoolId IS NULL OR school_id = :schoolId)
                         """)
                 .param("jobId", jobId)
+                .param("schoolId", schoolId)
                 .query(ImportBatchRow.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Import job not found"));
@@ -1496,30 +1505,35 @@ public class StudentReadRepository {
                 .single();
     }
 
-    public List<ImportBatchRow> importBatches(int limit) {
+    public List<ImportBatchRow> importBatches(Long schoolId, int limit) {
         return jdbc.sql("""
                 SELECT id, file_token, job_id, total_rows, valid_count, error_count,
                        warning_count, status, pct, inserted, skipped, skipped_json,
                        created_at, completed_at
                 FROM student.import_batches
+                WHERE (:schoolId IS NULL OR school_id = :schoolId)
                 ORDER BY created_at DESC NULLS LAST
                 LIMIT :limit
-                """).param("limit", Math.max(1, Math.min(limit, 500)))
+                """).param("schoolId", schoolId)
+                .param("limit", Math.max(1, Math.min(limit, 500)))
                 .query(ImportBatchRow.class)
                 .list();
     }
 
-    public List<ImportRow> importRows(String batchId, String status, int limit) {
+    public List<ImportRow> importRows(Long schoolId, String batchId, String status, int limit) {
         StringBuilder sql = new StringBuilder("""
-                SELECT id, row_no, name, class_name, section_name, admission_no, phone,
-                       status, message, raw_json, normalized_json, batch_id
-                FROM student.import_rows
-                WHERE 1=1
+                SELECT r.id, r.row_no, r.name, r.class_name, r.section_name, r.admission_no, r.phone,
+                       r.status, r.message, r.raw_json, r.normalized_json, r.batch_id
+                FROM student.import_rows r
+                JOIN student.import_batches b ON b.id = r.batch_id
+                WHERE (:schoolId IS NULL OR COALESCE(r.school_id, b.school_id) = :schoolId)
                 """);
-        if (batchId != null && !batchId.isBlank()) sql.append(" AND batch_id = :batchId");
-        if (status != null && !status.isBlank()) sql.append(" AND status = :status");
-        sql.append(" ORDER BY row_no ASC LIMIT :limit");
-        var spec = jdbc.sql(sql.toString()).param("limit", Math.max(1, Math.min(limit, 1000)));
+        if (batchId != null && !batchId.isBlank()) sql.append(" AND r.batch_id = :batchId");
+        if (status != null && !status.isBlank()) sql.append(" AND r.status = :status");
+        sql.append(" ORDER BY r.row_no ASC LIMIT :limit");
+        var spec = jdbc.sql(sql.toString())
+                .param("schoolId", schoolId)
+                .param("limit", Math.max(1, Math.min(limit, 1000)));
         if (batchId != null && !batchId.isBlank()) spec = spec.param("batchId", batchId);
         if (status != null && !status.isBlank()) spec = spec.param("status", status);
         return spec.query(ImportRow.class).list();

@@ -41,7 +41,8 @@ class FirefightingTenantScopingTest {
         mvc.perform(get("/api/v1/ff/requests?schoolId=99")
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:read"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).requests(anyLong(), any(), anyInt());
     }
@@ -52,7 +53,8 @@ class FirefightingTenantScopingTest {
         mvc.perform(get("/api/v1/ff/requests")
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:read"))
                 .andExpect(status().isOk());
         verify(repo).requests(eq(10L), any(), anyInt());
     }
@@ -75,6 +77,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"Test\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
@@ -103,6 +106,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
@@ -116,6 +120,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
@@ -130,6 +135,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
@@ -142,6 +148,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
@@ -155,7 +162,8 @@ class FirefightingTenantScopingTest {
         mvc.perform(post("/api/v1/ff/requests/FF-001/approve-custoking")
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "firefighting:fulfill"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).approveCustoking(anyString());
     }

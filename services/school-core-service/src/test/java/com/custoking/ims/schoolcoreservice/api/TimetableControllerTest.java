@@ -43,6 +43,7 @@ class TimetableControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"sectionId":"sec-1","entries":[
@@ -65,6 +66,7 @@ class TimetableControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "TEACHER")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"sectionId":"sec-1","entries":[
@@ -85,6 +87,7 @@ class TimetableControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"sectionId":"sec-1","entries":[
@@ -105,6 +108,7 @@ class TimetableControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"sectionId":"sec-1","entries":[
@@ -120,6 +124,7 @@ class TimetableControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"sectionId":"sec-1","entries":[
@@ -136,6 +141,7 @@ class TimetableControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"sectionId":"sec-1","entries":[
@@ -143,6 +149,23 @@ class TimetableControllerTest {
                                 ]}
                                 """))
                 .andExpect(status().isBadRequest());
+        verify(timetable, never()).upsertEntries(anyLong(), anyString(), anyList());
+    }
+
+    @Test
+    void bulkUpsert_schoolAdminWithoutManagePermission_isForbidden() throws Exception {
+        mvc.perform(put(BULK_URL)
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "timetable:read")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"sectionId":"sec-1","entries":[
+                                  {"day":"Mon","periodId":1,"subjectName":"Math"}
+                                ]}
+                                """))
+                .andExpect(status().isForbidden());
         verify(timetable, never()).upsertEntries(anyLong(), anyString(), anyList());
     }
 }

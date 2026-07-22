@@ -11,10 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Enforces the FIREFIGHTING module entitlement on firefighting endpoints. Superadmins and
- * requests with no resolved school (e.g. platform-level callers) bypass the check. If the
- * entitlement lookup itself fails (peer/config error), we fail OPEN and allow the request —
- * an entitlement-lookup outage must never take down the firefighting workflow.
+ * Enforces the FIREFIGHTING module entitlement on firefighting endpoints.
  */
 @Component
 public class FirefightingModuleInterceptor implements HandlerInterceptor {
@@ -41,8 +38,9 @@ public class FirefightingModuleInterceptor implements HandlerInterceptor {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            // fail-open: entitlement lookup failed — do not break firefighting availability
-            log.warn("firefighting entitlement lookup failed for school {}, allowing", ctx.schoolId(), e);
+            log.warn("firefighting entitlement lookup failed for school {}, denying", ctx.schoolId(), e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Could not verify Urgent Procurement module entitlement");
         }
         return true;
     }

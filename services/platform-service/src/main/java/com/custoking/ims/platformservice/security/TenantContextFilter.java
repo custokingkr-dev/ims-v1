@@ -11,6 +11,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
@@ -24,7 +26,8 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 trimToNull(request.getHeader("X-Authenticated-Email")),
                 trimToNull(request.getHeader("X-Authenticated-Role")),
                 parseLong(request.getHeader("X-Authenticated-School-Id")),
-                parseLong(request.getHeader("X-Authenticated-Zone-Id"))));
+                parseLong(request.getHeader("X-Authenticated-Zone-Id")),
+                parseStringSet(request.getHeader("X-Authenticated-Permissions"))));
         try {
             filterChain.doFilter(request, response);
         } finally {
@@ -35,6 +38,16 @@ public class TenantContextFilter extends OncePerRequestFilter {
     private static Long parseLong(String value) {
         if (!StringUtils.hasText(value)) return null;
         try { return Long.parseLong(value.trim()); } catch (NumberFormatException e) { return null; }
+    }
+
+    private static Set<String> parseStringSet(String value) {
+        if (!StringUtils.hasText(value)) return Set.of();
+        Set<String> result = new LinkedHashSet<>();
+        for (String part : value.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isEmpty()) result.add(trimmed);
+        }
+        return result;
     }
 
     private static String trimToNull(String value) {

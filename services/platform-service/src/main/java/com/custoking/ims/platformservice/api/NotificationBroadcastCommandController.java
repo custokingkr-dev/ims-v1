@@ -43,6 +43,7 @@ public class NotificationBroadcastCommandController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @Valid @RequestBody CreateBroadcastRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         Map<String, Object> body = new HashMap<>();
         body.put("title", req.title());
@@ -64,6 +65,7 @@ public class NotificationBroadcastCommandController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
         Long resolvedSchoolId = TenantScope.resolveSchoolId(schoolId);
         return broadcasts.list(resolvedSchoolId, status, limit);
     }
@@ -79,6 +81,7 @@ public class NotificationBroadcastCommandController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) BroadcastActionRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         Long actorId = TenantContext.get().userId();
         return command(() -> broadcasts.approve(id, actorId));
@@ -93,6 +96,7 @@ public class NotificationBroadcastCommandController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) BroadcastActionRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         Long actorId = TenantContext.get().userId();
         return command(() -> broadcasts.send(id, actorId));
@@ -103,6 +107,7 @@ public class NotificationBroadcastCommandController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable UUID id) {
         requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
         TenantScope.requireSuperAdmin();
         return command(() -> broadcasts.deliveryStatus(id));
     }

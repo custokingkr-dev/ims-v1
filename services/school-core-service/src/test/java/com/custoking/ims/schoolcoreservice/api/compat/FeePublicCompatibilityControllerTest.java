@@ -53,6 +53,7 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("classId", "c1")
                         .param("sectionId", "s1")
                         .param("schoolId", "99"))
@@ -67,6 +68,7 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("classId", "c1")
                         .param("sectionId", "s1")
                         .param("schoolId", "10"))
@@ -95,6 +97,7 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("classId", "c1")
                         .param("sectionId", "s1")
                         .param("schoolId", "99"))
@@ -110,6 +113,7 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:collect")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classId\":\"c1\",\"sectionId\":\"s1\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
@@ -124,6 +128,7 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:collect")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classId\":\"c1\",\"sectionId\":\"s1\",\"schoolId\":10}"))
                 .andExpect(status().isOk());
@@ -138,6 +143,7 @@ class FeePublicCompatibilityControllerTest {
                         .header("X-Fee-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:collect")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":99}"))
                 .andExpect(status().isForbidden());

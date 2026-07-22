@@ -9,9 +9,11 @@ import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.Cat
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.CatalogOrderRow;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.PendingCatalogOrderRow;
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.SupplyOrderRow;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -36,18 +38,29 @@ public class CatalogReadController {
 
     private final CatalogReadRepository catalog;
     private final String readToken;
+    private final ModuleEntitlementGuard moduleGuard;
+
+    @Autowired
+    public CatalogReadController(
+            CatalogReadRepository catalog,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${catalog.read-token:}") String readToken) {
+        this.catalog = catalog;
+        this.moduleGuard = moduleGuard;
+        this.readToken = readToken == null ? "" : readToken.trim();
+    }
 
     public CatalogReadController(
             CatalogReadRepository catalog,
             @Value("${catalog.read-token:}") String readToken) {
-        this.catalog = catalog;
-        this.readToken = readToken == null ? "" : readToken.trim();
+        this(catalog, null, readToken);
     }
 
     @GetMapping("/items")
     public List<CatalogItemRow> items(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token) {
         requireToken(token, "catalog:read");
+        requireOrderRead(TenantContext.get().schoolId());
         return catalog.items();
     }
 
@@ -55,6 +68,7 @@ public class CatalogReadController {
     public List<Map<String, Object>> categories(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token) {
         requireToken(token, "catalog:read");
+        requireOrderRead(TenantContext.get().schoolId());
         return catalog.categories();
     }
 
@@ -65,7 +79,9 @@ public class CatalogReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "catalog:read");
+        TenantScope.requirePermissionIfAuthenticated("order:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
         return catalog.orders(scope, status, limit);
     }
 
@@ -74,6 +90,7 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "catalog:read");
+        TenantScope.requirePermissionIfAuthenticated("order:read");
         TenantScope.requireSuperAdmin();
         return catalog.pendingApprovalOrders(limit);
     }
@@ -83,6 +100,7 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "catalog:read");
+        requireOrderRead(TenantContext.get().schoolId());
         return catalog.order(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "catalog order not found"));
     }
@@ -92,6 +110,7 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @Valid @RequestBody CreateCatalogOrderRequest dto) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("order:create");
         Map<String, Object> body = new HashMap<>();
         body.put("schoolId", dto.schoolId());
         body.put("category", dto.category());
@@ -108,6 +127,7 @@ public class CatalogReadController {
         if (dto.items() != null) body.put("items", dto.items());
         if (dto.orderData() != null) body.put("orderData", dto.orderData());
         applyResolvedSchool(body);
+        requireOrderModule(longValue(body.get("schoolId")));
         return runCommand(() -> catalog.createOrder(body));
     }
 
@@ -117,6 +137,8 @@ public class CatalogReadController {
             @PathVariable String id,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("order:create");
+        requireOrderModule(TenantContext.get().schoolId());
         return runCommand(() -> catalog.placeOrder(id, TenantContext.get().userId()));
     }
 
@@ -126,6 +148,8 @@ public class CatalogReadController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("order:update");
+        requireOrderModule(TenantContext.get().schoolId());
         return runCommand(() -> catalog.updateOrderStatus(id, String.valueOf(request.getOrDefault("status", ""))));
     }
 
@@ -134,6 +158,8 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("order:update");
+        requireOrderModule(TenantContext.get().schoolId());
         return runCommand(() -> catalog.markDesignApproved(id));
     }
 
@@ -142,6 +168,7 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("order:approve");
         TenantScope.requireSuperAdmin();
         return runCommand(() -> catalog.approveBySuperadmin(id));
     }
@@ -152,6 +179,7 @@ public class CatalogReadController {
             @PathVariable String id,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "catalog:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("order:reject", "order:approve");
         TenantScope.requireSuperAdmin();
         String reason = request == null ? null : String.valueOf(request.getOrDefault("reason", ""));
         return runCommand(() -> catalog.returnBySuperadmin(id, reason));
@@ -163,8 +191,10 @@ public class CatalogReadController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("order:update");
         applyResolvedSchool(request);
         Long schoolId = longValue(request.get("schoolId"));
+        requireOrderModule(schoolId);
         Long actorId = TenantContext.get().userId();
         String notes = String.valueOf(request.getOrDefault("notes", ""));
         return runCommand(() -> catalog.markVendorPaid(id, schoolId, actorId, notes));
@@ -175,7 +205,9 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "catalog:read");
+        TenantScope.requirePermissionIfAuthenticated("order:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
         return catalog.orderStats(scope);
     }
 
@@ -184,6 +216,7 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "catalog:read");
+        requireOrderRead(TenantContext.get().schoolId());
         return catalog.supplyOrders(limit);
     }
 
@@ -194,7 +227,9 @@ public class CatalogReadController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "catalog:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("plan:read", "order:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
         return catalog.annualPlanItems(scope, academicYearId, limit);
     }
 
@@ -203,7 +238,9 @@ public class CatalogReadController {
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
             @RequestParam Long schoolId) {
         requireToken(token, "catalog:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("plan:read", "order:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
         return catalog.annualPlan(scope);
     }
 
@@ -213,7 +250,9 @@ public class CatalogReadController {
             @RequestParam Long schoolId,
             @Valid @RequestBody CreateAnnualPlanItemRequest dto) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("plan:manage");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
         Map<String, Object> body = new HashMap<>();
         body.put("category", dto.category());
         if (dto.id() != null) body.put("id", dto.id());
@@ -231,6 +270,8 @@ public class CatalogReadController {
     public Map<String, Object> confirmAnnualPlan(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token) {
         requireToken(token, "catalog:write");
+        TenantScope.requirePermissionIfAuthenticated("plan:manage");
+        requireOrderModule(TenantContext.get().schoolId());
         return Map.of("ok", true, "message", "Annual plan confirmed and Custoking notified");
     }
 
@@ -238,7 +279,19 @@ public class CatalogReadController {
     public List<AnnualPlanEntryRow> annualPlanEntries(
             @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token) {
         requireToken(token, "catalog:read");
+        requireOrderRead(TenantContext.get().schoolId());
         return catalog.annualPlanEntries();
+    }
+
+    private void requireOrderRead(Long schoolId) {
+        TenantScope.requireAnyPermissionIfAuthenticated("order:read", "plan:read");
+        requireOrderModule(schoolId);
+    }
+
+    private void requireOrderModule(Long schoolId) {
+        if (moduleGuard != null) {
+            moduleGuard.requireModuleEnabled(schoolId, "ORDERS");
+        }
     }
 
     private void applyResolvedSchool(Map<String, Object> request) {

@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -229,7 +230,7 @@ class CatalogValidationTest {
     @Test
     void createOrder_nonSuperadminCrossTenant_returns403() throws Exception {
         // Override setUp's SUPERADMIN context with a school-scoped ADMIN
-        TenantContext.set(new TenantContext(null, null, "ADMIN", 1L, null));
+        TenantContext.set(new TenantContext(null, null, "ADMIN", 1L, null, Set.of(), Set.of("order:create")));
 
         // POST an order targeting a different school (schoolId=2 != authed schoolId=1)
         // applyResolvedSchool -> TenantScope.resolveSchoolId(2L) throws FORBIDDEN

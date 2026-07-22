@@ -41,6 +41,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("classId", "c1")
                         .param("sectionId", "s1")
                         .param("schoolId", "99"))
@@ -55,6 +56,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("classId", "c1")
                         .param("sectionId", "s1"))
                 .andExpect(status().isOk());
@@ -82,6 +84,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("classId", "c1")
                         .param("sectionId", "s1")
                         .param("schoolId", "99"))
@@ -97,6 +100,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("schoolId", "99"))
                 .andExpect(status().isForbidden());
         verify(fees, never()).feesModule(any(), anyLong());
@@ -110,6 +114,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:read")
                         .param("schoolId", "99"))
                 .andExpect(status().isForbidden());
         verify(fees, never()).feeOverdueCount(any(), anyLong());
@@ -123,6 +128,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:collect")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classId\":\"c1\",\"sectionId\":\"s1\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
@@ -137,6 +143,7 @@ class FeeTenantScopingTest {
                         .header("X-Fee-Service-Token", "fee-tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "fee:collect")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classId\":\"c1\",\"sectionId\":\"s1\"}"))
                 .andExpect(status().isOk());

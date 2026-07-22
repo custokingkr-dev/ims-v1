@@ -52,6 +52,7 @@ class RbacAuthorizationTest {
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"AUDITOR\"}"))
                 .andExpect(status().isForbidden());
@@ -78,6 +79,7 @@ class RbacAuthorizationTest {
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:assign")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\":\"AUDITOR\"}"))
                 .andExpect(status().isForbidden());
@@ -103,7 +105,8 @@ class RbacAuthorizationTest {
         mvc.perform(delete("/api/v1/rbac/users/9/roles/5")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:revoke"))
                 .andExpect(status().isForbidden());
         verify(commands, never()).revokeAssignment(anyLong(), anyLong(), anyMap());
     }
@@ -124,7 +127,8 @@ class RbacAuthorizationTest {
         mvc.perform(get("/api/v1/rbac/user-role-assignments")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:read"))
                 .andExpect(status().isForbidden());
         verify(reads, never()).userAssignments(any(), any(), anyInt());
     }
@@ -146,7 +150,8 @@ class RbacAuthorizationTest {
         mvc.perform(get("/api/v1/rbac/users/42/roles")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:read"))
                 .andExpect(status().isForbidden());
         verify(reads, never()).userAssignments(any(), any(), anyInt());
     }
@@ -168,7 +173,8 @@ class RbacAuthorizationTest {
         mvc.perform(get("/api/v1/rbac/audit")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "audit:read"))
                 .andExpect(status().isForbidden());
         verify(reads, never()).audit(any(), any(), anyInt());
     }
@@ -191,6 +197,7 @@ class RbacAuthorizationTest {
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:assign")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolIds\":[1,2]}"))
                 .andExpect(status().isForbidden());
@@ -216,7 +223,8 @@ class RbacAuthorizationTest {
         mvc.perform(get("/api/v1/rbac/users/9/operator-schools")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:read"))
                 .andExpect(status().isForbidden());
         verify(reads, never()).operatorSchoolIds(anyLong());
     }
@@ -239,13 +247,36 @@ class RbacAuthorizationTest {
     // ---- roles (untouched read) — proves the guard is narrow ----
 
     @Test
-    void roles_nonSuperadmin_isNotGated() throws Exception {
+    void roles_nonSuperadminWithRoleRead_isAllowed() throws Exception {
         when(reads.roles()).thenReturn(List.of());
         mvc.perform(get("/api/v1/rbac/roles")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:read"))
                 .andExpect(status().isOk());
         verify(reads).roles();
+    }
+
+    @Test
+    void roles_authenticatedWithoutRoleRead_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/roles")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).roles();
+    }
+
+    @Test
+    void userPermissions_authenticatedWithoutPermissionReadOrRoleRead_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/rbac/users/9/permissions?schoolId=10")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
+                .andExpect(status().isForbidden());
+        verify(reads, never()).effectivePermissions(anyLong(), any(), any());
     }
 }

@@ -9,8 +9,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +37,34 @@ class UserDirectoryAuthorizationTest {
     @AfterEach
     void cleanup() { TenantContext.clear(); }
 
+    // ---- users ----
+
+    @Test
+    void users_authenticatedWithUserRead_isAllowed() throws Exception {
+        when(users.users(any(), eq(10L), any(), any(), anyInt())).thenReturn(List.of());
+
+        mvc.perform(get("/api/v1/users")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
+                .andExpect(status().isOk());
+
+        verify(users).users(any(), eq(10L), any(), any(), anyInt());
+    }
+
+    @Test
+    void users_authenticatedWithoutUserRead_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/users")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "role:read"))
+                .andExpect(status().isForbidden());
+
+        verify(users, never()).users(any(), any(), any(), any(), anyInt());
+    }
+
     // ---- resetPassword ----
 
     @Test
@@ -42,6 +73,7 @@ class UserDirectoryAuthorizationTest {
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:reset_password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"password\":\"longenough\"}"))
                 .andExpect(status().isForbidden());
@@ -66,7 +98,8 @@ class UserDirectoryAuthorizationTest {
         mvc.perform(post("/api/v1/users/9/disable")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:disable"))
                 .andExpect(status().isForbidden());
         verify(users, never()).disableUser(anyLong(), any(), any());
     }
@@ -87,7 +120,8 @@ class UserDirectoryAuthorizationTest {
         mvc.perform(post("/api/v1/users/9/enable")
                         .header("X-Identity-Service-Token", VALID_TOKEN)
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:update"))
                 .andExpect(status().isForbidden());
         verify(users, never()).enableUser(anyLong(), any(), any());
     }

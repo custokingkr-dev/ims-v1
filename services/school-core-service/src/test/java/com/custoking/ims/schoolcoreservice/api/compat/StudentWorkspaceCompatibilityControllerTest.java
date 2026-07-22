@@ -39,6 +39,7 @@ class StudentWorkspaceCompatibilityControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":99,\"fullName\":\"Alice\",\"admissionNumber\":\"A001\"}"))
                 .andExpect(status().isForbidden());
@@ -53,6 +54,7 @@ class StudentWorkspaceCompatibilityControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:create")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":10,\"fullName\":\"Alice\",\"admissionNumber\":\"A001\"}"))
                 .andExpect(status().isOk());
@@ -80,6 +82,7 @@ class StudentWorkspaceCompatibilityControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:read")
                         .param("schoolId", "99"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).list(anyLong(), any(), any(), anyInt());
@@ -91,7 +94,8 @@ class StudentWorkspaceCompatibilityControllerTest {
         mvc.perform(get("/api/v1/classes/c1/sections/s1/students")
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:read"))
                 .andExpect(status().isOk());
         verify(repo).list(eq(10L), eq("c1"), eq("s1"), anyInt());
     }
@@ -117,6 +121,7 @@ class StudentWorkspaceCompatibilityControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"APPROVED\"}"))
                 .andExpect(status().isForbidden());
@@ -133,6 +138,7 @@ class StudentWorkspaceCompatibilityControllerTest {
                         .header("X-Student-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "student:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"APPROVED\"}"))
                 .andExpect(status().isOk());

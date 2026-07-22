@@ -7,6 +7,7 @@ import com.custoking.ims.platformservice.security.TenantContextFilter;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -14,6 +15,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -49,7 +51,8 @@ class ReportingTenantScopingTest {
         mvc.perform(get("/api/v1/reporting/summary?schoolId=99")
                         .header("X-Reporting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "report:read"))
                 .andExpect(status().isForbidden());
         verify(reporting, never()).summary(any());
     }
@@ -60,7 +63,8 @@ class ReportingTenantScopingTest {
         mvc.perform(get("/api/v1/reporting/summary")
                         .header("X-Reporting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "report:read"))
                 .andExpect(status().isOk());
         verify(reporting).summary(10L);
     }
@@ -89,6 +93,7 @@ class ReportingTenantScopingTest {
                         .header("X-Reporting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workflow:act")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden());
@@ -112,6 +117,7 @@ class ReportingTenantScopingTest {
                         .header("X-Reporting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workflow:act")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -134,5 +140,46 @@ class ReportingTenantScopingTest {
                         .content(body))
                 .andExpect(status().isOk());
         verify(commands).acceptAction(eq(id), any(), eq(99L), eq(true));
+    }
+
+    @Test
+    void recordFeed_bodySchoolIdCannotCrossTenant() throws Exception {
+        String body = mapper.writeValueAsString(Map.of(
+                "schoolId", 99,
+                "module", "ATTENDANCE",
+                "title", "Cross tenant feed"));
+
+        mvc.perform(post("/api/v1/reporting/command-center/feed")
+                        .header("X-Reporting-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workflow:act")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+
+        verify(commands, never()).recordFeed(any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void recordFeed_omittedSchoolIdScopesToAuthenticatedSchool() throws Exception {
+        when(commands.recordFeed(any())).thenReturn(Map.of("ok", true));
+        String body = mapper.writeValueAsString(Map.of(
+                "module", "ATTENDANCE",
+                "title", "Attendance updated"));
+
+        mvc.perform(post("/api/v1/reporting/command-center/feed")
+                        .header("X-Reporting-Service-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workflow:act")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(commands).recordFeed(captor.capture());
+        assertThat(captor.getValue()).containsEntry("schoolId", 10L);
     }
 }

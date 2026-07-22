@@ -86,6 +86,7 @@ class TenantSchoolPublicCompatibilityControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "staff:manage")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":99,\"name\":\"Asha\"}"))
                 .andExpect(status().isForbidden());
@@ -101,6 +102,20 @@ class TenantSchoolPublicCompatibilityControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "staff:manage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"schoolId\":10,\"name\":\"Asha\"}"))
+                .andExpect(status().isForbidden());
+        verify(schools, never()).addStaff(eq(10L), any());
+    }
+
+    @Test
+    void addStaffFromWorkspace_withoutManagePermission_isForbidden() throws Exception {
+        mvc.perform(post("/api/v1/workspace/staff")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "staff:read")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"schoolId\":10,\"name\":\"Asha\"}"))
                 .andExpect(status().isForbidden());

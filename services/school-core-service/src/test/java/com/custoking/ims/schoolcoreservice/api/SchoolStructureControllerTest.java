@@ -60,6 +60,7 @@ class SchoolStructureControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classCount\":6,\"sectionCount\":3}"))
                 .andExpect(status().isOk());
@@ -73,6 +74,7 @@ class SchoolStructureControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "SCHOOL_ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classCount\":6,\"sectionCount\":3}"))
                 .andExpect(status().isOk());
@@ -97,6 +99,7 @@ class SchoolStructureControllerTest {
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
                         .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:update")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"classCount\":6,\"sectionCount\":3}"))
                 .andExpect(status().isForbidden());
@@ -170,9 +173,23 @@ class SchoolStructureControllerTest {
                         .get("/api/v1/sections?schoolId=10")
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read"))
                 .andExpect(status().isForbidden());
 
         verify(structure, never()).sections(anyLong(), any(), any());
+    }
+
+    @Test
+    void schoolAdmin_editingOwnSchoolWithoutUpdatePermission_isForbidden() throws Exception {
+        mvc.perform(put("/api/v1/schools/10/structure")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"classCount\":6,\"sectionCount\":3}"))
+                .andExpect(status().isForbidden());
+        verify(structure, never()).updateStructure(anyLong(), anyInt(), anyInt());
     }
 }

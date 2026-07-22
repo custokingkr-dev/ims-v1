@@ -67,6 +67,7 @@ public class TenantSchoolController {
     @GetMapping("/schools")
     public List<SchoolResponse> schools(@RequestHeader(value = "X-Tenant-School-Token", required = false) String token) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         TenantScope.requireSuperAdmin();
         return schools.findAllByOrderByNameAsc().stream().map(SchoolResponse::from).toList();
     }
@@ -76,6 +77,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         return schools.findById(resolvedId).map(SchoolResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "school not found"));
@@ -86,6 +88,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         return structure.schoolStats().stream()
                 .filter(row -> resolvedId.equals(row.id()))
@@ -103,6 +106,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("school:create");
         TenantScope.requireSuperAdmin();
         return runCommand(() -> structure.createSchool(body));
     }
@@ -113,6 +117,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("school:update");
         TenantScope.requireSuperAdmin();
         return runCommand(() -> structure.updateSchool(id, body));
     }
@@ -123,6 +128,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:update", "student:import");
         Long resolvedId = TenantScope.resolveSchoolId(id); // superadmin bypass; own-school admin; else 403
         TenantScope.requireSchoolAdmin();
         moduleGuard.requireErpEnabled(resolvedId);
@@ -142,6 +148,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         return modules.list(resolvedId, null);
     }
@@ -151,6 +158,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         return modules.list(resolvedId, true);
     }
@@ -162,6 +170,7 @@ public class TenantSchoolController {
             @PathVariable String moduleCode,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("school:update");
         TenantScope.requireSuperAdmin();
         try {
             return modules.upsert(
@@ -185,6 +194,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @PathVariable String moduleCode) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("school:update");
         TenantScope.requireSuperAdmin();
         try {
             modules.disable(id, moduleCode);
@@ -200,6 +210,11 @@ public class TenantSchoolController {
             @RequestParam(required = false) String classId,
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:read", "school:update",
+                "student:read", "student:create", "student:import",
+                "attendance:read", "attendance:manage",
+                "fee:read", "fee_structure:read", "fee_structure:manage",
+                "timetable:read", "timetable:manage");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         moduleGuard.requireErpEnabled(resolvedId);
         return structure.sections(resolvedId, classId, active == null ? Boolean.TRUE : active);
@@ -210,6 +225,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("staff:read");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         moduleGuard.requireErpEnabled(resolvedId);
         return structure.staff(resolvedId);
@@ -221,6 +237,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("staff:manage");
         TenantScope.requireSuperAdmin();
         moduleGuard.requireErpEnabled(id);
         return runCommand(() -> structure.addStaff(id, body));
@@ -233,6 +250,11 @@ public class TenantSchoolController {
         // Scoped to the caller's school (first-N configured classes); superadmin with no
         // schoolId gets the full global list.
         requireToken(token, "tenant-school:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:read", "school:update",
+                "student:read", "student:create", "student:import",
+                "attendance:read", "attendance:manage",
+                "fee:read", "fee_structure:read", "fee_structure:manage",
+                "timetable:read", "timetable:manage", "plan:read", "plan:manage", "order:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         moduleGuard.requireErpEnabled(scope);
         return structure.classes(scope);
@@ -245,6 +267,11 @@ public class TenantSchoolController {
             @RequestParam(required = false) String classId,
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:read", "school:update",
+                "student:read", "student:create", "student:import",
+                "attendance:read", "attendance:manage",
+                "fee:read", "fee_structure:read", "fee_structure:manage",
+                "timetable:read", "timetable:manage", "plan:read", "plan:manage", "order:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
         moduleGuard.requireErpEnabled(schoolId);
         return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
@@ -257,6 +284,11 @@ public class TenantSchoolController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:read", "school:update",
+                "student:read", "student:create", "student:import",
+                "attendance:read", "attendance:manage",
+                "fee:read", "fee_structure:read", "fee_structure:manage",
+                "timetable:read", "timetable:manage", "plan:read", "plan:manage", "order:read");
         schoolId = TenantScope.resolveSchoolId(schoolId);
         moduleGuard.requireErpEnabled(schoolId);
         return structure.sections(schoolId, classId, active == null ? Boolean.TRUE : active);
@@ -269,6 +301,11 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         // Global academic year definitions accessible to all authenticated users.
         requireToken(token, "tenant-school:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:read", "school:update",
+                "student:read", "student:update",
+                "attendance:read", "attendance:manage",
+                "fee:read", "fee_structure:read", "fee_structure:manage",
+                "timetable:read", "timetable:manage", "plan:read", "plan:manage", "order:read");
         Long scope = null;
         if (schoolId != null || TenantContext.get().schoolId() != null) {
             scope = TenantScope.resolveSchoolId(schoolId);
@@ -280,6 +317,7 @@ public class TenantSchoolController {
     public Object superadminSchoolStats(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         TenantScope.requireSuperAdmin();
         return structure.schoolStats();
     }
@@ -288,6 +326,7 @@ public class TenantSchoolController {
     public Object superadminSchools(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("school:read");
         TenantScope.requireSuperAdmin();
         return structure.schoolStats();
     }
@@ -295,6 +334,7 @@ public class TenantSchoolController {
     @GetMapping("/zones")
     public List<ZoneResponse> zones(@RequestHeader(value = "X-Tenant-School-Token", required = false) String token) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("zone:read");
         TenantScope.requireSuperAdmin();
         return zones.findAllByOrderByNameAsc().stream().map(ZoneResponse::from).toList();
     }
@@ -304,6 +344,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("zone:manage");
         TenantScope.requireSuperAdmin();
         return runCommand(() -> zoneCommands.createZone(body));
     }
@@ -313,6 +354,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("zone:read");
         TenantScope.requireSuperAdmin();
         return zones.findById(id).map(ZoneResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "zone not found"));
@@ -324,6 +366,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("zone:manage");
         TenantScope.requireSuperAdmin();
         return runCommand(() -> zoneCommands.updateZone(id, body));
     }
@@ -335,6 +378,7 @@ public class TenantSchoolController {
             @PathVariable Long schoolId,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("zone:assign_school", "zone:manage");
         TenantScope.requireSuperAdmin();
         runCommand(() -> {
             zoneCommands.assignSchool(id, schoolId, TenantContext.get().userId());
@@ -348,6 +392,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @PathVariable Long schoolId) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("zone:assign_school", "zone:manage");
         TenantScope.requireSuperAdmin();
         runCommand(() -> {
             zoneCommands.removeSchool(id, schoolId);
@@ -361,6 +406,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("zone:read");
         TenantScope.requireSuperAdmin();
         return structure.zoneSchools(id, active);
     }
@@ -371,6 +417,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated("zone:read");
         TenantScope.requireSuperAdmin();
         return structure.zoneAdmins(id, active);
     }
@@ -381,6 +428,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("zone:assign_school", "zone:manage");
         TenantScope.requireSuperAdmin();
         runCommand(() -> {
             zoneCommands.assignZoneAdmin(id, parseLong(body.get("userId")), TenantContext.get().userId());
@@ -394,6 +442,7 @@ public class TenantSchoolController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("zone:assign_school", "zone:manage");
         TenantScope.requireSuperAdmin();
         runCommand(() -> {
             zoneCommands.retireZoneAdmins(id, parseLongList(body.get("userIds")));

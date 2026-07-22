@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -77,6 +78,21 @@ class WorkflowReadControllerTest {
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(response.getReason()).isEqualTo("definitionId is required");
                 });
+    }
+
+    @Test
+    void createOrGetInstanceRequiresWorkflowActPermission() {
+        TenantContext.set(new TenantContext(1L, "admin@school.com", "ADMIN", 10L, null, Set.of("workflow:read")));
+        CreateInstanceRequest req = new CreateInstanceRequest("ORDER", "order-99", null, 10L, null);
+
+        assertThatThrownBy(() -> controller.createOrGetInstance("workflow-token", req))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException response = (ResponseStatusException) error;
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(response.getReason()).contains("workflow:act");
+                });
+        verify(workflows, never()).createOrGetInstance(any());
     }
 
     @Test

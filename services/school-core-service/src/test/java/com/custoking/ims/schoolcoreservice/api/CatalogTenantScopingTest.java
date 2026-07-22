@@ -33,7 +33,8 @@ class CatalogTenantScopingTest {
         mvc.perform(get("/api/v1/catalog/orders?schoolId=99")
                         .header("X-Catalog-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "order:read"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).orders(anyLong(), any(), anyInt());
     }
@@ -44,7 +45,8 @@ class CatalogTenantScopingTest {
         mvc.perform(get("/api/v1/catalog/orders")
                         .header("X-Catalog-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "order:read"))
                 .andExpect(status().isOk());
         verify(repo).orders(eq(10L), isNull(), eq(100));
     }
@@ -66,7 +68,8 @@ class CatalogTenantScopingTest {
         mvc.perform(get("/api/v1/catalog/orders/pending-approval")
                         .header("X-Catalog-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "order:read"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).pendingApprovalOrders(anyInt());
     }

@@ -10,6 +10,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,7 +56,14 @@ class FeeReadControllerTest {
     @Test
     void createBandMapsRepositoryValidationToBadRequest() {
         // DTO with name present but invalid class range — repo throws IllegalArgumentException
-        TenantContext.set(new TenantContext(1L, "admin@school.test", "ADMIN", 10L, null));
+        TenantContext.set(new TenantContext(
+                1L,
+                "admin@school.test",
+                "ADMIN",
+                10L,
+                null,
+                Set.of(),
+                Set.of("fee_structure:manage")));
         CreateBandRequest req = new CreateBandRequest("General", 5, 1, null, null, null);
         when(fees.createBand(anyMap())).thenThrow(new IllegalArgumentException("Class to must be >= class from"));
 

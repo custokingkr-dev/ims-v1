@@ -12,9 +12,11 @@ import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeAssi
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeBandRow;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeItemRow;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.PaymentRow;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -43,12 +45,22 @@ public class FeeReadController {
 
     private final FeeReadRepository fees;
     private final String readToken;
+    private final ModuleEntitlementGuard moduleGuard;
+
+    @Autowired
+    public FeeReadController(
+            FeeReadRepository fees,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${fee.read-token:}") String readToken) {
+        this.fees = fees;
+        this.moduleGuard = moduleGuard;
+        this.readToken = readToken == null ? "" : readToken.trim();
+    }
 
     public FeeReadController(
             FeeReadRepository fees,
             @Value("${fee.read-token:}") String readToken) {
-        this.fees = fees;
-        this.readToken = readToken == null ? "" : readToken.trim();
+        this(fees, null, readToken);
     }
 
     @GetMapping("/bands")
@@ -57,7 +69,9 @@ public class FeeReadController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return fees.bands(academicYearId, TenantScope.resolveSchoolId(schoolId));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return fees.bands(academicYearId, scope);
     }
 
     @GetMapping("/items")
@@ -65,6 +79,7 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestParam(required = false) String bandId) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return fees.items(bandId);
     }
 
@@ -74,7 +89,9 @@ public class FeeReadController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return execute(() -> fees.feeStructure(academicYearId, TenantScope.resolveSchoolId(schoolId)));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return execute(() -> fees.feeStructure(academicYearId, scope));
     }
 
     @GetMapping("/structure/match")
@@ -83,7 +100,9 @@ public class FeeReadController {
             @RequestParam String classId,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
-        return execute(() -> fees.matchBand(classId, TenantScope.resolveSchoolId(schoolId)));
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return execute(() -> fees.matchBand(classId, scope));
     }
 
     @GetMapping(value = "/structure/export", produces = MediaType.APPLICATION_PDF_VALUE)
@@ -92,6 +111,7 @@ public class FeeReadController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(defaultValue = "pdf") String format) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         if (!"pdf".equalsIgnoreCase(format)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only PDF export is supported");
         }
@@ -105,7 +125,9 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @Valid @RequestBody CreateBandRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
         Long schoolId = TenantScope.resolveSchoolId(req.schoolId());
+        requireFeeModule(schoolId);
         Map<String, Object> body = new HashMap<>();
         body.put("name", req.name());
         if (req.classFrom() != null) body.put("classFrom", req.classFrom());
@@ -122,6 +144,8 @@ public class FeeReadController {
             @PathVariable String id,
             @Valid @RequestBody UpdateBandRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         Map<String, Object> body = new HashMap<>();
         // name is not containsKey-gated in repo (textOrDefault falls back to current), omit when null
         if (req.name() != null) body.put("name", req.name());
@@ -139,6 +163,8 @@ public class FeeReadController {
             @PathVariable String id,
             @Valid @RequestBody PatchBandRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         Map<String, Object> body = new HashMap<>();
         // discount and bandDiscount are containsKey-gated (repo checks OR of both keys)
         if (req.discount() != null) body.put("discount", req.discount());
@@ -152,6 +178,8 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return execute(() -> {
             fees.deleteBand(id);
             return Map.of("removed", true, "bandId", id);
@@ -163,6 +191,8 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @Valid @RequestBody CreateItemRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         Map<String, Object> body = new HashMap<>();
         body.put("bandId", req.bandId());
         body.put("name", req.name());
@@ -177,6 +207,8 @@ public class FeeReadController {
             @PathVariable String id,
             @Valid @RequestBody UpdateItemRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         Map<String, Object> body = new HashMap<>();
         // All item fields are containsKey-gated in repo — only put when explicitly sent
         // itemName takes priority over name (firstPresent prefers itemName)
@@ -192,6 +224,8 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String id) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
         return execute(() -> {
             String bandId = fees.deleteItem(id);
             return Map.of("removed", true, "bandId", bandId);
@@ -205,6 +239,7 @@ public class FeeReadController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return fees.assignments(studentId, academicYearId, limit);
     }
 
@@ -213,6 +248,8 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @Valid @RequestBody AssignFeePlanRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee:assign");
+        requireFeeModule(TenantContext.get().schoolId());
         Map<String, Object> body = new HashMap<>();
         body.put("studentId", req.studentId());
         body.put("bandId", req.bandId());
@@ -232,6 +269,7 @@ public class FeeReadController {
             @RequestParam(required = false) String assignmentId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return fees.payments(studentId, assignmentId, limit);
     }
 
@@ -240,6 +278,7 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String paymentId) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return execute(() -> fees.receiptByPaymentId(paymentId));
     }
 
@@ -248,6 +287,7 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @PathVariable String receiptNumber) {
         requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
         return execute(() -> fees.receiptByReceiptNumber(receiptNumber));
     }
 
@@ -260,6 +300,7 @@ public class FeeReadController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
         return fees.feeReport(classId, sectionId, academicYearId, scope);
     }
 
@@ -272,6 +313,7 @@ public class FeeReadController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
         return fees.feeOverdue(classId, sectionId, academicYearId, scope);
     }
 
@@ -280,7 +322,9 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "fee:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "notification:send");
         applyResolvedSchool(request);
+        requireFeeModule(longValue(request.get("schoolId")));
         return execute(() -> fees.feeReminderRequests(
                 text(request.get("classId")),
                 text(request.get("sectionId")),
@@ -296,6 +340,7 @@ public class FeeReadController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
         return fees.feesModule(academicYearId, scope);
     }
 
@@ -306,6 +351,7 @@ public class FeeReadController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "fee:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
         return fees.feeOverdueCount(academicYearId, scope);
     }
 
@@ -314,6 +360,8 @@ public class FeeReadController {
             @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
             @Valid @RequestBody RecordPaymentRequest req) {
         requireToken(token, "fee:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "payment:create");
+        requireFeeModule(TenantContext.get().schoolId());
         Map<String, Object> body = new HashMap<>();
         body.put("studentId", req.studentId());
         body.put("amount", req.amount());
@@ -322,6 +370,17 @@ public class FeeReadController {
         if (req.notes() != null) body.put("notes", req.notes());
         body.put("actorId", TenantContext.get().userId());
         return execute(() -> fees.recordPayment(body));
+    }
+
+    private void requireFeeRead(Long schoolId) {
+        TenantScope.requireAnyPermissionIfAuthenticated("fee:read", "fee_structure:read", "payment:read");
+        requireFeeModule(schoolId);
+    }
+
+    private void requireFeeModule(Long schoolId) {
+        if (moduleGuard != null) {
+            moduleGuard.requireModuleEnabled(schoolId, "FEES");
+        }
     }
 
     /** Recipe B helper: resolve and overwrite the schoolId inside a request body map. */

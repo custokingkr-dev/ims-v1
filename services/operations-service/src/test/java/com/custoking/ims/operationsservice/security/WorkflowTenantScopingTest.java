@@ -30,7 +30,8 @@ class WorkflowTenantScopingTest {
         mvc.perform(get("/api/v1/workflows/instances?schoolId=99")
                         .header("X-Workflow-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workflow:read"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).instances(anyLong(), any(), any(), anyInt());
     }
@@ -41,7 +42,8 @@ class WorkflowTenantScopingTest {
         mvc.perform(get("/api/v1/workflows/instances")
                         .header("X-Workflow-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workflow:read"))
                 .andExpect(status().isOk());
         verify(repo).instances(eq(10L), any(), any(), anyInt());
     }

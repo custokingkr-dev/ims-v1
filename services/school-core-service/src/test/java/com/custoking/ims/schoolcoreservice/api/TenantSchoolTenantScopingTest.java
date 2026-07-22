@@ -44,7 +44,8 @@ class TenantSchoolTenantScopingTest {
         mvc.perform(get("/api/v1/schools")
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read"))
                 .andExpect(status().isForbidden());
         verify(schools, never()).findAllByOrderByNameAsc();
     }
@@ -67,7 +68,8 @@ class TenantSchoolTenantScopingTest {
         mvc.perform(get("/api/v1/sections?schoolId=99")
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read"))
                 .andExpect(status().isForbidden());
         verify(structure, never()).sections(anyLong(), any(), any());
     }
@@ -79,7 +81,8 @@ class TenantSchoolTenantScopingTest {
         mvc.perform(get("/api/v1/sections?schoolId=10")
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read"))
                 .andExpect(status().isOk());
         verify(structure).sections(eq(10L), any(), any());
     }
@@ -102,7 +105,8 @@ class TenantSchoolTenantScopingTest {
         mvc.perform(get("/api/v1/academic-years")
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read"))
                 .andExpect(status().isOk());
         verify(structure).academicYears(eq(10L), isNull(Boolean.class));
     }
@@ -112,7 +116,8 @@ class TenantSchoolTenantScopingTest {
         mvc.perform(get("/api/v1/academic-years?schoolId=99")
                         .header("X-Tenant-School-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "school:read"))
                 .andExpect(status().isForbidden());
         verify(structure, never()).academicYears(any(), any());
     }

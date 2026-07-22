@@ -11,9 +11,11 @@ import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -35,12 +37,15 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @RestController
 @RequestMapping("/api/v1/students")
@@ -50,14 +55,25 @@ public class StudentReadController {
     private final ImageUrlFetcher fetcher;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String readToken;
+    private final ModuleEntitlementGuard moduleGuard;
+
+    @Autowired
+    public StudentReadController(
+            StudentReadRepository students,
+            ImageUrlFetcher fetcher,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${student.read-token:}") String readToken) {
+        this.students = students;
+        this.fetcher = fetcher;
+        this.moduleGuard = moduleGuard;
+        this.readToken = readToken == null ? "" : readToken.trim();
+    }
 
     public StudentReadController(
             StudentReadRepository students,
             ImageUrlFetcher fetcher,
             @Value("${student.read-token:}") String readToken) {
-        this.students = students;
-        this.fetcher = fetcher;
-        this.readToken = readToken == null ? "" : readToken.trim();
+        this(students, fetcher, null, readToken);
     }
 
     // The Students workspace grid + its class/section filter dropdowns consume this response's
@@ -73,7 +89,9 @@ public class StudentReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
     }
 
@@ -82,6 +100,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long schoolId = studentSchoolId(id, true);
+        TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
         return students.find(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "student not found"));
     }
@@ -97,7 +119,9 @@ public class StudentReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
     }
 
@@ -106,8 +130,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "student:read");
-        Long schoolId = students.schoolIdForStudentIncludingDeleted(id);
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long schoolId = studentSchoolId(id, true);
         TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
         return execute(() -> students.workspaceStudentDetail(id));
     }
 
@@ -116,6 +142,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody CreateStudentRequest req) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:create");
         Map<String, Object> params = new HashMap<>();
         params.put("admissionNumber", req.admissionNumber());
         params.put("admissionNo", req.admissionNumber());
@@ -143,6 +170,7 @@ public class StudentReadController {
         if (req.pinCode() != null) params.put("pinCode", req.pinCode());
         if (req.photoUrl() != null) params.put("photoUrl", req.photoUrl());
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.createStudent(params));
     }
 
@@ -152,6 +180,10 @@ public class StudentReadController {
             @PathVariable Long id,
             @RequestParam("file") MultipartFile file) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Long schoolId = studentSchoolId(id, false);
+        TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
         byte[] data;
         try {
             data = file.getBytes();
@@ -167,8 +199,10 @@ public class StudentReadController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "student:write");
-        Long schoolId = students.schoolIdForStudent(id);
+        TenantScope.requirePermissionIfAuthenticated("student:delete");
+        Long schoolId = studentSchoolId(id, false);
         TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
         return execute(() -> students.deleteStudent(id, body == null ? Map.of() : body));
     }
 
@@ -177,8 +211,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "student:read");
-        Long schoolId = students.schoolIdForStudentIncludingDeleted(id);
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long schoolId = studentSchoolId(id, true);
         TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
         return execute(() -> students.studentHistory(id));
     }
 
@@ -188,13 +224,10 @@ public class StudentReadController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "student:write");
-        Long schoolId;
-        try {
-            schoolId = students.schoolIdForStudent(id);
-        } catch (IllegalArgumentException ex) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "student not found", ex);
-        }
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Long schoolId = studentSchoolId(id, false);
         TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
         String url = body.get("url") == null ? "" : String.valueOf(body.get("url"));
         try {
             ImageUrlFetcher.FetchedImage img = fetcher.fetch(url);
@@ -209,10 +242,12 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody PreviewImportRequest req) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:import");
         Map<String, Object> params = new HashMap<>();
         if (req.schoolId() != null) params.put("schoolId", req.schoolId());
         if (req.rows() != null) params.put("rows", req.rows());
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.previewImport(params));
     }
 
@@ -230,6 +265,7 @@ public class StudentReadController {
             @RequestParam("rowsJson") String rowsJson,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:import");
         if (file.getSize() > 50L * 1024L * 1024L) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum file size is 50 MB");
         }
@@ -253,6 +289,7 @@ public class StudentReadController {
         params.put("originalFileSize", file.getSize());
         params.put("originalFileBytes", data);
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.previewImport(params));
     }
 
@@ -261,10 +298,12 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody ConfirmImportRequest req) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:import");
         Map<String, Object> params = new HashMap<>();
         params.put("fileToken", req.fileToken());
         if (req.schoolId() != null) params.put("schoolId", req.schoolId());
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.confirmImport(params));
     }
 
@@ -280,7 +319,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable String jobId) {
         requireToken(token, "student:read");
-        return execute(() -> students.importStatus(jobId));
+        TenantScope.requirePermissionIfAuthenticated("student:import");
+        Long scope = TenantContext.get().isSuperAdmin() ? null : TenantContext.get().schoolId();
+        requireStudentModule(scope);
+        return execute(() -> students.importStatus(jobId, scope));
     }
 
     @GetMapping("/import/status/{jobId}")
@@ -294,12 +336,11 @@ public class StudentReadController {
     public ResponseEntity<byte[]> legacyImportTemplate(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token) {
         requireToken(token, "student:read");
-        String body = "Name,Class,Section,AdmissionNo,DateOfBirth,Gender,FatherName,Phone,Address,BoardRegistrationNo\n"
-                + "Aryan Mehta,Class 9,B,ADM-1001,2010-05-12,Male,R. Mehta,9876543210,Hyderabad,BRN1001\n";
+        TenantScope.requirePermissionIfAuthenticated("student:import");
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=student-import-template.xlsx")
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(body.getBytes(StandardCharsets.UTF_8));
+                .body(importTemplateWorkbook());
     }
 
     @PostMapping("/promotion-batches")
@@ -307,8 +348,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Map<String, Object> params = new HashMap<>(request);
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.createPromotionBatch(params));
     }
 
@@ -317,8 +360,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable String batchId) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
         TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
+        requireStudentModule(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
         return batch;
     }
 
@@ -329,8 +374,10 @@ public class StudentReadController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
         TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
+        requireStudentModule(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
         return execute(() -> students.updatePromotionBatchItem(batchId, itemId, request));
     }
 
@@ -339,8 +386,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable String batchId) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Map<String, Object> batch = execute(() -> students.promotionBatchDetail(batchId));
         TenantScope.resolveSchoolId(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
+        requireStudentModule(batch.get("schoolId") instanceof Number n ? n.longValue() : null);
         return execute(() -> students.applyPromotionBatch(batchId));
     }
 
@@ -349,6 +398,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody InitiateIdCardReviewRequest req) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Map<String, Object> params = new HashMap<>();
         params.put("schoolId", req.schoolId());
         params.put("actorId", TenantContext.get().userId());
@@ -357,6 +407,7 @@ public class StudentReadController {
         params.put("sectionIds", req.sectionIds());
         params.put("assignedToUserId", req.assignedToUserId());
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.initiateIdCardReview(params));
     }
 
@@ -365,7 +416,9 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam Long schoolId) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.idCardReviewStatus(scope);
     }
 
@@ -374,6 +427,7 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody InitiateFullNameReviewRequest req) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Map<String, Object> params = new HashMap<>();
         params.put("schoolId", req.schoolId());
         params.put("actorId", TenantContext.get().userId());
@@ -382,6 +436,7 @@ public class StudentReadController {
         params.put("classIds", req.classIds());
         params.put("sectionIds", req.sectionIds());
         applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.initiateFullNameVerification(params));
     }
 
@@ -390,7 +445,9 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam Long schoolId) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.fullNameVerificationStatus(scope);
     }
 
@@ -400,8 +457,10 @@ public class StudentReadController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         TenantScope.resolveSchoolId(itemSchool);
+        requireStudentModule(itemSchool);
         return execute(() -> students.updateReviewItem(itemId, request));
     }
 
@@ -411,8 +470,10 @@ public class StudentReadController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         TenantScope.resolveSchoolId(itemSchool);
+        requireStudentModule(itemSchool);
         return execute(() -> students.verifyFullName(itemId, request));
     }
 
@@ -421,8 +482,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable String campaignId) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Long campaignSchool = students.schoolIdForCampaign(campaignId);
         TenantScope.resolveSchoolId(campaignSchool);
+        requireStudentModule(campaignSchool);
         Long actorId = TenantContext.get().userId();
         return execute(() -> students.completeCampaign(campaignId, actorId));
     }
@@ -432,7 +495,10 @@ public class StudentReadController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
-        return students.importBatches(limit);
+        TenantScope.requirePermissionIfAuthenticated("student:import");
+        Long scope = TenantContext.get().isSuperAdmin() ? null : TenantContext.get().schoolId();
+        requireStudentModule(scope);
+        return students.importBatches(scope, limit);
     }
 
     @GetMapping("/imports/rows")
@@ -442,7 +508,10 @@ public class StudentReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
-        return students.importRows(batchId, status, limit);
+        TenantScope.requirePermissionIfAuthenticated("student:import");
+        Long scope = TenantContext.get().isSuperAdmin() ? null : TenantContext.get().schoolId();
+        requireStudentModule(scope);
+        return students.importRows(scope, batchId, status, limit);
     }
 
     @GetMapping("/review-campaigns")
@@ -453,7 +522,9 @@ public class StudentReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.reviewCampaigns(scope, reviewType, status, limit);
     }
 
@@ -465,7 +536,9 @@ public class StudentReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.reviewItems(campaignId, scope, status, limit);
     }
 
@@ -482,8 +555,34 @@ public class StudentReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.campaignReviewItems(scope, campaignId, status, classId, sectionId, page, size);
+    }
+
+    private void requireStudentModule(Long schoolId) {
+        if (moduleGuard != null) {
+            moduleGuard.requireModuleEnabled(schoolId, "STUDENTS");
+        }
+    }
+
+    private Long studentSchoolId(Long id, boolean includeDeleted) {
+        try {
+            return includeDeleted ? students.schoolIdForStudentIncludingDeleted(id) : students.schoolIdForStudent(id);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "student not found", ex);
+        }
+    }
+
+    private Long longValue(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) {
+            return null;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
     }
 
     private void applyResolvedSchool(Map<String, Object> request) {
@@ -507,6 +606,110 @@ public class StudentReadController {
         if (!StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid student service token");
         }
+    }
+
+    private static byte[] importTemplateWorkbook() {
+        List<List<String>> rows = List.of(
+                List.of("Name", "Class", "Section", "AdmissionNo", "DateOfBirth", "Gender",
+                        "FatherName", "Phone", "Address", "BoardRegistrationNo", "Photo", "PhotoUrl"),
+                List.of("Aryan Mehta", "9", "B", "ADM-1001", "2010-05-12", "Male",
+                        "R. Mehta", "9876543210", "Hyderabad", "BRN1001", "",
+                        "https://school.example/photos/ADM-1001.jpg"));
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try (ZipOutputStream zip = new ZipOutputStream(out, StandardCharsets.UTF_8)) {
+                writeZipEntry(zip, "[Content_Types].xml", """
+                        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                        <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                          <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                          <Default Extension="xml" ContentType="application/xml"/>
+                          <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+                          <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+                          <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+                        </Types>
+                        """);
+                writeZipEntry(zip, "_rels/.rels", """
+                        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+                        </Relationships>
+                        """);
+                writeZipEntry(zip, "xl/_rels/workbook.xml.rels", """
+                        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                        <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                          <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+                          <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+                        </Relationships>
+                        """);
+                writeZipEntry(zip, "xl/workbook.xml", """
+                        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                        <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+                                  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+                          <sheets><sheet name="Students" sheetId="1" r:id="rId1"/></sheets>
+                        </workbook>
+                        """);
+                writeZipEntry(zip, "xl/styles.xml", """
+                        <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                        <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                          <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+                          <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+                          <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+                          <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+                          <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+                        </styleSheet>
+                        """);
+                writeZipEntry(zip, "xl/worksheets/sheet1.xml", worksheetXml(rows));
+            }
+            return out.toByteArray();
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
+    private static void writeZipEntry(ZipOutputStream zip, String name, String body) throws IOException {
+        zip.putNextEntry(new ZipEntry(name));
+        zip.write(body.getBytes(StandardCharsets.UTF_8));
+        zip.closeEntry();
+    }
+
+    private static String worksheetXml(List<List<String>> rows) {
+        StringBuilder sheet = new StringBuilder("""
+                <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+                <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+                  <sheetData>
+                """);
+        for (int r = 0; r < rows.size(); r++) {
+            sheet.append("    <row r=\"").append(r + 1).append("\">");
+            for (int c = 0; c < rows.get(r).size(); c++) {
+                String ref = columnName(c + 1) + (r + 1);
+                sheet.append("<c r=\"").append(ref).append("\" t=\"inlineStr\"><is><t>")
+                        .append(xmlEscape(rows.get(r).get(c)))
+                        .append("</t></is></c>");
+            }
+            sheet.append("</row>\n");
+        }
+        sheet.append("  </sheetData>\n</worksheet>\n");
+        return sheet.toString();
+    }
+
+    private static String columnName(int index) {
+        StringBuilder name = new StringBuilder();
+        int value = index;
+        while (value > 0) {
+            value--;
+            name.insert(0, (char) ('A' + (value % 26)));
+            value /= 26;
+        }
+        return name.toString();
+    }
+
+    private static String xmlEscape(String value) {
+        return value == null ? "" : value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
     }
 
     private Map<String, Object> execute(Command command) {

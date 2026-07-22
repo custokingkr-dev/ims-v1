@@ -16,6 +16,7 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -96,6 +97,28 @@ class FirefightingReadControllerTest {
         assertThat(response).isSameAs(result);
         verify(firefighting).createRequest(argThat(m ->
                 "Replace extinguishers".equals(m.get("title")) && Long.valueOf(4L).equals(m.get("schoolId"))));
+    }
+
+    @Test
+    void createRequiresFirefightingCreatePermission() {
+        TenantContext.set(new TenantContext(
+                1L,
+                "school@x",
+                "ADMIN",
+                4L,
+                null,
+                Set.of("firefighting:read")));
+        CreateFirefightingRequestRequest req = new CreateFirefightingRequestRequest(
+                "Replace extinguishers", null, null, null, null, 4L, null, null, null, null, null);
+
+        assertThatThrownBy(() -> controller.create("ff-token", req))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException response = (ResponseStatusException) error;
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(response.getReason()).contains("firefighting:create");
+                });
+        verify(firefighting, never()).createRequest(anyMap());
     }
 
     @Test

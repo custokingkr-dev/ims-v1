@@ -2,7 +2,9 @@ package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -24,12 +26,22 @@ public class StudentWorkspaceCompatibilityController {
 
     private final StudentReadRepository students;
     private final String readToken;
+    private final ModuleEntitlementGuard moduleGuard;
+
+    @Autowired
+    public StudentWorkspaceCompatibilityController(
+            StudentReadRepository students,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${student.read-token:}") String readToken) {
+        this.students = students;
+        this.moduleGuard = moduleGuard;
+        this.readToken = readToken == null ? "" : readToken.trim();
+    }
 
     public StudentWorkspaceCompatibilityController(
             StudentReadRepository students,
             @Value("${student.read-token:}") String readToken) {
-        this.students = students;
-        this.readToken = readToken == null ? "" : readToken.trim();
+        this(students, null, readToken);
     }
 
     @PostMapping("/api/v1/workspace/students")
@@ -37,8 +49,10 @@ public class StudentWorkspaceCompatibilityController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:create");
         Map<String, Object> mutableRequest = new HashMap<>(request);
         applyResolvedSchool(mutableRequest);
+        requireStudentModule(longValue(mutableRequest.get("schoolId")));
         try {
             return students.createStudent(mutableRequest);
         } catch (IllegalArgumentException ex) {
@@ -52,8 +66,10 @@ public class StudentWorkspaceCompatibilityController {
             @PathVariable Long id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Map<String, Object> mutableRequest = new HashMap<>(request);
         applyResolvedSchool(mutableRequest);
+        requireStudentModule(longValue(mutableRequest.get("schoolId")));
         try {
             return students.updateStudent(id, mutableRequest);
         } catch (IllegalArgumentException ex) {
@@ -71,7 +87,9 @@ public class StudentWorkspaceCompatibilityController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "500") int limit) {
         requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
         return students.list(scope, classId, sectionId, limit);
     }
 
@@ -81,8 +99,10 @@ public class StudentWorkspaceCompatibilityController {
             @PathVariable String itemId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
         Long itemSchool = students.schoolIdForReviewItem(itemId);
         Long scope = TenantScope.resolveSchoolId(itemSchool);
+        requireStudentModule(scope);
         Map<String, Object> mutableRequest = new HashMap<>(request);
         mutableRequest.put("schoolId", scope);
         try {
@@ -92,6 +112,18 @@ public class StudentWorkspaceCompatibilityController {
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
+    }
+
+    private void requireStudentModule(Long schoolId) {
+        if (moduleGuard != null) {
+            moduleGuard.requireModuleEnabled(schoolId, "STUDENTS");
+        }
+    }
+
+    private Long longValue(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) return null;
+        if (value instanceof Number number) return number.longValue();
+        return Long.parseLong(String.valueOf(value));
     }
 
     private void applyResolvedSchool(Map<String, Object> request) {

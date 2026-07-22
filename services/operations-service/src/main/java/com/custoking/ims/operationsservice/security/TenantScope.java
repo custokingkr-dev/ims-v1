@@ -42,8 +42,28 @@ public final class TenantScope {
         // or simply lacks the code. Note: non-superadmin approvers holding a pre-ver-3 token
         // (no perms claim) are denied until their access token refreshes (<=15 min post-deploy).
         if (!ctx.hasPermission(code)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "You do not have permission to approve firefighting requests");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "permission required: " + code);
         }
+    }
+
+    public static void requireAnyPermission(String... codes) {
+        TenantContext ctx = TenantContext.get();
+        if (ctx.isSuperAdmin()) return;
+        for (String code : codes) {
+            if (ctx.hasPermission(code)) return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "required permission missing");
+    }
+
+    public static void requirePermissionIfAuthenticated(String code) {
+        TenantContext ctx = TenantContext.get();
+        if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) return;
+        requirePermission(code);
+    }
+
+    public static void requireAnyPermissionIfAuthenticated(String... codes) {
+        TenantContext ctx = TenantContext.get();
+        if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) return;
+        requireAnyPermission(codes);
     }
 }

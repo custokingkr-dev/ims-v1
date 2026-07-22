@@ -35,7 +35,8 @@ class AttendanceTenantScopingTest {
                         .content("{\"schoolId\":99,\"classId\":\"cls1\",\"sectionId\":\"sec1\",\"date\":\"2026-01-01\"}")
                         .header("X-Attendance-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:manage"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).submitAttendanceSection(any());
     }
@@ -47,7 +48,8 @@ class AttendanceTenantScopingTest {
                         .content("{\"schoolId\":99,\"classId\":\"cls1\",\"sectionId\":\"sec1\",\"date\":\"2026-01-01\",\"records\":[]}")
                         .header("X-Attendance-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:manage"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).saveSectionRegister(any());
     }

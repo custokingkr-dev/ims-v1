@@ -10,9 +10,11 @@ import com.custoking.ims.schoolcoreservice.application.report.AttendanceReportPd
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.DailyAttendanceRow;
 import com.custoking.ims.schoolcoreservice.persistence.AttendanceReadRepository.StudentAttendanceRow;
+import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
@@ -43,12 +45,22 @@ public class AttendanceReadController {
 
     private final AttendanceReadRepository attendance;
     private final String readToken;
+    private final ModuleEntitlementGuard moduleGuard;
+
+    @Autowired
+    public AttendanceReadController(
+            AttendanceReadRepository attendance,
+            ModuleEntitlementGuard moduleGuard,
+            @Value("${attendance.read-token:}") String readToken) {
+        this.attendance = attendance;
+        this.moduleGuard = moduleGuard;
+        this.readToken = readToken == null ? "" : readToken.trim();
+    }
 
     public AttendanceReadController(
             AttendanceReadRepository attendance,
             @Value("${attendance.read-token:}") String readToken) {
-        this.attendance = attendance;
-        this.readToken = readToken == null ? "" : readToken.trim();
+        this(attendance, null, readToken);
     }
 
     @GetMapping("/daily")
@@ -58,6 +70,8 @@ public class AttendanceReadController {
             @RequestParam(required = false) String academicYearId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
+        requireAttendanceModule(TenantContext.get().schoolId());
         return attendance.daily(sectionId, academicYearId, limit);
     }
 
@@ -69,7 +83,9 @@ public class AttendanceReadController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return attendance.records(studentId, scope, date, limit);
     }
 
@@ -79,7 +95,9 @@ public class AttendanceReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.dailySummary(date, scope));
     }
 
@@ -90,7 +108,9 @@ public class AttendanceReadController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam String sectionId) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.sectionInfo(date, sectionId, scope));
     }
 
@@ -102,7 +122,9 @@ public class AttendanceReadController {
             @RequestParam String classId,
             @RequestParam String sectionId) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.sectionRegister(date, classId, sectionId, scope));
     }
 
@@ -114,7 +136,9 @@ public class AttendanceReadController {
             @RequestParam(required = false) String classId,
             @RequestParam(required = false) String sectionId) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.absentees(date, classId, sectionId, scope));
     }
 
@@ -123,7 +147,9 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @Valid @RequestBody NotifyAbsenteesRequest body) {
         requireToken(token, "attendance:write");
+        TenantScope.requirePermissionIfAuthenticated("attendance:manage");
         Long scope = TenantScope.resolveSchoolId(body.schoolId());
+        requireAttendanceModule(scope);
         LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
         Long actorId = TenantContext.get() != null ? TenantContext.get().userId() : null;
         return execute(() -> attendance.notifyAbsentees(date, body.classId(), body.sectionId(), scope, actorId));
@@ -137,7 +163,9 @@ public class AttendanceReadController {
             @RequestParam String classId,
             @RequestParam String sectionId) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.registerReport(month, classId, sectionId, scope));
     }
 
@@ -149,7 +177,9 @@ public class AttendanceReadController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.studentHistory(studentId, from, to, scope));
     }
 
@@ -160,7 +190,9 @@ public class AttendanceReadController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         return execute(() -> attendance.sectionSummary(from, to, scope));
     }
 
@@ -171,7 +203,9 @@ public class AttendanceReadController {
             @RequestParam String month, @RequestParam String classId, @RequestParam String sectionId,
             @RequestParam(defaultValue = "csv") String format) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         Map<String, Object> report = execute(() -> attendance.registerReport(month, classId, sectionId, scope));
         return respondReport("register-" + month, format, report, AttendanceReportCsv::register, AttendanceReportPdf::register);
     }
@@ -184,7 +218,9 @@ public class AttendanceReadController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "csv") String format) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         Map<String, Object> report = execute(() -> attendance.studentHistory(studentId, from, to, scope));
         return respondReport("student-" + studentId + "-" + from + "_" + to, format, report,
                 AttendanceReportCsv::student, AttendanceReportPdf::student);
@@ -198,7 +234,9 @@ public class AttendanceReadController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
             @RequestParam(defaultValue = "csv") String format) {
         requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
         Map<String, Object> report = execute(() -> attendance.sectionSummary(from, to, scope));
         return respondReport("summary-" + from + "_" + to, format, report, AttendanceReportCsv::summary, AttendanceReportPdf::summary);
     }
@@ -226,7 +264,9 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @Valid @RequestBody SaveSectionRegisterRequest body) {
         requireToken(token, "attendance:write");
+        TenantScope.requirePermissionIfAuthenticated("attendance:manage");
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body.schoolId());
+        requireAttendanceModule(resolvedSchoolId);
         Map<String, Object> request = new HashMap<>();
         request.put("classId", body.classId());
         request.put("sectionId", body.sectionId());
@@ -244,7 +284,9 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @Valid @RequestBody DailyEntryRequest body) {
         requireToken(token, "attendance:write");
+        TenantScope.requirePermissionIfAuthenticated("attendance:manage");
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body.schoolId());
+        requireAttendanceModule(resolvedSchoolId);
         Map<String, Object> request = new HashMap<>();
         request.put("classId", body.classId());
         request.put("sectionId", body.sectionId());
@@ -263,7 +305,9 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @Valid @RequestBody SubmitSectionRequest body) {
         requireToken(token, "attendance:write");
+        TenantScope.requirePermissionIfAuthenticated("attendance:manage");
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body.schoolId());
+        requireAttendanceModule(resolvedSchoolId);
         Map<String, Object> request = new HashMap<>();
         request.put("classId", body.classId());
         request.put("sectionId", body.sectionId());
@@ -280,12 +324,20 @@ public class AttendanceReadController {
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
             @Valid @RequestBody(required = false) SubmitDayRequest body) {
         requireToken(token, "attendance:write");
+        TenantScope.requirePermissionIfAuthenticated("attendance:manage");
         // required=false → body may be null; behave as an empty request in that case.
         SubmitDayRequest request = body == null ? new SubmitDayRequest(null, null, null) : body;
         Long scope = TenantScope.resolveSchoolId(request.schoolId());
+        requireAttendanceModule(scope);
         String date = request.date() == null ? "today" : request.date();
         Long actorId = TenantContext.get().userId();
         return execute(() -> attendance.submitAttendanceDay(date, scope, actorId));
+    }
+
+    private void requireAttendanceModule(Long schoolId) {
+        if (moduleGuard != null) {
+            moduleGuard.requireModuleEnabled(schoolId, "ATTENDANCE");
+        }
     }
 
     private void requireToken(String token, String requiredScope) {

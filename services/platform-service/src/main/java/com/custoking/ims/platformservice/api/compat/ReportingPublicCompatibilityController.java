@@ -181,7 +181,8 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
-        requireToken(token, "reporting:read");
+        requireToken(token, "reporting:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
         return command(() -> commands.acceptAction(id, TenantContext.get().userId(), resolvedSchoolId, superAdmin));
@@ -192,7 +193,8 @@ public class ReportingPublicCompatibilityController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @PathVariable UUID id,
             @RequestBody(required = false) Map<String, Object> body) {
-        requireToken(token, "reporting:read");
+        requireToken(token, "reporting:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(actorSchoolId(body));
         return command(() -> commands.dismissAction(id, TenantContext.get().userId(), reason(body), resolvedSchoolId, superAdmin));
@@ -219,6 +221,9 @@ public class ReportingPublicCompatibilityController {
     private void requireToken(String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope) || !StringUtils.hasText(readToken) || !readToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid reporting service token");
+        }
+        if ("reporting:read".equals(requiredScope)) {
+            TenantScope.requirePermissionIfAuthenticated("report:read");
         }
     }
 

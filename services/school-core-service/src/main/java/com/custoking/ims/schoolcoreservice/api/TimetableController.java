@@ -25,6 +25,9 @@ import java.util.Map;
 @RestController
 public class TimetableController {
 
+    private static final String TIMETABLE_READ = "timetable:read";
+    private static final String TIMETABLE_MANAGE = "timetable:manage";
+
     private final TimetableRepository timetable;
     private final ModuleEntitlementGuard moduleGuard;
     private final String readToken;
@@ -43,6 +46,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestParam(value = "schoolId", required = false) Long schoolIdParam) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
         Long schoolId = resolveErpSchoolId(schoolIdParam);
         return timetable.bellSchedules(schoolId);
     }
@@ -52,6 +56,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         String name = requireText(request.get("name"), "name is required");
@@ -68,6 +73,7 @@ public class TimetableController {
             @PathVariable("id") long id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         String name = requireText(request.get("name"), "name is required");
@@ -83,6 +89,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable("id") long id) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         try {
@@ -98,6 +105,7 @@ public class TimetableController {
             @PathVariable("id") long scheduleId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         try {
@@ -119,6 +127,7 @@ public class TimetableController {
             @PathVariable("periodId") long periodId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         try {
@@ -139,6 +148,7 @@ public class TimetableController {
             @PathVariable("id") long scheduleId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         long idA = longValue(request.get("idA"),
@@ -158,6 +168,7 @@ public class TimetableController {
             @PathVariable("id") long scheduleId,
             @PathVariable("periodId") long periodId) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         try {
@@ -172,6 +183,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestParam(value = "schoolId", required = false) Long schoolIdParam) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
         Long schoolId = resolveErpSchoolId(schoolIdParam);
         return timetable.classSchedules(schoolId);
     }
@@ -182,6 +194,7 @@ public class TimetableController {
             @PathVariable("classId") String classId,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         long scheduleId = longValue(request.get("scheduleId"),
@@ -198,6 +211,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable("classId") String classId) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         timetable.deleteClassSchedule(schoolId, classId);
@@ -210,6 +224,7 @@ public class TimetableController {
             @RequestParam(value = "classId") String classId,
             @RequestParam(value = "yearId", required = false) String yearIdParam) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
         Long schoolId = resolveErpSchoolId(schoolIdParam);
         String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
         return timetable.classSubjects(schoolId, classId, yearId);
@@ -220,6 +235,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         String classId = requireText(request.get("classId"), "classId is required");
@@ -239,6 +255,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable("id") long id) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         try {
@@ -257,6 +274,7 @@ public class TimetableController {
             @RequestParam(value = "sectionId") String sectionId,
             @RequestParam(value = "yearId", required = false) String yearIdParam) {
         requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
         Long schoolId = resolveErpSchoolId(schoolIdParam);
         String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
         Map<String, Object> grid = timetable.timetable(schoolId, sectionId, yearId);
@@ -271,6 +289,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         String sectionId = requireText(request.get("sectionId"), "sectionId is required");
@@ -295,6 +314,7 @@ public class TimetableController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         String sectionId = requireText(request.get("sectionId"), "sectionId is required");
@@ -335,6 +355,7 @@ public class TimetableController {
             @RequestParam(value = "day") String day,
             @RequestParam(value = "periodId") long periodId) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
         TenantScope.requireSchoolAdmin();
         Long schoolId = resolveOwnErpSchoolId();
         try {

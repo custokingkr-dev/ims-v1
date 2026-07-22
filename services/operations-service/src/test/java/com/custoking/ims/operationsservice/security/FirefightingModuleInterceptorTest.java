@@ -65,12 +65,12 @@ class FirefightingModuleInterceptorTest {
     }
 
     @Test
-    void clientThrowingFailsOpen() throws Exception {
+    void clientThrowingFailsClosed() {
         TenantContext.set(new TenantContext(1L, "a@b.com", "ADMIN", 10L, null));
         when(client.activeModules(10L)).thenThrow(new RuntimeException("lookup failed"));
 
-        boolean allowed = interceptor.preHandle(new MockHttpServletRequest(), new MockHttpServletResponse(), new Object());
-
-        assertThat(allowed).isTrue();
+        assertThatThrownBy(() -> interceptor.preHandle(new MockHttpServletRequest(), new MockHttpServletResponse(), new Object()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(503));
     }
 }

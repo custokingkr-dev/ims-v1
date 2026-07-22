@@ -46,6 +46,7 @@ public class WorkflowReadController {
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @RequestParam(defaultValue = "true") boolean activeOnly) {
         requireToken(token, "workflow:read");
+        TenantScope.requirePermissionIfAuthenticated("workflow:read");
         return workflows.definitions(activeOnly);
     }
 
@@ -54,6 +55,7 @@ public class WorkflowReadController {
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable String definitionId) {
         requireToken(token, "workflow:read");
+        TenantScope.requirePermissionIfAuthenticated("workflow:read");
         return workflows.steps(definitionId);
     }
 
@@ -65,6 +67,7 @@ public class WorkflowReadController {
             @RequestParam(required = false) String entityType,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "workflow:read");
+        TenantScope.requirePermissionIfAuthenticated("workflow:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         return workflows.instances(scope, status, entityType, limit);
     }
@@ -75,6 +78,7 @@ public class WorkflowReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "workflow:read");
+        TenantScope.requirePermissionIfAuthenticated("workflow:read");
         Long pendingScope = TenantScope.resolveSchoolId(schoolId);
         return workflows.pending(pendingScope, limit);
     }
@@ -84,6 +88,7 @@ public class WorkflowReadController {
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "workflow:read");
+        TenantScope.requirePermissionIfAuthenticated("workflow:read");
         return workflows.instance(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "workflow instance not found"));
     }
@@ -93,6 +98,7 @@ public class WorkflowReadController {
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @Valid @RequestBody CreateInstanceRequest req) {
         requireToken(token, "workflow:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         Map<String, Object> body = new HashMap<>();
         body.put("entityType", req.entityType());
         body.put("entityId", req.entityId());
@@ -108,6 +114,7 @@ public class WorkflowReadController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         return execute(() -> workflows.submit(id, toActionMap(req)));
     }
 
@@ -125,6 +132,7 @@ public class WorkflowReadController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         return execute(() -> workflows.approve(id, toActionMap(req)));
     }
 
@@ -142,6 +150,7 @@ public class WorkflowReadController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         return execute(() -> workflows.reject(id, toActionMap(req)));
     }
 
@@ -159,6 +168,7 @@ public class WorkflowReadController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         return execute(() -> workflows.cancel(id, toActionMap(req)));
     }
 
@@ -168,6 +178,7 @@ public class WorkflowReadController {
             @PathVariable Long id,
             @Valid @RequestBody(required = false) WorkflowActionRequest req) {
         requireToken(token, "workflow:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         return execute(() -> workflows.complete(id, toActionMap(req)));
     }
 
@@ -185,6 +196,7 @@ public class WorkflowReadController {
             @RequestHeader(value = "X-Workflow-Service-Token", required = false) String token,
             @PathVariable Long instanceId) {
         requireToken(token, "workflow:read");
+        TenantScope.requirePermissionIfAuthenticated("workflow:read");
         return workflows.actions(instanceId);
     }
 

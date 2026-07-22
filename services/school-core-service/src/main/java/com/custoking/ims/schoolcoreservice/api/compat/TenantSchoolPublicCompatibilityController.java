@@ -35,6 +35,7 @@ public class TenantSchoolPublicCompatibilityController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("staff:manage");
         // Body schoolId is the requested school; TenantScope sandboxes it to the authenticated school.
         Long resolvedSchoolId = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
         if (resolvedSchoolId == null) {

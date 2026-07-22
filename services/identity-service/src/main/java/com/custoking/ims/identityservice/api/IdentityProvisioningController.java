@@ -22,6 +22,8 @@ import java.util.Map;
 @RequestMapping("/api/v1/users/provisioning")
 public class IdentityProvisioningController {
 
+    private static final String USER_CREATE = "user:create";
+
     private final IdentityUserProvisioningRepository users;
     private final String serviceToken;
 
@@ -40,6 +42,7 @@ public class IdentityProvisioningController {
             @PathVariable String role,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_CREATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());
@@ -53,6 +56,7 @@ public class IdentityProvisioningController {
             @PathVariable Long zoneId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_CREATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());

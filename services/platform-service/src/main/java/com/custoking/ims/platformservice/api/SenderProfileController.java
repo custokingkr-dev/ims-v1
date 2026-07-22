@@ -47,6 +47,7 @@ public class SenderProfileController {
     public List<SenderProfile> list(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token) {
         requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
         TenantScope.requireSuperAdmin();
         return profiles.list(null);
     }
@@ -57,6 +58,7 @@ public class SenderProfileController {
     public SenderProfile defaultProfile(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token) {
         requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
         TenantScope.requireSuperAdmin();
         return profiles.defaultProfile();
     }
@@ -72,6 +74,7 @@ public class SenderProfileController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @Valid @RequestBody SenderProfileUpsertRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         return command(() -> profiles.upsert(null, senderProfileMap(req)));
     }
@@ -83,6 +86,7 @@ public class SenderProfileController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId) {
         requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
         TenantScope.resolveSchoolId(schoolId);
         return profiles.resolve(schoolId);
     }
@@ -98,6 +102,7 @@ public class SenderProfileController {
             @PathVariable Long schoolId,
             @Valid @RequestBody SenderProfileUpsertRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         return command(() -> profiles.upsert(schoolId, senderProfileMap(req)));
     }
@@ -110,6 +115,7 @@ public class SenderProfileController {
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @PathVariable Long schoolId) {
         requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
         TenantScope.resolveSchoolId(schoolId);
         return profiles.onboardingSessions(schoolId);
     }
@@ -127,6 +133,7 @@ public class SenderProfileController {
             @PathVariable Long schoolId,
             @Valid @RequestBody StartWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> body = new HashMap<>();
         if (req.schoolName() != null) body.put("schoolName", req.schoolName());
@@ -152,6 +159,7 @@ public class SenderProfileController {
             @PathVariable UUID sessionId,
             @Valid @RequestBody CompleteWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> body = new HashMap<>();
         body.put("integratedNumber", req.integratedNumber());
@@ -183,6 +191,7 @@ public class SenderProfileController {
             @PathVariable UUID sessionId,
             @Valid @RequestBody FailWhatsappOnboardingRequest req) {
         requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.resolveSchoolId(schoolId);
         Map<String, Object> body = new HashMap<>();
         if (req.failureReason() != null) body.put("failureReason", req.failureReason());

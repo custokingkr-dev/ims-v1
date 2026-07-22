@@ -54,6 +54,7 @@ public class FirefightingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "firefighting:read");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         return firefighting.requests(scope, status, limit);
     }
@@ -64,6 +65,7 @@ public class FirefightingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "firefighting:read");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         return firefighting.pending(scope, limit);
     }
@@ -73,6 +75,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "firefighting:read");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         return firefighting.stats(scope);
     }
@@ -82,6 +85,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:read");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:read");
         return execute(() -> firefighting.detail(code));
     }
 
@@ -90,6 +94,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:read");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:read");
         try {
             return firefighting.timeline(code);
         } catch (IllegalArgumentException ex) {
@@ -102,6 +107,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @Valid @RequestBody CreateFirefightingRequestRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:create");
         Map<String, Object> body = new HashMap<>();
         body.put("title", req.title());
         if (req.category() != null) body.put("category", req.category());
@@ -124,6 +130,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @Valid @RequestBody UpdateFirefightingRequestRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         // Null-gate every put to preserve containsKey partial-update semantics in the repo.
         Map<String, Object> body = new HashMap<>();
         if (req.title() != null) body.put("title", req.title());
@@ -141,6 +148,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:read");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:read");
         return firefighting.quotations(code);
     }
 
@@ -150,6 +158,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @Valid @RequestBody CreateQuotationRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         Map<String, Object> body = new HashMap<>();
         body.put("vendorName", req.vendorName());
         if (req.amount() != null) body.put("amount", req.amount());
@@ -166,6 +175,7 @@ public class FirefightingReadController {
             @PathVariable String quotationId,
             @Valid @RequestBody UpdateQuotationRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         // Null-gate every put to preserve containsKey partial-update semantics in the repo.
         Map<String, Object> body = new HashMap<>();
         if (req.vendorName() != null) body.put("vendorName", req.vendorName());
@@ -182,6 +192,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @PathVariable String quotationId) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         return execute(() -> firefighting.deleteQuotation(code, quotationId));
     }
 
@@ -190,6 +201,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         return execute(() -> firefighting.submit(code));
     }
 
@@ -223,6 +235,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:fulfill");
         TenantScope.requireSuperAdmin();
         return execute(() -> firefighting.approveCustoking(code));
     }
@@ -246,6 +259,7 @@ public class FirefightingReadController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @PathVariable String code) {
         requireToken(token, "firefighting:write");
+        TenantScope.requireAnyPermissionIfAuthenticated("firefighting:fulfill", "firefighting:update");
         return execute(() -> firefighting.fulfill(code));
     }
 
@@ -255,6 +269,7 @@ public class FirefightingReadController {
             @PathVariable String code,
             @Valid @RequestBody(required = false) VendorPaidRequest req) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         Map<String, Object> body = new HashMap<>();
         if (req != null && req.schoolId() != null) body.put("schoolId", req.schoolId());
         body.put("paidBy", TenantContext.get().userId());

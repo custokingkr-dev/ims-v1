@@ -10,10 +10,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -60,6 +64,7 @@ class StudentReadControllerTest {
 
     @Test
     void getReturnsNotFoundForMissingStudent() {
+        when(students.schoolIdForStudentIncludingDeleted(404L)).thenThrow(new IllegalArgumentException("student not found"));
         when(students.find(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.get("student-token", 404L))
@@ -88,12 +93,21 @@ class StudentReadControllerTest {
 
     @Test
     void legacyImportTemplateReturnsDownloadResponse() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:import")));
+
         ResponseEntity<byte[]> response = controller.legacyImportTemplate("student-token");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentDisposition().getFilename())
                 .isEqualTo("student-import-template.xlsx");
-        assertThat(new String(response.getBody())).contains("Name,Class,Section,AdmissionNo");
+        byte[] body = response.getBody();
+        assertThat(body).isNotNull();
+        assertThat(body).startsWith((byte) 'P', (byte) 'K');
+
+        Map<String, String> entries = unzipTextEntries(body);
+        assertThat(entries).containsKeys("[Content_Types].xml", "xl/workbook.xml", "xl/worksheets/sheet1.xml");
+        assertThat(entries.get("xl/worksheets/sheet1.xml"))
+                .contains("Name", "Class", "Section", "AdmissionNo", "Photo", "PhotoUrl");
     }
 
     @Test
@@ -114,6 +128,26 @@ class StudentReadControllerTest {
     }
 
     @Test
+    void workspaceCompatibilityCreateRequiresStudentCreatePermission() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
+        StudentWorkspaceCompatibilityController compat =
+                new StudentWorkspaceCompatibilityController(students, "student-token");
+        Map<String, Object> request = Map.of(
+                "schoolId", 10L,
+                "fullName", "Aarav Sharma",
+                "admissionNumber", "ADM-1");
+
+        assertThatThrownBy(() -> compat.createFromWorkspace("student-token", request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException response = (ResponseStatusException) error;
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(response.getReason()).contains("student:create");
+                });
+        verify(students, never()).createStudent(any());
+    }
+
+    @Test
     void workspaceCompatibilityClassSectionRouteDelegates() {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         StudentWorkspaceCompatibilityController compat =
@@ -129,7 +163,7 @@ class StudentReadControllerTest {
 
     @Test
     void historyAllowsSoftDeletedStudentsForPreservedLifecycleLookup() {
-        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null));
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
         Map<String, Object> history = Map.of(
                 "student", Map.of("id", 42L),
                 "completedAcademicYears", 1L,
@@ -142,6 +176,48 @@ class StudentReadControllerTest {
         assertThat(response).isSameAs(history);
         verify(students).schoolIdForStudentIncludingDeleted(42L);
         verify(students, never()).schoolIdForStudent(42L);
+    }
+
+    @Test
+    void importStatusScopesNonSuperAdminToAuthenticatedSchool() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:import")));
+        when(students.importStatus("job-1", 10L)).thenReturn(Map.of("done", true));
+
+        Map<String, Object> response = controller.importStatus("student-token", "job-1");
+
+        assertThat(response).isEqualTo(Map.of("done", true));
+        verify(students).importStatus("job-1", 10L);
+        verify(students, never()).importStatus("job-1", null);
+    }
+
+    @Test
+    void importBatchesRequireStudentImportPermission() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
+
+        assertThatThrownBy(() -> controller.importBatches("student-token", 25))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException response = (ResponseStatusException) error;
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(response.getReason()).contains("student:import");
+                });
+
+        verify(students, never()).importBatches(any(), anyInt());
+    }
+
+    private Map<String, String> unzipTextEntries(byte[] body) {
+        Map<String, String> entries = new java.util.HashMap<>();
+        try (ZipInputStream zip = new ZipInputStream(new ByteArrayInputStream(body))) {
+            ZipEntry entry;
+            while ((entry = zip.getNextEntry()) != null) {
+                if (!entry.isDirectory()) {
+                    entries.put(entry.getName(), new String(zip.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+                }
+            }
+            return entries;
+        } catch (Exception ex) {
+            throw new AssertionError("Could not read XLSX template", ex);
+        }
     }
 
     private StudentRow studentRow(Long id, String fullName) {

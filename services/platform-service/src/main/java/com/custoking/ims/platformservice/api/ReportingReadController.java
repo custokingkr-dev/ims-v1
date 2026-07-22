@@ -49,6 +49,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.summary(TenantScope.resolveSchoolId(schoolId));
     }
 
@@ -57,6 +58,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.vendorDues(TenantScope.resolveSchoolId(schoolId));
     }
 
@@ -65,6 +67,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.reorderSignals(TenantScope.resolveSchoolId(schoolId));
     }
 
@@ -73,6 +76,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.dashboardCommandCenter(TenantScope.resolveSchoolId(schoolId));
     }
 
@@ -82,6 +86,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.lowAttendanceSections(TenantScope.resolveSchoolId(schoolId), date);
     }
 
@@ -91,6 +96,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @PathVariable String sectionId) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.lowAttendanceStudents(TenantScope.resolveSchoolId(schoolId), sectionId);
     }
 
@@ -105,6 +111,7 @@ public class ReportingReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.feeDefaulters(TenantScope.resolveSchoolId(schoolId), classId, sectionId, daysOverdue, reminderStatus, page, size);
     }
 
@@ -115,6 +122,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String module,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.feed(TenantScope.resolveSchoolId(schoolId), module, limit);
     }
 
@@ -125,6 +133,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.actions(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
@@ -134,6 +143,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "false") boolean platform) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         Long scope = TenantScope.resolveSchoolId(schoolId); // superadmin returns requested unchanged
         boolean effectivePlatform = platform && TenantContext.get().isSuperAdmin();
         return reporting.commandCenterSummary(scope, effectivePlatform);
@@ -145,6 +155,7 @@ public class ReportingReadController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) CommandCenterActionRequest body) {
         requireToken(token, "reporting:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body == null ? null : body.schoolId());
         return command(() -> commands.acceptAction(id, TenantContext.get().userId(), resolvedSchoolId, superAdmin));
@@ -156,6 +167,7 @@ public class ReportingReadController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) CommandCenterActionRequest body) {
         requireToken(token, "reporting:write");
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
         boolean superAdmin = TenantContext.get().isSuperAdmin();
         Long resolvedSchoolId = TenantScope.resolveSchoolId(body == null ? null : body.schoolId());
         return command(() -> commands.dismissAction(
@@ -171,7 +183,10 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @Valid @RequestBody RecordFeedRequest body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.recordFeed(body.toMap()));
+        TenantScope.requirePermissionIfAuthenticated("workflow:act");
+        Map<String, Object> request = body.toMap();
+        request.put("schoolId", TenantScope.resolveSchoolId(body.schoolId()));
+        return command(() -> commands.recordFeed(request));
     }
 
     @PostMapping("/event-contributions/reminders")
@@ -179,7 +194,10 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @Valid @RequestBody EventContributionReminderRequest body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.markEventContributionReminders(body.toMap()));
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
+        Map<String, Object> request = body.toMap();
+        request.put("schoolId", TenantScope.resolveSchoolId(body.schoolId()));
+        return command(() -> commands.markEventContributionReminders(request));
     }
 
     @PostMapping("/event-contributions/reminder-targets")
@@ -187,7 +205,10 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @Valid @RequestBody EventContributionReminderTargetsRequest body) {
         requireToken(token, "reporting:write");
-        return command(() -> commands.eventPaymentReminderTargets(body.toMap()));
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
+        Map<String, Object> request = body.toMap();
+        request.put("schoolId", TenantScope.resolveSchoolId(body.schoolId()));
+        return command(() -> commands.eventPaymentReminderTargets(request));
     }
 
     @GetMapping("/invoices")
@@ -197,6 +218,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.invoices(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
@@ -205,6 +227,7 @@ public class ReportingReadController {
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.invoiceStats(TenantScope.resolveSchoolId(schoolId));
     }
 
@@ -215,6 +238,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.academicEvents(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 
@@ -225,6 +249,7 @@ public class ReportingReadController {
             @RequestParam(required = false) Long schoolId,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.eventContributions(eventId, TenantScope.resolveSchoolId(schoolId), limit);
     }
 
@@ -238,6 +263,7 @@ public class ReportingReadController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.classPhotographyPaymentStatus(TenantScope.resolveSchoolId(schoolId), classId, sectionId, status, page, size);
     }
 
@@ -248,6 +274,7 @@ public class ReportingReadController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
         return reporting.broadcasts(TenantScope.resolveSchoolId(schoolId), status, limit);
     }
 

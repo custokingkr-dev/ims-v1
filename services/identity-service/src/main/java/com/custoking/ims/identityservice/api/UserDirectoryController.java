@@ -25,6 +25,11 @@ import java.util.Map;
 @RequestMapping("/api/v1/users")
 public class UserDirectoryController {
 
+    private static final String USER_READ = "user:read";
+    private static final String USER_UPDATE = "user:update";
+    private static final String USER_DISABLE = "user:disable";
+    private static final String USER_RESET_PASSWORD = "user:reset_password";
+
     private final UserDirectoryReadRepository users;
     private final String serviceToken;
 
@@ -44,6 +49,7 @@ public class UserDirectoryController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "100") int limit) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(USER_READ);
         branchId = TenantScope.resolveSchoolId(branchId);
         return users.users(role, branchId, zoneId, active, limit);
     }
@@ -53,6 +59,7 @@ public class UserDirectoryController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "identity:read");
+        TenantScope.requirePermissionIfAuthenticated(USER_READ);
         var user = users.user(id);
         if (user == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "user not found");
@@ -70,6 +77,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @Valid @RequestBody PasswordResetRequest req) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_RESET_PASSWORD);
         TenantScope.requireSuperAdmin();
         users.resetPassword(id, req.password(), TenantContext.get().userId(), TenantContext.get().email());
     }
@@ -81,6 +89,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_DISABLE);
         TenantScope.requireSuperAdmin();
         users.disableUser(id, TenantContext.get().userId(), TenantContext.get().email());
     }
@@ -92,6 +101,7 @@ public class UserDirectoryController {
             @PathVariable Long id,
             @RequestBody(required = false) Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_UPDATE);
         TenantScope.requireSuperAdmin();
         users.enableUser(id, TenantContext.get().userId(), TenantContext.get().email());
     }

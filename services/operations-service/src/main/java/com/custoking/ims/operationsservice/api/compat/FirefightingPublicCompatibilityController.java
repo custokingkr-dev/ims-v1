@@ -34,6 +34,7 @@ public class FirefightingPublicCompatibilityController {
             @RequestHeader(value = "X-Firefighting-Service-Token", required = false) String token,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:create");
         Map<String, Object> mutableRequest = new HashMap<>(request);
         applyResolvedSchool(mutableRequest);
         return run(() -> firefighting.createRequest(mutableRequest));
@@ -45,6 +46,7 @@ public class FirefightingPublicCompatibilityController {
             @PathVariable String code,
             @RequestBody(required = false) Map<String, Object> request) {
         requireToken(token, "firefighting:write");
+        TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         Map<String, Object> mutableRequest = request == null ? new HashMap<>() : new HashMap<>(request);
         applyResolvedSchool(mutableRequest);
         return run(() -> firefighting.markVendorPaid(code, mutableRequest));

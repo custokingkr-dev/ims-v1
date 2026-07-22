@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -119,7 +120,7 @@ class AttendanceReadControllerTest {
     @Test
     @SuppressWarnings("unchecked")
     void saveSectionRegister_schoolIdPresentInMap_nonSuperadmin() {
-        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null, Set.of(), Set.of("attendance:manage")));
         SaveSectionRegisterRequest body = new SaveSectionRegisterRequest("C1", "S1", "2026-02-02", null, 7L, null);
         when(attendance.saveSectionRegister(any())).thenReturn(Map.of("ok", true));
 
@@ -149,7 +150,7 @@ class AttendanceReadControllerTest {
     @Test
     @SuppressWarnings("unchecked")
     void dailyEntry_schoolIdPresentInMap_nonSuperadmin() {
-        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null, Set.of(), Set.of("attendance:manage")));
         DailyEntryRequest body = new DailyEntryRequest("C1", "S1", "2026-02-02", null, null, null, 7L);
         when(attendance.saveDailyAttendance(any())).thenReturn(Map.of("ok", true));
 
@@ -179,7 +180,7 @@ class AttendanceReadControllerTest {
     @Test
     @SuppressWarnings("unchecked")
     void submitSection_schoolIdPresentInMap_nonSuperadmin() {
-        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null));
+        TenantContext.set(new TenantContext(42L, "admin@test.com", "ADMIN", 7L, null, Set.of(), Set.of("attendance:manage")));
         SubmitSectionRequest body = new SubmitSectionRequest("C1", "S1", "2026-02-02", null, 7L);
         when(attendance.submitAttendanceSection(any())).thenReturn(Map.of("ok", true));
 

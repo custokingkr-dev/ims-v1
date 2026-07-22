@@ -43,6 +43,12 @@ class ReportingValidationTest {
         mvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .build();
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContext.clear();
     }
 
     // ─── POST /command-center/feed ───────────────────────────────────────────

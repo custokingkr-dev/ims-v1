@@ -62,6 +62,8 @@ interface PromotionBatch {
 export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
+  const canCreateStudent = can('student:create');
+  const canImportStudents = can('student:import');
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
@@ -454,8 +456,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
         actions={
           <>
             {can('student:update') && schoolScopedParams ? <button className="ck-btn ck-btn-ghost" onClick={() => void openPromotionWizard()}>Promote class</button> : null}
-            <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import</button>
-            <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>+ Add student</button>
+            {canImportStudents ? <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import</button> : null}
+            {canCreateStudent ? <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>+ Add student</button> : null}
           </>
         }
       >
@@ -637,7 +639,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   ? 'Try adjusting the class, section, or fee status filters above.'
                   : 'Add your first student to get started.'}
               </div>
-              {can('student:write') && studentFilters.className === 'All' && (
+              {canCreateStudent && studentFilters.className === 'All' && (
                 <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>
                   Add first student
                 </button>

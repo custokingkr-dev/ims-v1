@@ -20,6 +20,8 @@ import java.util.Map;
 @RestController
 public class IdentityPublicCompatibilityController {
 
+    private static final String USER_CREATE = "user:create";
+
     private final IdentityUserProvisioningRepository users;
     private final String serviceToken;
 
@@ -37,6 +39,7 @@ public class IdentityPublicCompatibilityController {
             @PathVariable Long schoolId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_CREATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());
@@ -50,6 +53,7 @@ public class IdentityPublicCompatibilityController {
             @PathVariable Long schoolId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_CREATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());
@@ -63,6 +67,7 @@ public class IdentityPublicCompatibilityController {
             @PathVariable Long zoneId,
             @RequestBody Map<String, Object> body) {
         requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_CREATE);
         TenantScope.requireSuperAdmin();
         Map<String, Object> stamped = new HashMap<>(body == null ? Map.of() : body);
         stamped.put("assignedBy", TenantContext.get().userId());

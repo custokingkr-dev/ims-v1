@@ -32,7 +32,8 @@ class AttendanceTenantScopingTest {
         mvc.perform(get("/api/v1/attendance/records?schoolId=99")
                         .header("X-Attendance-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:read"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).records(any(), anyLong(), any(), anyInt());
     }
@@ -43,7 +44,8 @@ class AttendanceTenantScopingTest {
         mvc.perform(get("/api/v1/attendance/records")
                         .header("X-Attendance-Service-Token", "tok")
                         .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "10"))
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "attendance:read"))
                 .andExpect(status().isOk());
         verify(repo).records(any(), eq(10L), any(), anyInt());
     }
