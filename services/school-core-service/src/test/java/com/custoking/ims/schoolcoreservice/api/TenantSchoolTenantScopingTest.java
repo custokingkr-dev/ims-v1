@@ -94,4 +94,37 @@ class TenantSchoolTenantScopingTest {
                 .andExpect(status().isOk());
         verify(structure).sections(eq(99L), any(), any());
     }
+
+    @Test
+    void ownSchool_getAcademicYears_usesAuthenticatedSchoolScope() throws Exception {
+        when(structure.academicYears(eq(10L), isNull(Boolean.class))).thenReturn(List.of());
+
+        mvc.perform(get("/api/v1/academic-years")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isOk());
+        verify(structure).academicYears(eq(10L), isNull(Boolean.class));
+    }
+
+    @Test
+    void crossTenantSchoolId_getAcademicYears_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/academic-years?schoolId=99")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10"))
+                .andExpect(status().isForbidden());
+        verify(structure, never()).academicYears(any(), any());
+    }
+
+    @Test
+    void superadmin_getAcademicYearsWithoutSchoolId_keepsGlobalScope() throws Exception {
+        when(structure.academicYears(isNull(Long.class), isNull(Boolean.class))).thenReturn(List.of());
+
+        mvc.perform(get("/api/v1/academic-years")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+        verify(structure).academicYears(isNull(Long.class), isNull(Boolean.class));
+    }
 }

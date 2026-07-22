@@ -12,6 +12,7 @@ import tools.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -217,6 +218,30 @@ class SchoolStructureIntegrationTest {
         assertThat(repo.classes(schoolId))
                 .extracting(SchoolStructureReadRepository.SchoolClassRow::name)
                 .containsExactly("Nursery / Pre-Nursery / Playgroup", "8");
+    }
+
+    @Test
+    void academicYears_schoolScopeDeduplicatesLegacyCurrentYearAndMarksCanonicalCurrentActive() throws Exception {
+        long schoolId = seedSchool(3, 1);
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM tenant_school.academic_years");
+            st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES " +
+                    "('2026_27', '2026-2027', true), " +
+                    "('ay_2025_26', '2025-26', false)");
+        }
+
+        List<SchoolStructureReadRepository.AcademicYearRow> years = repo.academicYears(schoolId, null);
+
+        assertThat(years)
+                .extracting(SchoolStructureReadRepository.AcademicYearRow::id)
+                .contains("ay_2026_27", "ay_2025_26")
+                .doesNotContain("2026_27");
+        assertThat(years.stream().filter(row -> Boolean.TRUE.equals(row.active())).toList())
+                .singleElement()
+                .satisfies(row -> assertThat(row.id()).isEqualTo("ay_2026_27"));
+        assertThat(repo.academicYears(schoolId, true))
+                .extracting(SchoolStructureReadRepository.AcademicYearRow::id)
+                .containsExactly("ay_2026_27");
     }
 
     @Test

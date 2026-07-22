@@ -581,7 +581,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       </td>
                       <td>
                         <div className="tb">{student.fatherName || '—'}</div>
-                        <div className="ts">Contact {student.fatherContact || '—'}</div>
                       </td>
                       <td>{student.fatherContact || student.parentPhone || '—'}</td>
                       {/* Change 4: Improved fee status badge */}

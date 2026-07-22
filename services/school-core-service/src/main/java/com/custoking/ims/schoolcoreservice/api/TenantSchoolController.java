@@ -265,10 +265,15 @@ public class TenantSchoolController {
     @GetMapping("/academic-years")
     public Object academicYears(
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
             @RequestParam(required = false) Boolean active) {
         // Global academic year definitions accessible to all authenticated users.
         requireToken(token, "tenant-school:read");
-        return structure.academicYears(active);
+        Long scope = null;
+        if (schoolId != null || TenantContext.get().schoolId() != null) {
+            scope = TenantScope.resolveSchoolId(schoolId);
+        }
+        return structure.academicYears(scope, active);
     }
 
     @GetMapping("/superadmin/schools/stats")

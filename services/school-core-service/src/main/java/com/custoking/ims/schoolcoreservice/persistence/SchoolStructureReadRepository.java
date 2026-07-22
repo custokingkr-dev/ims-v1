@@ -7,17 +7,23 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.time.format.TextStyle;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Repository
 public class SchoolStructureReadRepository {
     public static final int DEFAULT_CONFIGURED_CLASS_COUNT = 15;
     public static final int MAX_CONFIGURED_CLASS_COUNT = 15;
     public static final int MAX_CONFIGURED_SECTION_COUNT = 26;
+    private static final Pattern ACADEMIC_YEAR_PATTERN =
+            Pattern.compile("(?:^|[^0-9])(\\d{4})[_\\-/ ](\\d{2}|\\d{4})(?:$|[^0-9])");
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
@@ -90,6 +96,39 @@ public class SchoolStructureReadRepository {
     }
 
     public List<AcademicYearRow> academicYears(Boolean active) {
+        return academicYears(null, active);
+    }
+
+    public List<AcademicYearRow> academicYears(Long schoolId, Boolean active) {
+        if (schoolId != null) {
+            AcademicCalendar.AcademicYear current = AcademicCalendar.currentAcademicYear(jdbc, schoolId);
+            String currentKey = academicYearKey(current.id(), current.label());
+            Map<String, AcademicYearRow> byYear = new LinkedHashMap<>();
+            for (AcademicYearRow row : queryAcademicYears(null)) {
+                String key = academicYearKey(row.id(), row.label());
+                if (key.equals(currentKey)) {
+                    byYear.put(key, new AcademicYearRow(current.id(), current.label(), true));
+                } else {
+                    byYear.putIfAbsent(key, new AcademicYearRow(row.id(), row.label(), false));
+                }
+            }
+            byYear.putIfAbsent(currentKey, new AcademicYearRow(current.id(), current.label(), true));
+            List<AcademicYearRow> rows = new ArrayList<>(byYear.values());
+            rows.sort(Comparator
+                    .comparingInt((AcademicYearRow row) -> academicYearStart(row.id(), row.label())).reversed()
+                    .thenComparing(AcademicYearRow::label, Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(AcademicYearRow::id, Comparator.reverseOrder()));
+            if (active != null) {
+                return rows.stream()
+                        .filter(row -> active.equals(Boolean.TRUE.equals(row.active())))
+                        .toList();
+            }
+            return rows;
+        }
+        return queryAcademicYears(active);
+    }
+
+    private List<AcademicYearRow> queryAcademicYears(Boolean active) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, label, active
                 FROM tenant_school.academic_years
@@ -101,6 +140,27 @@ public class SchoolStructureReadRepository {
         var spec = jdbc.sql(sql.toString());
         if (active != null) spec = spec.param("active", active);
         return spec.query(AcademicYearRow.class).list();
+    }
+
+    private String academicYearKey(String id, String label) {
+        Matcher matcher = ACADEMIC_YEAR_PATTERN.matcher((id == null ? "" : id) + " " + (label == null ? "" : label));
+        if (matcher.find()) {
+            return matcher.group(1) + "-" + endYearSuffix(matcher.group(2));
+        }
+        String fallback = trimToNull(label);
+        return fallback == null ? str(id, "").trim().toLowerCase(Locale.ROOT) : fallback.toLowerCase(Locale.ROOT);
+    }
+
+    private int academicYearStart(String id, String label) {
+        Matcher matcher = ACADEMIC_YEAR_PATTERN.matcher((id == null ? "" : id) + " " + (label == null ? "" : label));
+        if (matcher.find()) {
+            return Integer.parseInt(matcher.group(1));
+        }
+        return Integer.MIN_VALUE;
+    }
+
+    private String endYearSuffix(String value) {
+        return value.length() == 2 ? value : value.substring(value.length() - 2);
     }
 
     public List<ZoneSchoolRow> zoneSchools(Long zoneId, Boolean active) {
