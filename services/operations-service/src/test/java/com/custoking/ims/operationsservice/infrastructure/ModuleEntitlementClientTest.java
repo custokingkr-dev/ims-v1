@@ -5,6 +5,9 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -12,6 +15,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,6 +38,7 @@ class ModuleEntitlementClientTest {
 
     @AfterEach
     void stopServer() {
+        RequestContextHolder.resetRequestAttributes();
         if (server != null) {
             server.stop(0);
         }
@@ -67,6 +72,25 @@ class ModuleEntitlementClientTest {
         assertThat(client.activeModules(1L)).isEqualTo(Set.of("FIREFIGHTING"));
         assertThat(client.activeModules(1L)).isEqualTo(Set.of("FIREFIGHTING"));
         assertThat(calls.get()).isEqualTo(1);
+    }
+
+    @Test
+    void forwardsAuthenticatedPermissionContext() {
+        AtomicReference<String> forwardedPermissions = new AtomicReference<>();
+        server.createContext("/api/v1/schools/4/modules/active", exchange -> {
+            forwardedPermissions.set(exchange.getRequestHeaders().getFirst("X-Authenticated-Permissions"));
+            respond(exchange, 200, "[{\"moduleCode\":\"FIREFIGHTING\"}]");
+        });
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("X-Authenticated-Role", "ADMIN");
+        request.addHeader("X-Authenticated-School-Id", "4");
+        request.addHeader("X-Authenticated-Permissions", "school:read,firefighting:read");
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        ModuleEntitlementClient client = client(0);
+
+        assertThat(client.activeModules(4L)).isEqualTo(Set.of("FIREFIGHTING"));
+        assertThat(forwardedPermissions.get()).isEqualTo("school:read,firefighting:read");
     }
 
     @Test

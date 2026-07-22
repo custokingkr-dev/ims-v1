@@ -33,8 +33,7 @@ import java.util.stream.Collectors;
  * Cloud Run OIDC identity-token minting (auto mode via the GCE metadata server).
  *
  * activeModules() throws (rather than swallowing) on any peer/config failure so the caller
- * (FirefightingModuleInterceptor) can fail-open on catch — availability of the firefighting
- * workflow must never regress because of an entitlement-lookup outage.
+ * can fail closed when entitlement lookup is unavailable.
  */
 @Component
 public class ModuleEntitlementClient {
@@ -80,7 +79,7 @@ public class ModuleEntitlementClient {
 
     /**
      * Active module codes (UPPERCASE) for a school. Throws on peer/config failure so the
-     * caller fails-open.
+     * caller can fail closed.
      */
     public Set<String> activeModules(Long schoolId) {
         if (schoolId == null || !StringUtils.hasText(baseUrl) || !StringUtils.hasText(token)) {
@@ -111,7 +110,7 @@ public class ModuleEntitlementClient {
     // lets tenant-school apply the SAME tenant scope (e.g. superadmin) the original caller had.
     private static final String[] AUTH_CONTEXT_HEADERS = {
             "X-Authenticated-User-Id", "X-Authenticated-Email", "X-Authenticated-Role",
-            "X-Authenticated-School-Id", "X-Authenticated-Zone-Id"
+            "X-Authenticated-School-Id", "X-Authenticated-Zone-Id", "X-Authenticated-Permissions"
     };
 
     private void applyHeaders(HttpHeaders headers) {
