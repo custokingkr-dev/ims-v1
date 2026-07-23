@@ -16,8 +16,7 @@
  *   Both fall back to typed mock fixtures when the endpoint is 404.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Stat } from '../ui';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Modal } from '../../../components/Modal';
 import { usePermissions } from '../../../hooks/usePermissions';
 import api from '../../../services/api';
@@ -412,7 +411,6 @@ function PulseKpis({
     <div className="ck-command-kpis">
       {kpis.map((k, i) => {
         const up = k.delta > 0;
-        const isBad = k.deltaInvertBad ? up : !up;
         const deltaClass = k.deltaInvertBad
           ? (up ? 'up-bad' : 'down-good')
           : (up ? 'up' : 'down');
@@ -447,10 +445,9 @@ function PulseKpis({
 
 // §3b: Action Insights — real-time metrics from backend command-center endpoint
 function ActionInsightsSection({
-  metrics, setPanel, moduleAccess, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
+  metrics, moduleAccess, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
 }: {
   metrics: DashboardCommandCenterResponse | null;
-  setPanel: (k: PanelKey) => void;
   moduleAccess: DashboardModuleAccess;
   onOpenFeeDefaulters: () => void;
   onOpenClassPhotography: () => void;
@@ -1251,7 +1248,6 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       {/* §3b Action Insights */}
       <ActionInsightsSection
         metrics={commandCenterMetrics}
-        setPanel={setPanel}
         moduleAccess={moduleAccess}
         onOpenFeeDefaulters={() => setShowFeeDefaulters(true)}
         onOpenClassPhotography={() => setShowClassPhotography(true)}

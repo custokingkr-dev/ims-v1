@@ -7,7 +7,7 @@
  * write" note so reviewers can distinguish real from simulated actions at a glance.
  */
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../../../../components/Modal';
 import { STUDENT_PHOTO_MAX_LABEL } from '../../../../features/students';
 import type { CommandCentreCard } from './commandCentreTypes';

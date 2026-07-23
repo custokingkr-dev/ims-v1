@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CommandCenterDrawer } from '../components/CommandCenterDrawer';
 import { fetchReorderSignals } from '../../../../api/dashboardCommandCenterApi';
 import type { ReorderSignalItem, ReorderSignalsResponse } from '../../../../types/dashboardCommandCenter';

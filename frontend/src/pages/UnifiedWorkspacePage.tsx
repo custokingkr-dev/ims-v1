@@ -567,7 +567,6 @@ export default function UnifiedWorkspacePage() {
               stats={liveOrderStats}
               loading={ordersLoading}
               notice={catalogNotice}
-              schoolScopedParams={schoolScopedParams}
               page={ordersPage}
               totalPages={liveOrders?.totalPages ?? 1}
               onPageChange={(p) => loadLiveOrders(p)}

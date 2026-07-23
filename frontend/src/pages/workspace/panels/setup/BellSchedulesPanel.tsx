@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   type BellSchedule, type BellPeriod, type ClassScheduleRow,
   getBellSchedules, createSchedule, renameSchedule, deleteSchedule,

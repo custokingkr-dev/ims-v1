@@ -1,4 +1,3 @@
-import React from 'react';
 import { MetricBadge } from './MetricBadge';
 
 interface InsightMetric {

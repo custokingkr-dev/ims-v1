@@ -36,6 +36,14 @@ describe('SaSchoolsPanel structure edit', () => {
     expect(api.put).toHaveBeenCalledWith('/schools/7/structure', { classCount: 2, sectionCount: 3 });
   });
 
+  it('only shows edit structure as the per-school action', async () => {
+    render(<SaSchoolsPanel />);
+    await waitFor(() => expect(screen.getByText('Demo School')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /edit structure/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^schools$/i })).not.toBeInTheDocument();
+  });
+
   it('saves valid counts and reloads', async () => {
     vi.mocked(api.put).mockResolvedValue({ data: { id: 7 } });
     render(<SaSchoolsPanel />);

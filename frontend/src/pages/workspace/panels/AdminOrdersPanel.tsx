@@ -63,7 +63,6 @@ interface Props {
   stats: any;
   loading: boolean;
   notice: { type: string; msg: string } | null;
-  schoolScopedParams?: Record<string, any>;
   page?: number;
   totalPages?: number;
   onPageChange?: (page: number) => void;
@@ -73,7 +72,7 @@ interface Props {
 }
 
 export function AdminOrdersPanel({
-  orders, stats, loading, notice, schoolScopedParams,
+  orders, stats, loading, notice,
   page = 0, totalPages = 1, onPageChange,
   onNewOrder, onMarkDesignApproved, onReorder,
 }: Props) {
