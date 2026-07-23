@@ -12,9 +12,18 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Repository
 public class IdentityUserProvisioningRepository {
+
+    private static final int TEMPORARY_PASSWORD_MIN_LENGTH = 12;
+    private static final Set<String> DISALLOWED_TEMPORARY_PASSWORDS = Set.of(
+            "password",
+            "password123",
+            "welcome@123",
+            "admin@123",
+            "custoking@123");
 
     private final JdbcClient jdbc;
     private final PasswordEncoder passwordEncoder;
@@ -31,7 +40,7 @@ public class IdentityUserProvisioningRepository {
         String normalizedRole = normalizeSchoolRole(role);
         String fullName = requiredString(body, "fullName");
         String email = requiredString(body, "email").toLowerCase(Locale.ROOT);
-        String temporaryPassword = requiredString(body, "temporaryPassword");
+        String temporaryPassword = validatedTemporaryPassword(body);
         Long assignedBy = optionalLong(body.get("assignedBy"));
         String branchName = tenantSchool.school(schoolId).name();
 
@@ -60,7 +69,7 @@ public class IdentityUserProvisioningRepository {
     public Map<String, Object> provisionZoneAdmin(Long zoneId, Map<String, Object> body) {
         String fullName = requiredString(body, "fullName");
         String email = requiredString(body, "email").toLowerCase(Locale.ROOT);
-        String temporaryPassword = requiredString(body, "temporaryPassword");
+        String temporaryPassword = validatedTemporaryPassword(body);
         Long assignedBy = optionalLong(body.get("assignedBy"));
         String zoneName = tenantSchool.zone(zoneId).name();
 
@@ -234,6 +243,39 @@ public class IdentityUserProvisioningRepository {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, field + " is required");
         }
         return value.toString().trim();
+    }
+
+    private String validatedTemporaryPassword(Map<String, Object> body) {
+        String password = requiredString(body, "temporaryPassword");
+        validateTemporaryPassword(password);
+        return password;
+    }
+
+    static void validateTemporaryPassword(String password) {
+        String value = password == null ? "" : password.trim();
+        if (value.length() < TEMPORARY_PASSWORD_MIN_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "temporaryPassword must be at least 12 characters");
+        }
+        if (DISALLOWED_TEMPORARY_PASSWORDS.contains(value.toLowerCase(Locale.ROOT))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "temporaryPassword is too common");
+        }
+        boolean upper = false;
+        boolean lower = false;
+        boolean digit = false;
+        boolean symbol = false;
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            upper |= Character.isUpperCase(c);
+            lower |= Character.isLowerCase(c);
+            digit |= Character.isDigit(c);
+            symbol |= !Character.isLetterOrDigit(c);
+        }
+        if (!(upper && lower && digit && symbol)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "temporaryPassword must include uppercase, lowercase, number, and symbol");
+        }
     }
 
     private Long optionalLong(Object value) {

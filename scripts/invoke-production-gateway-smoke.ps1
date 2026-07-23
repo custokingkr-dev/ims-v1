@@ -26,6 +26,7 @@ $smokePassword = "password"
 $bcryptPasswordHash = '$2a$10$J7RjqxrkPBk31.tolxpMkO0LHevKKGCNi6AsSPAsGeHtnyvHfmXlG'
 $superEmail = "prod-smoke-superadmin@custoking.local"
 $adminEmail = "prod-smoke-admin@custoking.local"
+$smokeAdmissionNo = "IMS-$Environment-SMOKE"
 $context = $null
 $script:CloudSqlJobName = "ims-gateway-smoke-sql-$Environment"
 $script:CloudSqlJobEnsured = $false
@@ -124,6 +125,7 @@ function Invoke-CloudSqlJob {
 function Provision-SmokeUsers {
     $superEmailSql = ConvertTo-SqlLiteral $superEmail
     $adminEmailSql = ConvertTo-SqlLiteral $adminEmail
+    $smokeAdmissionNoSql = ConvertTo-SqlLiteral $smokeAdmissionNo
     $hashSql = ConvertTo-SqlLiteral $bcryptPasswordHash
 
     $sql = @"
@@ -134,6 +136,7 @@ DECLARE
     selected_student_id bigint;
     selected_class_id text;
     selected_section_id text;
+    selected_academic_year_id text;
     super_user_id bigint;
     admin_user_id bigint;
     super_role_id bigint;
@@ -157,26 +160,35 @@ BEGIN
         RAISE EXCEPTION 'No school exists for production smoke.';
     END IF;
 
-    SELECT st.id, st.class_id::text, st.section_id::text
-      INTO selected_student_id, selected_class_id, selected_section_id
-      FROM student.students st
-     WHERE st.school_id = selected_school_id
-       AND st.deleted_at IS NULL
-     ORDER BY st.id
+    SELECT ss.school_class_id::text, ss.id::text
+      INTO selected_class_id, selected_section_id
+      FROM tenant_school.school_sections ss
+     WHERE ss.school_id = selected_school_id
+       AND ss.active = true
+     ORDER BY ss.id
      LIMIT 1;
-
-    IF selected_student_id IS NULL THEN
-        SELECT ss.school_class_id::text, ss.id::text
-          INTO selected_class_id, selected_section_id
-          FROM tenant_school.school_sections ss
-         WHERE ss.school_id = selected_school_id
-           AND ss.active = true
-         ORDER BY ss.id
-         LIMIT 1;
-    END IF;
 
     IF selected_class_id IS NULL OR selected_section_id IS NULL THEN
         RAISE EXCEPTION 'No class/section exists for selected smoke school %.', selected_school_id;
+    END IF;
+
+    SELECT id::text
+      INTO selected_academic_year_id
+      FROM tenant_school.academic_years
+     WHERE active = true
+     ORDER BY id
+     LIMIT 1;
+
+    IF selected_academic_year_id IS NULL THEN
+        SELECT id::text
+          INTO selected_academic_year_id
+          FROM tenant_school.academic_years
+         ORDER BY id
+         LIMIT 1;
+    END IF;
+
+    IF selected_academic_year_id IS NULL THEN
+        RAISE EXCEPTION 'No academic year exists for production smoke.';
     END IF;
 
     SELECT id INTO super_role_id FROM identity.roles WHERE UPPER(name) = 'SUPERADMIN' LIMIT 1;
@@ -226,12 +238,43 @@ BEGIN
     INSERT INTO identity.user_role_assignments (user_id, role_id, school_id, zone_id, assigned_by, assigned_at, active, valid_from)
     VALUES (admin_user_id, admin_role_id, selected_school_id, NULL, super_user_id, now(), true, now());
 
+    INSERT INTO student.students
+        (admission_no, roll_no, full_name, dob, gender, father_name, father_contact,
+         phone, address, fee_status, attendance_percent, created_at, updated_at,
+         school_id, class_id, section_id, academic_year_id, version, deleted_at,
+         deleted_by, created_by, updated_by)
+    VALUES
+        ($smokeAdmissionNoSql, 'SMOKE', 'Production Smoke Student', DATE '2016-01-01', 'NA',
+         'Production Smoke Parent', '9999999999', '9999999999', 'Production smoke address',
+         'Pending', 0, now(), now(), selected_school_id, selected_class_id,
+         selected_section_id, selected_academic_year_id, 0, NULL, NULL,
+         'production-gateway-smoke', 'production-gateway-smoke')
+    ON CONFLICT (school_id, admission_no) DO UPDATE SET
+        roll_no = EXCLUDED.roll_no,
+        full_name = EXCLUDED.full_name,
+        dob = EXCLUDED.dob,
+        gender = EXCLUDED.gender,
+        father_name = EXCLUDED.father_name,
+        father_contact = EXCLUDED.father_contact,
+        phone = EXCLUDED.phone,
+        address = EXCLUDED.address,
+        fee_status = EXCLUDED.fee_status,
+        attendance_percent = EXCLUDED.attendance_percent,
+        updated_at = now(),
+        class_id = EXCLUDED.class_id,
+        section_id = EXCLUDED.section_id,
+        academic_year_id = EXCLUDED.academic_year_id,
+        deleted_at = NULL,
+        deleted_by = NULL,
+        updated_by = 'production-gateway-smoke'
+    RETURNING id INTO selected_student_id;
+
     RAISE NOTICE 'provisioned production smoke users super=% admin=% school=%', super_user_id, admin_user_id, selected_school_id;
 END
 `$`$;
 
 SELECT selected.school_id || '|' ||
-       COALESCE(selected.student_id::text, '1') || '|' ||
+       selected.student_id::text || '|' ||
        selected.class_id || '|' ||
        selected.section_id || '|' ||
        au.id || '|' ||
@@ -240,23 +283,17 @@ SELECT selected.school_id || '|' ||
 FROM (
     SELECT s.id AS school_id,
            st.id AS student_id,
-           COALESCE(st.class_id::text, ss.school_class_id::text) AS class_id,
-           COALESCE(st.section_id::text, ss.id::text) AS section_id
+           st.class_id::text AS class_id,
+           st.section_id::text AS section_id
       FROM tenant_school.schools s
-      LEFT JOIN LATERAL (
+      JOIN LATERAL (
           SELECT id, class_id, section_id
             FROM student.students
-           WHERE school_id = s.id AND deleted_at IS NULL
-           ORDER BY id
+           WHERE school_id = s.id
+             AND admission_no = $smokeAdmissionNoSql
+             AND deleted_at IS NULL
            LIMIT 1
       ) st ON true
-      LEFT JOIN LATERAL (
-          SELECT id, school_class_id
-            FROM tenant_school.school_sections
-           WHERE school_id = s.id AND active = true
-           ORDER BY id
-           LIMIT 1
-      ) ss ON true
      WHERE s.id = COALESCE((SELECT id FROM tenant_school.schools WHERE id = $PreferredSchoolId LIMIT 1), (SELECT id FROM tenant_school.schools ORDER BY id LIMIT 1))
      LIMIT 1
 ) selected
@@ -286,6 +323,7 @@ JOIN identity.app_users au ON au.email = $adminEmailSql;
 function Retire-SmokeUsers {
     $superEmailSql = ConvertTo-SqlLiteral $superEmail
     $adminEmailSql = ConvertTo-SqlLiteral $adminEmail
+    $smokeAdmissionNoSql = ConvertTo-SqlLiteral $smokeAdmissionNo
     $sql = @"
 WITH smoke_users AS (
     SELECT id
@@ -307,6 +345,12 @@ UPDATE identity.app_users
        deleted_by = 'production-gateway-smoke',
        email = 'deleted+' || id || '+' || email
  WHERE email IN ($superEmailSql, $adminEmailSql);
+
+UPDATE student.students
+   SET deleted_at = now(),
+       deleted_by = 'production-gateway-smoke',
+       updated_at = now()
+ WHERE admission_no = $smokeAdmissionNoSql;
 
 SELECT 'retired';
 "@
@@ -333,6 +377,7 @@ try {
         -AdminUserId $context.adminUserId `
         -ClassId $context.classId `
         -SectionId $context.sectionId `
+        -RunPhotoUploadSmoke `
         -OutputJson $OutputJson
     if ($LASTEXITCODE -ne 0) {
         throw "Production gateway deployment smoke failed."

@@ -14,6 +14,7 @@ param(
     [string]$AttendanceDate = "2026-02-02",
     [string]$OutputJson,
     [int]$TimeoutSeconds = 20,
+    [switch]$RunPhotoUploadSmoke,
     [switch]$SkipHealth
 )
 
@@ -102,6 +103,63 @@ function Invoke-SmokeCheck {
     }
 }
 
+function Invoke-SmokePhotoUpload {
+    param(
+        [long]$TargetStudentId,
+        [string]$Token
+    )
+
+    $path = "/api/v1/students/${TargetStudentId}/photo"
+    $client = [System.Net.Http.HttpClient]::new()
+    $form = [System.Net.Http.MultipartFormDataContent]::new()
+    try {
+        $client.Timeout = [TimeSpan]::FromSeconds($TimeoutSeconds)
+        if (-not [string]::IsNullOrWhiteSpace($Token)) {
+            $client.DefaultRequestHeaders.Authorization =
+                [System.Net.Http.Headers.AuthenticationHeaderValue]::new("Bearer", $Token)
+        }
+        $bytes = [Convert]::FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=")
+        $content = [System.Net.Http.ByteArrayContent]::new($bytes)
+        $content.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/png")
+        $form.Add($content, "file", "deployment-smoke-photo.png")
+
+        $response = $client.PostAsync((Join-Url $GatewayBaseUrl $path), $form).GetAwaiter().GetResult()
+        $status = [int]$response.StatusCode
+        $body = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        $passed = $status -eq 200
+        $errorMessage = if ($passed) { "" } else { $body }
+
+        if ($passed) {
+            try {
+                $json = $body | ConvertFrom-Json
+                if ([string]::IsNullOrWhiteSpace([string]$json.photoUrl)) {
+                    $passed = $false
+                    $errorMessage = "response missing photoUrl"
+                }
+            } catch {
+                $passed = $false
+                $errorMessage = "response was not JSON"
+            }
+        }
+
+        $results.Add([pscustomobject]@{
+            Feature = "student:photo-upload"
+            Method = "POST"
+            Path = $path
+            Status = $status
+            Passed = $passed
+            Error = $errorMessage
+        }) | Out-Null
+
+        if (-not $passed) {
+            Write-Host "FAILED student:photo-upload POST $path -> $status $errorMessage"
+        }
+    } finally {
+        $form.Dispose()
+        $client.Dispose()
+    }
+}
+
 $superToken = Resolve-Token $SuperadminToken $SuperadminEmail $SuperadminPassword "superadmin"
 $schoolAdminToken = Resolve-Token $AdminToken $AdminEmail $AdminPassword "admin"
 
@@ -153,6 +211,10 @@ $checks = @(
 foreach ($check in $checks) {
     $token = if ($check[2] -eq "super") { $superToken } else { $schoolAdminToken }
     Invoke-SmokeCheck $check[0] $check[1] $token @(200)
+}
+
+if ($RunPhotoUploadSmoke) {
+    Invoke-SmokePhotoUpload $StudentId $schoolAdminToken
 }
 
 $failures = @($results | Where-Object { -not $_.Passed })

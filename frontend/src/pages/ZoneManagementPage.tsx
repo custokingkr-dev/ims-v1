@@ -14,7 +14,7 @@ type ZoneRow = {
 };
 
 const defaultZoneForm = { name: '', code: '', city: '', state: '', description: '' };
-const defaultAdminForm = { fullName: '', email: '', temporaryPassword: 'Welcome@123' };
+const defaultAdminForm = { fullName: '', email: '', temporaryPassword: '' };
 
 export default function ZoneManagementPage() {
   const { can } = usePermissions();
@@ -157,7 +157,7 @@ export default function ZoneManagementPage() {
           <form onSubmit={createAdmin} style={{ background: '#fff', borderRadius: 12, padding: '2rem', width: 420, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Set zone admin</h2>
             {(['fullName', 'email', 'temporaryPassword'] as const).map(f => (
-              <input key={f} required type={f === 'email' ? 'email' : 'text'} placeholder={f === 'fullName' ? 'Full name' : f === 'temporaryPassword' ? 'Temporary password' : 'Email'}
+              <input key={f} required type={f === 'email' ? 'email' : f === 'temporaryPassword' ? 'password' : 'text'} minLength={f === 'temporaryPassword' ? 12 : undefined} autoComplete={f === 'temporaryPassword' ? 'new-password' : undefined} placeholder={f === 'fullName' ? 'Full name' : f === 'temporaryPassword' ? 'Temporary password' : 'Email'}
                 value={adminForm[f]} onChange={e => setAdminForm(p => ({ ...p, [f]: e.target.value }))}
                 style={{ padding: '0.5rem 0.75rem', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14 }} />
             ))}

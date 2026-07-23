@@ -557,12 +557,13 @@ try {
         $script:state.otherSchoolId = $otherSchoolId
 
         $otherAdminEmail = "logical-disabled-admin-$script:runId@custoking.local"
+        $temporaryPassword = "Logical!2026a"
         Invoke-Api "disabled school admin provision" "POST" "/api/v1/schools/$otherSchoolId/admin" $super.token "superadmin" @{
             fullName = "Logical Disabled Admin $script:runId"
             email = $otherAdminEmail
-            temporaryPassword = "password"
+            temporaryPassword = $temporaryPassword
         } @(201) | Out-Null
-        $otherAdmin = Login $otherAdminEmail "password" "disabled-school-admin"
+        $otherAdmin = Login $otherAdminEmail $temporaryPassword "disabled-school-admin"
         Invoke-Api "erp gate rejects disabled school" "GET" "/api/v1/classes?schoolId=$otherSchoolId" $otherAdmin.token "disabled-school-admin" $null @(403) | Out-Null
 
         foreach ($module in @("STUDENTS","ATTENDANCE","FEES","INVOICES","PAYMENTS","REPORTS","ORDERS","FIREFIGHTING")) {
@@ -583,12 +584,12 @@ try {
         $adminCreated = Invoke-Api "school admin provision" "POST" "/api/v1/schools/$schoolId/admin" $super.token "superadmin" @{
             fullName = "Logical Admin $script:runId"
             email = $adminEmail
-            temporaryPassword = "password"
+            temporaryPassword = $temporaryPassword
         } @(201)
         $operatorCreated = Invoke-Api "operator provision" "POST" "/api/v1/schools/$schoolId/operations-user" $super.token "superadmin" @{
             fullName = "Logical Operator $script:runId"
             email = $operatorEmail
-            temporaryPassword = "password"
+            temporaryPassword = $temporaryPassword
         } @(201)
         $operatorUserId = [long](Get-Value $operatorCreated.json "userId")
         $script:state.operatorUserId = $operatorUserId
@@ -599,8 +600,8 @@ try {
         $assignedIds = @(Get-Array $operatorSchools.json | ForEach-Object { [long](Get-Value $_ "schoolId" 0) })
         Assert-E2E "operator school assignment persisted" ($assignedIds -contains $schoolId) ($assignedIds -join ",")
 
-        $script:admin = Login $adminEmail "password" "school-admin"
-        $script:operator = Login $operatorEmail "password" "operator"
+        $script:admin = Login $adminEmail $temporaryPassword "school-admin"
+        $script:operator = Login $operatorEmail $temporaryPassword "operator"
         Assert-E2E "admin scoped to school" ([long](Get-Value $admin "branchId" 0) -eq $schoolId) "branchId=$(Get-Value $admin "branchId")"
         $operatorSchoolIds = @(Get-Value $operator "operatorSchools" | ForEach-Object { [long]$_ })
         Assert-E2E "operator token carries assigned school" ($operatorSchoolIds -contains $schoolId) "operatorSchools=$($operatorSchoolIds -join ',')"
