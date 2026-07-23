@@ -1,6 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate, Link } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Building2,
+  CheckCircle2,
+  ClipboardList,
+  KeyRound,
+  PackageCheck,
+  Plus,
+  Search,
+  Settings2,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserCog,
+  Users,
+  X,
+} from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -66,6 +82,8 @@ type UserDirectoryRow = {
   email?: string;
   role?: string;
 };
+
+type SchoolFilter = 'all' | 'active' | 'needsSetup';
 
 const defaultSchoolForm = {
   name: '',
@@ -136,65 +154,30 @@ function addAccountOnce(list: AccountSummary[], account: AccountSummary) {
   if (!exists) list.push(account);
 }
 
-function renderAccountEmails(
-  accounts: AccountSummary[],
-  fallback?: string,
-  actions?: {
-    onEdit?: (account: AccountSummary) => void;
-    onManageSchools?: (account: AccountSummary) => void;
-  },
-) {
-  const display = accounts.length > 0
-    ? accounts
-    : fallback
-      ? [{ userId: 0, email: fallback }]
-      : [];
+function displayAccounts(accounts: AccountSummary[], fallback?: string): AccountSummary[] {
+  if (accounts.length > 0) return accounts;
+  return fallback ? [{ userId: 0, email: fallback }] : [];
+}
 
-  if (display.length === 0) {
-    return <span style={{ color: '#9ca3af' }}>-</span>;
-  }
+function hasDisplayAccounts(accounts: AccountSummary[], fallback?: string) {
+  return displayAccounts(accounts, fallback).length > 0;
+}
 
-  return (
-    <div style={{ display: 'grid', gap: 4, minWidth: 180 }}>
-      {display.map((account) => (
-        <span
-          key={`${account.userId}:${account.email}`}
-          title={account.fullName || account.email}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            flexWrap: 'wrap',
-            overflowWrap: 'anywhere',
-            fontSize: 13,
-            lineHeight: 1.35,
-          }}
-        >
-          <span>{account.email}</span>
-          {account.userId > 0 && actions?.onEdit && (
-            <button
-              type="button"
-              className="ck-btn ck-btn-ghost"
-              style={{ padding: '2px 8px', fontSize: 11, minHeight: 0 }}
-              onClick={() => actions.onEdit?.(account)}
-            >
-              Edit
-            </button>
-          )}
-          {account.userId > 0 && actions?.onManageSchools && (
-            <button
-              type="button"
-              className="ck-btn ck-btn-ghost"
-              style={{ padding: '2px 8px', fontSize: 11, minHeight: 0 }}
-              onClick={() => actions.onManageSchools?.(account)}
-            >
-              Schools
-            </button>
-          )}
-        </span>
-      ))}
-    </div>
-  );
+function schoolInitials(school: SchoolRow) {
+  const words = school.name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  return (school.shortCode || school.name).slice(0, 2).toUpperCase();
+}
+
+function accountTitle(account: AccountSummary) {
+  return account.fullName || account.email;
+}
+
+function accountInitials(account: AccountSummary) {
+  const source = account.fullName || account.email;
+  const words = source.replace(/@.*/, '').trim().split(/[\s._-]+/).filter(Boolean);
+  if (words.length >= 2) return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  return source.slice(0, 2).toUpperCase();
 }
 
 export default function SchoolManagementPage() {
@@ -212,6 +195,9 @@ export default function SchoolManagementPage() {
   const [accountEditTarget, setAccountEditTarget] = useState<AccountEditTarget | null>(null);
   const [operatorSchoolTarget, setOperatorSchoolTarget] = useState<AccountSummary | null>(null);
   const [showModulesModal, setShowModulesModal] = useState(false);
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
+  const [focusedSchoolId, setFocusedSchoolId] = useState<number | null>(null);
   const [schoolForm, setSchoolForm] = useState(defaultSchoolForm);
   const [adminForm, setAdminForm] = useState(defaultAdminForm);
   const [opsForm, setOpsForm] = useState(defaultOpsForm);
@@ -256,6 +242,51 @@ export default function SchoolManagementPage() {
     }
     return Array.from(byKey.values()).sort((a, b) => a.email.localeCompare(b.email));
   }, [accountsBySchool, operatorUsers, schools]);
+
+  const setupGapCount = useMemo(() => schools.filter((school) => {
+    const accounts = accountsBySchool[school.id] ?? emptyAccounts;
+    return !hasDisplayAccounts(accounts.admins, school.adminEmail)
+      || !hasDisplayAccounts(accounts.operators, school.operationsEmail);
+  }).length, [accountsBySchool, schools]);
+
+  const unassignedOperatorCount = useMemo(
+    () => operatorAccounts.filter((account) => account.schoolIds.length === 0).length,
+    [operatorAccounts],
+  );
+
+  const operatorScopeCount = useMemo(
+    () => operatorAccounts.reduce((count, account) => count + account.schoolIds.length, 0),
+    [operatorAccounts],
+  );
+
+  const filteredSchools = useMemo(() => {
+    const query = schoolSearch.trim().toLowerCase();
+    return schools.filter((school) => {
+      const accounts = accountsBySchool[school.id] ?? emptyAccounts;
+      const adminAccounts = displayAccounts(accounts.admins, school.adminEmail);
+      const operatorAccountsForSchool = displayAccounts(accounts.operators, school.operationsEmail);
+      const needsSetup = adminAccounts.length === 0 || operatorAccountsForSchool.length === 0;
+      if (schoolFilter === 'active' && !school.active) return false;
+      if (schoolFilter === 'needsSetup' && !needsSetup) return false;
+      if (!query) return true;
+      const haystack = [
+        school.name,
+        school.shortCode,
+        school.city,
+        school.state,
+        ...adminAccounts.map((account) => `${account.email} ${account.fullName || ''}`),
+        ...operatorAccountsForSchool.map((account) => `${account.email} ${account.fullName || ''}`),
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [accountsBySchool, schoolFilter, schoolSearch, schools]);
+
+  const focusedSchool = useMemo(() => {
+    if (filteredSchools.length === 0) {
+      return focusedSchoolId == null ? schools[0] ?? null : schools.find((school) => school.id === focusedSchoolId) ?? schools[0] ?? null;
+    }
+    return filteredSchools.find((school) => school.id === focusedSchoolId) ?? filteredSchools[0];
+  }, [filteredSchools, focusedSchoolId, schools]);
 
   const loadSchools = async () => {
     try {
@@ -327,6 +358,9 @@ export default function SchoolManagementPage() {
   if (!can('school:read')) return <Navigate to="/dashboard" replace />;
 
   const accountsFor = (school: SchoolRow) => accountsBySchool[school.id] ?? emptyAccounts;
+  const focusedAccounts = focusedSchool ? accountsFor(focusedSchool) : emptyAccounts;
+  const focusedAdminAccounts = focusedSchool ? displayAccounts(focusedAccounts.admins, focusedSchool.adminEmail) : [];
+  const focusedOperatorAccounts = focusedSchool ? displayAccounts(focusedAccounts.operators, focusedSchool.operationsEmail) : [];
 
   const openAdminModal = (school: SchoolRow) => {
     setSelectedSchool(school);
@@ -397,9 +431,11 @@ export default function SchoolManagementPage() {
   const saveModuleSelections = async (schoolId: number, selections: Record<string, boolean>) => {
     const expanded = expandModuleGroupSelections(selections);
     await Promise.all(
-      MODULE_CHILD_CODES.map((code) =>
-        api.put(`/schools/${schoolId}/modules/${code}`, { enabled: !!expanded[code] })
-      )
+      MODULE_CHILD_CODES.map((code) => (
+        expanded[code]
+          ? api.put(`/schools/${schoolId}/modules/${code}`, { enabled: true })
+          : api.delete(`/schools/${schoolId}/modules/${code}`)
+      ))
     );
   };
 
@@ -556,21 +592,23 @@ export default function SchoolManagementPage() {
   };
 
   return (
-    <div className="page-stack">
-      <section className="hero">
+    <div className="page-stack sms-page">
+      <section className="hero sms-hero">
         <div className="hero-row">
-          <div>
+          <div className="sms-hero-copy">
             <div className="section-label">Superadmin rollout</div>
             <h1 className="page-title">School <em>management</em></h1>
             <p className="page-subtitle">Onboard branches, manage school admins, assign operators, and control module access.</p>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <div className="sms-hero-actions">
             <span className="badge">{schools.length} schools</span>
             <span className="badge">{activeCount} active</span>
             {can('school:create') && (
-              <button onClick={() => { setNotice(''); setError(''); setShowSchoolModal(true); }} className="ck-btn ck-btn-g">Add School</button>
+              <button type="button" onClick={() => { setNotice(''); setError(''); setShowSchoolModal(true); }} className="ck-btn ck-btn-g">
+                <Plus size={16} /> Add School
+              </button>
             )}
-            <Link to="/dashboard" className="ck-btn ck-btn-ghost">Back to Dashboard</Link>
+            <Link to="/dashboard" className="ck-btn ck-btn-ghost"><ArrowLeft size={16} /> Dashboard</Link>
           </div>
         </div>
       </section>
@@ -578,178 +616,290 @@ export default function SchoolManagementPage() {
       {notice && <div className="hint">{notice}</div>}
       {error && <div className="error" style={{ marginBottom: 12 }}>{error}</div>}
 
-      <div className="card">
-        <div className="section-head">
-          <div>
-            <h2>Schools</h2>
-            <p className="section-copy">Only SUPERADMIN can view and manage this onboarding table.</p>
-          </div>
+      <section className="sms-stats" aria-label="School management summary">
+        <div className="sms-stat">
+          <div className="sms-stat-icon g"><Building2 size={18} /></div>
+          <div className="sms-stat-body"><span>Total schools</span><strong>{schools.length}</strong><small>{activeCount} active</small></div>
         </div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>School Name</th>
-                <th>Short Code</th>
-                <th>City</th>
-                <th>Academic Start</th>
-                <th>Financial Start</th>
-                <th>Admin Emails</th>
-                <th>Operator Emails</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={9}>Loading schools...</td></tr>
-              )}
-              {!loading && schools.length === 0 && (
-                <tr><td colSpan={9}>No schools created yet.</td></tr>
-              )}
-              {schools.map((school) => {
-                const accounts = accountsFor(school);
-                return (
-                  <tr key={school.id}>
-                    <td>{school.name}</td>
-                    <td>{school.shortCode}</td>
-                    <td>{school.city || '-'}</td>
-                    <td>{academicStartLabel(school.academicYearStartMonth)}</td>
-                    <td>{financialStartLabel(school.financialYearStartMonth)}</td>
-                    <td>{renderAccountEmails(accounts.admins, school.adminEmail, {
-                      onEdit: (account) => openAccountEdit('ADMIN', account, school.name),
-                    })}</td>
-                    <td>{renderAccountEmails(accounts.operators, school.operationsEmail)}</td>
-                    <td><span className="badge">{school.active ? 'Active' : 'Inactive'}</span></td>
-                    <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {can('school:update') && (
-                        <button className="ck-btn ck-btn-ghost" onClick={() => openAdminModal(school)}>
-                          Add Admin
-                        </button>
-                      )}
-                      {can('school:update') && (
-                        <button className="ck-btn ck-btn-ghost" onClick={() => openModulesModal(school)}>
-                          Modules
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="sms-stat">
+          <div className="sms-stat-icon am"><SlidersHorizontal size={18} /></div>
+          <div className="sms-stat-body"><span>Setup gaps</span><strong>{setupGapCount}</strong><small>Missing admin or operator</small></div>
         </div>
-      </div>
+        <div className="sms-stat">
+          <div className="sms-stat-icon b"><Users size={18} /></div>
+          <div className="sms-stat-body"><span>Operators</span><strong>{operatorAccounts.length}</strong><small>{unassignedOperatorCount} unassigned</small></div>
+        </div>
+        <div className="sms-stat">
+          <div className="sms-stat-icon p"><PackageCheck size={18} /></div>
+          <div className="sms-stat-body"><span>School scopes</span><strong>{operatorScopeCount}</strong><small>Operator-school assignments</small></div>
+        </div>
+      </section>
 
-      <div className="card">
-        <div className="section-head">
-          <div>
-            <h2>Operator Accounts</h2>
-            <p className="section-copy">Create operators once, then assign the schools whose orders they can see.</p>
+      <section className="sms-console">
+        <div className="sms-main-panel">
+          <div className="sms-panel-head">
+            <div>
+              <h2>Schools</h2>
+              <p className="section-copy">Scan setup health and jump into the school-specific admin and module actions.</p>
+            </div>
+            <div className="sms-filter-row">
+              <label className="sms-search">
+                <Search size={16} />
+                <input
+                  aria-label="Search schools"
+                  value={schoolSearch}
+                  onChange={(event) => setSchoolSearch(event.target.value)}
+                  placeholder="Search school, city, admin..."
+                />
+              </label>
+              <div className="sms-segment" aria-label="School filter">
+                {([
+                  ['all', 'All'],
+                  ['active', 'Active'],
+                  ['needsSetup', 'Needs setup'],
+                ] as const).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={schoolFilter === value ? 'on' : ''}
+                    aria-pressed={schoolFilter === value}
+                    onClick={() => setSchoolFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
-          {can('school:update') && (
-            <button className="ck-btn ck-btn-g" onClick={openOpsModal}>
-              Create Operator
-            </button>
+
+          <div className="sms-school-list">
+            <div className="sms-school-row sms-school-header">
+              <span>School</span>
+              <span>Year</span>
+              <span>Admins</span>
+              <span>Operators</span>
+              <span>Actions</span>
+            </div>
+            {loading && <div className="sms-empty">Loading schools...</div>}
+            {!loading && schools.length === 0 && <div className="sms-empty">No schools created yet.</div>}
+            {!loading && schools.length > 0 && filteredSchools.length === 0 && <div className="sms-empty">No schools match the current filter.</div>}
+            {!loading && filteredSchools.map((school) => {
+              const accounts = accountsFor(school);
+              const adminAccounts = displayAccounts(accounts.admins, school.adminEmail);
+              const operatorAccountsForSchool = displayAccounts(accounts.operators, school.operationsEmail);
+              const needsAdmin = adminAccounts.length === 0;
+              const needsOperator = operatorAccountsForSchool.length === 0;
+              const selected = focusedSchool?.id === school.id;
+              return (
+                <div
+                  key={school.id}
+                  className={`sms-school-row ${selected ? 'selected' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Select ${school.name}`}
+                  onClick={() => setFocusedSchoolId(school.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      setFocusedSchoolId(school.id);
+                    }
+                  }}
+                >
+                  <div className="sms-school-title">
+                    <span className="sms-school-mark">{schoolInitials(school)}</span>
+                    <div>
+                      <strong>{school.name}</strong>
+                      <small>{school.shortCode || 'No code'}{school.city ? ` - ${school.city}` : ''}</small>
+                      <div className="sms-chip-row">
+                        <span className={`sms-chip ${school.active ? 'green' : 'red'}`}>{school.active ? 'Active' : 'Inactive'}</span>
+                        {needsAdmin && <span className="sms-chip amber">Needs admin</span>}
+                        {needsOperator && <span className="sms-chip amber">Needs operator</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <strong>{academicStartLabel(school.academicYearStartMonth)}</strong>
+                    <small>Financial: {financialStartLabel(school.financialYearStartMonth)}</small>
+                  </div>
+                  <div className="sms-chip-row">
+                    {adminAccounts.length === 0
+                      ? <span className="sms-chip red">No admin</span>
+                      : adminAccounts.slice(0, 2).map((account) => (
+                        <span className="sms-chip" key={`${school.id}:admin:${account.userId}:${account.email}`}>{account.email}</span>
+                      ))}
+                    {adminAccounts.length > 2 && <span className="sms-chip">{adminAccounts.length - 2} more</span>}
+                  </div>
+                  <div className="sms-chip-row">
+                    {operatorAccountsForSchool.length === 0
+                      ? <span className="sms-chip amber">No operator</span>
+                      : operatorAccountsForSchool.slice(0, 2).map((account) => (
+                        <span className="sms-chip blue" key={`${school.id}:operator:${account.userId}:${account.email}`}>{account.email}</span>
+                      ))}
+                    {operatorAccountsForSchool.length > 2 && <span className="sms-chip">{operatorAccountsForSchool.length - 2} more</span>}
+                  </div>
+                  <div className="sms-row-actions">
+                    {can('school:update') && (
+                      <button
+                        type="button"
+                        className={`ck-btn ${needsAdmin ? 'ck-btn-g' : 'ck-btn-ghost'} ck-btn-sm`}
+                        onClick={(event) => { event.stopPropagation(); openAdminModal(school); }}
+                      >
+                        <UserCog size={14} /> {needsAdmin ? 'Add Admin' : 'Admin'}
+                      </button>
+                    )}
+                    {can('school:update') && (
+                      <button
+                        type="button"
+                        className="ck-btn ck-btn-ghost ck-btn-sm"
+                        onClick={(event) => { event.stopPropagation(); openModulesModal(school); }}
+                      >
+                        <Settings2 size={14} /> Modules
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {focusedSchool && (
+            <div className="sms-school-detail">
+              <div className="sms-detail-cell">
+                <div className="sms-detail-label"><Building2 size={14} /> Selected school</div>
+                <strong>{focusedSchool.name}</strong>
+                <span>{focusedSchool.shortCode || 'No code'}{focusedSchool.city ? ` - ${focusedSchool.city}` : ''}</span>
+              </div>
+              <div className="sms-detail-cell">
+                <div className="sms-detail-label"><ShieldCheck size={14} /> Admin accounts</div>
+                <div className="sms-chip-row">
+                  {focusedAdminAccounts.length === 0
+                    ? <span className="sms-chip red">No admin assigned</span>
+                    : focusedAdminAccounts.map((account) => (
+                      <span className="sms-chip" key={`focused-admin:${account.userId}:${account.email}`}>
+                        {accountTitle(account)}
+                        {account.userId > 0 && (
+                          <button type="button" aria-label={`Edit admin ${accountTitle(account)}`} onClick={() => openAccountEdit('ADMIN', account, focusedSchool.name)}>Edit</button>
+                        )}
+                      </span>
+                    ))}
+                </div>
+              </div>
+              <div className="sms-detail-cell">
+                <div className="sms-detail-label"><ClipboardList size={14} /> Operator scope</div>
+                <div className="sms-chip-row">
+                  {focusedOperatorAccounts.length === 0
+                    ? <span className="sms-chip amber">No operator assigned</span>
+                    : focusedOperatorAccounts.map((account) => (
+                      <span className="sms-chip blue" key={`focused-operator:${account.userId}:${account.email}`}>
+                        {accountTitle(account)}
+                        {account.userId > 0 && (
+                          <button type="button" aria-label={`Manage schools for ${accountTitle(account)}`} onClick={() => openOperatorSchools(account)}>Schools</button>
+                        )}
+                      </span>
+                    ))}
+                </div>
+              </div>
+              <div className="sms-detail-actions">
+                {can('school:update') && <button type="button" className="ck-btn ck-btn-ghost" onClick={() => openAdminModal(focusedSchool)}><KeyRound size={15} /> Add Admin</button>}
+                {can('school:update') && <button type="button" className="ck-btn ck-btn-g" onClick={() => openModulesModal(focusedSchool)}><Settings2 size={15} /> Manage Modules</button>}
+              </div>
+            </div>
           )}
         </div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Operator</th>
-                <th>Name</th>
-                <th>Assigned Schools</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={4}>Loading operator accounts...</td></tr>
-              )}
-              {!loading && operatorAccounts.length === 0 && (
-                <tr><td colSpan={4}>No operator accounts created yet.</td></tr>
-              )}
-              {operatorAccounts.map((account) => (
-                <tr key={account.userId}>
-                  <td style={{ overflowWrap: 'anywhere' }}>{account.email}</td>
-                  <td>{account.fullName || '-'}</td>
-                  <td style={{ minWidth: 220 }}>
-                    {account.schoolNames.length > 0 ? (
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {account.schoolNames.map((name, index) => (
-                          <span className="badge" key={`${account.schoolIds[index]}:${name}`}>{name}</span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
-                    )}
-                  </td>
-                  <td style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="ck-btn ck-btn-ghost"
-                      onClick={() => openAccountEdit('OPERATIONS', account, 'Operator Accounts')}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="ck-btn ck-btn-ghost"
-                      onClick={() => openOperatorSchools(account)}
-                    >
-                      Schools
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+
+        <aside className="sms-operator-panel" aria-label="Operator accounts">
+          <div className="sms-panel-head compact">
+            <div>
+              <h2>Operator accounts</h2>
+              <p className="section-copy">Assign each operator to the schools whose orders they can see.</p>
+            </div>
+            {can('school:update') && (
+              <button type="button" className="ck-btn ck-btn-b ck-btn-sm" onClick={openOpsModal}>
+                <Plus size={14} /> Create
+              </button>
+            )}
+          </div>
+
+          <div className="sms-operator-list">
+            {loading && <div className="sms-empty">Loading operator accounts...</div>}
+            {!loading && operatorAccounts.length === 0 && <div className="sms-empty">No operator accounts created yet.</div>}
+            {!loading && operatorAccounts.map((account) => (
+              <div className="sms-operator-row" key={account.userId}>
+                <div className="sms-operator-top">
+                  <div className="sms-operator-identity">
+                    <span className="sms-account-mark">{accountInitials(account)}</span>
+                    <div>
+                      <strong>{account.fullName || 'Operator account'}</strong>
+                      <small>{account.email}</small>
+                    </div>
+                  </div>
+                  <span className={`sms-chip ${account.schoolIds.length === 0 ? 'amber' : 'green'}`}>
+                    {account.schoolIds.length === 0 ? 'Unassigned' : `${account.schoolIds.length} schools`}
+                  </span>
+                </div>
+                <div className="sms-chip-row">
+                  {account.schoolNames.slice(0, 3).map((name, index) => (
+                    <span className="sms-chip" key={`${account.userId}:school:${account.schoolIds[index]}`}>{name}</span>
+                  ))}
+                  {account.schoolNames.length > 3 && <span className="sms-chip">{account.schoolNames.length - 3} more</span>}
+                  {account.schoolNames.length === 0 && <span className="sms-chip amber">Assign schools</span>}
+                </div>
+                <div className="sms-operator-actions">
+                  <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openAccountEdit('OPERATIONS', account, 'Operator Accounts')}>
+                    <UserCog size={14} /> Edit
+                  </button>
+                  <button type="button" className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openOperatorSchools(account)}>
+                    <CheckCircle2 size={14} /> Schools
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </section>
 
       {showSchoolModal && (
         <div className="ck-modal-bg" onClick={() => !saving && setShowSchoolModal(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Add school" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Add school</div>
-              <button type="button" className="ck-modal-x" onClick={() => !saving && setShowSchoolModal(false)}>x</button>
+              <button type="button" className="ck-modal-x" aria-label="Close add school" onClick={() => !saving && setShowSchoolModal(false)}><X size={16} /></button>
             </div>
             <form onSubmit={submitSchool}>
               <div className="ck-modal-body">
                 <div className="ck-form-grid ck-fg-2">
-                  <div className="ck-field"><label>School Name</label><input value={schoolForm.name} onChange={(e) => setSchoolForm((s) => ({ ...s, name: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Short Code</label><input value={schoolForm.shortCode} onChange={(e) => setSchoolForm((s) => ({ ...s, shortCode: e.target.value.toUpperCase() }))} required /></div>
-                  <div className="ck-field"><label>City</label><input value={schoolForm.city} onChange={(e) => setSchoolForm((s) => ({ ...s, city: e.target.value }))} /></div>
-                  <div className="ck-field"><label>State</label><input value={schoolForm.state} onChange={(e) => setSchoolForm((s) => ({ ...s, state: e.target.value }))} /></div>
-                  <div className="ck-field"><label>No. of Classes</label><input type="number" min={1} max={MAX_CLASS_COUNT} value={schoolForm.classCount} onChange={(e) => setSchoolForm((s) => ({ ...s, classCount: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Sections per Class</label><input type="number" min={1} max={26} value={schoolForm.sectionCount} onChange={(e) => setSchoolForm((s) => ({ ...s, sectionCount: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Academic Year Starts</label><select value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-                  <div className="ck-field"><label>Financial Year Starts</label><select value={schoolForm.financialYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, financialYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-                  <div className="ck-field"><label>Contact Email</label><input type="email" value={schoolForm.contactEmail} onChange={(e) => setSchoolForm((s) => ({ ...s, contactEmail: e.target.value }))} /></div>
-                  <div className="ck-field"><label>Contact Phone</label><input value={schoolForm.contactPhone} onChange={(e) => setSchoolForm((s) => ({ ...s, contactPhone: e.target.value }))} /></div>
+                  <div className="ck-field"><label>School Name</label><input aria-label="School Name" value={schoolForm.name} onChange={(e) => setSchoolForm((s) => ({ ...s, name: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Short Code</label><input aria-label="Short Code" value={schoolForm.shortCode} onChange={(e) => setSchoolForm((s) => ({ ...s, shortCode: e.target.value.toUpperCase() }))} required /></div>
+                  <div className="ck-field"><label>City</label><input aria-label="City" value={schoolForm.city} onChange={(e) => setSchoolForm((s) => ({ ...s, city: e.target.value }))} /></div>
+                  <div className="ck-field"><label>State</label><input aria-label="State" value={schoolForm.state} onChange={(e) => setSchoolForm((s) => ({ ...s, state: e.target.value }))} /></div>
+                  <div className="ck-field"><label>No. of Classes</label><input aria-label="No. of Classes" type="number" min={1} max={MAX_CLASS_COUNT} value={schoolForm.classCount} onChange={(e) => setSchoolForm((s) => ({ ...s, classCount: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Sections per Class</label><input aria-label="Sections per Class" type="number" min={1} max={26} value={schoolForm.sectionCount} onChange={(e) => setSchoolForm((s) => ({ ...s, sectionCount: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Academic Year Starts</label><select aria-label="Academic Year Starts" value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                  <div className="ck-field"><label>Financial Year Starts</label><select aria-label="Financial Year Starts" value={schoolForm.financialYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, financialYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                  <div className="ck-field"><label>Contact Email</label><input aria-label="Contact Email" type="email" value={schoolForm.contactEmail} onChange={(e) => setSchoolForm((s) => ({ ...s, contactEmail: e.target.value }))} /></div>
+                  <div className="ck-field"><label>Contact Phone</label><input aria-label="Contact Phone" value={schoolForm.contactPhone} onChange={(e) => setSchoolForm((s) => ({ ...s, contactPhone: e.target.value }))} /></div>
                 </div>
 
-                <div style={{ marginTop: 20, borderTop: '1px solid var(--border, #e5e7eb)', paddingTop: 16 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Enabled Modules</div>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 12 }}>
+                <div className="sms-modal-section">
+                  <div className="sms-modal-section-title">Enabled modules</div>
+                  <div className="sms-modal-section-copy">
                     Select module groups for this school.
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                  <div className="sms-choice-grid">
                     {MODULE_GROUPS.map((m) => (
                       <label
                         key={m.code}
-                        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: moduleSelections[m.code] ? 'var(--g1, #f0fdf4)' : '#fafafa' }}
+                        className={`sms-choice ${moduleSelections[m.code] ? 'selected' : ''}`}
                       >
                         <input
+                          aria-label={m.label}
                           type="checkbox"
                           checked={!!moduleSelections[m.code]}
                           onChange={(e) => setModuleSelections((s) => ({ ...s, [m.code]: e.target.checked }))}
-                          style={{ marginTop: 2, accentColor: 'var(--g, #16a34a)' }}
                         />
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{m.icon} {m.label}</div>
-                          <div style={{ fontSize: 11, color: '#6b7280' }}>{m.desc}</div>
+                          <div className="sms-choice-title">{m.icon} {m.label}</div>
+                          <div className="sms-choice-copy">{m.desc}</div>
                         </div>
                       </label>
                     ))}
@@ -767,20 +917,20 @@ export default function SchoolManagementPage() {
 
       {showAdminModal && selectedSchool && (
         <div className="ck-modal-bg" onClick={() => !saving && setShowAdminModal(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Add admin account" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div>
                 <div className="ck-modal-title">Add admin account</div>
                 <div className="section-copy" style={{ marginTop: 6 }}>{selectedSchool.name}</div>
               </div>
-              <button type="button" className="ck-modal-x" onClick={() => !saving && setShowAdminModal(false)}>x</button>
+              <button type="button" className="ck-modal-x" aria-label="Close add admin account" onClick={() => !saving && setShowAdminModal(false)}><X size={16} /></button>
             </div>
             <form onSubmit={submitAdmin}>
               <div className="ck-modal-body">
                 <div className="ck-form-grid">
-                  <div className="ck-field"><label>Full Name</label><input value={adminForm.fullName} onChange={(e) => setAdminForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Email</label><input type="email" value={adminForm.email} onChange={(e) => setAdminForm((s) => ({ ...s, email: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Temporary Password</label><input type="password" minLength={12} autoComplete="new-password" value={adminForm.temporaryPassword} onChange={(e) => setAdminForm((s) => ({ ...s, temporaryPassword: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Full Name</label><input aria-label="Full Name" value={adminForm.fullName} onChange={(e) => setAdminForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Email</label><input aria-label="Email" type="email" value={adminForm.email} onChange={(e) => setAdminForm((s) => ({ ...s, email: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Temporary Password</label><input aria-label="Temporary Password" type="password" minLength={12} autoComplete="new-password" value={adminForm.temporaryPassword} onChange={(e) => setAdminForm((s) => ({ ...s, temporaryPassword: e.target.value }))} required /></div>
                 </div>
               </div>
               <div className="ck-modal-foot">
@@ -794,37 +944,36 @@ export default function SchoolManagementPage() {
 
       {showOpsModal && (
         <div className="ck-modal-bg" onClick={() => !saving && setShowOpsModal(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Create operator account" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 660 }}>
             <div className="ck-modal-h">
               <div>
                 <div className="ck-modal-title">Create operator account</div>
                 <div className="section-copy" style={{ marginTop: 6 }}>Select the schools this operator can manage.</div>
               </div>
-              <button type="button" className="ck-modal-x" onClick={() => !saving && setShowOpsModal(false)}>x</button>
+              <button type="button" className="ck-modal-x" aria-label="Close create operator account" onClick={() => !saving && setShowOpsModal(false)}><X size={16} /></button>
             </div>
             <form onSubmit={submitOps}>
               <div className="ck-modal-body">
                 <div className="ck-form-grid">
-                  <div className="ck-field"><label>Full Name</label><input value={opsForm.fullName} onChange={(e) => setOpsForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Email</label><input type="email" value={opsForm.email} onChange={(e) => setOpsForm((s) => ({ ...s, email: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Temporary Password</label><input type="password" minLength={12} autoComplete="new-password" value={opsForm.temporaryPassword} onChange={(e) => setOpsForm((s) => ({ ...s, temporaryPassword: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Full Name</label><input aria-label="Full Name" value={opsForm.fullName} onChange={(e) => setOpsForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Email</label><input aria-label="Email" type="email" value={opsForm.email} onChange={(e) => setOpsForm((s) => ({ ...s, email: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Temporary Password</label><input aria-label="Temporary Password" type="password" minLength={12} autoComplete="new-password" value={opsForm.temporaryPassword} onChange={(e) => setOpsForm((s) => ({ ...s, temporaryPassword: e.target.value }))} required /></div>
                 </div>
-                <div style={{ marginTop: 18 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>Schools</div>
-                  <div style={{ display: 'grid', gap: 10, maxHeight: 260, overflow: 'auto' }}>
+                <div className="sms-modal-section">
+                  <div className="sms-modal-section-title">Schools</div>
+                  <div className="sms-choice-list">
                     {schools.map((school) => (
                       <label
                         key={school.id}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: opsSchoolIds.has(school.id) ? 'var(--g1, #f0fdf4)' : '#fafafa' }}
+                        className={`sms-choice compact ${opsSchoolIds.has(school.id) ? 'selected' : ''}`}
                       >
                         <input
                           type="checkbox"
                           checked={opsSchoolIds.has(school.id)}
                           onChange={(e) => toggleOpsCreateSchool(school.id, e.target.checked)}
-                          style={{ accentColor: 'var(--g, #16a34a)' }}
                         />
-                        <span style={{ fontWeight: 600, fontSize: 13 }}>{school.name}</span>
-                        <span style={{ color: '#6b7280', fontSize: 12 }}>{school.shortCode || school.city || ''}</span>
+                        <span className="sms-choice-title">{school.name}</span>
+                        <span className="sms-choice-copy">{school.shortCode || school.city || ''}</span>
                       </label>
                     ))}
                   </div>
@@ -841,7 +990,7 @@ export default function SchoolManagementPage() {
 
       {accountEditTarget && (
         <div className="ck-modal-bg" onClick={() => !saving && setAccountEditTarget(null)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label={`Edit ${accountEditTarget.role === 'ADMIN' ? 'admin' : 'operator'} account`} onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div>
                 <div className="ck-modal-title">Edit {accountEditTarget.role === 'ADMIN' ? 'admin' : 'operator'} account</div>
@@ -849,14 +998,14 @@ export default function SchoolManagementPage() {
                   <div className="section-copy" style={{ marginTop: 6 }}>{accountEditTarget.contextLabel}</div>
                 )}
               </div>
-              <button type="button" className="ck-modal-x" onClick={() => !saving && setAccountEditTarget(null)}>x</button>
+              <button type="button" className="ck-modal-x" aria-label="Close edit account" onClick={() => !saving && setAccountEditTarget(null)}><X size={16} /></button>
             </div>
             <form onSubmit={submitAccountEdit}>
               <div className="ck-modal-body">
                 <div className="ck-form-grid">
-                  <div className="ck-field"><label>Full Name</label><input value={accountEditForm.fullName} onChange={(e) => setAccountEditForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>Email</label><input type="email" value={accountEditForm.email} onChange={(e) => setAccountEditForm((s) => ({ ...s, email: e.target.value }))} required /></div>
-                  <div className="ck-field"><label>New Password</label><input type="password" minLength={8} autoComplete="new-password" value={accountEditForm.password} onChange={(e) => setAccountEditForm((s) => ({ ...s, password: e.target.value }))} placeholder="Leave blank to keep current password" /></div>
+                  <div className="ck-field"><label>Full Name</label><input aria-label="Full Name" value={accountEditForm.fullName} onChange={(e) => setAccountEditForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Email</label><input aria-label="Email" type="email" value={accountEditForm.email} onChange={(e) => setAccountEditForm((s) => ({ ...s, email: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>New Password</label><input aria-label="New Password" type="password" minLength={8} autoComplete="new-password" value={accountEditForm.password} onChange={(e) => setAccountEditForm((s) => ({ ...s, password: e.target.value }))} placeholder="Leave blank to keep current password" /></div>
                 </div>
               </div>
               <div className="ck-modal-foot">
@@ -870,32 +1019,31 @@ export default function SchoolManagementPage() {
 
       {operatorSchoolTarget && (
         <div className="ck-modal-bg" onClick={() => !saving && setOperatorSchoolTarget(null)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Operator schools" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 640 }}>
             <div className="ck-modal-h">
               <div>
                 <div className="ck-modal-title">Operator schools</div>
                 <div className="section-copy" style={{ marginTop: 6 }}>{operatorSchoolTarget.email}</div>
               </div>
-              <button type="button" className="ck-modal-x" onClick={() => !saving && setOperatorSchoolTarget(null)}>x</button>
+              <button type="button" className="ck-modal-x" aria-label="Close operator schools" onClick={() => !saving && setOperatorSchoolTarget(null)}><X size={16} /></button>
             </div>
             <div className="ck-modal-body">
               {operatorSchoolsLoading ? (
                 <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280' }}>Loading schools...</div>
               ) : (
-                <div style={{ display: 'grid', gap: 10, maxHeight: 360, overflow: 'auto' }}>
+                <div className="sms-choice-list tall">
                   {schools.map((school) => (
                     <label
                       key={school.id}
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: operatorSchoolIds.has(school.id) ? 'var(--g1, #f0fdf4)' : '#fafafa' }}
+                      className={`sms-choice compact ${operatorSchoolIds.has(school.id) ? 'selected' : ''}`}
                     >
                       <input
                         type="checkbox"
                         checked={operatorSchoolIds.has(school.id)}
                         onChange={(e) => toggleOperatorSchool(school.id, e.target.checked)}
-                        style={{ accentColor: 'var(--g, #16a34a)' }}
                       />
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>{school.name}</span>
-                      <span style={{ color: '#6b7280', fontSize: 12 }}>{school.shortCode || school.city || ''}</span>
+                      <span className="sms-choice-title">{school.name}</span>
+                      <span className="sms-choice-copy">{school.shortCode || school.city || ''}</span>
                     </label>
                   ))}
                 </div>
@@ -913,37 +1061,37 @@ export default function SchoolManagementPage() {
 
       {showModulesModal && selectedSchool && (
         <div className="ck-modal-bg" onClick={() => !saving && setShowModulesModal(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Manage modules" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 600 }}>
             <div className="ck-modal-h">
               <div>
                 <div className="ck-modal-title">Manage modules</div>
                 <div className="section-copy" style={{ marginTop: 6 }}>{selectedSchool.name}</div>
               </div>
-              <button type="button" className="ck-modal-x" onClick={() => !saving && setShowModulesModal(false)}>x</button>
+              <button type="button" className="ck-modal-x" aria-label="Close manage modules" onClick={() => !saving && setShowModulesModal(false)}><X size={16} /></button>
             </div>
             <div className="ck-modal-body">
               {modulesLoading ? (
                 <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280' }}>Loading modules...</div>
               ) : (
                 <>
-                  <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+                  <div className="sms-modal-section-copy" style={{ marginBottom: 16 }}>
                     Toggle the module groups visible to this school.
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                  <div className="sms-choice-grid">
                     {MODULE_GROUPS.map((m) => (
                       <label
                         key={m.code}
-                        style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: currentEntitlements[m.code] ? 'var(--g1, #f0fdf4)' : '#fafafa' }}
+                        className={`sms-choice ${currentEntitlements[m.code] ? 'selected' : ''}`}
                       >
                         <input
+                          aria-label={m.label}
                           type="checkbox"
                           checked={!!currentEntitlements[m.code]}
                           onChange={(e) => setCurrentEntitlements((s) => ({ ...s, [m.code]: e.target.checked }))}
-                          style={{ marginTop: 2, accentColor: 'var(--g, #16a34a)' }}
                         />
                         <div>
-                          <div style={{ fontWeight: 600, fontSize: 13 }}>{m.icon} {m.label}</div>
-                          <div style={{ fontSize: 11, color: '#6b7280' }}>{m.desc}</div>
+                          <div className="sms-choice-title">{m.icon} {m.label}</div>
+                          <div className="sms-choice-copy">{m.desc}</div>
                         </div>
                       </label>
                     ))}
