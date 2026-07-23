@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field } from '../ui';
+import { useAuth } from '../../../contexts/AuthContext';
+import { usePermissions } from '../../../hooks/usePermissions';
+import { ModuleShell, Field, Stat } from '../ui';
 import { todayIso } from '../utils';
 import { SectionRail } from './attendance/SectionRail';
 import { SectionRoster } from './attendance/SectionRoster';
@@ -32,6 +34,11 @@ function errMessage(err: unknown, fallback: string): string {
 }
 
 export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
+  const { user } = useAuth();
+  const { can } = usePermissions();
+  const role = String(user?.role || '').toUpperCase();
+  const canManageAttendance = role === 'SUPERADMIN' || can('platform:admin') || can('attendance:manage');
+
   const [summary, setSummary] = useState<AttendanceDailySummaryResponse>(EMPTY_SUMMARY);
   const [currentDate, setCurrentDate] = useState(todayIso());
 
@@ -47,6 +54,38 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   const [error, setError] = useState('');
 
   const scoped = schoolScopedParams || {};
+  const sections = summary.sections || [];
+  const attendanceTotals = sections.reduce(
+    (acc, section) => {
+      const marked =
+        Number(section.presentCount || 0) +
+        Number(section.lateCount || 0) +
+        Number(section.leaveCount || 0) +
+        Number(section.absentCount || 0);
+      acc.totalStudents += Number(section.totalStudents || 0);
+      acc.marked += marked;
+      acc.present += Number(section.presentCount || 0);
+      acc.late += Number(section.lateCount || 0);
+      acc.leave += Number(section.leaveCount || 0);
+      acc.absent += Number(section.absentCount || 0);
+      if (section.status === 'Submitted' || section.locked) acc.submitted += 1;
+      if (section.status === 'Saved') acc.saved += 1;
+      return acc;
+    },
+    { totalStudents: 0, marked: 0, present: 0, late: 0, leave: 0, absent: 0, submitted: 0, saved: 0 },
+  );
+  const unmarked = Math.max(0, attendanceTotals.totalStudents - attendanceTotals.marked);
+  const pendingSections = Math.max(0, sections.length - attendanceTotals.submitted);
+  const completionPercent = attendanceTotals.totalStudents > 0
+    ? Math.round((attendanceTotals.marked / attendanceTotals.totalStudents) * 100)
+    : 0;
+
+  const ensureCanManage = (): boolean => {
+    if (canManageAttendance) return true;
+    setError('You need attendance:manage permission to change or submit attendance.');
+    setToast('');
+    return false;
+  };
 
   const loadSummary = async (dateValue: string) => {
     setSummaryLoading(true);
@@ -64,13 +103,12 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
 
   useEffect(() => {
     void loadSummary(currentDate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDate]);
 
-  // Auto-select the first section once the summary loads so the detail (right) pane is
-  // populated instead of showing the empty "Select a section" placeholder.
   useEffect(() => {
-    if (!selectedSection && !summaryLoading && (summary.sections?.length ?? 0) > 0) {
-      void openSection(summary.sections[0]);
+    if (!selectedSection && !summaryLoading && sections.length > 0) {
+      void openSection(sections[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary.sections, summaryLoading]);
@@ -116,17 +154,31 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   };
 
   const setStatus = (studentId: number, status: EditableAttendanceStatus) =>
-    setRecords((prev) => (prev ? prev.map((r) => (r.studentId === studentId ? { ...r, status } : r)) : prev));
+    setRecords((prev) => {
+      if (!canManageAttendance) return prev;
+      return prev ? prev.map((r) => (r.studentId === studentId ? { ...r, status } : r)) : prev;
+    });
 
   const setRemarks = (studentId: number, remarks: string) =>
-    setRecords((prev) => (prev ? prev.map((r) => (r.studentId === studentId ? { ...r, remarks } : r)) : prev));
+    setRecords((prev) => {
+      if (!canManageAttendance) return prev;
+      return prev ? prev.map((r) => (r.studentId === studentId ? { ...r, remarks } : r)) : prev;
+    });
 
   const markAllPresent = () => {
+    if (!ensureCanManage()) return;
     setRecords((prev) => (prev ? prev.map((r) => ({ ...r, status: 'PRESENT' as const })) : prev));
     setToast('All students marked as present');
   };
 
+  const markUnmarkedAbsent = () => {
+    if (!ensureCanManage()) return;
+    setRecords((prev) => (prev ? prev.map((r) => (r.status === null ? { ...r, status: 'ABSENT' as const } : r)) : prev));
+    setToast('Unmarked students marked as absent');
+  };
+
   const resetChanges = () => {
+    if (!ensureCanManage()) return;
     if (register) {
       setRecords(toRecords(register));
       setToast('Changes reset');
@@ -147,6 +199,7 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
 
   const save = async () => {
     if (!selectedSection || !records) return;
+    if (!ensureCanManage()) return;
     setSaving('save');
     setError('');
     setToast('');
@@ -165,8 +218,9 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
 
   const submitSection = async () => {
     if (!selectedSection || !records) return;
+    if (!ensureCanManage()) return;
     if (records.some((r) => r.status === null)) {
-      setError('Every student must be marked (Present, Late, Leave or Absent) before submitting');
+      setError('Every student must be marked as Present, Late, Leave, or Absent before submitting.');
       return;
     }
     setSaving('submit');
@@ -192,12 +246,13 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   };
 
   const submitDay = async () => {
+    if (!ensureCanManage()) return;
     setSubmittingDay(true);
     setError('');
     setToast('');
     try {
       await api.post('/attendance/submit-day', { date: currentDate, ...scoped });
-      setToast(`Submitted attendance for ${summary.dateLabel}`);
+      setToast(`Submitted attendance for ${summary.dateLabel || currentDate}`);
       await loadSummary(currentDate);
       await onRefresh();
     } catch (err) {
@@ -210,70 +265,107 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   return (
     <ModuleShell
       title="Attendance"
-      subtitle={`${summary.dateLabel || '—'} · ${Number(summary.overallPercent || 0).toFixed(1)}% overall`}
+      subtitle={`${summary.dateLabel || currentDate} - ${Number(summary.overallPercent || 0).toFixed(1)}% present`}
       actions={
-        <button
-          className="ck-btn ck-btn-g"
-          disabled={!summary.allSubmitted || submittingDay}
-          onClick={submitDay}
-        >
-          Submit today's attendance
-        </button>
+        <div className="ck-att-header-actions">
+          <span className={`ck-status ${canManageAttendance ? 'sapproved' : 'sneutral'}`}>
+            {canManageAttendance ? 'Write access' : 'Read-only'}
+          </span>
+          <button type="button" className="ck-btn ck-btn-ghost" onClick={() => handleDateChange(todayIso())}>
+            Today
+          </button>
+          <button
+            type="button"
+            className="ck-btn ck-btn-g"
+            disabled={!canManageAttendance || !summary.allSubmitted || submittingDay}
+            onClick={submitDay}
+            title={!canManageAttendance ? 'Attendance manage permission is required' : !summary.allSubmitted ? 'Submit all sections first' : 'Submit the school day'}
+          >
+            {submittingDay ? 'Submitting...' : 'Submit day'}
+          </button>
+        </div>
       }
     >
-      {summary.nonWorkingDay && (
-        <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}>
-          <span>⚠</span>
-          <div>This is a non-working day. Attendance can still be recorded.</div>
-        </div>
-      )}
-      {toast && (
-        <div className="ck-alert ck-alert-g" style={{ marginBottom: 16 }}>
-          <span>✓</span>
-          <div>{toast}</div>
-        </div>
-      )}
-      {error && (
-        <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}>
-          <span>!</span>
-          <div>{error}</div>
-        </div>
-      )}
-
-      <div style={{ marginBottom: 16 }}>
-        <Field label="Date">
-          <input type="date" value={currentDate} onChange={(e) => handleDateChange(e.target.value)} />
-        </Field>
-      </div>
-
-      <div className={`ck-att-layout${selectedSection ? ' ck-att-layout--detail' : ''}`}>
-        <SectionRail
-          sections={summary.sections || []}
-          selectedSectionId={selectedSection?.sectionId ?? null}
-          loading={summaryLoading}
-          onSelect={openSection}
-        />
-        {selectedSection ? (
-          <SectionRoster
-            register={register}
-            records={records}
-            loading={rosterLoading}
-            saving={saving}
-            onStatusChange={setStatus}
-            onRemarksChange={setRemarks}
-            onMarkAllPresent={markAllPresent}
-            onReset={resetChanges}
-            onSave={save}
-            onSubmit={submitSection}
-            onBack={backToRail}
-          />
-        ) : (
-          <div className="ck-att-roster">
-            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--ink3)' }}>
-              Select a section to mark attendance.
-            </div>
+      <div className="ck-panel-stack">
+        {summary.nonWorkingDay && (
+          <div className="ck-alert ck-alert-am">
+            <span>!</span>
+            <div>This is a non-working day. Attendance can still be recorded.</div>
           </div>
         )}
+        {!canManageAttendance && (
+          <div className="ck-alert ck-alert-am">
+            <span>i</span>
+            <div>You can review attendance, reports, and absentees. Marking and submission require attendance:manage.</div>
+          </div>
+        )}
+        {toast && (
+          <div className="ck-alert ck-alert-g">
+            <span>OK</span>
+            <div>{toast}</div>
+          </div>
+        )}
+        {error && (
+          <div className="ck-alert ck-alert-re">
+            <span>!</span>
+            <div>{error}</div>
+          </div>
+        )}
+
+        <div className="ck-card ck-att-day-card">
+          <div className="ck-att-day-grid">
+            <Field label="Attendance date">
+              <input type="date" value={currentDate} onChange={(e) => handleDateChange(e.target.value)} />
+            </Field>
+            <div className="ck-att-day-note">
+              <strong>
+                {summary.allSubmitted
+                  ? 'Ready for day submission'
+                  : `${pendingSections} section${pendingSections === 1 ? '' : 's'} still open`}
+              </strong>
+              <span>
+                {completionPercent}% of students marked across {sections.length} section{sections.length === 1 ? '' : 's'}.
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="ck-stats ck-s4 ck-att-kpis">
+          <Stat label="Sections" value={sections.length} sub={`${attendanceTotals.submitted} submitted, ${attendanceTotals.saved} saved`} pill={`${pendingSections} open`} tone={pendingSections > 0 ? 'orange' : 'green'} />
+          <Stat label="Marked" value={`${completionPercent}%`} sub={`${attendanceTotals.marked} of ${attendanceTotals.totalStudents} students`} pill={`${unmarked} unmarked`} tone={unmarked > 0 ? 'orange' : 'green'} />
+          <Stat label="Present today" value={attendanceTotals.present + attendanceTotals.late} sub={`${attendanceTotals.present} present, ${attendanceTotals.late} late`} pill={`${Number(summary.overallPercent || 0).toFixed(1)}%`} tone="blue" />
+          <Stat label="Exceptions" value={attendanceTotals.absent + attendanceTotals.leave} sub={`${attendanceTotals.absent} absent, ${attendanceTotals.leave} excused`} pill="Follow up" tone={attendanceTotals.absent > 0 ? 'red' : 'green'} />
+        </div>
+
+        <div className={`ck-att-layout${selectedSection ? ' ck-att-layout--detail' : ''}`}>
+          <SectionRail
+            sections={sections}
+            selectedSectionId={selectedSection?.sectionId ?? null}
+            loading={summaryLoading}
+            onSelect={openSection}
+          />
+          {selectedSection ? (
+            <SectionRoster
+              register={register}
+              records={records}
+              loading={rosterLoading}
+              saving={saving}
+              readOnly={!canManageAttendance}
+              onStatusChange={setStatus}
+              onRemarksChange={setRemarks}
+              onMarkAllPresent={markAllPresent}
+              onMarkUnmarkedAbsent={markUnmarkedAbsent}
+              onReset={resetChanges}
+              onSave={save}
+              onSubmit={submitSection}
+              onBack={backToRail}
+            />
+          ) : (
+            <div className="ck-att-roster">
+              <div className="ck-att-empty">Select a section to review or mark attendance.</div>
+            </div>
+          )}
+        </div>
       </div>
     </ModuleShell>
   );

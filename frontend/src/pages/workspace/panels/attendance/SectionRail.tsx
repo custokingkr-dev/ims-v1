@@ -24,9 +24,7 @@ export function SectionRail({ sections, selectedSectionId, loading, onSelect }: 
   if (sections.length === 0) {
     return (
       <div className="ck-att-rail">
-        <div style={{ padding: '24px 8px', color: 'var(--ink3)', textAlign: 'center' }}>
-          No sections found for this date.
-        </div>
+        <div className="ck-att-empty">No sections found for this date.</div>
       </div>
     );
   }
@@ -35,6 +33,12 @@ export function SectionRail({ sections, selectedSectionId, loading, onSelect }: 
     <div className="ck-att-rail" role="list">
       {sections.map((section) => {
         const selected = section.sectionId === selectedSectionId;
+        const marked =
+          Number(section.presentCount || 0) +
+          Number(section.lateCount || 0) +
+          Number(section.leaveCount || 0) +
+          Number(section.absentCount || 0);
+        const unmarked = Math.max(0, Number(section.totalStudents || 0) - marked);
         const pending = section.status === 'Pending';
         const statusClass =
           section.status === 'Submitted' ? 'sapproved' : section.status === 'Saved' ? 'spending' : 'sneutral';
@@ -42,28 +46,34 @@ export function SectionRail({ sections, selectedSectionId, loading, onSelect }: 
           'ck-att-rail-item' +
           (selected ? ' ck-att-rail-item--selected' : '') +
           (section.locked ? ' ck-att-rail-item--locked' : '');
+
         return (
-          <button
-            key={section.sectionId}
-            type="button"
-            role="listitem"
-            className={className}
-            aria-current={selected}
-            disabled={section.locked}
-            onClick={() => !section.locked && onSelect(section)}
-          >
-            <div className="ck-att-rail-name">{section.sectionName}</div>
-            <div className="ck-att-rail-teacher">{section.teacherName}</div>
-            <div className="ck-att-rail-figures">
-              <span className="ck-att-rail-pct">
-                {pending ? '—' : `${Math.round(section.presentPercent)}%`}
-              </span>
-              <span className={`ck-status ${statusClass}`}>{section.status}</span>
-            </div>
-            <div className="ck-att-counts">
-              {`P ${section.presentCount} · L ${section.lateCount} · Ex ${section.leaveCount} · A ${section.absentCount}`}
-            </div>
-          </button>
+          <div key={section.sectionId} role="listitem">
+            <button
+              type="button"
+              className={className}
+              aria-current={selected}
+              onClick={() => onSelect(section)}
+            >
+              <div className="ck-att-rail-top">
+                <div>
+                  <div className="ck-att-rail-name">{section.sectionName}</div>
+                  <div className="ck-att-rail-teacher">{section.teacherName || 'No teacher assigned'}</div>
+                </div>
+                <span className={`ck-status ${statusClass}`}>{section.status}</span>
+              </div>
+              <div className="ck-att-rail-figures">
+                <span className="ck-att-rail-pct">
+                  {pending && marked === 0 ? '--' : `${Math.round(section.presentPercent)}%`}
+                </span>
+                <span className="ck-att-rail-progress">{marked}/{section.totalStudents} marked</span>
+              </div>
+              <div className="ck-att-counts">
+                P {section.presentCount} - L {section.lateCount} - Ex {section.leaveCount} - A {section.absentCount}
+                {unmarked > 0 ? ` - ${unmarked} blank` : ''}
+              </div>
+            </button>
+          </div>
         );
       })}
     </div>

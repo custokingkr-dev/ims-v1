@@ -4,6 +4,16 @@ import { AttendancePanel } from './AttendancePanel';
 import api from '../../../services/api';
 
 vi.mock('../../../services/api');
+vi.mock('../../../contexts/AuthContext', () => ({
+  useAuth: () => ({ user: { role: 'ADMIN', permissions: ['attendance:read', 'attendance:manage'] } }),
+}));
+vi.mock('../../../hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    can: (code: string) => ['attendance:read', 'attendance:manage'].includes(code),
+    canAny: (codes: string[]) => codes.some((code) => ['attendance:read', 'attendance:manage'].includes(code)),
+    canAll: (codes: string[]) => codes.every((code) => ['attendance:read', 'attendance:manage'].includes(code)),
+  }),
+}));
 
 afterEach(cleanup);
 
@@ -41,7 +51,7 @@ describe('AttendancePanel', () => {
   it('selecting a rail section loads and shows its roster', async () => {
     render(<AttendancePanel onRefresh={vi.fn().mockResolvedValue(undefined)} />);
     await waitFor(() => expect(screen.getByText('Class 1-A')).toBeTruthy());
-    fireEvent.click(screen.getByText('Class 1-A'));
+    fireEvent.click(screen.getAllByText('Class 1-A')[0]);
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith('/attendance/section-register', {
         params: { date: expect.any(String), classId: 'c1', sectionId: 's1' },
@@ -53,8 +63,8 @@ describe('AttendancePanel', () => {
 
   it('PUTs 4-value statuses on Save', async () => {
     render(<AttendancePanel onRefresh={vi.fn().mockResolvedValue(undefined)} />);
-    await waitFor(() => screen.getByText('Class 1-A'));
-    fireEvent.click(screen.getByText('Class 1-A'));
+    await waitFor(() => screen.getAllByText('Class 1-A'));
+    fireEvent.click(screen.getAllByText('Class 1-A')[0]);
     await waitFor(() => screen.getByText('A One'));
 
     // Mark student 1 LATE via that row's L pill.

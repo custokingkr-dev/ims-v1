@@ -7,6 +7,54 @@
   align-items: start;
 }
 
+.ck-att-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ck-att-day-card {
+  padding: 16px;
+}
+
+.ck-att-day-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 260px) 1fr;
+  gap: 16px;
+  align-items: end;
+}
+
+.ck-att-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.ck-att-day-note {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--g);
+  border-radius: 8px;
+  padding: 11px 13px;
+  background: #fbfaf8;
+  display: grid;
+  gap: 3px;
+}
+
+.ck-att-day-note strong {
+  font-size: 13px;
+}
+
+.ck-att-day-note span {
+  color: var(--ink3);
+  font-size: 12px;
+}
+
+.ck-panel-stack .ck-att-kpis {
+  margin-bottom: 0;
+}
+
 .ck-att-rail {
   display: flex;
   flex-direction: column;
@@ -28,19 +76,35 @@
 }
 .ck-att-rail-item:hover { border-color: var(--border2); }
 .ck-att-rail-item--selected { border-color: var(--b); box-shadow: 0 0 0 1px var(--b) inset; }
-.ck-att-rail-item--locked { opacity: 0.65; cursor: not-allowed; }
+.ck-att-rail-item--locked { background: #fbfaf8; }
 
+.ck-att-rail-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
 .ck-att-rail-name { font-weight: 600; font-size: 13px; }
 .ck-att-rail-teacher { font-size: 11px; color: var(--ink3); }
 .ck-att-rail-figures { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
 .ck-att-rail-pct { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ck-att-rail-progress { font-size: 11px; color: var(--ink3); }
 .ck-att-counts { font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; }
 
 .ck-att-roster { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
+.ck-att-roster-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fbfaf8;
+}
+
+.ck-att-roster-title { font-weight: 700; font-size: 15px; }
+.ck-att-roster-meta { color: var(--ink3); font-size: 12px; margin-top: 2px; }
+
 .ck-att-summary {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
 }
 .ck-att-summary-cell {
@@ -49,6 +113,7 @@
   padding: 8px 10px;
   background: var(--white);
 }
+.ck-att-summary-cell--warn { border-color: #f5d5a0; background: var(--am1); }
 .ck-att-summary-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink3); }
 .ck-att-summary-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 
@@ -63,6 +128,10 @@
   flex-direction: column;
   gap: 8px;
 }
+.ck-att-row--absent { border-left: 3px solid var(--re); }
+.ck-att-row--late { border-left: 3px solid var(--am); }
+.ck-att-row--leave { border-left: 3px solid var(--b); }
+.ck-att-row--present { border-left: 3px solid var(--g); }
 .ck-att-row-main { display: flex; gap: 12px; align-items: center; }
 .ck-att-avatar { width: 36px; height: 36px; font-size: 12px; flex-shrink: 0; }
 .ck-att-row-info { flex: 1; min-width: 0; }
@@ -95,14 +164,30 @@
   border-radius: 4px;
 }
 
+.ck-att-remarks-readonly {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+  color: var(--ink2);
+  font-size: 12px;
+}
+
 .ck-att-roster-footer { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .ck-att-roster-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .ck-att-back { display: none; }
+.ck-att-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--ink3);
+  border: 1px dashed var(--border2);
+  border-radius: 8px;
+  background: var(--white);
+}
 
 /* Mobile: single-pane stack. Show rail by default; when a section is selected the
    container gets --detail and the roster takes over full width. */
 @media (max-width: 899px) {
   .ck-att-layout { grid-template-columns: 1fr; }
+  .ck-att-day-grid, .ck-att-filter-grid { grid-template-columns: 1fr; }
   .ck-att-layout .ck-att-roster { display: none; }
   .ck-att-layout--detail .ck-att-rail { display: none; }
   .ck-att-layout--detail .ck-att-roster { display: flex; }

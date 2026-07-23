@@ -112,6 +112,30 @@ class TenantSchoolTenantScopingTest {
     }
 
     @Test
+    void ownSchool_getActiveModules_allowsWorkspaceAccessPermission() throws Exception {
+        when(modules.list(eq(10L), eq(true))).thenReturn(List.of());
+
+        mvc.perform(get("/api/v1/schools/10/modules/active")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "OPERATIONS")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workspace:access"))
+                .andExpect(status().isOk());
+        verify(modules).list(eq(10L), eq(true));
+    }
+
+    @Test
+    void crossTenantSchoolId_getActiveModules_isForbidden() throws Exception {
+        mvc.perform(get("/api/v1/schools/99/modules/active")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "OPERATIONS")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "workspace:access"))
+                .andExpect(status().isForbidden());
+        verify(modules, never()).list(anyLong(), any());
+    }
+
+    @Test
     void crossTenantSchoolId_getAcademicYears_isForbidden() throws Exception {
         mvc.perform(get("/api/v1/academic-years?schoolId=99")
                         .header("X-Tenant-School-Token", "tok")

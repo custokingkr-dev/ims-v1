@@ -12,7 +12,7 @@ type Tab = 'mark' | 'reports' | 'absentees';
 
 export function AttendanceModulePanel({ onRefresh, schoolScopedParams }: Props) {
   const [tab, setTab] = useState<Tab>('mark');
-  const label: Record<Tab, string> = { mark: 'Mark', reports: 'Reports', absentees: 'Absentees' };
+  const label: Record<Tab, string> = { mark: 'Daily Register', reports: 'Reports', absentees: 'Absentee Follow-up' };
   return (
     <div>
       <div className="ck-att-tabs">

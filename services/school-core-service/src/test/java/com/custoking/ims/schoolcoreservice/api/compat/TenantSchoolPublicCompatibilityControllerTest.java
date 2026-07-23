@@ -23,7 +23,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class TenantSchoolPublicCompatibilityControllerTest {
@@ -120,5 +122,48 @@ class TenantSchoolPublicCompatibilityControllerTest {
                         .content("{\"schoolId\":10,\"name\":\"Asha\"}"))
                 .andExpect(status().isForbidden());
         verify(schools, never()).addStaff(eq(10L), any());
+    }
+
+    @Test
+    void updateStaffFromWorkspace_usesAuthenticatedSchoolScope() throws Exception {
+        when(schools.updateStaff(eq(10L), eq(7L), any())).thenReturn(Map.of("id", 7));
+
+        mvc.perform(put("/api/v1/workspace/staff/7")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "staff:manage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Asha\",\"schoolId\":10}"))
+                .andExpect(status().isOk());
+        verify(schools).updateStaff(eq(10L), eq(7L), any());
+    }
+
+    @Test
+    void updateStaffFromWorkspace_crossTenantSchoolId_isForbidden() throws Exception {
+        mvc.perform(put("/api/v1/workspace/staff/7")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "staff:manage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Asha\",\"schoolId\":99}"))
+                .andExpect(status().isForbidden());
+        verify(schools, never()).updateStaff(eq(99L), eq(7L), any());
+    }
+
+    @Test
+    void deactivateStaffFromWorkspace_usesAuthenticatedSchoolScope() throws Exception {
+        when(schools.deactivateStaff(10L, 7L)).thenReturn(Map.of("id", 7, "employmentStatus", "Inactive"));
+
+        mvc.perform(delete("/api/v1/workspace/staff/7")
+                        .header("X-Tenant-School-Token", "tok")
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "staff:manage")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+        verify(schools).deactivateStaff(10L, 7L);
     }
 }

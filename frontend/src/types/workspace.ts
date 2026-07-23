@@ -187,7 +187,21 @@ export interface WorkspaceData {
   school: WorkspaceSchool;
   dashboard: WorkspaceDashboard;
   recentActivity: Array<{ icon: string; title: string; meta: string; tag: string; tagClass?: string }>;
-  staff: Array<{ id: string; name: string; designation: string; department: string; payrollStatus: string; monthlySalary: number }>;
+  staff: Array<{
+    id: string;
+    name: string;
+    designation: string;
+    department: string;
+    employeeCode?: string;
+    email?: string;
+    phone?: string;
+    staffType?: string;
+    employmentStatus?: string;
+    joinDate?: string;
+    notes?: string;
+    payrollStatus: string;
+    monthlySalary: number;
+  }>;
   annualPlan: { terms: Array<{ term: string; category: string; status: string; quantity: string; amount: number }> };
   fees?: {
     summary: { progressPercent: number; collected: number; outstanding: number; overdueCount: number; target: number };

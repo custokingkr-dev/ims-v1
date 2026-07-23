@@ -27,8 +27,8 @@ describe('SectionRoster', () => {
   it('shows live summary counts from local records', () => {
     render(
       <SectionRoster register={register} records={records([{ status: 'PRESENT' }, { status: 'LATE' }])}
-        loading={false} saving="" onStatusChange={vi.fn()} onRemarksChange={vi.fn()}
-        onMarkAllPresent={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
+        loading={false} saving="" readOnly={false} onStatusChange={vi.fn()} onRemarksChange={vi.fn()}
+        onMarkAllPresent={vi.fn()} onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
     );
     // Present cell value 1, Late cell value 1.
     const present = screen.getByText('Present').parentElement!;
@@ -40,15 +40,15 @@ describe('SectionRoster', () => {
   it('disables Submit until every student is marked, enables when all marked', () => {
     const { rerender } = render(
       <SectionRoster register={register} records={records([{ status: 'PRESENT' }])} loading={false} saving=""
-        onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={vi.fn()} onReset={vi.fn()}
+        readOnly={false} onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={vi.fn()} onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()}
         onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
     );
     expect(screen.getByRole('button', { name: /Submit Section/ })).toBeDisabled();
 
     rerender(
       <SectionRoster register={register} records={records([{ status: 'PRESENT' }, { status: 'LEAVE' }])}
-        loading={false} saving="" onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={vi.fn()}
-        onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
+        loading={false} saving="" readOnly={false} onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={vi.fn()}
+        onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
     );
     // Leave counts as marked -> all marked -> enabled.
     expect(screen.getByRole('button', { name: /Submit Section/ })).not.toBeDisabled();
@@ -59,8 +59,8 @@ describe('SectionRoster', () => {
     const onSave = vi.fn();
     render(
       <SectionRoster register={register} records={records()} loading={false} saving=""
-        onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={onMarkAllPresent}
-        onReset={vi.fn()} onSave={onSave} onSubmit={vi.fn()} onBack={vi.fn()} />
+        readOnly={false} onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={onMarkAllPresent}
+        onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()} onSave={onSave} onSubmit={vi.fn()} onBack={vi.fn()} />
     );
     fireEvent.click(screen.getByRole('button', { name: 'Mark all Present' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));

@@ -1,10 +1,10 @@
 import type { StudentAttendanceRecord, EditableAttendanceStatus } from '../../../../types/attendance';
 
-const PILLS: Array<{ code: Exclude<EditableAttendanceStatus, null>; label: string; mod: string }> = [
-  { code: 'PRESENT', label: 'P', mod: 'present' },
-  { code: 'LATE', label: 'L', mod: 'late' },
-  { code: 'LEAVE', label: 'Ex', mod: 'leave' },
-  { code: 'ABSENT', label: 'A', mod: 'absent' },
+const PILLS: Array<{ code: Exclude<EditableAttendanceStatus, null>; label: string; title: string; mod: string }> = [
+  { code: 'PRESENT', label: 'P', title: 'Present', mod: 'present' },
+  { code: 'LATE', label: 'L', title: 'Late', mod: 'late' },
+  { code: 'LEAVE', label: 'Ex', title: 'Excused leave', mod: 'leave' },
+  { code: 'ABSENT', label: 'A', title: 'Absent', mod: 'absent' },
 ];
 
 interface Props {
@@ -26,20 +26,21 @@ export function StudentAttendanceRow({
 }: Props) {
   const initials = student.fullName
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
 
   return (
-    <div className="ck-att-row">
+    <div className={`ck-att-row${status ? ` ck-att-row--${status.toLowerCase()}` : ''}`}>
       <div className="ck-att-row-main">
-        <div className="ck-user-avatar ck-att-avatar">{initials}</div>
+        <div className="ck-user-avatar ck-att-avatar">{initials || 'ST'}</div>
         <div className="ck-att-row-info">
           <div className="ck-att-row-name">{student.fullName}</div>
           <div className="ck-att-row-meta">
             {student.admissionNo}
-            {student.rollNo ? ` · Roll ${student.rollNo}` : ''}
+            {student.rollNo ? ` - Roll ${student.rollNo}` : ''}
           </div>
         </div>
         <div className="ck-att-pills" role="group" aria-label={`Attendance for ${student.fullName}`}>
@@ -48,7 +49,7 @@ export function StudentAttendanceRow({
             const className = `ck-att-pill ck-att-pill--${p.mod}${active ? ' ck-att-pill--active' : ''}`;
             if (locked) {
               return (
-                <span key={p.code} className={className} aria-pressed={active}>
+                <span key={p.code} className={className} aria-pressed={active} title={p.title}>
                   {p.label}
                 </span>
               );
@@ -60,6 +61,7 @@ export function StudentAttendanceRow({
                 className={className}
                 aria-pressed={active}
                 aria-label={p.code}
+                title={p.title}
                 onClick={() => onStatusChange(active ? null : p.code)}
               >
                 {p.label}
@@ -68,7 +70,9 @@ export function StudentAttendanceRow({
           })}
         </div>
       </div>
-      {!locked && (
+      {locked ? (
+        remarks ? <div className="ck-att-remarks-readonly">{remarks}</div> : null
+      ) : (
         <input
           type="text"
           className="ck-att-remarks"

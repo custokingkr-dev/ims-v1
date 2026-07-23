@@ -10,9 +10,11 @@ interface Props {
   records: StudentEditRecord[] | null;
   loading: boolean;
   saving: '' | 'save' | 'submit';
+  readOnly?: boolean;
   onStatusChange: (studentId: number, status: EditableAttendanceStatus) => void;
   onRemarksChange: (studentId: number, remarks: string) => void;
   onMarkAllPresent: () => void;
+  onMarkUnmarkedAbsent: () => void;
   onReset: () => void;
   onSave: () => void;
   onSubmit: () => void;
@@ -24,22 +26,27 @@ export function SectionRoster({
   records,
   loading,
   saving,
+  readOnly = false,
   onStatusChange,
   onRemarksChange,
   onMarkAllPresent,
+  onMarkUnmarkedAbsent,
   onReset,
   onSave,
   onSubmit,
   onBack,
 }: Props) {
   const locked = register?.locked ?? false;
+  const immutable = locked || readOnly;
   const list = records ?? [];
   const total = list.length;
   const present = list.filter((r) => r.status === 'PRESENT').length;
   const late = list.filter((r) => r.status === 'LATE').length;
   const leave = list.filter((r) => r.status === 'LEAVE').length;
   const absent = list.filter((r) => r.status === 'ABSENT').length;
+  const unmarked = Math.max(0, total - present - late - leave - absent);
   const allMarked = total > 0 && list.every((r) => r.status !== null);
+  const completionPercent = total > 0 ? Math.round(((total - unmarked) / total) * 100) : 0;
 
   const cells = [
     { label: 'Total', value: total },
@@ -47,18 +54,34 @@ export function SectionRoster({
     { label: 'Late', value: late },
     { label: 'Leave', value: leave },
     { label: 'Absent', value: absent },
+    { label: 'Unmarked', value: unmarked },
   ];
 
   return (
     <div className="ck-att-roster">
+      <div className="ck-att-roster-head">
+        <div>
+          <div className="ck-att-roster-title">{register?.sectionName || 'Section roster'}</div>
+          <div className="ck-att-roster-meta">
+            {total} students - {completionPercent}% marked
+          </div>
+        </div>
+        <span className={`ck-status ${locked ? 'sapproved' : readOnly ? 'sneutral' : allMarked ? 'sinfo' : 'spending'}`}>
+          {locked ? 'Submitted' : readOnly ? 'Read-only' : allMarked ? 'Ready' : 'Draft'}
+        </span>
+      </div>
+
       <div className="ck-att-roster-actions">
         <button type="button" className="ck-btn ck-btn-sm ck-btn-ghost ck-att-back" onClick={onBack}>
-          ← Sections
+          Back to sections
         </button>
-        {!locked && (
+        {!immutable && (
           <>
             <button type="button" className="ck-btn ck-btn-sm" onClick={onMarkAllPresent}>
               Mark all Present
+            </button>
+            <button type="button" className="ck-btn ck-btn-sm ck-btn-ghost" onClick={onMarkUnmarkedAbsent} disabled={unmarked === 0}>
+              Mark blank Absent
             </button>
             <button type="button" className="ck-btn ck-btn-sm ck-btn-ghost" onClick={onReset}>
               Reset
@@ -69,7 +92,7 @@ export function SectionRoster({
 
       <div className="ck-att-summary">
         {cells.map((c) => (
-          <div key={c.label} className="ck-att-summary-cell">
+          <div key={c.label} className={`ck-att-summary-cell${c.label === 'Unmarked' && c.value > 0 ? ' ck-att-summary-cell--warn' : ''}`}>
             <div className="ck-att-summary-label">{c.label}</div>
             <div className="ck-att-summary-value">{c.value}</div>
           </div>
@@ -78,13 +101,19 @@ export function SectionRoster({
 
       {locked && (
         <div className="ck-alert ck-alert-am">
-          <span>🔒</span>
+          <span>i</span>
           <div>This attendance is locked and cannot be edited.</div>
+        </div>
+      )}
+      {!locked && readOnly && (
+        <div className="ck-alert ck-alert-am">
+          <span>i</span>
+          <div>You have read-only attendance access for this section.</div>
         </div>
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ink3)' }}>Loading students…</div>
+        <div className="ck-att-empty">Loading students...</div>
       ) : total === 0 ? (
         <div className="ck-alert ck-alert-am">
           <span>i</span>
@@ -100,7 +129,7 @@ export function SectionRoster({
                 student={student}
                 status={record?.status ?? null}
                 remarks={record?.remarks ?? ''}
-                locked={locked}
+                locked={immutable}
                 onStatusChange={(s) => onStatusChange(student.studentId, s)}
                 onRemarksChange={(r) => onRemarksChange(student.studentId, r)}
               />
@@ -109,10 +138,10 @@ export function SectionRoster({
         </div>
       )}
 
-      {!locked && total > 0 && (
+      {!immutable && total > 0 && (
         <div className="ck-att-roster-footer">
           <button type="button" className="ck-btn ck-btn-b" onClick={onSave} disabled={saving === 'save'}>
-            {saving === 'save' ? 'Saving…' : 'Save'}
+            {saving === 'save' ? 'Saving...' : 'Save'}
           </button>
           <button
             type="button"
@@ -120,7 +149,7 @@ export function SectionRoster({
             onClick={onSubmit}
             disabled={saving === 'submit' || !allMarked}
           >
-            {saving === 'submit' ? 'Submitting…' : 'Submit Section'}
+            {saving === 'submit' ? 'Submitting...' : 'Submit Section'}
           </button>
         </div>
       )}

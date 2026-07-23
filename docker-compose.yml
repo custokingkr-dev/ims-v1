@@ -232,7 +232,7 @@ services:
       AUDIT_UPSTREAM: http://platform-service:8080
       REPORTING_SERVICE_TOKEN: local-dev-reporting-token
       BILLING_SERVICE_TOKEN: local-dev-billing-token
-      GATEWAY_AUTH_MODE: permissive
+      GATEWAY_AUTH_MODE: enforce
       GATEWAY_CLOUD_RUN_AUTH: never
       OTEL_SDK_DISABLED: "true"
       OTEL_TRACES_EXPORTER: none

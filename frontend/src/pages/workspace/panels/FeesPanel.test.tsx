@@ -4,8 +4,14 @@ import { FeesPanel } from './FeesPanel';
 import api from '../../../services/api';
 
 vi.mock('../../../services/api');
-vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { branchId: 1 } }) }));
-vi.mock('../../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => false }) }));
+vi.mock('../../../contexts/AuthContext', () => ({ useAuth: () => ({ user: { role: 'ADMIN', branchId: 1 } }) }));
+vi.mock('../../../hooks/usePermissions', () => ({
+  usePermissions: () => ({
+    can: () => false,
+    canAny: () => false,
+    canAll: () => false,
+  }),
+}));
 
 afterEach(cleanup);
 

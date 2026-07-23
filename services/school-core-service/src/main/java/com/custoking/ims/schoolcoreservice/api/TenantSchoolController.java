@@ -158,7 +158,7 @@ public class TenantSchoolController {
             @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
-        TenantScope.requirePermissionIfAuthenticated("school:read");
+        TenantScope.requireAnyPermissionIfAuthenticated("school:read", "workspace:access");
         Long resolvedId = TenantScope.resolveSchoolId(id);
         return modules.list(resolvedId, true);
     }
@@ -238,9 +238,34 @@ public class TenantSchoolController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "tenant-school:write");
         TenantScope.requirePermissionIfAuthenticated("staff:manage");
-        TenantScope.requireSuperAdmin();
-        moduleGuard.requireErpEnabled(id);
-        return runCommand(() -> structure.addStaff(id, body));
+        Long resolvedId = TenantScope.resolveSchoolId(id);
+        moduleGuard.requireErpEnabled(resolvedId);
+        return runCommand(() -> structure.addStaff(resolvedId, body));
+    }
+
+    @PutMapping("/schools/{id}/staff/{staffId}")
+    public Map<String, Object> updateSchoolStaff(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable Long id,
+            @PathVariable Long staffId,
+            @RequestBody Map<String, Object> body) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("staff:manage");
+        Long resolvedId = TenantScope.resolveSchoolId(id);
+        moduleGuard.requireErpEnabled(resolvedId);
+        return runCommand(() -> structure.updateStaff(resolvedId, staffId, body));
+    }
+
+    @DeleteMapping("/schools/{id}/staff/{staffId}")
+    public Map<String, Object> deactivateSchoolStaff(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable Long id,
+            @PathVariable Long staffId) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated("staff:manage");
+        Long resolvedId = TenantScope.resolveSchoolId(id);
+        moduleGuard.requireErpEnabled(resolvedId);
+        return runCommand(() -> structure.deactivateStaff(resolvedId, staffId));
     }
 
     @GetMapping("/classes")

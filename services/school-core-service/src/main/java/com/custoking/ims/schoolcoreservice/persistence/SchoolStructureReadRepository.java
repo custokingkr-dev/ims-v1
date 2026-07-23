@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
@@ -201,12 +202,15 @@ public class SchoolStructureReadRepository {
 
     public List<StaffMemberRow> staff(Long schoolId) {
         return jdbc.sql("""
-                        SELECT sm.id, sm.name, sm.designation, sm.department, sm.monthly_salary,
-                               sm.payroll_status, sm.school_id, s.name AS school_name
+                        SELECT sm.id, sm.name, sm.designation, sm.department,
+                               sm.employee_code, sm.email, sm.phone, sm.staff_type,
+                               sm.employment_status, sm.join_date, sm.notes,
+                               sm.monthly_salary, sm.payroll_status, sm.school_id, s.name AS school_name
                         FROM tenant_school.staff_members sm
                         LEFT JOIN tenant_school.schools s ON s.id = sm.school_id
                         WHERE sm.school_id = :schoolId
-                        ORDER BY sm.name
+                        ORDER BY CASE WHEN sm.employment_status = 'Inactive' THEN 1 ELSE 0 END,
+                                 sm.department, sm.name
                         """)
                 .param("schoolId", schoolId)
                 .query(StaffMemberRow.class)
@@ -440,21 +444,84 @@ public class SchoolStructureReadRepository {
         requireSchool(schoolId);
         Long id = jdbc.sql("""
                 INSERT INTO tenant_school.staff_members (
-                    school_id, name, designation, department, monthly_salary, payroll_status
+                    school_id, name, designation, department, employee_code, email, phone,
+                    staff_type, employment_status, join_date, notes, monthly_salary, payroll_status
                 ) VALUES (
-                    :schoolId, :name, :designation, :department, :monthlySalary, :payrollStatus
+                    :schoolId, :name, :designation, :department, :employeeCode, :email, :phone,
+                    :staffType, :employmentStatus, :joinDate, :notes, :monthlySalary, :payrollStatus
                 )
                 RETURNING id
                 """)
                 .param("schoolId", schoolId)
-                .param("name", str(request.get("name"), ""))
+                .param("name", requiredString(request.get("name"), "name"))
                 .param("designation", str(request.get("designation"), ""))
                 .param("department", str(request.get("department"), ""))
+                .param("employeeCode", trimToNull(str(request.get("employeeCode"), "")))
+                .param("email", trimToNull(str(request.get("email"), "")))
+                .param("phone", trimToNull(str(request.get("phone"), "")))
+                .param("staffType", str(request.get("staffType"), "Teaching"))
+                .param("employmentStatus", str(request.get("employmentStatus"), "Active"))
+                .param("joinDate", localDate(request.get("joinDate")))
+                .param("notes", trimToNull(str(request.get("notes"), "")))
                 .param("monthlySalary", longNum(request.get("monthlySalary"), 0))
                 .param("payrollStatus", str(request.get("payrollStatus"), "Pending"))
                 .query(Long.class)
                 .single();
-        return staffRow(id);
+        return staffRow(schoolId, id);
+    }
+
+    @Transactional
+    public Map<String, Object> updateStaff(Long schoolId, Long staffId, Map<String, Object> request) {
+        requireSchool(schoolId);
+        requireStaffInSchool(schoolId, staffId);
+        jdbc.sql("""
+                UPDATE tenant_school.staff_members
+                SET name = :name,
+                    designation = :designation,
+                    department = :department,
+                    employee_code = :employeeCode,
+                    email = :email,
+                    phone = :phone,
+                    staff_type = :staffType,
+                    employment_status = :employmentStatus,
+                    join_date = :joinDate,
+                    notes = :notes,
+                    monthly_salary = :monthlySalary,
+                    payroll_status = :payrollStatus
+                WHERE id = :staffId AND school_id = :schoolId
+                """)
+                .param("staffId", staffId)
+                .param("schoolId", schoolId)
+                .param("name", requiredString(request.get("name"), "name"))
+                .param("designation", str(request.get("designation"), ""))
+                .param("department", str(request.get("department"), ""))
+                .param("employeeCode", trimToNull(str(request.get("employeeCode"), "")))
+                .param("email", trimToNull(str(request.get("email"), "")))
+                .param("phone", trimToNull(str(request.get("phone"), "")))
+                .param("staffType", str(request.get("staffType"), "Teaching"))
+                .param("employmentStatus", str(request.get("employmentStatus"), "Active"))
+                .param("joinDate", localDate(request.get("joinDate")))
+                .param("notes", trimToNull(str(request.get("notes"), "")))
+                .param("monthlySalary", longNum(request.get("monthlySalary"), 0))
+                .param("payrollStatus", str(request.get("payrollStatus"), "Pending"))
+                .update();
+        return staffRow(schoolId, staffId);
+    }
+
+    @Transactional
+    public Map<String, Object> deactivateStaff(Long schoolId, Long staffId) {
+        requireSchool(schoolId);
+        requireStaffInSchool(schoolId, staffId);
+        jdbc.sql("""
+                UPDATE tenant_school.staff_members
+                SET employment_status = 'Inactive',
+                    payroll_status = 'On Hold'
+                WHERE id = :staffId AND school_id = :schoolId
+                """)
+                .param("staffId", staffId)
+                .param("schoolId", schoolId)
+                .update();
+        return staffRow(schoolId, staffId);
     }
 
     private void ensureSchoolSections(Long schoolId, int classCount, int sectionCount) {
@@ -513,20 +580,31 @@ public class SchoolStructureReadRepository {
                 .single();
     }
 
-    private Map<String, Object> staffRow(Long id) {
+    private Map<String, Object> staffRow(Long schoolId, Long id) {
         return jdbc.sql("""
-                SELECT id, name, designation, department, monthly_salary, payroll_status
+                SELECT id, name, designation, department, employee_code, email, phone,
+                       staff_type, employment_status, join_date, notes, monthly_salary, payroll_status,
+                       school_id
                 FROM tenant_school.staff_members
-                WHERE id = :id
+                WHERE id = :id AND school_id = :schoolId
                 """)
                 .param("id", id)
+                .param("schoolId", schoolId)
                 .query((rs, rowNum) -> row(
                         "id", rs.getLong("id"),
                         "name", rs.getString("name"),
                         "designation", rs.getString("designation"),
                         "department", rs.getString("department"),
+                        "employeeCode", rs.getString("employee_code"),
+                        "email", rs.getString("email"),
+                        "phone", rs.getString("phone"),
+                        "staffType", rs.getString("staff_type"),
+                        "employmentStatus", rs.getString("employment_status"),
+                        "joinDate", rs.getObject("join_date", LocalDate.class),
+                        "notes", rs.getString("notes"),
                         "monthlySalary", rs.getLong("monthly_salary"),
-                        "payrollStatus", rs.getString("payroll_status")))
+                        "payrollStatus", rs.getString("payroll_status"),
+                        "schoolId", rs.getLong("school_id")))
                 .single();
     }
 
@@ -534,6 +612,20 @@ public class SchoolStructureReadRepository {
         if (schoolId == null || jdbc.sql("SELECT count(*) FROM tenant_school.schools WHERE id = :schoolId")
                 .param("schoolId", schoolId).query(Long.class).single() == 0) {
             throw new IllegalArgumentException("School not found");
+        }
+    }
+
+    private void requireStaffInSchool(Long schoolId, Long staffId) {
+        if (staffId == null || jdbc.sql("""
+                SELECT count(*)
+                FROM tenant_school.staff_members
+                WHERE id = :staffId AND school_id = :schoolId
+                """)
+                .param("staffId", staffId)
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .single() == 0) {
+            throw new IllegalArgumentException("Staff member not found");
         }
     }
 
@@ -561,6 +653,15 @@ public class SchoolStructureReadRepository {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private LocalDate localDate(Object value) {
+        if (value == null || String.valueOf(value).isBlank()) return null;
+        try {
+            return LocalDate.parse(String.valueOf(value));
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid date: " + value, ex);
+        }
     }
 
     private String str(Object value, String fallback) {
@@ -637,6 +738,13 @@ public class SchoolStructureReadRepository {
             String name,
             String designation,
             String department,
+            String employeeCode,
+            String email,
+            String phone,
+            String staffType,
+            String employmentStatus,
+            LocalDate joinDate,
+            String notes,
             Long monthlySalary,
             String payrollStatus,
             Long schoolId,
