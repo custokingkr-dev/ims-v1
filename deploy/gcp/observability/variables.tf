@@ -65,15 +65,15 @@ variable "uptime_authenticated_services" {
 }
 
 variable "enable_uptime_checks" {
-  description = "Whether to create uptime checks for services whose hosts can be resolved."
+  description = "Whether to create uptime checks for services whose hosts can be resolved. Keep false during cost-controlled shutdowns so probes do not wake services."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "uptime_period" {
   description = "How often uptime checks run. Supported values include 60s, 300s, 600s, and 900s."
   type        = string
-  default     = "300s"
+  default     = "900s"
 }
 
 variable "uptime_timeout" {

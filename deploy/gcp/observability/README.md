@@ -4,8 +4,9 @@ This Terraform root manages the GCP-native observability layer for one Custoking
 environment in project `custoking`:
 
 - Cloud Monitoring dashboards for the 5 domain services plus `api-gateway`.
-- Uptime checks against `/actuator/health` or `/gateway-health`; private
-  services use Cloud Run revision targets with Monitoring service-agent OIDC.
+- Optional uptime checks against `/actuator/health` or `/gateway-health`;
+  private services use Cloud Run revision targets with Monitoring service-agent
+  OIDC.
 - Alert policies for 5xx rate, p95 latency, max-instance saturation, uptime, async health, and SLO burn rate.
 - Log-based distribution metrics for outbox and notification inbox health.
 - Cloud Monitoring services and availability/latency SLOs for Cloud Run.
@@ -16,8 +17,9 @@ environment in project `custoking`:
 
 ## Prerequisites
 
-Apply this after the environment has been deployed at least once. By default the
-module reads the existing Cloud Run services to discover their generated hosts.
+Apply this after the environment has been deployed at least once. The module
+reads the existing Cloud Run services to discover their generated hosts when
+uptime checks are enabled.
 
 The operator applying this root needs Monitoring, Logging, and Cloud Run read
 permissions, plus permission to create alert policies, dashboards, uptime checks,
@@ -73,6 +75,11 @@ terraform -chdir=deploy/gcp/observability init `
 
 ## Plan and Apply
 
+Uptime checks are disabled by default while the project is in a cost-controlled
+shutdown posture. To recreate uptime checks after an environment is restored,
+pass `-var="enable_uptime_checks=true"`. Keep `uptime_period=900s` unless the
+extra probe volume from five-minute checks is intentional.
+
 ```powershell
 terraform -chdir=deploy/gcp/observability init `
   -backend-config="bucket=custoking-terraform-state" `
@@ -86,6 +93,7 @@ For production, pass `-var="env=prod"` and production notification channels:
 ```powershell
 terraform -chdir=deploy/gcp/observability plan `
   -var="env=prod" `
+  -var="enable_uptime_checks=true" `
   -var='notification_channel_ids=["projects/custoking/notificationChannels/<id>"]'
 ```
 

@@ -1,6 +1,6 @@
 # Observability and Operations
 
-Last verified: 2026-07-09.
+Last verified: 2026-07-24.
 
 ## Observability Architecture
 
@@ -11,7 +11,8 @@ The current observability stack is GCP-native:
 - Cloud Trace through OpenTelemetry OTLP export.
 - Cloud Monitoring dashboards.
 - Cloud Monitoring alert policies.
-- Cloud Monitoring uptime checks.
+- Cloud Monitoring uptime checks are supported by Terraform but disabled during
+  the current cost-controlled shutdown.
 - Log-based metrics for async health.
 - Monitoring services and SLOs from Terraform source.
 
@@ -30,8 +31,8 @@ Verified live Cloud Run env:
 - `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://telemetry.googleapis.com/v1/traces`
 - `OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf`
 - `OTEL_TRACES_SAMPLER=parentbased_traceidratio`
-- dev sample ratio: `1.0`
-- prod sample ratio: `0.2`
+- dev sample ratio: `0.05`
+- prod sample ratio: `0.05`
 - `OTEL_LOGS_EXPORTER=none`
 - `OTEL_METRICS_EXPORTER=none`
 - `OTEL_RESOURCE_ATTRIBUTES=gcp.project_id=custoking`
@@ -81,22 +82,19 @@ Async dashboards include:
 
 ## Uptime Checks
 
-Live uptime checks:
+Live uptime checks: none during the cost-controlled shutdown.
 
-- `custoking-dev-api-gateway-health`
-- `custoking-dev-billing-service-health`
-- `custoking-dev-identity-service-health`
-- `custoking-dev-operations-service-health`
-- `custoking-dev-platform-service-health`
-- `custoking-dev-school-core-service-health`
-- `custoking-prod-api-gateway-health`
-- `custoking-prod-billing-service-health`
-- `custoking-prod-identity-service-health`
-- `custoking-prod-operations-service-health`
-- `custoking-prod-platform-service-health`
-- `custoking-prod-school-core-service-health`
+The previous dev/prod uptime check definitions were exported before deletion
+under `artifacts/gcp-cost-shutdown/monitoring-shutdown-*`. Terraform can
+recreate them after restore by applying with:
 
-Period: `300s`.
+```powershell
+terraform -chdir=deploy/gcp/observability apply `
+  -var="env=<dev|prod>" `
+  -var="enable_uptime_checks=true"
+```
+
+Default period when re-enabled: `900s`.
 
 Timeout: `10s`.
 
@@ -116,11 +114,11 @@ Private service uptime checks use Monitoring service-agent OIDC and Cloud Run re
 
 ## Alert Policies
 
-80 enabled Custoking alert policies were verified.
+68 enabled Custoking alert policies were verified after deleting the 12 uptime
+alert policies during shutdown.
 
 Policy families:
 
-- Service uptime.
 - Service 5xx rate.
 - Service p95 latency.
 - Service max-instance saturation.
