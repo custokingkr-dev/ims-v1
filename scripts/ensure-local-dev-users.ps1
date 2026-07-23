@@ -118,6 +118,28 @@ INSERT INTO tenant_school.zone_school_mappings (zone_id, school_id, active, adde
 VALUES (1, 1, true, now())
 ON CONFLICT (zone_id, school_id) DO UPDATE SET active = true;
 
+-- BOLA/local smoke fixtures must keep both schools internally usable so the
+-- isolation gate can distinguish setup failures from real cross-tenant leaks.
+INSERT INTO tenant_school.school_module_entitlements
+    (school_id, module_code, enabled, plan, notes, updated_at)
+SELECT school_id, module_code, true, 'LOCAL', 'Local BOLA baseline', now()
+FROM (VALUES (1), (2)) AS schools(school_id)
+CROSS JOIN (VALUES
+    ('STUDENTS'),
+    ('ATTENDANCE'),
+    ('FEES'),
+    ('INVOICES'),
+    ('PAYMENTS'),
+    ('ORDERS'),
+    ('FIREFIGHTING'),
+    ('REPORTS')
+) AS modules(module_code)
+ON CONFLICT (school_id, module_code) DO UPDATE SET
+    enabled = EXCLUDED.enabled,
+    plan = EXCLUDED.plan,
+    notes = EXCLUDED.notes,
+    updated_at = EXCLUDED.updated_at;
+
 INSERT INTO identity.roles (name, description, created_at)
 VALUES
     ('SUPERADMIN', 'Platform-level administrator - full access', now()),

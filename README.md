@@ -10,6 +10,7 @@ Detailed architecture docs:
 - [Low-Level Design](docs/ARCHITECTURE-LLD.md)
 - [Event Envelope Contract](docs/EVENT-ENVELOPE-CONTRACT.md)
 - [Local Setup](docs/LOCAL-SETUP.md)
+- [Logical E2E Tests](docs/LOGICAL-E2E-TESTS.md)
 - [GCP Deployment Runbook](deploy/gcp/README.md)
 - [MSG91 Production Setup](docs/MSG91-PRODUCTION-SETUP.md)
 
@@ -213,6 +214,17 @@ powershell -ExecutionPolicy Bypass -File scripts\audit-legacy-compatibility-clou
 powershell -ExecutionPolicy Bypass -File scripts\audit-compose-profiles.ps1
 powershell -ExecutionPolicy Bypass -File scripts\audit-legacy-public-retirement-readiness.ps1
 ```
+
+Local logical E2E for the full application flow:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\test-application-logical-e2e.ps1 -StartStack
+```
+
+This creates disposable local data and writes `artifacts\logical-e2e-result.json`.
+Use the full compose profile because the suite covers identity, school-core,
+operations, platform, billing, gateway routing, local DB evidence, and outbox rows.
+See [docs/LOGICAL-E2E-TESTS.md](docs/LOGICAL-E2E-TESTS.md).
 
 Production direct private-service smoke:
 

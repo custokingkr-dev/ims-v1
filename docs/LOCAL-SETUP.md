@@ -183,6 +183,25 @@ Local credentials created by that script:
 | TEACHER | `local-teacher@custoking.local` | `password` |
 | VIEWER | `local-viewer@custoking.local` | `password` |
 
+## Logical E2E Verification
+
+After the full stack is running, run the logical application E2E suite:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\test-application-logical-e2e.ps1
+```
+
+To start the full stack and run the suite in one command:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\test-application-logical-e2e.ps1 -StartStack
+```
+
+The suite creates a disposable school, admin, operator, students, fees, attendance,
+supply orders, urgent procurement records, a billing invoice, promotion history, and
+outbox rows. It writes `artifacts\logical-e2e-result.json`. Details are in
+[LOGICAL-E2E-TESTS.md](LOGICAL-E2E-TESTS.md).
+
 ## Compose Profiles
 
 Database only:
