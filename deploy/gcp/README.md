@@ -75,6 +75,18 @@ gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,
 
 Cloud Build builds and deploys only the selected service by default. Use `_DEPLOY_SERVICES=all` for the full fleet, or pass a comma-separated list such as `_DEPLOY_SERVICES=frontend,api-gateway` for a small coordinated release. When `api-gateway` is selected, Cloud Build resolves the currently deployed service URLs (for the same `_ENV`) and rewires the gateway upstreams.
 
+Cost-control substitutions default Cloud Run services to scale to zero. Override these only when the fixed monthly cost is intentional:
+
+- `_DOMAIN_MIN_INSTANCES=0` and `_GATEWAY_MIN_INSTANCES=0` by default.
+- `_DOMAIN_MAX_INSTANCES=1`, `_GATEWAY_MAX_INSTANCES=1`, `_FRONTEND_MAX_INSTANCES=1` are used by the GitHub dev deploy when no environment variable override exists.
+- Prod defaults keep the old max caps (`2` for domain/frontend, `3` for gateway), but still use `min-instances=0`.
+- Set `CLOUD_RUN_DOMAIN_MIN_INSTANCES=1` or `CLOUD_RUN_GATEWAY_MIN_INSTANCES=1` as GitHub Environment variables only if cold starts or background relay latency are worth the spend.
+- Artifact Registry cleanup is defined in `deploy/gcp/artifact-registry-cleanup-policies.json`; apply it with:
+
+```powershell
+gcloud artifacts repositories set-cleanup-policies custoking --location=asia-south2 --project=custoking --policy=deploy/gcp/artifact-registry-cleanup-policies.json --no-dry-run
+```
+
 GitHub Actions stages Cloud Build source archives in `gs://custoking-github-deploy-source/source`. Keep the bucket lifecycle policy applied so old source archives are removed automatically:
 
 ```powershell

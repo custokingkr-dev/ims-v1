@@ -164,6 +164,12 @@ jobs:
           DB_NAME: ${{ vars.DB_NAME }}
           SKIP_BUILD: ${{ inputs.skip_build }}
           DEPLOY_TAG: ${{ steps.tag.outputs.value }}
+          OTEL_SAMPLE_OVERRIDE: ${{ vars.OTEL_SAMPLE }}
+          CLOUD_RUN_DOMAIN_MIN_INSTANCES: ${{ vars.CLOUD_RUN_DOMAIN_MIN_INSTANCES }}
+          CLOUD_RUN_GATEWAY_MIN_INSTANCES: ${{ vars.CLOUD_RUN_GATEWAY_MIN_INSTANCES }}
+          CLOUD_RUN_DOMAIN_MAX_INSTANCES: ${{ vars.CLOUD_RUN_DOMAIN_MAX_INSTANCES }}
+          CLOUD_RUN_GATEWAY_MAX_INSTANCES: ${{ vars.CLOUD_RUN_GATEWAY_MAX_INSTANCES }}
+          CLOUD_RUN_FRONTEND_MAX_INSTANCES: ${{ vars.CLOUD_RUN_FRONTEND_MAX_INSTANCES }}
         run: |
           set -euo pipefail
           mkdir -p deployment-evidence
@@ -173,16 +179,23 @@ jobs:
           : "${DB_HOST:?set DB_HOST on the '${ENV_NAME}' GitHub Environment}"
           : "${DB_NAME:?set DB_NAME on the '${ENV_NAME}' GitHub Environment}"
 
-          if [[ "${ENV_NAME}" == "prod" ]]; then
-            OTEL_SAMPLE="0.2"
+          OTEL_SAMPLE="${OTEL_SAMPLE_OVERRIDE:-0.05}"
+          DOMAIN_MIN_INSTANCES="${CLOUD_RUN_DOMAIN_MIN_INSTANCES:-0}"
+          GATEWAY_MIN_INSTANCES="${CLOUD_RUN_GATEWAY_MIN_INSTANCES:-0}"
+          if [[ "${ENV_NAME}" == "dev" ]]; then
+            DOMAIN_MAX_INSTANCES="${CLOUD_RUN_DOMAIN_MAX_INSTANCES:-1}"
+            GATEWAY_MAX_INSTANCES="${CLOUD_RUN_GATEWAY_MAX_INSTANCES:-1}"
+            FRONTEND_MAX_INSTANCES="${CLOUD_RUN_FRONTEND_MAX_INSTANCES:-1}"
           else
-            OTEL_SAMPLE="1.0"
+            DOMAIN_MAX_INSTANCES="${CLOUD_RUN_DOMAIN_MAX_INSTANCES:-2}"
+            GATEWAY_MAX_INSTANCES="${CLOUD_RUN_GATEWAY_MAX_INSTANCES:-3}"
+            FRONTEND_MAX_INSTANCES="${CLOUD_RUN_FRONTEND_MAX_INSTANCES:-2}"
           fi
 
           gcloud config set project "${GCP_PROJECT_ID}"
           BUILD_ID="$(gcloud builds submit \
             --config=cloudbuild.yaml \
-            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${DEPLOY_TAG},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }},_OTEL_SAMPLE=${OTEL_SAMPLE} \
+            --substitutions=_ENV=${ENV_NAME},_SKIP_BUILD=${SKIP_BUILD},_COMMIT_SHA=${DEPLOY_TAG},_REGION=${GCP_REGION},_DB_HOST=${DB_HOST},_DB_NAME=${DB_NAME},_DEPLOY_SERVICES=${{ inputs.deploy_services }},_OTEL_SAMPLE=${OTEL_SAMPLE},_DOMAIN_MIN_INSTANCES=${DOMAIN_MIN_INSTANCES},_GATEWAY_MIN_INSTANCES=${GATEWAY_MIN_INSTANCES},_DOMAIN_MAX_INSTANCES=${DOMAIN_MAX_INSTANCES},_GATEWAY_MAX_INSTANCES=${GATEWAY_MAX_INSTANCES},_FRONTEND_MAX_INSTANCES=${FRONTEND_MAX_INSTANCES} \
             --project="${GCP_PROJECT_ID}" \
             --gcs-source-staging-dir="${CLOUD_BUILD_SOURCE_STAGING_DIR}" \
             --async \

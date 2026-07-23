@@ -1,17 +1,16 @@
 name: CD / Build once, promote dev -> prod
 
-# Continuous delivery with build-once-promote:
-#   1. On merge to main, build images tagged with the commit SHA and deploy them to DEV.
+# Manual delivery with build-once-promote:
+#   1. On workflow dispatch, build images tagged with the commit SHA and deploy them to DEV.
 #   2. After dev succeeds, promote the SAME image SHA to PROD (no rebuild). The prod job binds
 #      to the `prod` GitHub Environment, whose protection rules (required reviewers) hold the
 #      promotion until a human approves it — the "one-click promote" gate.
 #
 # Manual re-runs / single-service deploys still use the `GCP / Deploy` workflow directly
-# (workflow_dispatch). This workflow is the automated main-line path.
+# (workflow_dispatch). Push-triggered deployment is intentionally disabled while the project is in
+# a cost-controlled shutdown posture.
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       deploy_services:

@@ -13,7 +13,12 @@ substitutions:
   _DEPLOY_SERVICES: frontend
   _DB_HOST: 127.0.0.1:5432       # overridden per env by the workflow (dev vs prod Cloud SQL private IP)
   _DB_NAME: custoking_dev        # overridden per env by the workflow (custoking_dev | custoking_prod)
-  _OTEL_SAMPLE: "1.0"            # dev=1.0; deploy.yml passes 0.2 for prod
+  _OTEL_SAMPLE: "0.05"           # overridden by deploy.yml when an environment needs more traces
+  _DOMAIN_MIN_INSTANCES: "0"     # set to 1 only when always-on outbox relays are worth the fixed cost
+  _GATEWAY_MIN_INSTANCES: "0"
+  _DOMAIN_MAX_INSTANCES: "2"
+  _GATEWAY_MAX_INSTANCES: "3"
+  _FRONTEND_MAX_INSTANCES: "2"
   _APP_DB_USER: app_rt
   _FLYWAY_DB_USER: appuser
   _VPC_NETWORK: default
@@ -130,7 +135,7 @@ steps:
         # dev is a faithful pre-production mirror. Only the wired resources differ by -${_ENV}.
         otel_common="GCP_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_PROJECT=$PROJECT_ID,GOOGLE_CLOUD_QUOTA_PROJECT=$PROJECT_ID,OTEL_TRACES_EXPORTER=otlp,OTEL_LOGS_EXPORTER=none,OTEL_METRICS_EXPORTER=none,OTEL_EXPORTER_OTLP_ENDPOINT=https://telemetry.googleapis.com,OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=https://telemetry.googleapis.com/v1/traces,OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf,OTEL_TRACES_SAMPLER=parentbased_traceidratio,OTEL_TRACES_SAMPLER_ARG=${_OTEL_SAMPLE},OTEL_RESOURCE_ATTRIBUTES=gcp.project_id=$PROJECT_ID"
         common_env="SPRING_PROFILES_ACTIVE=prod,SPRING_DATASOURCE_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},SPRING_DATASOURCE_USERNAME=${_APP_DB_USER},FLYWAY_URL=jdbc:postgresql://${_DB_HOST}/${_DB_NAME},FLYWAY_USERNAME=${_FLYWAY_DB_USER},$${otel_common}"
-        common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --max-instances=2 --memory=768Mi --cpu-boost)
+        common_flags=(--region="${_REGION}" --platform=managed --network="${_VPC_NETWORK}" --subnet="${_VPC_SUBNET}" --vpc-egress="${_VPC_EGRESS}" --no-allow-unauthenticated --port=8080 --min-instances="${_DOMAIN_MIN_INSTANCES}" --max-instances="${_DOMAIN_MAX_INSTANCES}" --memory=768Mi --cpu-boost)
 
         deploy_service() {
           local selector="$1"
@@ -170,10 +175,10 @@ steps:
         # SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps it to
         # school-core.outbox.pubsub.topic-id, which @ConditionalOnProperty gates the real PubSub relay on.
         # Publishes to the SHARED reporting-events topic (same one billing uses); reporting's existing
-        # subscription routes by eventType. --min-instances=1: the @Scheduled outbox relay only polls while alive.
+        # subscription routes by eventType. With _DOMAIN_MIN_INSTANCES=0 the relay only polls while
+        # the service is awake; set _DOMAIN_MIN_INSTANCES=1 when real-time relay latency matters.
         deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "OTEL_SERVICE_NAME=school-core-service,SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest" \
-          "--min-instances=1"
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
 
         # identity calls tenant-school directly; that domain now lives in school-core (env-suffixed URL).
         TENANT_SCHOOL_URL="$(gcloud run services describe custoking-school-core-service-${_ENV} --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"
@@ -183,8 +188,7 @@ steps:
         pids=()
         labels=()
         deploy_service identity-service custoking-identity-service-${_ENV} custoking-identity-service "OTEL_SERVICE_NAME=identity-service,IDENTITY_DB_SCHEMA=identity,TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},TENANT_SCHOOL_CLOUD_RUN_AUTH=auto,APP_COOKIE_SECURE=true,APP_COOKIE_SAME_SITE=None,APP_JWT_EXPIRATION_MS=900000,APP_REFRESH_TOKEN_EXPIRATION_MS=604800000" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,APP_JWT_SECRET=jwt-secret-${_ENV}:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest" \
-          "--min-instances=1" &
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,APP_JWT_SECRET=jwt-secret-${_ENV}:latest,IDENTITY_INTROSPECTION_TOKEN=identity-introspection-token-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest" &
         pids+=("$$!")
         labels+=("identity-service")
 
@@ -192,19 +196,17 @@ steps:
         # OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID (not ..._TOPIC): Spring relaxed binding maps it to
         # operations.outbox.pubsub.topic-id, which @ConditionalOnProperty gates the real PubSub relay on.
         # Publishes to the SHARED reporting-events topic (same one billing/school-core use); reporting's
-        # existing subscription routes by eventType. --min-instances=1: the @Scheduled outbox relay only
-        # polls while alive.
+        # existing subscription routes by eventType. With _DOMAIN_MIN_INSTANCES=0 the scheduled relay
+        # polls only when the service is awake.
         deploy_service operations-service custoking-operations-service-${_ENV} custoking-operations-service "OTEL_SERVICE_NAME=operations-service,OPERATIONS_MERGED=true,OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID,OPERATIONS_TENANT_SCHOOL_BASE_URL=$${TENANT_SCHOOL_URL},OPERATIONS_TENANT_SCHOOL_CLOUD_RUN_AUTH=auto" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest,OPERATIONS_TENANT_SCHOOL_TOKEN=tenant-school-read-token-${_ENV}:latest" \
-          "--min-instances=1" &
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,WORKFLOW_READ_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_READ_TOKEN=firefighting-read-token-${_ENV}:latest,OPERATIONS_TENANT_SCHOOL_TOKEN=tenant-school-read-token-${_ENV}:latest" &
         pids+=("$$!")
         labels+=("operations-service")
 
         # billing does not depend on identity, operations, or platform. Deploy it in the same wave
         # after school-core so the common database migrations still run before downstream checks.
         deploy_service billing-service custoking-billing-service-${_ENV} custoking-billing-service "OTEL_SERVICE_NAME=billing-service,BILLING_DB_SCHEMA=billing,BILLING_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},BILLING_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest" \
-          "--min-instances=1" &
+          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest" &
         pids+=("$$!")
         labels+=("billing-service")
 
@@ -259,7 +261,7 @@ steps:
           fi
           gcloud run deploy "$${FRONTEND_SVC}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-frontend:${_COMMIT_SHA}" \
-            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=2 --cpu-boost \
+            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --min-instances=0 --max-instances="${_FRONTEND_MAX_INSTANCES}" --cpu-boost \
             --set-env-vars="API_UPSTREAM=$${CURRENT_GATEWAY_URL}"
         else
           echo "Skipping frontend; not selected by _DEPLOY_SERVICES=${_DEPLOY_SERVICES}"
@@ -276,7 +278,7 @@ steps:
 
           gcloud run deploy "$${GATEWAY_SVC}" \
             --image="${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/custoking-api-gateway:${_COMMIT_SHA}" \
-            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --max-instances=3 --cpu-boost --min-instances=1 \
+            --region="${_REGION}" --platform=managed --allow-unauthenticated --port=80 --min-instances="${_GATEWAY_MIN_INSTANCES}" --max-instances="${_GATEWAY_MAX_INSTANCES}" --cpu-boost \
             --set-env-vars="$${gateway_otel_env},GATEWAY_AUTH_MODE=enforce,GATEWAY_CLOUD_RUN_AUTH=auto,GATEWAY_CORS_ALLOWED_ORIGINS=$${FRONTEND_URL},FRONTEND_UPSTREAM=$${FRONTEND_URL},IDENTITY_UPSTREAM=$${IDENTITY_URL},TENANT_SCHOOL_UPSTREAM=$${SCHOOLCORE_URL},STUDENT_UPSTREAM=$${SCHOOLCORE_URL},ATTENDANCE_UPSTREAM=$${SCHOOLCORE_URL},FEE_UPSTREAM=$${SCHOOLCORE_URL},CATALOG_UPSTREAM=$${SCHOOLCORE_URL},WORKFLOW_UPSTREAM=$${OPERATIONS_URL},FIREFIGHTING_UPSTREAM=$${OPERATIONS_URL},REPORTING_UPSTREAM=$${PLATFORM_URL},BILLING_UPSTREAM=$${BILLING_URL},AUDIT_UPSTREAM=$${PLATFORM_URL},NOTIFICATION_UPSTREAM=$${PLATFORM_URL},GATEWAY_LOCAL_JWT_VERIFY=enabled" \
             --set-secrets="IDENTITY_SERVICE_TOKEN=identity-introspection-token-${_ENV}:latest,TENANT_SCHOOL_SERVICE_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_SERVICE_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_SERVICE_TOKEN=attendance-read-token-${_ENV}:latest,FEE_SERVICE_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_SERVICE_TOKEN=catalog-read-token-${_ENV}:latest,WORKFLOW_SERVICE_TOKEN=workflow-read-token-${_ENV}:latest,FIREFIGHTING_SERVICE_TOKEN=firefighting-read-token-${_ENV}:latest,REPORTING_SERVICE_TOKEN=reporting-read-token-${_ENV}:latest,BILLING_SERVICE_TOKEN=billing-service-token-${_ENV}:latest,AUDIT_SERVICE_TOKEN=audit-ingest-token-${_ENV}:latest,NOTIFICATION_SERVICE_TOKEN=notification-status-token-${_ENV}:latest,APP_JWT_SECRET=jwt-secret-${_ENV}:latest"
 
