@@ -34,6 +34,12 @@ public class ModuleEntitlementGuard {
         if (!ctx.isAuthenticated() || ctx.isSuperAdmin()) {
             return;
         }
+        if (ctx.isOperations() && schoolId == null) {
+            if (moduleCode != null && !moduleCode.isBlank() && !ctx.operatorSchools().isEmpty()) {
+                return;
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, moduleCode + " module is not enabled for any assigned school");
+        }
         if (schoolId == null || moduleCode == null || moduleCode.isBlank()
                 || !modules.anyEnabled(schoolId, List.of(moduleCode))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, moduleCode + " module is not enabled for this school");

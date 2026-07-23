@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -68,6 +69,22 @@ public class UserDirectoryController {
         // branchId=null (platform user) resolves to the caller's own school — no exception.
         TenantScope.resolveSchoolId(user.branchId());
         return user;
+    }
+
+    @PatchMapping("/{id}")
+    public Object updateUser(
+            @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        requireToken(token, "identity:write");
+        TenantScope.requirePermissionIfAuthenticated(USER_UPDATE);
+        TenantScope.requireSuperAdmin();
+        return users.updateProfile(
+                id,
+                text(body, "fullName"),
+                text(body, "email"),
+                TenantContext.get().userId(),
+                TenantContext.get().email());
     }
 
     @PostMapping("/{id}/password-reset")

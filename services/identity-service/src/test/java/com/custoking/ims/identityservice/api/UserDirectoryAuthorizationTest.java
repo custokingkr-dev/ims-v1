@@ -14,6 +14,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,6 +64,32 @@ class UserDirectoryAuthorizationTest {
                 .andExpect(status().isForbidden());
 
         verify(users, never()).users(any(), any(), any(), any(), anyInt());
+    }
+
+    // ---- updateUser ----
+
+    @Test
+    void updateUser_nonSuperadmin_isForbidden() throws Exception {
+        mvc.perform(patch("/api/v1/users/9")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:update")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"New Admin\",\"email\":\"new@example.com\"}"))
+                .andExpect(status().isForbidden());
+        verify(users, never()).updateProfile(anyLong(), any(), any(), any(), any());
+    }
+
+    @Test
+    void updateUser_superadmin_isAllowed() throws Exception {
+        mvc.perform(patch("/api/v1/users/9")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"New Admin\",\"email\":\"new@example.com\"}"))
+                .andExpect(status().isOk());
+        verify(users).updateProfile(eq(9L), eq("New Admin"), eq("new@example.com"), any(), any());
     }
 
     // ---- resetPassword ----

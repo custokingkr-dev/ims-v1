@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.persistence;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -9,6 +10,7 @@ import org.springframework.http.HttpStatus;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Repository
 public class UserDirectoryReadRepository {
@@ -56,6 +58,44 @@ public class UserDirectoryReadRepository {
                 .query(UserDirectoryRow.class)
                 .optional()
                 .orElse(null);
+    }
+
+    @Transactional
+    public UserDirectoryRow updateProfile(Long userId, String fullName, String email, Long actorId, String actorEmail) {
+        UserDirectoryRow before = user(userId);
+        if (before == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        String normalizedName = blankToNull(fullName);
+        String normalizedEmail = blankToNull(email);
+        if (normalizedName == null && normalizedEmail == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "fullName or email is required");
+        }
+        if (normalizedEmail != null) {
+            normalizedEmail = normalizedEmail.toLowerCase(Locale.ROOT);
+        }
+        try {
+            jdbc.sql("""
+                            UPDATE identity.app_users
+                            SET full_name = COALESCE(:fullName, full_name),
+                                email = COALESCE(:email, email)
+                            WHERE id = :userId
+                            """)
+                    .param("fullName", normalizedName)
+                    .param("email", normalizedEmail)
+                    .param("userId", userId)
+                    .update();
+        } catch (DuplicateKeyException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "email is already used by an active account", ex);
+        }
+        UserDirectoryRow after = user(userId);
+        if (normalizedEmail != null && !normalizedEmail.equalsIgnoreCase(before.email())) {
+            deleteSessions(userId);
+        }
+        logAudit("USER_UPDATED", actorId, actorEmail, userId,
+                profileAuditValue(before.fullName(), before.email()),
+                profileAuditValue(after.fullName(), after.email()));
+        return after;
     }
 
     @Transactional
@@ -126,6 +166,25 @@ public class UserDirectoryReadRepository {
         jdbc.sql("DELETE FROM identity.auth_sessions WHERE user_id = :userId")
                 .param("userId", userId)
                 .update();
+    }
+
+    private String blankToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String profileAuditValue(String fullName, String email) {
+        return "{\"fullName\":\"" + auditEscape(fullName) + "\",\"email\":\"" + auditEscape(email) + "\"}";
+    }
+
+    private String auditEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private void logAudit(String eventType, Long actorId, String actorEmail, Long targetUserId,

@@ -12,25 +12,45 @@ type RoleAssignmentRow = {
   active: boolean;
 };
 
-function addEmailOnce(list: string[], email?: string) {
-  if (!email) return;
-  if (!list.some((value) => value.toLowerCase() === email.toLowerCase())) {
-    list.push(email);
+type AccountSummary = {
+  userId: number;
+  email: string;
+  fullName?: string;
+};
+
+function addAccountOnce(list: AccountSummary[], account: AccountSummary) {
+  if (!account.email) return;
+  if (!list.some((value) => value.userId === account.userId || value.email.toLowerCase() === account.email.toLowerCase())) {
+    list.push(account);
   }
 }
 
-function accountEmails(school: any, listField: 'adminEmails' | 'operatorEmails', fallbackField: 'adminEmail' | 'operationsEmail') {
-  const emails = Array.isArray(school[listField]) ? school[listField] : [];
-  if (emails.length > 0) return emails;
-  return school[fallbackField] ? [school[fallbackField]] : [];
+function accountList(school: any, listField: 'adminAccounts' | 'operatorAccounts', fallbackField: 'adminEmail' | 'operationsEmail') {
+  const accounts = Array.isArray(school[listField]) ? school[listField] : [];
+  if (accounts.length > 0) return accounts as AccountSummary[];
+  return school[fallbackField] ? [{ userId: 0, email: school[fallbackField] }] : [];
 }
 
-function renderEmailList(emails: string[]) {
-  if (emails.length === 0) return <span style={{ color: 'var(--ink3)' }}>-</span>;
+function renderAccountList(
+  accounts: AccountSummary[],
+  actions?: {
+    onEdit?: (account: AccountSummary) => void;
+    onManageSchools?: (account: AccountSummary) => void;
+  },
+) {
+  if (accounts.length === 0) return <span style={{ color: 'var(--ink3)' }}>-</span>;
   return (
     <div style={{ display: 'grid', gap: 4, minWidth: 180 }}>
-      {emails.map((email) => (
-        <span key={email} style={{ overflowWrap: 'anywhere', fontSize: 13 }}>{email}</span>
+      {accounts.map((account) => (
+        <span key={`${account.userId}:${account.email}`} style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', overflowWrap: 'anywhere', fontSize: 13 }}>
+          <span>{account.email}</span>
+          {account.userId > 0 && actions?.onEdit && (
+            <button type="button" className="ck-btn ck-btn-ghost" style={{ padding: '2px 8px', fontSize: 11, minHeight: 0 }} onClick={() => actions.onEdit?.(account)}>Edit</button>
+          )}
+          {account.userId > 0 && actions?.onManageSchools && (
+            <button type="button" className="ck-btn ck-btn-ghost" style={{ padding: '2px 8px', fontSize: 11, minHeight: 0 }} onClick={() => actions.onManageSchools?.(account)}>Schools</button>
+          )}
+        </span>
       ))}
     </div>
   );
@@ -76,6 +96,15 @@ export function SaSchoolsPanel() {
   const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2' });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [accountEdit, setAccountEdit] = useState<{ account: AccountSummary; role: 'ADMIN' | 'OPERATIONS'; school: any } | null>(null);
+  const [accountEditForm, setAccountEditForm] = useState({ fullName: '', email: '', password: '' });
+  const [accountEditError, setAccountEditError] = useState('');
+  const [accountEditSaving, setAccountEditSaving] = useState(false);
+  const [operatorAccount, setOperatorAccount] = useState<AccountSummary | null>(null);
+  const [operatorSchoolIds, setOperatorSchoolIds] = useState<Set<number>>(new Set());
+  const [operatorSchoolsLoading, setOperatorSchoolsLoading] = useState(false);
+  const [operatorSchoolsError, setOperatorSchoolsError] = useState('');
+  const [operatorSchoolsSaving, setOperatorSchoolsSaving] = useState(false);
 
   const openEdit = (school: any) => {
     setEditSchool(school);
@@ -104,6 +133,76 @@ export function SaSchoolsPanel() {
     }
   };
 
+  const openAccountEdit = (school: any, role: 'ADMIN' | 'OPERATIONS', account: AccountSummary) => {
+    setAccountEdit({ school, role, account });
+    setAccountEditForm({ fullName: account.fullName || '', email: account.email || '', password: '' });
+    setAccountEditError('');
+  };
+
+  const submitAccountEdit = async () => {
+    if (!accountEdit) return;
+    setAccountEditError(''); setAccountEditSaving(true);
+    try {
+      await api.patch(`/users/${accountEdit.account.userId}`, {
+        fullName: accountEditForm.fullName,
+        email: accountEditForm.email,
+      });
+      if (accountEditForm.password.trim()) {
+        await api.post(`/users/${accountEdit.account.userId}/password-reset`, {
+          password: accountEditForm.password.trim(),
+        });
+      }
+      setToast(`${accountEdit.role === 'ADMIN' ? 'Admin' : 'Operator'} account updated`);
+      setAccountEdit(null);
+      await loadSaSchools();
+    } catch (e: any) {
+      setAccountEditError(e?.response?.data?.message || 'Account update failed. Please try again.');
+    } finally {
+      setAccountEditSaving(false);
+    }
+  };
+
+  const openOperatorSchools = async (account: AccountSummary) => {
+    setOperatorAccount(account);
+    setOperatorSchoolsError('');
+    setOperatorSchoolIds(new Set());
+    setOperatorSchoolsLoading(true);
+    try {
+      const res = await api.get<Array<{ schoolId: number }>>(`/rbac/users/${account.userId}/operator-schools`);
+      setOperatorSchoolIds(new Set((res.data || []).map((row) => Number(row.schoolId)).filter(Boolean)));
+    } catch (e: any) {
+      setOperatorSchoolsError(e?.response?.data?.message || 'Could not load operator schools.');
+    } finally {
+      setOperatorSchoolsLoading(false);
+    }
+  };
+
+  const toggleOperatorSchool = (schoolId: number, checked: boolean) => {
+    setOperatorSchoolIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(schoolId);
+      else next.delete(schoolId);
+      return next;
+    });
+  };
+
+  const submitOperatorSchools = async () => {
+    if (!operatorAccount) return;
+    setOperatorSchoolsError(''); setOperatorSchoolsSaving(true);
+    try {
+      await api.post(`/rbac/users/${operatorAccount.userId}/operator-schools`, {
+        schoolIds: Array.from(operatorSchoolIds).sort((a, b) => a - b),
+      });
+      setToast('Operator school assignments updated');
+      setOperatorAccount(null);
+      await loadSaSchools();
+    } catch (e: any) {
+      setOperatorSchoolsError(e?.response?.data?.message || 'Could not update operator schools.');
+    } finally {
+      setOperatorSchoolsSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3500);
@@ -119,14 +218,19 @@ export function SaSchoolsPanel() {
           .catch(() => ({ data: [] as RoleAssignmentRow[] })),
       ]);
       const schools = Array.isArray(schoolsRes.data) ? schoolsRes.data : [];
-      const accountMap: Record<number, { adminEmails: string[]; operatorEmails: string[] }> = {};
+      const accountMap: Record<number, { adminAccounts: AccountSummary[]; operatorAccounts: AccountSummary[] }> = {};
       for (const row of assignmentsRes.data || []) {
         if (row.schoolId == null || row.active === false) continue;
         const role = (row.roleName || '').toUpperCase();
         if (role !== 'ADMIN' && role !== 'OPERATIONS') continue;
-        const bucket = accountMap[row.schoolId] ?? { adminEmails: [], operatorEmails: [] };
-        if (role === 'ADMIN') addEmailOnce(bucket.adminEmails, row.userEmail || `user #${row.userId}`);
-        if (role === 'OPERATIONS') addEmailOnce(bucket.operatorEmails, row.userEmail || `user #${row.userId}`);
+        const account = {
+          userId: row.userId,
+          email: row.userEmail || `user #${row.userId}`,
+          fullName: row.userFullName,
+        };
+        const bucket = accountMap[row.schoolId] ?? { adminAccounts: [], operatorAccounts: [] };
+        if (role === 'ADMIN') addAccountOnce(bucket.adminAccounts, account);
+        if (role === 'OPERATIONS') addAccountOnce(bucket.operatorAccounts, account);
         accountMap[row.schoolId] = bucket;
       }
       setSaSchools(schools.map((school: any) => ({ ...school, ...(accountMap[school.id] ?? {}) })));
@@ -174,7 +278,7 @@ export function SaSchoolsPanel() {
           const activeSchools = saSchools.filter((s: any) => s.active).length;
           const totalOrders = saSchools.reduce((n: number, s: any) => n + (s.ordersYTD ?? 0), 0);
           const totalGmvPaise = saSchools.reduce((n: number, s: any) => n + Number(s.gmvYTD ?? 0), 0);
-          const pendingSetup = saSchools.filter((s: any) => accountEmails(s, 'adminEmails', 'adminEmail').length === 0).length;
+          const pendingSetup = saSchools.filter((s: any) => accountList(s, 'adminAccounts', 'adminEmail').length === 0).length;
           return (
             <div className="ck-stats ck-s4" style={{ marginBottom: 18 }}>
               <Stat label="Active schools" value={activeSchools} sub={`${saSchools.length} total onboarded`} pill="Platform" tone="blue" />
@@ -201,8 +305,13 @@ export function SaSchoolsPanel() {
                     <td>{school.configuredSectionCount ?? '—'}</td>
                     <td>{academicStartLabel(school.academicYearStartMonth)}</td>
                     <td>{financialStartLabel(school.financialYearStartMonth)}</td>
-                    <td>{renderEmailList(accountEmails(school, 'adminEmails', 'adminEmail'))}</td>
-                    <td>{renderEmailList(accountEmails(school, 'operatorEmails', 'operationsEmail'))}</td>
+                    <td>{renderAccountList(accountList(school, 'adminAccounts', 'adminEmail'), {
+                      onEdit: (account) => openAccountEdit(school, 'ADMIN', account),
+                    })}</td>
+                    <td>{renderAccountList(accountList(school, 'operatorAccounts', 'operationsEmail'), {
+                      onEdit: (account) => openAccountEdit(school, 'OPERATIONS', account),
+                      onManageSchools: openOperatorSchools,
+                    })}</td>
                     <td>{school.ordersYTD ?? 0}</td>
                     <td>₹{formatMoney(Number(school.gmvYTD || 0) / 100)}</td>
                     <td>{school.erpSince || '—'}</td>
@@ -278,6 +387,66 @@ export function SaSchoolsPanel() {
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => setEditSchool(null)}>Cancel</button>
               <button className="ck-btn ck-btn-g" disabled={editSaving} onClick={submitEdit}>{editSaving ? 'Saving…' : 'Save changes'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {accountEdit && (
+        <div className="ck-modal-bg" onClick={() => !accountEditSaving && setAccountEdit(null)}>
+          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="ck-modal-h">
+              <div>
+                <div className="ck-modal-title">Edit {accountEdit.role === 'ADMIN' ? 'admin' : 'operator'} account</div>
+                <div className="section-copy" style={{ marginTop: 6 }}>{accountEdit.school.name}</div>
+              </div>
+              <button className="ck-modal-x" onClick={() => !accountEditSaving && setAccountEdit(null)}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              {accountEditError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{accountEditError}</div></div>}
+              <div className="ck-form-grid">
+                <Field label="Full name *"><input value={accountEditForm.fullName} onChange={(e) => setAccountEditForm({ ...accountEditForm, fullName: e.target.value })} /></Field>
+                <Field label="Email *"><input type="email" value={accountEditForm.email} onChange={(e) => setAccountEditForm({ ...accountEditForm, email: e.target.value })} /></Field>
+                <Field label="New password"><input type="password" minLength={8} autoComplete="new-password" value={accountEditForm.password} placeholder="Leave blank to keep current password" onChange={(e) => setAccountEditForm({ ...accountEditForm, password: e.target.value })} /></Field>
+              </div>
+            </div>
+            <div className="ck-modal-foot">
+              <button className="ck-btn ck-btn-ghost" onClick={() => !accountEditSaving && setAccountEdit(null)}>Cancel</button>
+              <button className="ck-btn ck-btn-g" disabled={accountEditSaving} onClick={submitAccountEdit}>{accountEditSaving ? 'Saving…' : 'Save account'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {operatorAccount && (
+        <div className="ck-modal-bg" onClick={() => !operatorSchoolsSaving && setOperatorAccount(null)}>
+          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+            <div className="ck-modal-h">
+              <div>
+                <div className="ck-modal-title">Operator schools</div>
+                <div className="section-copy" style={{ marginTop: 6 }}>{operatorAccount.email}</div>
+              </div>
+              <button className="ck-modal-x" onClick={() => !operatorSchoolsSaving && setOperatorAccount(null)}>×</button>
+            </div>
+            <div className="ck-modal-body">
+              {operatorSchoolsError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{operatorSchoolsError}</div></div>}
+              {operatorSchoolsLoading ? (
+                <div style={{ padding: 16 }}>Loading schools…</div>
+              ) : (
+                <div style={{ display: 'grid', gap: 10, maxHeight: 360, overflow: 'auto' }}>
+                  {saSchools.map((school: any) => (
+                    <label key={school.id} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border, #e5e7eb)', background: operatorSchoolIds.has(school.id) ? 'var(--g1, #f0fdf4)' : '#fafafa' }}>
+                      <input type="checkbox" checked={operatorSchoolIds.has(school.id)} onChange={(e) => toggleOperatorSchool(school.id, e.target.checked)} style={{ accentColor: 'var(--g, #16a34a)' }} />
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{school.name}</span>
+                      <span style={{ color: 'var(--ink3)', fontSize: 12 }}>{school.shortCode || school.city || ''}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="ck-modal-foot">
+              <button className="ck-btn ck-btn-ghost" onClick={() => !operatorSchoolsSaving && setOperatorAccount(null)}>Cancel</button>
+              <button className="ck-btn ck-btn-g" disabled={operatorSchoolsSaving || operatorSchoolsLoading} onClick={submitOperatorSchools}>{operatorSchoolsSaving ? 'Saving…' : 'Save schools'}</button>
             </div>
           </div>
         </div>
