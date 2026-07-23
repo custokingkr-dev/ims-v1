@@ -78,11 +78,11 @@ const assignments = [
   },
   {
     userId: 102,
-    userEmail: 'admin@nsa.edu',
-    userFullName: 'Nina Admin',
+    userEmail: 'retired@nsa.edu',
+    userFullName: 'Retired Admin',
     schoolId: 20,
     roleName: 'ADMIN',
-    active: true,
+    active: false,
   },
 ];
 
@@ -197,28 +197,39 @@ describe('SchoolManagementPage superadmin workflows', () => {
     const user = userEvent.setup();
     await loadedPage();
 
-    const greenRow = screen.getByRole('button', { name: /select green valley school/i });
-    await user.click(within(greenRow).getByRole('button', { name: /^admin$/i }));
+    const northRow = screen.getByRole('button', { name: /select north star academy/i });
+    expect(within(northRow).getByText('No admin')).toBeInTheDocument();
+    await user.click(within(northRow).getByRole('button', { name: /add admin for north star academy/i }));
 
     const addDialog = screen.getByRole('dialog', { name: /add admin account/i });
     await user.type(within(addDialog).getByRole('textbox', { name: /full name/i }), 'Priya Admin');
-    await user.type(within(addDialog).getByRole('textbox', { name: /^email$/i }), 'priya.admin@gvs.edu');
+    await user.type(within(addDialog).getByRole('textbox', { name: /^email$/i }), 'priya.admin@nsa.edu');
     await user.type(within(addDialog).getByLabelText(/temporary password/i), 'Temporary!2026');
     await user.click(within(addDialog).getByRole('button', { name: /save admin/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools/10/admin', {
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools/20/admin', {
       fullName: 'Priya Admin',
-      email: 'priya.admin@gvs.edu',
+      email: 'priya.admin@nsa.edu',
       temporaryPassword: 'Temporary!2026',
     }));
 
-    await user.click(screen.getByRole('button', { name: /edit admin asha admin/i }));
+    const greenRow = screen.getByRole('button', { name: /select green valley school/i });
+    expect(within(greenRow).getByText('Asha Admin')).toBeInTheDocument();
+    expect(within(greenRow).getByText('admin@gvs.edu')).toBeInTheDocument();
+
+    await user.click(within(greenRow).getByRole('button', { name: /manage admins for green valley school/i }));
+    const adminMenu = screen.getByRole('menu', { name: /admin users for green valley school/i });
+    expect(within(adminMenu).getByText('Asha Admin')).toBeInTheDocument();
+    expect(within(adminMenu).getByText('admin@gvs.edu')).toBeInTheDocument();
+    await user.click(within(adminMenu).getByRole('menuitem', { name: /asha admin admin@gvs\.edu/i }));
+
     const editDialog = screen.getByRole('dialog', { name: /edit admin account/i });
     await user.clear(within(editDialog).getByRole('textbox', { name: /full name/i }));
     await user.type(within(editDialog).getByRole('textbox', { name: /full name/i }), 'Asha Admin Updated');
     await user.clear(within(editDialog).getByRole('textbox', { name: /^email$/i }));
     await user.type(within(editDialog).getByRole('textbox', { name: /^email$/i }), 'asha.updated@gvs.edu');
     await user.type(within(editDialog).getByLabelText(/new password/i), 'Updated!2026');
+    await user.type(within(editDialog).getByLabelText(/confirm password/i), 'Updated!2026');
     await user.click(within(editDialog).getByRole('button', { name: /save account/i }));
 
     await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/users/101', {

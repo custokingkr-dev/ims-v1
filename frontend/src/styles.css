@@ -471,7 +471,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 
 .sms-console { display:grid; grid-template-columns:minmax(0, 1fr) 390px; gap:18px; align-items:start; }
 .sms-main-panel,
-.sms-operator-panel { background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); overflow:hidden; }
+.sms-operator-panel { background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow); }
+.sms-main-panel { overflow:visible; }
+.sms-operator-panel { overflow:hidden; }
 .sms-panel-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:18px 20px; border-bottom:1px solid var(--border); background:#fff; }
 .sms-panel-head.compact { align-items:flex-start; }
 .sms-panel-head h2 { margin:0 0 6px; font-size:20px; line-height:1.15; }
@@ -510,7 +512,22 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .sms-chip.amber { color:var(--am); background:var(--am1); border-color:#f2d19d; }
 .sms-chip.red { color:var(--re); background:var(--re1); border-color:#f3c1bd; }
 .sms-chip button { border:none; border-left:1px solid currentColor; background:transparent; color:inherit; padding:0 0 0 6px; margin-left:2px; font-weight:800; cursor:pointer; }
+.sms-account-summary { display:grid; max-width:100%; min-width:0; padding:5px 8px; border:1px solid var(--border); border-radius:8px; background:#fff; box-shadow:0 1px 0 rgba(0,0,0,.02); }
+.sms-account-summary strong { color:var(--ink); font-size:12px; line-height:1.2; overflow-wrap:anywhere; }
+.sms-account-summary small { margin-top:2px; color:var(--ink3); font-size:11px; line-height:1.25; overflow-wrap:anywhere; }
 .sms-row-actions { display:flex; justify-content:flex-end; gap:7px; flex-wrap:wrap; }
+.sms-admin-menu-wrap { position:relative; display:inline-flex; }
+.sms-admin-menu { position:absolute; top:calc(100% + 8px); right:0; z-index:30; display:grid; gap:4px; width:290px; padding:8px; border:1px solid var(--border); border-radius:8px; background:#fff; box-shadow:0 16px 34px rgba(0,0,0,.13), 0 4px 12px rgba(0,0,0,.08); }
+.sms-admin-menu::before { content:''; position:absolute; top:-6px; right:18px; width:10px; height:10px; background:#fff; border-left:1px solid var(--border); border-top:1px solid var(--border); transform:rotate(45deg); }
+.sms-admin-menu-title { padding:4px 6px 6px; color:var(--ink3); font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.sms-admin-menu button { position:relative; display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; border:0; border-radius:8px; background:transparent; color:var(--ink); padding:9px 10px; text-align:left; cursor:pointer; }
+.sms-admin-menu button:hover,
+.sms-admin-menu button:focus-visible { background:var(--g1); outline:none; }
+.sms-admin-menu button strong,
+.sms-admin-menu button small { display:block; overflow-wrap:anywhere; }
+.sms-admin-menu button strong { font-size:13px; line-height:1.25; }
+.sms-admin-menu button small { margin-top:2px; color:var(--ink3); font-size:12px; line-height:1.25; }
+.sms-admin-menu .sms-admin-menu-add { justify-content:flex-start; color:var(--g); font-weight:800; border-top:1px solid var(--border); border-radius:0 0 6px 6px; margin-top:4px; padding-top:10px; }
 .sms-empty { padding:28px 20px; color:var(--ink3); text-align:center; border-bottom:1px solid var(--border); }
 
 .sms-school-detail { display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:14px; align-items:start; padding:16px 18px; background:#fbfaf8; border-top:1px solid var(--border); }

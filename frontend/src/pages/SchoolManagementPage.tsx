@@ -4,9 +4,9 @@ import { Navigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Building2,
+  ChevronDown,
   CheckCircle2,
   ClipboardList,
-  KeyRound,
   PackageCheck,
   Plus,
   Search,
@@ -113,7 +113,8 @@ const defaultOpsForm = {
 const defaultAccountEditForm = {
   fullName: '',
   email: '',
-  password: ''
+  password: '',
+  confirmPassword: ''
 };
 
 const defaultModuleSelections = (): Record<string, boolean> =>
@@ -195,6 +196,7 @@ export default function SchoolManagementPage() {
   const [accountEditTarget, setAccountEditTarget] = useState<AccountEditTarget | null>(null);
   const [operatorSchoolTarget, setOperatorSchoolTarget] = useState<AccountSummary | null>(null);
   const [showModulesModal, setShowModulesModal] = useState(false);
+  const [adminMenuSchoolId, setAdminMenuSchoolId] = useState<number | null>(null);
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolFilter, setSchoolFilter] = useState<SchoolFilter>('all');
   const [focusedSchoolId, setFocusedSchoolId] = useState<number | null>(null);
@@ -363,6 +365,7 @@ export default function SchoolManagementPage() {
   const focusedOperatorAccounts = focusedSchool ? displayAccounts(focusedAccounts.operators, focusedSchool.operationsEmail) : [];
 
   const openAdminModal = (school: SchoolRow) => {
+    setAdminMenuSchoolId(null);
     setSelectedSchool(school);
     setAdminForm(defaultAdminForm);
     setError('');
@@ -371,6 +374,7 @@ export default function SchoolManagementPage() {
   };
 
   const openOpsModal = () => {
+    setAdminMenuSchoolId(null);
     setSelectedSchool(null);
     setOpsForm(defaultOpsForm);
     setOpsSchoolIds(new Set());
@@ -380,17 +384,20 @@ export default function SchoolManagementPage() {
   };
 
   const openAccountEdit = (role: 'ADMIN' | 'OPERATIONS', account: AccountSummary, contextLabel?: string) => {
+    setAdminMenuSchoolId(null);
     setAccountEditTarget({ role, account, contextLabel });
     setAccountEditForm({
       fullName: account.fullName || '',
       email: account.email || '',
       password: '',
+      confirmPassword: '',
     });
     setError('');
     setNotice('');
   };
 
   const openOperatorSchools = async (account: AccountSummary) => {
+    setAdminMenuSchoolId(null);
     setOperatorSchoolTarget(account);
     setOperatorSchoolIds(new Set());
     setOperatorSchoolsLoading(true);
@@ -408,6 +415,7 @@ export default function SchoolManagementPage() {
   };
 
   const openModulesModal = async (school: SchoolRow) => {
+    setAdminMenuSchoolId(null);
     setSelectedSchool(school);
     setModulesLoading(true);
     setShowModulesModal(true);
@@ -515,6 +523,18 @@ export default function SchoolManagementPage() {
   const submitAccountEdit = async (e: FormEvent) => {
     e.preventDefault();
     if (!accountEditTarget) return;
+    const newPassword = accountEditForm.password.trim();
+    const confirmPassword = accountEditForm.confirmPassword.trim();
+    if (newPassword || confirmPassword) {
+      if (!newPassword) {
+        setError('Enter a new password before confirming it.');
+        return;
+      }
+      if (newPassword !== confirmPassword) {
+        setError('Password confirmation does not match.');
+        return;
+      }
+    }
     try {
       setSaving(true);
       setError('');
@@ -522,9 +542,9 @@ export default function SchoolManagementPage() {
         fullName: accountEditForm.fullName,
         email: accountEditForm.email,
       });
-      if (accountEditForm.password.trim()) {
+      if (newPassword) {
         await api.post(`/users/${accountEditTarget.account.userId}/password-reset`, {
-          password: accountEditForm.password.trim(),
+          password: newPassword,
         });
       }
       setAccountEditTarget(null);
@@ -592,7 +612,7 @@ export default function SchoolManagementPage() {
   };
 
   return (
-    <div className="page-stack sms-page">
+    <div className="page-stack sms-page" onClick={() => setAdminMenuSchoolId(null)}>
       <section className="hero sms-hero">
         <div className="hero-row">
           <div className="sms-hero-copy">
@@ -686,10 +706,12 @@ export default function SchoolManagementPage() {
             {!loading && filteredSchools.map((school) => {
               const accounts = accountsFor(school);
               const adminAccounts = displayAccounts(accounts.admins, school.adminEmail);
+              const editableAdminAccounts = adminAccounts.filter((account) => account.userId > 0);
               const operatorAccountsForSchool = displayAccounts(accounts.operators, school.operationsEmail);
-              const needsAdmin = adminAccounts.length === 0;
+              const needsAdmin = editableAdminAccounts.length === 0;
               const needsOperator = operatorAccountsForSchool.length === 0;
               const selected = focusedSchool?.id === school.id;
+              const adminMenuOpen = adminMenuSchoolId === school.id;
               return (
                 <div
                   key={school.id}
@@ -725,7 +747,10 @@ export default function SchoolManagementPage() {
                     {adminAccounts.length === 0
                       ? <span className="sms-chip red">No admin</span>
                       : adminAccounts.slice(0, 2).map((account) => (
-                        <span className="sms-chip" key={`${school.id}:admin:${account.userId}:${account.email}`}>{account.email}</span>
+                        <span className="sms-account-summary" key={`${school.id}:admin:${account.userId}:${account.email}`}>
+                          <strong>{accountTitle(account)}</strong>
+                          <small>{account.email}</small>
+                        </span>
                       ))}
                     {adminAccounts.length > 2 && <span className="sms-chip">{adminAccounts.length - 2} more</span>}
                   </div>
@@ -739,13 +764,53 @@ export default function SchoolManagementPage() {
                   </div>
                   <div className="sms-row-actions">
                     {can('school:update') && (
-                      <button
-                        type="button"
-                        className={`ck-btn ${needsAdmin ? 'ck-btn-g' : 'ck-btn-ghost'} ck-btn-sm`}
-                        onClick={(event) => { event.stopPropagation(); openAdminModal(school); }}
-                      >
-                        <UserCog size={14} /> {needsAdmin ? 'Add Admin' : 'Admin'}
-                      </button>
+                      <div className="sms-admin-menu-wrap" onClick={(event) => event.stopPropagation()}>
+                        <button
+                          type="button"
+                          className={`ck-btn ${editableAdminAccounts.length === 0 ? 'ck-btn-g' : 'ck-btn-ghost'} ck-btn-sm`}
+                          aria-haspopup={editableAdminAccounts.length > 0 ? 'menu' : undefined}
+                          aria-expanded={editableAdminAccounts.length > 0 ? adminMenuOpen : undefined}
+                          aria-label={editableAdminAccounts.length > 0 ? `Manage admins for ${school.name}` : `Add admin for ${school.name}`}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            if (editableAdminAccounts.length === 0) {
+                              openAdminModal(school);
+                              return;
+                            }
+                            setFocusedSchoolId(school.id);
+                            setAdminMenuSchoolId(adminMenuOpen ? null : school.id);
+                          }}
+                        >
+                          <UserCog size={14} /> {editableAdminAccounts.length === 0 ? 'Add Admin' : 'Admin'}
+                          {editableAdminAccounts.length > 0 && <ChevronDown size={14} />}
+                        </button>
+                        {adminMenuOpen && editableAdminAccounts.length > 0 && (
+                          <div className="sms-admin-menu" role="menu" aria-label={`Admin users for ${school.name}`}>
+                            <div className="sms-admin-menu-title">Select admin to edit</div>
+                            {editableAdminAccounts.map((account) => (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                key={`menu-admin:${school.id}:${account.userId}`}
+                                onClick={() => openAccountEdit('ADMIN', account, school.name)}
+                              >
+                                <span>
+                                  <strong>{accountTitle(account)}</strong>
+                                  <small>{account.email}</small>
+                                </span>
+                              </button>
+                            ))}
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="sms-admin-menu-add"
+                              onClick={() => openAdminModal(school)}
+                            >
+                              <Plus size={14} /> Add new admin
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                     {can('school:update') && (
                       <button
@@ -777,9 +842,6 @@ export default function SchoolManagementPage() {
                     : focusedAdminAccounts.map((account) => (
                       <span className="sms-chip" key={`focused-admin:${account.userId}:${account.email}`}>
                         {accountTitle(account)}
-                        {account.userId > 0 && (
-                          <button type="button" aria-label={`Edit admin ${accountTitle(account)}`} onClick={() => openAccountEdit('ADMIN', account, focusedSchool.name)}>Edit</button>
-                        )}
                       </span>
                     ))}
                 </div>
@@ -800,7 +862,6 @@ export default function SchoolManagementPage() {
                 </div>
               </div>
               <div className="sms-detail-actions">
-                {can('school:update') && <button type="button" className="ck-btn ck-btn-ghost" onClick={() => openAdminModal(focusedSchool)}><KeyRound size={15} /> Add Admin</button>}
                 {can('school:update') && <button type="button" className="ck-btn ck-btn-g" onClick={() => openModulesModal(focusedSchool)}><Settings2 size={15} /> Manage Modules</button>}
               </div>
             </div>
@@ -1006,6 +1067,7 @@ export default function SchoolManagementPage() {
                   <div className="ck-field"><label>Full Name</label><input aria-label="Full Name" value={accountEditForm.fullName} onChange={(e) => setAccountEditForm((s) => ({ ...s, fullName: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Email</label><input aria-label="Email" type="email" value={accountEditForm.email} onChange={(e) => setAccountEditForm((s) => ({ ...s, email: e.target.value }))} required /></div>
                   <div className="ck-field"><label>New Password</label><input aria-label="New Password" type="password" minLength={8} autoComplete="new-password" value={accountEditForm.password} onChange={(e) => setAccountEditForm((s) => ({ ...s, password: e.target.value }))} placeholder="Leave blank to keep current password" /></div>
+                  <div className="ck-field"><label>Confirm Password</label><input aria-label="Confirm Password" type="password" minLength={8} autoComplete="new-password" value={accountEditForm.confirmPassword} onChange={(e) => setAccountEditForm((s) => ({ ...s, confirmPassword: e.target.value }))} placeholder="Required when changing password" /></div>
                 </div>
               </div>
               <div className="ck-modal-foot">
