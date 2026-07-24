@@ -297,7 +297,12 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setModalError(null);
       setDeleteConfirmError(null);
       if (closeModal === false) setStudentsError(null);
-      await api.delete(`/students/${student.id}`, { data: { reason: 'Deleted from Students tab' } });
+      await api.delete(`/students/${student.id}`, {
+        data: {
+          reason: 'Deleted from Students tab',
+          confirmationAdmissionNumber: deleteConfirmText.trim(),
+        },
+      });
       setDeleteConfirm(null);
       setDeleteConfirmText('');
       if (closeModal !== false) closeStudentModal();

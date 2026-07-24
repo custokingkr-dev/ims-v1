@@ -143,9 +143,7 @@ export interface WorkspaceDashboard {
   pendingApprovals: number;
 }
 
-// ── Command Center: AI-suggested next steps ───────────────────────────────────
-// Backend endpoint: GET /api/dashboard/suggestions (not yet implemented)
-// Falls back to typed mock fixtures in command/fixtures.ts when 404.
+// ── Command Center: backend suggested next steps ──────────────────────────────
 export type ActionModule = 'fees' | 'students' | 'supply' | 'firefighting' | 'attendance';
 export type ActionUrgency = 'critical' | 'high' | 'medium' | 'low';
 
@@ -163,8 +161,6 @@ export interface SuggestedAction {
 }
 
 // ── Command Center: Broadcast Channel ────────────────────────────────────────
-// Backend endpoint: GET /api/notifications/broadcasts (not yet implemented)
-// Falls back to typed mock fixtures in command/fixtures.ts when 404.
 export type BroadcastKind = 'event' | 'notice';
 export type BroadcastStatus = 'scheduled' | 'sending' | 'draft';
 export type DeliveryChannel = 'SMS' | 'WhatsApp' | 'Email' | 'Push';

@@ -15,6 +15,7 @@ import java.sql.Statement;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Proves that {@code createStudent} / {@code updateStudent} emit {@code student.upserted.v1}
@@ -192,7 +193,19 @@ class StudentOutboxEmissionIntegrationTest {
         assertThat(detailFee.get("assigned")).isEqualTo(true);
         assertThat(detailFee.get("dueAmountPaise")).isEqualTo(375000L);
 
-        studentRepo.deleteStudent(id, Map.of("reason", "Transferred"));
+        assertThatThrownBy(() -> studentRepo.deleteStudent(id, Map.of(
+                "reason", "Transferred",
+                "confirmationAdmissionNumber", "WRONG-ADM")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("does not match");
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id AND deleted_at IS NULL")
+                .param("id", id)
+                .query(Long.class)
+                .single()).isEqualTo(1L);
+
+        studentRepo.deleteStudent(id, Map.of(
+                "reason", "Transferred",
+                "confirmationAdmissionNumber", "ADM-FEE-1"));
         Map<String, Object> deletedHistory = studentRepo.studentHistory(id);
         Map<String, Object> deletedStudent = (Map<String, Object>) deletedHistory.get("student");
         Map<String, Object> deletedPayment = ((java.util.List<Map<String, Object>>) deletedHistory.get("feePayments")).get(0);

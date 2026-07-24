@@ -77,7 +77,7 @@ describe('StudentsPanel', () => {
 
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith(
       '/students/101',
-      { data: { reason: 'Deleted from Students tab' } },
+      { data: { reason: 'Deleted from Students tab', confirmationAdmissionNumber: 'ADM-101' } },
     ));
   });
 });

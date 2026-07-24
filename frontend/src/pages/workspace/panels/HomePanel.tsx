@@ -10,10 +10,11 @@
  *   6. Live Signal Feed + Daily Brief (polling via interval)
  *
  * Data contracts:
- *   - Sections 1–3, 6: workspace.dashboard / workspace.recentActivity
- *   - Sections 4–5:    GET /api/dashboard/suggestions  (→ SuggestedAction[])
- *                      GET /api/notifications/broadcasts (→ Broadcast[])
- *   Both fall back to typed mock fixtures when the endpoint is 404.
+ *   - KPI cards: workspace.dashboard plus GET /dashboard/command-center
+ *   - Actions: GET /command-centre/actions; workspace-derived actions are labeled degraded
+ *   - Broadcasts: GET /notifications/broadcasts
+ *   - Feed/brief: GET /command-centre/feed and GET /command-centre/brief
+ * Failures are surfaced in-panel so operators know when live dashboard data is degraded.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -1025,13 +1026,35 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
 
   // Action insights — structured metrics from /dashboard/command-center
   const [commandCenterMetrics, setCommandCenterMetrics] = useState<DashboardCommandCenterResponse | null>(null);
+  const [dataIssues, setDataIssues] = useState<Record<string, string>>({});
+  const setDataIssue = useCallback((key: string, message: string | null) => {
+    setDataIssues(current => {
+      if (message && current[key] === message) return current;
+      if (!message && current[key] == null) return current;
+      const next = { ...current };
+      if (message) {
+        next[key] = message;
+      } else {
+        delete next[key];
+      }
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     fetchCommandCenterMetrics()
-      .then(data => { if (!cancelled) setCommandCenterMetrics(data); })
-      .catch(() => { /* non-critical: section hidden on error */ });
+      .then(data => {
+        if (!cancelled) {
+          setCommandCenterMetrics(data);
+          setDataIssue('metrics', null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDataIssue('metrics', 'Command-center metrics could not be loaded.');
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [setDataIssue]);
 
   // Fee Defaulters drawer
   const [showFeeDefaulters, setShowFeeDefaulters] = useState(false);
@@ -1051,38 +1074,63 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
   // Reorder Signals drawer
   const [showReorderSignals, setShowReorderSignals] = useState(false);
 
-  // Actions — from backend, fall back to derived workspace data then mocks
+  // Actions — from backend, with explicit degraded state if local workspace derivation is used
   const [actions, setActions] = useState<CommandCentreCard[]>([]);
   useEffect(() => {
     let cancelled = false;
     api.get<BackendAction[]>('/command-centre/actions')
-      .then(r => { if (!cancelled) setActions(r.data.map(mapBackendAction)); })
+      .then(r => {
+        if (!cancelled) {
+          setActions(r.data.map(mapBackendAction));
+          setDataIssue('actions', null);
+        }
+      })
       .catch(() => {
         if (!cancelled) {
           const derived = deriveCommandCentreCards(workspace);
           setActions(derived);
+          setDataIssue('actions', 'Live command-center actions could not be loaded; showing workspace-derived actions.');
         }
       });
     return () => { cancelled = true; };
-  }, [workspace]);
+  }, [workspace, setDataIssue]);
 
-  // Broadcasts — from backend, fall back to mocks
+  // Broadcasts — from backend
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   useEffect(() => {
     let cancelled = false;
     api.get<BackendBroadcast[]>('/notifications/broadcasts')
-      .then(r => { if (!cancelled) setBroadcasts(r.data.map(mapBackendBroadcast)); })
-      .catch(() => { if (!cancelled) setBroadcasts([]); });
+      .then(r => {
+        if (!cancelled) {
+          setBroadcasts(r.data.map(mapBackendBroadcast));
+          setDataIssue('broadcasts', null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBroadcasts([]);
+          setDataIssue('broadcasts', 'Broadcast data could not be loaded.');
+        }
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [setDataIssue]);
 
   // Daily brief — from backend
   const [brief, setBrief] = useState<DailyBriefData | null>(null);
   useEffect(() => {
+    let cancelled = false;
     api.get<DailyBriefData>('/command-centre/brief')
-      .then(r => setBrief(r.data))
-      .catch(() => { /* use local fallback */ });
-  }, []);
+      .then(r => {
+        if (!cancelled) {
+          setBrief(r.data);
+          setDataIssue('brief', null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDataIssue('brief', 'Daily brief could not be loaded.');
+      });
+    return () => { cancelled = true; };
+  }, [setDataIssue]);
 
   // Feed — initial fetch from backend, then poll every 15s for new items
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -1102,10 +1150,13 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
         }));
         mapped.forEach(f => seenFeedIds.current.add(f._id));
         setFeed(mapped.map(({ _id: _, ...rest }) => rest));
+        setDataIssue('feed', null);
       })
-      .catch(() => { /* feed stays empty on error */ });
+      .catch(() => {
+        if (!cancelled) setDataIssue('feed', 'Live signal feed could not be loaded.');
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [setDataIssue]);
 
   // Poll backend feed every 15s, prepend genuinely new items
   useEffect(() => {
@@ -1127,12 +1178,13 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
               ...prev.slice(0, 15),
             ]);
           }
+          setDataIssue('feed', null);
         })
-        .catch(() => { /* polling error ignored */ })
+        .catch(() => setDataIssue('feed', 'Live signal feed polling is failing.'))
         .finally(() => setPollKey(k => k + 1));
     }, 15000);
     return () => clearInterval(iv);
-  }, []);
+  }, [setDataIssue]);
 
   // Toast
   const [toast, setToast] = useState<Toast | null>(null);
@@ -1218,6 +1270,7 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
   const visibleBroadcasts = broadcasts.filter((b) => canAccessDashboardModule(b.module, moduleAccess));
   const visibleFeed = feed.filter((f) => canAccessDashboardModule(f.module, moduleAccess));
   const criticalAction = dashboardActions.find(a => a.urgency === 'critical') ?? null;
+  const dataIssueMessages = Object.values(dataIssues);
 
   return (
     <>
@@ -1240,6 +1293,16 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
           }) as PanelKey);
         }}
       />
+
+      {dataIssueMessages.length > 0 ? (
+        <div className="ck-alert ck-alert-am" style={{ margin: '0 0 16px' }}>
+          <span>!</span>
+          <div>
+            <strong>Some live dashboard data did not load.</strong>
+            <div>{dataIssueMessages.join(' ')}</div>
+          </div>
+        </div>
+      ) : null}
 
       {/* §3 Pulse KPIs */}
       <PulseKpis workspace={workspace} setPanel={setPanel} moduleAccess={moduleAccess} />
@@ -1317,14 +1380,20 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       <FeeDefaultersDrawer
         open={showFeeDefaulters}
         onClose={() => setShowFeeDefaulters(false)}
-        onMetricsRefresh={data => setCommandCenterMetrics(data)}
+        onMetricsRefresh={data => {
+          setCommandCenterMetrics(data);
+          setDataIssue('metrics', null);
+        }}
       />
 
       {/* Class Photography drawer */}
       <ClassPhotographyDrawer
         open={showClassPhotography}
         onClose={() => setShowClassPhotography(false)}
-        onMetricsRefresh={data => setCommandCenterMetrics(data)}
+        onMetricsRefresh={data => {
+          setCommandCenterMetrics(data);
+          setDataIssue('metrics', null);
+        }}
       />
 
       {/* Student Lifecycle Review drawer */}
@@ -1333,8 +1402,11 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
         onClose={() => setShowStudentReview(false)}
         onMetricsRefresh={() => {
           fetchCommandCenterMetrics()
-            .then(data => setCommandCenterMetrics(data))
-            .catch(() => { /* non-critical */ });
+            .then(data => {
+              setCommandCenterMetrics(data);
+              setDataIssue('metrics', null);
+            })
+            .catch(() => setDataIssue('metrics', 'Command-center metrics could not be refreshed.'));
         }}
       />
 

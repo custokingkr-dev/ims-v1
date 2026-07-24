@@ -785,7 +785,7 @@ public class StudentReadRepository {
     @Transactional
     public Map<String, Object> deleteStudent(Long id, Map<String, Object> request) {
         Map<String, Object> current = jdbc.sql("""
-                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no, deleted_at
+                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no, admission_no, deleted_at
                 FROM student.students
                 WHERE id = :id
                 """)
@@ -797,11 +797,20 @@ public class StudentReadRepository {
                         "classId", rs.getString("class_id"),
                         "sectionId", rs.getString("section_id"),
                         "rollNo", rs.getString("roll_no"),
+                        "admissionNumber", rs.getString("admission_no"),
                         "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class)))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
         if (current.get("deletedAt") != null) {
             throw new IllegalArgumentException("Student is already deleted");
+        }
+        String expectedAdmissionNumber = str(current.get("admissionNumber"), "DELETE").trim();
+        String confirmationAdmissionNumber = str(request.get("confirmationAdmissionNumber"), "").trim();
+        if (confirmationAdmissionNumber.isBlank()) {
+            throw new IllegalArgumentException("Admission number confirmation is required");
+        }
+        if (!expectedAdmissionNumber.equals(confirmationAdmissionNumber)) {
+            throw new IllegalArgumentException("Admission number confirmation does not match");
         }
         long completedAcademicYears = completedAcademicYearCount(id);
         boolean historyPreserved = completedAcademicYears > 0;
