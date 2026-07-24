@@ -36,10 +36,11 @@ describe('SaSchoolsPanel structure edit', () => {
     expect(api.put).toHaveBeenCalledWith('/schools/7/structure', { classCount: 2, sectionCount: 3 });
   });
 
-  it('only shows edit structure as the per-school action', async () => {
+  it('shows the current per-school actions without old edit or schools buttons', async () => {
     render(<SaSchoolsPanel />);
     await waitFor(() => expect(screen.getByText('Demo School')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /edit structure/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /archived students/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^edit$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^schools$/i })).not.toBeInTheDocument();
   });
@@ -55,5 +56,40 @@ describe('SaSchoolsPanel structure edit', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: /save/i }));
     await waitFor(() =>
       expect(api.put).toHaveBeenCalledWith('/schools/7/structure', { classCount: 12, sectionCount: 4 }));
+  });
+
+  it('loads archived students and restores a selected student', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/sa/schools') {
+        return Promise.resolve({ data: [
+          { id: 7, name: 'Demo School', shortCode: 'DEMO', city: 'Hyd', active: true,
+            configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, financialYearStartMonth: 4, adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
+        ] });
+      }
+      if (url === '/rbac/user-role-assignments') {
+        return Promise.resolve({ data: [] });
+      }
+      if (url === '/students') {
+        return Promise.resolve({ data: { items: [
+          { id: 99, fullName: 'Archived Student', admissionNumber: 'OLD-99', classSection: 'LKG-A', academicYear: '2026-27', deletedReason: 'Mistake' },
+        ] } });
+      }
+      return Promise.resolve({ data: [] });
+    });
+    vi.mocked(api.post).mockResolvedValue({ data: { restored: true } });
+
+    render(<SaSchoolsPanel />);
+    await waitFor(() => expect(screen.getByText('Demo School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /archived students/i }));
+
+    await waitFor(() => expect(screen.getByText('Archived Student')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^restore$/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+      '/students/99/restore',
+      { reason: 'Restored by superadmin from School accounts' },
+    ));
+    confirmSpy.mockRestore();
   });
 });

@@ -18,6 +18,17 @@ type AccountSummary = {
   fullName?: string;
 };
 
+type ArchivedStudent = {
+  id: number;
+  fullName?: string;
+  name?: string;
+  admissionNumber?: string;
+  classSection?: string;
+  academicYear?: string;
+  deletedAt?: string;
+  deletedReason?: string;
+};
+
 function addAccountOnce(list: AccountSummary[], account: AccountSummary) {
   if (!account.email) return;
   if (!list.some((value) => value.userId === account.userId || value.email.toLowerCase() === account.email.toLowerCase())) {
@@ -84,6 +95,11 @@ export function SaSchoolsPanel() {
   const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2' });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [restoreSchool, setRestoreSchool] = useState<any | null>(null);
+  const [archivedStudents, setArchivedStudents] = useState<ArchivedStudent[]>([]);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreError, setRestoreError] = useState('');
+  const [restoreBusyId, setRestoreBusyId] = useState<number | 'all' | null>(null);
 
   const openEdit = (school: any) => {
     setEditSchool(school);
@@ -109,6 +125,65 @@ export function SaSchoolsPanel() {
       setEditError(e?.response?.data?.message || 'Update failed. Please try again.');
     } finally {
       setEditSaving(false);
+    }
+  };
+
+  const loadArchivedStudents = async (school: any) => {
+    setRestoreLoading(true);
+    setRestoreError('');
+    try {
+      const res = await api.get('/students', { params: { schoolId: school.id, deleted: true, page: 0, size: 100 } });
+      setArchivedStudents(Array.isArray(res.data?.items) ? res.data.items : []);
+    } catch (e: any) {
+      setRestoreError(e?.response?.data?.message || 'Failed to load archived students.');
+      setArchivedStudents([]);
+    } finally {
+      setRestoreLoading(false);
+    }
+  };
+
+  const openRestoreStudents = async (school: any) => {
+    setRestoreSchool(school);
+    setArchivedStudents([]);
+    setRestoreError('');
+    await loadArchivedStudents(school);
+  };
+
+  const restoreArchivedStudent = async (student: ArchivedStudent) => {
+    if (!restoreSchool) return;
+    const ok = window.confirm(`Restore ${student.fullName || student.name || 'this student'} to active students for ${restoreSchool.name}?`);
+    if (!ok) return;
+    setRestoreBusyId(student.id);
+    setRestoreError('');
+    try {
+      await api.post(`/students/${student.id}/restore`, { reason: 'Restored by superadmin from School accounts' });
+      setToast(`${student.fullName || student.name || 'Student'} restored`);
+      await loadArchivedStudents(restoreSchool);
+      await loadSaSchools();
+    } catch (e: any) {
+      setRestoreError(e?.response?.data?.message || 'Could not restore student.');
+    } finally {
+      setRestoreBusyId(null);
+    }
+  };
+
+  const restoreAllArchivedStudents = async () => {
+    if (!restoreSchool || archivedStudents.length === 0) return;
+    const confirmation = window.prompt(`Type RESTORE to restore all ${archivedStudents.length} archived student(s) for ${restoreSchool.name}.`);
+    if (confirmation !== 'RESTORE') return;
+    setRestoreBusyId('all');
+    setRestoreError('');
+    try {
+      for (const student of archivedStudents) {
+        await api.post(`/students/${student.id}/restore`, { reason: 'Bulk restored by superadmin from School accounts' });
+      }
+      setToast(`${archivedStudents.length} archived student(s) restored for ${restoreSchool.name}`);
+      await loadArchivedStudents(restoreSchool);
+      await loadSaSchools();
+    } catch (e: any) {
+      setRestoreError(e?.response?.data?.message || 'Could not restore all archived students.');
+    } finally {
+      setRestoreBusyId(null);
     }
   };
 
@@ -219,7 +294,12 @@ export function SaSchoolsPanel() {
                     <td>{school.ordersYTD ?? 0}</td>
                     <td>₹{formatMoney(Number(school.gmvYTD || 0) / 100)}</td>
                     <td>{school.erpSince || '—'}</td>
-                    <td><button className="ck-btn ck-btn-ghost" onClick={() => openEdit(school)}>Edit structure</button></td>
+                    <td>
+                      <div className="ck-actions-inline">
+                        <button className="ck-btn ck-btn-ghost" onClick={() => openEdit(school)}>Edit structure</button>
+                        <button className="ck-btn ck-btn-ghost" onClick={() => void openRestoreStudents(school)}>Archived students</button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
             </tbody>
@@ -291,6 +371,65 @@ export function SaSchoolsPanel() {
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => setEditSchool(null)}>Cancel</button>
               <button className="ck-btn ck-btn-g" disabled={editSaving} onClick={submitEdit}>{editSaving ? 'Saving…' : 'Save changes'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {restoreSchool && (
+        <div className="ck-modal-bg" onClick={() => setRestoreSchool(null)}>
+          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 920 }}>
+            <div className="ck-modal-h">
+              <div className="ck-modal-title">Archived students - {restoreSchool.name}</div>
+              <button className="ck-modal-x" onClick={() => setRestoreSchool(null)}>X</button>
+            </div>
+            <div className="ck-modal-body">
+              {restoreError ? <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>!</span><div>{restoreError}</div></div> : null}
+              <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}>
+                <span>!</span>
+                <div>Restoring a student makes them visible in active student lists again and reactivates their latest deleted enrollment.</div>
+              </div>
+              {restoreLoading ? (
+                <div className="ts">Loading archived students...</div>
+              ) : archivedStudents.length === 0 ? (
+                <div className="ts">No archived students found for this school.</div>
+              ) : (
+                <div className="ck-table-wrap">
+                  <table className="ck-table">
+                    <thead>
+                      <tr><th>Student</th><th>Admission</th><th>Class</th><th>Deleted</th><th>Reason</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                      {archivedStudents.map((student) => (
+                        <tr key={student.id}>
+                          <td><div className="tb">{student.fullName || student.name}</div></td>
+                          <td>{student.admissionNumber || '-'}</td>
+                          <td>{student.classSection || '-'}<div className="ts">{student.academicYear || ''}</div></td>
+                          <td>{student.deletedAt ? String(student.deletedAt).slice(0, 10) : '-'}</td>
+                          <td>{student.deletedReason || '-'}</td>
+                          <td>
+                            <button
+                              className="ck-btn ck-btn-g ck-btn-sm"
+                              disabled={restoreBusyId !== null}
+                              onClick={() => void restoreArchivedStudent(student)}
+                            >
+                              {restoreBusyId === student.id ? 'Restoring...' : 'Restore'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="ck-modal-foot">
+              <button className="ck-btn ck-btn-ghost" onClick={() => setRestoreSchool(null)} disabled={restoreBusyId !== null}>Close</button>
+              {archivedStudents.length > 0 ? (
+                <button className="ck-btn ck-btn-g" onClick={() => void restoreAllArchivedStudents()} disabled={restoreBusyId !== null}>
+                  {restoreBusyId === 'all' ? 'Restoring...' : `Restore all ${archivedStudents.length}`}
+                </button>
+              ) : null}
             </div>
           </div>
         </div>

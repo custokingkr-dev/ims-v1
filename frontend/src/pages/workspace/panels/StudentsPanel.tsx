@@ -90,6 +90,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [historySearchInput, setHistorySearchInput] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [deleteBusyId, setDeleteBusyId] = useState<string | number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ student: any; closeModal?: boolean } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleteConfirmError, setDeleteConfirmError] = useState<string | null>(null);
   const [promotionOpen, setPromotionOpen] = useState(false);
   const [promotionClasses, setPromotionClasses] = useState<StudentClassOption[]>([]);
   const [promotionSections, setPromotionSections] = useState<StudentSectionOption[]>([]);
@@ -273,26 +276,41 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   };
 
-  const deleteStudent = async (student: any = studentDetail, options: { closeModal?: boolean } = {}) => {
+  const requestDeleteStudent = (student: any = studentDetail, options: { closeModal?: boolean } = {}) => {
     if (!student?.id) return;
-    const name = student.fullName || student.name || 'this student';
-    const ok = window.confirm(`Delete ${name}? If the student has completed at least one academic year, their lifecycle history will remain preserved. This removes the student from active lists.`);
-    if (!ok) return;
+    setDeleteConfirm({ student, closeModal: options.closeModal });
+    setDeleteConfirmText('');
+    setDeleteConfirmError(null);
+  };
+
+  const deleteStudent = async () => {
+    const student = deleteConfirm?.student;
+    if (!student?.id) return;
+    const closeModal = deleteConfirm?.closeModal;
+    const expected = String(student.admissionNumber || student.admissionNo || 'DELETE').trim();
+    if (deleteConfirmText.trim() !== expected) {
+      setDeleteConfirmError(`Type ${expected} to confirm deletion.`);
+      return;
+    }
     try {
       setDeleteBusyId(student.id);
       setModalError(null);
-      if (options.closeModal === false) setStudentsError(null);
+      setDeleteConfirmError(null);
+      if (closeModal === false) setStudentsError(null);
       await api.delete(`/students/${student.id}`, { data: { reason: 'Deleted from Students tab' } });
-      if (options.closeModal !== false) closeStudentModal();
+      setDeleteConfirm(null);
+      setDeleteConfirmText('');
+      if (closeModal !== false) closeStudentModal();
       await loadStudents(studentFilters, studentsPage, studentListMode);
       onRefresh();
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.');
-      if (options.closeModal === false) {
+      if (closeModal === false) {
         setStudentsError(message);
       } else {
         setModalError(message);
       }
+      setDeleteConfirmError(message);
     } finally {
       setDeleteBusyId(null);
     }
@@ -610,7 +628,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                               type="button"
                               className="ck-btn ck-btn-ghost ck-btn-sm ck-student-delete-inline"
                               disabled={deleteBusyId === student.id}
-                              onClick={() => void deleteStudent(student, { closeModal: false })}
+                              onClick={() => requestDeleteStudent(student, { closeModal: false })}
                             >
                               {deleteBusyId === student.id ? 'Deleting...' : 'Delete'}
                             </button>
@@ -902,6 +920,57 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   <button className="ck-btn ck-btn-ghost" onClick={() => void loadStudentHistory()} disabled={studentHistoryLoading || !studentDetail}>{studentHistoryLoading ? 'Loading...' : studentHistory ? 'Reload history' : 'History'}</button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="ck-modal-bg" onClick={() => setDeleteConfirm(null)}>
+          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="ck-modal-h">
+              <div className="ck-modal-title">Delete student</div>
+              <button className="ck-modal-x" onClick={() => setDeleteConfirm(null)}>X</button>
+            </div>
+            <div className="ck-modal-body">
+              {deleteConfirmError ? (
+                <div className="ck-alert ck-alert-r" style={{ marginBottom: 12 }}>
+                  <span>!</span>
+                  <div>{deleteConfirmError}</div>
+                </div>
+              ) : null}
+              <div className="ck-alert ck-alert-am" style={{ marginBottom: 14 }}>
+                <span>!</span>
+                <div>
+                  This archives the student and removes them from active lists. Fee, attendance, import, and lifecycle history remain preserved.
+                </div>
+              </div>
+              <div className="ck-form-grid ck-fg-1">
+                <div className="ck-field">
+                  <label>Student</label>
+                  <div className="tb">{deleteConfirm.student.fullName || deleteConfirm.student.name}</div>
+                  <div className="ts">Admission {deleteConfirm.student.admissionNumber || deleteConfirm.student.admissionNo || '-'}</div>
+                </div>
+                <div className="ck-field">
+                  <label>Type admission number to confirm</label>
+                  <input
+                    value={deleteConfirmText}
+                    onChange={(e) => { setDeleteConfirmText(e.target.value); setDeleteConfirmError(null); }}
+                    placeholder={String(deleteConfirm.student.admissionNumber || deleteConfirm.student.admissionNo || 'DELETE')}
+                    autoFocus
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="ck-modal-foot">
+              <button className="ck-btn ck-btn-ghost" onClick={() => setDeleteConfirm(null)} disabled={deleteBusyId === deleteConfirm.student.id}>Cancel</button>
+              <button
+                className="ck-btn ck-btn-re"
+                disabled={deleteBusyId === deleteConfirm.student.id || deleteConfirmText.trim() !== String(deleteConfirm.student.admissionNumber || deleteConfirm.student.admissionNo || 'DELETE').trim()}
+                onClick={() => void deleteStudent()}
+              >
+                {deleteBusyId === deleteConfirm.student.id ? 'Deleting...' : 'Delete student'}
+              </button>
             </div>
           </div>
         </div>

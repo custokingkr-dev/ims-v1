@@ -179,6 +179,37 @@ class StudentReadControllerTest {
     }
 
     @Test
+    void restoreRequiresSuperadmin() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:update")));
+
+        assertThatThrownBy(() -> controller.restore("student-token", 42L, Map.of("reason", "Mistake")))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException response = (ResponseStatusException) error;
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(response.getReason()).contains("superadmin");
+                });
+
+        verify(students, never()).restoreStudent(anyLong(), any());
+        verify(students, never()).schoolIdForStudentIncludingDeleted(anyLong());
+    }
+
+    @Test
+    void restoreAllowsSuperadminAndIncludesDeletedStudentScope() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        Map<String, Object> restored = Map.of("id", 42L, "restored", true);
+        when(students.schoolIdForStudentIncludingDeleted(42L)).thenReturn(10L);
+        when(students.restoreStudent(42L, Map.of("reason", "Accidental delete"))).thenReturn(restored);
+
+        Map<String, Object> response = controller.restore("student-token", 42L, Map.of("reason", "Accidental delete"));
+
+        assertThat(response).isSameAs(restored);
+        verify(students).schoolIdForStudentIncludingDeleted(42L);
+        verify(students).restoreStudent(42L, Map.of("reason", "Accidental delete"));
+        verify(students, never()).schoolIdForStudent(42L);
+    }
+
+    @Test
     void importStatusScopesNonSuperAdminToAuthenticatedSchool() {
         TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:import")));
         when(students.importStatus("job-1", 10L)).thenReturn(Map.of("done", true));

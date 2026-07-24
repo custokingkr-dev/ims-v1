@@ -206,6 +206,19 @@ public class StudentReadController {
         return execute(() -> students.deleteStudent(id, body == null ? Map.of() : body));
     }
 
+    @PostMapping("/{id}/restore")
+    public Map<String, Object> restore(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        requireToken(token, "student:write");
+        TenantScope.requireSuperAdmin();
+        Long schoolId = studentSchoolId(id, true);
+        TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
+        return execute(() -> students.restoreStudent(id, body == null ? Map.of() : body));
+    }
+
     @GetMapping("/{id}/history")
     public Map<String, Object> history(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,

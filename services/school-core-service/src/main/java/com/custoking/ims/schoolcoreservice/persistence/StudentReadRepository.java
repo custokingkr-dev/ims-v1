@@ -830,6 +830,89 @@ public class StudentReadRepository {
                 "historyPreserved", historyPreserved);
     }
 
+    @Transactional
+    public Map<String, Object> restoreStudent(Long id, Map<String, Object> request) {
+        Map<String, Object> current = jdbc.sql("""
+                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no, deleted_at
+                FROM student.students
+                WHERE id = :id
+                """)
+                .param("id", id)
+                .query((rs, n) -> row(
+                        "id", rs.getLong("id"),
+                        "schoolId", rs.getLong("school_id"),
+                        "academicYearId", rs.getString("academic_year_id"),
+                        "classId", rs.getString("class_id"),
+                        "sectionId", rs.getString("section_id"),
+                        "rollNo", rs.getString("roll_no"),
+                        "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class)))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        if (current.get("deletedAt") == null) {
+            throw new IllegalArgumentException("Student is not archived");
+        }
+
+        String reason = str(request.get("reason"), "Restored by superadmin");
+        jdbc.sql("""
+                UPDATE student.students
+                SET deleted_at = NULL,
+                    deleted_by = NULL,
+                    deleted_reason = NULL,
+                    updated_at = now(),
+                    version = version + 1
+                WHERE id = :id
+                  AND deleted_at IS NOT NULL
+                """)
+                .param("id", id)
+                .update();
+
+        String restoredEnrollmentId = jdbc.sql("""
+                SELECT id
+                FROM student.student_enrollments
+                WHERE student_id = :id
+                  AND status = 'DELETED'
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+                """)
+                .param("id", id)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+        if (restoredEnrollmentId != null) {
+            jdbc.sql("""
+                    UPDATE student.student_enrollments
+                    SET status = 'ACTIVE',
+                        effective_to = NULL,
+                        reason = :reason,
+                        updated_at = now()
+                    WHERE id = :enrollmentId
+                    """)
+                    .param("enrollmentId", restoredEnrollmentId)
+                    .param("reason", reason)
+                    .update();
+        } else {
+            Long activeCount = jdbc.sql("""
+                    SELECT count(*)
+                    FROM student.student_enrollments
+                    WHERE student_id = :id
+                      AND status = 'ACTIVE'
+                      AND effective_to IS NULL
+                    """)
+                    .param("id", id)
+                    .query(Long.class)
+                    .single();
+            if (activeCount == null || activeCount == 0) {
+                recordEnrollment(id, longValue(current.get("schoolId"), null),
+                        str(current.get("academicYearId"), currentAcademicYearId(longValue(current.get("schoolId"), null))),
+                        str(current.get("classId"), ""), str(current.get("sectionId"), ""),
+                        str(current.get("rollNo"), ""), "ACTIVE", reason, "STUDENT_RESTORE", String.valueOf(id));
+            }
+        }
+        emitStudentUpserted(id);
+        return row("id", id, "restored", true, "reason", reason,
+                "restoredEnrollmentId", restoredEnrollmentId);
+    }
+
     public Map<String, Object> studentHistory(Long id) {
         Map<String, Object> student = jdbc.sql("""
                 SELECT id, school_id, admission_no, full_name, deleted_at, deleted_reason

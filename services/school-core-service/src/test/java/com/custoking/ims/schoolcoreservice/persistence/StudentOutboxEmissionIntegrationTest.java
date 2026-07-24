@@ -214,5 +214,23 @@ class StudentOutboxEmissionIntegrationTest {
                 .param("id", id)
                 .query(Long.class)
                 .single()).isEqualTo(1L);
+
+        Map<String, Object> restored = studentRepo.restoreStudent(id, Map.of("reason", "Accidental delete"));
+        Map<String, Object> restoredActiveList = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, false);
+        Map<String, Object> restoredArchivedList = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, true);
+        Map<String, Object> restoredDetail = studentRepo.workspaceStudentDetail(id);
+
+        assertThat(restored.get("restored")).isEqualTo(true);
+        assertThat((java.util.List<Map<String, Object>>) restoredActiveList.get("items")).hasSize(1);
+        assertThat((java.util.List<Map<String, Object>>) restoredArchivedList.get("items")).isEmpty();
+        assertThat(restoredDetail.get("deletedReason")).isNull();
+        assertThat(jdbc.sql("SELECT count(*) FROM student.student_enrollments WHERE student_id = :id AND status = 'ACTIVE'")
+                .param("id", id)
+                .query(Long.class)
+                .single()).isEqualTo(1L);
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id AND deleted_at IS NULL")
+                .param("id", id)
+                .query(Long.class)
+                .single()).isEqualTo(1L);
     }
 }
