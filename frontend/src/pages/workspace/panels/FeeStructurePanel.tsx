@@ -38,6 +38,12 @@ function feeClassValue(row: any) {
   return Number(row?.sortOrder ?? 0);
 }
 
+function studentSelectLabel(student: any) {
+  const admissionNumber = String(student?.admissionNo ?? student?.admissionNumber ?? '').trim();
+  const name = String(student?.fullName ?? student?.name ?? student?.studentName ?? '').trim();
+  return [admissionNumber, name].filter(Boolean).join(' - ') || 'Unnamed student';
+}
+
 export function FeeStructurePanel({ onRefresh }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
@@ -608,7 +614,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
         <div className="ck-form-grid ck-fg-6" style={{ padding: 16 }}>
           <Field label="Class"><select value={assignSelection.classId} onChange={(e) => handleAssignClassChange(e.target.value)}><option value="">Select class</option>{feeClasses.map((row: any) => <option key={row.id} value={row.id}>{row.name}</option>)}</select></Field>
           <Field label="Section"><select disabled={!assignSelection.classId} value={assignSelection.sectionId} onChange={(e) => handleAssignSectionChange(e.target.value)}><option value="">Select section</option>{assignOptions.sections.map((row: any) => <option key={row.id} value={row.id}>{row.name}</option>)}</select>{!assignSelection.classId ? <div className="ts">Select a class first</div> : null}</Field>
-          <Field label="Student"><select disabled={!assignSelection.sectionId} value={assignSelection.studentId} onChange={(e) => handleAssignStudentChange(e.target.value)}><option value="">Select student</option>{assignOptions.students.map((student: any) => <option key={student.id} value={student.id}>{student.name} · {student.admissionNo}</option>)}</select>{!assignSelection.sectionId ? <div className="ts">Select a section first</div> : null}</Field>
+          <Field label="Student"><select disabled={!assignSelection.sectionId} value={assignSelection.studentId} onChange={(e) => handleAssignStudentChange(e.target.value)}><option value="">Select student</option>{assignOptions.students.map((student: any) => <option key={student.id} value={student.id}>{studentSelectLabel(student)}</option>)}</select>{!assignSelection.sectionId ? <div className="ts">Select a section first</div> : null}</Field>
           <Field label="Fee plan"><select value={feeAssignForm.bandId} onChange={(e) => handleFeePlanChange(e.target.value)}><option value="">Select fee plan</option>{(feeStructureData.bands || []).map((band: any) => <option key={band.id} value={band.id}>{band.name} · ₹{formatMoney(Number(band.annualTotal || 0) / 100)}</option>)}</select>{feeAssignHint ? <div className="ts">{feeAssignHint}</div> : null}</Field>
           <Field label="Payment schedule"><select disabled={!feeAssignForm.bandId} value={feeAssignForm.paymentSchedule} onChange={(e) => setFeeAssignForm({ ...feeAssignForm, paymentSchedule: e.target.value, surcharge: e.target.value === 'Annual' ? '0' : feeAssignForm.surcharge })}><option value="">Select schedule</option>{(((feeStructureData.bands || []).find((band: any) => band.id === feeAssignForm.bandId)?.activeSchedules) || []).map((schedule: string) => <option key={schedule} value={schedule}>{schedule}</option>)}</select></Field>
           <Field label="Discount % (from band)"><input readOnly value={feeAssignForm.bandDiscount} /><div className="ts">Set in Fee structure</div></Field>
