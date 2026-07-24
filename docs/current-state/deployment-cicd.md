@@ -1,6 +1,6 @@
 # Deployment and CI/CD
 
-Last verified: 2026-07-11.
+Last verified: 2026-07-24.
 
 ## Deployment Model
 
@@ -10,10 +10,13 @@ The project uses a build-once-promote deployment model:
 push to main
   -> CI
   -> CD deploy-dev: build images tagged with the commit SHA, deploy dev
-  -> CD promote-prod: deploy the same image SHA to prod with _SKIP_BUILD=true
+
+manual dispatch
+  -> CD deploy-dev
+  -> optional gated promote-prod using the same image SHA with _SKIP_BUILD=true
 ```
 
-The prod job binds to the GitHub `prod` Environment and is expected to be protected by required reviewers.
+Normal pushes to `main` deploy only the GitHub `dev` Environment. The prod job runs only for manual dispatch and binds to the GitHub `prod` Environment, which is expected to be protected by required reviewers.
 
 ## Local Developer Setup And CI Parity
 
@@ -97,6 +100,7 @@ Jobs:
   - `skip_build=false`
 - `promote-prod`
   - Needs successful dev deploy.
+  - Runs only for manual dispatch, never for a normal push to `main`.
   - Uses the same commit SHA.
   - `environment=prod`
   - `run_direct_smoke=true`

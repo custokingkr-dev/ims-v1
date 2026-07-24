@@ -1,16 +1,17 @@
-name: CD / Build once, promote dev -> prod
+name: CD / Deploy main to dev
 
-# Manual delivery with build-once-promote:
-#   1. On workflow dispatch, build images tagged with the commit SHA and deploy them to DEV.
-#   2. After dev succeeds, promote the SAME image SHA to PROD (no rebuild). The prod job binds
-#      to the `prod` GitHub Environment, whose protection rules (required reviewers) hold the
-#      promotion until a human approves it — the "one-click promote" gate.
+# Delivery model:
+#   1. Pushes to main build images tagged with the commit SHA and deploy them to DEV only.
+#   2. Manual dispatch can still run build-once-promote: deploy DEV, then promote the SAME
+#      image SHA to PROD (no rebuild). The prod job binds to the `prod` GitHub Environment,
+#      whose protection rules hold the promotion until a human approves it.
 #
 # Manual re-runs / single-service deploys still use the `GCP / Deploy` workflow directly
-# (workflow_dispatch). Push-triggered deployment is intentionally disabled while the project is in
-# a cost-controlled shutdown posture.
+# (workflow_dispatch).
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
     inputs:
       deploy_services:
@@ -45,7 +46,7 @@ jobs:
     with:
       environment: dev
       commit_sha: ${{ github.sha }}
-      deploy_services: ${{ inputs.deploy_services || 'all' }}
+      deploy_services: ${{ github.event.inputs.deploy_services || 'all' }}
       run_direct_smoke: true
       run_gateway_smoke: true
       skip_build: false
@@ -60,12 +61,12 @@ jobs:
     concurrency:
       group: cd-prod
       cancel-in-progress: true
-    if: ${{ vars.GCP_PROJECT_ID != '' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && vars.GCP_PROJECT_ID != '' }}
     uses: ./.github/workflows/deploy.yml
     with:
       environment: prod
       commit_sha: ${{ github.sha }}   # exact image validated in dev — no rebuild
-      deploy_services: ${{ inputs.deploy_services || 'all' }}
+      deploy_services: ${{ github.event.inputs.deploy_services || 'all' }}
       run_direct_smoke: true
       run_gateway_smoke: true
       skip_build: true                # build-once-promote: reuse dev's image
