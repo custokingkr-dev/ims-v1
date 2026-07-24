@@ -81,10 +81,16 @@ Cost-control substitutions default Cloud Run services to scale to zero. Override
 - `_DOMAIN_MAX_INSTANCES=1`, `_GATEWAY_MAX_INSTANCES=1`, `_FRONTEND_MAX_INSTANCES=1` are used by the GitHub dev deploy when no environment variable override exists.
 - Prod defaults keep the old max caps (`2` for domain/frontend, `3` for gateway), but still use `min-instances=0`.
 - Set `CLOUD_RUN_DOMAIN_MIN_INSTANCES=1` or `CLOUD_RUN_GATEWAY_MIN_INSTANCES=1` as GitHub Environment variables only if cold starts or background relay latency are worth the spend.
-- Artifact Registry cleanup is defined in `deploy/gcp/artifact-registry-cleanup-policies.json`; apply it with:
+- Artifact Registry cleanup is defined in `deploy/gcp/artifact-registry-cleanup-policies.json`; it deletes images older than 7 days and keeps the latest 3 versions per service. Apply it with:
 
 ```powershell
 gcloud artifacts repositories set-cleanup-policies custoking --location=asia-south2 --project=custoking --policy=deploy/gcp/artifact-registry-cleanup-policies.json --no-dry-run
+```
+
+Shutdown SQL exports and on-demand backup evidence are stored in `gs://custoking-db-snapshots`. Keep the 30-day lifecycle applied so old shutdown snapshots do not accumulate indefinitely:
+
+```powershell
+gcloud storage buckets update gs://custoking-db-snapshots --lifecycle-file=deploy/gcp/db-snapshot-bucket-lifecycle.json
 ```
 
 GitHub Actions stages Cloud Build source archives in `gs://custoking-github-deploy-source/source`. Keep the bucket lifecycle policy applied so old source archives are removed automatically:

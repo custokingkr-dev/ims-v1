@@ -10,12 +10,12 @@
     }
   },
   {
-    "name": "keep-last-5-versions-per-service",
+    "name": "keep-last-3-versions-per-service",
     "action": {
       "type": "Keep"
     },
     "mostRecentVersions": {
-      "keepCount": 5
+      "keepCount": 3
     }
   }
 ]
