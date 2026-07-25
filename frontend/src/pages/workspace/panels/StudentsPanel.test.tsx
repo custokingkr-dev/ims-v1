@@ -59,6 +59,59 @@ describe('StudentsPanel', () => {
     expect(cells[3]).toHaveTextContent('9876543210');
   });
 
+  it('filters while typing without a Search button', async () => {
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+
+    await screen.findByText('Aarav Sharma');
+    expect(screen.queryByRole('button', { name: /^search$/i })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox', { name: /search students by details/i }), {
+      target: { value: 'Aarav' },
+    });
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      '/students',
+      { params: { page: 0, size: 50, q: 'Aarav', schoolId: 7 } },
+    ));
+  });
+
+  it('keeps current rows visible while search results are loading', async () => {
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+    await screen.findByText('Aarav Sharma');
+
+    let resolveSearch!: (value: any) => void;
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/students') {
+        return new Promise((resolve) => {
+          resolveSearch = resolve;
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    fireEvent.change(screen.getByRole('textbox', { name: /search students by details/i }), {
+      target: { value: 'Mira' },
+    });
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      '/students',
+      { params: { page: 0, size: 50, q: 'Mira', schoolId: 7 } },
+    ));
+    expect(screen.getByText('Aarav Sharma')).toBeInTheDocument();
+    expect(document.querySelector('.ck-skeleton-row')).not.toBeInTheDocument();
+
+    resolveSearch({
+      data: {
+        items: [],
+        filteredCount: 0,
+        filteredSections: 0,
+        totalPages: 1,
+        filters: { classes: [], sections: [], feeStatuses: [] },
+      },
+    });
+    await screen.findByText('No students found for "Mira"');
+  });
+
   it('requires admission number confirmation before deleting a student', async () => {
     vi.mocked(api.delete).mockResolvedValue({ data: { deleted: true } });
     render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);

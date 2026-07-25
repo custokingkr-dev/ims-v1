@@ -861,11 +861,426 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-student-search-form { flex:1 1 420px; min-width:280px; }
 .ck-student-search-control { display:flex; flex-direction:column; gap:5px; }
 .ck-student-search-control label { font-size:11.5px; font-weight:700; color:var(--ink2); }
-.ck-student-search-row { display:grid; grid-template-columns:minmax(260px,1fr) auto auto; gap:8px; align-items:center; }
+.ck-student-search-row { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:8px; align-items:center; }
 .ck-student-search-row input { width:100%; min-width:0; }
 .ck-muted { color: var(--ink3); }
 .ck-table-link { border: none; background: none; color: var(--b); padding: 0; font-weight: 700; cursor: pointer; text-align: left; }
 .ck-table-link:hover { text-decoration: underline; }
+
+/* Student management */
+.ck-icon-label { display:inline-flex; align-items:center; justify-content:center; gap:7px; }
+.ck-icon-btn {
+  width:32px;
+  height:32px;
+  padding:0;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--white);
+  color:var(--ink2);
+  display:inline-grid;
+  place-items:center;
+  cursor:pointer;
+}
+.ck-icon-btn:hover:not(:disabled) { border-color:var(--border2); color:var(--g); background:var(--g1); }
+.ck-icon-btn:disabled { opacity:.45; cursor:not-allowed; }
+.ck-student-module-tabs {
+  display:flex;
+  gap:4px;
+  margin:-4px 0 18px;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+.ck-student-module-tabs::-webkit-scrollbar { display:none; }
+.ck-student-module-tabs button {
+  position:relative;
+  min-height:42px;
+  padding:8px 13px 11px;
+  border:0;
+  background:transparent;
+  color:var(--ink3);
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  font-weight:700;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.ck-student-module-tabs button::after {
+  content:'';
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:-1px;
+  height:3px;
+  border-radius:3px 3px 0 0;
+  background:transparent;
+}
+.ck-student-module-tabs button:hover { color:var(--ink); }
+.ck-student-module-tabs button.on { color:var(--g); }
+.ck-student-module-tabs button.on::after { background:var(--g); }
+.ck-student-kpi-band {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  margin-bottom:14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--white);
+  box-shadow:0 1px 4px rgba(0,0,0,.03);
+  overflow:hidden;
+}
+.ck-student-kpi-band > div { min-width:0; padding:14px 16px; border-right:1px solid var(--border); }
+.ck-student-kpi-band > div:last-child { border-right:0; }
+.ck-student-kpi-band span {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:var(--ink3);
+  font-size:11px;
+  font-weight:700;
+}
+.ck-student-kpi-band span svg { color:var(--g); }
+.ck-student-kpi-band strong { display:block; margin-top:5px; font-size:20px; line-height:1.15; }
+.ck-student-kpi-band small { display:block; margin-top:3px; color:var(--ink3); font-size:10px; }
+.ck-student-directory { border-radius:8px; }
+.ck-student-directory .ck-students-toolbar { border-radius:8px 8px 0 0; }
+.ck-student-directory-head {
+  min-height:50px;
+  padding:10px 16px;
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background:var(--white);
+}
+.ck-student-directory-head > div { min-width:0; }
+.ck-student-directory-head strong { display:block; font-size:13px; }
+.ck-student-directory-head span:not(.ck-status) { display:block; margin-top:2px; color:var(--ink3); font-size:11px; }
+.ck-input-with-icon { position:relative; min-width:0; }
+.ck-input-with-icon > svg {
+  position:absolute;
+  left:11px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--ink3);
+  pointer-events:none;
+}
+.ck-input-with-icon input { padding-left:35px; }
+.ck-student-directory .ck-table th { background:#faf9f6; }
+.ck-student-directory .ck-table td { vertical-align:middle; }
+.ck-student-directory .ck-actions-inline { flex-wrap:nowrap; justify-content:flex-end; }
+.ck-student-delete-inline:hover:not(:disabled) { color:var(--re); background:var(--re1); border-color:#f0c5c0; }
+.ck-student-detail-drawer {
+  width:min(760px,calc(100vw - 32px));
+  height:100vh;
+  max-height:none;
+  margin:-28px -16px -28px auto;
+  border-radius:0;
+  display:flex;
+  flex-direction:column;
+}
+.ck-student-detail-drawer .ck-modal-body { max-height:none; flex:1; }
+.ck-admission-layout {
+  display:grid;
+  grid-template-columns:210px minmax(0,1fr) 260px;
+  gap:16px;
+  align-items:start;
+}
+.ck-admission-rail,
+.ck-admission-summary { position:sticky; top:82px; }
+.ck-admission-rail-head { padding:2px 8px 10px; }
+.ck-admission-rail-head strong { display:block; font-size:13px; }
+.ck-admission-rail-head span { display:block; margin-top:2px; color:var(--ink3); font-size:10px; }
+.ck-admission-rail > button {
+  width:100%;
+  min-height:52px;
+  padding:8px;
+  border:0;
+  border-radius:8px;
+  background:transparent;
+  color:var(--ink2);
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr);
+  gap:9px;
+  align-items:center;
+  text-align:left;
+  cursor:pointer;
+}
+.ck-admission-rail > button:hover { background:#efede7; }
+.ck-admission-rail > button.on { color:var(--g); background:var(--g1); }
+.ck-admission-rail > button > span:first-child {
+  width:28px;
+  height:28px;
+  border:1px solid var(--border);
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  background:var(--white);
+}
+.ck-admission-rail > button.on > span:first-child { border-color:var(--g2); }
+.ck-admission-rail button strong,
+.ck-admission-rail button small { display:block; }
+.ck-admission-rail button strong { font-size:11px; }
+.ck-admission-rail button small { margin-top:1px; color:var(--ink3); font-size:9px; }
+.ck-admission-form-card { border-radius:8px; }
+.ck-admission-form-card .ck-form-head { align-items:flex-start; }
+.ck-admission-form-card .ck-form-section { scroll-margin-top:88px; }
+.ck-admission-form-card .ck-form-section-title {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-bottom:9px;
+  border-bottom:1px solid var(--border);
+}
+.ck-admission-form-card .ck-form-section-icon {
+  width:28px;
+  height:28px;
+  border-radius:7px;
+  background:var(--g1);
+  color:var(--g);
+  display:grid;
+  place-items:center;
+}
+.ck-admission-form-card .ck-photo-panel { border-radius:8px; background:#fbfaf8; }
+.ck-admission-form-card .ck-photo-dropzone { border-radius:8px; }
+.ck-admission-form-card .ck-photo-drop-icon {
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  color:var(--g);
+  background:var(--g1);
+}
+.ck-admission-footer {
+  position:sticky;
+  bottom:-20px;
+  z-index:4;
+  margin:20px -20px -20px;
+  padding:12px 20px;
+  border-top:1px solid var(--border);
+  background:rgba(251,250,248,.96);
+  backdrop-filter:blur(8px);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.ck-admission-summary { display:grid; gap:12px; }
+.ck-admission-summary-card {
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--white);
+  box-shadow:0 1px 4px rgba(0,0,0,.03);
+}
+.ck-admission-summary-card h3 {
+  margin:0;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:12px;
+}
+.ck-admission-summary-card h3 svg { color:var(--g); }
+.ck-admission-summary-card dl { margin:10px 0 0; }
+.ck-admission-summary-card dl > div {
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  padding:7px 0;
+  border-bottom:1px solid var(--border);
+  font-size:10px;
+}
+.ck-admission-summary-card dl > div:last-child { border-bottom:0; }
+.ck-admission-summary-card dt { color:var(--ink3); }
+.ck-admission-summary-card dd { margin:0; font-weight:700; text-align:right; overflow-wrap:anywhere; }
+.ck-admission-summary-card ul { margin:10px 0 0; padding-left:17px; color:var(--ink2); font-size:10px; }
+.ck-admission-summary-card li + li { margin-top:7px; }
+.ck-import-steps {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  margin-bottom:14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--white);
+  overflow:hidden;
+}
+.ck-import-steps > div {
+  min-height:62px;
+  padding:12px 14px;
+  border-right:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.ck-import-steps > div:last-child { border-right:0; }
+.ck-import-steps > div.on { background:var(--g1); }
+.ck-import-steps > div > span {
+  width:25px;
+  height:25px;
+  flex:0 0 auto;
+  border:1px solid var(--border2);
+  border-radius:50%;
+  display:grid;
+  place-items:center;
+  color:var(--ink2);
+  background:var(--white);
+  font-size:10px;
+  font-weight:800;
+}
+.ck-import-steps > div.done > span { border-color:var(--g); background:var(--g); color:#fff; }
+.ck-import-steps strong,
+.ck-import-steps small { display:block; }
+.ck-import-steps strong { font-size:11px; }
+.ck-import-steps small { margin-top:1px; color:var(--ink3); font-size:9px; }
+.ck-import-prepare-grid {
+  display:grid;
+  grid-template-columns:minmax(0,1.7fr) minmax(260px,.7fr);
+  gap:14px;
+}
+.ck-import-prepare-grid .ck-import-zone {
+  min-height:190px;
+  border-radius:8px;
+  display:grid;
+  place-content:center;
+}
+.ck-import-prepare-grid .ck-iz-icon {
+  width:44px;
+  height:44px;
+  margin:0 auto 9px;
+  border-radius:50%;
+  background:var(--g1);
+  color:var(--g);
+  display:grid;
+  place-items:center;
+}
+.ck-import-prepare-grid .ck-iz-file {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.ck-import-template {
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--white);
+}
+.ck-import-template > span {
+  width:36px;
+  height:36px;
+  border-radius:8px;
+  display:grid;
+  place-items:center;
+  color:var(--b);
+  background:var(--b1);
+}
+.ck-import-template h3 { margin:10px 0 0; font-size:13px; }
+.ck-import-template p { margin:4px 0 10px; color:var(--ink3); font-size:10px; }
+.ck-import-template ul { display:grid; gap:6px; margin:0 0 13px; padding:0; list-style:none; }
+.ck-import-template li { display:flex; align-items:center; gap:6px; color:var(--ink2); font-size:10px; }
+.ck-import-template li svg { color:var(--g); }
+.ck-import-format { margin-top:14px; border-radius:8px; }
+.ck-import-format > summary {
+  padding:13px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  cursor:pointer;
+  list-style:none;
+}
+.ck-import-format > summary::-webkit-details-marker { display:none; }
+.ck-import-format > summary strong,
+.ck-import-format > summary small { display:block; }
+.ck-import-format > summary strong { font-size:12px; }
+.ck-import-format > summary small { margin-top:2px; color:var(--ink3); font-size:10px; font-weight:500; }
+.ck-import-format[open] > summary { border-bottom:1px solid var(--border); }
+.ck-import-preview { border-radius:8px; }
+.ck-import-validation-band {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  border-bottom:1px solid var(--border);
+}
+.ck-import-validation-band > div { padding:12px 16px; border-right:1px solid var(--border); }
+.ck-import-validation-band > div:last-child { border-right:0; }
+.ck-import-validation-band strong,
+.ck-import-validation-band span { display:block; }
+.ck-import-validation-band strong { font-size:18px; }
+.ck-import-validation-band span { margin-top:2px; color:var(--ink3); font-size:9px; }
+.ck-import-validation-band .valid strong { color:var(--g); }
+.ck-import-validation-band .error strong { color:var(--re); }
+.ck-import-validation-band .warning strong { color:var(--am); }
+.ck-import-filterbar {
+  min-height:50px;
+  padding:8px 14px;
+  border-bottom:1px solid var(--border);
+  background:#fbfaf8;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.ck-import-filterbar > span { color:var(--ink3); font-size:10px; }
+.ck-import-filter-tabs { display:flex; gap:5px; flex-wrap:wrap; }
+.ck-import-filter-tabs button {
+  min-height:30px;
+  padding:5px 9px;
+  border:1px solid var(--border);
+  border-radius:7px;
+  background:var(--white);
+  color:var(--ink2);
+  font-size:10px;
+  font-weight:700;
+  cursor:pointer;
+}
+.ck-import-filter-tabs button span {
+  margin-left:3px;
+  color:var(--ink3);
+}
+.ck-import-filter-tabs button.on { border-color:var(--g); background:var(--g); color:#fff; }
+.ck-import-filter-tabs button.on span { color:#dcece4; }
+
+@media (max-width:1000px) {
+  .ck-student-kpi-band { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ck-student-kpi-band > div:nth-child(2) { border-right:0; }
+  .ck-student-kpi-band > div:nth-child(-n+2) { border-bottom:1px solid var(--border); }
+  .ck-admission-layout { grid-template-columns:180px minmax(0,1fr); }
+  .ck-admission-summary { grid-column:2; position:static; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ck-import-prepare-grid { grid-template-columns:1fr; }
+}
+
+@media (max-width:720px) {
+  .ck-student-module-tabs { margin-left:-2px; margin-right:-2px; }
+  .ck-student-kpi-band > div { padding:12px; }
+  .ck-student-kpi-band small { display:none; }
+  .ck-student-search-form { flex-basis:100%; min-width:0; }
+  .ck-student-search-row { grid-template-columns:minmax(0,1fr) auto; }
+  .ck-card-inline-filters { width:100%; }
+  .ck-card-inline-filters select { flex:1 1 130px; min-width:0; }
+  .ck-student-detail-drawer { width:100vw; margin:-28px -16px; }
+  .ck-admission-layout { grid-template-columns:1fr; }
+  .ck-admission-rail {
+    position:static;
+    display:flex;
+    overflow-x:auto;
+    padding-bottom:6px;
+  }
+  .ck-admission-rail-head { display:none; }
+  .ck-admission-rail > button { min-width:148px; }
+  .ck-admission-summary { grid-column:auto; grid-template-columns:1fr; }
+  .ck-admission-summary-card:last-child { display:none; }
+  .ck-admission-footer { margin-left:-16px; margin-right:-16px; padding-left:16px; padding-right:16px; }
+  .ck-import-steps { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ck-import-steps > div:nth-child(2) { border-right:0; }
+  .ck-import-steps > div:nth-child(-n+2) { border-bottom:1px solid var(--border); }
+  .ck-import-validation-band { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ck-import-validation-band > div:nth-child(2) { border-right:0; }
+  .ck-import-validation-band > div:nth-child(-n+2) { border-bottom:1px solid var(--border); }
+  .ck-import-filterbar { align-items:flex-start; flex-direction:column; }
+}
 
 /* School ERP fee collection workbench */
 .ck-fees-header-actions {

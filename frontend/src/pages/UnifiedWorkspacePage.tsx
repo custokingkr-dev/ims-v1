@@ -316,7 +316,10 @@ export default function UnifiedWorkspacePage() {
         .map(section => ({ ...section, items: section.items.filter(item => panelAllowedByPermission(item.key)) }))
         .filter(section => section.items.length > 0);
   const allowedPanelKeys = navSections.flatMap(section => section.items.map(item => item.key));
-  const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel);
+  const studentSubpanelAllowed = (panel === 'addstudent' || panel === 'bulkimport')
+    && allowedPanelKeys.includes('students')
+    && panelAllowedByPermission(panel);
+  const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel) || studentSubpanelAllowed;
   const dashboardModuleAccess = {
     erp: isPlatformAdmin || activeModules.has('ERP'),
     supplyOs: isPlatformAdmin || activeModules.has('SUPPLY_OS'),
@@ -499,7 +502,7 @@ export default function UnifiedWorkspacePage() {
 
           {panelAllowed && panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 
-          {panelAllowed && panel === 'bulkimport' && <BulkImportPanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
+          {panelAllowed && panel === 'bulkimport' && <BulkImportPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canCreateStudents={can('student:create')} />}
 
           {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 

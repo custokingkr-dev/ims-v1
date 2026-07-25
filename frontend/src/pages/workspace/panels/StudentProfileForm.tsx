@@ -1,5 +1,6 @@
 import type { StudentClassOption, StudentProfileFormState, StudentSectionOption } from '../../../features/students';
 import { Field } from '../ui';
+import { GraduationCap, MapPin, UserRound, UsersRound } from 'lucide-react';
 
 interface Props {
   form: StudentProfileFormState;
@@ -22,9 +23,9 @@ export function StudentProfileForm({
 
   return (
     <>
-      <div className="ck-form-section">
+      <div className="ck-form-section" id="student-form-details">
         <div className="ck-form-section-title">
-          <span className="ck-form-section-icon">👤</span>
+          <span className="ck-form-section-icon"><UserRound size={16} aria-hidden="true" /></span>
           Student Details
         </div>
         <div className="ck-form-grid ck-fg-3">
@@ -53,9 +54,9 @@ export function StudentProfileForm({
         </div>
       </div>
 
-      <div className="ck-form-section">
+      <div className="ck-form-section" id="student-form-academic">
         <div className="ck-form-section-title">
-          <span className="ck-form-section-icon">🎓</span>
+          <span className="ck-form-section-icon"><GraduationCap size={16} aria-hidden="true" /></span>
           Academic Details
         </div>
         <div className="ck-form-grid ck-fg-3">
@@ -80,9 +81,9 @@ export function StudentProfileForm({
         </div>
       </div>
 
-      <div className="ck-form-section">
+      <div className="ck-form-section" id="student-form-guardian">
         <div className="ck-form-section-title">
-          <span className="ck-form-section-icon">👪</span>
+          <span className="ck-form-section-icon"><UsersRound size={16} aria-hidden="true" /></span>
           Parent / Guardian
         </div>
         <div className="ck-form-grid ck-fg-3">
@@ -101,9 +102,9 @@ export function StudentProfileForm({
         </div>
       </div>
 
-      <div className="ck-form-section">
+      <div className="ck-form-section" id="student-form-address">
         <div className="ck-form-section-title">
-          <span className="ck-form-section-icon">📍</span>
+          <span className="ck-form-section-icon"><MapPin size={16} aria-hidden="true" /></span>
           Address
         </div>
         <div className="ck-form-grid ck-fg-3">

@@ -2,10 +2,23 @@ import { DragEvent, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
+import type { PanelKey } from '../config';
+import { StudentModuleTabs } from './StudentModuleTabs';
+import {
+  Check,
+  Download,
+  FileCheck2,
+  FileDown,
+  FileSpreadsheet,
+  ListFilter,
+  Upload,
+} from 'lucide-react';
 
 interface Props {
+  setPanel?: (key: PanelKey) => void;
   onRefresh: () => Promise<void>;
   schoolScopedParams?: { schoolId: number };
+  canCreateStudents?: boolean;
 }
 
 // The exact columns the importer accepts (header names are case-insensitive on the server).
@@ -203,7 +216,12 @@ export async function attachPhotos(
   return { attached, skipped };
 }
 
-export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Props) {
+export function BulkImportPanel({
+  setPanel,
+  onRefresh,
+  schoolScopedParams: _params,
+  canCreateStudents = true,
+}: Props) {
   const bulkImportInputRef = useRef<HTMLInputElement | null>(null);
   const [bulkImportDragActive, setBulkImportDragActive] = useState(false);
   const [bulkImportError, setBulkImportError] = useState('');
@@ -214,9 +232,16 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
   const [saving, setSaving] = useState('');
+  const [previewFilter, setPreviewFilter] = useState<'all' | 'valid' | 'errors' | 'warnings'>('all');
   const stagedPhotosRef = useRef<Map<string, StagedPhoto>>(new Map());
   const stagedRowsRef = useRef<Record<string, string | number>[]>([]);
   const stagedFileRef = useRef<File | null>(null);
+  const filteredPreviewRows = (bulkImportPreview?.rows || []).filter((row) => {
+    if (previewFilter === 'all') return true;
+    if (previewFilter === 'valid') return row.statusTone === 'sg';
+    if (previewFilter === 'errors') return row.statusTone === 'sr' || row.statusTone === 'spu';
+    return row.statusTone === 'sam';
+  });
 
   // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
   const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
@@ -390,20 +415,54 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   };
 
   return (
-    <ModuleShell title="Bulk import" subtitle="Upload .xlsx, .xls, .ods, or .csv files, preview validations, and import valid students only.">
-      <input ref={bulkImportInputRef} type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleBulkImportFile(file); }} />
-      <div className={`ck-import-zone ${bulkImportDragActive ? 'ck-import-zone-active' : ''}`} onDragOver={(e) => { e.preventDefault(); setBulkImportDragActive(true); }} onDragLeave={() => setBulkImportDragActive(false)} onDrop={(e) => void handleBulkImportDrop(e)}>
-        <div className="ck-iz-icon">📊</div>
-        <div className="ck-iz-title">Drop your .xlsx, .xls, .ods, or .csv file here</div>
-        <div className="ck-iz-sub">.xlsx, .xls, .ods, .csv supported · Max 50 MB · Up to 500 rows</div>
-        <div className="ck-actions-inline" style={{ justifyContent: 'center', marginTop: 14 }}>
-          <button className="ck-btn ck-btn-g" type="button" onClick={() => bulkImportInputRef.current?.click()}>Browse file</button>
-          <button className="ck-btn ck-btn-ghost" type="button" onClick={() => void downloadImportTemplate()}>Download sample template</button>
-        </div>
-        {bulkImportFileName ? <div className="ck-iz-file">Selected file: {bulkImportFileName}</div> : null}
+    <ModuleShell
+      title="Bulk import"
+      subtitle="Validate a spreadsheet before adding students to the school"
+      actions={(
+        <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" onClick={() => void downloadImportTemplate()}>
+          <FileDown size={15} aria-hidden="true" />Download template
+        </button>
+      )}
+    >
+      <StudentModuleTabs active="bulkimport" setPanel={setPanel} canCreate={canCreateStudents} />
+      <div className="ck-import-steps" aria-label="Import progress">
+        <div className="done"><span><Check size={14} /></span><div><strong>Prepare</strong><small>Use the template</small></div></div>
+        <div className={bulkImportFileName ? 'done' : 'on'}><span>{bulkImportFileName ? <Check size={14} /> : '2'}</span><div><strong>Upload</strong><small>Select a file</small></div></div>
+        <div className={bulkImportPreview ? (bulkImportProgress?.done ? 'done' : 'on') : ''}><span>{bulkImportProgress?.done ? <Check size={14} /> : '3'}</span><div><strong>Review</strong><small>Resolve row issues</small></div></div>
+        <div className={bulkImportProgress?.done ? 'done' : ''}><span>{bulkImportProgress?.done ? <Check size={14} /> : '4'}</span><div><strong>Import</strong><small>Commit valid rows</small></div></div>
       </div>
-      <div className="ck-card" style={{ marginTop: 16 }}>
-        <div className="ck-card-h"><div className="ck-card-t">Excel format — use these exact column headers (row 1)</div></div>
+
+      <input ref={bulkImportInputRef} type="file" accept=".xlsx,.xls,.ods,.csv" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleBulkImportFile(file); }} />
+      <div className="ck-import-prepare-grid">
+        <div className={`ck-import-zone ${bulkImportDragActive ? 'ck-import-zone-active' : ''}`} onDragOver={(e) => { e.preventDefault(); setBulkImportDragActive(true); }} onDragLeave={() => setBulkImportDragActive(false)} onDrop={(e) => void handleBulkImportDrop(e)}>
+          <div className="ck-iz-icon"><Upload size={22} aria-hidden="true" /></div>
+          <div className="ck-iz-title">{bulkImportFileName ? 'Replace the selected file' : 'Drop the student file here'}</div>
+          <div className="ck-iz-sub">XLSX, XLS, ODS, or CSV · Maximum 50 MB · Up to 500 rows</div>
+          <div className="ck-actions-inline" style={{ justifyContent: 'center', marginTop: 14 }}>
+            <button className="ck-btn ck-btn-g ck-icon-label" type="button" onClick={() => bulkImportInputRef.current?.click()}><Upload size={15} />Choose file</button>
+          </div>
+          {bulkImportFileName ? <div className="ck-iz-file"><FileSpreadsheet size={15} />{bulkImportFileName}</div> : null}
+        </div>
+        <aside className="ck-import-template">
+          <span><FileDown size={19} aria-hidden="true" /></span>
+          <h3>Start with the school template</h3>
+          <p>It contains the accepted headers, examples, and photo columns.</p>
+          <ul>
+            <li><Check size={13} />Required columns are marked</li>
+            <li><Check size={13} />Works with Excel and Sheets</li>
+            <li><Check size={13} />Validation happens before import</li>
+          </ul>
+          <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" onClick={() => void downloadImportTemplate()}>
+            <Download size={15} />Download sample template
+          </button>
+        </aside>
+      </div>
+
+      <details className="ck-card ck-import-format">
+        <summary>
+          <span><strong>Accepted columns and photo formats</strong><small>Review the exact spreadsheet structure</small></span>
+          <ListFilter size={17} aria-hidden="true" />
+        </summary>
         <div className="ck-table-wrap">
           <table className="ck-table">
             <thead><tr><th>Column</th><th>Required</th><th>Example</th><th>Notes</th></tr></thead>
@@ -437,7 +496,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
           </div>
           <div className="ts" style={{ marginTop: 10 }}>Students are imported first. Photos are attached after import by matching AdmissionNo to the inserted student.</div>
         </div>
-      </div>
+      </details>
       {saving === 'previewing' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Validating file, please wait…</div></div> : null}
       {saving === 'photos' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Uploading photos, please wait…</div></div> : null}
       {saving === 'structure-update' ? <div className="ck-alert ck-alert-am" style={{ marginTop: 16 }}><span>…</span><div>Updating school structure and revalidating file…</div></div> : null}
@@ -465,19 +524,48 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       ) : null}
       {bulkImportProgress ? <div className="ck-card" style={{ marginTop: 16 }}><div className="ck-form-body"><div className="ck-progress-wrap"><div className="ck-progress-label"><span>Import progress</span><strong>{bulkImportProgress.pct}%</strong></div><div className="ck-progress-bar"><div className="ck-progress-fill" style={{ width: `${bulkImportProgress.pct || 0}%` }} /></div></div>{bulkImportProgress.done ? <div className="ts">Done · {bulkImportProgress.inserted} inserted · {bulkImportProgress.skipped} skipped</div> : null}</div></div> : null}
       {bulkImportPreview ? (
-        <div className="ck-card" style={{ marginTop: 16 }}>
+        <div className="ck-card ck-import-preview" style={{ marginTop: 16 }}>
           <div className="ck-card-h">
             <div>
-              <div className="ck-card-t">Preview — {bulkImportPreview.rows?.length || 0} rows detected</div>
-              <div className="ck-import-badges"><span className="ck-status sg">{bulkImportPreview.validCount || 0} valid</span><span className="ck-status sr">{bulkImportPreview.errorCount || 0} errors</span><span className="ck-status sam">{bulkImportPreview.warningCount || 0} warnings</span></div>
+              <div className="ck-card-t">Review import rows</div>
+              <div className="ck-card-sub">Nothing is saved until you confirm the import.</div>
             </div>
-            <button className="ck-btn ck-btn-g" disabled={(bulkImportPreview.validCount || 0) === 0 || Boolean(bulkImportProgress?.done) || saving === 'bulk-import-confirm' || Boolean(bulkImportPreview.structure?.requiresStructureUpdate)} onClick={() => void confirmBulkImport()}>{bulkImportProgress?.done ? 'Done' : saving === 'bulk-import-confirm' ? 'Importing…' : `Import ${bulkImportPreview.validCount || 0} valid rows`}</button>
+            <button className="ck-btn ck-btn-g ck-icon-label" disabled={(bulkImportPreview.validCount || 0) === 0 || Boolean(bulkImportProgress?.done) || saving === 'bulk-import-confirm' || Boolean(bulkImportPreview.structure?.requiresStructureUpdate)} onClick={() => void confirmBulkImport()}>
+              <FileCheck2 size={15} aria-hidden="true" />
+              {bulkImportProgress?.done ? 'Done' : saving === 'bulk-import-confirm' ? 'Importing…' : `Import ${bulkImportPreview.validCount || 0} valid rows`}
+            </button>
+          </div>
+          <div className="ck-import-validation-band">
+            <div><strong>{bulkImportPreview.rows?.length || 0}</strong><span>Total rows</span></div>
+            <div className="valid"><strong>{bulkImportPreview.validCount || 0}</strong><span>Ready to import</span></div>
+            <div className="error"><strong>{bulkImportPreview.errorCount || 0}</strong><span>Blocking errors</span></div>
+            <div className="warning"><strong>{bulkImportPreview.warningCount || 0}</strong><span>Warnings</span></div>
+          </div>
+          <div className="ck-import-filterbar">
+            <div className="ck-import-filter-tabs" aria-label="Preview row filters">
+              {[
+                { key: 'all', label: 'All', count: bulkImportPreview.rows?.length || 0 },
+                { key: 'errors', label: 'Errors', count: bulkImportPreview.errorCount || 0 },
+                { key: 'warnings', label: 'Warnings', count: bulkImportPreview.warningCount || 0 },
+                { key: 'valid', label: 'Ready', count: bulkImportPreview.validCount || 0 },
+              ].map((filter) => (
+                <button
+                  key={filter.key}
+                  type="button"
+                  className={previewFilter === filter.key ? 'on' : ''}
+                  onClick={() => setPreviewFilter(filter.key as typeof previewFilter)}
+                >
+                  {filter.label} <span>{filter.count}</span>
+                </button>
+              ))}
+            </div>
+            <span>{filteredPreviewRows.length} rows shown</span>
           </div>
           <div className="ck-table-wrap">
             <table className="ck-table">
               <thead><tr><th>#</th><th>Name</th><th>Class</th><th>Section</th><th>Admission No.</th><th>Phone</th><th>Status</th></tr></thead>
               <tbody>
-                {(bulkImportPreview.rows || []).map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description || row.message}</div> : null}</td></tr>)}
+                {filteredPreviewRows.map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description || row.message}</div> : null}</td></tr>)}
               </tbody>
             </table>
           </div>
