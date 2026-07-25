@@ -48,6 +48,28 @@ describe('BulkImportPanel Excel format', () => {
     expect(JSON.parse(String(fd.get('rowsJson')))).toEqual(expect.arrayContaining([expect.objectContaining({ Name: 'Aya', Class: '1', AdmissionNo: 'A-1' })]));
   });
 
+  it('normalizes formatted Excel date cells before preview upload', async () => {
+    vi.mocked(api.post).mockReset();
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Name', 'Class', 'Section', 'AdmissionNo', 'DateOfBirth'],
+      ['Aya', 'Nursery', 'A', 'A-1', new Date(Date.UTC(2022, 5, 1))],
+    ], { cellDates: true });
+    ws.E2.z = 'yyyy/mm/dd';
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    const xlsxBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellDates: true });
+    const file = new File([xlsxBuf], 'roster.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    vi.mocked(api.post).mockResolvedValue({ data: { rows: [], validCount: 0, errorCount: 0, warningCount: 0, fileToken: 't' } });
+    render(<BulkImportPanel onRefresh={vi.fn()} />);
+    await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/import/upload-preview', expect.any(FormData), expect.any(Object)));
+    const previewCall = vi.mocked(api.post).mock.calls.find(([url]) => url === '/students/import/upload-preview');
+    const fd = previewCall?.[1] as FormData;
+    expect(JSON.parse(String(fd.get('rowsJson')))[0]).toEqual(expect.objectContaining({ DateOfBirth: '2022-06-01' }));
+  });
+
   it('extracts an embedded image and maps it to the row anchored in the Photo column', async () => {
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();

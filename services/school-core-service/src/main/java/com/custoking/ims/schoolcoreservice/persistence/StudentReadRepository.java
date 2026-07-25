@@ -2187,6 +2187,11 @@ public class StudentReadRepository {
                 || str(normalized.get("phone"), "").isBlank()) {
             return new ImportValidation("Missing field", "Required field is blank", false, true, false);
         }
+        try {
+            parseDate(str(normalized.get("dateOfBirth"), ""));
+        } catch (IllegalArgumentException ex) {
+            return new ImportValidation("Invalid date", ex.getMessage(), false, true, false);
+        }
         String className = str(normalized.get("className"), "");
         Optional<Map<String, Object>> schoolClass = classByName(className);
         if (schoolClass.isEmpty()) {
@@ -2754,7 +2759,7 @@ public class StudentReadRepository {
     }
 
     private LocalDate parseDate(String value) {
-        return value == null || value.isBlank() ? null : LocalDate.parse(value);
+        return StudentImportDateParser.parseOptional(value);
     }
 
     private int classSortOrder(String classId) {

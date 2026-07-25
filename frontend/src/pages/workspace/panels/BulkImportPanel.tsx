@@ -15,7 +15,7 @@ const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; n
   { key: 'Class', required: true, example: '9', note: 'Must match an active class in this school setup' },
   { key: 'Section', required: true, example: 'B', note: 'Must match an active section in this school setup' },
   { key: 'AdmissionNo', required: true, example: 'ADM-1001', note: 'Unique admission number' },
-  { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Format YYYY-MM-DD' },
+  { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Formats YYYY-MM-DD or YYYY/MM/DD' },
   { key: 'Gender', required: false, example: 'Male', note: 'Male / Female / Other' },
   { key: 'FatherName', required: false, example: 'R. Mehta', note: '' },
   { key: 'Phone', required: true, example: '9876543210', note: '10-digit contact number' },
@@ -129,6 +129,15 @@ export type StagedPhoto =
   | { kind: 'embedded'; bytes: Uint8Array; contentType: string }
   | { kind: 'link'; url: string };
 
+export function normalizeImportCellValue(value: string | number | boolean | Date | null | undefined): string | number {
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+  }
+  if (value == null) return '';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  return typeof value === 'number' ? value : String(value);
+}
+
 interface ImportStructurePreview {
   currentClassCount: number;
   currentSectionCount: number;
@@ -200,11 +209,14 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
   const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
     const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: 'array' });
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     if (!sheet) return [];
-    const json = XLSX.utils.sheet_to_json<Record<string, string | number>>(sheet, { defval: '', raw: false });
-    return json.map((row, index) => ({ ...row, __rowNumber: index + 2 }));
+    const json = XLSX.utils.sheet_to_json<Record<string, string | number | boolean | Date>>(sheet, { defval: '', raw: true });
+    return json.map((row, index) => Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [key, normalizeImportCellValue(value)])
+        .concat([['__rowNumber', index + 2]]),
+    ) as Record<string, string | number>);
   };
 
   const previewImportFile = async (file: File, rows: Record<string, string | number>[]) => {

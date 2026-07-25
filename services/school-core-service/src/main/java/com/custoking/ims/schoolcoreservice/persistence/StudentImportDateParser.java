@@ -1,0 +1,46 @@
+package com.custoking.ims.schoolcoreservice.persistence;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.format.ResolverStyle;
+import java.util.List;
+
+final class StudentImportDateParser {
+    private static final LocalDate EXCEL_EPOCH = LocalDate.of(1899, 12, 30);
+    private static final List<DateTimeFormatter> FORMATS = List.of(
+            DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ofPattern("uuuu/M/d").withResolverStyle(ResolverStyle.STRICT),
+            DateTimeFormatter.ofPattern("d/M/uuuu").withResolverStyle(ResolverStyle.STRICT),
+            DateTimeFormatter.ofPattern("d-M-uuuu").withResolverStyle(ResolverStyle.STRICT)
+    );
+
+    private StudentImportDateParser() {
+    }
+
+    static LocalDate parseOptional(String value) {
+        if (value == null || value.isBlank()) return null;
+        String text = value.trim();
+        if (text.length() >= 10 && text.charAt(4) == '-' && text.charAt(7) == '-'
+                && (text.length() == 10 || text.charAt(10) == 'T' || text.charAt(10) == ' ')) {
+            text = text.substring(0, 10);
+        }
+        LocalDate excelDate = parseExcelSerial(text);
+        if (excelDate != null) return excelDate;
+        for (DateTimeFormatter formatter : FORMATS) {
+            try {
+                return LocalDate.parse(text, formatter);
+            } catch (DateTimeParseException ignored) {
+                // Try the next accepted import date format.
+            }
+        }
+        throw new IllegalArgumentException("Date must be a valid date in YYYY-MM-DD, YYYY/MM/DD, DD/MM/YYYY, or DD-MM-YYYY format");
+    }
+
+    private static LocalDate parseExcelSerial(String text) {
+        if (!text.matches("\\d{5}(\\.0+)?")) return null;
+        long days = Long.parseLong(text.split("\\.")[0]);
+        if (days < 20000 || days > 60000) return null;
+        return EXCEL_EPOCH.plusDays(days);
+    }
+}
