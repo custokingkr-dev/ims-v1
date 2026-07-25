@@ -133,8 +133,6 @@ export const ADMIN_NAV_SECTIONS: WorkspaceNavSection[] = [
     title: 'ERP',
     items: [
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
-      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'ERP' },
-      { key: 'bulkimport', label: 'Bulk import', icon: '📥', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
       { key: 'timetable',  label: 'Timetable',   icon: '📅', module: 'ERP' },
       { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'ERP' },
@@ -163,7 +161,6 @@ export const OPERATIONS_NAV_SECTIONS: WorkspaceNavSection[] = [
     items: [
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
-      { key: 'addstudent', label: 'Add student', icon: '➕', module: 'ERP' },
     ],
   },
 ];

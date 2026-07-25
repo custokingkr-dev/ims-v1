@@ -17,6 +17,18 @@ import { ModuleShell, Info } from '../ui';
 import { formatAddress, formatPaise, initials } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
+import { StudentModuleTabs } from './StudentModuleTabs';
+import {
+  Archive,
+  ArrowUpRight,
+  Eye,
+  FileSpreadsheet,
+  Pencil,
+  Search,
+  Trash2,
+  UserPlus,
+  UsersRound,
+} from 'lucide-react';
 
 interface Props {
   setPanel: (key: PanelKey) => void;
@@ -74,6 +86,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const PAGE_SIZE = 50;
   const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
   const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsLoaded, setStudentsLoaded] = useState(false);
   const [studentDetail, setStudentDetail] = useState<any | null>(null);
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [studentModalLoading, setStudentModalLoading] = useState(false);
@@ -103,8 +116,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [promotionBatch, setPromotionBatch] = useState<PromotionBatch | null>(null);
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
+  const studentsRequestId = useRef(0);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode, search = studentSearch) => {
+    const requestId = ++studentsRequestId.current;
     try {
       setStudentsLoading(true);
       setStudentsError(null);
@@ -116,11 +131,14 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       if (trimmedSearch) params.q = trimmedSearch;
       if (mode === 'archived') params.deleted = true;
       const res = await api.get('/students', { params: { ...params, ...(schoolScopedParams || {}) } });
+      if (requestId !== studentsRequestId.current) return;
       setStudentsView(res.data);
+      setStudentsLoaded(true);
     } catch {
+      if (requestId !== studentsRequestId.current) return;
       setStudentsError('Failed to load students. Please try again.');
     } finally {
-      setStudentsLoading(false);
+      if (requestId === studentsRequestId.current) setStudentsLoading(false);
     }
   };
 
@@ -142,13 +160,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     loadStudents(studentFilters, 0, mode, studentSearch);
   };
 
-  const applyStudentSearch = () => {
-    const nextSearch = studentSearchInput.trim();
-    setStudentSearch(nextSearch);
-    setStudentsPage(0);
-    loadStudents(studentFilters, 0, studentListMode, nextSearch);
-  };
-
   const clearStudentSearch = () => {
     setStudentSearchInput('');
     setStudentSearch('');
@@ -160,6 +171,19 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     loadStudents(studentFilters, 0, studentListMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const nextSearch = studentSearchInput.trim();
+    if (nextSearch === studentSearch) return;
+
+    const timer = window.setTimeout(() => {
+      setStudentSearch(nextSearch);
+      setStudentsPage(0);
+      loadStudents(studentFilters, 0, studentListMode, nextSearch);
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [studentSearchInput, studentSearch, studentFilters, studentListMode]);
 
   const enterEditMode = (detail: any) => {
     setModalError(null);
@@ -478,6 +502,19 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   };
 
   const historyResultCount = Object.values(filteredHistory).reduce((sum, items) => sum + items.length, 0);
+  const visibleStudentItems = studentsView.items || [];
+  const averageAttendance = visibleStudentItems.length
+    ? Math.round(visibleStudentItems.reduce(
+      (sum: number, student: any) => sum + Number(student.attendancePercent || 0),
+      0,
+    ) / visibleStudentItems.length)
+    : 0;
+  const feeFollowUpCount = visibleStudentItems.filter((student: any) =>
+    ['overdue', 'partial', 'pending'].includes(String(student.feeStatus || '').toLowerCase()),
+  ).length;
+  const missingContactCount = visibleStudentItems.filter((student: any) =>
+    !(student.fatherContact || student.parentPhone || student.phone),
+  ).length;
 
   function feeStatusClass(status: string): string {
     switch ((status ?? '').toLowerCase()) {
@@ -496,12 +533,31 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
         subtitle={`${studentsView.filteredCount || 0} ${studentSearch ? 'matching ' : ''}${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections`}
         actions={
           <>
-            {can('student:update') && schoolScopedParams ? <button className="ck-btn ck-btn-ghost" onClick={() => void openPromotionWizard()}>Promote class</button> : null}
-            {canImportStudents ? <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import</button> : null}
-            {canCreateStudent ? <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>+ Add student</button> : null}
+            {can('student:update') && schoolScopedParams ? (
+              <button className="ck-btn ck-btn-ghost ck-icon-label" onClick={() => void openPromotionWizard()}>
+                <ArrowUpRight size={15} aria-hidden="true" />Promote class
+              </button>
+            ) : null}
+            {canImportStudents ? (
+              <button className="ck-btn ck-btn-ghost ck-icon-label" onClick={() => setPanel('bulkimport')}>
+                <FileSpreadsheet size={15} aria-hidden="true" />Bulk import
+              </button>
+            ) : null}
+            {canCreateStudent ? (
+              <button className="ck-btn ck-btn-g ck-icon-label" onClick={() => setPanel('addstudent')}>
+                <UserPlus size={15} aria-hidden="true" />Add student
+              </button>
+            ) : null}
           </>
         }
       >
+        <StudentModuleTabs
+          active="students"
+          setPanel={setPanel}
+          canCreate={canCreateStudent}
+          canImport={canImportStudents}
+        />
+
         {studentsError ? (
           <div className="ck-alert ck-alert-r">
             <span>!</span>
@@ -509,29 +565,53 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           </div>
         ) : null}
 
+        <div className="ck-student-kpi-band" aria-label="Student directory summary">
+          <div>
+            <span><UsersRound size={15} aria-hidden="true" />{studentListMode === 'archived' ? 'Archived records' : 'Active students'}</span>
+            <strong>{studentsView.filteredCount || 0}</strong>
+            <small>{studentsView.filteredSections || 0} sections in this view</small>
+          </div>
+          <div>
+            <span><ArrowUpRight size={15} aria-hidden="true" />Average attendance</span>
+            <strong>{averageAttendance}%</strong>
+            <small>Across the current page</small>
+          </div>
+          <div>
+            <span><FileSpreadsheet size={15} aria-hidden="true" />Fee follow-up</span>
+            <strong>{feeFollowUpCount}</strong>
+            <small>Pending, partial, or overdue</small>
+          </div>
+          <div>
+            <span><Archive size={15} aria-hidden="true" />Records to review</span>
+            <strong>{missingContactCount}</strong>
+            <small>Missing a guardian contact</small>
+          </div>
+        </div>
+
+        <div className="ck-card ck-student-directory">
         <div className="ck-card-h-wrap ck-students-toolbar">
-          <form className="ck-student-search-form" onSubmit={(e) => { e.preventDefault(); applyStudentSearch(); }}>
+          <div className="ck-student-search-form">
             <div className="ck-student-search-control">
               <label htmlFor="student-directory-search">Search students</label>
               <div className="ck-student-search-row">
-                <input
-                  id="student-directory-search"
-                  aria-label="Search students by details"
-                  value={studentSearchInput}
-                  onChange={(e) => setStudentSearchInput(e.target.value)}
-                  placeholder="Name, admission no, roll no, parent, phone, address"
-                />
-                <button className="ck-btn ck-btn-g ck-btn-sm" type="submit" disabled={studentsLoading}>
-                  Search
-                </button>
-                {studentSearch ? (
-                  <button className="ck-btn ck-btn-ghost ck-btn-sm" type="button" onClick={clearStudentSearch} disabled={studentsLoading}>
+                <div className="ck-input-with-icon">
+                  <Search size={16} aria-hidden="true" />
+                  <input
+                    id="student-directory-search"
+                    aria-label="Search students by details"
+                    value={studentSearchInput}
+                    onChange={(e) => setStudentSearchInput(e.target.value)}
+                    placeholder="Name, admission no, parent, phone, or address"
+                  />
+                </div>
+                {studentSearchInput ? (
+                  <button className="ck-btn ck-btn-ghost ck-btn-sm" type="button" onClick={clearStudentSearch}>
                     Clear
                   </button>
                 ) : null}
               </div>
             </div>
-          </form>
+          </div>
           <div className="ck-card-inline-filters">
             <div className="ck-actions-inline" aria-label="Student list mode">
               <button
@@ -584,12 +664,20 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             </select>
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 'auto', flexShrink: 0 }}>
-            {studentsLoading ? '...' : `${studentsView.filteredCount ?? studentsView.items?.length ?? 0} ${studentListMode === 'archived' ? 'archived' : 'students'}`}
+            {`${studentsView.filteredCount ?? studentsView.items?.length ?? 0} ${studentListMode === 'archived' ? 'archived' : 'students'}`}
           </div>
         </div>
 
-        <div className="ck-card">
-          <div className="ck-table-wrap">
+        <div className="ck-student-directory-head">
+          <div>
+            <strong>{studentListMode === 'archived' ? 'Archived student records' : 'Student directory'}</strong>
+            <span>{studentSearch ? `Results for "${studentSearch}"` : 'Current academic year'}</span>
+          </div>
+          <span className="ck-status sgr">
+            {studentsLoading ? 'Loading' : `${studentsView.filteredCount ?? studentsView.items?.length ?? 0} records`}
+          </span>
+        </div>
+          <div className="ck-table-wrap" aria-busy={studentsLoading}>
           <table className="ck-table">
             <thead>
               <tr>
@@ -603,7 +691,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               </tr>
             </thead>
             {/* Change 2: Skeleton loading rows */}
-            {studentsLoading && (
+            {studentsLoading && !studentsLoaded && (
               <tbody>
                 {[0,1,2,3,4].map(i => (
                   <tr key={i}>
@@ -621,7 +709,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 ))}
               </tbody>
             )}
-            {!studentsLoading && (
+            {studentsLoaded && (
               <tbody>
                 {(studentsView.items || []).map((student: any) => {
                   const archived = Boolean(student.deletedAt);
@@ -634,7 +722,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                             : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(student.fullName)}</div>
                           }
                           <div>
-                            <div className="tb">{student.fullName}</div>
+                            <button type="button" className="ck-table-link" onClick={() => openStudentModal(student)}>{student.fullName}</button>
                             <div className="ts">{student.classSection} · {student.academicYear}{archived ? ` · Deleted${student.deletedReason ? `: ${student.deletedReason}` : ''}` : ''}</div>
                           </div>
                         </div>
@@ -663,18 +751,24 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       </td>
                       <td>
                         <div className="ck-actions-inline">
-                          <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student)}>View</button>
+                          <button className="ck-icon-btn" title="View student" aria-label={`View ${student.fullName}`} onClick={() => openStudentModal(student)}>
+                            <Eye size={16} aria-hidden="true" />
+                          </button>
                           {can('student:update') && !archived ? (
-                            <button className="ck-btn ck-btn-ghost ck-btn-sm" onClick={() => openStudentModal(student, true)}>Edit</button>
+                            <button className="ck-icon-btn" title="Edit student" aria-label={`Edit ${student.fullName}`} onClick={() => openStudentModal(student, true)}>
+                              <Pencil size={15} aria-hidden="true" />
+                            </button>
                           ) : null}
                           {can('student:delete') && !archived ? (
                             <button
                               type="button"
-                              className="ck-btn ck-btn-ghost ck-btn-sm ck-student-delete-inline"
+                              className="ck-icon-btn ck-student-delete-inline"
+                              title={`Delete ${student.fullName}`}
+                              aria-label="Delete"
                               disabled={deleteBusyId === student.id}
                               onClick={() => requestDeleteStudent(student, { closeModal: false })}
                             >
-                              {deleteBusyId === student.id ? 'Deleting...' : 'Delete'}
+                              <Trash2 size={15} aria-hidden="true" />
                             </button>
                           ) : null}
                         </div>
@@ -688,9 +782,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           </div>
 
           {/* Change 3: Designed empty state */}
-          {!studentsLoading && (studentsView.items?.length ?? 0) === 0 && (
+          {studentsLoaded && (studentsView.items?.length ?? 0) === 0 && (
             <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-              <div style={{ fontSize: 38, marginBottom: 10, lineHeight: 1 }}>🎓</div>
+              <UsersRound size={36} style={{ color: 'var(--g)', marginBottom: 10 }} aria-hidden="true" />
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
                 {studentSearch
                   ? `No students found for "${studentSearch}"`
@@ -723,7 +817,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
       {studentModalOpen && (
         <div className="ck-modal-bg" onClick={closeStudentModal}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal ck-student-detail-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Student details</div>
               <button className="ck-modal-x" onClick={closeStudentModal}>×</button>

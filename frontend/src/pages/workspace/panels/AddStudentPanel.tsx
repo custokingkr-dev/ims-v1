@@ -12,6 +12,19 @@ import {
 import { ModuleShell, Field } from '../ui';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
+import { StudentModuleTabs } from './StudentModuleTabs';
+import {
+  Check,
+  FileSpreadsheet,
+  GraduationCap,
+  ImagePlus,
+  MapPin,
+  RotateCcw,
+  Save,
+  ShieldCheck,
+  UserRound,
+  UsersRound,
+} from 'lucide-react';
 
 interface Props {
   setPanel: (key: PanelKey) => void;
@@ -34,6 +47,7 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [classes, setClasses] = useState<StudentClassOption[]>([]);
   const [sections, setSections] = useState<StudentSectionOption[]>([]);
+  const [activeSection, setActiveSection] = useState('student-form-details');
   const schoolId = schoolScopedParams?.schoolId;
 
   useEffect(() => {
@@ -160,6 +174,9 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       setSaving(true);
       setPhotoError('');
       setPhotoFeedback(null);
+      if (!studentForm.admissionNumber.trim() || !studentForm.fullName.trim()) {
+        throw new Error('Admission number and full name are required.');
+      }
       if (!studentForm.classId || !studentForm.sectionId) {
         throw new Error('Class and section are required.');
       }
@@ -192,74 +209,147 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     }
   };
 
+  const requiredFields = [
+    studentForm.admissionNumber,
+    studentForm.fullName,
+    studentForm.classId,
+    studentForm.sectionId,
+  ];
+  const completedRequiredFields = requiredFields.filter((value) => value.trim()).length;
+  const selectedClass = classes.find((item) => item.id === studentForm.classId)?.name || 'Not selected';
+  const selectedSection = sections.find((item) => item.id === studentForm.sectionId)?.name || 'Not selected';
+  const navigateToSection = (id: string) => {
+    setActiveSection(id);
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <ModuleShell
       title="Add student"
-      subtitle="Capture complete student master data and validate unique IDs"
-      actions={canImportStudents ? <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('bulkimport')}>Bulk import instead</button> : null}
+      subtitle="Create a complete, reliable student record for the current school"
+      actions={canImportStudents ? (
+        <button className="ck-btn ck-btn-ghost ck-icon-label" onClick={() => setPanel('bulkimport')}>
+          <FileSpreadsheet size={15} aria-hidden="true" />Add many students
+        </button>
+      ) : null}
     >
+      <StudentModuleTabs active="addstudent" setPanel={setPanel} canImport={canImportStudents} />
+
       {photoFeedback ? (
         <div className={`ck-alert ${photoFeedback.type === 'success' ? 'ck-alert-g' : 'ck-alert-re'}`}>
-          <span>{photoFeedback.type === 'success' ? '✓' : '!'}</span>
+          <span>{photoFeedback.type === 'success' ? <Check size={16} /> : '!'}</span>
           <div>{photoFeedback.message}</div>
         </div>
       ) : null}
-      <div className="ck-form-card">
-        <div className="ck-form-head">Student profile</div>
-        <div className="ck-form-body">
-          <StudentProfileForm
-            form={studentForm}
-            classes={classes}
-            sections={sections}
-            onChange={updateStudentForm}
-            onClassChange={onClassChange}
-          />
 
-          <div className="ck-photo-panel">
-            <div className="ck-photo-panel-copy">
-              <h3>Student profile photo</h3>
-              <p>Upload a clear face photo. Accepted formats: JPG, PNG, WEBP. Maximum {STUDENT_PHOTO_MAX_LABEL}.</p>
-            </div>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) selectPhoto(file); }} />
-            <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoPreviewUrl ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
-              <div className="ck-photo-drop-icon">🖼</div>
-              <div className="ck-photo-drop-title">Drag and drop the student photo here</div>
-              <div className="ck-photo-drop-sub">JPG, PNG or WEBP - up to {STUDENT_PHOTO_MAX_LABEL}</div>
-              <div className="ck-actions-inline">
-                <button type="button" className="ck-btn ck-btn-g" onClick={() => fileInputRef.current?.click()}>Browse file</button>
-                {photoFile ? <button type="button" className="ck-btn ck-btn-ghost" onClick={resetPhotoState}>Remove photo</button> : null}
-              </div>
-            </div>
-            {photoError ? <div className="ck-photo-error">{photoError}</div> : null}
-            {photoPreviewUrl ? (
-              <div className="ck-photo-editor">
-                <div>
-                  <div className="ck-photo-frame">
-                    <img src={photoPreviewUrl} alt="Student preview" className="ck-photo-preview-image" style={{ transform: `translate(${photoOffsetX}px, ${photoOffsetY}px) scale(${photoZoom})` }} />
-                  </div>
-                  <div className="ck-photo-help">Live preview before saving</div>
-                </div>
-                <div className="ck-photo-controls">
-                  <Field label="Zoom"><input type="range" min="1" max="2.5" step="0.01" value={photoZoom} onChange={(e) => setPhotoZoom(Number(e.target.value))} /></Field>
-                  <Field label="Move left / right"><input type="range" min="-140" max="140" step="1" value={photoOffsetX} onChange={(e) => setPhotoOffsetX(Number(e.target.value))} /></Field>
-                  <Field label="Move up / down"><input type="range" min="-140" max="140" step="1" value={photoOffsetY} onChange={(e) => setPhotoOffsetY(Number(e.target.value))} /></Field>
-                </div>
-              </div>
-            ) : null}
+      <div className="ck-admission-layout">
+        <aside className="ck-admission-rail" aria-label="Student form sections">
+          <div className="ck-admission-rail-head">
+            <strong>New admission</strong>
+            <span>{completedRequiredFields} of 4 required fields complete</span>
           </div>
+          {[
+            { id: 'student-form-details', label: 'Student details', sub: 'Identity and admission', icon: UserRound },
+            { id: 'student-form-academic', label: 'Academic details', sub: 'Class and section', icon: GraduationCap },
+            { id: 'student-form-guardian', label: 'Parent / guardian', sub: 'Primary contacts', icon: UsersRound },
+            { id: 'student-form-address', label: 'Address', sub: 'Home location', icon: MapPin },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={activeSection === item.id ? 'on' : ''}
+                onClick={() => navigateToSection(item.id)}
+              >
+                <span><Icon size={16} aria-hidden="true" /></span>
+                <span><strong>{item.label}</strong><small>{item.sub}</small></span>
+              </button>
+            );
+          })}
+        </aside>
 
-          <div className="ck-alert ck-alert-g" style={{ marginTop: 16 }}>
-            <span>✓</span>
+        <div className="ck-form-card ck-admission-form-card">
+          <div className="ck-form-head">
             <div>
-              <strong>Validation rules</strong>
-              <div>Admission number, full name, class, and section are required. Fee plans are assigned separately in Fee Structure.</div>
+              <strong>Student profile</strong>
+              <div className="ck-card-sub">Fields marked with * are required before enrollment.</div>
             </div>
+            <span className="ck-status sgr">Draft</span>
           </div>
-          <div className="ck-actions-inline">
-            <button className="ck-btn ck-btn-ghost" type="button" onClick={resetStudentForm}>Clear form</button>
-            <button className="ck-btn ck-btn-g" disabled={saving} onClick={() => void handleSaveStudent()}>{saving ? 'Saving...' : 'Save & enroll student ->'}</button>
+          <div className="ck-form-body">
+            <StudentProfileForm
+              form={studentForm}
+              classes={classes}
+              sections={sections}
+              onChange={updateStudentForm}
+              onClassChange={onClassChange}
+            />
+
+            <div className="ck-photo-panel">
+              <div className="ck-photo-panel-copy">
+                <h3>Student profile photo</h3>
+                <p>Upload a clear face photo. JPG, PNG, or WEBP up to {STUDENT_PHOTO_MAX_LABEL}.</p>
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) selectPhoto(file); }} />
+              <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoPreviewUrl ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
+                <div className="ck-photo-drop-icon"><ImagePlus size={24} aria-hidden="true" /></div>
+                <div className="ck-photo-drop-title">Drop the student photo here</div>
+                <div className="ck-photo-drop-sub">The photo can be cropped before it is saved.</div>
+                <div className="ck-actions-inline">
+                  <button type="button" className="ck-btn ck-btn-g ck-icon-label" onClick={() => fileInputRef.current?.click()}><ImagePlus size={15} />Choose photo</button>
+                  {photoFile ? <button type="button" className="ck-btn ck-btn-ghost" onClick={resetPhotoState}>Remove</button> : null}
+                </div>
+              </div>
+              {photoError ? <div className="ck-photo-error">{photoError}</div> : null}
+              {photoPreviewUrl ? (
+                <div className="ck-photo-editor">
+                  <div>
+                    <div className="ck-photo-frame">
+                      <img src={photoPreviewUrl} alt="Student preview" className="ck-photo-preview-image" style={{ transform: `translate(${photoOffsetX}px, ${photoOffsetY}px) scale(${photoZoom})` }} />
+                    </div>
+                    <div className="ck-photo-help">Photo preview</div>
+                  </div>
+                  <div className="ck-photo-controls">
+                    <Field label="Zoom"><input type="range" min="1" max="2.5" step="0.01" value={photoZoom} onChange={(e) => setPhotoZoom(Number(e.target.value))} /></Field>
+                    <Field label="Move left / right"><input type="range" min="-140" max="140" step="1" value={photoOffsetX} onChange={(e) => setPhotoOffsetX(Number(e.target.value))} /></Field>
+                    <Field label="Move up / down"><input type="range" min="-140" max="140" step="1" value={photoOffsetY} onChange={(e) => setPhotoOffsetY(Number(e.target.value))} /></Field>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="ck-admission-footer">
+              <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" onClick={resetStudentForm}>
+                <RotateCcw size={15} aria-hidden="true" />Clear form
+              </button>
+              <button className="ck-btn ck-btn-g ck-icon-label" disabled={saving} onClick={() => void handleSaveStudent()}>
+                <Save size={15} aria-hidden="true" />{saving ? 'Saving...' : 'Save & enroll student'}
+              </button>
+            </div>
           </div>
         </div>
+
+        <aside className="ck-admission-summary">
+          <div className="ck-admission-summary-card">
+            <h3><ShieldCheck size={17} aria-hidden="true" />Record summary</h3>
+            <dl>
+              <div><dt>Admission no.</dt><dd>{studentForm.admissionNumber || 'Not entered'}</dd></div>
+              <div><dt>Student</dt><dd>{studentForm.fullName || 'Not entered'}</dd></div>
+              <div><dt>Class</dt><dd>{selectedClass}</dd></div>
+              <div><dt>Section</dt><dd>{selectedSection}</dd></div>
+              <div><dt>Guardian</dt><dd>{studentForm.fatherName || studentForm.motherName || 'Not entered'}</dd></div>
+            </dl>
+          </div>
+          <div className="ck-admission-summary-card">
+            <h3><Check size={17} aria-hidden="true" />Before you save</h3>
+            <ul>
+              <li>Use the name shown on official records.</li>
+              <li>Confirm class and section placement.</li>
+              <li>Check the guardian's primary mobile number.</li>
+            </ul>
+          </div>
+        </aside>
       </div>
     </ModuleShell>
   );

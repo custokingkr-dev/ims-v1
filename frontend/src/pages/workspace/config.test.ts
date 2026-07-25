@@ -43,7 +43,22 @@ describe('workspace nav module filtering', () => {
 
     expect(labels).toContain('Dashboard');
     expect(labels).toContain('Students');
+    expect(labels).not.toContain('Add student');
+    expect(labels).not.toContain('Bulk import');
     expect(labels).not.toContain('Supply Details');
+  });
+
+  it('keeps student workflows consolidated under one navigation item', () => {
+    const adminItems = filteredSectionsFor(ADMIN_NAV_SECTIONS, ['ERP'])
+      .flatMap((section) => section.items);
+    const operationsItems = filteredSectionsFor(OPERATIONS_NAV_SECTIONS, ['ERP'])
+      .flatMap((section) => section.items);
+
+    for (const items of [adminItems, operationsItems]) {
+      expect(items.filter((item) => item.key === 'students')).toHaveLength(1);
+      expect(items.some((item) => item.key === 'addstudent')).toBe(false);
+      expect(items.some((item) => item.key === 'bulkimport')).toBe(false);
+    }
   });
 
   it('keeps Dashboard visible when only Supply OS is enabled', () => {
