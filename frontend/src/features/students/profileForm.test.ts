@@ -89,12 +89,13 @@ describe('student profile form mappers', () => {
     });
 
     expect(form).toMatchObject({
-      street: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
+      street: '',
       city: '',
       state: '',
+      fullAddress: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
     });
     expect(studentProfileFormToUpdatePayload(form)).toMatchObject({
-      street: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
+      address: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
     });
   });
 });

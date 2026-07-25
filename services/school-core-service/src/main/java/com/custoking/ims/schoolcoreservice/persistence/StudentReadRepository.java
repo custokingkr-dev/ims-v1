@@ -316,12 +316,12 @@ public class StudentReadRepository {
                     .param("fatherContact", str(firstPresent(request, "fatherContactNumber", "fatherContact"), ""))
                     .param("motherName", str(request.get("motherName"), ""))
                     .param("phone", str(request.get("phone"), str(firstPresent(request, "fatherContactNumber", "fatherContact"), "")))
-                    .param("address", joinAddress(
+                    .param("address", preferredAddress(request.get("address"),
                             str(request.get("houseNumber"), ""),
                             str(request.get("street"), ""),
                             str(request.get("locality"), ""),
-                            str(request.get("city"), "Hyderabad"),
-                            str(request.get("state"), "Telangana"),
+                            str(request.get("city"), ""),
+                            str(request.get("state"), ""),
                             str(request.get("pinCode"), "")))
                     .param("houseNumber", str(request.get("houseNumber"), ""))
                     .param("street", str(request.get("street"), ""))
@@ -397,7 +397,7 @@ public class StudentReadRepository {
         }
 
         String phone = requireText(request.get("phone"), "Phone is required");
-        String address = joinAddress(
+        String address = preferredAddress(request.get("address"),
                 str(request.get("houseNumber"), ""), str(request.get("street"), ""),
                 str(request.get("locality"), ""), str(request.get("city"), ""),
                 str(request.get("state"), ""), str(request.get("pinCode"), ""));
@@ -2318,10 +2318,12 @@ public class StudentReadRepository {
         return jdbc.sql("""
                         INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, gender,
                                              father_name, father_contact, phone, address,
+                                             house_number, street, locality, city, state, pin_code,
                                              fee_status, attendance_percent, imported_at, import_batch_id,
                                              created_at, updated_at, school_id, class_id, section_id, academic_year_id, version)
                         VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :gender,
                                 :fatherName, :fatherContact, :phone, :address,
+                                :houseNumber, :street, :locality, :city, :state, :pinCode,
                                 'Pending', 0, :importedAt, :batchId,
                                 :createdAt, :updatedAt, :schoolId, :classId, :sectionId, :academicYearId, 0)
                         RETURNING id
@@ -2335,7 +2337,19 @@ public class StudentReadRepository {
                 .param("fatherName", str(normalized.get("fatherName"), ""))
                 .param("fatherContact", str(normalized.get("phone"), ""))
                 .param("phone", str(normalized.get("phone"), ""))
-                .param("address", str(normalized.get("address"), ""))
+                .param("address", preferredAddress(normalized.get("address"),
+                        str(normalized.get("houseNumber"), ""),
+                        str(normalized.get("street"), ""),
+                        str(normalized.get("locality"), ""),
+                        str(normalized.get("city"), ""),
+                        str(normalized.get("state"), ""),
+                        str(normalized.get("pinCode"), "")))
+                .param("houseNumber", str(normalized.get("houseNumber"), ""))
+                .param("street", str(normalized.get("street"), ""))
+                .param("locality", str(normalized.get("locality"), ""))
+                .param("city", str(normalized.get("city"), ""))
+                .param("state", str(normalized.get("state"), ""))
+                .param("pinCode", str(normalized.get("pinCode"), ""))
                 .param("importedAt", now)
                 .param("batchId", batchId)
                 .param("createdAt", now)
@@ -2405,6 +2419,12 @@ public class StudentReadRepository {
                 "gender", firstPresentIgnoreCase(rawRow, "Gender", "gender"),
                 "fatherName", firstPresentIgnoreCase(rawRow, "FatherName", "fatherName"),
                 "phone", firstPresentIgnoreCase(rawRow, "Phone", "phone"),
+                "houseNumber", firstPresentIgnoreCase(rawRow, "HouseNumber", "House Number", "houseNumber"),
+                "street", firstPresentIgnoreCase(rawRow, "Street", "street"),
+                "locality", firstPresentIgnoreCase(rawRow, "Locality", "locality"),
+                "city", firstPresentIgnoreCase(rawRow, "City", "city"),
+                "state", firstPresentIgnoreCase(rawRow, "State", "state"),
+                "pinCode", firstPresentIgnoreCase(rawRow, "PinCode", "PIN Code", "Pincode", "pinCode"),
                 "address", firstPresentIgnoreCase(rawRow, "Address", "address"),
                 "boardRegistrationNo", firstPresentIgnoreCase(rawRow, "BoardRegistrationNo", "boardRegistrationNo"));
     }
@@ -2907,6 +2927,11 @@ public class StudentReadRepository {
 
     private String joinAddress(String... parts) {
         return Arrays.stream(parts).filter(value -> value != null && !value.isBlank()).collect(Collectors.joining(", "));
+    }
+
+    private String preferredAddress(Object legacyAddress, String... structuredParts) {
+        String structured = joinAddress(structuredParts);
+        return structured.isBlank() ? str(legacyAddress, "") : structured;
     }
 
     private Map<String, Object> row(Object... kv) {

@@ -204,6 +204,75 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
+    void confirmImport_persistsStructuredAddressAndKeepsLegacyAddressCompatible() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
+                mock(StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> structuredRow = Map.ofEntries(
+                Map.entry("Name", "Structured Address"),
+                Map.entry("Class", "1"),
+                Map.entry("Section", "A"),
+                Map.entry("AdmissionNo", "ADDR-STRUCTURED"),
+                Map.entry("Gender", "Female"),
+                Map.entry("Phone", "9876543210"),
+                Map.entry("HouseNumber", "17-8-547"),
+                Map.entry("Street", "Main Road"),
+                Map.entry("Locality", "Shah Colony"),
+                Map.entry("City", "Hyderabad"),
+                Map.entry("State", "Telangana"),
+                Map.entry("PinCode", "500024"),
+                Map.entry("Address", "Legacy value must not override structured fields"));
+        Map<String, Object> legacyRow = Map.of(
+                "Name", "Legacy Address", "Class", "1", "Section", "A",
+                "AdmissionNo", "ADDR-LEGACY", "Gender", "Male",
+                "Phone", "9876543211", "Address", "Complete legacy address");
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", List.of(structuredRow, legacyRow)));
+        studentRepo.confirmImport(Map.of("schoolId", schoolId, "fileToken", preview.get("fileToken")));
+
+        Map<String, Object> structured = jdbc.sql("""
+                        SELECT address, house_number, street, locality, city, state, pin_code
+                        FROM student.students WHERE admission_no = 'ADDR-STRUCTURED'
+                        """)
+                .query((rs, n) -> Map.<String, Object>of(
+                        "address", rs.getString("address"),
+                        "houseNumber", rs.getString("house_number"),
+                        "street", rs.getString("street"),
+                        "locality", rs.getString("locality"),
+                        "city", rs.getString("city"),
+                        "state", rs.getString("state"),
+                        "pinCode", rs.getString("pin_code")))
+                .single();
+        assertThat(structured).containsEntry("houseNumber", "17-8-547")
+                .containsEntry("street", "Main Road")
+                .containsEntry("locality", "Shah Colony")
+                .containsEntry("city", "Hyderabad")
+                .containsEntry("state", "Telangana")
+                .containsEntry("pinCode", "500024")
+                .containsEntry("address", "17-8-547, Main Road, Shah Colony, Hyderabad, Telangana, 500024");
+
+        Map<String, Object> legacy = jdbc.sql("""
+                        SELECT address, house_number, street, locality, city, state, pin_code
+                        FROM student.students WHERE admission_no = 'ADDR-LEGACY'
+                        """)
+                .query((rs, n) -> Map.<String, Object>of(
+                        "address", rs.getString("address"),
+                        "houseNumber", rs.getString("house_number"),
+                        "street", rs.getString("street"),
+                        "locality", rs.getString("locality"),
+                        "city", rs.getString("city"),
+                        "state", rs.getString("state"),
+                        "pinCode", rs.getString("pin_code")))
+                .single();
+        assertThat(legacy).containsEntry("address", "Complete legacy address")
+                .containsEntry("street", "");
+    }
+
+    @Test
     void confirmImport_toleratesDuplicateSectionRows() throws Exception {
         long schoolId = seedSchool(5, 2);
         jdbc.sql("""

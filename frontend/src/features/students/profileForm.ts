@@ -29,6 +29,7 @@ export interface StudentProfileFormState {
   city: string;
   state: string;
   pinCode: string;
+  fullAddress: string;
 }
 
 export interface StudentProfilePayload {
@@ -53,6 +54,7 @@ export interface StudentProfilePayload {
   city?: string;
   state?: string;
   pinCode?: string;
+  address?: string;
 }
 
 export function emptyStudentProfileForm(): StudentProfileFormState {
@@ -77,6 +79,7 @@ export function emptyStudentProfileForm(): StudentProfileFormState {
     city: 'Hyderabad',
     state: 'Telangana',
     pinCode: '',
+    fullAddress: '',
   };
 }
 
@@ -110,11 +113,12 @@ export function studentDetailToProfileForm(detail: Record<string, any>): Student
     motherName: text(detail.motherName),
     phone: text(detail.phone),
     houseNumber: text(address.houseNumber),
-    street: text(address.street, legacyFullAddress),
+    street: text(address.street),
     locality: text(address.locality),
     city: hasStructuredAddress || !legacyFullAddress ? text(address.city, 'Hyderabad') : '',
     state: hasStructuredAddress || !legacyFullAddress ? text(address.state, 'Telangana') : '',
     pinCode: text(address.pinCode),
+    fullAddress: legacyFullAddress,
   };
 }
 
@@ -152,6 +156,7 @@ function compactPayload(form: StudentProfileFormState): StudentProfilePayload {
   put(payload, 'city', form.city);
   put(payload, 'state', form.state);
   put(payload, 'pinCode', form.pinCode);
+  put(payload, 'address', form.fullAddress);
   return payload;
 }
 
