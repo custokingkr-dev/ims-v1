@@ -640,9 +640,11 @@ public class StudentReadController {
     private static byte[] importTemplateWorkbook() {
         List<List<String>> rows = List.of(
                 List.of("Name", "Class", "Section", "AdmissionNo", "DateOfBirth", "Gender",
-                        "FatherName", "Phone", "Address", "BoardRegistrationNo", "Photo", "PhotoUrl"),
+                        "FatherName", "Phone", "HouseNumber", "Street", "Locality", "City", "State",
+                        "PinCode", "Address", "BoardRegistrationNo", "Photo", "PhotoUrl"),
                 List.of("Aryan Mehta", "9", "B", "ADM-1001", "2010-05-12", "Male",
-                        "R. Mehta", "9876543210", "Hyderabad", "BRN1001", "",
+                        "R. Mehta", "9876543210", "17-8-547", "Main Road", "Shah Colony",
+                        "Hyderabad", "Telangana", "500024", "", "BRN1001", "",
                         "https://school.example/photos/ADM-1001.jpg"));
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();

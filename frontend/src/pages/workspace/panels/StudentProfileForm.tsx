@@ -127,6 +127,17 @@ export function StudentProfileForm({
             <input value={form.pinCode} onChange={(e) => update({ pinCode: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
           </Field>
         </div>
+        {form.fullAddress ? (
+          <div className="ck-form-grid" style={{ marginTop: 12 }}>
+            <Field label="Full address">
+              <textarea
+                rows={2}
+                value={form.fullAddress}
+                onChange={(e) => update({ fullAddress: e.target.value })}
+              />
+            </Field>
+          </div>
+        ) : null}
       </div>
     </>
   );

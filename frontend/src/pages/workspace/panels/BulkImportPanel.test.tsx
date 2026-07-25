@@ -17,6 +17,13 @@ describe('BulkImportPanel Excel format', () => {
     expect(screen.getAllByText('AdmissionNo').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Class').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Section').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('HouseNumber').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Street').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Locality').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('City').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('State').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('PinCode').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Address').length).toBeGreaterThan(0);
     expect(screen.getAllByText('PhotoUrl').length).toBeGreaterThan(0);
 
     expect(screen.getAllByText('Optional').length).toBeGreaterThan(0);
