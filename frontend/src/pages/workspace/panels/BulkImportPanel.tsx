@@ -149,6 +149,18 @@ interface ImportStructurePreview {
   unsupportedClasses?: string[];
 }
 
+type SkippedImportRow = {
+  rowNumber: number;
+  reason: string;
+  name?: string;
+  admissionNo?: string;
+  className?: string;
+  sectionName?: string;
+  phone?: string;
+  status?: string;
+  message?: string;
+};
+
 // Phase B: after students are inserted, attach each staged photo to its new student record.
 // Photo failures are recorded as skips — never thrown — so a bad photo never fails the data import.
 export async function attachPhotos(
@@ -198,7 +210,7 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
   const [bulkImportWarning, setBulkImportWarning] = useState('');
   const [bulkImportFileName, setBulkImportFileName] = useState('');
   const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
-  const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; pct?: number; inserted?: number; skipped?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null>(null);
+  const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; pct?: number; inserted?: number; skipped?: number; skippedRows?: SkippedImportRow[] } | null>(null);
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
   const [saving, setSaving] = useState('');
@@ -344,14 +356,14 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
       const insertedStudents = (confirmRes.data as { insertedStudents?: Array<{ admissionNo: string; studentId: number }> })?.insertedStudents || [];
       if (!jobId) {
         // Backend returned a synchronous inline result — no job polling needed
-        const inlineResult = confirmRes.data as { inserted?: number; skipped?: number; skippedRows?: { rowNumber: number; reason: string }[] };
-        setBulkImportProgress({ done: true, inserted: inlineResult.inserted, skipped: inlineResult.skipped, skippedRows: inlineResult.skippedRows });
+        const inlineResult = confirmRes.data as { inserted?: number; skipped?: number; skippedRows?: SkippedImportRow[] };
+        setBulkImportProgress({ done: true, pct: 100, inserted: inlineResult.inserted, skipped: inlineResult.skipped, skippedRows: inlineResult.skippedRows });
         setBulkImportToast({ type: 'success', message: `${inlineResult.inserted ?? 0} students imported. ${inlineResult.skipped ?? 0} rows skipped.` });
       } else {
         let done = false;
-        let finalStatus: { done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null = null;
+        let finalStatus: { done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: SkippedImportRow[] } | null = null;
         while (!done) {
-          const statusRes = await api.get<{ done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: { rowNumber: number; reason: string }[] } | null>(`/students/import/status/${encodeURIComponent(jobId)}`);
+          const statusRes = await api.get<{ done?: boolean; inserted?: number; skipped?: number; pct?: number; skippedRows?: SkippedImportRow[] } | null>(`/students/import/status/${encodeURIComponent(jobId)}`);
           finalStatus = statusRes.data;
           setBulkImportProgress(finalStatus);
           done = Boolean(finalStatus?.done);
@@ -471,7 +483,36 @@ export function BulkImportPanel({ onRefresh, schoolScopedParams: _params }: Prop
           </div>
         </div>
       ) : null}
-      {bulkImportProgress?.done && (bulkImportProgress.skippedRows || []).length ? <div className="ck-card" style={{ marginTop: 16 }}><div className="ck-card-h"><div className="ck-card-t">Skipped rows</div></div><div className="ck-form-body">{(bulkImportProgress.skippedRows || []).map((row, index) => <div key={index} className="ts" style={{ marginBottom: 8 }}>Row {row.rowNumber}: {row.reason}</div>)}</div></div> : null}
+      {bulkImportProgress?.done && (bulkImportProgress.skippedRows || []).length ? (
+        <div className="ck-card" style={{ marginTop: 16 }}>
+          <div className="ck-card-h">
+            <div>
+              <div className="ck-card-t">Skipped rows</div>
+              <div className="ts">Review these rows in the uploaded file and correct the listed issue.</div>
+            </div>
+          </div>
+          <div className="ck-table-wrap">
+            <table className="ck-table">
+              <thead><tr><th>Row</th><th>Name</th><th>Admission No.</th><th>Class</th><th>Section</th><th>Issue</th></tr></thead>
+              <tbody>
+                {(bulkImportProgress.skippedRows || []).map((row, index) => (
+                  <tr key={`${row.rowNumber}-${row.admissionNo || index}`} className="ck-row-error">
+                    <td>{row.rowNumber}</td>
+                    <td>{row.name || '-'}</td>
+                    <td>{row.admissionNo || '-'}</td>
+                    <td>{row.className || '-'}</td>
+                    <td>{row.sectionName || '-'}</td>
+                    <td>
+                      <span className="ck-status sr">{row.status || 'Skipped'}</span>
+                      <div className="ts" style={{ marginTop: 4 }}>{row.reason || row.message || 'Import row failed'}</div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
       {photoReport ? (
         <div className="ck-card" style={{ marginTop: 16 }}>
           <div className="ck-card-h"><div className="ck-card-t">Photos — {photoReport.attached} photo{photoReport.attached === 1 ? '' : 's'} attached · {photoReport.skipped.length} skipped</div></div>

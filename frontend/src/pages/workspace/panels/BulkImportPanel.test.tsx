@@ -142,6 +142,34 @@ describe('BulkImportPanel Excel format', () => {
     expect(report.skipped[0]).toMatchObject({ admissionNo: 'A-1', reason: 'unreachable' });
   });
 
+  it('shows row-level skipped import details after confirm', async () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ['Name', 'Class', 'Section', 'AdmissionNo', 'Phone'],
+      ['Maryam Awad Balhabak', '4', 'B', '2166', '7013959554'],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Students');
+    const xlsxBuf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+    const file = new File([xlsxBuf], 'roster.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    vi.mocked(api.post).mockReset();
+    vi.mocked(api.post).mockImplementation((url: string) => {
+      if (url === '/students/import/upload-preview') return Promise.resolve({ data: { rows: [{ rowNumber: 2, name: 'Maryam Awad Balhabak', className: '4', sectionName: 'B', admissionNo: '2166', phone: '7013959554', status: 'Valid', statusTone: 'sg' }], validCount: 1, errorCount: 0, warningCount: 0, fileToken: 't' } });
+      if (url === '/students/import/confirm') return Promise.resolve({ data: { done: true, inserted: 0, skipped: 1, skippedRows: [{ rowNumber: 2, name: 'Maryam Awad Balhabak', admissionNo: '2166', className: '4', sectionName: 'B', status: 'Skipped', reason: 'Duplicate admission number' }], insertedStudents: [] } });
+      return Promise.resolve({ data: {} });
+    });
+
+    render(<BulkImportPanel onRefresh={vi.fn()} />);
+    await userEvent.upload(document.querySelector('input[type=file]') as HTMLInputElement, file);
+    await screen.findByRole('button', { name: /import 1 valid rows/i });
+    await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
+
+    await screen.findByText('Skipped rows');
+    expect(screen.getAllByText('Maryam Awad Balhabak').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('2166').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText('Duplicate admission number')).toBeInTheDocument();
+  });
+
   it('runs photo phase after import and shows the photo report', async () => {
     const ExcelJS = (await import('exceljs')).default;
     const wb = new ExcelJS.Workbook();

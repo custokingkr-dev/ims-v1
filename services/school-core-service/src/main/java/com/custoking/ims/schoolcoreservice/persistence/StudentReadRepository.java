@@ -593,18 +593,33 @@ public class StudentReadRepository {
         String fileToken = UUID.randomUUID().toString();
         ImportFileEvidence fileEvidence = importFileEvidence(schoolStorageId, batchId, request);
         Map<String, Object> structure = importStructureAnalysis(rawRows, schoolId);
+        List<Map<String, Object>> normalizedRows = new ArrayList<>();
+        Map<String, List<Integer>> admissionRows = new LinkedHashMap<>();
+        for (int i = 0; i < rawRows.size(); i++) {
+            Map<String, Object> normalized = normalizeImportRow(rawRows.get(i));
+            normalizedRows.add(normalized);
+            String admissionNo = str(normalized.get("admissionNo"), "").trim();
+            if (!admissionNo.isBlank()) {
+                String key = admissionNo.toLowerCase(Locale.ROOT);
+                admissionRows.computeIfAbsent(key, ignored -> new ArrayList<>())
+                        .add(sourceRowNumber(rawRows.get(i), i + 2));
+            }
+        }
         int valid = 0;
         int errors = 0;
         int warnings = 0;
         List<Map<String, Object>> previewRows = new ArrayList<>();
         for (int i = 0; i < rawRows.size(); i++) {
-            Map<String, Object> normalized = normalizeImportRow(rawRows.get(i));
-            ImportValidation validation = validatePreviewRow(normalized, schoolId);
+            Map<String, Object> normalized = normalizedRows.get(i);
+            int sourceRowNumber = sourceRowNumber(rawRows.get(i), i + 2);
+            String admissionKey = str(normalized.get("admissionNo"), "").trim().toLowerCase(Locale.ROOT);
+            List<Integer> duplicateAdmissionRows = admissionKey.isBlank() ? List.of() : admissionRows.getOrDefault(admissionKey, List.of());
+            ImportValidation validation = validatePreviewRow(normalized, schoolId, duplicateAdmissionRows);
             if (validation.valid()) valid++;
             if (validation.error()) errors++;
             if (validation.warning()) warnings++;
             previewRows.add(row(
-                    "rowNumber", i + 1,
+                    "rowNumber", sourceRowNumber,
                     "name", normalized.get("name"),
                     "className", normalized.get("className"),
                     "sectionName", normalized.get("sectionName"),
@@ -643,7 +658,7 @@ public class StudentReadRepository {
                 .param("uploadedBy", actorId())
                 .update();
         for (int i = 0; i < rawRows.size(); i++) {
-            Map<String, Object> normalized = normalizeImportRow(rawRows.get(i));
+            Map<String, Object> normalized = normalizedRows.get(i);
             jdbc.sql("""
                             INSERT INTO student.import_rows
                                 (id, row_no, name, class_name, section_name, admission_no, phone,
@@ -653,7 +668,7 @@ public class StudentReadRepository {
                                  :status, :message, :rawJson, :normalizedJson, :batchId, :schoolId)
                             """)
                     .param("id", UUID.randomUUID().toString())
-                    .param("rowNo", i + 1)
+                    .param("rowNo", previewRows.get(i).get("rowNumber"))
                     .param("name", str(normalized.get("name"), ""))
                     .param("className", str(normalized.get("className"), ""))
                     .param("sectionName", str(normalized.get("sectionName"), ""))
@@ -703,7 +718,7 @@ public class StudentReadRepository {
         for (ImportRow row : rows) {
             if (!"Valid".equalsIgnoreCase(row.status()) && !"Warning".equalsIgnoreCase(row.status())) {
                 skipped++;
-                skippedRows.add(row("rowNumber", row.rowNo(), "reason", row.message()));
+                skippedRows.add(importSkippedRow(row, row.message()));
                 continue;
             }
             try {
@@ -728,7 +743,16 @@ public class StudentReadRepository {
                 insertedStudents.add(row("admissionNo", normalized.get("admissionNo"), "studentId", studentId));
             } catch (Exception ex) {
                 skipped++;
-                skippedRows.add(row("rowNumber", row.rowNo(), "reason", ex.getMessage()));
+                String reason = importFailureMessage(ex);
+                jdbc.sql("""
+                        UPDATE student.import_rows
+                        SET status = 'Skipped', message = :message
+                        WHERE id = :rowId
+                        """)
+                        .param("message", reason)
+                        .param("rowId", row.id())
+                        .update();
+                skippedRows.add(importSkippedRow(row, reason));
             }
         }
         jdbc.sql("""
@@ -2180,12 +2204,19 @@ public class StudentReadRepository {
                 .single();
     }
 
-    private ImportValidation validatePreviewRow(Map<String, Object> normalized, Long schoolId) {
+    private ImportValidation validatePreviewRow(Map<String, Object> normalized, Long schoolId, List<Integer> duplicateAdmissionRows) {
         if (str(normalized.get("name"), "").isBlank()
                 || str(normalized.get("className"), "").isBlank()
                 || str(normalized.get("sectionName"), "").isBlank()
+                || str(normalized.get("admissionNo"), "").isBlank()
                 || str(normalized.get("phone"), "").isBlank()) {
             return new ImportValidation("Missing field", "Required field is blank", false, true, false);
+        }
+        if (duplicateAdmissionRows != null && duplicateAdmissionRows.size() > 1) {
+            return new ImportValidation("Duplicate in file",
+                    "Admission number appears multiple times in this file: rows "
+                            + duplicateAdmissionRows.stream().map(String::valueOf).collect(Collectors.joining(", ")),
+                    false, true, false);
         }
         try {
             parseDate(str(normalized.get("dateOfBirth"), ""));
@@ -2279,6 +2310,54 @@ public class StudentReadRepository {
                 .param("academicYearId", academicYearId)
                 .query(Long.class)
                 .single();
+    }
+
+    private int sourceRowNumber(Map<String, Object> rawRow, int fallback) {
+        Long rowNumber = longValue(rawRow.get("__rowNumber"), null);
+        if (rowNumber == null || rowNumber <= 0 || rowNumber > Integer.MAX_VALUE) {
+            return fallback;
+        }
+        return rowNumber.intValue();
+    }
+
+    private Map<String, Object> importSkippedRow(ImportRow row, String reason) {
+        return row(
+                "rowNumber", row.rowNo(),
+                "name", row.name(),
+                "admissionNo", row.admissionNo(),
+                "className", row.className(),
+                "sectionName", row.sectionName(),
+                "phone", row.phone(),
+                "status", row.status(),
+                "message", row.message(),
+                "reason", reason == null || reason.isBlank() ? "Import row failed" : reason);
+    }
+
+    private String importFailureMessage(Exception ex) {
+        String message = rootCauseMessage(ex);
+        if (message == null || message.isBlank()) {
+            return "Import row failed";
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (lower.contains("uix_student_students_school_admission")
+                || (lower.contains("duplicate key") && lower.contains("admission"))) {
+            return "Duplicate admission number";
+        }
+        return message;
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable cursor = throwable;
+        Throwable previous = null;
+        while (cursor != null && cursor != previous) {
+            previous = cursor;
+            cursor = cursor.getCause();
+        }
+        String message = previous == null ? null : previous.getMessage();
+        if ((message == null || message.isBlank()) && throwable != null) {
+            message = throwable.getMessage();
+        }
+        return message;
     }
 
     private Map<String, Object> normalizeImportRow(Map<String, Object> rawRow) {
