@@ -85,6 +85,8 @@ public class StudentReadController {
             @RequestParam(name = "class", required = false) String className,
             @RequestParam(name = "section", required = false) String sectionName,
             @RequestParam(required = false) String feeStatus,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
@@ -92,6 +94,10 @@ public class StudentReadController {
         TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
+        String query = searchQuery(q, search);
+        if (StringUtils.hasText(query)) {
+            return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size, deleted);
+        }
         return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
     }
 
@@ -115,6 +121,8 @@ public class StudentReadController {
             @RequestParam(required = false) String className,
             @RequestParam(required = false) String sectionName,
             @RequestParam(required = false) String feeStatus,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
@@ -122,7 +130,15 @@ public class StudentReadController {
         TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
+        String query = searchQuery(q, search);
+        if (StringUtils.hasText(query)) {
+            return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size, deleted);
+        }
         return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
+    }
+
+    private String searchQuery(String q, String search) {
+        return StringUtils.hasText(q) ? q.trim() : (StringUtils.hasText(search) ? search.trim() : "");
     }
 
     @GetMapping("/{id}/workspace")

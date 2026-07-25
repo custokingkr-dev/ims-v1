@@ -79,9 +79,14 @@ public class StudentReadRepository {
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
                                                  String feeStatus, int page, int size, boolean deleted) {
+        return workspaceStudents(schoolId, className, sectionName, feeStatus, null, page, size, deleted);
+    }
+
+    public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
+                                                 String feeStatus, String search, int page, int size, boolean deleted) {
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 500));
-        List<Map<String, Object>> all = workspaceStudentRows(schoolId, className, sectionName, feeStatus, deleted);
+        List<Map<String, Object>> all = workspaceStudentRows(schoolId, className, sectionName, feeStatus, search, deleted);
         List<Map<String, Object>> items = all.stream()
                 .skip((long) safePage * safeSize)
                 .limit(safeSize)
@@ -98,6 +103,7 @@ public class StudentReadRepository {
                 "filteredCount", all.size(),
                 "filteredSections", filteredSections,
                 "deleted", deleted,
+                "search", str(search, "").trim(),
                 "filters", row("classes", classesForSchool(schoolId),
                         "sections", sectionNamesForSchool(schoolId),
                         "feeStatuses", List.of("Paid", "Overdue", "Pending", "Partial")));
@@ -110,6 +116,12 @@ public class StudentReadRepository {
 
     public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
                                                           String feeStatus, boolean deleted) {
+        return workspaceStudentRows(schoolId, className, sectionName, feeStatus, null, deleted);
+    }
+
+    public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
+                                                          String feeStatus, String search, boolean deleted) {
+        String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
                        s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
@@ -132,12 +144,36 @@ public class StudentReadRepository {
         if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
         if (!blankOrAll(sectionName)) sql.append(" AND lower(ss.name) = lower(:sectionName)");
         if (!blankOrAll(feeStatus)) sql.append(" AND lower(s.fee_status) = lower(:feeStatus)");
+        if (!searchTerm.isBlank()) {
+            sql.append("""
+                     AND (
+                       lower(s.full_name) LIKE :search
+                       OR lower(s.admission_no) LIKE :search
+                       OR lower(COALESCE(s.roll_no, '')) LIKE :search
+                       OR lower(COALESCE(s.board_reg_no, '')) LIKE :search
+                       OR lower(COALESCE(s.father_name, '')) LIKE :search
+                       OR lower(COALESCE(s.father_contact, '')) LIKE :search
+                       OR lower(COALESCE(s.mother_name, '')) LIKE :search
+                       OR lower(COALESCE(s.phone, '')) LIKE :search
+                       OR lower(COALESCE(s.address, '')) LIKE :search
+                       OR lower(COALESCE(s.house_number, '')) LIKE :search
+                       OR lower(COALESCE(s.street, '')) LIKE :search
+                       OR lower(COALESCE(s.locality, '')) LIKE :search
+                       OR lower(COALESCE(s.city, '')) LIKE :search
+                       OR lower(COALESCE(s.state, '')) LIKE :search
+                       OR lower(COALESCE(s.pin_code, '')) LIKE :search
+                       OR lower(sc.name) LIKE :search
+                       OR lower(ss.name) LIKE :search
+                     )
+                    """);
+        }
         sql.append(" ORDER BY lower(s.full_name), s.id");
 
         var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId);
         if (!blankOrAll(className)) spec = spec.param("className", className);
         if (!blankOrAll(sectionName)) spec = spec.param("sectionName", sectionName);
         if (!blankOrAll(feeStatus)) spec = spec.param("feeStatus", feeStatus);
+        if (!searchTerm.isBlank()) spec = spec.param("search", "%" + searchTerm + "%");
         return spec.query((rs, rowNum) -> {
             String fullName = str(rs.getString("full_name"), "Student");
             String classLabel = str(rs.getString("class_name"), "");

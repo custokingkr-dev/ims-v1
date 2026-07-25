@@ -42,7 +42,7 @@ class StudentReadControllerTest {
 
     @Test
     void listRejectsInvalidTokenBeforeQuerying() {
-        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, false, 0, 25))
+        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, null, null, false, 0, 25))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -56,10 +56,22 @@ class StudentReadControllerTest {
         Map<String, Object> workspace = Map.of("items", List.of(), "filteredCount", 42);
         when(students.workspaceStudents(4L, "9", "A", "Pending", 0, 25, false)).thenReturn(workspace);
 
-        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", false, 0, 25);
+        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", null, null, false, 0, 25);
 
         assertThat(response).isSameAs(workspace);
         verify(students).workspaceStudents(4L, "9", "A", "Pending", 0, 25, false);
+    }
+
+    @Test
+    void listDelegatesStudentSearchToWorkspaceStudents() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
+        Map<String, Object> workspace = Map.of("items", List.of(), "filteredCount", 1);
+        when(students.workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25, false)).thenReturn(workspace);
+
+        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", "  Aman 102  ", null, false, 0, 25);
+
+        assertThat(response).isSameAs(workspace);
+        verify(students).workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25, false);
     }
 
     @Test

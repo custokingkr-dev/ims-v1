@@ -67,6 +67,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
 
   const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
+  const [studentSearchInput, setStudentSearchInput] = useState('');
+  const [studentSearch, setStudentSearch] = useState('');
   const [studentListMode, setStudentListMode] = useState<'active' | 'archived'>('active');
   const [studentsPage, setStudentsPage] = useState(0);
   const PAGE_SIZE = 50;
@@ -102,7 +104,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
 
-  const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode) => {
+  const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode, search = studentSearch) => {
     try {
       setStudentsLoading(true);
       setStudentsError(null);
@@ -110,6 +112,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       if (filters.className !== 'All') params.class = filters.className;
       if (filters.sectionName !== 'All') params.section = filters.sectionName;
       if (filters.feeStatus !== 'All') params.feeStatus = filters.feeStatus;
+      const trimmedSearch = search.trim();
+      if (trimmedSearch) params.q = trimmedSearch;
       if (mode === 'archived') params.deleted = true;
       const res = await api.get('/students', { params: { ...params, ...(schoolScopedParams || {}) } });
       setStudentsView(res.data);
@@ -124,18 +128,32 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const applyFilters = (filters: typeof studentFilters) => {
     setStudentFilters(filters);
     setStudentsPage(0);
-    loadStudents(filters, 0, studentListMode);
+    loadStudents(filters, 0, studentListMode, studentSearch);
   };
 
   const handlePageChange = (page: number) => {
     setStudentsPage(page);
-    loadStudents(studentFilters, page, studentListMode);
+    loadStudents(studentFilters, page, studentListMode, studentSearch);
   };
 
   const switchStudentListMode = (mode: 'active' | 'archived') => {
     setStudentListMode(mode);
     setStudentsPage(0);
-    loadStudents(studentFilters, 0, mode);
+    loadStudents(studentFilters, 0, mode, studentSearch);
+  };
+
+  const applyStudentSearch = () => {
+    const nextSearch = studentSearchInput.trim();
+    setStudentSearch(nextSearch);
+    setStudentsPage(0);
+    loadStudents(studentFilters, 0, studentListMode, nextSearch);
+  };
+
+  const clearStudentSearch = () => {
+    setStudentSearchInput('');
+    setStudentSearch('');
+    setStudentsPage(0);
+    loadStudents(studentFilters, 0, studentListMode, '');
   };
 
   useEffect(() => {
@@ -475,7 +493,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     <>
       <ModuleShell
         title="Students"
-        subtitle={`${studentsView.filteredCount || 0} ${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections`}
+        subtitle={`${studentsView.filteredCount || 0} ${studentSearch ? 'matching ' : ''}${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections`}
         actions={
           <>
             {can('student:update') && schoolScopedParams ? <button className="ck-btn ck-btn-ghost" onClick={() => void openPromotionWizard()}>Promote class</button> : null}
@@ -491,8 +509,29 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           </div>
         ) : null}
 
-        {/* Change 1: Improved filter bar */}
-        <div className="ck-card-h-wrap" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', background: '#fbfaf8' }}>
+        <div className="ck-card-h-wrap ck-students-toolbar">
+          <form className="ck-student-search-form" onSubmit={(e) => { e.preventDefault(); applyStudentSearch(); }}>
+            <div className="ck-student-search-control">
+              <label htmlFor="student-directory-search">Search students</label>
+              <div className="ck-student-search-row">
+                <input
+                  id="student-directory-search"
+                  aria-label="Search students by details"
+                  value={studentSearchInput}
+                  onChange={(e) => setStudentSearchInput(e.target.value)}
+                  placeholder="Name, admission no, roll no, parent, phone, address"
+                />
+                <button className="ck-btn ck-btn-g ck-btn-sm" type="submit" disabled={studentsLoading}>
+                  Search
+                </button>
+                {studentSearch ? (
+                  <button className="ck-btn ck-btn-ghost ck-btn-sm" type="button" onClick={clearStudentSearch} disabled={studentsLoading}>
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          </form>
           <div className="ck-card-inline-filters">
             <div className="ck-actions-inline" aria-label="Student list mode">
               <button
@@ -653,16 +692,20 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             <div style={{ padding: '48px 24px', textAlign: 'center' }}>
               <div style={{ fontSize: 38, marginBottom: 10, lineHeight: 1 }}>🎓</div>
               <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6 }}>
-                {studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
+                {studentSearch
+                  ? `No students found for "${studentSearch}"`
+                  : studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
                   ? 'No students match these filters'
                   : studentListMode === 'archived' ? 'No archived students yet' : 'No students enrolled yet'}
               </div>
               <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 14, maxWidth: 320, margin: '0 auto 14px' }}>
-                {studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
+                {studentSearch
+                  ? 'Search covers student names, admission numbers, roll numbers, parent details, contact numbers, address, class, and section.'
+                  : studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
                   ? 'Try adjusting the class, section, or fee status filters above.'
                   : 'Add your first student to get started.'}
               </div>
-              {canCreateStudent && studentFilters.className === 'All' && (
+              {canCreateStudent && studentFilters.className === 'All' && !studentSearch && (
                 <button className="ck-btn ck-btn-g" onClick={() => setPanel('addstudent')}>
                   Add first student
                 </button>
