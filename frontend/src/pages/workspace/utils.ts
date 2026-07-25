@@ -58,11 +58,12 @@ export function financialYearOptions(count = 4, startMonth?: number): string[] {
 
 export function formatAddress(address: any): string {
   if (!address) return '—';
-  return (
-    [address.houseNumber, address.street, address.locality, address.city, address.state, address.pinCode]
-      .filter(Boolean)
-      .join(', ') || '—'
-  );
+  if (typeof address === 'string') return address.trim() || '—';
+  const structured = [address.houseNumber, address.street, address.locality, address.city, address.state, address.pinCode]
+    .map((part) => String(part ?? '').trim())
+    .filter(Boolean)
+    .join(', ');
+  return structured || String(address.full ?? '').trim() || '—';
 }
 
 export function initials(name: string): string {

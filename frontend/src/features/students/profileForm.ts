@@ -81,7 +81,18 @@ export function emptyStudentProfileForm(): StudentProfileFormState {
 }
 
 export function studentDetailToProfileForm(detail: Record<string, any>): StudentProfileFormState {
-  const address = detail.address ?? {};
+  const address = typeof detail.address === 'string'
+    ? { full: detail.address }
+    : detail.address ?? {};
+  const hasStructuredAddress = [
+    address.houseNumber,
+    address.street,
+    address.locality,
+    address.city,
+    address.state,
+    address.pinCode,
+  ].some((part) => text(part) !== '');
+  const legacyFullAddress = hasStructuredAddress ? '' : text(address.full);
   return {
     ...emptyStudentProfileForm(),
     admissionNumber: text(detail.admissionNumber),
@@ -99,10 +110,10 @@ export function studentDetailToProfileForm(detail: Record<string, any>): Student
     motherName: text(detail.motherName),
     phone: text(detail.phone),
     houseNumber: text(address.houseNumber),
-    street: text(address.street),
+    street: text(address.street, legacyFullAddress),
     locality: text(address.locality),
-    city: text(address.city, 'Hyderabad'),
-    state: text(address.state, 'Telangana'),
+    city: hasStructuredAddress || !legacyFullAddress ? text(address.city, 'Hyderabad') : '',
+    state: hasStructuredAddress || !legacyFullAddress ? text(address.state, 'Telangana') : '',
     pinCode: text(address.pinCode),
   };
 }

@@ -70,4 +70,31 @@ describe('student profile form mappers', () => {
       phone: '9111111111',
     });
   });
+
+  it('keeps an imported full address visible in the edit form', () => {
+    const form = studentDetailToProfileForm({
+      admissionNumber: '2321',
+      fullName: 'Ameena Khatoon',
+      classId: '9',
+      sectionId: '7-9-A',
+      address: {
+        houseNumber: null,
+        street: null,
+        locality: null,
+        city: null,
+        state: null,
+        pinCode: null,
+        full: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
+      },
+    });
+
+    expect(form).toMatchObject({
+      street: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
+      city: '',
+      state: '',
+    });
+    expect(studentProfileFormToUpdatePayload(form)).toMatchObject({
+      street: '17-8-547, Shah Colony, Hyderabad, Telangana, INDIA',
+    });
+  });
 });
