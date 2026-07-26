@@ -652,8 +652,8 @@ span.ck-att-pill { cursor: default; }
 
 .ck-att-exception-toolbar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(125px, 150px)) minmax(210px, 1fr) auto;
-  gap: 9px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
   align-items: end;
   width: 100%;
   padding: 11px;
@@ -664,8 +664,20 @@ span.ck-att-pill { cursor: default; }
 }
 
 .ck-att-exception-toolbar > * { min-width: 0; }
-.ck-att-exception-toolbar .ck-att-search,
-.ck-att-exception-toolbar .ck-att-button { align-self: end; }
+.ck-att-exception-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(125px, 150px)) minmax(210px, 1fr);
+  gap: 9px;
+  align-items: end;
+  min-width: 0;
+}
+.ck-att-exception-fields > * { min-width: 0; }
+.ck-att-exception-fields .ck-att-search { align-self: end; }
+.ck-att-exception-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
 
 .ck-att-report-heading {
   display: flex;
@@ -731,15 +743,29 @@ span.ck-att-pill { cursor: default; }
   color: var(--ink);
 }
 .ck-att-report-filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: flex-end;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+.ck-att-report-filter-fields {
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  width: 100%;
   flex-wrap: wrap;
+  min-width: 0;
 }
-.ck-att-report-filters .ck-att-filter-field { width: 150px; }
-.ck-att-report-filters .ck-att-filter-field--wide { width: 230px; }
-.ck-att-report-filters .ck-att-button--primary { margin-left: auto; }
+.ck-att-report-filter-fields .ck-att-filter-field { flex: 1 1 145px; max-width: 180px; }
+.ck-att-report-filter-fields .ck-att-filter-field--wide { flex-basis: 220px; max-width: 280px; }
+.ck-att-report-actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
 
 .ck-att-table { min-width: 760px; }
 .ck-att-table .num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -845,7 +871,8 @@ span.ck-att-pill { cursor: default; }
 @media (max-width: 1180px) {
   .ck-att-day-toolbar { grid-template-columns: 200px minmax(230px, 1fr); }
   .ck-att-day-actions { grid-column: 1 / -1; justify-content: flex-start; }
-  .ck-att-exception-toolbar { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
+  .ck-att-exception-fields { grid-template-columns: repeat(4, minmax(120px, 1fr)); }
+  .ck-att-exception-fields .ck-att-search { grid-column: 1 / -1; }
 }
 
 @media (max-width: 900px) {
@@ -862,11 +889,16 @@ span.ck-att-pill { cursor: default; }
   .ck-att-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ck-att-history-card { grid-template-columns: 1fr; }
   .ck-att-history-profile { border-right: 0; border-bottom: 1px solid var(--border); }
+  .ck-att-exception-toolbar,
+  .ck-att-report-filters { grid-template-columns: 1fr; }
+  .ck-att-exception-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ck-att-exception-fields .ck-att-search { grid-column: 1 / -1; }
+  .ck-att-exception-actions,
+  .ck-att-report-actions { justify-content: flex-start; }
 }
 
 @media (max-width: 650px) {
-  .ck-att-day-toolbar,
-  .ck-att-exception-toolbar { grid-template-columns: 1fr; }
+  .ck-att-day-toolbar { grid-template-columns: 1fr; }
   .ck-att-day-actions { grid-column: auto; justify-content: stretch; }
   .ck-att-day-actions .ck-att-button { flex: 1; }
   .ck-att-kpi { padding: 11px; }
@@ -891,8 +923,15 @@ span.ck-att-pill { cursor: default; }
     margin-right: -2px;
     margin-left: -2px;
   }
-  .ck-att-report-filters .ck-att-filter-field,
-  .ck-att-report-filters .ck-att-filter-field--wide { width: calc(50% - 4px); }
-  .ck-att-report-filters .ck-att-button--primary { margin-left: 0; }
-  .ck-att-report-filters .ck-att-button { flex: 1 1 auto; }
+  .ck-att-exception-fields { grid-template-columns: 1fr; }
+  .ck-att-exception-fields .ck-att-search { grid-column: auto; }
+  .ck-att-exception-actions .ck-att-button { width: 100%; }
+  .ck-att-report-filter-fields { display: grid; grid-template-columns: 1fr; }
+  .ck-att-report-filter-fields .ck-att-filter-field,
+  .ck-att-report-filter-fields .ck-att-filter-field--wide {
+    width: 100%;
+    max-width: none;
+  }
+  .ck-att-report-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .ck-att-report-actions .ck-att-button--primary { grid-column: 1 / -1; }
 }

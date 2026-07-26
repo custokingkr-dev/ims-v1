@@ -277,9 +277,6 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
           <span>{completionPercent}% of students marked across {sections.length} sections.</span>
         </div>
         <div className="ck-att-day-actions">
-          <span className={`ck-status ${canManageAttendance ? 'sapproved' : 'sneutral'}`}>
-            {canManageAttendance ? 'Write access' : 'Read-only'}
-          </span>
           <button type="button" className="ck-att-button" onClick={() => handleDateChange(todayIso())}>
             <CalendarDays size={16} />
             Today

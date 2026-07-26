@@ -50,6 +50,7 @@ describe('AttendancePanel', () => {
 
   it('selecting a rail section loads and shows its roster', async () => {
     render(<AttendancePanel onRefresh={vi.fn().mockResolvedValue(undefined)} />);
+    expect(screen.queryByText('Write access')).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('Class 1-A')).toBeTruthy());
     fireEvent.click(screen.getAllByText('Class 1-A')[0]);
     await waitFor(() =>

@@ -160,88 +160,92 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
         </div>
 
         <div className="ck-att-report-filters">
-          {(tab === 'register' || tab === 'student') && (
-            <>
-              <label className="ck-att-filter-field">
-                <span>Class</span>
-                <select value={classId} onChange={(event) => {
-                  setClassId(event.target.value);
-                  setSectionId('');
-                  setStudentId('');
-                  setRegister(null);
+          <div className="ck-att-report-filter-fields">
+            {(tab === 'register' || tab === 'student') && (
+              <>
+                <label className="ck-att-filter-field">
+                  <span>Class</span>
+                  <select value={classId} onChange={(event) => {
+                    setClassId(event.target.value);
+                    setSectionId('');
+                    setStudentId('');
+                    setRegister(null);
+                    setHistory(null);
+                  }}>
+                    <option value="">Select class</option>
+                    {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                </label>
+                <label className="ck-att-filter-field">
+                  <span>Section</span>
+                  <select value={sectionId} onChange={(event) => {
+                    setSectionId(event.target.value);
+                    setStudentId('');
+                    setRegister(null);
+                    setHistory(null);
+                  }} disabled={!classId}>
+                    <option value="">Select section</option>
+                    {sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                  </select>
+                </label>
+              </>
+            )}
+            {tab === 'student' && (
+              <label className="ck-att-filter-field ck-att-filter-field--wide">
+                <span>Student</span>
+                <select value={studentId} onChange={(event) => {
+                  setStudentId(event.target.value);
                   setHistory(null);
-                }}>
-                  <option value="">Select class</option>
-                  {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                }} disabled={!sectionId}>
+                  <option value="">Select student</option>
+                  {students.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.admissionNo})</option>)}
                 </select>
               </label>
+            )}
+            {tab === 'register' && (
               <label className="ck-att-filter-field">
-                <span>Section</span>
-                <select value={sectionId} onChange={(event) => {
-                  setSectionId(event.target.value);
-                  setStudentId('');
+                <span>Month</span>
+                <input type="month" value={month} onChange={(event) => {
+                  setMonth(event.target.value);
                   setRegister(null);
-                  setHistory(null);
-                }} disabled={!classId}>
-                  <option value="">Select section</option>
-                  {sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-              </label>
-            </>
-          )}
-          {tab === 'student' && (
-            <label className="ck-att-filter-field ck-att-filter-field--wide">
-              <span>Student</span>
-              <select value={studentId} onChange={(event) => {
-                setStudentId(event.target.value);
-                setHistory(null);
-              }} disabled={!sectionId}>
-                <option value="">Select student</option>
-                {students.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.admissionNo})</option>)}
-              </select>
-            </label>
-          )}
-          {tab === 'register' && (
-            <label className="ck-att-filter-field">
-              <span>Month</span>
-              <input type="month" value={month} onChange={(event) => {
-                setMonth(event.target.value);
-                setRegister(null);
-              }} />
-            </label>
-          )}
-          {(tab === 'student' || tab === 'summary') && (
-            <>
-              <label className="ck-att-filter-field">
-                <span>From</span>
-                <input type="date" value={from} onChange={(event) => {
-                  setFrom(event.target.value);
-                  setSummary(null);
-                  setHistory(null);
                 }} />
               </label>
-              <label className="ck-att-filter-field">
-                <span>To</span>
-                <input type="date" value={to} onChange={(event) => {
-                  setTo(event.target.value);
-                  setSummary(null);
-                  setHistory(null);
-                }} />
-              </label>
-            </>
-          )}
-          <button type="button" className="ck-att-button ck-att-button--primary" onClick={load} disabled={loading || !canRun}>
-            <Play size={15} />
-            {loading ? 'Loading...' : 'Run report'}
-          </button>
-          <button type="button" className="ck-att-button" disabled={!canExport || exporting} onClick={() => doExport('csv')}>
-            <Download size={15} />
-            CSV
-          </button>
-          <button type="button" className="ck-att-button" disabled={!canExport || exporting} onClick={() => doExport('pdf')}>
-            <Download size={15} />
-            PDF
-          </button>
+            )}
+            {(tab === 'student' || tab === 'summary') && (
+              <>
+                <label className="ck-att-filter-field">
+                  <span>From</span>
+                  <input type="date" value={from} onChange={(event) => {
+                    setFrom(event.target.value);
+                    setSummary(null);
+                    setHistory(null);
+                  }} />
+                </label>
+                <label className="ck-att-filter-field">
+                  <span>To</span>
+                  <input type="date" value={to} onChange={(event) => {
+                    setTo(event.target.value);
+                    setSummary(null);
+                    setHistory(null);
+                  }} />
+                </label>
+              </>
+            )}
+          </div>
+          <div className="ck-att-report-actions">
+            <button type="button" className="ck-att-button ck-att-button--primary" onClick={load} disabled={loading || !canRun}>
+              <Play size={15} />
+              {loading ? 'Loading...' : 'Run report'}
+            </button>
+            <button type="button" className="ck-att-button" disabled={!canExport || exporting} onClick={() => doExport('csv')}>
+              <Download size={15} />
+              CSV
+            </button>
+            <button type="button" className="ck-att-button" disabled={!canExport || exporting} onClick={() => doExport('pdf')}>
+              <Download size={15} />
+              PDF
+            </button>
+          </div>
         </div>
       </div>
 
