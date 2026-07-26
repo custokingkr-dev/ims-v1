@@ -72,6 +72,26 @@ describe('StudentsPanel', () => {
     expect(within(directoryHead as HTMLElement).getByText('1 records')).toBeInTheDocument();
   });
 
+  it('shows sections only after a class is selected', async () => {
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+    await screen.findByText('Aarav Sharma');
+
+    const classFilter = screen.getByRole('combobox', { name: 'Filter by class' });
+    const sectionFilter = screen.getByRole('combobox', { name: 'Filter by section' });
+    expect(sectionFilter).toBeDisabled();
+    expect(within(sectionFilter).getAllByRole('option')).toHaveLength(1);
+    expect(within(sectionFilter).getByRole('option')).toHaveTextContent('Choose class first');
+
+    fireEvent.change(classFilter, { target: { value: 'Class 2' } });
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith(
+      '/students',
+      { params: { page: 0, size: 50, class: 'Class 2', schoolId: 7 } },
+    ));
+    expect(sectionFilter).not.toBeDisabled();
+    expect(within(sectionFilter).getByRole('option', { name: 'A' })).toBeInTheDocument();
+  });
+
   it('filters while typing without a Search button', async () => {
     render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
 

@@ -155,6 +155,9 @@
 .ck-att-date-field input,
 .ck-att-filter-field input,
 .ck-att-filter-field select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 38px;
   padding: 8px 10px;
   border-radius: 7px;
@@ -666,7 +669,7 @@ span.ck-att-pill { cursor: default; }
 .ck-att-exception-toolbar > * { min-width: 0; }
 .ck-att-exception-fields {
   display: grid;
-  grid-template-columns: repeat(4, minmax(125px, 150px)) minmax(210px, 1fr);
+  grid-template-columns: minmax(160px, 180px) repeat(3, minmax(130px, 1fr)) minmax(210px, 1.4fr);
   gap: 9px;
   align-items: end;
   min-width: 0;

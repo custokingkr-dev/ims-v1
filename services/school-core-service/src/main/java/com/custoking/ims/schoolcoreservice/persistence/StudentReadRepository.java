@@ -105,7 +105,7 @@ public class StudentReadRepository {
                 "deleted", deleted,
                 "search", str(search, "").trim(),
                 "filters", row("classes", classesForSchool(schoolId),
-                        "sections", sectionNamesForSchool(schoolId),
+                        "sections", sectionNamesForSchool(schoolId, className),
                         "feeStatuses", List.of("Paid", "Overdue", "Pending", "Partial")));
     }
 
@@ -2833,15 +2833,19 @@ public class StudentReadRepository {
                 .list();
     }
 
-    private List<String> sectionNamesForSchool(Long schoolId) {
+    private List<String> sectionNamesForSchool(Long schoolId, String className) {
+        if (blankOrAll(className)) return List.of();
         return jdbc.sql("""
-                SELECT DISTINCT name
-                FROM tenant_school.school_sections
-                WHERE school_id = :schoolId
-                  AND active = true
-                ORDER BY name
+                SELECT DISTINCT ss.name
+                FROM tenant_school.school_sections ss
+                JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
+                WHERE ss.school_id = :schoolId
+                  AND ss.active = true
+                  AND sc.name = :className
+                ORDER BY ss.name
                 """)
                 .param("schoolId", schoolId)
+                .param("className", className.trim())
                 .query(String.class)
                 .list();
     }

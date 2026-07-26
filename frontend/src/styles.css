@@ -1005,6 +1005,26 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-student-directory .ck-table td:last-child { text-align:right; }
 .ck-student-directory .ck-student-cell,
 .ck-student-directory .ck-student-cell > div { min-width:0; }
+.ck-student-directory .ck-student-cell {
+  display:grid;
+  grid-template-columns:36px minmax(0,1fr);
+  gap:10px;
+  min-height:42px;
+  align-items:center;
+}
+.ck-student-directory .ck-student-avatar {
+  width:36px;
+  height:36px;
+  margin:0;
+  line-height:1;
+  flex:none;
+  align-self:center;
+}
+.ck-student-directory .ck-student-cell > div {
+  display:grid;
+  gap:2px;
+  align-content:center;
+}
 .ck-student-directory .ck-table-link,
 .ck-student-directory .ts {
   display:block;
@@ -1012,6 +1032,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   text-overflow:ellipsis;
   white-space:nowrap;
 }
+.ck-student-directory .ck-table-link { line-height:1.25; }
+.ck-student-directory .ck-student-cell .ts { margin:0; line-height:1.25; }
 .ck-student-directory .ck-mini-progress-cell { min-width:0; }
 .ck-student-directory .ck-mini-progress { width:100%; max-width:100px; }
 .ck-student-directory .ck-actions-inline { flex-wrap:nowrap; justify-content:flex-end; }
