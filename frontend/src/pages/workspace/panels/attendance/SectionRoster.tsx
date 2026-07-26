@@ -112,39 +112,8 @@ export function SectionRoster({
     setSelectedIds(new Set());
   };
 
-  const summary = [
-    { label: 'Total', value: total },
-    { label: 'Present', value: present, tone: 'green' },
-    { label: 'Late', value: late, tone: 'amber' },
-    { label: 'Leave', value: leave, tone: 'blue' },
-    { label: 'Absent', value: absent, tone: 'red' },
-    { label: 'Unmarked', value: unmarked, tone: unmarked > 0 ? 'amber' : 'green' },
-  ];
-
   return (
     <div className="ck-att-roster">
-      <div className="ck-att-roster-head">
-        <div className="ck-att-roster-title">
-          <button type="button" className="ck-att-button ck-att-back" onClick={onBack}>Back to sections</button>
-          <div>
-            <strong>{register?.sectionName || 'Section register'}</strong>
-            <span>{total} students · {completionPercent}% marked</span>
-          </div>
-        </div>
-        <span className={`ck-status ${locked ? 'sapproved' : readOnly ? 'sneutral' : allMarked ? 'sinfo' : 'spending'}`}>
-          {locked ? 'Submitted' : readOnly ? 'Read-only' : allMarked ? 'Ready' : 'Draft'}
-        </span>
-      </div>
-
-      <div className="ck-att-summary">
-        {summary.map((item) => (
-          <div key={item.label} className={`ck-att-summary-cell${item.tone ? ` ck-att-summary-cell--${item.tone}` : ''}`}>
-            <span className="ck-att-summary-label">{item.label}</span>
-            <strong className="ck-att-summary-value">{item.value}</strong>
-          </div>
-        ))}
-      </div>
-
       {locked && (
         <div className="ck-alert ck-alert-am">
           <span>i</span>
@@ -160,35 +129,49 @@ export function SectionRoster({
 
       <div className="ck-att-register-card">
         <div className="ck-att-register-toolbar">
-          <div className="ck-att-search">
-            <Search size={16} />
-            <input
-              type="search"
-              aria-label="Search this section"
-              placeholder="Search name, admission number, or roll"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </div>
-          {!immutable && (
-            <div className="ck-att-register-actions">
-              <button type="button" className="ck-att-button" onClick={onMarkAllPresent}>
-                <CheckCheck size={16} />
-                Mark all Present
-              </button>
-              <button
-                type="button"
-                className="ck-att-button"
-                disabled={unmarked === 0}
-                onClick={onMarkUnmarkedAbsent}
-              >
-                Mark blanks Absent
-              </button>
-              <button type="button" className="ck-att-icon-button" aria-label="Reset changes" title="Reset changes" onClick={onReset}>
-                <RotateCcw size={16} />
-              </button>
+          <div className="ck-att-roster-title">
+            <button type="button" className="ck-att-button ck-att-back" onClick={onBack}>Back to sections</button>
+            <div>
+              <strong>{register?.sectionName || 'Section register'}</strong>
+              <span>
+                {total} students · {completionPercent}% marked · P {present} · L {late} · Ex {leave} · A {absent}
+              </span>
             </div>
-          )}
+            <span className={`ck-status ${locked ? 'sapproved' : readOnly ? 'sneutral' : allMarked ? 'sinfo' : 'spending'}`}>
+              {locked ? 'Submitted' : readOnly ? 'Read-only' : allMarked ? 'Ready' : 'Draft'}
+            </span>
+          </div>
+          <div className="ck-att-register-tools">
+            <div className="ck-att-search">
+              <Search size={16} />
+              <input
+                type="search"
+                aria-label="Search this section"
+                placeholder="Search this section"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+            {!immutable && (
+              <div className="ck-att-register-actions">
+                <button type="button" className="ck-att-button" onClick={onMarkAllPresent}>
+                  <CheckCheck size={16} />
+                  Mark all Present
+                </button>
+                <button
+                  type="button"
+                  className="ck-att-button"
+                  disabled={unmarked === 0}
+                  onClick={onMarkUnmarkedAbsent}
+                >
+                  Mark blanks Absent
+                </button>
+                <button type="button" className="ck-att-icon-button" aria-label="Reset changes" title="Reset changes" onClick={onReset}>
+                  <RotateCcw size={16} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {selectedIds.size > 0 && !immutable && (

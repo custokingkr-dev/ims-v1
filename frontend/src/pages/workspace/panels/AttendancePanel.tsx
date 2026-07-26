@@ -296,20 +296,16 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
 
       <div className="ck-att-kpi-band">
         <div className="ck-att-kpi">
-          <Layers3 size={17} />
-          <div><span>Sections</span><strong>{attendanceTotals.submitted} / {sections.length}</strong><small>{pendingSections} still open</small></div>
+          <div><span><Layers3 size={15} />Sections</span><strong>{attendanceTotals.submitted} / {sections.length}</strong><small>{pendingSections} still open</small></div>
         </div>
         <div className="ck-att-kpi">
-          <CheckCircle2 size={17} />
-          <div><span>Marked</span><strong>{completionPercent}%</strong><small>{attendanceTotals.marked} of {attendanceTotals.totalStudents}</small></div>
+          <div><span><CheckCircle2 size={15} />Marked</span><strong>{completionPercent}%</strong><small>{attendanceTotals.marked} of {attendanceTotals.totalStudents}</small></div>
         </div>
         <div className="ck-att-kpi">
-          <UserCheck size={17} />
-          <div><span>Present today</span><strong>{Number(summary.overallPercent || 0).toFixed(1)}%</strong><small>{attendanceTotals.present} present · {attendanceTotals.late} late</small></div>
+          <div><span><UserCheck size={15} />Present today</span><strong>{Number(summary.overallPercent || 0).toFixed(1)}%</strong><small>{attendanceTotals.present} present · {attendanceTotals.late} late</small></div>
         </div>
         <div className="ck-att-kpi ck-att-kpi--alert">
-          <TriangleAlert size={17} />
-          <div><span>Exceptions</span><strong>{attendanceTotals.absent + attendanceTotals.leave}</strong><small>{attendanceTotals.absent} absent · {attendanceTotals.leave} leave</small></div>
+          <div><span><TriangleAlert size={15} />Exceptions</span><strong>{attendanceTotals.absent + attendanceTotals.leave}</strong><small>{attendanceTotals.absent} absent · {attendanceTotals.leave} leave</small></div>
         </div>
       </div>
 
