@@ -645,9 +645,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               onChange={e => applyFilters({ ...studentFilters, sectionName: e.target.value })}
               style={{ minWidth: 120 }}
               aria-label="Filter by section"
+              disabled={studentFilters.className === 'All'}
             >
-              <option value="All">All sections</option>
-              {studentsView.filters?.sections?.map((s: string) => (
+              <option value="All">{studentFilters.className === 'All' ? 'Choose class first' : 'All sections'}</option>
+              {(studentFilters.className === 'All' ? [] : studentsView.filters?.sections || []).map((s: string) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>

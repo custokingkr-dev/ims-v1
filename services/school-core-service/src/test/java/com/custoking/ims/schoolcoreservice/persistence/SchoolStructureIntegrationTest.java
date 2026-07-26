@@ -259,11 +259,17 @@ class SchoolStructureIntegrationTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> filters = (Map<String, Object>) workspace.get("filters");
-        assertThat((java.util.List<String>) filters.get("sections")).containsExactly("A", "B");
+        assertThat((java.util.List<String>) filters.get("sections")).isEmpty();
         assertThat((java.util.List<String>) filters.get("classes")).containsExactly(
                 "Nursery / Pre-Nursery / Playgroup",
                 "LKG (Lower Kindergarten)",
                 "UKG (Upper Kindergarten)",
                 "1", "2", "3");
+
+        Map<String, Object> classWorkspace =
+                studentRepo.workspaceStudents(schoolId, "1", null, null, 0, 500);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> classFilters = (Map<String, Object>) classWorkspace.get("filters");
+        assertThat((java.util.List<String>) classFilters.get("sections")).containsExactly("A", "B");
     }
 }
