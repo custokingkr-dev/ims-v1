@@ -1,3 +1,5 @@
+import { Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import type { AttendanceDailySummarySection } from '../../../../types/attendance';
 
 interface Props {
@@ -8,54 +10,78 @@ interface Props {
 }
 
 export function SectionRail({ sections, selectedSectionId, loading, onSelect }: Props) {
+  const [query, setQuery] = useState('');
+  const visibleSections = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return sections;
+
+    return sections.filter((section) =>
+      section.sectionName.toLowerCase().includes(normalized)
+      || (section.teacherName || '').toLowerCase().includes(normalized)
+      || section.status.toLowerCase().includes(normalized)
+    );
+  }, [query, sections]);
+
   if (loading) {
     return (
-      <div className="ck-att-rail">
+      <aside className="ck-att-rail" aria-label="Attendance sections">
         <div className="ck-att-rail-head"><strong>Sections</strong><span>Loading...</span></div>
         <div className="ck-att-rail-list">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="ck-att-rail-item" style={{ animationDelay: `${(i - 1) * 60}ms` }}>
-            <div className="ck-skeleton ck-skeleton-title" />
-            <div className="ck-skeleton ck-skeleton-text" style={{ width: '60%' }} />
-          </div>
-        ))}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="ck-att-rail-item" style={{ animationDelay: `${(i - 1) * 60}ms` }}>
+              <div className="ck-skeleton ck-skeleton-title" />
+              <div className="ck-skeleton ck-skeleton-text" style={{ width: '60%' }} />
+            </div>
+          ))}
         </div>
-      </div>
+      </aside>
     );
   }
 
   if (sections.length === 0) {
     return (
-      <div className="ck-att-rail">
+      <aside className="ck-att-rail" aria-label="Attendance sections">
         <div className="ck-att-rail-head"><strong>Sections</strong><span>0 available</span></div>
         <div className="ck-att-empty">No sections found for this date.</div>
-      </div>
+      </aside>
     );
   }
 
   return (
-    <div className="ck-att-rail" role="list">
+    <aside className="ck-att-rail" aria-label="Attendance sections">
       <div className="ck-att-rail-head">
-        <strong>Sections</strong>
-        <span>{sections.filter((section) => !section.locked).length} open</span>
+        <div>
+          <strong>Sections</strong>
+          <span>{sections.filter((section) => !section.locked).length} open</span>
+        </div>
+        <span>{sections.length} total</span>
       </div>
-      <div className="ck-att-rail-list">
-        {sections.map((section) => {
+      <label className="ck-att-rail-search">
+        <Search size={14} />
+        <input
+          type="search"
+          aria-label="Filter sections"
+          placeholder="Filter sections"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      </label>
+      <div className="ck-att-rail-list" role="list">
+        {visibleSections.map((section) => {
           const selected = section.sectionId === selectedSectionId;
           const marked =
             Number(section.presentCount || 0) +
             Number(section.lateCount || 0) +
             Number(section.leaveCount || 0) +
             Number(section.absentCount || 0);
-          const unmarked = Math.max(0, Number(section.totalStudents || 0) - marked);
-          const pending = section.status === 'Pending';
           const completion = section.totalStudents > 0 ? Math.round((marked / section.totalStudents) * 100) : 0;
-          const statusClass =
-            section.status === 'Submitted' ? 'sapproved' : section.status === 'Saved' ? 'spending' : 'sneutral';
+          const presentPercent = section.status === 'Pending' && marked === 0
+            ? '--'
+            : `${Math.round(section.presentPercent)}%`;
           const className =
-            'ck-att-rail-item' +
-            (selected ? ' ck-att-rail-item--selected' : '') +
-            (section.locked ? ' ck-att-rail-item--locked' : '');
+            'ck-att-rail-item'
+            + (selected ? ' ck-att-rail-item--selected' : '')
+            + (section.locked ? ' ck-att-rail-item--locked' : '');
 
           return (
             <div key={section.sectionId} role="listitem">
@@ -63,31 +89,27 @@ export function SectionRail({ sections, selectedSectionId, loading, onSelect }: 
                 type="button"
                 className={className}
                 aria-current={selected}
+                title={section.teacherName ? `Teacher: ${section.teacherName}` : 'No teacher assigned'}
                 onClick={() => onSelect(section)}
               >
                 <div className="ck-att-rail-top">
-                  <div>
-                    <div className="ck-att-rail-name">{section.sectionName}</div>
-                    <div className="ck-att-rail-teacher">{section.teacherName || 'No teacher assigned'}</div>
-                  </div>
-                  <span className={`ck-status ${statusClass}`}>{section.status}</span>
+                  <span className="ck-att-rail-name">{section.sectionName}</span>
+                  <strong className="ck-att-rail-pct">{presentPercent}</strong>
                 </div>
-                <div className="ck-att-rail-figures">
-                  <span className="ck-att-rail-pct">
-                    {pending && marked === 0 ? '--' : `${Math.round(section.presentPercent)}%`}
-                  </span>
-                  <span className="ck-att-rail-progress">{marked}/{section.totalStudents} marked</span>
+                <div className="ck-att-rail-meta">
+                  {marked} of {section.totalStudents} marked <span aria-hidden="true">·</span> {section.status}
                 </div>
-                <div className="ck-att-rail-progress-bar"><span style={{ width: `${completion}%` }} /></div>
-                <div className="ck-att-counts">
-                  P {section.presentCount} - L {section.lateCount} - Ex {section.leaveCount} - A {section.absentCount}
-                  {unmarked > 0 ? ` - ${unmarked} blank` : ''}
+                <div className="ck-att-rail-progress-bar" aria-hidden="true">
+                  <span style={{ width: `${completion}%` }} />
                 </div>
               </button>
             </div>
           );
         })}
+        {visibleSections.length === 0 && (
+          <div className="ck-att-rail-empty">No sections match your filter.</div>
+        )}
       </div>
-    </div>
+    </aside>
   );
 }

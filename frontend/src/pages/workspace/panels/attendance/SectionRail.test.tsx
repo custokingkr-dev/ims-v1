@@ -37,11 +37,17 @@ const sections: AttendanceDailySummarySection[] = [
 ];
 
 describe('SectionRail', () => {
-  it('renders the status counts, marked progress, and percent', () => {
+  it('renders compact marked progress, status, and percent', () => {
     render(<SectionRail sections={sections} selectedSectionId={null} loading={false} onSelect={vi.fn()} />);
-    expect(screen.getByText('P 1 - L 1 - Ex 1 - A 1')).toBeTruthy();
-    expect(screen.getByText('4/4 marked')).toBeTruthy();
+    expect(screen.getByText(/4 of 4 marked.*Saved/)).toBeTruthy();
     expect(screen.getByText('67%')).toBeTruthy();
+  });
+
+  it('filters sections as the user types', () => {
+    render(<SectionRail sections={sections} selectedSectionId={null} loading={false} onSelect={vi.fn()} />);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter sections' }), { target: { value: '1-b' } });
+    expect(screen.queryByText('Class 1-A')).toBeNull();
+    expect(screen.getByText('Class 1-B')).toBeTruthy();
   });
 
   it('calls onSelect for open and submitted sections so locked records are reviewable', () => {

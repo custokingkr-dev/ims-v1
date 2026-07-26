@@ -30,11 +30,7 @@ describe('SectionRoster', () => {
         loading={false} saving="" readOnly={false} onStatusChange={vi.fn()} onRemarksChange={vi.fn()}
         onMarkAllPresent={vi.fn()} onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
     );
-    // Present cell value 1, Late cell value 1.
-    const present = screen.getByText('Present').parentElement!;
-    const late = screen.getByText('Late').parentElement!;
-    expect(present.querySelector('.ck-att-summary-value')!.textContent).toBe('1');
-    expect(late.querySelector('.ck-att-summary-value')!.textContent).toBe('1');
+    expect(screen.getByText(/P 1 · L 1 · Ex 0 · A 0/)).toBeTruthy();
   });
 
   it('disables Submit until every student is marked, enables when all marked', () => {
