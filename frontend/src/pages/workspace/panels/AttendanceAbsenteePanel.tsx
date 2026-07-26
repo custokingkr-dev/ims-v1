@@ -138,52 +138,56 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
       )}
 
       <div className="ck-att-exception-toolbar">
-        <label className="ck-att-filter-field">
-          <span>Date</span>
-          <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-        </label>
-        <label className="ck-att-filter-field">
-          <span>Class</span>
-          <select value={classId} onChange={(event) => { setClassId(event.target.value); setSectionId(''); }}>
-            <option value="">All classes</option>
-            {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-        <label className="ck-att-filter-field">
-          <span>Section</span>
-          <select value={sectionId} onChange={(event) => setSectionId(event.target.value)} disabled={!classId}>
-            <option value="">All sections</option>
-            {sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-        <label className="ck-att-filter-field">
-          <span>Exception</span>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="">All exceptions</option>
-            <option value="ABSENT">Absent</option>
-            <option value="LATE">Late</option>
-            <option value="LEAVE">Leave</option>
-          </select>
-        </label>
-        <div className="ck-att-search">
-          <Search size={16} />
-          <input
-            type="search"
-            aria-label="Search absentees"
-            placeholder="Search student, class, or contact"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+        <div className="ck-att-exception-fields">
+          <label className="ck-att-filter-field">
+            <span>Date</span>
+            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+          </label>
+          <label className="ck-att-filter-field">
+            <span>Class</span>
+            <select value={classId} onChange={(event) => { setClassId(event.target.value); setSectionId(''); }}>
+              <option value="">All classes</option>
+              {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label className="ck-att-filter-field">
+            <span>Section</span>
+            <select value={sectionId} onChange={(event) => setSectionId(event.target.value)} disabled={!classId}>
+              <option value="">All sections</option>
+              {sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+            </select>
+          </label>
+          <label className="ck-att-filter-field">
+            <span>Exception</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="">All exceptions</option>
+              <option value="ABSENT">Absent</option>
+              <option value="LATE">Late</option>
+              <option value="LEAVE">Leave</option>
+            </select>
+          </label>
+          <div className="ck-att-search">
+            <Search size={16} />
+            <input
+              type="search"
+              aria-label="Search absentees"
+              placeholder="Search student, class, or contact"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
         </div>
-        <button
-          type="button"
-          className="ck-att-button ck-att-button--primary"
-          disabled={!canManageAttendance || notifiable === 0 || notifying}
-          onClick={notify}
-        >
-          <Send size={16} />
-          {notifying ? 'Queuing...' : `Notify eligible (${notifiable})`}
-        </button>
+        <div className="ck-att-exception-actions">
+          <button
+            type="button"
+            className="ck-att-button ck-att-button--primary"
+            disabled={!canManageAttendance || notifiable === 0 || notifying}
+            onClick={notify}
+          >
+            <Send size={16} />
+            {notifying ? 'Queuing...' : `Notify eligible (${notifiable})`}
+          </button>
+        </div>
       </div>
 
       <div className="ck-att-kpi-band">
