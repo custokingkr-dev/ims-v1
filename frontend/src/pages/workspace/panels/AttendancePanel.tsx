@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import { CalendarDays, CheckCircle2, Layers3, LockKeyhole, TriangleAlert, UserCheck } from 'lucide-react';
 import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
-import { ModuleShell, Field, Stat } from '../ui';
 import { todayIso } from '../utils';
 import { SectionRail } from './attendance/SectionRail';
 import { SectionRoster } from './attendance/SectionRoster';
@@ -74,7 +74,6 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
     },
     { totalStudents: 0, marked: 0, present: 0, late: 0, leave: 0, absent: 0, submitted: 0, saved: 0 },
   );
-  const unmarked = Math.max(0, attendanceTotals.totalStudents - attendanceTotals.marked);
   const pendingSections = Math.max(0, sections.length - attendanceTotals.submitted);
   const completionPercent = attendanceTotals.totalStudents > 0
     ? Math.round((attendanceTotals.marked / attendanceTotals.totalStudents) * 100)
@@ -263,30 +262,60 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   };
 
   return (
-    <ModuleShell
-      title="Attendance"
-      subtitle={`${summary.dateLabel || currentDate} - ${Number(summary.overallPercent || 0).toFixed(1)}% present`}
-      actions={
-        <div className="ck-att-header-actions">
+    <div className="ck-panel-stack">
+      <div className="ck-att-day-toolbar">
+        <label className="ck-att-date-field">
+          <span>Attendance date</span>
+          <input type="date" value={currentDate} onChange={(event) => handleDateChange(event.target.value)} />
+        </label>
+        <div className="ck-att-day-note">
+          <strong>
+            {summary.allSubmitted
+              ? 'All sections are ready for day submission'
+              : `${pendingSections} section${pendingSections === 1 ? '' : 's'} still open`}
+          </strong>
+          <span>{completionPercent}% of students marked across {sections.length} sections.</span>
+        </div>
+        <div className="ck-att-day-actions">
           <span className={`ck-status ${canManageAttendance ? 'sapproved' : 'sneutral'}`}>
             {canManageAttendance ? 'Write access' : 'Read-only'}
           </span>
-          <button type="button" className="ck-btn ck-btn-ghost" onClick={() => handleDateChange(todayIso())}>
+          <button type="button" className="ck-att-button" onClick={() => handleDateChange(todayIso())}>
+            <CalendarDays size={16} />
             Today
           </button>
           <button
             type="button"
-            className="ck-btn ck-btn-g"
+            className="ck-att-button ck-att-button--primary"
             disabled={!canManageAttendance || !summary.allSubmitted || submittingDay}
             onClick={submitDay}
             title={!canManageAttendance ? 'Attendance manage permission is required' : !summary.allSubmitted ? 'Submit all sections first' : 'Submit the school day'}
           >
-            {submittingDay ? 'Submitting...' : 'Submit day'}
+            <LockKeyhole size={16} />
+            {submittingDay ? 'Submitting...' : 'Finalize day'}
           </button>
         </div>
-      }
-    >
-      <div className="ck-panel-stack">
+      </div>
+
+      <div className="ck-att-kpi-band">
+        <div className="ck-att-kpi">
+          <Layers3 size={17} />
+          <div><span>Sections</span><strong>{attendanceTotals.submitted} / {sections.length}</strong><small>{pendingSections} still open</small></div>
+        </div>
+        <div className="ck-att-kpi">
+          <CheckCircle2 size={17} />
+          <div><span>Marked</span><strong>{completionPercent}%</strong><small>{attendanceTotals.marked} of {attendanceTotals.totalStudents}</small></div>
+        </div>
+        <div className="ck-att-kpi">
+          <UserCheck size={17} />
+          <div><span>Present today</span><strong>{Number(summary.overallPercent || 0).toFixed(1)}%</strong><small>{attendanceTotals.present} present · {attendanceTotals.late} late</small></div>
+        </div>
+        <div className="ck-att-kpi ck-att-kpi--alert">
+          <TriangleAlert size={17} />
+          <div><span>Exceptions</span><strong>{attendanceTotals.absent + attendanceTotals.leave}</strong><small>{attendanceTotals.absent} absent · {attendanceTotals.leave} leave</small></div>
+        </div>
+      </div>
+
         {summary.nonWorkingDay && (
           <div className="ck-alert ck-alert-am">
             <span>!</span>
@@ -311,31 +340,6 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
             <div>{error}</div>
           </div>
         )}
-
-        <div className="ck-card ck-att-day-card">
-          <div className="ck-att-day-grid">
-            <Field label="Attendance date">
-              <input type="date" value={currentDate} onChange={(e) => handleDateChange(e.target.value)} />
-            </Field>
-            <div className="ck-att-day-note">
-              <strong>
-                {summary.allSubmitted
-                  ? 'Ready for day submission'
-                  : `${pendingSections} section${pendingSections === 1 ? '' : 's'} still open`}
-              </strong>
-              <span>
-                {completionPercent}% of students marked across {sections.length} section{sections.length === 1 ? '' : 's'}.
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="ck-stats ck-s4 ck-att-kpis">
-          <Stat label="Sections" value={sections.length} sub={`${attendanceTotals.submitted} submitted, ${attendanceTotals.saved} saved`} pill={`${pendingSections} open`} tone={pendingSections > 0 ? 'orange' : 'green'} />
-          <Stat label="Marked" value={`${completionPercent}%`} sub={`${attendanceTotals.marked} of ${attendanceTotals.totalStudents} students`} pill={`${unmarked} unmarked`} tone={unmarked > 0 ? 'orange' : 'green'} />
-          <Stat label="Present today" value={attendanceTotals.present + attendanceTotals.late} sub={`${attendanceTotals.present} present, ${attendanceTotals.late} late`} pill={`${Number(summary.overallPercent || 0).toFixed(1)}%`} tone="blue" />
-          <Stat label="Exceptions" value={attendanceTotals.absent + attendanceTotals.leave} sub={`${attendanceTotals.absent} absent, ${attendanceTotals.leave} excused`} pill="Follow up" tone={attendanceTotals.absent > 0 ? 'red' : 'green'} />
-        </div>
 
         <div className={`ck-att-layout${selectedSection ? ' ck-att-layout--detail' : ''}`}>
           <SectionRail
@@ -366,7 +370,6 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
             </div>
           )}
         </div>
-      </div>
-    </ModuleShell>
+    </div>
   );
 }

@@ -1,6 +1,11 @@
 import type { StudentAttendanceRecord, EditableAttendanceStatus } from '../../../../types/attendance';
 
-const PILLS: Array<{ code: Exclude<EditableAttendanceStatus, null>; label: string; title: string; mod: string }> = [
+const STATUSES: Array<{
+  code: Exclude<EditableAttendanceStatus, null>;
+  label: string;
+  title: string;
+  mod: string;
+}> = [
   { code: 'PRESENT', label: 'P', title: 'Present', mod: 'present' },
   { code: 'LATE', label: 'L', title: 'Late', mod: 'late' },
   { code: 'LEAVE', label: 'Ex', title: 'Excused leave', mod: 'leave' },
@@ -12,6 +17,8 @@ interface Props {
   status: EditableAttendanceStatus;
   remarks: string;
   locked: boolean;
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
   onStatusChange: (status: EditableAttendanceStatus) => void;
   onRemarksChange: (remarks: string) => void;
 }
@@ -21,66 +28,87 @@ export function StudentAttendanceRow({
   status,
   remarks,
   locked,
+  selected = false,
+  onSelectedChange,
   onStatusChange,
   onRemarksChange,
 }: Props) {
   const initials = student.fullName
     .split(' ')
     .filter(Boolean)
-    .map((n) => n[0])
+    .map((part) => part[0])
     .join('')
     .toUpperCase()
     .slice(0, 2);
 
   return (
-    <div className={`ck-att-row${status ? ` ck-att-row--${status.toLowerCase()}` : ''}`}>
-      <div className="ck-att-row-main">
-        <div className="ck-user-avatar ck-att-avatar">{initials || 'ST'}</div>
-        <div className="ck-att-row-info">
-          <div className="ck-att-row-name">{student.fullName}</div>
-          <div className="ck-att-row-meta">
-            {student.admissionNo}
-            {student.rollNo ? ` - Roll ${student.rollNo}` : ''}
+    <tr className={status ? `ck-att-student-row ck-att-student-row--${status.toLowerCase()}` : 'ck-att-student-row'}>
+      <td className="ck-att-check-cell">
+        {!locked && (
+          <input
+            type="checkbox"
+            aria-label={`Select ${student.fullName}`}
+            checked={selected}
+            onChange={(event) => onSelectedChange?.(event.target.checked)}
+          />
+        )}
+      </td>
+      <td>
+        <div className="ck-att-student-cell">
+          {student.photoUrl ? (
+            <img className="ck-att-avatar" src={student.photoUrl} alt="" />
+          ) : (
+            <span className="ck-att-avatar" aria-hidden="true">{initials || 'ST'}</span>
+          )}
+          <div>
+            <strong>{student.fullName}</strong>
+            <span>{student.admissionNo}</span>
           </div>
         </div>
+      </td>
+      <td className="ck-att-roll">{student.rollNo || '-'}</td>
+      <td>
         <div className="ck-att-pills" role="group" aria-label={`Attendance for ${student.fullName}`}>
-          {PILLS.map((p) => {
-            const active = status === p.code;
-            const className = `ck-att-pill ck-att-pill--${p.mod}${active ? ' ck-att-pill--active' : ''}`;
+          {STATUSES.map((item) => {
+            const active = status === item.code;
+            const className = `ck-att-pill ck-att-pill--${item.mod}${active ? ' ck-att-pill--active' : ''}`;
             if (locked) {
               return (
-                <span key={p.code} className={className} aria-pressed={active} title={p.title}>
-                  {p.label}
+                <span key={item.code} className={className} aria-pressed={active} title={item.title}>
+                  {item.label}
                 </span>
               );
             }
             return (
               <button
-                key={p.code}
+                key={item.code}
                 type="button"
                 className={className}
                 aria-pressed={active}
-                aria-label={p.code}
-                title={p.title}
-                onClick={() => onStatusChange(active ? null : p.code)}
+                aria-label={item.code}
+                title={item.title}
+                onClick={() => onStatusChange(active ? null : item.code)}
               >
-                {p.label}
+                {item.label}
               </button>
             );
           })}
         </div>
-      </div>
-      {locked ? (
-        remarks ? <div className="ck-att-remarks-readonly">{remarks}</div> : null
-      ) : (
-        <input
-          type="text"
-          className="ck-att-remarks"
-          placeholder="Remarks"
-          value={remarks}
-          onChange={(e) => onRemarksChange(e.target.value)}
-        />
-      )}
-    </div>
+      </td>
+      <td>
+        {locked ? (
+          <span className="ck-att-remark-readonly">{remarks || '-'}</span>
+        ) : (
+          <input
+            type="text"
+            className="ck-att-remarks"
+            aria-label={`Remarks for ${student.fullName}`}
+            placeholder="Add remark"
+            value={remarks}
+            onChange={(event) => onRemarksChange(event.target.value)}
+          />
+        )}
+      </td>
+    </tr>
   );
 }

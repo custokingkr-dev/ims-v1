@@ -462,12 +462,41 @@ public class AttendanceReadRepository {
                 "queuedCount", queued);
     }
 
+    public Map<String, Object> exceptions(LocalDate date, String classId, String sectionId, Long schoolId) {
+        List<Map<String, Object>> students = attendanceExceptionRows(date, classId, sectionId, schoolId, false);
+        long absent = students.stream().filter(student -> "ABSENT".equals(student.get("status"))).count();
+        long late = students.stream().filter(student -> "LATE".equals(student.get("status"))).count();
+        long leave = students.stream().filter(student -> "LEAVE".equals(student.get("status"))).count();
+        long queued = students.stream()
+                .filter(student -> "ABSENT".equals(student.get("status")))
+                .filter(student -> Boolean.TRUE.equals(student.get("alreadyQueued")))
+                .count();
+        return row("date", date.toString(),
+                "sectionId", sectionId,
+                "students", students,
+                "totalExceptions", students.size(),
+                "absentCount", absent,
+                "lateCount", late,
+                "leaveCount", leave,
+                "queuedCount", queued);
+    }
+
     private List<Map<String, Object>> absenteeRows(LocalDate date, String classId, String sectionId, Long schoolId) {
+        return attendanceExceptionRows(date, classId, sectionId, schoolId, true);
+    }
+
+    private List<Map<String, Object>> attendanceExceptionRows(
+            LocalDate date,
+            String classId,
+            String sectionId,
+            Long schoolId,
+            boolean absentOnly) {
         String academicYearId = currentAcademicYearId(schoolId);
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id AS student_id, s.full_name, s.admission_no, s.roll_no,
                        s.school_id, ar.class_id, ar.section_id,
                        sc.name AS class_name, ss.name AS section_name,
+                       ar.status, COALESCE(ar.remarks, '') AS remarks,
                        COALESCE(NULLIF(s.father_contact, ''), NULLIF(s.phone, ''), '') AS parent_contact,
                        EXISTS (SELECT 1 FROM %s an
                                 WHERE an.student_id = s.id AND an.attendance_date = :date) AS already_queued
@@ -476,8 +505,10 @@ public class AttendanceReadRepository {
                 JOIN tenant_school.school_sections ss ON ss.id = ar.section_id
                 JOIN tenant_school.school_classes sc ON sc.id = ar.class_id
                 WHERE ar.attendance_date = :date AND ar.academic_year_id = :academicYearId
-                  AND ar.status = 'ABSENT'
                 """.formatted(absenteeTable, recordsTable));
+        sql.append(absentOnly
+                ? " AND ar.status = 'ABSENT'"
+                : " AND ar.status IN ('ABSENT', 'LATE', 'LEAVE')");
         if (schoolId != null) sql.append(" AND ar.school_id = :schoolId");
         if (classId != null && !classId.isBlank()) sql.append(" AND ar.class_id = :classId");
         if (sectionId != null && !sectionId.isBlank()) sql.append(" AND ar.section_id = :sectionId");
@@ -501,6 +532,8 @@ public class AttendanceReadRepository {
                     "schoolId", rs.getLong("school_id"),
                     "classId", rs.getString("class_id"),
                     "sectionId", rs.getString("section_id"),
+                    "status", rs.getString("status"),
+                    "remarks", rs.getString("remarks"),
                     "parentContact", parent,
                     "hasContact", parent != null && !parent.isBlank(),
                     "alreadyQueued", rs.getBoolean("already_queued"));

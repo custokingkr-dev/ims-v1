@@ -1,8 +1,11 @@
+import { CheckCheck, LockKeyhole, RotateCcw, Save, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   SectionRegisterResponse,
   StudentEditRecord,
   EditableAttendanceStatus,
 } from '../../../../types/attendance';
+import { AttendancePagination } from './AttendancePagination';
 import { StudentAttendanceRow } from './StudentAttendanceRow';
 
 interface Props {
@@ -36,34 +39,96 @@ export function SectionRoster({
   onSubmit,
   onBack,
 }: Props) {
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
   const locked = register?.locked ?? false;
   const immutable = locked || readOnly;
   const list = records ?? [];
+  const students = register?.students ?? [];
   const total = list.length;
-  const present = list.filter((r) => r.status === 'PRESENT').length;
-  const late = list.filter((r) => r.status === 'LATE').length;
-  const leave = list.filter((r) => r.status === 'LEAVE').length;
-  const absent = list.filter((r) => r.status === 'ABSENT').length;
+  const present = list.filter((record) => record.status === 'PRESENT').length;
+  const late = list.filter((record) => record.status === 'LATE').length;
+  const leave = list.filter((record) => record.status === 'LEAVE').length;
+  const absent = list.filter((record) => record.status === 'ABSENT').length;
   const unmarked = Math.max(0, total - present - late - leave - absent);
-  const allMarked = total > 0 && list.every((r) => r.status !== null);
+  const allMarked = total > 0 && list.every((record) => record.status !== null);
   const completionPercent = total > 0 ? Math.round(((total - unmarked) / total) * 100) : 0;
+  const dirtyCount = list.filter((record) => {
+    const original = students.find((student) => student.studentId === record.studentId);
+    return original && (original.status !== record.status || (original.remarks || '') !== record.remarks);
+  }).length;
 
-  const cells = [
+  const filteredStudents = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return students;
+    return students.filter((student) =>
+      student.fullName.toLowerCase().includes(normalized)
+      || student.admissionNo.toLowerCase().includes(normalized)
+      || String(student.rollNo || '').toLowerCase().includes(normalized)
+    );
+  }, [query, students]);
+
+  const pageCount = Math.max(1, Math.ceil(filteredStudents.length / pageSize));
+  const safePage = Math.min(page, pageCount);
+  const visibleStudents = filteredStudents.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const visibleIds = visibleStudents.map((student) => student.studentId);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id));
+
+  useEffect(() => {
+    setQuery('');
+    setPage(1);
+    setSelectedIds(new Set());
+  }, [register?.sectionId]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, pageSize]);
+
+  const setSelected = (studentId: number, selected: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (selected) next.add(studentId);
+      else next.delete(studentId);
+      return next;
+    });
+  };
+
+  const selectVisible = (selected: boolean) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      visibleIds.forEach((id) => {
+        if (selected) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const markSelected = (status: Exclude<EditableAttendanceStatus, null>) => {
+    selectedIds.forEach((studentId) => onStatusChange(studentId, status));
+    setSelectedIds(new Set());
+  };
+
+  const summary = [
     { label: 'Total', value: total },
-    { label: 'Present', value: present },
-    { label: 'Late', value: late },
-    { label: 'Leave', value: leave },
-    { label: 'Absent', value: absent },
-    { label: 'Unmarked', value: unmarked },
+    { label: 'Present', value: present, tone: 'green' },
+    { label: 'Late', value: late, tone: 'amber' },
+    { label: 'Leave', value: leave, tone: 'blue' },
+    { label: 'Absent', value: absent, tone: 'red' },
+    { label: 'Unmarked', value: unmarked, tone: unmarked > 0 ? 'amber' : 'green' },
   ];
 
   return (
     <div className="ck-att-roster">
       <div className="ck-att-roster-head">
-        <div>
-          <div className="ck-att-roster-title">{register?.sectionName || 'Section roster'}</div>
-          <div className="ck-att-roster-meta">
-            {total} students - {completionPercent}% marked
+        <div className="ck-att-roster-title">
+          <button type="button" className="ck-att-button ck-att-back" onClick={onBack}>Back to sections</button>
+          <div>
+            <strong>{register?.sectionName || 'Section register'}</strong>
+            <span>{total} students · {completionPercent}% marked</span>
           </div>
         </div>
         <span className={`ck-status ${locked ? 'sapproved' : readOnly ? 'sneutral' : allMarked ? 'sinfo' : 'spending'}`}>
@@ -71,30 +136,11 @@ export function SectionRoster({
         </span>
       </div>
 
-      <div className="ck-att-roster-actions">
-        <button type="button" className="ck-btn ck-btn-sm ck-btn-ghost ck-att-back" onClick={onBack}>
-          Back to sections
-        </button>
-        {!immutable && (
-          <>
-            <button type="button" className="ck-btn ck-btn-sm" onClick={onMarkAllPresent}>
-              Mark all Present
-            </button>
-            <button type="button" className="ck-btn ck-btn-sm ck-btn-ghost" onClick={onMarkUnmarkedAbsent} disabled={unmarked === 0}>
-              Mark blank Absent
-            </button>
-            <button type="button" className="ck-btn ck-btn-sm ck-btn-ghost" onClick={onReset}>
-              Reset
-            </button>
-          </>
-        )}
-      </div>
-
       <div className="ck-att-summary">
-        {cells.map((c) => (
-          <div key={c.label} className={`ck-att-summary-cell${c.label === 'Unmarked' && c.value > 0 ? ' ck-att-summary-cell--warn' : ''}`}>
-            <div className="ck-att-summary-label">{c.label}</div>
-            <div className="ck-att-summary-value">{c.value}</div>
+        {summary.map((item) => (
+          <div key={item.label} className={`ck-att-summary-cell${item.tone ? ` ck-att-summary-cell--${item.tone}` : ''}`}>
+            <span className="ck-att-summary-label">{item.label}</span>
+            <strong className="ck-att-summary-value">{item.value}</strong>
           </div>
         ))}
       </div>
@@ -102,55 +148,142 @@ export function SectionRoster({
       {locked && (
         <div className="ck-alert ck-alert-am">
           <span>i</span>
-          <div>This attendance is locked and cannot be edited.</div>
+          <div>This section is submitted and locked.</div>
         </div>
       )}
       {!locked && readOnly && (
         <div className="ck-alert ck-alert-am">
           <span>i</span>
-          <div>You have read-only attendance access for this section.</div>
+          <div>You have read-only access to this register.</div>
         </div>
       )}
 
-      {loading ? (
-        <div className="ck-att-empty">Loading students...</div>
-      ) : total === 0 ? (
-        <div className="ck-alert ck-alert-am">
-          <span>i</span>
-          <div>No students enrolled in this section.</div>
+      <div className="ck-att-register-card">
+        <div className="ck-att-register-toolbar">
+          <div className="ck-att-search">
+            <Search size={16} />
+            <input
+              type="search"
+              aria-label="Search this section"
+              placeholder="Search name, admission number, or roll"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
+          {!immutable && (
+            <div className="ck-att-register-actions">
+              <button type="button" className="ck-att-button" onClick={onMarkAllPresent}>
+                <CheckCheck size={16} />
+                Mark all Present
+              </button>
+              <button
+                type="button"
+                className="ck-att-button"
+                disabled={unmarked === 0}
+                onClick={onMarkUnmarkedAbsent}
+              >
+                Mark blanks Absent
+              </button>
+              <button type="button" className="ck-att-icon-button" aria-label="Reset changes" title="Reset changes" onClick={onReset}>
+                <RotateCcw size={16} />
+              </button>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="ck-att-rows">
-          {(register?.students ?? []).map((student) => {
-            const record = list.find((r) => r.studentId === student.studentId);
-            return (
-              <StudentAttendanceRow
-                key={student.studentId}
-                student={student}
-                status={record?.status ?? null}
-                remarks={record?.remarks ?? ''}
-                locked={immutable}
-                onStatusChange={(s) => onStatusChange(student.studentId, s)}
-                onRemarksChange={(r) => onRemarksChange(student.studentId, r)}
-              />
-            );
-          })}
-        </div>
-      )}
+
+        {selectedIds.size > 0 && !immutable && (
+          <div className="ck-att-bulk-bar">
+            <strong>{selectedIds.size} selected</strong>
+            <div>
+              <button type="button" onClick={() => markSelected('PRESENT')}>Present</button>
+              <button type="button" onClick={() => markSelected('LATE')}>Late</button>
+              <button type="button" onClick={() => markSelected('LEAVE')}>Leave</button>
+              <button type="button" onClick={() => markSelected('ABSENT')}>Absent</button>
+              <button type="button" onClick={() => setSelectedIds(new Set())}>Clear</button>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="ck-att-empty">Loading students...</div>
+        ) : total === 0 ? (
+          <div className="ck-att-empty">No students are enrolled in this section.</div>
+        ) : filteredStudents.length === 0 ? (
+          <div className="ck-att-empty">No students match your search.</div>
+        ) : (
+          <>
+            <div className="ck-att-table-scroll">
+              <table className="ck-att-roster-table">
+                <thead>
+                  <tr>
+                    <th className="ck-att-check-cell">
+                      {!immutable && (
+                        <input
+                          type="checkbox"
+                          aria-label="Select students on this page"
+                          checked={allVisibleSelected}
+                          onChange={(event) => selectVisible(event.target.checked)}
+                        />
+                      )}
+                    </th>
+                    <th>Student</th>
+                    <th>Roll</th>
+                    <th>Attendance status</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleStudents.map((student) => {
+                    const record = list.find((item) => item.studentId === student.studentId);
+                    return (
+                      <StudentAttendanceRow
+                        key={student.studentId}
+                        student={student}
+                        status={record?.status ?? null}
+                        remarks={record?.remarks ?? ''}
+                        locked={immutable}
+                        selected={selectedIds.has(student.studentId)}
+                        onSelectedChange={(selected) => setSelected(student.studentId, selected)}
+                        onStatusChange={(status) => onStatusChange(student.studentId, status)}
+                        onRemarksChange={(remarks) => onRemarksChange(student.studentId, remarks)}
+                      />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <AttendancePagination
+              page={safePage}
+              pageSize={pageSize}
+              totalItems={filteredStudents.length}
+              itemLabel="students"
+              pageSizeOptions={[10, 20, 50]}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          </>
+        )}
+      </div>
 
       {!immutable && total > 0 && (
-        <div className="ck-att-roster-footer">
-          <button type="button" className="ck-btn ck-btn-b" onClick={onSave} disabled={saving === 'save'}>
-            {saving === 'save' ? 'Saving...' : 'Save'}
-          </button>
-          <button
-            type="button"
-            className="ck-btn ck-btn-g"
-            onClick={onSubmit}
-            disabled={saving === 'submit' || !allMarked}
-          >
-            {saving === 'submit' ? 'Submitting...' : 'Submit Section'}
-          </button>
+        <div className="ck-att-save-bar">
+          <div className="ck-att-save-copy">
+            <span className={dirtyCount > 0 ? 'ck-att-save-dot ck-att-save-dot--dirty' : 'ck-att-save-dot'} />
+            <div>
+              <strong>{dirtyCount > 0 ? `${dirtyCount} unsaved change${dirtyCount === 1 ? '' : 's'}` : 'Draft is up to date'}</strong>
+              <span>{unmarked} unmarked · all students must be marked before submission</span>
+            </div>
+          </div>
+          <div className="ck-att-save-actions">
+            <button type="button" className="ck-att-button" onClick={onSave} disabled={saving === 'save'}>
+              <Save size={16} />
+              {saving === 'save' ? 'Saving...' : 'Save'}
+            </button>
+            <button type="button" className="ck-att-button ck-att-button--primary" onClick={onSubmit} disabled={saving === 'submit' || !allMarked}>
+              <LockKeyhole size={16} />
+              {saving === 'submit' ? 'Submitting...' : 'Submit Section'}
+            </button>
+          </div>
         </div>
       )}
     </div>

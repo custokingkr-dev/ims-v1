@@ -67,4 +67,50 @@ describe('SectionRoster', () => {
     expect(onMarkAllPresent).toHaveBeenCalled();
     expect(onSave).toHaveBeenCalled();
   });
+
+  it('paginates a long roster without changing the table height contract', () => {
+    const longRegister: SectionRegisterResponse = {
+      ...register,
+      totalStudents: 12,
+      students: Array.from({ length: 12 }, (_, index) => ({
+        studentId: index + 1,
+        fullName: `Student ${index + 1}`,
+        admissionNo: `ADM${index + 1}`,
+        rollNo: String(index + 1),
+        photoUrl: null,
+        status: null,
+        remarks: '',
+      })),
+    };
+    const longRecords: StudentEditRecord[] = longRegister.students.map((student) => ({
+      studentId: student.studentId,
+      status: null,
+      remarks: '',
+    }));
+    render(
+      <SectionRoster register={longRegister} records={longRecords} loading={false} saving=""
+        readOnly={false} onStatusChange={vi.fn()} onRemarksChange={vi.fn()} onMarkAllPresent={vi.fn()}
+        onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
+    );
+
+    expect(screen.getByText('Student 1')).toBeTruthy();
+    expect(screen.queryByText('Student 11')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(screen.getByText('Student 11')).toBeTruthy();
+    expect(screen.getByText('11-12 of 12 students')).toBeTruthy();
+  });
+
+  it('bulk marks only selected students', () => {
+    const onStatusChange = vi.fn();
+    render(
+      <SectionRoster register={register} records={records()} loading={false} saving=""
+        readOnly={false} onStatusChange={onStatusChange} onRemarksChange={vi.fn()} onMarkAllPresent={vi.fn()}
+        onMarkUnmarkedAbsent={vi.fn()} onReset={vi.fn()} onSave={vi.fn()} onSubmit={vi.fn()} onBack={vi.fn()} />
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select A One' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Absent' }));
+    expect(onStatusChange).toHaveBeenCalledTimes(1);
+    expect(onStatusChange).toHaveBeenCalledWith(1, 'ABSENT');
+  });
 });

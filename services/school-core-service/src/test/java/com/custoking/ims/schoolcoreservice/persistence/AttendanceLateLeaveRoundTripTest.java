@@ -141,6 +141,38 @@ class AttendanceLateLeaveRoundTripTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void exceptions_returnsAbsentLateAndLeaveWhileAbsenteesStayBackwardCompatible() {
+        repo.saveSectionRegister(Map.of(
+                "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
+                "records", List.of(
+                        Map.of("studentId", 1, "status", "PRESENT", "remarks", ""),
+                        Map.of("studentId", 2, "status", "LATE", "remarks", "bus late"),
+                        Map.of("studentId", 3, "status", "LEAVE", "remarks", "sick"),
+                        Map.of("studentId", 4, "status", "ABSENT", "remarks", "no response"))));
+
+        Map<String, Object> exceptions = repo.exceptions(DAY, "c1", "s1", 1L);
+        assertThat(exceptions).containsEntry("totalExceptions", 3)
+                .containsEntry("absentCount", 1L)
+                .containsEntry("lateCount", 1L)
+                .containsEntry("leaveCount", 1L);
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) exceptions.get("students");
+        assertThat(rows).extracting(row -> row.get("status"))
+                .containsExactlyInAnyOrder("ABSENT", "LATE", "LEAVE");
+        Map<String, Object> lateRow = rows.stream()
+                .filter(row -> "LATE".equals(row.get("status")))
+                .findFirst()
+                .orElseThrow();
+        assertThat(lateRow).containsEntry("remarks", "bus late");
+
+        Map<String, Object> absentees = repo.absentees(DAY, "c1", "s1", 1L);
+        assertThat(absentees).containsEntry("totalAbsent", 1);
+        List<Map<String, Object>> absenteeRows = (List<Map<String, Object>>) absentees.get("students");
+        assertThat(absenteeRows).hasSize(1);
+        assertThat(absenteeRows.getFirst()).containsEntry("status", "ABSENT");
+    }
+
+    @Test
     void unknownStatus_isRejected() {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> repo.saveSectionRegister(Map.of(
                 "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,

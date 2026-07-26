@@ -126,6 +126,20 @@ export interface AbsenteeListResponse {
   totalAbsent: number;
   queuedCount: number;
 }
+export interface AttendanceExceptionStudent extends AbsenteeStudent {
+  status: 'ABSENT' | 'LATE' | 'LEAVE';
+  remarks: string;
+}
+export interface AttendanceExceptionListResponse {
+  date: string;
+  sectionId: string | null;
+  students: AttendanceExceptionStudent[];
+  totalExceptions: number;
+  absentCount: number;
+  lateCount: number;
+  leaveCount: number;
+  queuedCount: number;
+}
 export interface NotifyAbsenteesResponse {
   date: string;
   queued: number;
