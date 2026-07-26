@@ -62,6 +62,18 @@ class AttendanceReadControllerTest {
     }
 
     @Test
+    void exceptionsDelegatesScopedFiltersWithValidToken() {
+        LocalDate date = LocalDate.parse("2026-02-02");
+        Map<String, Object> result = Map.of("totalExceptions", 3);
+        when(attendance.exceptions(date, "c1", "s1", 4L)).thenReturn(result);
+
+        Object response = controller.exceptions("attendance-token", 4L, date, "c1", "s1");
+
+        assertThat(response).isSameAs(result);
+        verify(attendance).exceptions(date, "c1", "s1", 4L);
+    }
+
+    @Test
     void dailySummaryMapsValidationFailureToBadRequest() {
         LocalDate date = LocalDate.parse("2026-02-02");
         when(attendance.dailySummary(date, 4L))

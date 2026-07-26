@@ -1,13 +1,15 @@
+import { Download, Play } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field } from '../ui';
 import { todayIso } from '../utils';
 import { RegisterGrid } from './attendance/reports/RegisterGrid';
 import { StudentHistory } from './attendance/reports/StudentHistory';
 import { SectionSummary } from './attendance/reports/SectionSummary';
 import { downloadReport } from './attendance/reports/download';
 import type {
-  AttendanceRegisterReport, AttendanceStudentHistory, AttendanceSummaryReport,
+  AttendanceRegisterReport,
+  AttendanceStudentHistory,
+  AttendanceSummaryReport,
 } from '../../../types/attendance';
 
 interface Props { schoolScopedParams?: { schoolId: number }; }
@@ -17,7 +19,7 @@ interface SectionOpt { id: string; name: string }
 interface StudentOpt { id: number; name: string; admissionNo: string }
 
 function monthIso(): string { return todayIso().slice(0, 7); }
-function monthStart(m: string): string { return `${m}-01`; }
+function monthStart(month: string): string { return `${month}-01`; }
 function errMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message) return err.message;
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
@@ -25,7 +27,7 @@ function errMessage(err: unknown, fallback: string): string {
 
 export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
   const scoped = schoolScopedParams || {};
-  const [tab, setTab] = useState<Tab>('register');
+  const [tab, setTab] = useState<Tab>('summary');
   const [classes, setClasses] = useState<ClassOpt[]>([]);
   const [sections, setSections] = useState<SectionOpt[]>([]);
   const [students, setStudents] = useState<StudentOpt[]>([]);
@@ -35,7 +37,6 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
   const [month, setMonth] = useState(monthIso());
   const [from, setFrom] = useState(monthStart(monthIso()));
   const [to, setTo] = useState(todayIso());
-
   const [register, setRegister] = useState<AttendanceRegisterReport | null>(null);
   const [history, setHistory] = useState<AttendanceStudentHistory | null>(null);
   const [summary, setSummary] = useState<AttendanceSummaryReport | null>(null);
@@ -45,22 +46,31 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
 
   useEffect(() => {
     void api.get<ClassOpt[]>('/classes', { params: scoped })
-      .then((r) => setClasses(Array.isArray(r.data) ? r.data : []))
+      .then((response) => setClasses(Array.isArray(response.data) ? response.data : []))
       .catch(() => setClasses([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!classId) { setSections([]); return; }
+    if (!classId) {
+      setSections([]);
+      return;
+    }
     void api.get<SectionOpt[]>(`/classes/${encodeURIComponent(classId)}/sections`, { params: scoped })
-      .then((r) => setSections(Array.isArray(r.data) ? r.data : []))
+      .then((response) => setSections(Array.isArray(response.data) ? response.data : []))
       .catch(() => setSections([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId]);
 
   useEffect(() => {
-    if (!classId || !sectionId) { setStudents([]); return; }
+    if (!classId || !sectionId) {
+      setStudents([]);
+      return;
+    }
     void api.get<StudentOpt[]>(`/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(sectionId)}/students`, { params: scoped })
-      .then((r) => setStudents(Array.isArray(r.data) ? r.data : []))
+      .then((response) => setStudents(Array.isArray(response.data) ? response.data : []))
       .catch(() => setStudents([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [classId, sectionId]);
 
   const load = async () => {
@@ -68,16 +78,28 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
     setLoading(true);
     try {
       if (tab === 'register') {
-        if (!classId || !sectionId) { setRegister(null); return; }
-        const r = await api.get<AttendanceRegisterReport>('/attendance/report/register', { params: { month, classId, sectionId, ...scoped } });
-        setRegister(r.data);
+        if (!classId || !sectionId) {
+          setRegister(null);
+          return;
+        }
+        const response = await api.get<AttendanceRegisterReport>('/attendance/report/register', {
+          params: { month, classId, sectionId, ...scoped },
+        });
+        setRegister(response.data);
       } else if (tab === 'student') {
-        if (!studentId) { setHistory(null); return; }
-        const r = await api.get<AttendanceStudentHistory>('/attendance/report/student', { params: { studentId, from, to, ...scoped } });
-        setHistory(r.data);
+        if (!studentId) {
+          setHistory(null);
+          return;
+        }
+        const response = await api.get<AttendanceStudentHistory>('/attendance/report/student', {
+          params: { studentId, from, to, ...scoped },
+        });
+        setHistory(response.data);
       } else {
-        const r = await api.get<AttendanceSummaryReport>('/attendance/report/summary', { params: { from, to, ...scoped } });
-        setSummary(r.data);
+        const response = await api.get<AttendanceSummaryReport>('/attendance/report/summary', {
+          params: { from, to, ...scoped },
+        });
+        setSummary(response.data);
       }
     } catch (err) {
       setError(errMessage(err, 'Failed to load report'));
@@ -85,6 +107,12 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    void load();
+    // Load the default summary once; subsequent report runs stay explicit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const doExport = async (format: 'csv' | 'pdf') => {
     setError('');
@@ -105,69 +133,121 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
   };
 
   const canExport = tab === 'register' ? !!register : tab === 'student' ? !!history : !!summary;
+  const canRun = tab === 'summary' || (tab === 'register' && !!classId && !!sectionId) || (tab === 'student' && !!studentId);
 
   return (
-    <ModuleShell
-      title="Attendance reports"
-      subtitle="Register, per-student history, and section summary"
-      actions={
-        <span style={{ display: 'flex', gap: 8 }}>
-          <button className="ck-btn ck-btn-ghost" disabled={!canExport || exporting} onClick={() => doExport('csv')}>Export CSV</button>
-          <button className="ck-btn ck-btn-ghost" disabled={!canExport || exporting} onClick={() => doExport('pdf')}>Export PDF</button>
-        </span>
-      }
-    >
-      <div className="ck-att-tabs">
-        {(['register', 'student', 'summary'] as Tab[]).map((t) => (
-          <button key={t} type="button" className={`ck-att-tab${tab === t ? ' ck-att-tab--active' : ''}`}
-            onClick={() => { setTab(t); setError(''); }}>
-            {t === 'register' ? 'Register' : t === 'student' ? 'Student history' : 'Summary'}
+    <div className="ck-panel-stack">
+      {error && <div className="ck-alert ck-alert-re"><span>!</span><div>{error}</div></div>}
+
+      <div className="ck-att-report-toolbar">
+        <div className="ck-att-report-tabs" role="tablist" aria-label="Attendance report type">
+          {([
+            ['summary', 'Section summary'],
+            ['register', 'Monthly register'],
+            ['student', 'Student history'],
+          ] as Array<[Tab, string]>).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={tab === id}
+              className={tab === id ? 'active' : ''}
+              onClick={() => { setTab(id); setError(''); }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="ck-att-report-filters">
+          {(tab === 'register' || tab === 'student') && (
+            <>
+              <label className="ck-att-filter-field">
+                <span>Class</span>
+                <select value={classId} onChange={(event) => {
+                  setClassId(event.target.value);
+                  setSectionId('');
+                  setStudentId('');
+                  setRegister(null);
+                  setHistory(null);
+                }}>
+                  <option value="">Select class</option>
+                  {classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+              <label className="ck-att-filter-field">
+                <span>Section</span>
+                <select value={sectionId} onChange={(event) => {
+                  setSectionId(event.target.value);
+                  setStudentId('');
+                  setRegister(null);
+                  setHistory(null);
+                }} disabled={!classId}>
+                  <option value="">Select section</option>
+                  {sections.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                </select>
+              </label>
+            </>
+          )}
+          {tab === 'student' && (
+            <label className="ck-att-filter-field ck-att-filter-field--wide">
+              <span>Student</span>
+              <select value={studentId} onChange={(event) => {
+                setStudentId(event.target.value);
+                setHistory(null);
+              }} disabled={!sectionId}>
+                <option value="">Select student</option>
+                {students.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.admissionNo})</option>)}
+              </select>
+            </label>
+          )}
+          {tab === 'register' && (
+            <label className="ck-att-filter-field">
+              <span>Month</span>
+              <input type="month" value={month} onChange={(event) => {
+                setMonth(event.target.value);
+                setRegister(null);
+              }} />
+            </label>
+          )}
+          {(tab === 'student' || tab === 'summary') && (
+            <>
+              <label className="ck-att-filter-field">
+                <span>From</span>
+                <input type="date" value={from} onChange={(event) => {
+                  setFrom(event.target.value);
+                  setSummary(null);
+                  setHistory(null);
+                }} />
+              </label>
+              <label className="ck-att-filter-field">
+                <span>To</span>
+                <input type="date" value={to} onChange={(event) => {
+                  setTo(event.target.value);
+                  setSummary(null);
+                  setHistory(null);
+                }} />
+              </label>
+            </>
+          )}
+          <button type="button" className="ck-att-button ck-att-button--primary" onClick={load} disabled={loading || !canRun}>
+            <Play size={15} />
+            {loading ? 'Loading...' : 'Run report'}
           </button>
-        ))}
-      </div>
-
-      {error && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>!</span><div>{error}</div></div>}
-
-      <div className="ck-att-report-controls">
-        {(tab === 'register' || tab === 'student') && (
-          <>
-            <Field label="Class">
-              <select value={classId} onChange={(e) => { setClassId(e.target.value); setSectionId(''); setStudentId(''); }}>
-                <option value="">Select class</option>
-                {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Section">
-              <select value={sectionId} onChange={(e) => { setSectionId(e.target.value); setStudentId(''); }} disabled={!classId}>
-                <option value="">Select section</option>
-                {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </Field>
-          </>
-        )}
-        {tab === 'student' && (
-          <Field label="Student">
-            <select value={studentId} onChange={(e) => setStudentId(e.target.value)} disabled={!sectionId}>
-              <option value="">Select student</option>
-              {students.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.admissionNo})</option>)}
-            </select>
-          </Field>
-        )}
-        {tab === 'register' && (
-          <Field label="Month"><input type="month" value={month} onChange={(e) => setMonth(e.target.value)} /></Field>
-        )}
-        {(tab === 'student' || tab === 'summary') && (
-          <>
-            <Field label="From"><input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></Field>
-            <Field label="To"><input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></Field>
-          </>
-        )}
-        <button className="ck-btn ck-btn-b" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Run report'}</button>
+          <button type="button" className="ck-att-button" disabled={!canExport || exporting} onClick={() => doExport('csv')}>
+            <Download size={15} />
+            CSV
+          </button>
+          <button type="button" className="ck-att-button" disabled={!canExport || exporting} onClick={() => doExport('pdf')}>
+            <Download size={15} />
+            PDF
+          </button>
+        </div>
       </div>
 
       {tab === 'register' && <RegisterGrid report={register} loading={loading} />}
       {tab === 'student' && <StudentHistory report={history} loading={loading} />}
       {tab === 'summary' && <SectionSummary report={summary} loading={loading} />}
-    </ModuleShell>
+    </div>
   );
 }

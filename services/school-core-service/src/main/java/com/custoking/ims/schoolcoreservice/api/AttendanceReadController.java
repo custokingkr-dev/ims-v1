@@ -142,6 +142,20 @@ public class AttendanceReadController {
         return execute(() -> attendance.absentees(date, classId, sectionId, scope));
     }
 
+    @GetMapping("/exceptions")
+    public Map<String, Object> exceptions(
+            @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) String classId,
+            @RequestParam(required = false) String sectionId) {
+        requireToken(token, "attendance:read");
+        TenantScope.requirePermissionIfAuthenticated("attendance:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireAttendanceModule(scope);
+        return execute(() -> attendance.exceptions(date, classId, sectionId, scope));
+    }
+
     @PostMapping("/absentees/notify")
     public Map<String, Object> notifyAbsentees(
             @RequestHeader(value = "X-Attendance-Service-Token", required = false) String token,
