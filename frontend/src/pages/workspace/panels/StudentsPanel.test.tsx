@@ -59,6 +59,19 @@ describe('StudentsPanel', () => {
     expect(cells[3]).toHaveTextContent('9876543210');
   });
 
+  it('shows the student count in the directory header, not beside the filters', async () => {
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+
+    await screen.findByText('Aarav Sharma');
+    const toolbar = document.querySelector('.ck-students-toolbar');
+    const directoryHead = document.querySelector('.ck-student-directory-head');
+
+    expect(toolbar).not.toBeNull();
+    expect(directoryHead).not.toBeNull();
+    expect(within(toolbar as HTMLElement).queryByText('1 students')).not.toBeInTheDocument();
+    expect(within(directoryHead as HTMLElement).getByText('1 records')).toBeInTheDocument();
+  });
+
   it('filters while typing without a Search button', async () => {
     render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
 

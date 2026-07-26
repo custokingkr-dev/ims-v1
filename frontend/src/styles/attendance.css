@@ -12,10 +12,27 @@
   border: 0;
 }
 
+.ck-att-workspace {
+  width: 100%;
+  min-width: 0;
+}
+
+.ck-att-workspace .ck-panel-stack {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.ck-att-workspace .ck-panel-stack > * {
+  min-width: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
 .ck-att-tabs {
   display: flex;
   gap: 4px;
-  margin: -6px 0 18px;
+  margin: -6px 0 14px;
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: none;
@@ -107,15 +124,18 @@
 
 .ck-att-day-toolbar {
   display: grid;
-  grid-template-columns: minmax(180px, 230px) minmax(260px, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: minmax(180px, 220px) minmax(260px, 1fr) auto;
+  gap: 10px;
   align-items: end;
-  padding: 12px;
+  width: 100%;
+  padding: 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--white);
   box-shadow: 0 1px 4px rgba(0, 0, 0, .03);
 }
+
+.ck-att-day-toolbar > * { min-width: 0; }
 
 .ck-att-date-field,
 .ck-att-filter-field {
@@ -142,6 +162,7 @@
 
 .ck-att-day-note {
   display: grid;
+  align-content: center;
   gap: 2px;
   min-height: 38px;
   padding: 7px 11px;
@@ -172,7 +193,7 @@
 
 .ck-att-kpi {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
   min-width: 0;
   padding: 14px 16px;
@@ -205,9 +226,10 @@
 
 .ck-att-layout {
   display: grid;
-  grid-template-columns: 230px minmax(0, 1fr);
+  grid-template-columns: minmax(210px, 230px) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+  width: 100%;
 }
 
 .ck-att-rail {
@@ -285,6 +307,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
   min-width: 0;
 }
 
@@ -350,6 +373,7 @@
 .ck-att-register-card,
 .ck-att-report-card,
 .ck-att-history-card {
+  width: 100%;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -367,6 +391,8 @@
   padding: 9px 11px;
   border-bottom: 1px solid var(--border);
 }
+
+.ck-att-register-toolbar > * { min-width: 0; }
 
 .ck-att-search {
   position: relative;
@@ -461,6 +487,7 @@
 .ck-att-roster-table th:nth-child(2) { width: 31%; }
 .ck-att-roster-table th:nth-child(3) { width: 70px; }
 .ck-att-roster-table th:nth-child(4) { width: 180px; }
+.ck-att-roster-table th:nth-child(5) { width: auto; }
 .ck-att-check-cell { width: 38px; text-align: center !important; }
 .ck-att-check-cell input {
   width: 15px;
@@ -625,15 +652,20 @@ span.ck-att-pill { cursor: default; }
 
 .ck-att-exception-toolbar {
   display: grid;
-  grid-template-columns: 145px 145px 145px 145px minmax(210px, 1fr) auto;
+  grid-template-columns: repeat(4, minmax(125px, 150px)) minmax(210px, 1fr) auto;
   gap: 9px;
   align-items: end;
+  width: 100%;
   padding: 11px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--white);
   box-shadow: 0 1px 4px rgba(0, 0, 0, .03);
 }
+
+.ck-att-exception-toolbar > * { min-width: 0; }
+.ck-att-exception-toolbar .ck-att-search,
+.ck-att-exception-toolbar .ck-att-button { align-self: end; }
 
 .ck-att-report-heading {
   display: flex;
@@ -664,6 +696,7 @@ span.ck-att-pill { cursor: default; }
 .ck-att-report-toolbar {
   display: grid;
   gap: 10px;
+  width: 100%;
   padding: 11px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -699,12 +732,14 @@ span.ck-att-pill { cursor: default; }
 }
 .ck-att-report-filters {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   gap: 8px;
+  width: 100%;
   flex-wrap: wrap;
 }
-.ck-att-report-filters .ck-att-filter-field { width: 145px; }
-.ck-att-report-filters .ck-att-filter-field--wide { width: 220px; }
+.ck-att-report-filters .ck-att-filter-field { width: 150px; }
+.ck-att-report-filters .ck-att-filter-field--wide { width: 230px; }
+.ck-att-report-filters .ck-att-button--primary { margin-left: auto; }
 
 .ck-att-table { min-width: 760px; }
 .ck-att-table .num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -811,7 +846,6 @@ span.ck-att-pill { cursor: default; }
   .ck-att-day-toolbar { grid-template-columns: 200px minmax(230px, 1fr); }
   .ck-att-day-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .ck-att-exception-toolbar { grid-template-columns: repeat(3, minmax(130px, 1fr)); }
-  .ck-att-exception-toolbar .ck-att-search { grid-column: span 2; }
 }
 
 @media (max-width: 900px) {
@@ -859,5 +893,6 @@ span.ck-att-pill { cursor: default; }
   }
   .ck-att-report-filters .ck-att-filter-field,
   .ck-att-report-filters .ck-att-filter-field--wide { width: calc(50% - 4px); }
+  .ck-att-report-filters .ck-att-button--primary { margin-left: 0; }
   .ck-att-report-filters .ck-att-button { flex: 1 1 auto; }
 }

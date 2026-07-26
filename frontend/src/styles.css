@@ -857,12 +857,31 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-row-selected td { background: #f7fbff; }
 .ck-table tbody tr:hover td { background: #fafcff; }
 .ck-card-sub { margin-top: 3px; color: var(--ink3); font-size: 12px; font-weight: 500; }
-.ck-students-toolbar { padding:12px 16px; border-bottom:1px solid var(--border); background:#fbfaf8; }
-.ck-student-search-form { flex:1 1 420px; min-width:280px; }
+.ck-students-toolbar {
+  display:grid;
+  grid-template-columns:minmax(300px,1fr) auto;
+  gap:12px 18px;
+  align-items:end;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  background:#fbfaf8;
+}
+.ck-student-search-form { min-width:0; }
 .ck-student-search-control { display:flex; flex-direction:column; gap:5px; }
 .ck-student-search-control label { font-size:11.5px; font-weight:700; color:var(--ink2); }
 .ck-student-search-row { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:8px; align-items:center; }
 .ck-student-search-row input { width:100%; min-width:0; }
+.ck-students-toolbar .ck-card-inline-filters {
+  display:grid;
+  grid-template-columns:auto repeat(3,minmax(120px,150px));
+  gap:8px;
+  align-items:center;
+}
+.ck-students-toolbar .ck-card-inline-filters .ck-actions-inline { flex-wrap:nowrap; }
+.ck-students-toolbar .ck-card-inline-filters select {
+  width:100%;
+  min-width:0 !important;
+}
 .ck-muted { color: var(--ink3); }
 .ck-table-link { border: none; background: none; color: var(--b); padding: 0; font-weight: 700; cursor: pointer; text-align: left; }
 .ck-table-link:hover { text-decoration: underline; }
@@ -947,7 +966,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-student-directory-head {
   min-height:50px;
   padding:10px 16px;
-  border-top:1px solid var(--border);
+  border-top:0;
   border-bottom:1px solid var(--border);
   display:flex;
   align-items:center;
@@ -968,8 +987,33 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   pointer-events:none;
 }
 .ck-input-with-icon input { padding-left:35px; }
+.ck-student-directory .ck-table {
+  min-width:980px;
+  table-layout:fixed;
+}
 .ck-student-directory .ck-table th { background:#faf9f6; }
-.ck-student-directory .ck-table td { vertical-align:middle; }
+.ck-student-directory .ck-table th,
+.ck-student-directory .ck-table td { padding-right:14px; padding-left:14px; vertical-align:middle; }
+.ck-student-directory .ck-table th:nth-child(1) { width:25%; }
+.ck-student-directory .ck-table th:nth-child(2) { width:13%; }
+.ck-student-directory .ck-table th:nth-child(3) { width:15%; }
+.ck-student-directory .ck-table th:nth-child(4) { width:15%; }
+.ck-student-directory .ck-table th:nth-child(5) { width:12%; }
+.ck-student-directory .ck-table th:nth-child(6) { width:11%; }
+.ck-student-directory .ck-table th:nth-child(7) { width:112px; }
+.ck-student-directory .ck-table th:last-child,
+.ck-student-directory .ck-table td:last-child { text-align:right; }
+.ck-student-directory .ck-student-cell,
+.ck-student-directory .ck-student-cell > div { min-width:0; }
+.ck-student-directory .ck-table-link,
+.ck-student-directory .ts {
+  display:block;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.ck-student-directory .ck-mini-progress-cell { min-width:0; }
+.ck-student-directory .ck-mini-progress { width:100%; max-width:100px; }
 .ck-student-directory .ck-actions-inline { flex-wrap:nowrap; justify-content:flex-end; }
 .ck-student-delete-inline:hover:not(:disabled) { color:var(--re); background:var(--re1); border-color:#f0c5c0; }
 .ck-student-detail-drawer {
@@ -1244,6 +1288,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-import-filter-tabs button.on span { color:#dcece4; }
 
 @media (max-width:1000px) {
+  .ck-students-toolbar { grid-template-columns:1fr; }
+  .ck-students-toolbar .ck-card-inline-filters {
+    grid-template-columns:auto repeat(3,minmax(120px,1fr));
+    width:100%;
+  }
   .ck-student-kpi-band { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .ck-student-kpi-band > div:nth-child(2) { border-right:0; }
   .ck-student-kpi-band > div:nth-child(-n+2) { border-bottom:1px solid var(--border); }
@@ -1260,6 +1309,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   .ck-student-search-row { grid-template-columns:minmax(0,1fr) auto; }
   .ck-card-inline-filters { width:100%; }
   .ck-card-inline-filters select { flex:1 1 130px; min-width:0; }
+  .ck-students-toolbar .ck-card-inline-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .ck-students-toolbar .ck-card-inline-filters .ck-actions-inline { grid-column:1 / -1; }
+  .ck-students-toolbar .ck-card-inline-filters select:last-child { grid-column:1 / -1; }
   .ck-student-detail-drawer { width:100vw; margin:-28px -16px; }
   .ck-admission-layout { grid-template-columns:1fr; }
   .ck-admission-rail {

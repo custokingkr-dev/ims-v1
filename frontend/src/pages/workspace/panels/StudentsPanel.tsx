@@ -663,9 +663,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               ))}
             </select>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--ink3)', marginLeft: 'auto', flexShrink: 0 }}>
-            {`${studentsView.filteredCount ?? studentsView.items?.length ?? 0} ${studentListMode === 'archived' ? 'archived' : 'students'}`}
-          </div>
         </div>
 
         <div className="ck-student-directory-head">
