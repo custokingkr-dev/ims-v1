@@ -68,6 +68,8 @@ student:
   read-token: ${STUDENT_READ_TOKEN:}
   db:
     schema: ${STUDENT_DB_SCHEMA:student}
+  photo-import:
+    drive-enabled: ${STUDENT_PHOTO_IMPORT_DRIVE_ENABLED:false}
   photo:
     # Private GCS bucket for student photos; empty locally/in tests (feature degrades gracefully).
     bucket: ${STUDENT_PHOTO_BUCKET:}

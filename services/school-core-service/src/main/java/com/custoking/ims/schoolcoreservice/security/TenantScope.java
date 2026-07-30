@@ -47,6 +47,29 @@ public final class TenantScope {
         return resolveSchoolId(requested);
     }
 
+    /**
+     * Resolve a school for an Operations/Superadmin write. The school is always explicit:
+     * Operations is restricted to its assigned set and Superadmin may choose any school.
+     */
+    public static Long resolveOperationsWriteScope(Long requested) {
+        TenantContext ctx = TenantContext.get();
+        requireOperationsOrSuperAdmin();
+        if (requested == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
+        }
+        if (ctx.isOperations() && !ctx.operatorSchools().contains(requested)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "school not in operator scope");
+        }
+        return requested;
+    }
+
+    public static void requireOperationsOrSuperAdmin() {
+        TenantContext ctx = TenantContext.get();
+        if (!ctx.isSuperAdmin() && !ctx.isOperations()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "operations or superadmin role required");
+        }
+    }
+
     public static void requireSuperAdmin() {
         if (!TenantContext.get().isSuperAdmin()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "superadmin required");

@@ -177,7 +177,7 @@ steps:
         # Publishes to the SHARED reporting-events topic (same one billing uses); reporting's existing
         # subscription routes by eventType. With _DOMAIN_MIN_INSTANCES=0 the relay only polls while
         # the service is awake; set _DOMAIN_MIN_INSTANCES=1 when real-time relay latency matters.
-        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "OTEL_SERVICE_NAME=school-core-service,SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
+        deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "OTEL_SERVICE_NAME=school-core-service,SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV},STUDENT_PHOTO_IMPORT_DRIVE_ENABLED=true,SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
           "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
 
         # identity calls tenant-school directly; that domain now lives in school-core (env-suffixed URL).

@@ -29,7 +29,7 @@ const CORS_MAX_AGE = process.env.GATEWAY_CORS_MAX_AGE || '600';
 
 // Security response headers (overridable so deployments can tune the CSP for the SPA).
 const CSP = process.env.GATEWAY_CSP
-  || "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+  || "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
   + "font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
   + "frame-ancestors 'none'";
 const HSTS = process.env.GATEWAY_HSTS || 'max-age=63072000; includeSubDomains; preload';
@@ -111,6 +111,8 @@ const routes = [
   route('student', '/api/v1/students'),
   route('student', '/api/v1/workspace/students'),
   route('student', '/api/v1/student-review-items/'),
+  route('student', '/api/v1/student-photo-imports/'),
+  route('student', '/api/v1/student-photo-imports'),
   route('firefighting', '/api/v1/workspace/firefighting'),
   route('tenant', '/api/v1/workspace/staff'),
   route('tenant', '/api/v1/timetable/'),
