@@ -425,7 +425,7 @@ export function BulkImportPanel({
       title="Bulk import"
       subtitle="Validate a spreadsheet before adding students to the school"
       actions={(
-        <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" onClick={() => void downloadImportTemplate()}>
+        <button className="ck-btn ck-btn-ghost ck-icon-label ck-student-workflow-action" type="button" onClick={() => void downloadImportTemplate()}>
           <FileDown size={15} aria-hidden="true" />Download template
         </button>
       )}

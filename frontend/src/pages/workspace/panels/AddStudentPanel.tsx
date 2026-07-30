@@ -228,7 +228,7 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       title="Add student"
       subtitle="Create a complete, reliable student record for the current school"
       actions={canImportStudents ? (
-        <button className="ck-btn ck-btn-ghost ck-icon-label" onClick={() => setPanel('bulkimport')}>
+        <button className="ck-btn ck-btn-ghost ck-icon-label ck-student-workflow-action" onClick={() => setPanel('bulkimport')}>
           <FileSpreadsheet size={15} aria-hidden="true" />Add many students
         </button>
       ) : null}
