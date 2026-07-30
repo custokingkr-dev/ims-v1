@@ -136,8 +136,11 @@ export interface WorkspaceDashboard {
   sections: number;
   attendancePercent: number;
   attendancePresent: number;
-  feeCollectedLakh: string;
-  feeTargetLakh: string;
+  attendanceSubmittedSections?: number;
+  attendanceState?: 'NOT_STARTED' | 'PARTIAL' | 'SUBMITTED';
+  feeCollectedLakh: number | string;
+  feeTargetLakh: number | string;
+  feesConfigured?: boolean;
   feeOverdueCount: number;
   firefightingActive: number;
   pendingApprovals: number;

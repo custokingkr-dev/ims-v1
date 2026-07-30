@@ -266,6 +266,12 @@ public class ReportingReadRepository {
         return result;
     }
 
+    public Map<String, Object> workspaceDashboardSummary(Long schoolId) {
+        LinkedHashMap<String, Object> result = new LinkedHashMap<>();
+        addWorkspaceDashboardSummary(result, schoolId);
+        return result;
+    }
+
     private void addWorkspaceDashboardSummary(Map<String, Object> result, Long schoolId) {
         String yearId = currentAcademicYearId(schoolId);
         int academicYearStartMonth = schoolYearStartMonth(schoolId, "academic_year_start_month");
@@ -289,10 +295,17 @@ public class ReportingReadRepository {
                 : count("SELECT count(*) FROM reporting.dim_student WHERE school_id = :schoolId AND active IS DISTINCT FROM false", schoolId);
         long sections = schoolId == null
                 ? count("SELECT count(*) FROM reporting.dim_section WHERE active IS DISTINCT FROM false")
-                : count("SELECT count(*) FROM reporting.dim_section WHERE school_id = :schoolId AND active IS DISTINCT FROM false", schoolId);
+                : count("""
+                        SELECT count(DISTINCT section_id)
+                        FROM reporting.dim_student
+                        WHERE school_id = :schoolId
+                          AND active IS DISTINCT FROM false
+                          AND section_id IS NOT NULL
+                        """, schoolId);
 
         long attendancePresent = 0L;
         long attendanceTotal = 0L;
+        long attendanceSubmittedSections = 0L;
         long feeCollected = 0L;
         long feeTarget = 0L;
         long feeOverdueCount = 0L;
@@ -317,6 +330,12 @@ public class ReportingReadRepository {
                         WHERE attendance_date = CURRENT_DATE
                           AND academic_year_id = :yearId
                         """, "yearId", yearId);
+                attendanceSubmittedSections = count("""
+                        SELECT count(DISTINCT section_id)
+                        FROM reporting.fact_attendance_daily
+                        WHERE attendance_date = CURRENT_DATE
+                          AND academic_year_id = :yearId
+                        """, yearId);
                 feeCollected = countAmount("""
                         SELECT COALESCE(SUM(p.amount), 0)
                         FROM reporting.fact_payment p
@@ -349,6 +368,13 @@ public class ReportingReadRepository {
                           AND academic_year_id = :yearId
                           AND school_id = :schoolId
                         """, yearId, schoolId);
+                attendanceSubmittedSections = count("""
+                        SELECT count(DISTINCT section_id)
+                        FROM reporting.fact_attendance_daily
+                        WHERE attendance_date = CURRENT_DATE
+                          AND academic_year_id = :yearId
+                          AND school_id = :schoolId
+                        """, yearId, schoolId);
                 feeCollected = countAmount("""
                         SELECT COALESCE(SUM(p.amount), 0)
                         FROM reporting.fact_payment p
@@ -373,6 +399,9 @@ public class ReportingReadRepository {
         }
 
         long attendancePercent = attendanceTotal == 0 ? 0 : Math.round(attendancePresent * 100.0 / attendanceTotal);
+        String attendanceState = attendanceSubmittedSections == 0
+                ? "NOT_STARTED"
+                : attendanceSubmittedSections < sections ? "PARTIAL" : "SUBMITTED";
         result.put("schoolName", schoolName);
         result.put("schoolMeta", academicYearLabel);
         result.put("academicYearStartMonth", academicYearStartMonth);
@@ -381,6 +410,11 @@ public class ReportingReadRepository {
         result.put("sections", sections);
         result.put("attendancePercent", attendancePercent);
         result.put("attendancePresent", attendancePresent);
+        result.put("attendanceSubmittedSections", attendanceSubmittedSections);
+        result.put("attendanceState", attendanceState);
+        result.put("feeCollectedPaise", feeCollected);
+        result.put("feeTargetPaise", feeTarget);
+        result.put("feesConfigured", feeTarget > 0);
         result.put("feeCollectedLakh", lakh(feeCollected));
         result.put("feeTargetLakh", lakh(feeTarget));
         result.put("feeOverdueCount", feeOverdueCount);
@@ -871,12 +905,14 @@ public class ReportingReadRepository {
             return row("schoolId", null, "scope", "SCHOOL", "generatedAt", OffsetDateTime.now(),
                     "kpis", List.of(), "criticalAlerts", List.of());
         }
-        long feesPaid = countAmount("""
-                SELECT COALESCE(SUM(amount), 0)
-                FROM reporting.fact_payment
-                WHERE school_id = :schoolId
-                """, schoolId);
         String yearId = currentAcademicYearId(schoolId);
+        long feesPaid = yearId == null ? 0L : countAmount("""
+                SELECT COALESCE(SUM(p.amount), 0)
+                FROM reporting.fact_payment p
+                JOIN reporting.fact_fee_assignment fa ON fa.id = p.assignment_id
+                WHERE p.school_id = :schoolId
+                  AND fa.academic_year_id = :yearId
+                """, yearId, schoolId);
         long overdueCount = yearId == null ? 0L : count("""
                 SELECT count(*)
                 FROM reporting.fact_fee_assignment

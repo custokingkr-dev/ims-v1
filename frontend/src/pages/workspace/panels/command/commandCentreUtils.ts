@@ -54,27 +54,30 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
       ? `₹${ws.dashboard.feeCollectedLakh}L`
       : null;
 
-  cards.push({
-    id: 'cc-fee-collection',
-    module: 'fees',
-    urgency: 'medium',
-    confidence: 88,
-    code: 'FEES-COLLECTION',
-    title: collectedLakh
-      ? `${collectedLakh} collected this term`
-      : 'Review today\'s fee collections',
-    why: progressPct != null
-      ? `${progressPct}% of term target collected. Review daily breakdown and download the summary.`
-      : 'Track fee collection progress and download the summary report for review.',
-    impact: target > 0
-      ? `Target: ₹${(target / 10_000_000).toFixed(1)}L · ${progressPct}% done`
-      : 'Collection summary available',
-    state: 'Active collection period',
-    cta: 'Review collections',
-    amount: collected,
-    cta2: 'Download summary',
-    cta2PolCode: 'FEE_DOWNLOAD',
-  });
+  const feesConfigured = ws.dashboard.feesConfigured ?? target > 0;
+  if (feesConfigured || collected > 0) {
+    cards.push({
+      id: 'cc-fee-collection',
+      module: 'fees',
+      urgency: 'medium',
+      confidence: 88,
+      code: 'FEES-COLLECTION',
+      title: collectedLakh
+        ? `${collectedLakh} collected this term`
+        : 'Review today\'s fee collections',
+      why: progressPct != null
+        ? `${progressPct}% of term target collected. Review daily breakdown and download the summary.`
+        : 'Track fee collection progress and download the summary report for review.',
+      impact: target > 0
+        ? `Target: ₹${(target / 10_000_000).toFixed(1)}L · ${progressPct}% done`
+        : 'Collection summary available',
+      state: 'Active collection period',
+      cta: 'Review collections',
+      amount: collected,
+      cta2: 'Download summary',
+      cta2PolCode: 'FEE_DOWNLOAD',
+    });
+  }
 
   // ── 3. Incomplete Student Profiles ────────────────────────────────────────
   // Workspace does not carry profile-completeness counts — card omitted (no real source).
@@ -179,7 +182,9 @@ export function deriveCommandCentreCards(ws: WorkspaceData): CommandCentreCard[]
 
   // ── 10. Low Attendance Alert (conditional) ────────────────────────────────
   const attendancePct = ws.dashboard.attendancePercent ?? 100;
-  if (attendancePct < 88) {
+  const attendanceStarted = (ws.dashboard.attendanceState
+    ?? (ws.dashboard.attendanceSubmittedSections ? 'SUBMITTED' : 'NOT_STARTED')) !== 'NOT_STARTED';
+  if (attendanceStarted && attendancePct < 88) {
     cards.push({
       id: 'cc-attendance-low',
       module: 'attendance',

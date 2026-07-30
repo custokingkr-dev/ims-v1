@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 import { usePermissions } from '../../../hooks/usePermissions';
 import api from '../../../services/api';
@@ -196,35 +197,8 @@ function mapBackendBroadcast(b: BackendBroadcast): Broadcast {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Inline SVG helpers (no library — pure <svg>)
+// Confidence visualization
 // ─────────────────────────────────────────────────────────────────────────────
-
-function Sparkline({ data, color }: { data: number[]; color: string }) {
-  const W = 84, H = 26;
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const pts = data.map((d, i) => [
-    (i / (data.length - 1)) * W,
-    H - ((d - min) / range) * (H - 4) - 2,
-  ] as [number, number]);
-  const pathD = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
-  const last = pts[pts.length - 1];
-  const gradId = `sg-${color.replace('#', '')}`;
-  return (
-    <svg width={W} height={H} aria-hidden="true" style={{ display: 'block', flexShrink: 0 }}>
-      <defs>
-        <linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={`${pathD} L${W},${H} L0,${H} Z`} fill={`url(#${gradId})`} />
-      <path d={pathD} fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={last[0]} cy={last[1]} r="2.3" fill={color} />
-    </svg>
-  );
-}
 
 function ConfidenceRing({ pct, module: mod }: { pct: number; module: ActionModule }) {
   const SIZE = 40;
@@ -270,44 +244,53 @@ interface KpiDef {
   value: string;
   unit: string;
   sub: string;
-  delta: number;
-  deltaInvertBad: boolean; // true = higher delta is bad (e.g. defaulters)
+  status: string;
+  tone: 'ok' | 'warn' | 'neutral';
   module: ActionModule;
-  spark: number[] | null;
   panelKey: PanelKey;
 }
 
 function buildKpis(d: WorkspaceData['dashboard'], moduleAccess: DashboardModuleAccess): KpiDef[] {
+  const attendanceState = d.attendanceState
+    ?? (d.attendanceSubmittedSections ? 'SUBMITTED' : 'NOT_STARTED');
+  const submittedSections = d.attendanceSubmittedSections ?? 0;
+  const feesConfigured = d.feesConfigured ?? Number(d.feeTargetLakh) > 0;
   const kpis: KpiDef[] = [
     {
       id: 'students', label: 'Total Students',
-      value: String(d.students), unit: '', sub: `${d.sections} sections`,
-      delta: 3, deltaInvertBad: false, module: 'students',
-      spark: null,
+      value: String(d.students), unit: '', sub: `${d.sections} active ${d.sections === 1 ? 'section' : 'sections'}`,
+      status: 'Enrolled', tone: 'neutral', module: 'students',
       panelKey: 'students',
     },
     {
       id: 'attendance', label: 'Attendance Today',
-      value: `${d.attendancePercent}`, unit: '%',
-      sub: `${d.attendancePresent} / ${d.students} present`,
-      delta: -2.1, deltaInvertBad: false, module: 'attendance',
-      spark: null,
+      value: attendanceState === 'NOT_STARTED' ? 'Pending' : `${d.attendancePercent}`,
+      unit: attendanceState === 'NOT_STARTED' ? '' : '%',
+      sub: attendanceState === 'NOT_STARTED'
+        ? 'Daily register not submitted'
+        : `${d.attendancePresent} present · ${submittedSections}/${d.sections} sections`,
+      status: attendanceState === 'SUBMITTED' ? 'Submitted' : attendanceState === 'PARTIAL' ? 'In progress' : 'Not started',
+      tone: attendanceState === 'SUBMITTED' ? 'ok' : 'warn',
+      module: 'attendance',
       panelKey: 'attendance',
     },
     {
       id: 'fees', label: 'Fees Collected',
-      value: `₹${d.feeCollectedLakh}L`, unit: '',
-      sub: `of ₹${d.feeTargetLakh}L this term`,
-      delta: 12.4, deltaInvertBad: false, module: 'fees',
-      spark: null,
+      value: feesConfigured ? `₹${d.feeCollectedLakh}L` : 'Not set',
+      unit: '',
+      sub: feesConfigured ? `of ₹${d.feeTargetLakh}L this academic year` : 'No active fee target',
+      status: d.feeOverdueCount > 0 ? `${d.feeOverdueCount} overdue` : feesConfigured ? 'On track' : 'Setup needed',
+      tone: d.feeOverdueCount > 0 || !feesConfigured ? 'warn' : 'ok',
+      module: 'fees',
       panelKey: 'fees',
     },
     {
       id: 'firefighting', label: 'Urgent Procurement',
       value: String(d.firefightingActive), unit: '',
       sub: `${d.pendingApprovals} need approval`,
-      delta: d.pendingApprovals, deltaInvertBad: true, module: 'firefighting',
-      spark: null,
+      status: d.pendingApprovals > 0 ? 'Needs review' : 'Clear',
+      tone: d.pendingApprovals > 0 ? 'warn' : 'ok',
+      module: 'firefighting',
       panelKey: 'ff-dashboard',
     },
   ];
@@ -332,9 +315,17 @@ function GreetingHeader({
   const d = workspace.dashboard;
   const summaryParts: string[] = [];
   if (moduleAccess.erp) {
-    if (d.feeOverdueCount > 0) summaryParts.push(`${d.feeOverdueCount} students have overdue fees`);
     summaryParts.push(`${d.students} students enrolled`);
-    summaryParts.push(`${d.attendancePercent}% attendance today`);
+    if (d.attendanceState === 'NOT_STARTED' || !d.attendanceSubmittedSections) {
+      summaryParts.push('attendance is awaiting submission');
+    } else {
+      summaryParts.push(`${d.attendancePercent}% attendance today`);
+    }
+    if (d.feesConfigured ?? Number(d.feeTargetLakh) > 0) {
+      summaryParts.push(`${d.feeOverdueCount} fee accounts overdue`);
+    } else {
+      summaryParts.push('fee target is not configured');
+    }
   }
   if (moduleAccess.supplyOs) {
     summaryParts.push(`${d.pendingApprovals} urgent procurement approvals pending`);
@@ -348,15 +339,12 @@ function GreetingHeader({
       <header className="ck-command-header">
         <div>
           <div className="ck-command-brand">
-            <span className="ck-command-brand-name">Custoking</span>
+            <span className="ck-command-brand-name">{greeting(h)}</span>
             <span className="ck-command-live-badge">
-              <span className="ck-command-live-dot" />
-              {workspace.school.name} · Live
+              {workspace.school.meta}
             </span>
           </div>
-          <h1 className="ck-command-title">
-            {greeting(h)}, <em>Command Center</em>
-          </h1>
+          <h1 className="ck-command-title">School <em>dashboard</em></h1>
           <p className="ck-command-subtitle">
             {summary}
           </p>
@@ -402,19 +390,10 @@ function PulseKpis({
 }) {
   const kpis = buildKpis(workspace.dashboard, moduleAccess);
   if (kpis.length === 0) return null;
-  // Color map for sparkline — maps to CSS var literal values
-  const SPARK_COLORS: Record<ActionModule, string> = {
-    fees: '#1a6840', students: '#1a4fa8', supply: '#5b2d8a',
-    firefighting: '#c0312b', attendance: '#b35c00',
-  };
 
   return (
     <div className="ck-command-kpis">
       {kpis.map((k, i) => {
-        const up = k.delta > 0;
-        const deltaClass = k.deltaInvertBad
-          ? (up ? 'up-bad' : 'down-good')
-          : (up ? 'up' : 'down');
         return (
           <button
             key={k.id}
@@ -425,7 +404,7 @@ function PulseKpis({
           >
             <div className="ck-command-kpi-top">
               <span className="ck-command-kpi-label">{k.label}</span>
-              {k.spark && k.spark.length >= 2 && <Sparkline data={k.spark} color={SPARK_COLORS[k.module]} />}
+              <span className={`ck-command-kpi-status ${k.tone}`}>{k.status}</span>
             </div>
             <div className="ck-command-kpi-value-row">
               <span className="ck-command-kpi-value">{k.value}</span>
@@ -433,9 +412,7 @@ function PulseKpis({
             </div>
             <div className="ck-command-kpi-bottom">
               <span className="ck-command-kpi-sub">{k.sub}</span>
-              <span className={`ck-command-kpi-delta ${deltaClass}`}>
-                {up ? '▲' : '▼'} {Math.abs(k.delta)}{typeof k.delta === 'number' && k.delta % 1 !== 0 ? '%' : ''}
-              </span>
+              <ArrowUpRight className="ck-command-kpi-link" size={16} aria-hidden="true" />
             </div>
           </button>
         );
@@ -470,9 +447,9 @@ function ActionInsightsSection({
     <section>
       <div className="ck-command-section-head">
         <h2 className="ck-command-section-title">Action Insights</h2>
-        <span className="ck-command-ai-badge">LIVE</span>
+        <span className="ck-command-ai-badge">CURRENT</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
+      <div className="ck-command-insights-grid">
         {moduleAccess.erp && (
           <>
         <ActionInsightCard
@@ -1018,6 +995,20 @@ function ToastBanner({ toast }: { toast: Toast }) {
   );
 }
 
+function DashboardLoadingState() {
+  return (
+    <div className="ck-dashboard-loading" role="status" aria-live="polite">
+      <span className="ck-dashboard-loading-label">Loading current school data...</span>
+      <div className="ck-dashboard-loading-kpis" aria-hidden="true">
+        {[0, 1, 2, 3].map(index => (
+          <span key={index} className="ck-dashboard-loading-kpi" />
+        ))}
+      </div>
+      <div className="ck-dashboard-loading-body" aria-hidden="true" />
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1027,6 +1018,7 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
   // Action insights — structured metrics from /dashboard/command-center
   const [commandCenterMetrics, setCommandCenterMetrics] = useState<DashboardCommandCenterResponse | null>(null);
   const [dataIssues, setDataIssues] = useState<Record<string, string>>({});
+  const [initialLoadsCompleted, setInitialLoadsCompleted] = useState<Set<string>>(() => new Set());
   const setDataIssue = useCallback((key: string, message: string | null) => {
     setDataIssues(current => {
       if (message && current[key] === message) return current;
@@ -1037,6 +1029,14 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       } else {
         delete next[key];
       }
+      return next;
+    });
+  }, []);
+  const markInitialLoadComplete = useCallback((key: string) => {
+    setInitialLoadsCompleted(current => {
+      if (current.has(key)) return current;
+      const next = new Set(current);
+      next.add(key);
       return next;
     });
   }, []);
@@ -1052,9 +1052,12 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       })
       .catch(() => {
         if (!cancelled) setDataIssue('metrics', 'Command-center metrics could not be loaded.');
+      })
+      .finally(() => {
+        if (!cancelled) markInitialLoadComplete('metrics');
       });
     return () => { cancelled = true; };
-  }, [setDataIssue]);
+  }, [markInitialLoadComplete, setDataIssue]);
 
   // Fee Defaulters drawer
   const [showFeeDefaulters, setShowFeeDefaulters] = useState(false);
@@ -1091,9 +1094,12 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
           setActions(derived);
           setDataIssue('actions', 'Live command-center actions could not be loaded; showing workspace-derived actions.');
         }
+      })
+      .finally(() => {
+        if (!cancelled) markInitialLoadComplete('actions');
       });
     return () => { cancelled = true; };
-  }, [workspace, setDataIssue]);
+  }, [workspace, markInitialLoadComplete, setDataIssue]);
 
   // Broadcasts — from backend
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
@@ -1111,9 +1117,12 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
           setBroadcasts([]);
           setDataIssue('broadcasts', 'Broadcast data could not be loaded.');
         }
+      })
+      .finally(() => {
+        if (!cancelled) markInitialLoadComplete('broadcasts');
       });
     return () => { cancelled = true; };
-  }, [setDataIssue]);
+  }, [markInitialLoadComplete, setDataIssue]);
 
   // Daily brief — from backend
   const [brief, setBrief] = useState<DailyBriefData | null>(null);
@@ -1128,9 +1137,12 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       })
       .catch(() => {
         if (!cancelled) setDataIssue('brief', 'Daily brief could not be loaded.');
+      })
+      .finally(() => {
+        if (!cancelled) markInitialLoadComplete('brief');
       });
     return () => { cancelled = true; };
-  }, [setDataIssue]);
+  }, [markInitialLoadComplete, setDataIssue]);
 
   // Feed — initial fetch from backend, then poll every 15s for new items
   const [feed, setFeed] = useState<FeedItem[]>([]);
@@ -1154,9 +1166,12 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       })
       .catch(() => {
         if (!cancelled) setDataIssue('feed', 'Live signal feed could not be loaded.');
+      })
+      .finally(() => {
+        if (!cancelled) markInitialLoadComplete('feed');
       });
     return () => { cancelled = true; };
-  }, [setDataIssue]);
+  }, [markInitialLoadComplete, setDataIssue]);
 
   // Poll backend feed every 15s, prepend genuinely new items
   useEffect(() => {
@@ -1271,6 +1286,21 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
   const visibleFeed = feed.filter((f) => canAccessDashboardModule(f.module, moduleAccess));
   const criticalAction = dashboardActions.find(a => a.urgency === 'critical') ?? null;
   const dataIssueMessages = Object.values(dataIssues);
+  const dashboardReady = initialLoadsCompleted.size === 5;
+
+  if (!dashboardReady) {
+    return (
+      <>
+        <GreetingHeader
+          workspace={workspace}
+          criticalAction={null}
+          moduleAccess={moduleAccess}
+          onAcceptCritical={() => undefined}
+        />
+        <DashboardLoadingState />
+      </>
+    );
+  }
 
   return (
     <>
