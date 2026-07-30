@@ -135,8 +135,7 @@ export const ADMIN_NAV_SECTIONS: WorkspaceNavSection[] = [
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
       { key: 'timetable',  label: 'Timetable',   icon: '📅', module: 'ERP' },
-      { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'ERP' },
-      { key: 'feestructure', label: 'Fee Configuration', icon: '📐', module: 'ERP' },
+      { key: 'fees',       label: 'Fee management', icon: '₹', module: 'ERP' },
       { key: 'staff',      label: 'Staff & HR',            icon: '👥', module: 'ERP' },
       { key: 'classsetup', label: 'Class & section setup', icon: '🏫', module: 'ERP' },
     ],
@@ -170,8 +169,7 @@ export const ACCOUNTANT_NAV_SECTIONS: WorkspaceNavSection[] = [
   {
     title: 'Finance',
     items: [
-      { key: 'fees',         label: 'Fee Collections',   icon: '₹', module: 'ERP' },
-      { key: 'feestructure', label: 'Fee Configuration', icon: '▦', module: 'ERP' },
+      { key: 'fees',   label: 'Fee management', icon: '₹', module: 'ERP' },
       { key: 'orders',       label: 'School Orders',     icon: '□', module: 'SUPPLY_OS' },
     ],
   },
@@ -257,7 +255,7 @@ export const SUPERADMIN_NAV_SECTIONS: Array<{
 export const PANEL_TITLES: Record<PanelKey, string> = {
   home: 'Dashboard',
   students: 'Students',
-  fees: 'Fee Collections',
+  fees: 'Fee management',
   feestructure: 'Fee Configuration',
   attendance: 'Attendance',
   timetable: 'Timetable',

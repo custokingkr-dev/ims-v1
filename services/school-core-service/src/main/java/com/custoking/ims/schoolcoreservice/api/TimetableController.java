@@ -240,7 +240,9 @@ public class TimetableController {
         Long schoolId = resolveOwnErpSchoolId();
         String classId = requireText(request.get("classId"), "classId is required");
         String subjectName = requireText(request.get("subjectName"), "subjectName is required");
-        String yearId = timetable.activeYearId(schoolId);
+        String yearId = request.get("yearId") == null
+                ? timetable.activeYearId(schoolId)
+                : String.valueOf(request.get("yearId"));
         try {
             return timetable.addSubject(schoolId, classId, yearId, subjectName);
         } catch (YearLockedException ex) {
@@ -260,6 +262,30 @@ public class TimetableController {
         Long schoolId = resolveOwnErpSchoolId();
         try {
             timetable.deleteSubject(schoolId, id);
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @PutMapping("/api/v1/timetable/class-subjects/{id}")
+    public Map<String, Object> updateSubjectPolicy(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @PathVariable("id") long id,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = resolveOwnErpSchoolId();
+        try {
+            return timetable.updateSubjectPolicy(
+                    schoolId,
+                    id,
+                    intValue(request.get("weeklyPeriods")),
+                    request.get("preferredPartOfDay") == null ? "ANY" : String.valueOf(request.get("preferredPartOfDay")),
+                    request.get("requiredRoomType") == null ? null : String.valueOf(request.get("requiredRoomType")),
+                    booleanValue(request.get("doublePeriod")));
         } catch (YearLockedException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
@@ -300,8 +326,11 @@ public class TimetableController {
         Long teacherId = request.get("teacherId") == null ? null
                 : longValue(request.get("teacherId"),
                         () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "teacherId is invalid"));
+        Long roomId = request.get("roomId") == null ? null
+                : longValue(request.get("roomId"),
+                        () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "roomId is invalid"));
         try {
-            return timetable.upsertEntry(schoolId, sectionId, day, periodId, subjectName, teacherId);
+            return timetable.upsertEntry(schoolId, sectionId, day, periodId, subjectName, teacherId, roomId);
         } catch (YearLockedException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
@@ -337,6 +366,10 @@ public class TimetableController {
                 longValue(row.get("teacherId"),
                         () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "teacherId is invalid"));
             }
+            if (row.get("roomId") != null) {
+                longValue(row.get("roomId"),
+                        () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "roomId is invalid"));
+            }
             entries.add(row);
         }
         try {
@@ -362,6 +395,124 @@ public class TimetableController {
             timetable.deleteEntry(schoolId, sectionId, day, periodId);
         } catch (YearLockedException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        }
+    }
+
+    @GetMapping("/api/v1/timetable/rooms")
+    public List<Map<String, Object>> rooms(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam) {
+        requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
+        return timetable.rooms(resolveErpSchoolId(schoolIdParam));
+    }
+
+    @PostMapping("/api/v1/timetable/rooms")
+    public Map<String, Object> createRoom(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
+        TenantScope.requireSchoolAdmin();
+        try {
+            return timetable.createRoom(
+                    resolveOwnErpSchoolId(),
+                    requireText(request.get("name"), "name is required"),
+                    request.get("roomType") == null ? "CLASSROOM" : String.valueOf(request.get("roomType")),
+                    intValue(request.get("capacity")));
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @GetMapping("/api/v1/timetable/teacher-availability")
+    public List<Map<String, Object>> teacherAvailability(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestParam(value = "yearId", required = false) String yearIdParam,
+            @RequestParam(value = "teacherId", required = false) Long teacherId) {
+        requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
+        String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
+        return timetable.teacherAvailability(schoolId, yearId, teacherId);
+    }
+
+    @PutMapping("/api/v1/timetable/teacher-availability")
+    public Map<String, Object> saveTeacherAvailability(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = resolveOwnErpSchoolId();
+        String yearId = request.get("yearId") == null
+                ? timetable.activeYearId(schoolId)
+                : String.valueOf(request.get("yearId"));
+        try {
+            return timetable.saveTeacherAvailability(
+                    schoolId,
+                    yearId,
+                    longValue(request.get("teacherId"),
+                            () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "teacherId is required")),
+                    requireText(request.get("day"), "day is required"),
+                    longValue(request.get("periodId"),
+                            () -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "periodId is required")),
+                    !request.containsKey("available") || booleanValue(request.get("available")),
+                    request.get("note") == null ? null : String.valueOf(request.get("note")));
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
+    }
+
+    @GetMapping("/api/v1/timetable/overview")
+    public List<Map<String, Object>> overview(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestParam(value = "yearId", required = false) String yearIdParam) {
+        requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
+        String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
+        return timetable.overview(schoolId, yearId);
+    }
+
+    @GetMapping("/api/v1/timetable/health")
+    public Map<String, Object> health(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestParam(value = "schoolId", required = false) Long schoolIdParam,
+            @RequestParam(value = "yearId", required = false) String yearIdParam,
+            @RequestParam(value = "sectionId", required = false) String sectionId) {
+        requireToken(token, "tenant-school:read");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_READ);
+        Long schoolId = resolveErpSchoolId(schoolIdParam);
+        String yearId = StringUtils.hasText(yearIdParam) ? yearIdParam : timetable.activeYearId(schoolId);
+        return timetable.health(schoolId, yearId, sectionId);
+    }
+
+    @PostMapping("/api/v1/timetable/publish")
+    public Map<String, Object> publish(
+            @RequestHeader(value = "X-Tenant-School-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "tenant-school:write");
+        TenantScope.requirePermissionIfAuthenticated(TIMETABLE_MANAGE);
+        TenantScope.requireSchoolAdmin();
+        Long schoolId = resolveOwnErpSchoolId();
+        String yearId = request.get("yearId") == null
+                ? timetable.activeYearId(schoolId)
+                : String.valueOf(request.get("yearId"));
+        try {
+            return timetable.publish(
+                    schoolId,
+                    yearId,
+                    TenantContext.get().userId(),
+                    request.get("label") == null ? null : String.valueOf(request.get("label")));
+        } catch (YearLockedException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
     }
 

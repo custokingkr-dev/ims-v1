@@ -14,10 +14,9 @@ import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
 import { HomePanel } from './workspace/panels/HomePanel';
 import { StudentsPanel } from './workspace/panels/StudentsPanel';
-import { FeesPanel } from './workspace/panels/FeesPanel';
-import { FeeStructurePanel } from './workspace/panels/FeeStructurePanel';
+import { FeeModulePanel } from './workspace/panels/FeeModulePanel';
 import { AttendanceModulePanel } from './workspace/panels/AttendanceModulePanel';
-import { TimetableModule } from './workspace/panels/TimetableModule';
+import { TimetableStudioPanel } from './workspace/panels/TimetableStudioPanel';
 import { StaffPanel } from './workspace/panels/StaffPanel';
 import { PlanningPanel } from './workspace/panels/PlanningPanel';
 import { CatalogPanel } from './workspace/panels/CatalogPanel';
@@ -494,9 +493,9 @@ export default function UnifiedWorkspacePage() {
 
           {panelAllowed && panel === 'students' && <StudentsPanel setPanel={setPanel} onRefresh={refresh} />}
 
-          {panelAllowed && panel === 'fees' && <FeesPanel workspace={workspace} onRefresh={refresh} />}
+          {panelAllowed && panel === 'fees' && <FeeModulePanel workspace={workspace} onRefresh={refresh} initialView="overview" />}
 
-          {panelAllowed && panel === 'feestructure' && <FeeStructurePanel onRefresh={refresh} />}
+          {panelAllowed && panel === 'feestructure' && <FeeModulePanel workspace={workspace} onRefresh={refresh} initialView="configuration" />}
 
           {panelAllowed && panel === 'addstudent' && <AddStudentPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canImportStudents={can('student:import')} />}
 
@@ -506,7 +505,7 @@ export default function UnifiedWorkspacePage() {
 
           {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
-          {panelAllowed && panel === 'timetable' && <TimetableModule readOnly={isTeacher} staff={workspace?.staff} />}
+          {panelAllowed && panel === 'timetable' && <TimetableStudioPanel readOnly={isTeacher} staff={workspace?.staff} />}
 
           {panelAllowed && panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
 

@@ -12,6 +12,9 @@ import tools.jackson.databind.ObjectMapper;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -87,5 +90,29 @@ class FeeBandDeleteIntegrationTest {
                 .query(Long.class).single();
         assertThat(bands).isZero();
         assertThat(items).isZero();
+    }
+
+    @Test
+    void publishedBand_revisionClonesConfigurationAndSupersedesAtomically() {
+        Map<String, Object> revision = repo.createBandRevision("band-empty");
+        String revisionId = String.valueOf(revision.get("id"));
+
+        assertThat(revision)
+                .containsEntry("status", "DRAFT")
+                .containsEntry("revision", 2)
+                .containsEntry("supersedesBandId", "band-empty");
+        assertThat((List<?>) revision.get("items")).hasSize(1);
+
+        repo.saveInstallments(revisionId, List.of(Map.of(
+                "label", "Annual",
+                "dueDate", LocalDate.now().plusDays(30).toString(),
+                "sharePercent", 100)));
+        repo.publishBand(revisionId, 99L);
+
+        JdbcClient jdbc = JdbcClient.create(ds);
+        assertThat(jdbc.sql("SELECT status FROM fee.fee_bands WHERE id = 'band-empty'")
+                .query(String.class).single()).isEqualTo("ARCHIVED");
+        assertThat(jdbc.sql("SELECT status FROM fee.fee_bands WHERE id = :id")
+                .param("id", revisionId).query(String.class).single()).isEqualTo("PUBLISHED");
     }
 }

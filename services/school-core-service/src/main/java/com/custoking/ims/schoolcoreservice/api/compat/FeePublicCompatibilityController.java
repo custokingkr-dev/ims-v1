@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -152,6 +153,85 @@ public class FeePublicCompatibilityController {
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireFeeRead(scope);
         return run(() -> fees.matchBand(classId, scope));
+    }
+
+    @PutMapping("/api/v1/fee-structure/band/{id}/installments")
+    public Map<String, Object> saveInstallments(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
+        return run(() -> {
+            Object raw = request.get("installments");
+            if (!(raw instanceof List<?> rows)) {
+                throw new IllegalArgumentException("installments is required");
+            }
+            java.util.ArrayList<Map<String, Object>> installments = new java.util.ArrayList<>();
+            for (Object row : rows) {
+                if (!(row instanceof Map<?, ?> map)) {
+                    throw new IllegalArgumentException("Each installment must be an object");
+                }
+                @SuppressWarnings("unchecked")
+                Map<String, Object> installment = (Map<String, Object>) map;
+                installments.add(installment);
+            }
+            return fees.saveInstallments(id, installments);
+        });
+    }
+
+    @PostMapping("/api/v1/fee-structure/band/{id}/publish")
+    public Map<String, Object> publishBand(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String id) {
+        requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
+        return run(() -> fees.publishBand(id, TenantContext.get().userId()));
+    }
+
+    @PostMapping("/api/v1/fee-structure/band/{id}/revision")
+    public Map<String, Object> createBandRevision(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String id) {
+        requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
+        return run(() -> fees.createBandRevision(id));
+    }
+
+    @GetMapping("/api/v1/fee-structure/discount-rules")
+    public Object discountRules(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "fee:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return runObject(() -> fees.discountRules(scope, academicYearId));
+    }
+
+    @PostMapping("/api/v1/fee-structure/discount-rules")
+    public Map<String, Object> saveDiscountRule(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "fee:read");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
+        requireFeeModule(scope);
+        return run(() -> fees.saveDiscountRule(scope, request));
+    }
+
+    @GetMapping("/api/v1/fee-structure/health")
+    public Map<String, Object> configurationHealth(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "fee:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return run(() -> fees.configurationHealth(scope, academicYearId));
     }
 
     @GetMapping(value = "/api/v1/fee-structure/export", produces = MediaType.APPLICATION_PDF_VALUE)
