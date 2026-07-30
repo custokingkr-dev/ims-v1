@@ -1,7 +1,11 @@
 FROM maven:3.9-eclipse-temurin-25 AS build
 WORKDIR /app
 COPY pom.xml .
-RUN mvn -q dependency:go-offline
+RUN for attempt in 1 2 3; do \
+      mvn -q dependency:go-offline && exit 0; \
+      if [ "$attempt" -eq 3 ]; then exit 1; fi; \
+      sleep $((attempt * 5)); \
+    done
 COPY src ./src
 RUN mvn -q -Dmaven.test.skip=true package
 
