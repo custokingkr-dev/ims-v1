@@ -33,13 +33,15 @@ class TimetableRepositoryIntegrationTest {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
         PG = new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner");
         PG.start();
-        Flyway.configure()
-                .dataSource(PG.getJdbcUrl(), "owner", "owner")
-                .schemas("tenant_school")
-                .defaultSchema("tenant_school")
-                .locations("classpath:db/migration/tenant_school")
-                .load()
-                .migrate();
+        for (String schema : new String[] {"tenant_school", "student"}) {
+            Flyway.configure()
+                    .dataSource(PG.getJdbcUrl(), "owner", "owner")
+                    .schemas(schema)
+                    .defaultSchema(schema)
+                    .locations("classpath:db/migration/" + schema)
+                    .load()
+                    .migrate();
+        }
         dataSource = new DriverManagerDataSource(PG.getJdbcUrl(), "owner", "owner");
         jdbc = JdbcClient.create(dataSource);
         repo = new TimetableRepository(jdbc);
@@ -53,7 +55,11 @@ class TimetableRepositoryIntegrationTest {
     @BeforeEach
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.school_timetable_entries");
+            st.execute("DELETE FROM tenant_school.school_timetable_publications");
+            st.execute("DELETE FROM tenant_school.school_teacher_availability");
+            st.execute("DELETE FROM tenant_school.school_rooms");
             st.execute("DELETE FROM tenant_school.school_class_subjects");
             st.execute("DELETE FROM tenant_school.school_class_bell_map");
             st.execute("DELETE FROM tenant_school.school_bell_periods");
@@ -112,6 +118,20 @@ class TimetableRepositoryIntegrationTest {
         }
         return jdbc.sql("SELECT id FROM tenant_school.staff_members WHERE school_id = :s AND name = :n ORDER BY id DESC LIMIT 1")
                 .param("s", schoolId).param("n", name).query(Long.class).single();
+    }
+
+    private void seedStudent(
+            long id,
+            long schoolId,
+            String sectionId,
+            String classId,
+            String yearId) throws Exception {
+        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("INSERT INTO student.students " +
+                    "(id, admission_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES (" +
+                    id + ", 'ADM-" + id + "', 'Student " + id + "', " + schoolId + ", '" +
+                    classId + "', '" + sectionId + "', '" + yearId + "')");
+        }
     }
 
     @Test
@@ -374,5 +394,146 @@ class TimetableRepositoryIntegrationTest {
         // rather than being silently skipped.
         assertThatThrownBy(() -> repo.upsertEntries(schoolId, sec, entries))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void healthConnectsAvailabilityRoomAndSubjectPlanningRules() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "8");
+        String sectionId = seedSection(schoolId, classId, "8-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        var schedule = repo.createSchedule(schoolId, "Afternoon");
+        long scheduleId = ((Number) schedule.get("id")).longValue();
+        var period = repo.addPeriod(schoolId, scheduleId, "P1", "13:00", "13:45", false, 1);
+        long periodId = ((Number) period.get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, scheduleId);
+        var subject = repo.addSubject(schoolId, classId, year, "Physics");
+        repo.updateSubjectPolicy(
+                schoolId,
+                ((Number) subject.get("id")).longValue(),
+                1,
+                "MORNING",
+                "LAB",
+                true);
+        long teacherId = seedStaff(schoolId, "Physics Teacher");
+        var room = repo.createRoom(schoolId, "Physics Lab", "LAB", 40);
+        long roomId = ((Number) room.get("id")).longValue();
+        repo.upsertEntry(schoolId, sectionId, "Mon", periodId, "Physics", teacherId, roomId);
+        repo.saveTeacherAvailability(schoolId, year, teacherId, "Mon", periodId, false, "Training");
+
+        Map<String, Object> health = repo.health(schoolId, year, null);
+
+        assertThat(health)
+                .containsEntry("unavailableTeachers", 1L)
+                .containsEntry("preferredTimeIssues", 1L)
+                .containsEntry("doublePeriodIssues", 1L)
+                .containsEntry("missingRooms", 0L)
+                .containsEntry("readyToPublish", false);
+    }
+
+    @Test
+    void overlappingBellPatternsConnectTeacherConflictsAndAvailability() throws Exception {
+        long schoolId = seedSchool();
+        String classA = seedClass(schoolId, "8");
+        String classB = seedClass(schoolId, "9");
+        String sectionA = seedSection(schoolId, classA, "8-A");
+        String sectionB = seedSection(schoolId, classB, "9-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        long teacherId = seedStaff(schoolId, "Shared Teacher");
+
+        var scheduleA = repo.createSchedule(schoolId, "Early");
+        var scheduleB = repo.createSchedule(schoolId, "Late");
+        long scheduleAId = ((Number) scheduleA.get("id")).longValue();
+        long scheduleBId = ((Number) scheduleB.get("id")).longValue();
+        long periodA = ((Number) repo.addPeriod(
+                schoolId, scheduleAId, "P1", "08:00", "09:00", false, 1).get("id")).longValue();
+        long periodB = ((Number) repo.addPeriod(
+                schoolId, scheduleBId, "P1", "08:30", "09:30", false, 1).get("id")).longValue();
+        repo.setClassSchedule(schoolId, classA, scheduleAId);
+        repo.setClassSchedule(schoolId, classB, scheduleBId);
+        repo.addSubject(schoolId, classA, year, "Mathematics");
+        repo.addSubject(schoolId, classB, year, "Mathematics");
+
+        repo.upsertEntry(schoolId, sectionA, "Mon", periodA, "Mathematics", teacherId);
+        Map<String, Object> conflicting = repo.upsertEntry(
+                schoolId, sectionB, "Mon", periodB, "Mathematics", teacherId);
+        assertThat(String.valueOf(conflicting.get("conflict"))).contains("8-A");
+
+        repo.saveTeacherAvailability(
+                schoolId, year, teacherId, "Mon", periodA, false, "Department meeting");
+        assertThat(repo.health(schoolId, year, sectionB))
+                .containsEntry("teacherConflicts", 1L)
+                .containsEntry("unavailableTeachers", 1L)
+                .containsEntry("readyToPublish", false);
+    }
+
+    @Test
+    void healthConnectsRoomCapacityToCurrentStudentEnrollment() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "7");
+        String sectionId = seedSection(schoolId, classId, "7-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        long teacherId = seedStaff(schoolId, "Class Teacher");
+        long scheduleId = ((Number) repo.createSchedule(schoolId, "Standard").get("id")).longValue();
+        long periodId = ((Number) repo.addPeriod(
+                schoolId, scheduleId, "P1", "09:00", "09:45", false, 1).get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, scheduleId);
+        repo.addSubject(schoolId, classId, year, "English");
+        long roomId = ((Number) repo.createRoom(schoolId, "Small Room", "classroom", 1)
+                .get("id")).longValue();
+        seedStudent(1001, schoolId, sectionId, classId, year);
+        seedStudent(1002, schoolId, sectionId, classId, year);
+
+        repo.upsertEntry(schoolId, sectionId, "Mon", periodId, "English", teacherId, roomId);
+
+        assertThat(repo.health(schoolId, year, sectionId))
+                .containsEntry("roomCapacityIssues", 1L)
+                .containsEntry("readyToPublish", false);
+    }
+
+    @Test
+    void publicationRejectsUnassignedTeachersAndUnscheduledActiveSections() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "6");
+        String sectionId = seedSection(schoolId, classId, "6-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        long scheduleId = ((Number) repo.createSchedule(schoolId, "Standard").get("id")).longValue();
+        long periodId = ((Number) repo.addPeriod(
+                schoolId, scheduleId, "P1", "09:00", "09:45", false, 1).get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, scheduleId);
+        repo.addSubject(schoolId, classId, year, "English");
+        repo.upsertEntry(schoolId, sectionId, "Mon", periodId, "English", null);
+
+        Map<String, Object> health = repo.health(schoolId, year, null);
+        assertThat(health)
+                .containsEntry("unassignedTeachers", 1L)
+                .containsEntry("unscheduledSections", 1L)
+                .containsEntry("readyToPublish", false);
+        assertThatThrownBy(() -> repo.publish(schoolId, year, 99L, "Invalid timetable"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("hard timetable conflicts");
+    }
+
+    @Test
+    void timetableRejectsUnknownDayAndNormalizesRoomRequirements() throws Exception {
+        long schoolId = seedSchool();
+        String classId = seedClass(schoolId, "5");
+        String sectionId = seedSection(schoolId, classId, "5-A");
+        String year = seedYear(schoolId, "ay_2026_27", true);
+        long scheduleId = ((Number) repo.createSchedule(schoolId, "Standard").get("id")).longValue();
+        long periodId = ((Number) repo.addPeriod(
+                schoolId, scheduleId, "P1", "09:00", "09:45", false, 1).get("id")).longValue();
+        repo.setClassSchedule(schoolId, classId, scheduleId);
+        Map<String, Object> subject = repo.addSubject(schoolId, classId, year, "Science");
+        long subjectId = ((Number) subject.get("id")).longValue();
+        long teacherId = seedStaff(schoolId, "Science Teacher");
+
+        Map<String, Object> updated = repo.updateSubjectPolicy(
+                schoolId, subjectId, 1, "ANY", "lab", false);
+        assertThat(updated.get("requiredRoomType")).isEqualTo("LAB");
+        assertThatThrownBy(() -> repo.upsertEntry(
+                schoolId, sectionId, "Monday", periodId, "Science", teacherId))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Day must be one of");
     }
 }

@@ -68,10 +68,11 @@ class FeeOutboxEmissionIntegrationTest {
                     + academicYear.id() + "', '" + academicYear.label() + "', true)");
             st.execute("INSERT INTO student.students (id, admission_no, full_name, school_id, class_id, section_id, academic_year_id) " +
                     "VALUES (1, 'A-1', 'Test Student', 10, 'c1', 's1', '" + academicYear.id() + "')");
-            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, academic_year_id, school_id) " +
-                    "VALUES ('band-1', 'Band 1', 1, 5, 0.0, '" + academicYear.id() + "', 10)");
-            st.execute("INSERT INTO fee.fee_items(id, name, frequency, amount, band_id, school_id) " +
-                    "VALUES ('item-1', 'Tuition', 'Annual', 500000, 'band-1', 10)");
+            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, active_schedules_csv, academic_year_id, school_id) " +
+                    "VALUES ('band-1', 'Band 1', 1, 5, 0.0, 'Annual,Monthly', '" + academicYear.id() + "', 10)");
+            st.execute("INSERT INTO fee.fee_items(id, name, frequency, amount, optional, band_id, school_id) VALUES " +
+                    "('item-1', 'Tuition', 'Annual', 500000, false, 'band-1', 10), " +
+                    "('item-2', 'Transport', 'Annual', 100000, true, 'band-1', 10)");
         }
     }
 
@@ -104,6 +105,74 @@ class FeeOutboxEmissionIntegrationTest {
         assertThat(rows.get(0).get("schoolId")).isEqualTo(10L);
         String payload = String.valueOf(rows.get(0).get("payload"));
         assertThat(payload).contains("\"studentId\": 1").contains("\"netPayable\": 500000").contains("\"status\": \"Overdue\"");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void assignmentSnapshotsOnlySelectedOptionalFeeHeads() {
+        Map<String, Object> result = repo.assignFeePlan(Map.of(
+                "studentId", 1L,
+                "bandId", "band-1",
+                "schedule", "Annual",
+                "optionalItemIds", java.util.List.of("item-2")));
+        Map<String, Object> assignment = (Map<String, Object>) result.get("assignment");
+
+        assertThat(assignment.get("grossFee")).isEqualTo(600000L);
+        assertThat(assignment.get("basePayable")).isEqualTo(600000L);
+        assertThat(assignment.get("selectedOptionalItemIds")).isEqualTo(java.util.List.of("item-2"));
+        assertThat(jdbc.sql("SELECT gross_fee FROM fee.fee_assignments WHERE id = :id")
+                .param("id", assignment.get("id"))
+                .query(Long.class)
+                .single()).isEqualTo(600000L);
+    }
+
+    @Test
+    void assignmentRejectsScheduleOutsidePublishedPlan() {
+        assertThatThrownBy(() -> repo.assignFeePlan(Map.of(
+                "studentId", 1L, "bandId", "band-1", "schedule", "Quarterly")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not enabled");
+    }
+
+    @Test
+    void assignmentRejectsStudentFromDifferentAcademicYear() {
+        jdbc.sql("UPDATE student.students SET academic_year_id = 'AY-OLD' WHERE id = 1").update();
+
+        assertThatThrownBy(() -> repo.assignFeePlan(Map.of(
+                "studentId", 1L, "bandId", "band-1", "schedule", "Annual")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("different academic year");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void feeDashboardCollectionIsScopedToRequestedAcademicYear() {
+        String currentYear = AcademicCalendar.currentAcademicYear(
+                AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH).id();
+        repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
+        repo.recordPayment(Map.of("studentId", 1L, "amount", 125000L));
+
+        jdbc.sql("""
+                INSERT INTO fee.fee_bands
+                    (id, name, class_from, class_to, discount, academic_year_id, school_id)
+                VALUES ('band-old', 'Old band', 1, 5, 0, 'AY-OLD', 10)
+                """).update();
+        jdbc.sql("""
+                INSERT INTO fee.fee_assignments
+                    (id, band_discount, manual_discount, surcharge, gross_fee, base_payable,
+                     net_payable, paid_amount, student_id, band_id, academic_year_id, version, school_id)
+                VALUES ('assignment-old', 0, 0, 0, 900000, 900000, 900000, 900000,
+                        1, 'band-old', 'AY-OLD', 0, 10)
+                """).update();
+        jdbc.sql("""
+                INSERT INTO fee.payment_records
+                    (id, amount, paid_at, created_at, student_id, assignment_id, version, school_id)
+                VALUES ('payment-old', 900000, now(), now(), 1, 'assignment-old', 0, 10)
+                """).update();
+
+        Map<String, Object> module = repo.feesModule(currentYear, 10L);
+        Map<String, Object> summary = (Map<String, Object>) module.get("summary");
+        assertThat(summary.get("collected")).isEqualTo(125000L);
     }
 
     @Test
