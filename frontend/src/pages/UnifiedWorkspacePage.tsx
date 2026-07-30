@@ -53,9 +53,7 @@ export default function UnifiedWorkspacePage() {
     ? 'orders'
     : isZoneAdmin
       ? 'za-overview'
-      : isOperations || isTeacher || isViewer || isAccountant
-        ? 'home'
-        : 'catalog';
+      : 'home';
 
   // ── Core workspace state ────────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
@@ -73,22 +71,9 @@ export default function UnifiedWorkspacePage() {
     ? { schoolId: user.branchId }
     : undefined;
 
-  // activeModules: the school's active module entitlements. Platform admins bypass this.
-  // Fail closed: if entitlements cannot be loaded, school-scoped module features stay hidden.
-  const [activeModules, setActiveModules] = useState<Set<string>>(new Set());
-  const [refreshNonce, setRefreshNonce] = useState(0);
-  useEffect(() => {
-    if (isPlatformAdmin) return;
-    if (!user?.branchId) {
-      setActiveModules(new Set());
-      return;
-    }
-    api.get(`/schools/${user.branchId}/modules/active`)
-      .then((res) => setActiveModules(withDerivedModuleGroups(
-        (Array.isArray(res.data) ? res.data : []).map((m: any) => String(m.moduleCode).toUpperCase())
-      )))
-      .catch(() => setActiveModules(new Set()));
-  }, [user?.branchId, isPlatformAdmin, refreshNonce]);
+  // null means entitlements are still loading. Keeping that distinct from an
+  // entitled-to-nothing school prevents the navigation from collapsing during login.
+  const [activeModules, setActiveModules] = useState<Set<string> | null>(null);
 
   // ── Supply order state (AdminOrdersPanel and SaOrderApprovalsPanel need page-level state) ──
   // liveOrders holds the full PageResponse envelope { content, page, size, totalElements, totalPages, last }
@@ -132,8 +117,22 @@ export default function UnifiedWorkspacePage() {
   const refresh = async () => {
     try {
       setWorkspaceError('');
-      const res = await api.get('/workspace', { params: schoolScopedParams });
-      setWorkspace(res.data);
+      if (!isPlatformAdmin && !user?.branchId) {
+        throw new Error('This account is not assigned to a school.');
+      }
+      const workspaceRequest = api.get('/workspace', { params: schoolScopedParams });
+      const modulesRequest = isPlatformAdmin
+        ? Promise.resolve<string[]>([])
+        : api.get(`/schools/${user!.branchId}/modules/active`).then(res =>
+            (Array.isArray(res.data) ? res.data : []).map((module: any) =>
+              String(module.moduleCode).toUpperCase()
+            )
+          );
+      const [workspaceResponse, moduleCodes] = await Promise.all([workspaceRequest, modulesRequest]);
+      setWorkspace(workspaceResponse.data);
+      if (!isPlatformAdmin) {
+        setActiveModules(withDerivedModuleGroups(moduleCodes));
+      }
     } catch (error: any) {
       const message = error?.response?.data?.message || error?.message || 'Unable to load workspace.';
       if (['Invalid access token', 'Missing bearer token', 'Invalid refresh token'].includes(message)) {
@@ -143,7 +142,6 @@ export default function UnifiedWorkspacePage() {
       }
       setWorkspaceError(message);
     }
-    setRefreshNonce(n => n + 1);
   };
 
   // ── Supply order loaders and actions ───────────────────────────────────────
@@ -306,9 +304,11 @@ export default function UnifiedWorkspacePage() {
     const required = panelPermissionAny(key);
     return !required || canAny(required);
   };
-  const moduleFilteredSections = isPlatformAdmin
+  const entitlementsReady = isPlatformAdmin || activeModules !== null;
+  const resolvedActiveModules = activeModules ?? new Set<string>();
+  const moduleFilteredSections = isPlatformAdmin || !entitlementsReady
     ? rawNavSections
-    : filterNavSectionsForModules(rawNavSections, activeModules);
+    : filterNavSectionsForModules(rawNavSections, resolvedActiveModules);
   const navSections = isPlatformAdmin
     ? moduleFilteredSections
     : moduleFilteredSections
@@ -320,8 +320,8 @@ export default function UnifiedWorkspacePage() {
     && panelAllowedByPermission(panel);
   const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel) || studentSubpanelAllowed;
   const dashboardModuleAccess = {
-    erp: isPlatformAdmin || activeModules.has('ERP'),
-    supplyOs: isPlatformAdmin || activeModules.has('SUPPLY_OS'),
+    erp: isPlatformAdmin || resolvedActiveModules.has('ERP'),
+    supplyOs: isPlatformAdmin || resolvedActiveModules.has('SUPPLY_OS'),
   };
 
   const isFire = panel.startsWith('ff-');
@@ -351,7 +351,13 @@ export default function UnifiedWorkspacePage() {
     );
   }
 
-  if (!workspace) return <div className="ck-loading">Loading workspace…</div>;
+  if (!workspace || !entitlementsReady) {
+    return (
+      <div className="ck-loading" role="status" aria-live="polite">
+        Loading school workspace...
+      </div>
+    );
+  }
 
   return (
     <div className="workspace-shell">

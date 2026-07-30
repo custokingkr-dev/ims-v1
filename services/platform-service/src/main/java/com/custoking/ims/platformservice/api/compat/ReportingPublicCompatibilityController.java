@@ -53,8 +53,14 @@ public class ReportingPublicCompatibilityController {
             @RequestParam(required = false) Long schoolId) {
         requireToken(token, "reporting:read");
         Long scope = TenantScope.resolveSchoolId(schoolId);
-        Map<String, Object> summary = reporting.summary(scope);
+        Map<String, Object> summary = reporting.workspaceDashboardSummary(scope);
         LinkedHashMap<String, Object> response = new LinkedHashMap<>();
+        double feeCollectedPaise = number(summary.get("feeCollectedPaise"));
+        double feeTargetPaise = number(summary.get("feeTargetPaise"));
+        double feeOutstandingPaise = Math.max(0, feeTargetPaise - feeCollectedPaise);
+        double feeProgressPercent = feeTargetPaise <= 0
+                ? 0
+                : Math.round((feeCollectedPaise * 10000) / feeTargetPaise) / 100.0;
         response.put("school", Map.of(
                 "name", text(summary.get("schoolName"), "Custoking School"),
                 "meta", text(summary.get("schoolMeta"), "Service workspace"),
@@ -62,21 +68,39 @@ public class ReportingPublicCompatibilityController {
                 "financialYearStartMonth", number(summary.getOrDefault("financialYearStartMonth", 4)),
                 "students", number(summary.get("students")),
                 "sections", number(summary.get("sections"))));
-        response.put("dashboard", Map.of(
-                        "students", number(summary.get("students")),
-                        "sections", number(summary.get("sections")),
-                        "attendancePercent", number(summary.get("attendancePercent")),
-                        "attendancePresent", number(summary.get("attendancePresent")),
-                        "feeCollectedLakh", number(summary.get("feeCollectedLakh")),
-                        "feeTargetLakh", number(summary.get("feeTargetLakh")),
-                        "feeOverdueCount", number(summary.get("feeOverdueCount")),
-                        "firefightingActive", number(summary.get("firefightingActive")),
-                        "pendingApprovals", number(summary.get("pendingApprovals"))));
+        LinkedHashMap<String, Object> dashboard = new LinkedHashMap<>();
+        dashboard.put("students", number(summary.get("students")));
+        dashboard.put("sections", number(summary.get("sections")));
+        dashboard.put("attendancePercent", number(summary.get("attendancePercent")));
+        dashboard.put("attendancePresent", number(summary.get("attendancePresent")));
+        dashboard.put("attendanceSubmittedSections", number(summary.get("attendanceSubmittedSections")));
+        dashboard.put("attendanceState", text(summary.get("attendanceState"), "NOT_STARTED"));
+        dashboard.put("feeCollectedLakh", number(summary.get("feeCollectedLakh")));
+        dashboard.put("feeTargetLakh", number(summary.get("feeTargetLakh")));
+        dashboard.put("feesConfigured", booleanValue(summary.get("feesConfigured")));
+        dashboard.put("feeOverdueCount", number(summary.get("feeOverdueCount")));
+        dashboard.put("firefightingActive", number(summary.get("firefightingActive")));
+        dashboard.put("pendingApprovals", number(summary.get("pendingApprovals")));
+        response.put("dashboard", dashboard);
         response.put("recentActivity", List.of());
-        response.put("students", Map.of("content", List.of(), "totalElements", 0));
-        response.put("fees", Map.of("summary", Map.of("progressPercent", 0, "collected", 0, "outstanding", 0, "overdueCount", 0, "target", 0), "records", List.of()));
+        response.put("students", Map.of(
+                "content", List.of(),
+                "totalElements", number(summary.get("students"))));
+        response.put("fees", Map.of(
+                "summary", Map.of(
+                        "progressPercent", feeProgressPercent,
+                        "collected", feeCollectedPaise,
+                        "outstanding", feeOutstandingPaise,
+                        "overdueCount", number(summary.get("feeOverdueCount")),
+                        "target", feeTargetPaise),
+                "records", List.of()));
         response.put("feeStructures", List.of());
-        response.put("attendance", Map.of("summary", Map.of("overallPercent", 0), "classes", List.of()));
+        response.put("attendance", Map.of(
+                "summary", Map.of(
+                        "overallPercent", number(summary.get("attendancePercent")),
+                        "submittedSections", number(summary.get("attendanceSubmittedSections")),
+                        "state", text(summary.get("attendanceState"), "NOT_STARTED")),
+                "classes", List.of()));
         response.put("staff", List.of());
         response.put("catalog", List.of());
         response.put("orders", List.of());
@@ -244,6 +268,11 @@ public class ReportingPublicCompatibilityController {
     private String text(Object value, String fallback) {
         if (value == null || String.valueOf(value).isBlank()) return fallback;
         return String.valueOf(value);
+    }
+
+    private boolean booleanValue(Object value) {
+        if (value instanceof Boolean bool) return bool;
+        return value != null && Boolean.parseBoolean(String.valueOf(value));
     }
 
     private Long actorSchoolId(Map<String, Object> body) {

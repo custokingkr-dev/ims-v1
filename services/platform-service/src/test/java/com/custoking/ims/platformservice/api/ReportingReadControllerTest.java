@@ -136,15 +136,22 @@ class ReportingReadControllerTest {
         TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
         ReportingPublicCompatibilityController compat =
                 new ReportingPublicCompatibilityController(reporting, commands, "reporting-token");
-        when(reporting.summary(4L)).thenReturn(Map.of(
-                "students", 125,
-                "sections", "8",
-                "attendancePercent", 91.5,
-                "feeOverdueCount", 3,
-                "firefightingActive", 2,
-                "pendingApprovals", 1,
-                "academicYearStartMonth", 6,
-                "financialYearStartMonth", 7));
+        when(reporting.workspaceDashboardSummary(4L)).thenReturn(Map.ofEntries(
+                Map.entry("students", 125),
+                Map.entry("sections", "8"),
+                Map.entry("attendancePercent", 91.5),
+                Map.entry("attendanceSubmittedSections", 7),
+                Map.entry("attendanceState", "PARTIAL"),
+                Map.entry("feeCollectedPaise", 2_500_000),
+                Map.entry("feeTargetPaise", 5_000_000),
+                Map.entry("feeCollectedLakh", 0.25),
+                Map.entry("feeTargetLakh", 0.5),
+                Map.entry("feesConfigured", true),
+                Map.entry("feeOverdueCount", 3),
+                Map.entry("firefightingActive", 2),
+                Map.entry("pendingApprovals", 1),
+                Map.entry("academicYearStartMonth", 6),
+                Map.entry("financialYearStartMonth", 7)));
         Map<String, Object> response = compat.workspace("reporting-token", 4L);
 
         assertThat(response).containsKeys("school", "dashboard", "students", "fees", "attendance");
@@ -156,7 +163,18 @@ class ReportingReadControllerTest {
                 .asInstanceOf(MAP)
                 .containsEntry("students", 125.0)
                 .containsEntry("sections", 8.0)
-                .containsEntry("attendancePercent", 91.5);
+                .containsEntry("attendancePercent", 91.5)
+                .containsEntry("attendanceSubmittedSections", 7.0)
+                .containsEntry("attendanceState", "PARTIAL")
+                .containsEntry("feesConfigured", true);
+        assertThat(response.get("fees"))
+                .asInstanceOf(MAP)
+                .extractingByKey("summary")
+                .asInstanceOf(MAP)
+                .containsEntry("collected", 2_500_000.0)
+                .containsEntry("target", 5_000_000.0)
+                .containsEntry("outstanding", 2_500_000.0)
+                .containsEntry("progressPercent", 50.0);
     }
 
     @Test

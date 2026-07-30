@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Proves the SP7 (read-rewrite, phase 1) swap of the fully-unblocked reporting reads onto the
@@ -257,6 +258,46 @@ class ReportingFactReadIntegrationTest {
         List<Map<String, Object>> kpis = (List<Map<String, Object>>) summary.get("kpis");
         assertEquals("1 sections", kpiValue(kpis, "attendance_today"));
         assertEquals("1 students overdue", kpiDelta(kpis, "fees_collected"));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void commandCenterSummary_feeCollectionExcludesPriorAcademicYears() {
+        seedActiveYear("ay_2026_27");
+        seedFeeAssignment("fa-cur", 1L, 100L, "ay_2026_27", 100_000L, 100_000L, OffsetDateTime.now());
+        seedFeeAssignment("fa-old", 2L, 100L, "ay_2025_26", 900_000L, 900_000L, OffsetDateTime.now());
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_payment (id, assignment_id, school_id, student_id, amount, paid_at, updated_at)
+                VALUES
+                    ('pay-cur', 'fa-cur', 100, 1, 100000, now(), now()),
+                    ('pay-old', 'fa-old', 100, 2, 900000, now(), now())
+                """).update();
+
+        Map<String, Object> summary = reporting.commandCenterSummary(100L, false);
+        List<Map<String, Object>> kpis = (List<Map<String, Object>>) summary.get("kpis");
+
+        assertTrue(kpiValue(kpis, "fees_collected").endsWith("1K"));
+    }
+
+    @Test
+    void workspaceSummaryUsesEnrolledSectionsAndReportsPartialAttendance() {
+        seedActiveYear("ay_2026_27");
+        seedSection("sec-a", 100L, "Grade 1", "A");
+        seedSection("sec-b", 100L, "Grade 2", "B");
+        seedSection("sec-empty", 100L, "Grade 3", "C");
+        seedStudent(1L, 100L, "sec-a", "Student One", "A-1", null, null, null);
+        seedStudent(2L, 100L, "sec-b", "Student Two", "B-1", null, null, null);
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_attendance_daily
+                    (id, school_id, attendance_date, academic_year_id, section_id, present_count, total_enrolled, updated_at)
+                VALUES ('ad-a', 100, CURRENT_DATE, 'ay_2026_27', 'sec-a', 1, 1, now())
+                """).update();
+
+        Map<String, Object> summary = reporting.workspaceDashboardSummary(100L);
+
+        assertEquals(2L, summary.get("sections"));
+        assertEquals(1L, summary.get("attendanceSubmittedSections"));
+        assertEquals("PARTIAL", summary.get("attendanceState"));
     }
 
     @SuppressWarnings("unchecked")
