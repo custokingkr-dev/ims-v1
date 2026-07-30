@@ -376,28 +376,39 @@ $attendanceBody = @{
 }
 Invoke-Feature "attendance:daily-entry" "POST" "/api/v1/attendance/daily-entry" $adminToken "admin" $attendanceBody | Out-Null
 
-$feeItemResponse = Invoke-Feature "fee:item-create" "POST" "/api/v1/fee-structure/item" $adminToken "admin" @{
+$feeBandResponse = Invoke-Feature "fee:band-create" "POST" "/api/v1/fee-structure/band" $adminToken "admin" @{
     schoolId = 1
-    bandId = "band-1-5"
-    name = "E2E Fee $runId"
-    amount = 100
-    frequency = "Annual"
-    category = "E2E"
-} 
-$feeItem = Content-Json $feeItemResponse
-$createdFeeItem = $null
-if ($feeItem -and $feeItem.items) {
-    $createdFeeItem = @($feeItem.items | Where-Object { $_.name -eq "E2E Fee $runId" } | Select-Object -First 1)[0]
+    name = "E2E Draft $runId"
+    classFrom = 1
+    classTo = 1
+    schedules = @("Annual")
 }
-if ($createdFeeItem -and $createdFeeItem.id) {
-    Invoke-Feature "fee:item-update" "PUT" "/api/v1/fee-structure/item/$($createdFeeItem.id)" $adminToken "admin" @{
-        bandId = "band-1-5"
-        name = "E2E Fee Updated $runId"
-        amount = 125
+$feeBand = Content-Json $feeBandResponse
+if ($feeBand -and $feeBand.id) {
+    $feeItemResponse = Invoke-Feature "fee:item-create" "POST" "/api/v1/fee-structure/item" $adminToken "admin" @{
+        schoolId = 1
+        bandId = $feeBand.id
+        name = "E2E Fee $runId"
+        amount = 100
         frequency = "Annual"
         category = "E2E"
-    } | Out-Null
-    Invoke-Feature "fee:item-delete" "DELETE" "/api/v1/fee-structure/item/$($createdFeeItem.id)" $adminToken "admin" $null @(200,204) | Out-Null
+    }
+    $feeItem = Content-Json $feeItemResponse
+    $createdFeeItem = $null
+    if ($feeItem -and $feeItem.items) {
+        $createdFeeItem = @($feeItem.items | Where-Object { $_.name -eq "E2E Fee $runId" } | Select-Object -First 1)[0]
+    }
+    if ($createdFeeItem -and $createdFeeItem.id) {
+        Invoke-Feature "fee:item-update" "PUT" "/api/v1/fee-structure/item/$($createdFeeItem.id)" $adminToken "admin" @{
+            bandId = $feeBand.id
+            name = "E2E Fee Updated $runId"
+            amount = 125
+            frequency = "Annual"
+            category = "E2E"
+        } | Out-Null
+        Invoke-Feature "fee:item-delete" "DELETE" "/api/v1/fee-structure/item/$($createdFeeItem.id)" $adminToken "admin" $null @(200,204) | Out-Null
+    }
+    Invoke-Feature "fee:band-delete" "DELETE" "/api/v1/fee-structure/band/$($feeBand.id)" $adminToken "admin" $null @(200,204) | Out-Null
 }
 
 $catalogOrderResponse = Invoke-Feature "catalog:order-create" "POST" "/api/v1/supply/orders" $adminToken "admin" @{

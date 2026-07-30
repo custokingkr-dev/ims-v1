@@ -17,6 +17,30 @@ if (-not $requiredSchemaNames) { throw "At least one required schema must be spe
 $sqlPath = Join-Path $PSScriptRoot "create-app-rt-role.sql"
 docker cp $sqlPath "${PostgresContainer}:/tmp/create-app-rt-role.sql" | Out-Null
 
+function Invoke-AppRtGrant {
+    param([int]$MaxAttempts = 8)
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $grantOutput = @(docker exec $PostgresContainer psql -v ON_ERROR_STOP=1 -v app_rt_password="$AppRtPassword" -v owner=postgres -U $DbUser -d $Database -f /tmp/create-app-rt-role.sql 2>&1)
+        $exitCode = $LASTEXITCODE
+        $grantOutput | ForEach-Object { Write-Host $_ }
+        if ($exitCode -eq 0) { return }
+
+        $transientCatalogConflict = ($grantOutput -join "`n") -match
+            "(?i)(tuple concurrently updated|deadlock detected|could not serialize access)"
+        if (-not $transientCatalogConflict) {
+            throw "Failed to ensure app_rt role/grants locally (exit $exitCode)."
+        }
+        if ($attempt -eq $MaxAttempts) {
+            throw "Failed to ensure app_rt role/grants locally after $MaxAttempts attempts (exit $exitCode)."
+        }
+
+        $delaySeconds = [Math]::Min($attempt * 2, 10)
+        Write-Warning "app_rt grant attempt $attempt failed (exit $exitCode); retrying in $delaySeconds seconds while service migrations settle."
+        Start-Sleep -Seconds $delaySeconds
+    }
+}
+
 $lastGrantedSchemaSet = $null
 $schemaReady = $false
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
@@ -31,8 +55,7 @@ ORDER BY n.nspname;
     $existingSchemas = @(docker exec $PostgresContainer psql -U $DbUser -d $Database -t -A -c $existingSchemasSql 2>$null)
     $schemaSet = ($existingSchemas | Where-Object { $_ }) -join ","
     if ($schemaSet -and $schemaSet -ne $lastGrantedSchemaSet) {
-        docker exec $PostgresContainer psql -v ON_ERROR_STOP=1 -v app_rt_password="$AppRtPassword" -v owner=postgres -U $DbUser -d $Database -f /tmp/create-app-rt-role.sql
-        if ($LASTEXITCODE -ne 0) { throw "Failed to ensure app_rt role/grants locally (exit $LASTEXITCODE)." }
+        Invoke-AppRtGrant
         $lastGrantedSchemaSet = $schemaSet
     }
 
@@ -53,6 +76,5 @@ SELECT NOT EXISTS (
 }
 if (-not $schemaReady) { throw "Timed out after $TimeoutSeconds s waiting for local service schemas in $PostgresContainer." }
 
-docker exec $PostgresContainer psql -v ON_ERROR_STOP=1 -v app_rt_password="$AppRtPassword" -v owner=postgres -U $DbUser -d $Database -f /tmp/create-app-rt-role.sql
-if ($LASTEXITCODE -ne 0) { throw "Failed to ensure app_rt role/grants locally (exit $LASTEXITCODE)." }
+Invoke-AppRtGrant
 Write-Host "Local app_rt role and grants are ready." -ForegroundColor Green
