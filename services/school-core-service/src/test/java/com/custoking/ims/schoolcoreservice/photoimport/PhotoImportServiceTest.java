@@ -17,9 +17,11 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -191,7 +193,7 @@ class PhotoImportServiceTest {
         when(drive.snapshotHash(List.of(workbook, oversized))).thenReturn("snapshot-1");
         when(repository.replaceScan(
                 eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.xlsx"),
-                eq("snapshot-1"), any(), any())).thenReturn(review);
+                isNull(), eq("snapshot-1"), any(), any())).thenReturn(review);
 
         service.scan(batchId);
 
@@ -199,12 +201,125 @@ class PhotoImportServiceTest {
         ArgumentCaptor<List<RowInput>> rows = ArgumentCaptor.forClass(List.class);
         verify(repository).replaceScan(
                 eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.xlsx"),
-                eq("snapshot-1"), any(), rows.capture());
+                isNull(), eq("snapshot-1"), any(), rows.capture());
         assertThat(rows.getValue()).singleElement().satisfies(row -> {
             assertThat(row.status()).isEqualTo("ERROR");
             assertThat(row.message()).contains("larger than 5 MB");
         });
         verify(repository, never()).studentByAdmission(anyLong(), any(), any());
+    }
+
+    @Test
+    void rejectsPreviouslyProcessedDriveSnapshotBeforeDownloadingAnything() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch draft = batch(batchId, schoolId, "DRAFT", 0);
+        DriveFile workbook = new DriveFile(
+                "workbook-file", "mapping.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                100L, "workbook-checksum", "2026-07-31T00:00:00Z");
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(draft);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(workbook));
+        when(drive.snapshotHash(List.of(workbook))).thenReturn("snapshot-1");
+        when(repository.terminalSnapshotExists(batchId, schoolId, "folder-1", "snapshot-1"))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.scan(batchId))
+                .isInstanceOf(DrivePhotoImportException.class)
+                .hasMessageContaining("already processed");
+
+        verify(drive, never()).download(any(), anyLong());
+        verify(parser, never()).parse(any(), any());
+        verify(storage, never()).uploadImportFile(any(), any(), any(), any(), any());
+        verify(repository, never()).replaceScan(any(), anyLong(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void operatorCanCorrectMappingAndCropDuringReview() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch review = batch(batchId, schoolId, "REVIEW", 0);
+        DriveFile correctedPhoto = new DriveFile(
+                "photo-6001", "DSC6001.jpg", "image/jpeg", 100L,
+                "checksum-6001", "2026-07-31T00:00:00Z");
+        ImportRow current = new ImportRow(
+                UUID.randomUUID(), batchId, schoolId, 2, "BAD-ADM", "Student One",
+                "I", "A", "5001", null, null, null, "ERROR", "No match",
+                null, null, null, 0.5, 0.5, false, null, null);
+        ImportRow saved = new ImportRow(
+                current.id(), batchId, schoolId, 2, "ADM-1", "Student One",
+                "I", "A", "6001", correctedPhoto.id(), correctedPhoto.name(), 101L,
+                "READY", "Matched by school, academic year and AdmissionNo", null, null,
+                correctedPhoto.md5Checksum(), 0.25, 0.75, true, null, null);
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(review);
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(current));
+        when(repository.sourceFiles(batchId, schoolId)).thenReturn(List.of(correctedPhoto));
+        when(repository.studentByAdmission(schoolId, "ay-2026", "ADM-1"))
+                .thenReturn(java.util.Optional.of(new PhotoImportRepository.StudentMatch(
+                        101L, "ADM-1", "Student One", "I", 1, "A", null)));
+        when(repository.updateReviewRow(
+                eq(batchId), eq(schoolId), eq(current.id()), any(RowInput.class), eq(0.25), eq(0.75)))
+                .thenReturn(saved);
+
+        var result = service.updateRow(
+                batchId,
+                current.id(),
+                new PhotoImportService.RowReviewUpdate("ADM-1", "6001", false, 0.25, 0.75));
+
+        ArgumentCaptor<RowInput> row = ArgumentCaptor.forClass(RowInput.class);
+        verify(repository).updateReviewRow(
+                eq(batchId), eq(schoolId), eq(current.id()), row.capture(), eq(0.25), eq(0.75));
+        assertThat(row.getValue().status()).isEqualTo("READY");
+        assertThat(row.getValue().driveFileId()).isEqualTo("photo-6001");
+        assertThat(result.get("row")).isSameAs(saved);
+    }
+
+    @Test
+    void operationsUserCannotReadBatchFromAnotherSchool() {
+        UUID batchId = UUID.randomUUID();
+        setOperationsTenant(7L);
+        when(repository.batchSchoolId(batchId)).thenReturn(8L);
+
+        assertThatThrownBy(() -> service.detail(batchId))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("403 FORBIDDEN");
+
+        verify(repository, never()).batch(batchId, 8L);
+        verify(repository, never()).rows(batchId, 8L);
+    }
+
+    @Test
+    void resultCsvNeutralizesSpreadsheetFormulasAndReportsEvidence() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch completed = batch(batchId, schoolId, "COMPLETED", 0);
+        DriveFile file = new DriveFile(
+                "photo-5001", "DSC5001.jpg", "image/jpeg", 100L,
+                "checksum-5001", "2026-07-31T00:00:00Z");
+        ImportRow source = row(batchId, schoolId, 1, file);
+        ImportRow applied = new ImportRow(
+                source.id(), source.batchId(), source.schoolId(), source.excelRow(),
+                source.admissionNo(), "=HYPERLINK(\"https://bad.example\")", source.className(),
+                source.sectionName(), source.imageNo(), source.driveFileId(), source.driveFileName(),
+                source.studentId(), "APPLIED", "Portrait imported", source.priorPhotoKey(),
+                "final-key", source.sourceChecksum(), 0.5, 0.5, false,
+                "source-evidence-key", OffsetDateTime.parse("2026-07-31T01:00:00Z"));
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(completed);
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(applied));
+
+        String csv = service.resultCsv(batchId);
+
+        assertThat(csv).contains("\"'=HYPERLINK(\"\"https://bad.example\"\")\"");
+        assertThat(csv).contains(",true\r\n");
     }
 
     @Test
@@ -285,7 +400,20 @@ class PhotoImportServiceTest {
                 now,
                 null,
                 now,
+                now.plusDays(14),
+                null,
                 1L);
+    }
+
+    private static void setOperationsTenant(long schoolId) {
+        TenantContext.set(new TenantContext(
+                42L,
+                "operations@example.com",
+                "OPERATIONS",
+                null,
+                null,
+                Set.of(schoolId),
+                Set.of("student:photo-import")));
     }
 
     private static ImportRow row(UUID batchId, long schoolId, int index, DriveFile file) {
@@ -307,6 +435,10 @@ class PhotoImportServiceTest {
                 null,
                 null,
                 file.md5Checksum(),
+                0.5,
+                0.5,
+                false,
+                null,
                 null);
     }
 }

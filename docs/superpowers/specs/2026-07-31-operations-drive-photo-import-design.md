@@ -1,6 +1,6 @@
 # Operations Drive Photo Import
 
-**Status:** Managed-folder provisioning implemented; personal Google Drive OAuth connection required per environment
+**Status:** Production workflow implemented; DEV pilot and PROD environment approval remain operational gates
 **Date:** 2026-07-31
 **Owner:** Student Operations
 
@@ -55,13 +55,13 @@ audience and can remain unverified under Google's documented personal-use except
 the connected user will see the unverified-app warning. Publish the OAuth app rather
 than leaving it in `Testing`, where offline refresh tokens expire after seven days.
 
-### DEV pilot scope
+### Implemented scope
 
-The DEV implementation auto-maps the supplied five exact headings and records the
-mapping in the batch. Configurable headings, per-row manual overrides, manual crop
-coordinates, and CSV result export remain follow-up work after the pilot. Operators
-resolve a source issue by correcting the dedicated Drive folder or workbook and
-rescanning before freeze. The exact normalized center crop is available for preview.
+The implementation auto-maps the supplied five exact headings and records the mapping
+in the batch. Operators can correct admission/image identifiers per row, exclude a row,
+adjust horizontal and vertical crop focus, preview the exact normalized portrait, cancel
+an unfinished batch, and download a formula-safe CSV result. Configurable headings for
+future workbook variants remain outside the initial contract.
 
 Execution is resumable in bounded ten-row requests. The UI continues the requests to a
 terminal result, and an interrupted browser request can resume an `EXECUTING` batch
@@ -156,7 +156,8 @@ During school onboarding, the backend:
 
 When an operator manually starts an import, the backend takes the already provisioned
 intake folder for the selected school/year. It no longer requires a pasted folder URL.
-The folder remains permanently bound to the school UID, academic-year ID, and batch ID.
+The folder remains permanently bound to the school UID and academic-year ID. Sequential
+jobs reuse that managed intake folder; only one unfinished batch may use it at a time.
 Environments without a complete personal OAuth connection and configured root retain
 the prior paste-and-verify path as a temporary compatibility fallback; it is hidden
 when managed Drive is ready.
@@ -185,11 +186,14 @@ WHERE school_id = :schoolId
 ```
 
 Changing the school or academic year invalidates the Drive scan and mappings. A Drive
-folder ID cannot be registered for a second import batch, even for the same school.
+folder cannot have two active batches, and an unchanged snapshot cannot be processed
+again. After a terminal batch, Operations replaces the source files and starts a new
+batch against the same managed folder.
 
 ## 5. Source Folder Rules
 
-Custoking creates one restricted folder for the school's current academic year:
+Custoking creates one reusable restricted intake folder for the school's current
+academic year:
 
 `GFA - Greenfield Academy / 2026-27 / Student Photo Intake`
 
@@ -201,7 +205,9 @@ The folder contains:
 
 The folder is shared directly with the photographer's Google account, not with
 `Anyone with the link`. It starts empty, editor re-sharing is disabled, and the
-photographer's permission is removed after Operations freezes the batch.
+photographer's permission is removed after the batch reaches a terminal result. The
+application records a 14-day access-removal reminder and lets Operations record when
+revocation is complete; the actual Google permission change remains a manual action.
 
 Google Drive folder editors can normally view, add, edit, move, and delete items in the
 folder. The dedicated empty folder limits this exposure to the current job only. Drive
@@ -295,8 +301,10 @@ tables. The batch also stores `school_uid`, `academic_year_id`, and `drive_folde
 Store Drive IDs and metadata, not Drive access tokens. Personal OAuth credentials
 remain in Secret Manager.
 
-Add a permanent unique constraint on `drive_folder_id`. One dedicated folder represents
-one photography job and cannot be rebound to another school or academic year.
+Add a partial unique index on `drive_folder_id` for unfinished statuses. The managed
+folder can be reused sequentially for the same school and academic year, but concurrent
+jobs are rejected. A terminal snapshot hash prevents accidental replay of unchanged
+source files.
 
 Suggested internal APIs:
 
@@ -309,6 +317,8 @@ Suggested internal APIs:
 - `POST /api/v1/student-photo-imports/{id}/freeze`
 - `POST /api/v1/student-photo-imports/{id}/execute`
 - `GET /api/v1/student-photo-imports/{id}/result`
+- `POST /api/v1/student-photo-imports/{id}/cancel`
+- `POST /api/v1/student-photo-imports/{id}/access-revoked`
 
 All endpoints require an authenticated `OPERATIONS` or `SUPERADMIN` principal plus a
 new `student:photo-import` permission. School administrators do not receive this
@@ -383,7 +393,8 @@ including DEV hardening. Pilot with 30 to 50 images before a whole-school batch.
   filename rule.
 - Workbook class `I` cross-checks class sort order `1`; it is not used to select the
   student.
-- A Drive folder cannot be rebound or reused for another batch.
+- A Drive folder cannot be rebound to another school/year or used by concurrent batches;
+  a terminal folder can be reused only after its source snapshot changes.
 - Operations cannot write to a school outside their assigned operator-school set.
 - Historical academic years are rejected until year-specific photo storage exists.
 - Operations and Superadmin are the only roles able to scan or execute.

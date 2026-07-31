@@ -6,7 +6,6 @@ import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import net.coobird.thumbnailator.Thumbnails;
-import net.coobird.thumbnailator.geometry.Positions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +20,7 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -81,11 +81,21 @@ public class StudentPhotoStorage {
 
     /** Validate + resize + store the image; returns the GCS object key to persist. */
     public String upload(String schoolStorageId, long studentId, byte[] data, String contentType) {
+        return upload(schoolStorageId, studentId, data, contentType, 0.5, 0.5);
+    }
+
+    public String upload(
+            String schoolStorageId,
+            long studentId,
+            byte[] data,
+            String contentType,
+            double cropX,
+            double cropY) {
         if (!isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Photo storage is not configured");
         }
         String folder = requireStorageFolder(schoolStorageId);
-        byte[] resized = normalizePortrait(data, contentType);
+        byte[] resized = normalizePortrait(data, contentType, cropX, cropY);
         String key = studentPhotoObjectKey(folder, studentId, resized);
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
@@ -156,6 +166,14 @@ public class StudentPhotoStorage {
      * Exposed for the review preview so the operator sees the exact crop that execution stores.
      */
     public byte[] normalizePortrait(byte[] data, String contentType) {
+        return normalizePortrait(data, contentType, 0.5, 0.5);
+    }
+
+    public byte[] normalizePortrait(
+            byte[] data,
+            String contentType,
+            double cropX,
+            double cropY) {
         if (data == null || data.length == 0) {
             throw new IllegalArgumentException("The photo file is empty");
         }
@@ -165,13 +183,21 @@ public class StudentPhotoStorage {
         if (!isSupportedImage(contentType)) {
             throw new IllegalArgumentException("Only JPG or PNG images are allowed");
         }
+        requireCropCoordinate(cropX, "cropX");
+        requireCropCoordinate(cropY, "cropY");
         validatePixelCount(data);
         try {
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Thumbnails.of(new ByteArrayInputStream(data))
+            BufferedImage oriented = Thumbnails.of(new ByteArrayInputStream(data))
                     .useExifOrientation(true)
+                    .scale(1)
+                    .asBufferedImage();
+            int side = Math.min(oriented.getWidth(), oriented.getHeight());
+            int left = cropOrigin(cropX, oriented.getWidth(), side);
+            int top = cropOrigin(cropY, oriented.getHeight(), side);
+            BufferedImage cropped = oriented.getSubimage(left, top, side, side);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            Thumbnails.of(cropped)
                     .size(dimension, dimension)
-                    .crop(Positions.CENTER)
                     .outputFormat("jpg")
                     .outputQuality(0.82)
                     .toOutputStream(out);
@@ -258,6 +284,17 @@ public class StudentPhotoStorage {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
+        }
+    }
+
+    private static int cropOrigin(double focus, int dimension, int side) {
+        int origin = (int) Math.round(focus * dimension - side / 2.0);
+        return Math.max(0, Math.min(dimension - side, origin));
+    }
+
+    private static void requireCropCoordinate(double value, String field) {
+        if (!Double.isFinite(value) || value < 0 || value > 1) {
+            throw new IllegalArgumentException(field + " must be between 0 and 1");
         }
     }
 

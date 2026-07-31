@@ -168,4 +168,73 @@ describe('PhotoImportPanel', () => {
       driveFolderUrl: 'https://drive.google.com/drive/folders/manual-folder',
     }));
   });
+
+  it('lets an operator correct a row mapping and crop during review', async () => {
+    const reviewBatch = { ...frozenBatch, id: 'batch-review', status: 'REVIEW', readyCount: 0, errorCount: 1 };
+    const row = {
+      id: 'row-1',
+      excelRow: 2,
+      admissionNo: 'BAD-ADM',
+      workbookName: 'Student One',
+      className: 'I',
+      sectionName: 'A',
+      imageNo: '5001',
+      status: 'ERROR',
+      message: 'No active student found',
+      cropX: 0.5,
+      cropY: 0.5,
+      manuallyReviewed: false,
+    };
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [reviewBatch] } as any;
+      if (url === '/student-photo-imports/batch-review') {
+        return {
+          data: {
+            batch: reviewBatch,
+            rows: [row],
+            access: { expiresAt: '2026-08-14T00:00:00Z', overdue: false },
+          },
+        } as any;
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockResolvedValue({
+      data: {
+        batch: { ...reviewBatch, readyCount: 1, errorCount: 0 },
+        row: {
+          ...row,
+          admissionNo: 'ADM-1',
+          imageNo: '6001',
+          driveFileName: 'DSC6001.jpg',
+          status: 'READY',
+          cropX: 0.25,
+          cropY: 0.75,
+          manuallyReviewed: true,
+        },
+      },
+    } as any);
+
+    render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /review mapping for student one/i }));
+    fireEvent.change(screen.getByLabelText('Admission number'), { target: { value: 'ADM-1' } });
+    fireEvent.change(screen.getByLabelText('Image number'), { target: { value: '6001' } });
+    const sliders = screen.getAllByRole('slider');
+    fireEvent.change(sliders[0], { target: { value: '0.25' } });
+    fireEvent.change(sliders[1], { target: { value: '0.75' } });
+    fireEvent.click(screen.getByRole('button', { name: /save review/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+      '/student-photo-imports/batch-review/rows/row-1',
+      {
+        admissionNo: 'ADM-1',
+        imageNo: '6001',
+        excluded: false,
+        cropX: 0.25,
+        cropY: 0.75,
+      },
+    ));
+    expect(await screen.findByText(/row review saved/i)).toBeInTheDocument();
+  });
 });

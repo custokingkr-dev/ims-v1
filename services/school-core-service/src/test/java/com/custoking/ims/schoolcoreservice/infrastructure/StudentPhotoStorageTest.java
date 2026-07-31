@@ -51,4 +51,45 @@ class StudentPhotoStorageTest {
         assertThat(result.getWidth()).isEqualTo(512);
         assertThat(result.getHeight()).isEqualTo(512);
     }
+
+    @Test
+    void cropFocusSelectsTheRequestedSideOfALandscapePhoto() throws Exception {
+        BufferedImage landscape = new BufferedImage(800, 400, BufferedImage.TYPE_INT_RGB);
+        var graphics = landscape.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 400, 400);
+        graphics.setColor(Color.BLUE);
+        graphics.fillRect(400, 0, 400, 400);
+        graphics.dispose();
+        ByteArrayOutputStream input = new ByteArrayOutputStream();
+        ImageIO.write(landscape, "png", input);
+
+        StudentPhotoStorage storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+        BufferedImage left = ImageIO.read(new ByteArrayInputStream(
+                storage.normalizePortrait(input.toByteArray(), "image/png", 0, 0.5)));
+        BufferedImage right = ImageIO.read(new ByteArrayInputStream(
+                storage.normalizePortrait(input.toByteArray(), "image/png", 1, 0.5)));
+
+        Color leftCenter = new Color(left.getRGB(256, 256));
+        Color rightCenter = new Color(right.getRGB(256, 256));
+        assertThat(leftCenter.getRed()).isGreaterThan(leftCenter.getBlue());
+        assertThat(rightCenter.getBlue()).isGreaterThan(rightCenter.getRed());
+    }
+
+    @Test
+    void rejectsCropFocusOutsideNormalizedRange() throws Exception {
+        BufferedImage image = new BufferedImage(20, 20, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream input = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", input);
+        StudentPhotoStorage storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+
+        assertThatThrownBy(() -> storage.normalizePortrait(
+                input.toByteArray(), "image/png", -0.01, 0.5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cropX");
+        assertThatThrownBy(() -> storage.normalizePortrait(
+                input.toByteArray(), "image/png", 0.5, Double.NaN))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("cropY");
+    }
 }

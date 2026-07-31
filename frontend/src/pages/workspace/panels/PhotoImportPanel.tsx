@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  Ban,
   Check,
   Copy,
+  Download,
   Eye,
   ExternalLink,
   FolderCog,
@@ -11,9 +13,12 @@ import {
   LoaderCircle,
   LockKeyhole,
   Play,
+  Pencil,
   RefreshCw,
   ScanSearch,
   ShieldCheck,
+  ShieldOff,
+  XCircle,
 } from 'lucide-react';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
@@ -57,6 +62,14 @@ interface ImportBatch {
   appliedCount: number;
   failedCount: number;
   createdAt: string;
+  photographerAccessExpiresAt?: string;
+  photographerAccessRevokedAt?: string;
+}
+
+interface AccessState {
+  expiresAt?: string;
+  revokedAt?: string;
+  overdue: boolean;
 }
 
 interface ImportRow {
@@ -71,6 +84,10 @@ interface ImportRow {
   studentId?: number;
   status: 'READY' | 'HELD' | 'ERROR' | 'EXCLUDED' | 'APPLIED' | 'FAILED';
   message?: string;
+  cropX: number;
+  cropY: number;
+  manuallyReviewed: boolean;
+  sourceObjectKey?: string;
 }
 
 const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
@@ -106,6 +123,15 @@ export function PhotoImportPanel() {
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [preview, setPreview] = useState<{ row: ImportRow; url: string } | null>(null);
   const [executionConfirmed, setExecutionConfirmed] = useState(false);
+  const [access, setAccess] = useState<AccessState | null>(null);
+  const [editing, setEditing] = useState<{
+    row: ImportRow;
+    admissionNo: string;
+    imageNo: string;
+    excluded: boolean;
+    cropX: number;
+    cropY: number;
+  } | null>(null);
 
   const selectedSchool = context?.schools.find(school => school.id === Number(schoolId));
   const currentStep = workflowStep(batch?.status);
@@ -142,11 +168,12 @@ export function PhotoImportPanel() {
   const loadDetail = async (id: string) => {
     setBusy('detail');
     try {
-      const response = await api.get<{ batch: ImportBatch; rows: ImportRow[] }>(
+      const response = await api.get<{ batch: ImportBatch; rows: ImportRow[]; access: AccessState }>(
         `/student-photo-imports/${id}`,
       );
       setBatch(response.data.batch);
       setRows(response.data.rows || []);
+      setAccess(response.data.access || null);
       setFilter('ALL');
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
@@ -167,6 +194,7 @@ export function PhotoImportPanel() {
     if (schoolId) void loadBatches(Number(schoolId));
     setBatch(null);
     setRows([]);
+    setAccess(null);
   }, [schoolId]);
 
   useEffect(() => {
@@ -194,6 +222,7 @@ export function PhotoImportPanel() {
       });
       setBatch(response.data);
       setRows([]);
+      setAccess(null);
       setDriveFolderUrl('');
       await loadBatches(selectedSchool.id);
       setNotice({ tone: 'ok', text: 'Managed Drive folder bound. The batch is ready to scan.' });
@@ -259,6 +288,85 @@ export function PhotoImportPanel() {
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
       if (action === 'execute') await loadDetail(batch.id);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const cancelBatch = async () => {
+    if (!batch || !window.confirm('Cancel this import? Applied photos are not rolled back.')) return;
+    setBusy('cancel');
+    setNotice(null);
+    try {
+      const response = await api.post<ImportBatch>(`/student-photo-imports/${batch.id}/cancel`);
+      setBatch(response.data);
+      await loadDetail(batch.id);
+      await loadBatches(batch.schoolId);
+      setNotice({ tone: 'ok', text: 'Import cancelled. The intake folder can be used for a new job.' });
+    } catch (error) {
+      setNotice({ tone: 'bad', text: errorMessage(error) });
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const markAccessRevoked = async () => {
+    if (!batch) return;
+    setBusy('revoke');
+    try {
+      const response = await api.post<AccessState>(`/student-photo-imports/${batch.id}/access-revoked`);
+      setAccess(response.data);
+      setNotice({ tone: 'ok', text: 'Photographer Drive access recorded as revoked.' });
+    } catch (error) {
+      setNotice({ tone: 'bad', text: errorMessage(error) });
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const downloadResult = async () => {
+    if (!batch) return;
+    setBusy('result');
+    try {
+      const response = await api.get(`/student-photo-imports/${batch.id}/result`, {
+        responseType: 'blob',
+      });
+      const url = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `student-photo-import-${batch.id}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setNotice({ tone: 'bad', text: errorMessage(error) });
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const saveRowReview = async (previewAfterSave = false) => {
+    if (!batch || !editing) return;
+    setBusy(`edit:${editing.row.id}`);
+    try {
+      const response = await api.post<{ batch: ImportBatch; row: ImportRow }>(
+        `/student-photo-imports/${batch.id}/rows/${editing.row.id}`,
+        {
+          admissionNo: editing.admissionNo,
+          imageNo: editing.imageNo,
+          excluded: editing.excluded,
+          cropX: editing.cropX,
+          cropY: editing.cropY,
+        },
+      );
+      setBatch(response.data.batch);
+      setRows(current => current.map(row => row.id === response.data.row.id ? response.data.row : row));
+      setEditing(null);
+      setNotice({ tone: 'ok', text: 'Row review saved and batch totals recalculated.' });
+      if (previewAfterSave && response.data.row.driveFileName) {
+        await openPreview(response.data.row);
+      }
+    } catch (error) {
+      setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
       setBusy('');
     }
@@ -544,11 +652,49 @@ export function PhotoImportPanel() {
                         </button>
                       </>
                     )}
-                    <button className="ck-btn ck-btn-ghost" onClick={() => { setBatch(null); setRows([]); }} disabled={!!busy}>
+                    {['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) && (
+                      <button className="ck-btn ck-btn-ghost" onClick={downloadResult} disabled={!!busy}>
+                        {busy === 'result' ? <LoaderCircle className="pi-spin" size={16} /> : <Download size={16} />}
+                        Download result
+                      </button>
+                    )}
+                    {['DRAFT', 'REVIEW', 'FROZEN', 'PARTIAL', 'FAILED'].includes(batch.status) && (
+                      <button className="ck-btn ck-btn-ghost pi-danger-action" onClick={cancelBatch} disabled={!!busy}>
+                        {busy === 'cancel' ? <LoaderCircle className="pi-spin" size={16} /> : <XCircle size={16} />}
+                        Cancel import
+                      </button>
+                    )}
+                    <button className="ck-btn ck-btn-ghost" onClick={() => { setBatch(null); setRows([]); setAccess(null); }} disabled={!!busy}>
                       New batch
                     </button>
                   </div>
                 </section>
+
+                {(['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) || access?.overdue) && (
+                  <section className={`pi-access-band ${access?.overdue ? 'overdue' : ''}`}>
+                    <ShieldOff size={18} aria-hidden />
+                    <div>
+                      <strong>{access?.revokedAt
+                        ? 'Photographer access closed'
+                        : ['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status)
+                          ? 'Revoke photographer Drive access'
+                          : 'Photographer access is overdue'}</strong>
+                      <span>
+                        {access?.revokedAt
+                          ? `Recorded ${new Date(access.revokedAt).toLocaleString()}`
+                          : access?.expiresAt
+                            ? `Reminder due ${new Date(access.expiresAt).toLocaleDateString()}`
+                            : 'Remove the photographer as an Editor after delivery.'}
+                      </span>
+                    </div>
+                    {!access?.revokedAt && ['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) && (
+                      <button className="ck-btn ck-btn-ghost" onClick={markAccessRevoked} disabled={!!busy}>
+                        {busy === 'revoke' ? <LoaderCircle className="pi-spin" size={16} /> : <Check size={16} />}
+                        Mark revoked
+                      </button>
+                    )}
+                  </section>
+                )}
 
                 {rows.length > 0 && (
                   <section className="pi-review">
@@ -599,17 +745,37 @@ export function PhotoImportPanel() {
                                 {row.message && <small>{row.message}</small>}
                               </td>
                               <td>
-                                <button
-                                  className="pi-icon-button"
-                                  aria-label={`Preview portrait for ${row.workbookName}`}
-                                  title="Preview normalized portrait"
-                                  disabled={!row.driveFileName || busy === `preview:${row.id}`}
-                                  onClick={() => openPreview(row)}
-                                >
-                                  {busy === `preview:${row.id}`
-                                    ? <LoaderCircle className="pi-spin" size={16} />
-                                    : <Eye size={16} />}
-                                </button>
+                                <div className="pi-row-actions">
+                                  <button
+                                    className="pi-icon-button"
+                                    aria-label={`Preview portrait for ${row.workbookName}`}
+                                    title="Preview normalized portrait"
+                                    disabled={!row.driveFileName || busy === `preview:${row.id}`}
+                                    onClick={() => openPreview(row)}
+                                  >
+                                    {busy === `preview:${row.id}`
+                                      ? <LoaderCircle className="pi-spin" size={16} />
+                                      : <Eye size={16} />}
+                                  </button>
+                                  {batch.status === 'REVIEW' && (
+                                    <button
+                                      className="pi-icon-button"
+                                      aria-label={`Review mapping for ${row.workbookName}`}
+                                      title="Review mapping and crop"
+                                      onClick={() => setEditing({
+                                        row,
+                                        admissionNo: row.admissionNo || '',
+                                        imageNo: row.imageNo || '',
+                                        excluded: row.status === 'EXCLUDED',
+                                        cropX: row.cropX ?? 0.5,
+                                        cropY: row.cropY ?? 0.5,
+                                      })}
+                                      disabled={!!busy}
+                                    >
+                                      <Pencil size={16} />
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -630,7 +796,14 @@ export function PhotoImportPanel() {
                 <div className="pi-history-list">
                   {batches.map(item => (
                     <button key={item.id} onClick={() => loadDetail(item.id)}>
-                      <span><strong>{item.driveFolderName || 'Drive folder'}</strong><small>{item.academicYearLabel} / {item.id.slice(0, 8)}</small></span>
+                      <span>
+                        <strong>{item.driveFolderName || 'Drive folder'}</strong>
+                        <small>{item.academicYearLabel} / {item.id.slice(0, 8)}</small>
+                        {!item.photographerAccessRevokedAt
+                          && item.photographerAccessExpiresAt
+                          && new Date(item.photographerAccessExpiresAt).getTime() < Date.now()
+                          && <small className="pi-access-due">Drive access overdue</small>}
+                      </span>
                       <span className={`pi-status ${statusTone(item.status)}`}>{item.status}</span>
                     </button>
                   ))}
@@ -656,6 +829,57 @@ export function PhotoImportPanel() {
               URL.revokeObjectURL(preview.url);
               setPreview(null);
             }}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div className="pi-preview-backdrop" role="presentation" onMouseDown={() => setEditing(null)}>
+          <div className="pi-review-dialog" role="dialog" aria-modal="true" aria-label="Review photo mapping" onMouseDown={event => event.stopPropagation()}>
+            <div className="pi-dialog-head">
+              <div>
+                <strong>{editing.row.workbookName || 'Workbook row'}</strong>
+                <span>Excel row {editing.row.excelRow}</span>
+              </div>
+              <button className="pi-icon-button" aria-label="Close review" onClick={() => setEditing(null)}>
+                <XCircle size={16} />
+              </button>
+            </div>
+            <div className="pi-review-fields">
+              <label>
+                <span>Admission number</span>
+                <input type="text" value={editing.admissionNo} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, admissionNo: event.target.value }))} />
+              </label>
+              <label>
+                <span>Image number</span>
+                <input type="text" value={editing.imageNo} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, imageNo: event.target.value }))} />
+              </label>
+            </div>
+            <label className="pi-exclude-control">
+              <input type="checkbox" checked={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, excluded: event.target.checked }))} />
+              <Ban size={16} aria-hidden />
+              <span>Exclude this row from the import</span>
+            </label>
+            <div className="pi-crop-controls">
+              <label>
+                <span>Horizontal crop focus <strong>{Math.round(editing.cropX * 100)}%</strong></span>
+                <input type="range" min="0" max="1" step="0.01" value={editing.cropX} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, cropX: Number(event.target.value) }))} />
+              </label>
+              <label>
+                <span>Vertical crop focus <strong>{Math.round(editing.cropY * 100)}%</strong></span>
+                <input type="range" min="0" max="1" step="0.01" value={editing.cropY} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, cropY: Number(event.target.value) }))} />
+              </label>
+            </div>
+            <div className="pi-dialog-actions">
+              <button className="ck-btn ck-btn-ghost" onClick={() => setEditing(null)} disabled={!!busy}>Cancel</button>
+              <button className="ck-btn ck-btn-ghost" onClick={() => saveRowReview(true)} disabled={!!busy || editing.excluded || !editing.imageNo.trim()}>
+                <Eye size={16} /> Save and preview
+              </button>
+              <button className="ck-btn ck-btn-g" onClick={() => saveRowReview(false)} disabled={!!busy}>
+                {busy === `edit:${editing.row.id}` ? <LoaderCircle className="pi-spin" size={16} /> : <Check size={16} />}
+                Save review
+              </button>
+            </div>
           </div>
         </div>
       )}

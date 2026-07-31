@@ -104,7 +104,11 @@ For already onboarded schools, select the school in **Operations > Students > Ph
 imports** and click **Provision folder** once after the OAuth connection is active.
 Future schools provision during onboarding. Never use `Anyone with the link`; share
 only the generated intake folder with the photographer's Google account and remove
-that permission after the batch is frozen.
+that permission after the batch reaches a terminal result. Record the revocation in the
+Photo imports screen so the 14-day access reminder is closed.
+
+The operational batch, retry, evidence, pilot, and PROD-gate procedure is in
+`docs/operations/student-photo-import-runbook.md`.
 - `workflow-read-token` — read token for the workflow domain (operations-service)
 - `firefighting-read-token` — read token for the firefighting domain (operations-service)
 - `reporting-read-token` — read token for the reporting domain (platform-service)

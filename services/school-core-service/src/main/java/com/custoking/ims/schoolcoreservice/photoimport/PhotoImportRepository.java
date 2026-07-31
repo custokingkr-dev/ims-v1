@@ -78,6 +78,19 @@ public class PhotoImportRepository {
             throw new IllegalArgumentException("Photo import is restricted to the school's current academic year "
                     + currentYear.label());
         }
+        Long active = jdbc.sql("""
+                SELECT count(*)
+                FROM student.photo_import_batches
+                WHERE drive_folder_id = :folderId
+                  AND status IN ('DRAFT', 'REVIEW', 'FROZEN', 'EXECUTING', 'PARTIAL', 'FAILED')
+                """)
+                .param("folderId", folderId)
+                .query(Long.class)
+                .single();
+        if (active != null && active > 0) {
+            throw new IllegalArgumentException(
+                    "This Drive folder already has an active photo import batch");
+        }
         UUID id = UUID.randomUUID();
         jdbc.sql("""
                 INSERT INTO student.photo_import_batches
@@ -166,7 +179,7 @@ public class PhotoImportRepository {
 
     @Transactional
     public Batch replaceScan(UUID batchId, long schoolId, String workbookFileId,
-                             String workbookFileName, String snapshotHash,
+                             String workbookFileName, String workbookObjectKey, String snapshotHash,
                              List<SourceInput> sources, List<RowInput> rows) {
         selectSchoolScope(schoolId);
         Batch current = batchInTransaction(batchId, schoolId);
@@ -238,6 +251,7 @@ public class PhotoImportRepository {
                 UPDATE student.photo_import_batches
                 SET workbook_file_id = :workbookFileId,
                     workbook_file_name = :workbookFileName,
+                    workbook_object_key = :workbookObjectKey,
                     snapshot_hash = :snapshotHash,
                     status = 'REVIEW',
                     total_rows = :totalRows,
@@ -253,6 +267,7 @@ public class PhotoImportRepository {
                 """)
                 .param("workbookFileId", workbookFileId)
                 .param("workbookFileName", workbookFileName)
+                .param("workbookObjectKey", workbookObjectKey)
                 .param("snapshotHash", snapshotHash)
                 .param("totalRows", rows.size())
                 .param("ready", ready)
@@ -271,7 +286,8 @@ public class PhotoImportRepository {
                 SELECT id, batch_id, school_id, excel_row, admission_no, workbook_name,
                        class_name, section_name, image_no, drive_file_id, drive_file_name,
                        student_id, status, message, prior_photo_key, final_photo_key,
-                       source_checksum, applied_at
+                       source_checksum, crop_x, crop_y, manually_reviewed,
+                       source_object_key, applied_at
                 FROM student.photo_import_rows
                 WHERE batch_id = :batchId AND school_id = :schoolId
                 ORDER BY excel_row
@@ -280,6 +296,52 @@ public class PhotoImportRepository {
                 .param("schoolId", schoolId)
                 .query(this::mapRow)
                 .list();
+    }
+
+    @Transactional(readOnly = true)
+    public List<GoogleDrivePhotoImportClient.DriveFile> sourceFiles(UUID batchId, long schoolId) {
+        selectSchoolScope(schoolId);
+        return jdbc.sql("""
+                SELECT drive_file_id, file_name, mime_type, byte_size, checksum, modified_time
+                FROM student.photo_import_sources
+                WHERE batch_id = :batchId AND school_id = :schoolId
+                ORDER BY file_name, drive_file_id
+                """)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> new GoogleDrivePhotoImportClient.DriveFile(
+                        rs.getString("drive_file_id"),
+                        rs.getString("file_name"),
+                        rs.getString("mime_type"),
+                        (Long) rs.getObject("byte_size"),
+                        rs.getString("checksum"),
+                        rs.getString("modified_time")))
+                .list();
+    }
+
+    @Transactional(readOnly = true)
+    public boolean terminalSnapshotExists(
+            UUID batchId,
+            long schoolId,
+            String driveFolderId,
+            String snapshotHash) {
+        selectSchoolScope(schoolId);
+        Long count = jdbc.sql("""
+                SELECT count(*)
+                FROM student.photo_import_batches
+                WHERE id <> :batchId
+                  AND school_id = :schoolId
+                  AND drive_folder_id = :driveFolderId
+                  AND snapshot_hash = :snapshotHash
+                  AND status IN ('COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED')
+                """)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .param("driveFolderId", driveFolderId)
+                .param("snapshotHash", snapshotHash)
+                .query(Long.class)
+                .single();
+        return count != null && count > 0;
     }
 
     @Transactional(readOnly = true)
@@ -309,6 +371,154 @@ public class PhotoImportRepository {
                         rs.getString("section_name"),
                         rs.getString("photo_url")))
                 .optional();
+    }
+
+    @Transactional
+    public ImportRow updateReviewRow(
+            UUID batchId,
+            long schoolId,
+            UUID rowId,
+            RowInput row,
+            double cropX,
+            double cropY) {
+        selectSchoolScope(schoolId);
+        Batch batch = batchInTransaction(batchId, schoolId);
+        if (!"REVIEW".equals(batch.status())) {
+            throw new IllegalArgumentException("Rows can only be changed while the batch is in review");
+        }
+        ImportRow current = rowInTransaction(rowId, schoolId);
+        if (!batchId.equals(current.batchId())) {
+            throw new IllegalArgumentException("Photo import row not found in this batch");
+        }
+        int updated = jdbc.sql("""
+                UPDATE student.photo_import_rows
+                SET admission_no = :admissionNo,
+                    image_no = :imageNo,
+                    drive_file_id = :driveFileId,
+                    drive_file_name = :driveFileName,
+                    student_id = :studentId,
+                    status = :status,
+                    message = :message,
+                    prior_photo_key = :priorPhotoKey,
+                    source_checksum = :sourceChecksum,
+                    crop_x = :cropX,
+                    crop_y = :cropY,
+                    manually_reviewed = true,
+                    updated_at = now()
+                WHERE id = :rowId AND batch_id = :batchId AND school_id = :schoolId
+                  AND status IN ('READY', 'HELD', 'ERROR', 'EXCLUDED')
+                """)
+                .param("admissionNo", row.admissionNo())
+                .param("imageNo", row.imageNo())
+                .param("driveFileId", row.driveFileId())
+                .param("driveFileName", row.driveFileName())
+                .param("studentId", row.studentId())
+                .param("status", row.status())
+                .param("message", row.message())
+                .param("priorPhotoKey", row.priorPhotoKey())
+                .param("sourceChecksum", row.sourceChecksum())
+                .param("cropX", cropX)
+                .param("cropY", cropY)
+                .param("rowId", rowId)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .update();
+        if (updated != 1) {
+            throw new IllegalArgumentException("This photo import row can no longer be changed");
+        }
+        jdbc.sql("""
+                UPDATE student.photo_import_batches b
+                SET ready_count = counts.ready,
+                    held_count = counts.held,
+                    error_count = counts.errors,
+                    updated_at = now(),
+                    version = version + 1
+                FROM (
+                    SELECT count(*) FILTER (WHERE status = 'READY') AS ready,
+                           count(*) FILTER (WHERE status = 'HELD') AS held,
+                           count(*) FILTER (WHERE status = 'ERROR') AS errors
+                    FROM student.photo_import_rows
+                    WHERE batch_id = :batchId AND school_id = :schoolId
+                ) counts
+                WHERE b.id = :batchId AND b.school_id = :schoolId
+                """)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .update();
+        return rowInTransaction(rowId, schoolId);
+    }
+
+    @Transactional
+    public Batch cancel(UUID id, long schoolId, Long userId) {
+        selectSchoolScope(schoolId);
+        int updated = jdbc.sql("""
+                UPDATE student.photo_import_batches
+                SET status = 'CANCELLED', cancelled_at = now(), cancelled_by = :userId,
+                    updated_at = now(), version = version + 1
+                WHERE id = :id AND school_id = :schoolId
+                  AND status IN ('DRAFT', 'REVIEW', 'FROZEN', 'PARTIAL', 'FAILED')
+                """)
+                .param("id", id)
+                .param("schoolId", schoolId)
+                .param("userId", userId)
+                .update();
+        if (updated != 1) {
+            throw new IllegalArgumentException(
+                    "Only non-executing unfinished batches can be cancelled");
+        }
+        outbox.append(
+                "student.photo-import.cancelled.v1",
+                "student.photo-import.cancelled.v1:" + id,
+                "student-photo-import",
+                id.toString(),
+                schoolId,
+                Map.of("photoImportBatchId", id.toString(), "schoolId", schoolId));
+        return batchInTransaction(id, schoolId);
+    }
+
+    @Transactional(readOnly = true)
+    public AccessState accessState(UUID id, long schoolId) {
+        selectSchoolScope(schoolId);
+        return jdbc.sql("""
+                SELECT photographer_access_expires_at, photographer_access_revoked_at
+                FROM student.photo_import_batches
+                WHERE id = :id AND school_id = :schoolId
+                """)
+                .param("id", id)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> {
+                    OffsetDateTime expiresAt = rs.getObject(
+                            "photographer_access_expires_at", OffsetDateTime.class);
+                    OffsetDateTime revokedAt = rs.getObject(
+                            "photographer_access_revoked_at", OffsetDateTime.class);
+                    return new AccessState(
+                            expiresAt,
+                            revokedAt,
+                            revokedAt == null && expiresAt != null
+                                    && expiresAt.isBefore(OffsetDateTime.now()));
+                })
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Photo import batch not found"));
+    }
+
+    @Transactional
+    public AccessState markAccessRevoked(UUID id, long schoolId) {
+        selectSchoolScope(schoolId);
+        int updated = jdbc.sql("""
+                UPDATE student.photo_import_batches
+                SET photographer_access_revoked_at = COALESCE(photographer_access_revoked_at, now()),
+                    updated_at = now(), version = version + 1
+                WHERE id = :id AND school_id = :schoolId
+                  AND status IN ('COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED')
+                """)
+                .param("id", id)
+                .param("schoolId", schoolId)
+                .update();
+        if (updated != 1) {
+            throw new IllegalArgumentException(
+                    "Finish or cancel the import before marking Drive access revoked");
+        }
+        return accessState(id, schoolId);
     }
 
     @Transactional
@@ -397,7 +607,19 @@ public class PhotoImportRepository {
         if (!Objects.equals(currentRow.priorPhotoKey(), student.photoKey())) {
             throw new IllegalArgumentException("Student photo changed after review; rescan before overwriting");
         }
-        String key = photoStorage.upload(batch.schoolUid(), currentRow.studentId(), data, contentType);
+        String sourceObjectKey = photoStorage.uploadImportFile(
+                batch.schoolUid(),
+                "photo-import-" + batch.id(),
+                data,
+                contentType,
+                currentRow.driveFileName());
+        String key = photoStorage.upload(
+                batch.schoolUid(),
+                currentRow.studentId(),
+                data,
+                contentType,
+                currentRow.cropX(),
+                currentRow.cropY());
         jdbc.sql("""
                 UPDATE student.students
                 SET photo_url = :key, updated_at = now(), updated_by = :updatedBy, version = version + 1
@@ -411,10 +633,12 @@ public class PhotoImportRepository {
         jdbc.sql("""
                 UPDATE student.photo_import_rows
                 SET status = 'APPLIED', final_photo_key = :key, applied_at = now(),
+                    source_object_key = :sourceObjectKey,
                     message = 'Portrait imported', updated_at = now()
                 WHERE id = :rowId AND school_id = :schoolId
                 """)
                 .param("key", key)
+                .param("sourceObjectKey", sourceObjectKey)
                 .param("rowId", currentRow.id())
                 .param("schoolId", batch.schoolId())
                 .update();
@@ -539,7 +763,8 @@ public class PhotoImportRepository {
                 SELECT id, batch_id, school_id, excel_row, admission_no, workbook_name,
                        class_name, section_name, image_no, drive_file_id, drive_file_name,
                        student_id, status, message, prior_photo_key, final_photo_key,
-                       source_checksum, applied_at
+                       source_checksum, crop_x, crop_y, manually_reviewed,
+                       source_object_key, applied_at
                 FROM student.photo_import_rows
                 WHERE id = :id AND school_id = :schoolId
                 """)
@@ -558,6 +783,7 @@ public class PhotoImportRepository {
                        b.ready_count, b.held_count, b.error_count, b.applied_count,
                        b.failed_count, b.created_by, b.executed_by, b.created_at,
                        b.scanned_at, b.frozen_at, b.executed_at, b.updated_at, b.version,
+                       b.photographer_access_expires_at, b.photographer_access_revoked_at,
                        s.name AS school_name, ay.label AS academic_year_label
                 FROM student.photo_import_batches b
                 JOIN tenant_school.schools s ON s.id = b.school_id
@@ -592,6 +818,8 @@ public class PhotoImportRepository {
                 rs.getObject("frozen_at", OffsetDateTime.class),
                 rs.getObject("executed_at", OffsetDateTime.class),
                 rs.getObject("updated_at", OffsetDateTime.class),
+                rs.getObject("photographer_access_expires_at", OffsetDateTime.class),
+                rs.getObject("photographer_access_revoked_at", OffsetDateTime.class),
                 rs.getLong("version"));
     }
 
@@ -614,6 +842,10 @@ public class PhotoImportRepository {
                 rs.getString("prior_photo_key"),
                 rs.getString("final_photo_key"),
                 rs.getString("source_checksum"),
+                rs.getDouble("crop_x"),
+                rs.getDouble("crop_y"),
+                rs.getBoolean("manually_reviewed"),
+                rs.getString("source_object_key"),
                 rs.getObject("applied_at", OffsetDateTime.class));
     }
 
@@ -641,6 +873,12 @@ public class PhotoImportRepository {
     }
 
     private record Counts(int applied, int failed, int ready) {
+    }
+
+    public record AccessState(
+            OffsetDateTime expiresAt,
+            OffsetDateTime revokedAt,
+            boolean overdue) {
     }
 
     public record SchoolContext(
@@ -678,6 +916,8 @@ public class PhotoImportRepository {
             OffsetDateTime frozenAt,
             OffsetDateTime executedAt,
             OffsetDateTime updatedAt,
+            OffsetDateTime photographerAccessExpiresAt,
+            OffsetDateTime photographerAccessRevokedAt,
             long version) {
     }
 
@@ -726,6 +966,10 @@ public class PhotoImportRepository {
             String priorPhotoKey,
             String finalPhotoKey,
             String sourceChecksum,
+            double cropX,
+            double cropY,
+            boolean manuallyReviewed,
+            String sourceObjectKey,
             OffsetDateTime appliedAt) {
     }
 

@@ -18,7 +18,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -126,7 +125,8 @@ public class PhotoImportService {
         long schoolId = authorizedBatchSchool(id);
         return Map.of(
                 "batch", repository.batch(id, schoolId),
-                "rows", repository.rows(id, schoolId));
+                "rows", repository.rows(id, schoolId),
+                "access", repository.accessState(id, schoolId));
     }
 
     public Batch scan(UUID id) {
@@ -140,7 +140,20 @@ public class PhotoImportService {
                     : "The Drive folder contains multiple .xlsx files; keep exactly one mapping workbook");
         }
         DriveFile workbook = workbooks.getFirst();
-        var parsed = parser.parse(drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES),
+        String snapshotHash = drive.snapshotHash(files);
+        if (repository.terminalSnapshotExists(
+                id, schoolId, batch.driveFolderId(), snapshotHash)) {
+            throw new DrivePhotoImportException(
+                    "source_already_imported",
+                    "This exact Drive folder snapshot was already processed; replace the workbook or photos before starting another job");
+        }
+        byte[] workbookBytes = drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES);
+        var parsed = parser.parse(workbookBytes, workbook.name());
+        String workbookObjectKey = photoStorage.uploadImportFile(
+                batch.schoolUid(),
+                "photo-import-" + id,
+                workbookBytes,
+                workbook.mimeType(),
                 workbook.name());
 
         Map<String, List<DriveFile>> imagesByNumber = new LinkedHashMap<>();
@@ -188,9 +201,66 @@ public class PhotoImportService {
                 schoolId,
                 workbook.id(),
                 workbook.name(),
-                drive.snapshotHash(files),
+                workbookObjectKey,
+                snapshotHash,
                 sources,
                 rows);
+    }
+
+    public Map<String, Object> updateRow(UUID batchId, UUID rowId, RowReviewUpdate update) {
+        long schoolId = authorizedBatchSchool(batchId);
+        Batch batch = repository.batch(batchId, schoolId);
+        if (!"REVIEW".equals(batch.status())) {
+            throw new IllegalArgumentException("Rows can only be changed while the batch is in review");
+        }
+        List<ImportRow> rows = repository.rows(batchId, schoolId);
+        ImportRow current = rows.stream()
+                .filter(row -> row.id().equals(rowId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Photo import row not found"));
+        double cropX = cropCoordinate(update.cropX(), current.cropX(), "cropX");
+        double cropY = cropCoordinate(update.cropY(), current.cropY(), "cropY");
+
+        RowInput reviewed;
+        if (Boolean.TRUE.equals(update.excluded())) {
+            reviewed = new RowInput(
+                    current.excelRow(),
+                    current.admissionNo(),
+                    current.workbookName(),
+                    current.className(),
+                    current.sectionName(),
+                    current.imageNo(),
+                    null,
+                    null,
+                    null,
+                    "EXCLUDED",
+                    "Excluded by operator",
+                    current.priorPhotoKey(),
+                    null);
+        } else {
+            String admissionNo = update.admissionNo() == null
+                    ? current.admissionNo() : clean(update.admissionNo());
+            String imageNo = update.imageNo() == null ? current.imageNo() : clean(update.imageNo());
+            Map<String, List<DriveFile>> imagesByNumber = imageFilesByNumber(
+                    repository.sourceFiles(batchId, schoolId));
+            Map<String, Long> workbookAdmissions = effectiveCounts(
+                    rows, current.id(), admissionNo, ImportRow::admissionNo, PhotoImportService::normalizedIdentifier);
+            Map<String, Long> workbookImages = effectiveCounts(
+                    rows, current.id(), imageNo, ImportRow::imageNo, PhotoImportService::canonicalImageIdentifier);
+            reviewed = validateRow(
+                    batch,
+                    new WorkbookRow(
+                            current.excelRow(), admissionNo, current.workbookName(),
+                            current.className(), current.sectionName(), imageNo),
+                    imagesByNumber,
+                    workbookAdmissions,
+                    workbookImages);
+        }
+        ImportRow saved = repository.updateReviewRow(
+                batchId, schoolId, rowId, reviewed, cropX, cropY);
+        return Map.of(
+                "batch", repository.batch(batchId, schoolId),
+                "row", saved);
     }
 
     public Batch freeze(UUID id) {
@@ -203,6 +273,16 @@ public class PhotoImportService {
                     "The Drive folder changed after scanning. Scan the batch again before freezing it");
         }
         return repository.freeze(id, schoolId, currentHash);
+    }
+
+    public Batch cancel(UUID id) {
+        long schoolId = authorizedBatchSchool(id);
+        return repository.cancel(id, schoolId, TenantContext.get().userId());
+    }
+
+    public PhotoImportRepository.AccessState markAccessRevoked(UUID id) {
+        long schoolId = authorizedBatchSchool(id);
+        return repository.markAccessRevoked(id, schoolId);
     }
 
     public Batch execute(UUID id) {
@@ -258,8 +338,35 @@ public class PhotoImportService {
             throw new IllegalArgumentException("This row has no matched Drive image");
         }
         DriveFile source = repository.sourceFile(batchId, schoolId, row.driveFileId());
-        byte[] normalized = photoStorage.normalizePortrait(drive.download(source, MAX_IMAGE_BYTES), source.mimeType());
+        byte[] normalized = photoStorage.normalizePortrait(
+                drive.download(source, MAX_IMAGE_BYTES),
+                source.mimeType(),
+                row.cropX(),
+                row.cropY());
         return new Preview(normalized, "image/jpeg");
+    }
+
+    public String resultCsv(UUID id) {
+        long schoolId = authorizedBatchSchool(id);
+        Batch batch = repository.batch(id, schoolId);
+        StringBuilder csv = new StringBuilder(
+                "School,AcademicYear,BatchId,ExcelRow,AdmissionNo,StudentName,ImageNo,DriveFile,Status,Message,AppliedAt,SourceEvidenceRetained\r\n");
+        for (ImportRow row : repository.rows(id, schoolId)) {
+            csv.append(csv(batch.schoolName())).append(',')
+                    .append(csv(batch.academicYearLabel())).append(',')
+                    .append(csv(batch.id().toString())).append(',')
+                    .append(row.excelRow()).append(',')
+                    .append(csv(row.admissionNo())).append(',')
+                    .append(csv(row.workbookName())).append(',')
+                    .append(csv(row.imageNo())).append(',')
+                    .append(csv(row.driveFileName())).append(',')
+                    .append(csv(row.status())).append(',')
+                    .append(csv(row.message())).append(',')
+                    .append(csv(row.appliedAt() == null ? null : row.appliedAt().toString())).append(',')
+                    .append(row.sourceObjectKey() != null)
+                    .append("\r\n");
+        }
+        return csv.toString();
     }
 
     private RowInput validateRow(
@@ -344,6 +451,66 @@ public class PhotoImportService {
                 image == null ? null : image.md5Checksum());
     }
 
+    private static Map<String, List<DriveFile>> imageFilesByNumber(List<DriveFile> files) {
+        Map<String, List<DriveFile>> result = new LinkedHashMap<>();
+        for (DriveFile file : files) {
+            if (file.isSupportedImage()) {
+                DscImageNumber.fromFileName(file.name()).ifPresent(imageNo ->
+                        result.computeIfAbsent(imageNo, ignored -> new ArrayList<>()).add(file));
+            }
+        }
+        return result;
+    }
+
+    private static Map<String, Long> effectiveCounts(
+            List<ImportRow> rows,
+            UUID currentRowId,
+            String replacement,
+            Function<ImportRow, String> extractor,
+            Function<String, String> normalizer) {
+        Map<String, Long> counts = new HashMap<>();
+        for (ImportRow row : rows) {
+            String value;
+            if (row.id().equals(currentRowId)) {
+                value = replacement;
+            } else {
+                if ("EXCLUDED".equals(row.status())) {
+                    continue;
+                }
+                value = extractor.apply(row);
+            }
+            if (value == null || value.isBlank()) {
+                continue;
+            }
+            String normalized = normalizer.apply(value);
+            if (normalized != null) {
+                counts.merge(normalized, 1L, Long::sum);
+            }
+        }
+        return counts;
+    }
+
+    private static String canonicalImageIdentifier(String value) {
+        String cleaned = clean(value);
+        return cleaned.matches("[0-9]+") ? DscImageNumber.canonical(cleaned) : null;
+    }
+
+    private static double cropCoordinate(Double requested, double current, String field) {
+        double value = requested == null ? current : requested;
+        if (!Double.isFinite(value) || value < 0 || value > 1) {
+            throw new IllegalArgumentException(field + " must be between 0 and 1");
+        }
+        return value;
+    }
+
+    private static String csv(String value) {
+        String safe = value == null ? "" : value;
+        if (!safe.isEmpty() && "=+-@".indexOf(safe.charAt(0)) >= 0) {
+            safe = "'" + safe;
+        }
+        return '"' + safe.replace("\"", "\"\"") + '"';
+    }
+
     private long authorizedBatchSchool(UUID id) {
         requireAccess();
         long actualSchoolId = repository.batchSchoolId(id);
@@ -407,6 +574,14 @@ public class PhotoImportService {
     }
 
     public record Preview(byte[] bytes, String contentType) {
+    }
+
+    public record RowReviewUpdate(
+            String admissionNo,
+            String imageNo,
+            Boolean excluded,
+            Double cropX,
+            Double cropY) {
     }
 
     public record SchoolPhotoImportContext(

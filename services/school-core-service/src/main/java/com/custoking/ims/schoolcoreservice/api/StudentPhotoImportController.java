@@ -5,10 +5,13 @@ import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Bat
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -98,6 +101,40 @@ public class StudentPhotoImportController {
         return service.freeze(id);
     }
 
+    @PostMapping("/{batchId}/rows/{rowId}")
+    public Map<String, Object> updateRow(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID batchId,
+            @PathVariable UUID rowId,
+            @Valid @RequestBody RowReviewRequest request) {
+        requireToken(token, "student:write");
+        return service.updateRow(
+                batchId,
+                rowId,
+                new PhotoImportService.RowReviewUpdate(
+                        request.admissionNo(),
+                        request.imageNo(),
+                        request.excluded(),
+                        request.cropX(),
+                        request.cropY()));
+    }
+
+    @PostMapping("/{id}/cancel")
+    public Batch cancel(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID id) {
+        requireToken(token, "student:write");
+        return service.cancel(id);
+    }
+
+    @PostMapping("/{id}/access-revoked")
+    public Object markAccessRevoked(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID id) {
+        requireToken(token, "student:write");
+        return service.markAccessRevoked(id);
+    }
+
     @PostMapping("/{id}/execute")
     public Batch execute(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
@@ -119,10 +156,22 @@ public class StudentPhotoImportController {
                 .body(preview.bytes());
     }
 
+    @GetMapping("/{id}/result")
+    public ResponseEntity<String> result(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID id) {
+        requireToken(token, "student:read");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=student-photo-import-" + id + ".csv")
+                .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
+                .body(service.resultCsv(id));
+    }
+
     @ExceptionHandler(DrivePhotoImportException.class)
     public ResponseEntity<Map<String, Object>> driveError(DrivePhotoImportException ex) {
         HttpStatus status = switch (ex.code()) {
-            case "source_changed" -> HttpStatus.CONFLICT;
+            case "source_changed", "source_already_imported" -> HttpStatus.CONFLICT;
             case "drive_not_configured" -> HttpStatus.SERVICE_UNAVAILABLE;
             case "drive_access_denied", "not_a_folder", "file_too_large" -> HttpStatus.UNPROCESSABLE_CONTENT;
             case "drive_rate_limited" -> HttpStatus.TOO_MANY_REQUESTS;
@@ -139,7 +188,7 @@ public class StudentPhotoImportController {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> conflict(DataIntegrityViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("message", "This Google Drive folder is already bound to a photo import batch"));
+                .body(Map.of("message", "This Google Drive folder already has an active photo import batch"));
     }
 
     private void requireToken(String token, String requiredScope) {
@@ -155,5 +204,13 @@ public class StudentPhotoImportController {
             @NotNull Long schoolId,
             @NotBlank String academicYearId,
             String driveFolderUrl) {
+    }
+
+    public record RowReviewRequest(
+            String admissionNo,
+            String imageNo,
+            Boolean excluded,
+            @DecimalMin("0.0") @DecimalMax("1.0") Double cropX,
+            @DecimalMin("0.0") @DecimalMax("1.0") Double cropY) {
     }
 }
