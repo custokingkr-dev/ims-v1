@@ -26,6 +26,7 @@ const context = {
     driveFolderUrl: 'https://drive.google.com/drive/folders/folder-1',
   }],
   mappingColumns: ['AdmissionNo', 'Name', 'Class', 'Section', 'ImageNo'],
+  mappingFileFormats: ['XLSX', 'XLS', 'CSV', 'TSV'],
   fileNameRule: 'DSC5236.jpg or DSC_05236.JPG',
 };
 
@@ -82,6 +83,7 @@ describe('PhotoImportPanel', () => {
     render(<PhotoImportPanel />);
     expect(await screen.findByText('2026-27')).toBeInTheDocument();
     expect(screen.getByText('GVS / 2026-27 / Student Photo Intake')).toBeInTheDocument();
+    expect(screen.getByText(/XLSX, XLS, CSV, TSV/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /start manual import/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/student-photo-imports', {

@@ -172,8 +172,7 @@ class PhotoImportServiceTest {
         Batch draft = batch(batchId, schoolId, "DRAFT", 0);
         Batch review = batch(batchId, schoolId, "REVIEW", 0);
         DriveFile workbook = new DriveFile(
-                "workbook-file", "mapping.xlsx",
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "workbook-file", "mapping.csv", "text/csv",
                 100L, "workbook-checksum", "2026-07-31T00:00:00Z");
         DriveFile oversized = new DriveFile(
                 "photo-file", "DSC5236.jpg", "image/jpeg",
@@ -189,10 +188,10 @@ class PhotoImportServiceTest {
         when(drive.listFiles("folder-1")).thenReturn(List.of(workbook, oversized));
         when(drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES))
                 .thenReturn(new byte[]{1});
-        when(parser.parse(any(byte[].class), eq("mapping.xlsx"))).thenReturn(parsed);
+        when(parser.parse(any(byte[].class), eq("mapping.csv"))).thenReturn(parsed);
         when(drive.snapshotHash(List.of(workbook, oversized))).thenReturn("snapshot-1");
         when(repository.replaceScan(
-                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.xlsx"),
+                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.csv"),
                 isNull(), eq("snapshot-1"), any(), any())).thenReturn(review);
 
         service.scan(batchId);
@@ -200,7 +199,7 @@ class PhotoImportServiceTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<RowInput>> rows = ArgumentCaptor.forClass(List.class);
         verify(repository).replaceScan(
-                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.xlsx"),
+                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.csv"),
                 isNull(), eq("snapshot-1"), any(), rows.capture());
         assertThat(rows.getValue()).singleElement().satisfies(row -> {
             assertThat(row.status()).isEqualTo("ERROR");

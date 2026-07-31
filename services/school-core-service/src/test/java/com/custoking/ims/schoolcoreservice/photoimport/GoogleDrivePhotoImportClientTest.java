@@ -73,6 +73,21 @@ class GoogleDrivePhotoImportClientTest {
                 .isSupportedImage()).isTrue();
     }
 
+    @Test
+    void recognizesOnlySupportedMappingFileExtensions() {
+        for (String name : List.of("mapping.xlsx", "mapping.XLS", "mapping.csv", "mapping.tsv")) {
+            assertThat(new GoogleDrivePhotoImportClient.DriveFile(
+                    "file-1", name, "application/octet-stream", 100L, null, null)
+                    .isMappingFile()).as(name).isTrue();
+        }
+        assertThat(new GoogleDrivePhotoImportClient.DriveFile(
+                "file-2", "mapping.ods", "application/octet-stream", 100L, null, null)
+                .isMappingFile()).isFalse();
+        assertThat(new GoogleDrivePhotoImportClient.DriveFile(
+                "folder", "mapping.csv", "application/vnd.google-apps.folder", null, null, null)
+                .isMappingFile()).isFalse();
+    }
+
     private static GoogleDrivePhotoImportClient client(
             boolean enabled,
             String rootFolder,

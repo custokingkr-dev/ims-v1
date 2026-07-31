@@ -511,8 +511,9 @@ public class GoogleDrivePhotoImportClient {
             Long size,
             String md5Checksum,
             String modifiedTime) {
-        public boolean isXlsx() {
-            return name != null && name.toLowerCase(Locale.ROOT).endsWith(".xlsx")
+        public boolean isMappingFile() {
+            return name != null
+                    && name.toLowerCase(Locale.ROOT).matches(".*\\.(xlsx|xls|csv|tsv)$")
                     && !"application/vnd.google-apps.folder".equals(mimeType);
         }
 

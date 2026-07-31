@@ -1,15 +1,24 @@
 package com.custoking.ims.schoolcoreservice.photoimport;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FormulaEvaluator;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
+import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,18 +34,27 @@ public class PhotoImportWorkbookParser {
             List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo");
 
     public ParsedWorkbook parse(byte[] bytes, String fileName) {
-        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
-            throw new IllegalArgumentException("The mapping workbook must be an .xlsx file");
-        }
+        String extension = extension(fileName);
         if (bytes == null || bytes.length == 0) {
-            throw new IllegalArgumentException("The mapping workbook is empty");
+            throw new IllegalArgumentException("The mapping file is empty");
         }
         if (bytes.length > MAX_WORKBOOK_BYTES) {
-            throw new IllegalArgumentException("The mapping workbook must be 10 MB or smaller");
+            throw new IllegalArgumentException("The mapping file must be 10 MB or smaller");
         }
+        return switch (extension) {
+            case "xlsx", "xls" -> parseExcel(bytes, extension);
+            case "csv" -> parseDelimited(bytes, ',', "CSV");
+            case "tsv" -> parseDelimited(bytes, '\t', "TSV");
+            default -> throw new IllegalArgumentException(
+                    "The mapping file must be XLSX, XLS, CSV, or TSV");
+        };
+    }
 
-        ZipSecureFile.setMinInflateRatio(0.01);
-        try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(bytes))) {
+    private ParsedWorkbook parseExcel(byte[] bytes, String extension) {
+        if ("xlsx".equals(extension)) {
+            ZipSecureFile.setMinInflateRatio(0.01);
+        }
+        try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
             if (workbook.getNumberOfSheets() != 1) {
                 throw new IllegalArgumentException("The mapping workbook must contain exactly one sheet");
             }
@@ -72,7 +90,53 @@ public class PhotoImportWorkbookParser {
         } catch (IllegalArgumentException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new IllegalArgumentException("Could not read the mapping workbook as a valid .xlsx file", ex);
+            throw new IllegalArgumentException(
+                    "Could not read the mapping file as a valid ." + extension + " workbook", ex);
+        }
+    }
+
+    private ParsedWorkbook parseDelimited(byte[] bytes, char delimiter, String formatName) {
+        String content = decodeUtf8(bytes, formatName);
+        if (!content.isEmpty() && content.charAt(0) == '\uFEFF') {
+            content = content.substring(1);
+        }
+        CSVFormat format = CSVFormat.DEFAULT.builder()
+                .setDelimiter(delimiter)
+                .setIgnoreEmptyLines(true)
+                .get();
+        try (CSVParser parser = format.parse(new StringReader(content))) {
+            var iterator = parser.iterator();
+            if (!iterator.hasNext()) {
+                throw new IllegalArgumentException("The mapping file has no header row");
+            }
+            CSVRecord header = iterator.next();
+            Map<String, Integer> headerIndexes = headerIndexes(values(header));
+            List<WorkbookRow> rows = new ArrayList<>();
+            while (iterator.hasNext()) {
+                CSVRecord record = iterator.next();
+                if (isBlank(record)) {
+                    continue;
+                }
+                if (rows.size() >= MAX_ROWS) {
+                    throw new IllegalArgumentException("A photo import can contain at most 500 data rows");
+                }
+                rows.add(new WorkbookRow(
+                        Math.toIntExact(record.getRecordNumber()),
+                        value(record, headerIndexes.get("admissionno")),
+                        value(record, headerIndexes.get("name")),
+                        value(record, headerIndexes.get("class")),
+                        value(record, headerIndexes.get("section")),
+                        value(record, headerIndexes.get("imageno"))));
+            }
+            if (rows.isEmpty()) {
+                throw new IllegalArgumentException("The mapping file contains no data rows");
+            }
+            return new ParsedWorkbook(formatName, rows, REQUIRED_HEADERS);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(
+                    "Could not read the mapping file as valid " + formatName, ex);
         }
     }
 
@@ -86,7 +150,24 @@ public class PhotoImportWorkbookParser {
                 }
             }
         }
-        Set<String> actual = result.keySet();
+        validateHeaders(result);
+        return result;
+    }
+
+    private Map<String, Integer> headerIndexes(List<String> headers) {
+        Map<String, Integer> result = new LinkedHashMap<>();
+        for (int index = 0; index < headers.size(); index++) {
+            String header = headers.get(index).trim().toLowerCase(Locale.ROOT);
+            if (!header.isBlank() && result.putIfAbsent(header, index) != null) {
+                throw new IllegalArgumentException("Duplicate workbook header: " + header);
+            }
+        }
+        validateHeaders(result);
+        return result;
+    }
+
+    private void validateHeaders(Map<String, Integer> headerIndexes) {
+        Set<String> actual = headerIndexes.keySet();
         List<String> missing = REQUIRED_HEADERS.stream()
                 .map(value -> value.toLowerCase(Locale.ROOT))
                 .filter(value -> !actual.contains(value))
@@ -94,7 +175,6 @@ public class PhotoImportWorkbookParser {
         if (!missing.isEmpty()) {
             throw new IllegalArgumentException("Missing workbook columns: " + String.join(", ", missing));
         }
-        return result;
     }
 
     private boolean isBlank(Row row, DataFormatter formatter, FormulaEvaluator evaluator) {
@@ -109,6 +189,48 @@ public class PhotoImportWorkbookParser {
     private String value(Row row, int column, DataFormatter formatter, FormulaEvaluator evaluator) {
         Cell cell = row.getCell(column, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         return cell == null ? "" : formatter.formatCellValue(cell, evaluator).trim();
+    }
+
+    private static List<String> values(CSVRecord record) {
+        List<String> values = new ArrayList<>(record.size());
+        for (int index = 0; index < record.size(); index++) {
+            values.add(record.get(index));
+        }
+        return values;
+    }
+
+    private static boolean isBlank(CSVRecord record) {
+        for (String value : record) {
+            if (!value.trim().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static String value(CSVRecord record, int column) {
+        return column < record.size() ? record.get(column).trim() : "";
+    }
+
+    private static String decodeUtf8(byte[] bytes, String formatName) {
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString();
+        } catch (CharacterCodingException ex) {
+            throw new IllegalArgumentException(
+                    formatName + " mapping files must use UTF-8 encoding", ex);
+        }
+    }
+
+    private static String extension(String fileName) {
+        if (fileName == null) {
+            return "";
+        }
+        int separator = fileName.lastIndexOf('.');
+        return separator < 0 ? "" : fileName.substring(separator + 1).toLowerCase(Locale.ROOT);
     }
 
     public record ParsedWorkbook(String sheetName, List<WorkbookRow> rows, List<String> headers) {

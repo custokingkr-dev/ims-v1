@@ -44,7 +44,10 @@ manually replace database folder IDs or move managed folders outside the configu
 1. Empty or archive the previous delivery from the intake folder.
 2. Share only the intake folder with the photographer's named Google account as Editor.
    Never use `Anyone with the link`.
-3. Ask for exactly one `.xlsx` workbook and the JPG/JPEG/PNG camera files.
+3. Ask for exactly one `.xlsx`, `.xls`, `.csv`, or `.tsv` mapping file and the
+   JPG/JPEG/PNG camera files. Excel files must contain exactly one sheet. CSV and TSV
+   files must use UTF-8. Every format uses the exact headings `AdmissionNo`, `Name`,
+   `Class`, `Section`, and `ImageNo`.
 4. Start a manual import and scan the folder.
 5. Review the immutable school/year scope and validation totals.
 6. Correct admission/image identifiers, exclude intentionally blank rows, adjust crop

@@ -199,7 +199,7 @@ academic year:
 
 The folder contains:
 
-- one `.xlsx` workbook;
+- one `.xlsx`, `.xls`, UTF-8 `.csv`, or UTF-8 `.tsv` mapping file;
 - JPG, JPEG, or PNG files; and
 - no unrelated school documents.
 

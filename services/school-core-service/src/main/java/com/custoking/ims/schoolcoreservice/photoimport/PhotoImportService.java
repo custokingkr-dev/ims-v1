@@ -63,6 +63,7 @@ public class PhotoImportService {
                 "managedDriveConfigured", folderProvisioning.isConfigured(),
                 "schools", repository.allowedSchools().stream().map(this::schoolContext).toList(),
                 "mappingColumns", List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"),
+                "mappingFileFormats", List.of("XLSX", "XLS", "CSV", "TSV"),
                 "fileNameRule", "DSC5236.jpg or DSC_05236.JPG");
     }
 
@@ -133,11 +134,11 @@ public class PhotoImportService {
         long schoolId = authorizedBatchSchool(id);
         Batch batch = repository.batch(id, schoolId);
         List<DriveFile> files = drive.listFiles(batch.driveFolderId());
-        List<DriveFile> workbooks = files.stream().filter(DriveFile::isXlsx).toList();
+        List<DriveFile> workbooks = files.stream().filter(DriveFile::isMappingFile).toList();
         if (workbooks.size() != 1) {
             throw new IllegalArgumentException(workbooks.isEmpty()
-                    ? "The Drive folder must contain one .xlsx mapping workbook"
-                    : "The Drive folder contains multiple .xlsx files; keep exactly one mapping workbook");
+                    ? "The Drive folder must contain one XLSX, XLS, CSV, or TSV mapping file"
+                    : "The Drive folder contains multiple mapping files; keep exactly one XLSX, XLS, CSV, or TSV file");
         }
         DriveFile workbook = workbooks.getFirst();
         String snapshotHash = drive.snapshotHash(files);

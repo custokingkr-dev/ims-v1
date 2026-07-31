@@ -42,6 +42,7 @@ interface ImportContext {
   managedDriveConfigured: boolean;
   schools: SchoolContext[];
   mappingColumns: string[];
+  mappingFileFormats: string[];
   fileNameRule: string;
 }
 
@@ -551,7 +552,10 @@ export function PhotoImportPanel() {
                 </div>
                 <div className="pi-contract">
                   <span><strong>Access:</strong> Restricted; share with the photographer as Editor</span>
-                  <span><strong>Workbook:</strong> AdmissionNo, Name, Class, Section, ImageNo</span>
+                  <span>
+                    <strong>Mapping file:</strong> {context.mappingFileFormats?.join(', ') || 'XLSX, XLS, CSV, TSV'}
+                    {' / '}{context.mappingColumns.join(', ')}
+                  </span>
                   <span><strong>Images:</strong> {context.fileNameRule}</span>
                 </div>
               </section>
