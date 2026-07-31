@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.photoimport;
 
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.UserCredentials;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
@@ -25,13 +26,15 @@ import java.util.Map;
 
 @Component
 public class GoogleDrivePhotoImportClient {
-    private static final String DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
     private static final String API = "https://www.googleapis.com/drive/v3/files";
     private static final String FOLDER_MIME = "application/vnd.google-apps.folder";
     private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
 
     private final boolean enabled;
     private final String configuredRootFolder;
+    private final String oauthClientId;
+    private final String oauthClientSecret;
+    private final String oauthRefreshToken;
     private final ObjectMapper objectMapper;
     private final HttpClient http;
     private volatile GoogleCredentials credentials;
@@ -39,19 +42,25 @@ public class GoogleDrivePhotoImportClient {
     public GoogleDrivePhotoImportClient(
             ObjectMapper objectMapper,
             @Value("${student.photo-import.drive-enabled:false}") boolean enabled,
-            @Value("${student.photo-import.root-folder-id:}") String rootFolderId) {
+            @Value("${student.photo-import.root-folder-id:}") String rootFolderId,
+            @Value("${student.photo-import.oauth.client-id:}") String oauthClientId,
+            @Value("${student.photo-import.oauth.client-secret:}") String oauthClientSecret,
+            @Value("${student.photo-import.oauth.refresh-token:}") String oauthRefreshToken) {
         this.enabled = enabled;
-        this.configuredRootFolder = rootFolderId == null ? "" : rootFolderId.trim();
+        this.configuredRootFolder = setting(rootFolderId);
+        this.oauthClientId = setting(oauthClientId);
+        this.oauthClientSecret = setting(oauthClientSecret);
+        this.oauthRefreshToken = setting(oauthRefreshToken);
         this.objectMapper = objectMapper;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
     public boolean isEnabled() {
-        return enabled;
+        return enabled && hasPersonalOauthCredentials();
     }
 
     public boolean isProvisioningEnabled() {
-        return enabled && !configuredRootFolder.isBlank();
+        return isEnabled() && !configuredRootFolder.isBlank();
     }
 
     public String rootFolderId() {
@@ -245,7 +254,11 @@ public class GoogleDrivePhotoImportClient {
                 synchronized (this) {
                     current = credentials;
                     if (current == null) {
-                        current = GoogleCredentials.getApplicationDefault().createScoped(List.of(DRIVE_SCOPE));
+                        current = UserCredentials.newBuilder()
+                                .setClientId(oauthClientId)
+                                .setClientSecret(oauthClientSecret)
+                                .setRefreshToken(oauthRefreshToken)
+                                .build();
                         credentials = current;
                     }
                 }
@@ -259,16 +272,20 @@ public class GoogleDrivePhotoImportClient {
             return token.getTokenValue();
         } catch (IOException ex) {
             throw new DrivePhotoImportException("drive_auth_failed",
-                    "Google Drive credentials are not available to the service", ex);
+                    "The personal Google Drive connection is unavailable or expired; reconnect the account", ex);
         }
     }
 
     private DrivePhotoImportException driveFailure(int status, byte[] body) {
         String detail = new String(body == null ? new byte[0] : body, StandardCharsets.UTF_8);
         String lower = detail.toLowerCase(Locale.ROOT);
+        if (status == 401 || lower.contains("invalid_grant")) {
+            return new DrivePhotoImportException("drive_auth_failed",
+                    "The personal Google Drive connection is unavailable or expired; reconnect the account");
+        }
         if (status == 403 || status == 404) {
             return new DrivePhotoImportException("drive_access_denied",
-                    "The Drive item is unavailable or the Custoking service account lacks the required access");
+                    "The Drive item is unavailable or the connected Google account lacks access");
         }
         if (lower.contains("ratelimit") || status == 429) {
             return new DrivePhotoImportException("drive_rate_limited", "Google Drive rate limit reached; retry shortly");
@@ -287,9 +304,9 @@ public class GoogleDrivePhotoImportClient {
     }
 
     private void requireEnabled() {
-        if (!enabled) {
+        if (!isEnabled()) {
             throw new DrivePhotoImportException("drive_not_configured",
-                    "Google Drive photo import is not configured in this environment");
+                    "A personal Google Drive account has not been connected in this environment");
         }
     }
 
@@ -297,8 +314,12 @@ public class GoogleDrivePhotoImportClient {
         requireEnabled();
         if (configuredRootFolder.isBlank()) {
             throw new DrivePhotoImportException("drive_not_configured",
-                    "A Shared Drive root folder is required for automatic photo-folder provisioning");
+                    "A root folder in the connected personal Google Drive is required for automatic provisioning");
         }
+    }
+
+    private boolean hasPersonalOauthCredentials() {
+        return !oauthClientId.isBlank() && !oauthClientSecret.isBlank() && !oauthRefreshToken.isBlank();
     }
 
     private ManagedFolder ensureManagedFolder(
@@ -378,6 +399,10 @@ public class GoogleDrivePhotoImportClient {
 
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
+    }
+
+    private static String setting(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static String string(Object value) {

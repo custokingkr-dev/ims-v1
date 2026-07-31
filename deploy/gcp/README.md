@@ -48,22 +48,61 @@ wires via `--set-secrets`/`availableSecrets` — keep it in sync if the build ch
 - `fee-read-token` — read token for the fee domain (school-core-service)
 - `catalog-read-token` — read token for the catalog domain (school-core-service)
 
-## Student photo intake Shared Drive
+The personal Drive integration additionally uses these three environment-suffixed
+Secret Manager secrets:
 
-Automatic school-onboarding folder creation requires one environment variable:
+- `student-photo-import-drive-oauth-client-id`
+- `student-photo-import-drive-oauth-client-secret`
+- `student-photo-import-drive-oauth-refresh-token`
 
-`STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID`
+## Student photo intake personal Google Drive
 
-Set it as a GitHub Environment variable for `dev` and `prod`. The value must be the ID
-of a folder inside a Google Workspace Shared Drive. Add the school-core runtime service
-account to that folder with Content Manager access, then keep the root restricted.
+Use one dedicated personal Google account per environment. Do not connect an employee's
+everyday Drive. The account owns the intake root and all automatically created school
+and academic-year folders.
+
+1. In the environment's Google Cloud project, enable **Google Drive API**.
+2. Configure OAuth audience as **External**. Add only the dedicated personal Google
+   account as a test user while setting up. Publish the app before operational use;
+   `Testing` refresh tokens expire after seven days.
+3. Create an OAuth 2.0 **Web application** client. Temporarily add
+   `https://developers.google.com/oauthplayground` as an authorized redirect URI.
+4. Open Google OAuth Playground. In settings, enable **Use your own OAuth credentials**,
+   choose **Server-side**, **Offline**, and **Force consent**, then enter the client ID
+   and secret.
+5. Authorize `https://www.googleapis.com/auth/drive` while signed in as the dedicated
+   personal account. Exchange the code and record the returned refresh token. Remove
+   the Playground redirect URI after the grant is complete.
+6. In the personal account's **My Drive**, create
+   `Custoking Student Photo Intake - <ENV>` and copy its folder ID.
+7. Create these three environment-suffixed GCP Secret Manager secrets and add an enabled
+   version to each:
+
+   - `student-photo-import-drive-oauth-client-id-<env>`
+   - `student-photo-import-drive-oauth-client-secret-<env>`
+   - `student-photo-import-drive-oauth-refresh-token-<env>`
+
+   Grant the school-core Cloud Run runtime identity
+   `roles/secretmanager.secretAccessor`. Cloud Build binds the credentials only when
+   all three secrets have an enabled `latest` version.
+8. Set the root folder ID as a GitHub Environment variable and redeploy
+   `school-core-service`:
+
+```powershell
+gh variable set STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID `
+  --env dev `
+  --body "PERSONAL_MY_DRIVE_ROOT_FOLDER_ID"
+```
+
 School onboarding creates:
 
 `<SHORT CODE> - <School> / <Academic year> / Student Photo Intake`
 
-The service account cannot own folders in a personal My Drive. Without this variable,
-existing Drive imports remain readable, but managed folder provisioning reports
-`NOT_CONFIGURED`.
+For already onboarded schools, select the school in **Operations > Students > Photo
+imports** and click **Provision folder** once after the OAuth connection is active.
+Future schools provision during onboarding. Never use `Anyone with the link`; share
+only the generated intake folder with the photographer's Google account and remove
+that permission after the batch is frozen.
 - `workflow-read-token` — read token for the workflow domain (operations-service)
 - `firefighting-read-token` — read token for the firefighting domain (operations-service)
 - `reporting-read-token` — read token for the reporting domain (platform-service)

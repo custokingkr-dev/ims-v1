@@ -305,7 +305,7 @@ export function PhotoImportPanel() {
         {context && !context.driveConfigured && (
           <div className="pi-notice bad" role="alert">
             <AlertTriangle size={17} />
-            <span>Google Drive import is disabled in this environment.</span>
+            <span>A personal Google Drive account is not connected in this environment.</span>
           </div>
         )}
 
@@ -414,7 +414,7 @@ export function PhotoImportPanel() {
                     </div>
                   ) : (
                     <div className="pi-folder-fallback">
-                      <span>Shared Drive root is not configured. Use a restricted folder until setup is completed.</span>
+                      <span>Personal Drive is not connected or its intake root is not configured.</span>
                       <div>
                         <label className="pi-input-group">
                           <span>Google Drive folder</span>

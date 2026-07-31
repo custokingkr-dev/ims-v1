@@ -1,6 +1,6 @@
 # Operations Drive Photo Import
 
-**Status:** Managed-folder provisioning implemented; Shared Drive root configuration required per environment
+**Status:** Managed-folder provisioning implemented; personal Google Drive OAuth connection required per environment
 **Date:** 2026-07-31
 **Owner:** Student Operations
 
@@ -17,11 +17,13 @@ access, or Cloud Storage permissions.
 
 The import remains manually triggered. It does not use Drive webhooks and does not poll
 folders in the background. Folder creation is automatic: school onboarding provisions
-the current academic-year intake hierarchy in the configured Custoking Shared Drive.
+the current academic-year intake hierarchy in the connected Custoking personal Google
+Drive.
 
 ### Managed Drive hierarchy
 
-Each environment has one configured Shared Drive root:
+Each environment has one configured root folder owned by a dedicated personal Google
+account:
 
 `Custoking Student Photo Intake / <SHORT CODE> - <School> / <Academic year> / Student Photo Intake`
 
@@ -35,10 +37,23 @@ shares that restricted intake folder with the photographer as Editor, and sends 
 link. The platform never makes the folder public and never gives the photographer a
 Custoking account.
 
-Service accounts cannot own Drive files. The configured root must therefore be inside a
-Google Workspace Shared Drive. Add the school-core Cloud Run service account to that
-root with enough access to create child folders. Google documents this constraint and
-the supported folder API in [Create and populate folders](https://developers.google.com/workspace/drive/api/guides/folder).
+The school-core service accesses this My Drive as the human owner through a Google OAuth
+client and offline refresh token. It does not use the Cloud Run service account for
+Drive. Google documents that service accounts cannot own Drive files and that OAuth on
+behalf of a human user is the supported personal-Drive alternative in
+[Create and populate folders](https://developers.google.com/workspace/drive/api/guides/folder).
+
+Use a dedicated personal Google account for this intake, not an employee's everyday
+account. Enable two-step verification and recovery controls. Store the OAuth client ID,
+client secret, and refresh token in GCP Secret Manager. Never store or return them from
+the application database or frontend.
+
+The import requests `https://www.googleapis.com/auth/drive` because it must list and
+download files that a photographer uploads directly through the Drive UI. Google
+classifies that as a restricted scope. The OAuth app is for a small, known personal-use
+audience and can remain unverified under Google's documented personal-use exception;
+the connected user will see the unverified-app warning. Publish the OAuth app rather
+than leaving it in `Testing`, where offline refresh tokens expire after seven days.
 
 ### DEV pilot scope
 
@@ -142,8 +157,9 @@ During school onboarding, the backend:
 When an operator manually starts an import, the backend takes the already provisioned
 intake folder for the selected school/year. It no longer requires a pasted folder URL.
 The folder remains permanently bound to the school UID, academic-year ID, and batch ID.
-Environments without a configured Shared Drive root retain the prior paste-and-verify
-path as a temporary compatibility fallback; it is hidden when managed Drive is ready.
+Environments without a complete personal OAuth connection and configured root retain
+the prior paste-and-verify path as a temporary compatibility fallback; it is hidden
+when managed Drive is ready.
 
 Folder names, workbook names, school names, short codes, and year labels are display
 evidence only. They are not accepted as database keys.
@@ -276,8 +292,8 @@ Add dedicated tables:
 
 Every table carries `school_id`; row-level security follows the existing student import
 tables. The batch also stores `school_uid`, `academic_year_id`, and `drive_folder_id`.
-Store Drive IDs and metadata, not Drive access tokens. Credentials remain in Secret
-Manager or workload identity.
+Store Drive IDs and metadata, not Drive access tokens. Personal OAuth credentials
+remain in Secret Manager.
 
 Add a permanent unique constraint on `drive_folder_id`. One dedicated folder represents
 one photography job and cannot be rebound to another school or academic year.
@@ -300,8 +316,8 @@ permission in the first release.
 
 Drive import uses `files.list` to enumerate the folder and `files.get?alt=media` to
 stream supported binary files. Provisioning uses `files.create` only for managed
-folders under the configured Shared Drive root. It does not upload, rename, move, or
-delete photographer files.
+folders under the configured personal My Drive root. It does not upload, rename, move,
+or delete photographer files.
 
 ## 10. Execution and Audit
 
@@ -343,7 +359,7 @@ compact text sizes consistent with the current Custoking workspace.
 ## 12. Delivery Plan
 
 1. **Schema and Drive reader:** batch persistence, folder access validation, file
-   inventory, workbook parser, and service credential configuration.
+   inventory, workbook parser, and personal OAuth credential configuration.
 2. **Validation engine:** column mapping, exact matching, tenant/year checks, row status
    calculation, and source freezing.
 3. **Image pipeline:** safe decoding, orientation, metadata stripping, staging, crop
@@ -385,5 +401,11 @@ including DEV hardening. Pilot with 30 to 50 images before a whole-school batch.
   https://developers.google.com/workspace/drive/api/reference/rest/v3/files/list
 - Google Drive download/export:
   https://developers.google.com/workspace/drive/api/guides/manage-downloads
+- Google OAuth offline access:
+  https://developers.google.com/identity/protocols/oauth2/web-server
+- Google Drive OAuth scopes:
+  https://developers.google.com/workspace/drive/api/guides/api-specific-auth
+- Restricted-scope personal-use exception:
+  https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification
 - Existing final photo pipeline:
   `services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/infrastructure/StudentPhotoStorage.java`

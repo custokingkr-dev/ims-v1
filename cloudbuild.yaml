@@ -29,8 +29,8 @@ substitutions:
   # Base Pub/Sub topic name; billing's relay publishes to "<base>-${_ENV}", created by the
   # bootstrap script (scripts/bootstrap-gcp-environment.ps1) with an OIDC-authed push subscription.
   _REPORTING_TOPIC: ims-reporting-events-v1
-  # Folder ID inside a Shared Drive. Empty keeps import reads enabled but managed
-  # school/year folder provisioning unavailable until the environment is configured.
+  # Root folder ID in the connected personal My Drive. Empty keeps managed school/year
+  # folder provisioning unavailable until the environment is configured.
   _PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ""
 
 steps:
@@ -180,8 +180,26 @@ steps:
         # Publishes to the SHARED reporting-events topic (same one billing uses); reporting's existing
         # subscription routes by eventType. With _DOMAIN_MIN_INSTANCES=0 the relay only polls while
         # the service is awake; set _DOMAIN_MIN_INSTANCES=1 when real-time relay latency matters.
+        school_core_secrets="SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
+        drive_oauth_secrets=(
+          "student-photo-import-drive-oauth-client-id-${_ENV}"
+          "student-photo-import-drive-oauth-client-secret-${_ENV}"
+          "student-photo-import-drive-oauth-refresh-token-${_ENV}"
+        )
+        drive_oauth_ready=true
+        for secret_name in "$${drive_oauth_secrets[@]}"; do
+          if ! gcloud secrets versions describe latest --secret="$${secret_name}" >/dev/null 2>&1; then
+            drive_oauth_ready=false
+          fi
+        done
+        if [ "$${drive_oauth_ready}" = "true" ]; then
+          school_core_secrets="$${school_core_secrets},STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_ID=student-photo-import-drive-oauth-client-id-${_ENV}:latest,STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_SECRET=student-photo-import-drive-oauth-client-secret-${_ENV}:latest,STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_REFRESH_TOKEN=student-photo-import-drive-oauth-refresh-token-${_ENV}:latest"
+          echo "Personal Google Drive OAuth secrets found for ${_ENV}; binding them to school-core."
+        else
+          echo "Personal Google Drive OAuth secrets are incomplete for ${_ENV}; Drive import will remain disabled."
+        fi
         deploy_service school-core-service custoking-school-core-service-${_ENV} custoking-school-core-service "OTEL_SERVICE_NAME=school-core-service,SCHOOL_CORE_MERGED=true,STUDENT_PHOTO_BUCKET=custoking-student-photos-${_ENV},STUDENT_PHOTO_IMPORT_DRIVE_ENABLED=true,STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID=${_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID},SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID=${_REPORTING_TOPIC}-${_ENV},SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID=$PROJECT_ID" \
-          "SPRING_DATASOURCE_PASSWORD=app-rt-password-${_ENV}:latest,FLYWAY_PASSWORD=db-password-${_ENV}:latest,TENANT_SCHOOL_READ_TOKEN=tenant-school-read-token-${_ENV}:latest,STUDENT_READ_TOKEN=student-read-token-${_ENV}:latest,ATTENDANCE_READ_TOKEN=attendance-read-token-${_ENV}:latest,FEE_READ_TOKEN=fee-read-token-${_ENV}:latest,CATALOG_READ_TOKEN=catalog-read-token-${_ENV}:latest"
+          "$${school_core_secrets}"
 
         # identity calls tenant-school directly; that domain now lives in school-core (env-suffixed URL).
         TENANT_SCHOOL_URL="$(gcloud run services describe custoking-school-core-service-${_ENV} --region="${_REGION}" --format='value(status.url)' 2>/dev/null || true)"

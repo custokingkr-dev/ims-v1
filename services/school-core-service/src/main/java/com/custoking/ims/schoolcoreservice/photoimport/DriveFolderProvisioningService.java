@@ -98,7 +98,7 @@ public class DriveFolderProvisioningService {
                     null,
                     null,
                     null,
-                    "A Shared Drive root folder has not been configured for this environment");
+                    "Connect a personal Google Drive account and configure its intake root folder");
         }
 
         static ProvisioningResult failed(SchoolDriveScope scope, String error) {
