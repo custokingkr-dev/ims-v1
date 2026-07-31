@@ -47,6 +47,23 @@ wires via `--set-secrets`/`availableSecrets` — keep it in sync if the build ch
 - `attendance-read-token` — read token for the attendance domain (school-core-service)
 - `fee-read-token` — read token for the fee domain (school-core-service)
 - `catalog-read-token` — read token for the catalog domain (school-core-service)
+
+## Student photo intake Shared Drive
+
+Automatic school-onboarding folder creation requires one environment variable:
+
+`STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID`
+
+Set it as a GitHub Environment variable for `dev` and `prod`. The value must be the ID
+of a folder inside a Google Workspace Shared Drive. Add the school-core runtime service
+account to that folder with Content Manager access, then keep the root restricted.
+School onboarding creates:
+
+`<SHORT CODE> - <School> / <Academic year> / Student Photo Intake`
+
+The service account cannot own folders in a personal My Drive. Without this variable,
+existing Drive imports remain readable, but managed folder provisioning reports
+`NOT_CONFIGURED`.
 - `workflow-read-token` — read token for the workflow domain (operations-service)
 - `firefighting-read-token` — read token for the firefighting domain (operations-service)
 - `reporting-read-token` — read token for the reporting domain (platform-service)

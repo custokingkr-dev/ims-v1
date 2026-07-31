@@ -12,6 +12,7 @@ vi.mock('../../../services/api', () => ({
 
 const context = {
   driveConfigured: true,
+  managedDriveConfigured: true,
   schools: [{
     id: 7,
     schoolUid: '11111111-1111-4111-8111-111111111111',
@@ -19,6 +20,10 @@ const context = {
     shortCode: 'GVS',
     academicYearId: 'ay_2026_27',
     academicYearLabel: '2026-27',
+    driveFolderStatus: 'READY',
+    driveFolderId: 'folder-1',
+    driveFolderName: 'Student Photo Intake',
+    driveFolderUrl: 'https://drive.google.com/drive/folders/folder-1',
   }],
   mappingColumns: ['AdmissionNo', 'Name', 'Class', 'Section', 'ImageNo'],
   fileNameRule: 'DSC5236.jpg or DSC_05236.JPG',
@@ -53,7 +58,7 @@ describe('PhotoImportPanel', () => {
     });
   });
 
-  it('binds the selected platform school and current academic year to the Drive folder', async () => {
+  it('starts a manual batch from the managed school and academic-year folder', async () => {
     vi.mocked(api.post).mockResolvedValue({
       data: {
         id: 'batch-1',
@@ -76,15 +81,12 @@ describe('PhotoImportPanel', () => {
 
     render(<PhotoImportPanel />);
     expect(await screen.findByText('2026-27')).toBeInTheDocument();
-    fireEvent.change(screen.getByPlaceholderText('https://drive.google.com/drive/folders/...'), {
-      target: { value: 'https://drive.google.com/drive/folders/1AbCdEfGhij_234567' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify and bind/i }));
+    expect(screen.getByText('GVS / 2026-27 / Student Photo Intake')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /start manual import/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/student-photo-imports', {
       schoolId: 7,
       academicYearId: 'ay_2026_27',
-      driveFolderUrl: 'https://drive.google.com/drive/folders/1AbCdEfGhij_234567',
     }));
     expect(await screen.findByRole('heading', { name: 'Green Valley School / 2026-27' }))
       .toBeInTheDocument();
@@ -125,5 +127,45 @@ describe('PhotoImportPanel', () => {
 
     await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('COMPLETED')).toBeInTheDocument();
+  });
+
+  it('keeps manual Drive binding available only while managed Drive is unconfigured', async () => {
+    const unconfigured = {
+      ...context,
+      managedDriveConfigured: false,
+      schools: [{
+        ...context.schools[0],
+        driveFolderStatus: 'NOT_PROVISIONED',
+        driveFolderId: undefined,
+        driveFolderName: undefined,
+        driveFolderUrl: undefined,
+      }],
+    };
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: unconfigured } as any;
+      if (url === '/student-photo-imports') return { data: [] } as any;
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockResolvedValue({
+      data: {
+        ...frozenBatch,
+        id: 'batch-fallback',
+        status: 'DRAFT',
+        driveFolderId: 'manual-folder',
+      },
+    } as any);
+
+    render(<PhotoImportPanel />);
+    const input = await screen.findByPlaceholderText('https://drive.google.com/drive/folders/...');
+    fireEvent.change(input, {
+      target: { value: 'https://drive.google.com/drive/folders/manual-folder' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /verify and start/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/student-photo-imports', {
+      schoolId: 7,
+      academicYearId: 'ay_2026_27',
+      driveFolderUrl: 'https://drive.google.com/drive/folders/manual-folder',
+    }));
   });
 });

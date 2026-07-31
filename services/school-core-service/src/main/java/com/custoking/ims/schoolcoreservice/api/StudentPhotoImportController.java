@@ -46,7 +46,7 @@ public class StudentPhotoImportController {
     @GetMapping("/context")
     public Map<String, Object> context(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token) {
-        requireToken(token);
+        requireToken(token, "student:read");
         return service.context();
     }
 
@@ -54,15 +54,23 @@ public class StudentPhotoImportController {
     public Batch create(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @Valid @RequestBody CreatePhotoImportRequest request) {
-        requireToken(token);
+        requireToken(token, "student:write");
         return service.create(request.schoolId(), request.academicYearId(), request.driveFolderUrl());
+    }
+
+    @PostMapping("/folders/{schoolId}/provision")
+    public Object provision(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long schoolId) {
+        requireToken(token, "student:write");
+        return service.provision(schoolId);
     }
 
     @GetMapping
     public List<Batch> list(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam Long schoolId) {
-        requireToken(token);
+        requireToken(token, "student:read");
         return service.list(schoolId);
     }
 
@@ -70,7 +78,7 @@ public class StudentPhotoImportController {
     public Map<String, Object> detail(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable UUID id) {
-        requireToken(token);
+        requireToken(token, "student:read");
         return service.detail(id);
     }
 
@@ -78,7 +86,7 @@ public class StudentPhotoImportController {
     public Batch scan(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable UUID id) {
-        requireToken(token);
+        requireToken(token, "student:write");
         return service.scan(id);
     }
 
@@ -86,7 +94,7 @@ public class StudentPhotoImportController {
     public Batch freeze(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable UUID id) {
-        requireToken(token);
+        requireToken(token, "student:write");
         return service.freeze(id);
     }
 
@@ -94,7 +102,7 @@ public class StudentPhotoImportController {
     public Batch execute(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable UUID id) {
-        requireToken(token);
+        requireToken(token, "student:write");
         return service.execute(id);
     }
 
@@ -103,7 +111,7 @@ public class StudentPhotoImportController {
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable UUID batchId,
             @PathVariable UUID rowId) {
-        requireToken(token);
+        requireToken(token, "student:read");
         var preview = service.preview(batchId, rowId);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore())
@@ -134,7 +142,10 @@ public class StudentPhotoImportController {
                 .body(Map.of("message", "This Google Drive folder is already bound to a photo import batch"));
     }
 
-    private void requireToken(String token) {
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope");
+        }
         if (!StringUtils.hasText(studentToken) || !studentToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid student service token");
         }
@@ -143,6 +154,6 @@ public class StudentPhotoImportController {
     public record CreatePhotoImportRequest(
             @NotNull Long schoolId,
             @NotBlank String academicYearId,
-            @NotBlank String driveFolderUrl) {
+            String driveFolderUrl) {
     }
 }

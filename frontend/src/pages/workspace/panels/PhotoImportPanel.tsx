@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Check,
+  Copy,
   Eye,
+  ExternalLink,
+  FolderCog,
   FolderSearch,
   Link2,
   LoaderCircle,
@@ -22,10 +25,16 @@ interface SchoolContext {
   shortCode: string;
   academicYearId: string;
   academicYearLabel: string;
+  driveFolderStatus: 'NOT_PROVISIONED' | 'PROVISIONING' | 'READY' | 'FAILED';
+  driveFolderId?: string;
+  driveFolderName?: string;
+  driveFolderUrl?: string;
+  driveFolderError?: string;
 }
 
 interface ImportContext {
   driveConfigured: boolean;
+  managedDriveConfigured: boolean;
   schools: SchoolContext[];
   mappingColumns: string[];
   fileNameRule: string;
@@ -165,24 +174,64 @@ export function PhotoImportPanel() {
   }, [batch?.id, batch?.status]);
 
   const createBatch = async () => {
-    if (!selectedSchool || !driveFolderUrl.trim()) return;
+    if (!selectedSchool) return;
+    const managedReady = selectedSchool.driveFolderStatus === 'READY';
+    if (!managedReady && !driveFolderUrl.trim()) return;
     setBusy('create');
     setNotice(null);
     try {
-      const response = await api.post<ImportBatch>('/student-photo-imports', {
+      const payload: {
+        schoolId: number;
+        academicYearId: string;
+        driveFolderUrl?: string;
+      } = {
         schoolId: selectedSchool.id,
         academicYearId: selectedSchool.academicYearId,
-        driveFolderUrl: driveFolderUrl.trim(),
+      };
+      if (!managedReady) payload.driveFolderUrl = driveFolderUrl.trim();
+      const response = await api.post<ImportBatch>('/student-photo-imports', {
+        ...payload,
       });
       setBatch(response.data);
       setRows([]);
       setDriveFolderUrl('');
       await loadBatches(selectedSchool.id);
-      setNotice({ tone: 'ok', text: 'Drive folder verified and bound to this school and academic year.' });
+      setNotice({ tone: 'ok', text: 'Managed Drive folder bound. The batch is ready to scan.' });
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
       setBusy('');
+    }
+  };
+
+  const provisionFolder = async () => {
+    if (!selectedSchool) return;
+    setBusy('provision');
+    setNotice(null);
+    try {
+      const response = await api.post(`/student-photo-imports/folders/${selectedSchool.id}/provision`);
+      await loadContext();
+      const ready = response.data?.status === 'READY';
+      setNotice({
+        tone: ready ? 'ok' : 'bad',
+        text: ready
+          ? 'The school and academic-year Drive folders are ready.'
+          : response.data?.error || 'The Drive folder could not be provisioned.',
+      });
+    } catch (error) {
+      setNotice({ tone: 'bad', text: errorMessage(error) });
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const copyFolderLink = async () => {
+    if (!selectedSchool?.driveFolderUrl) return;
+    try {
+      await navigator.clipboard.writeText(selectedSchool.driveFolderUrl);
+      setNotice({ tone: 'ok', text: 'Photographer folder link copied.' });
+    } catch {
+      setNotice({ tone: 'bad', text: 'The folder link could not be copied. Open Drive and copy it there.' });
     }
   };
 
@@ -303,35 +352,99 @@ export function PhotoImportPanel() {
                 <div className="pi-section-title">
                   <FolderSearch size={18} />
                   <div>
-                    <h2>Start a Drive batch</h2>
-                    <p>One folder, one workbook, one permanent school/year binding.</p>
+                    <h2>Photographer intake folder</h2>
+                    <p>Provisioned for this school and academic year.</p>
                   </div>
                 </div>
-                <div className="pi-source-grid">
-                  <label className="pi-input-group">
-                    <span>Google Drive folder</span>
-                    <div className="pi-input-icon">
-                      <Link2 size={16} aria-hidden />
-                      <input
-                        value={driveFolderUrl}
-                        onChange={event => setDriveFolderUrl(event.target.value)}
-                        placeholder="https://drive.google.com/drive/folders/..."
-                      />
+                <div className="pi-folder-source">
+                  <div className="pi-folder-identity">
+                    <span className="pi-folder-icon"><FolderCog size={19} aria-hidden /></span>
+                    <div>
+                      <strong>{selectedSchool?.driveFolderName || 'Student Photo Intake'}</strong>
+                      <span>
+                        {selectedSchool?.shortCode} / {selectedSchool?.academicYearLabel} / Student Photo Intake
+                      </span>
                     </div>
-                  </label>
-                  <button
-                    className="ck-btn ck-btn-g pi-primary-action"
-                    disabled={!driveFolderUrl.trim() || !!busy || !context.driveConfigured}
-                    onClick={createBatch}
-                  >
-                    {busy === 'create' ? <LoaderCircle className="pi-spin" size={16} /> : <ShieldCheck size={16} />}
-                    Verify and bind
-                  </button>
+                    <span className={`pi-status ${statusTone(selectedSchool?.driveFolderStatus || '')}`}>
+                      {selectedSchool?.driveFolderStatus?.replace('_', ' ') || 'NOT PROVISIONED'}
+                    </span>
+                  </div>
+                  {selectedSchool?.driveFolderStatus === 'READY' && selectedSchool.driveFolderUrl ? (
+                    <div className="pi-folder-actions">
+                      <button
+                        className="ck-btn ck-btn-ghost"
+                        onClick={copyFolderLink}
+                        disabled={!!busy}
+                      >
+                        <Copy size={15} aria-hidden /> Copy link
+                      </button>
+                      <a
+                        className="ck-btn ck-btn-ghost"
+                        href={selectedSchool.driveFolderUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink size={15} aria-hidden /> Open in Drive
+                      </a>
+                      <button
+                        className="ck-btn ck-btn-g pi-primary-action"
+                        disabled={!!busy || !context.driveConfigured}
+                        onClick={createBatch}
+                      >
+                        {busy === 'create' ? <LoaderCircle className="pi-spin" size={16} /> : <ShieldCheck size={16} />}
+                        Start manual import
+                      </button>
+                    </div>
+                  ) : context.managedDriveConfigured ? (
+                    <div className="pi-folder-recovery">
+                      <span>
+                        {selectedSchool?.driveFolderError
+                          || 'The managed folder has not been created yet.'}
+                      </span>
+                      <button
+                        className="ck-btn ck-btn-g"
+                        onClick={provisionFolder}
+                        disabled={!!busy || !context.managedDriveConfigured}
+                      >
+                        {busy === 'provision'
+                          ? <LoaderCircle className="pi-spin" size={16} />
+                          : <FolderCog size={16} />}
+                        Provision folder
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="pi-folder-fallback">
+                      <span>Shared Drive root is not configured. Use a restricted folder until setup is completed.</span>
+                      <div>
+                        <label className="pi-input-group">
+                          <span>Google Drive folder</span>
+                          <div className="pi-input-icon">
+                            <Link2 size={16} aria-hidden />
+                            <input
+                              value={driveFolderUrl}
+                              onChange={event => setDriveFolderUrl(event.target.value)}
+                              placeholder="https://drive.google.com/drive/folders/..."
+                            />
+                          </div>
+                        </label>
+                        <button
+                          className="ck-btn ck-btn-g"
+                          onClick={createBatch}
+                          disabled={!driveFolderUrl.trim() || !!busy || !context.driveConfigured}
+                        >
+                          {busy === 'create'
+                            ? <LoaderCircle className="pi-spin" size={16} />
+                            : <ShieldCheck size={16} />}
+                          Verify and start
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="pi-contract">
+                  <span><strong>Access:</strong> Restricted; share with the photographer as Editor</span>
                   <span><strong>Workbook:</strong> AdmissionNo, Name, Class, Section, ImageNo</span>
                   <span><strong>Images:</strong> {context.fileNameRule}</span>
-                  <span><strong>Current file:</strong> adm_no_imag_no_mapping.xlsx</span>
                 </div>
               </section>
             )}

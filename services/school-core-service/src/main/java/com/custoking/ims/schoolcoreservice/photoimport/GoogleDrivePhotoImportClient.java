@@ -25,26 +25,81 @@ import java.util.Map;
 
 @Component
 public class GoogleDrivePhotoImportClient {
-    private static final String DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
+    private static final String DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
     private static final String API = "https://www.googleapis.com/drive/v3/files";
     private static final String FOLDER_MIME = "application/vnd.google-apps.folder";
     private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
 
     private final boolean enabled;
+    private final String configuredRootFolder;
     private final ObjectMapper objectMapper;
     private final HttpClient http;
     private volatile GoogleCredentials credentials;
 
     public GoogleDrivePhotoImportClient(
             ObjectMapper objectMapper,
-            @Value("${student.photo-import.drive-enabled:false}") boolean enabled) {
+            @Value("${student.photo-import.drive-enabled:false}") boolean enabled,
+            @Value("${student.photo-import.root-folder-id:}") String rootFolderId) {
         this.enabled = enabled;
+        this.configuredRootFolder = rootFolderId == null ? "" : rootFolderId.trim();
         this.objectMapper = objectMapper;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    public boolean isProvisioningEnabled() {
+        return enabled && !configuredRootFolder.isBlank();
+    }
+
+    public String rootFolderId() {
+        if (configuredRootFolder.isBlank()) {
+            return "";
+        }
+        return DriveFolderId.parse(configuredRootFolder);
+    }
+
+    public ProvisionedFolders provisionSchoolFolders(
+            String schoolUid,
+            String shortCode,
+            String schoolName,
+            String academicYearId,
+            String academicYearLabel) {
+        requireProvisioningEnabled();
+        String rootId = rootFolderId();
+        DriveFolder root = readFolder(rootId);
+
+        ManagedFolder schoolFolder = ensureManagedFolder(
+                root.id(),
+                folderName(shortCode + " - " + schoolName),
+                Map.of(
+                        "custokingType", "school",
+                        "custokingSchoolUid", schoolUid));
+        ManagedFolder yearFolder = ensureManagedFolder(
+                schoolFolder.id(),
+                folderName(academicYearLabel),
+                Map.of(
+                        "custokingType", "academic-year",
+                        "custokingSchoolUid", schoolUid,
+                        "custokingAcademicYearId", academicYearId));
+        ManagedFolder intakeFolder = ensureManagedFolder(
+                yearFolder.id(),
+                "Student Photo Intake",
+                Map.of(
+                        "custokingType", "student-photo-intake",
+                        "custokingSchoolUid", schoolUid,
+                        "custokingAcademicYearId", academicYearId));
+        String folderUrl = intakeFolder.webViewLink() == null || intakeFolder.webViewLink().isBlank()
+                ? "https://drive.google.com/drive/folders/" + intakeFolder.id()
+                : intakeFolder.webViewLink();
+        return new ProvisionedFolders(
+                schoolFolder.id(),
+                yearFolder.id(),
+                intakeFolder.id(),
+                intakeFolder.name(),
+                folderUrl);
     }
 
     public DriveFolder readFolder(String rawFolder) {
@@ -150,6 +205,30 @@ public class GoogleDrivePhotoImportClient {
         }
     }
 
+    private Map<String, Object> jsonPost(String uri, Map<String, Object> body) {
+        try {
+            HttpRequest request = HttpRequest.newBuilder(URI.create(uri))
+                    .timeout(Duration.ofSeconds(30))
+                    .header("Authorization", "Bearer " + accessToken())
+                    .header("Accept", "application/json")
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(body)))
+                    .build();
+            HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw driveFailure(response.statusCode(), response.body().getBytes(StandardCharsets.UTF_8));
+            }
+            return objectMapper.readValue(response.body(), new TypeReference<>() {});
+        } catch (DrivePhotoImportException ex) {
+            throw ex;
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new DrivePhotoImportException("drive_unavailable", "Drive request was interrupted", ex);
+        } catch (IOException ex) {
+            throw new DrivePhotoImportException("drive_unavailable", "Could not write to Google Drive", ex);
+        }
+    }
+
     private HttpRequest request(String uri) {
         return HttpRequest.newBuilder(URI.create(uri))
                 .timeout(Duration.ofSeconds(30))
@@ -189,7 +268,7 @@ public class GoogleDrivePhotoImportClient {
         String lower = detail.toLowerCase(Locale.ROOT);
         if (status == 403 || status == 404) {
             return new DrivePhotoImportException("drive_access_denied",
-                    "The folder or file is not shared with the Custoking Drive reader");
+                    "The Drive item is unavailable or the Custoking service account lacks the required access");
         }
         if (lower.contains("ratelimit") || status == 429) {
             return new DrivePhotoImportException("drive_rate_limited", "Google Drive rate limit reached; retry shortly");
@@ -214,6 +293,89 @@ public class GoogleDrivePhotoImportClient {
         }
     }
 
+    private void requireProvisioningEnabled() {
+        requireEnabled();
+        if (configuredRootFolder.isBlank()) {
+            throw new DrivePhotoImportException("drive_not_configured",
+                    "A Shared Drive root folder is required for automatic photo-folder provisioning");
+        }
+    }
+
+    private ManagedFolder ensureManagedFolder(
+            String parentId,
+            String name,
+            Map<String, String> appProperties) {
+        List<ManagedFolder> existing = managedFolders(parentId, appProperties);
+        if (!existing.isEmpty()) {
+            return existing.getFirst();
+        }
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        payload.put("name", name);
+        payload.put("mimeType", FOLDER_MIME);
+        payload.put("parents", List.of(parentId));
+        payload.put("appProperties", appProperties);
+        return toManagedFolder(jsonPost(
+                API + "?supportsAllDrives=true&fields="
+                        + encode("id,name,mimeType,webViewLink,createdTime,appProperties"),
+                payload));
+    }
+
+    private List<ManagedFolder> managedFolders(String parentId, Map<String, String> appProperties) {
+        StringBuilder query = new StringBuilder("'")
+                .append(driveQueryLiteral(parentId))
+                .append("' in parents and trashed = false and mimeType = '")
+                .append(FOLDER_MIME)
+                .append("'");
+        appProperties.forEach((key, value) -> query.append(" and appProperties has { key='")
+                .append(driveQueryLiteral(key))
+                .append("' and value='")
+                .append(driveQueryLiteral(value))
+                .append("' }"));
+        Map<String, Object> payload = jsonGet(API
+                + "?q=" + encode(query.toString())
+                + "&pageSize=100"
+                + "&supportsAllDrives=true"
+                + "&includeItemsFromAllDrives=true"
+                + "&fields=" + encode("files(id,name,mimeType,webViewLink,createdTime,appProperties)"));
+        if (!(payload.get("files") instanceof List<?> values)) {
+            return List.of();
+        }
+        List<ManagedFolder> folders = new ArrayList<>();
+        for (Object value : values) {
+            if (value instanceof Map<?, ?> row) {
+                folders.add(toManagedFolder(row));
+            }
+        }
+        return folders.stream()
+                .sorted(Comparator.comparing(
+                        ManagedFolder::createdTime,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(ManagedFolder::id))
+                .toList();
+    }
+
+    private ManagedFolder toManagedFolder(Map<?, ?> row) {
+        return new ManagedFolder(
+                string(row.get("id")),
+                string(row.get("name")),
+                string(row.get("webViewLink")),
+                string(row.get("createdTime")));
+    }
+
+    private static String folderName(String value) {
+        String normalized = value == null ? "" : value.trim()
+                .replaceAll("[\\\\/:*?\"<>|]+", "-")
+                .replaceAll("\\s+", " ");
+        if (normalized.isBlank()) {
+            return "School";
+        }
+        return normalized.length() <= 180 ? normalized : normalized.substring(0, 180).trim();
+    }
+
+    private static String driveQueryLiteral(String value) {
+        return value.replace("\\", "\\\\").replace("'", "\\'");
+    }
+
     private static String encode(String value) {
         return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
@@ -232,6 +394,17 @@ public class GoogleDrivePhotoImportClient {
     }
 
     public record DriveFolder(String id, String name) {
+    }
+
+    public record ProvisionedFolders(
+            String schoolFolderId,
+            String academicYearFolderId,
+            String intakeFolderId,
+            String intakeFolderName,
+            String intakeFolderUrl) {
+    }
+
+    private record ManagedFolder(String id, String name, String webViewLink, String createdTime) {
     }
 
     public record DriveFile(

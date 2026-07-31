@@ -1,6 +1,6 @@
 # Operations Drive Photo Import
 
-**Status:** Implemented for DEV pilot
+**Status:** Managed-folder provisioning implemented; Shared Drive root configuration required per environment
 **Date:** 2026-07-31
 **Owner:** Student Operations
 
@@ -15,8 +15,30 @@ This is not an external platform login. The photographer receives access only to
 empty, job-specific Drive folder. They never receive Custoking credentials, student API
 access, or Cloud Storage permissions.
 
-The first release is manually triggered. It does not use Drive webhooks and does not
-poll folders in the background.
+The import remains manually triggered. It does not use Drive webhooks and does not poll
+folders in the background. Folder creation is automatic: school onboarding provisions
+the current academic-year intake hierarchy in the configured Custoking Shared Drive.
+
+### Managed Drive hierarchy
+
+Each environment has one configured Shared Drive root:
+
+`Custoking Student Photo Intake / <SHORT CODE> - <School> / <Academic year> / Student Photo Intake`
+
+School onboarding creates or resolves all three managed child folders. Drive
+`appProperties` carry the immutable school UID, academic-year ID, and folder purpose,
+so retries resolve the same hierarchy even if a display name changes. The platform
+stores the returned Drive IDs in `student.photo_import_drive_folders`.
+
+The Operations screen displays the generated folder link. Operations opens Drive,
+shares that restricted intake folder with the photographer as Editor, and sends the
+link. The platform never makes the folder public and never gives the photographer a
+Custoking account.
+
+Service accounts cannot own Drive files. The configured root must therefore be inside a
+Google Workspace Shared Drive. Add the school-core Cloud Run service account to that
+root with enough access to create child folders. Google documents this constraint and
+the supported folder API in [Create and populate folders](https://developers.google.com/workspace/drive/api/guides/folder).
 
 ### DEV pilot scope
 
@@ -109,14 +131,19 @@ resolving to the same image number is a blocking duplicate. A blank `ImageNo` be
 The authenticated platform selection is authoritative because the workbook does not
 contain school or year identifiers.
 
-When an operator creates a batch, the backend:
+During school onboarding, the backend:
 
-1. requires an explicit platform `school_id`;
-2. resolves and stores its immutable `school_uid`;
-3. requires an explicit `academic_year_id` returned for that selected school;
-4. extracts and stores the immutable Google Drive `folder_id` from the pasted URL;
-5. verifies the folder is readable by the configured read-only service identity; and
-6. permanently binds the folder ID, school UID, academic-year ID, and batch ID.
+1. resolves the new school's immutable `school_uid`;
+2. resolves the school's current `academic_year_id`;
+3. creates or finds the managed school, academic-year, and intake folders;
+4. stores each immutable Google Drive folder ID; and
+5. records `READY` or a retryable `FAILED` status without rolling back the school.
+
+When an operator manually starts an import, the backend takes the already provisioned
+intake folder for the selected school/year. It no longer requires a pasted folder URL.
+The folder remains permanently bound to the school UID, academic-year ID, and batch ID.
+Environments without a configured Shared Drive root retain the prior paste-and-verify
+path as a temporary compatibility fallback; it is hidden when managed Drive is ready.
 
 Folder names, workbook names, school names, short codes, and year labels are display
 evidence only. They are not accepted as database keys.
@@ -146,9 +173,9 @@ folder ID cannot be registered for a second import batch, even for the same scho
 
 ## 5. Source Folder Rules
 
-The school creates one restricted folder per photography job, for example:
+Custoking creates one restricted folder for the school's current academic year:
 
-`Greenfield Academy / Photo Intake / 2026-27 / Class Photos - July`
+`GFA - Greenfield Academy / 2026-27 / Student Photo Intake`
 
 The folder contains:
 
@@ -167,10 +194,11 @@ is an intake surface, not the permanent student-photo store.
 ## 6. Operator Workflow
 
 1. Open `Operations > Students > Photo imports`.
-2. Create a draft and select the school and academic year.
-3. Paste the dedicated Drive folder URL.
-4. The backend verifies that its service identity has read access to that folder.
-5. Click **Scan Drive**. The system records a source snapshot containing Drive file IDs,
+2. Select the school and confirm that its managed folder is `READY`.
+3. Copy or open the generated Drive folder, share it with the photographer as Editor,
+   and send the link.
+4. After the workbook and photos are uploaded, click **Start manual import**.
+5. Click **Scan folder**. The system records a source snapshot containing Drive file IDs,
    names, sizes, MIME types, checksums where available, and modified times.
 6. Select the workbook. The exact supplied headings auto-map to the canonical fields;
    future variants can be mapped manually.
@@ -240,6 +268,7 @@ checksum. Retrying a partial batch cannot attach the same row twice.
 
 Add dedicated tables:
 
+- `student.photo_import_drive_folders`
 - `student.photo_import_batches`
 - `student.photo_import_sources`
 - `student.photo_import_mappings`
@@ -269,9 +298,10 @@ All endpoints require an authenticated `OPERATIONS` or `SUPERADMIN` principal pl
 new `student:photo-import` permission. School administrators do not receive this
 permission in the first release.
 
-Drive integration uses read-only access to the specific intake folder. `files.list`
-enumerates the folder and `files.get?alt=media` streams supported binary files. The
-first release does not upload, rename, move, or delete Drive files.
+Drive import uses `files.list` to enumerate the folder and `files.get?alt=media` to
+stream supported binary files. Provisioning uses `files.create` only for managed
+folders under the configured Shared Drive root. It does not upload, rename, move, or
+delete photographer files.
 
 ## 10. Execution and Audit
 

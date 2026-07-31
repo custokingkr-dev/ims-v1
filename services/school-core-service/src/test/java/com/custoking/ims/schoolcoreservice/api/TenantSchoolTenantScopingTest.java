@@ -5,6 +5,7 @@ import com.custoking.ims.schoolcoreservice.persistence.SchoolRepository;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningService;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
@@ -30,7 +31,9 @@ class TenantSchoolTenantScopingTest {
     private final ZoneCommandRepository zoneCommands = mock(ZoneCommandRepository.class);
 
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new TenantSchoolController(schools, zones, modules, moduleGuard, structure, zoneCommands, "tok"))
+            .standaloneSetup(new TenantSchoolController(
+                    schools, zones, modules, moduleGuard, structure, zoneCommands,
+                    mock(DriveFolderProvisioningService.class), "tok"))
             .addFilters(new TenantContextFilter())
             .build();
 

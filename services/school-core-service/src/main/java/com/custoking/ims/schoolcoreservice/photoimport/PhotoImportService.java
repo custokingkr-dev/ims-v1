@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.photoimport;
 
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
+import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningRepository.DriveFolderBinding;
 import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClient.DriveFile;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Batch;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.ImportRow;
@@ -41,23 +42,27 @@ public class PhotoImportService {
     private final GoogleDrivePhotoImportClient drive;
     private final PhotoImportWorkbookParser parser;
     private final StudentPhotoStorage photoStorage;
+    private final DriveFolderProvisioningService folderProvisioning;
 
     public PhotoImportService(
             PhotoImportRepository repository,
             GoogleDrivePhotoImportClient drive,
             PhotoImportWorkbookParser parser,
-            StudentPhotoStorage photoStorage) {
+            StudentPhotoStorage photoStorage,
+            DriveFolderProvisioningService folderProvisioning) {
         this.repository = repository;
         this.drive = drive;
         this.parser = parser;
         this.photoStorage = photoStorage;
+        this.folderProvisioning = folderProvisioning;
     }
 
     public Map<String, Object> context() {
         requireAccess();
         return Map.of(
                 "driveConfigured", drive.isEnabled(),
-                "schools", repository.allowedSchools(),
+                "managedDriveConfigured", folderProvisioning.isConfigured(),
+                "schools", repository.allowedSchools().stream().map(this::schoolContext).toList(),
                 "mappingColumns", List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"),
                 "fileNameRule", "DSC5236.jpg or DSC_05236.JPG");
     }
@@ -69,13 +74,28 @@ public class PhotoImportService {
         if (academicYearId == null || academicYearId.isBlank()) {
             throw new IllegalArgumentException("academicYearId is required");
         }
-        var folder = drive.readFolder(driveFolderUrl);
+        String source = driveFolderUrl == null ? "" : driveFolderUrl.trim();
+        if (source.isBlank()) {
+            DriveFolderBinding binding = folderProvisioning.binding(schoolId, academicYearId.trim())
+                    .filter(candidate -> "READY".equals(candidate.status()))
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "The managed Drive intake folder is not ready for this school and academic year"));
+            source = binding.intakeFolderId();
+        }
+        var folder = drive.readFolder(source);
         return repository.createBatch(
                 schoolId,
                 academicYearId.trim(),
                 folder.id(),
                 folder.name(),
                 TenantContext.get().userId());
+    }
+
+    public DriveFolderProvisioningService.ProvisioningResult provision(long requestedSchoolId) {
+        requireAccess();
+        long schoolId = TenantScope.resolveOperationsWriteScope(requestedSchoolId);
+        requireStudentsModule(schoolId);
+        return folderProvisioning.ensureForSchool(schoolId);
     }
 
     public List<Batch> list(long requestedSchoolId) {
@@ -321,6 +341,23 @@ public class PhotoImportService {
         TenantScope.requirePermissionIfAuthenticated("student:photo-import");
     }
 
+    private SchoolPhotoImportContext schoolContext(PhotoImportRepository.SchoolContext school) {
+        DriveFolderBinding folder = folderProvisioning.binding(school.id(), school.academicYearId())
+                .orElse(null);
+        return new SchoolPhotoImportContext(
+                school.id(),
+                school.schoolUid(),
+                school.name(),
+                school.shortCode(),
+                school.academicYearId(),
+                school.academicYearLabel(),
+                folder == null ? "NOT_PROVISIONED" : folder.status(),
+                folder == null ? null : folder.intakeFolderId(),
+                folder == null ? null : folder.intakeFolderName(),
+                folder == null ? null : folder.intakeFolderUrl(),
+                folder == null ? null : folder.lastError());
+    }
+
     private static boolean classMatches(String workbookClass, StudentMatch student) {
         String normalized = clean(workbookClass).toUpperCase(Locale.ROOT);
         Integer roman = ROMAN_CLASSES.get(normalized);
@@ -347,5 +384,19 @@ public class PhotoImportService {
     }
 
     public record Preview(byte[] bytes, String contentType) {
+    }
+
+    public record SchoolPhotoImportContext(
+            long id,
+            String schoolUid,
+            String name,
+            String shortCode,
+            String academicYearId,
+            String academicYearLabel,
+            String driveFolderStatus,
+            String driveFolderId,
+            String driveFolderName,
+            String driveFolderUrl,
+            String driveFolderError) {
     }
 }

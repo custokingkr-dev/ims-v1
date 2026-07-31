@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,11 +28,53 @@ class PhotoImportServiceTest {
     private final GoogleDrivePhotoImportClient drive = mock(GoogleDrivePhotoImportClient.class);
     private final PhotoImportWorkbookParser parser = mock(PhotoImportWorkbookParser.class);
     private final StudentPhotoStorage storage = mock(StudentPhotoStorage.class);
-    private final PhotoImportService service = new PhotoImportService(repository, drive, parser, storage);
+    private final DriveFolderProvisioningService folderProvisioning = mock(DriveFolderProvisioningService.class);
+    private final PhotoImportService service =
+            new PhotoImportService(repository, drive, parser, storage, folderProvisioning);
 
     @AfterEach
     void clearTenant() {
         TenantContext.clear();
+    }
+
+    @Test
+    void createUsesProvisionedFolderWhenNoDriveLinkIsSupplied() {
+        long schoolId = 7L;
+        TenantContext.set(new TenantContext(
+                42L,
+                "operations@example.com",
+                "OPERATIONS",
+                null,
+                null,
+                Set.of(schoolId),
+                Set.of("student:photo-import")));
+        var binding = new DriveFolderProvisioningRepository.DriveFolderBinding(
+                schoolId,
+                "11111111-1111-4111-8111-111111111111",
+                "ay_2026_27",
+                "root-folder",
+                "school-folder",
+                "year-folder",
+                "intake-folder",
+                "Student Photo Intake",
+                "https://drive.google.com/drive/folders/intake-folder",
+                "READY",
+                null,
+                null,
+                OffsetDateTime.parse("2026-07-31T00:00:00Z"));
+        Batch created = batch(UUID.randomUUID(), schoolId, "DRAFT", 0);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(folderProvisioning.binding(schoolId, "ay_2026_27")).thenReturn(Optional.of(binding));
+        when(drive.readFolder("intake-folder"))
+                .thenReturn(new GoogleDrivePhotoImportClient.DriveFolder("intake-folder", "Student Photo Intake"));
+        when(repository.createBatch(
+                schoolId, "ay_2026_27", "intake-folder", "Student Photo Intake", 42L))
+                .thenReturn(created);
+
+        Batch result = service.create(schoolId, "ay_2026_27", null);
+
+        assertThat(result).isSameAs(created);
+        verify(drive).readFolder("intake-folder");
     }
 
     @Test

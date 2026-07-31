@@ -6,6 +6,7 @@ import com.custoking.ims.schoolcoreservice.persistence.StructureInUseException;
 import com.custoking.ims.schoolcoreservice.persistence.ModuleEntitlementReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningService;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantContextFilter;
@@ -34,6 +35,7 @@ class SchoolStructureControllerTest {
                     moduleGuard,
                     structure,
                     mock(ZoneCommandRepository.class),
+                    mock(DriveFolderProvisioningService.class),
                     "tok"))
             .addFilters(new TenantContextFilter())
             .build();
