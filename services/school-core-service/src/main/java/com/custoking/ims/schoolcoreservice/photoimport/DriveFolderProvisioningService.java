@@ -32,19 +32,47 @@ public class DriveFolderProvisioningService {
             return ProvisioningResult.notConfigured(scope);
         }
 
-        Optional<DriveFolderBinding> current = repository.find(schoolId, scope.academicYearId());
-        if (current.filter(binding -> "READY".equals(binding.status())
-                && drive.rootFolderId().equals(binding.rootFolderId())).isPresent()) {
-            return ProvisioningResult.from(scope, current.get());
-        }
-
         String rootFolderId;
         try {
             rootFolderId = drive.rootFolderId();
         } catch (RuntimeException ex) {
             return ProvisioningResult.failed(scope, ex.getMessage());
         }
-        repository.markProvisioning(scope, rootFolderId);
+
+        Optional<DriveFolderBinding> current = repository.find(schoolId, scope.academicYearId());
+        boolean replaceReadyBinding = false;
+        if (current.filter(binding -> "READY".equals(binding.status())
+                && rootFolderId.equals(binding.rootFolderId())).isPresent()) {
+            DriveFolderBinding ready = current.get();
+            try {
+                if (drive.managedHierarchyMatches(
+                        rootFolderId,
+                        ready.schoolFolderId(),
+                        ready.academicYearFolderId(),
+                        ready.intakeFolderId(),
+                        scope.schoolUid(),
+                        scope.academicYearId())) {
+                    return ProvisioningResult.from(scope, ready);
+                }
+                replaceReadyBinding = true;
+            } catch (DrivePhotoImportException ex) {
+                if (!"drive_access_denied".equals(ex.code()) && !"not_a_folder".equals(ex.code())) {
+                    return ProvisioningResult.failed(scope, ex.getMessage());
+                }
+                replaceReadyBinding = true;
+            } catch (RuntimeException ex) {
+                return ProvisioningResult.failed(scope, ex.getMessage());
+            }
+        }
+
+        Optional<DriveFolderBinding> claimed = repository.claimProvisioning(
+                scope, rootFolderId, replaceReadyBinding);
+        if (claimed.isEmpty()) {
+            return repository.find(schoolId, scope.academicYearId())
+                    .map(binding -> ProvisioningResult.from(scope, binding))
+                    .orElseGet(() -> ProvisioningResult.inProgress(scope));
+        }
+        DriveFolderBinding claim = claimed.get();
         try {
             var folders = drive.provisionSchoolFolders(
                     scope.schoolUid(),
@@ -52,9 +80,12 @@ public class DriveFolderProvisioningService {
                     scope.schoolName(),
                     scope.academicYearId(),
                     scope.academicYearLabel());
-            return ProvisioningResult.from(scope, repository.markReady(scope, rootFolderId, folders));
+            return ProvisioningResult.from(
+                    scope,
+                    repository.markReady(scope, rootFolderId, claim.version(), folders));
         } catch (RuntimeException ex) {
-            DriveFolderBinding failed = repository.markFailed(scope, rootFolderId, ex.getMessage());
+            DriveFolderBinding failed = repository.markFailed(
+                    scope, rootFolderId, claim.version(), ex.getMessage());
             return ProvisioningResult.from(scope, failed);
         }
     }
@@ -114,6 +145,21 @@ public class DriveFolderProvisioningService {
                     null,
                     null,
                     error == null || error.isBlank() ? "Drive folder provisioning failed" : error);
+        }
+
+        static ProvisioningResult inProgress(SchoolDriveScope scope) {
+            return new ProvisioningResult(
+                    scope.schoolId(),
+                    scope.schoolUid(),
+                    scope.schoolName(),
+                    scope.shortCode(),
+                    scope.academicYearId(),
+                    scope.academicYearLabel(),
+                    "PROVISIONING",
+                    null,
+                    null,
+                    null,
+                    "Drive folder provisioning is already in progress; retry shortly");
         }
     }
 }

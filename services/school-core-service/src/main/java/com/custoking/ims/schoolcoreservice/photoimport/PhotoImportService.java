@@ -74,18 +74,31 @@ public class PhotoImportService {
         if (academicYearId == null || academicYearId.isBlank()) {
             throw new IllegalArgumentException("academicYearId is required");
         }
+        String yearId = academicYearId.trim();
         String source = driveFolderUrl == null ? "" : driveFolderUrl.trim();
-        if (source.isBlank()) {
-            DriveFolderBinding binding = folderProvisioning.binding(schoolId, academicYearId.trim())
-                    .filter(candidate -> "READY".equals(candidate.status()))
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "The managed Drive intake folder is not ready for this school and academic year"));
-            source = binding.intakeFolderId();
+        if (folderProvisioning.isConfigured()) {
+            var managed = folderProvisioning.ensureForSchool(schoolId);
+            if (!yearId.equals(managed.academicYearId())) {
+                throw new IllegalArgumentException(
+                        "The selected academic year is no longer current for this school");
+            }
+            if (!"READY".equals(managed.status()) || managed.folderId() == null) {
+                throw new IllegalArgumentException(managed.error() == null
+                        ? "The managed Drive intake folder is not ready for this school and academic year"
+                        : managed.error());
+            }
+            if (!source.isBlank() && !managed.folderId().equals(DriveFolderId.parse(source))) {
+                throw new IllegalArgumentException(
+                        "Use the managed Drive intake folder assigned to this school and academic year");
+            }
+            source = managed.folderId();
+        } else if (source.isBlank()) {
+            throw new IllegalArgumentException("A Google Drive folder link is required");
         }
         var folder = drive.readFolder(source);
         return repository.createBatch(
                 schoolId,
-                academicYearId.trim(),
+                yearId,
                 folder.id(),
                 folder.name(),
                 TenantContext.get().userId());
@@ -132,8 +145,10 @@ public class PhotoImportService {
 
         Map<String, List<DriveFile>> imagesByNumber = new LinkedHashMap<>();
         for (DriveFile file : files) {
-            DscImageNumber.fromFileName(file.name()).ifPresent(imageNo ->
-                    imagesByNumber.computeIfAbsent(imageNo, ignored -> new ArrayList<>()).add(file));
+            if (file.isSupportedImage()) {
+                DscImageNumber.fromFileName(file.name()).ifPresent(imageNo ->
+                        imagesByNumber.computeIfAbsent(imageNo, ignored -> new ArrayList<>()).add(file));
+            }
         }
 
         Map<String, Long> workbookAdmissions = parsed.rows().stream()
@@ -161,8 +176,12 @@ public class PhotoImportService {
                         file.md5Checksum(),
                         file.modifiedTime(),
                         file.id().equals(workbook.id()) ? "WORKBOOK"
-                                : (DscImageNumber.fromFileName(file.name()).isPresent() ? "IMAGE" : "OTHER"),
-                        DscImageNumber.fromFileName(file.name()).orElse(null)))
+                                : (file.isSupportedImage()
+                                        && DscImageNumber.fromFileName(file.name()).isPresent()
+                                        ? "IMAGE" : "OTHER"),
+                        file.isSupportedImage()
+                                ? DscImageNumber.fromFileName(file.name()).orElse(null)
+                                : null))
                 .toList();
         return repository.replaceScan(
                 id,
@@ -279,6 +298,10 @@ public class PhotoImportService {
                     "Multiple Drive images match ImageNo " + canonicalImageNo, null);
         }
         DriveFile image = images.getFirst();
+        if (image.size() != null && image.size() > MAX_IMAGE_BYTES) {
+            return input(row, canonicalImageNo, image, null, "ERROR",
+                    image.name() + " is larger than 5 MB", null);
+        }
         StudentMatch student = repository.studentByAdmission(
                         batch.schoolId(), batch.academicYearId(), admissionNo)
                 .orElse(null);

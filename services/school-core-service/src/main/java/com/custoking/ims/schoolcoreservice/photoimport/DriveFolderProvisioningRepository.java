@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
 public class DriveFolderProvisioningRepository {
@@ -50,33 +49,23 @@ public class DriveFolderProvisioningRepository {
                         SELECT school_id, school_uid::text AS school_uid, academic_year_id,
                                root_folder_id, school_folder_id, academic_year_folder_id,
                                intake_folder_id, intake_folder_name, intake_folder_url,
-                               status, last_error, provisioned_at, updated_at
+                               status, last_error, provisioned_at, updated_at, version
                         FROM student.photo_import_drive_folders
                         WHERE school_id = :schoolId AND academic_year_id = :academicYearId
                         """)
                 .param("schoolId", schoolId)
                 .param("academicYearId", academicYearId)
-                .query((rs, rowNum) -> new DriveFolderBinding(
-                        rs.getLong("school_id"),
-                        rs.getString("school_uid"),
-                        rs.getString("academic_year_id"),
-                        rs.getString("root_folder_id"),
-                        rs.getString("school_folder_id"),
-                        rs.getString("academic_year_folder_id"),
-                        rs.getString("intake_folder_id"),
-                        rs.getString("intake_folder_name"),
-                        rs.getString("intake_folder_url"),
-                        rs.getString("status"),
-                        rs.getString("last_error"),
-                        rs.getObject("provisioned_at", OffsetDateTime.class),
-                        rs.getObject("updated_at", OffsetDateTime.class)))
+                .query(this::mapBinding)
                 .optional();
     }
 
     @Transactional
-    public void markProvisioning(SchoolDriveScope scope, String rootFolderId) {
+    public Optional<DriveFolderBinding> claimProvisioning(
+            SchoolDriveScope scope,
+            String rootFolderId,
+            boolean replaceReadyBinding) {
         bypassRls();
-        jdbc.sql("""
+        return jdbc.sql("""
                         INSERT INTO student.photo_import_drive_folders
                             (school_id, school_uid, academic_year_id, root_folder_id,
                              status, last_error, updated_at)
@@ -90,18 +79,33 @@ public class DriveFolderProvisioningRepository {
                             last_error = NULL,
                             updated_at = now(),
                             version = student.photo_import_drive_folders.version + 1
+                        WHERE student.photo_import_drive_folders.root_folder_id
+                                  IS DISTINCT FROM EXCLUDED.root_folder_id
+                           OR student.photo_import_drive_folders.status = 'FAILED'
+                           OR (student.photo_import_drive_folders.status = 'READY'
+                               AND :replaceReadyBinding)
+                           OR (student.photo_import_drive_folders.status = 'PROVISIONING'
+                               AND student.photo_import_drive_folders.updated_at
+                                   < now() - interval '5 minutes')
+                        RETURNING school_id, school_uid::text AS school_uid, academic_year_id,
+                                  root_folder_id, school_folder_id, academic_year_folder_id,
+                                  intake_folder_id, intake_folder_name, intake_folder_url,
+                                  status, last_error, provisioned_at, updated_at, version
                         """)
                 .param("schoolId", scope.schoolId())
                 .param("schoolUid", scope.schoolUid())
                 .param("academicYearId", scope.academicYearId())
                 .param("rootFolderId", rootFolderId)
-                .update();
+                .param("replaceReadyBinding", replaceReadyBinding)
+                .query(this::mapBinding)
+                .optional();
     }
 
     @Transactional
     public DriveFolderBinding markReady(
             SchoolDriveScope scope,
             String rootFolderId,
+            long claimVersion,
             GoogleDrivePhotoImportClient.ProvisionedFolders folders) {
         bypassRls();
         jdbc.sql("""
@@ -119,10 +123,13 @@ public class DriveFolderProvisioningRepository {
                         WHERE school_id = :schoolId
                           AND academic_year_id = :academicYearId
                           AND root_folder_id = :rootFolderId
+                          AND status = 'PROVISIONING'
+                          AND version = :claimVersion
                         """)
                 .param("schoolId", scope.schoolId())
                 .param("academicYearId", scope.academicYearId())
                 .param("rootFolderId", rootFolderId)
+                .param("claimVersion", claimVersion)
                 .param("schoolFolderId", folders.schoolFolderId())
                 .param("academicYearFolderId", folders.academicYearFolderId())
                 .param("intakeFolderId", folders.intakeFolderId())
@@ -136,6 +143,7 @@ public class DriveFolderProvisioningRepository {
     public DriveFolderBinding markFailed(
             SchoolDriveScope scope,
             String rootFolderId,
+            long claimVersion,
             String error) {
         bypassRls();
         jdbc.sql("""
@@ -147,13 +155,35 @@ public class DriveFolderProvisioningRepository {
                         WHERE school_id = :schoolId
                           AND academic_year_id = :academicYearId
                           AND root_folder_id = :rootFolderId
+                          AND status = 'PROVISIONING'
+                          AND version = :claimVersion
                         """)
                 .param("schoolId", scope.schoolId())
                 .param("academicYearId", scope.academicYearId())
                 .param("rootFolderId", rootFolderId)
+                .param("claimVersion", claimVersion)
                 .param("error", truncate(error, 1000))
                 .update();
         return find(scope.schoolId(), scope.academicYearId()).orElseThrow();
+    }
+
+    private DriveFolderBinding mapBinding(java.sql.ResultSet rs, int rowNum)
+            throws java.sql.SQLException {
+        return new DriveFolderBinding(
+                rs.getLong("school_id"),
+                rs.getString("school_uid"),
+                rs.getString("academic_year_id"),
+                rs.getString("root_folder_id"),
+                rs.getString("school_folder_id"),
+                rs.getString("academic_year_folder_id"),
+                rs.getString("intake_folder_id"),
+                rs.getString("intake_folder_name"),
+                rs.getString("intake_folder_url"),
+                rs.getString("status"),
+                rs.getString("last_error"),
+                rs.getObject("provisioned_at", OffsetDateTime.class),
+                rs.getObject("updated_at", OffsetDateTime.class),
+                rs.getLong("version"));
     }
 
     private void bypassRls() {
@@ -190,6 +220,7 @@ public class DriveFolderProvisioningRepository {
             String status,
             String lastError,
             OffsetDateTime provisionedAt,
-            OffsetDateTime updatedAt) {
+            OffsetDateTime updatedAt,
+            long version) {
     }
 }

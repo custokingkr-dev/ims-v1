@@ -4,22 +4,24 @@ import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClient.DriveFile;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Batch;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.ImportRow;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RowInput;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -48,23 +50,22 @@ class PhotoImportServiceTest {
                 null,
                 Set.of(schoolId),
                 Set.of("student:photo-import")));
-        var binding = new DriveFolderProvisioningRepository.DriveFolderBinding(
+        var managed = new DriveFolderProvisioningService.ProvisioningResult(
                 schoolId,
                 "11111111-1111-4111-8111-111111111111",
+                "Green Valley School",
+                "GVS",
                 "ay_2026_27",
-                "root-folder",
-                "school-folder",
-                "year-folder",
+                "2026-27",
+                "READY",
                 "intake-folder",
                 "Student Photo Intake",
                 "https://drive.google.com/drive/folders/intake-folder",
-                "READY",
-                null,
-                null,
-                OffsetDateTime.parse("2026-07-31T00:00:00Z"));
+                null);
         Batch created = batch(UUID.randomUUID(), schoolId, "DRAFT", 0);
         when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
-        when(folderProvisioning.binding(schoolId, "ay_2026_27")).thenReturn(Optional.of(binding));
+        when(folderProvisioning.isConfigured()).thenReturn(true);
+        when(folderProvisioning.ensureForSchool(schoolId)).thenReturn(managed);
         when(drive.readFolder("intake-folder"))
                 .thenReturn(new GoogleDrivePhotoImportClient.DriveFolder("intake-folder", "Student Photo Intake"));
         when(repository.createBatch(
@@ -74,7 +75,136 @@ class PhotoImportServiceTest {
         Batch result = service.create(schoolId, "ay_2026_27", null);
 
         assertThat(result).isSameAs(created);
+        verify(folderProvisioning).ensureForSchool(schoolId);
         verify(drive).readFolder("intake-folder");
+    }
+
+    @Test
+    void rejectsAlternateDriveFolderWhenManagedSchoolYearBindingIsEnabled() {
+        long schoolId = 7L;
+        TenantContext.set(new TenantContext(
+                42L,
+                "operations@example.com",
+                "OPERATIONS",
+                null,
+                null,
+                Set.of(schoolId),
+                Set.of("student:photo-import")));
+        var managed = new DriveFolderProvisioningService.ProvisioningResult(
+                schoolId,
+                "11111111-1111-4111-8111-111111111111",
+                "Green Valley School",
+                "GVS",
+                "ay_2026_27",
+                "2026-27",
+                "READY",
+                "managed-folder",
+                "Student Photo Intake",
+                "https://drive.google.com/drive/folders/managed-folder",
+                null);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(folderProvisioning.isConfigured()).thenReturn(true);
+        when(folderProvisioning.ensureForSchool(schoolId)).thenReturn(managed);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.create(
+                        schoolId,
+                        "ay_2026_27",
+                        "https://drive.google.com/drive/folders/foreign-folder"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("managed Drive intake folder");
+
+        verify(drive, never()).readFolder("foreign-folder");
+        verify(repository, never()).createBatch(
+                anyLong(), any(), any(), any(), any());
+    }
+
+    @Test
+    void rejectsStaleAcademicYearBeforeBindingManagedDriveFolder() {
+        long schoolId = 7L;
+        TenantContext.set(new TenantContext(
+                42L,
+                "operations@example.com",
+                "OPERATIONS",
+                null,
+                null,
+                Set.of(schoolId),
+                Set.of("student:photo-import")));
+        var managed = new DriveFolderProvisioningService.ProvisioningResult(
+                schoolId,
+                "11111111-1111-4111-8111-111111111111",
+                "Green Valley School",
+                "GVS",
+                "ay_2026_27",
+                "2026-27",
+                "READY",
+                "managed-folder",
+                "Student Photo Intake",
+                "https://drive.google.com/drive/folders/managed-folder",
+                null);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(folderProvisioning.isConfigured()).thenReturn(true);
+        when(folderProvisioning.ensureForSchool(schoolId)).thenReturn(managed);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.create(
+                        schoolId, "ay_2025_26", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("no longer current");
+
+        verify(drive, never()).readFolder(any());
+        verify(repository, never()).createBatch(
+                anyLong(), any(), any(), any(), any());
+    }
+
+    @Test
+    void flagsOversizedCameraImageDuringScanBeforeStudentLookup() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        TenantContext.set(new TenantContext(
+                42L,
+                "operations@example.com",
+                "OPERATIONS",
+                null,
+                null,
+                Set.of(schoolId),
+                Set.of("student:photo-import")));
+        Batch draft = batch(batchId, schoolId, "DRAFT", 0);
+        Batch review = batch(batchId, schoolId, "REVIEW", 0);
+        DriveFile workbook = new DriveFile(
+                "workbook-file", "mapping.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                100L, "workbook-checksum", "2026-07-31T00:00:00Z");
+        DriveFile oversized = new DriveFile(
+                "photo-file", "DSC5236.jpg", "image/jpeg",
+                6L * 1024 * 1024, "photo-checksum", "2026-07-31T00:00:00Z");
+        var parsed = new PhotoImportWorkbookParser.ParsedWorkbook(
+                "Sheet1",
+                List.of(new PhotoImportWorkbookParser.WorkbookRow(
+                        2, "ADM-1", "Student One", "I", "A", "5236")),
+                List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"));
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(draft);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(workbook, oversized));
+        when(drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES))
+                .thenReturn(new byte[]{1});
+        when(parser.parse(any(byte[].class), eq("mapping.xlsx"))).thenReturn(parsed);
+        when(drive.snapshotHash(List.of(workbook, oversized))).thenReturn("snapshot-1");
+        when(repository.replaceScan(
+                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.xlsx"),
+                eq("snapshot-1"), any(), any())).thenReturn(review);
+
+        service.scan(batchId);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RowInput>> rows = ArgumentCaptor.forClass(List.class);
+        verify(repository).replaceScan(
+                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.xlsx"),
+                eq("snapshot-1"), any(), rows.capture());
+        assertThat(rows.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.status()).isEqualTo("ERROR");
+            assertThat(row.message()).contains("larger than 5 MB");
+        });
+        verify(repository, never()).studentByAdmission(anyLong(), any(), any());
     }
 
     @Test

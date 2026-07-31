@@ -114,11 +114,41 @@ public class GoogleDrivePhotoImportClient {
     public DriveFolder readFolder(String rawFolder) {
         requireEnabled();
         String folderId = DriveFolderId.parse(rawFolder);
-        DriveFile folder = metadata(folderId);
-        if (!FOLDER_MIME.equals(folder.mimeType())) {
+        Map<String, Object> metadata = fileMetadata(
+                folderId, "id,name,mimeType,size,md5Checksum,modifiedTime,trashed");
+        DriveFile folder = toDriveFile(metadata);
+        if (booleanValue(metadata.get("trashed")) || !FOLDER_MIME.equals(folder.mimeType())) {
             throw new DrivePhotoImportException("not_a_folder", "The Drive link does not point to a folder");
         }
         return new DriveFolder(folder.id(), folder.name());
+    }
+
+    public boolean managedHierarchyMatches(
+            String rootFolderId,
+            String schoolFolderId,
+            String academicYearFolderId,
+            String intakeFolderId,
+            String schoolUid,
+            String academicYearId) {
+        requireProvisioningEnabled();
+        return managedFolderMatches(
+                        schoolFolderId,
+                        rootFolderId,
+                        Map.of("custokingType", "school", "custokingSchoolUid", schoolUid))
+                && managedFolderMatches(
+                        academicYearFolderId,
+                        schoolFolderId,
+                        Map.of(
+                                "custokingType", "academic-year",
+                                "custokingSchoolUid", schoolUid,
+                                "custokingAcademicYearId", academicYearId))
+                && managedFolderMatches(
+                        intakeFolderId,
+                        academicYearFolderId,
+                        Map.of(
+                                "custokingType", "student-photo-intake",
+                                "custokingSchoolUid", schoolUid,
+                                "custokingAcademicYearId", academicYearId));
     }
 
     public List<DriveFile> listFiles(String folderId) {
@@ -191,10 +221,9 @@ public class GoogleDrivePhotoImportClient {
         }
     }
 
-    private DriveFile metadata(String id) {
-        Map<String, Object> row = jsonGet(API + "/" + encode(id)
-                + "?supportsAllDrives=true&fields=" + encode("id,name,mimeType,size,md5Checksum,modifiedTime,trashed"));
-        return toDriveFile(row);
+    private Map<String, Object> fileMetadata(String id, String fields) {
+        return jsonGet(API + "/" + encode(id)
+                + "?supportsAllDrives=true&fields=" + encode(fields));
     }
 
     private Map<String, Object> jsonGet(String uri) {
@@ -375,6 +404,45 @@ public class GoogleDrivePhotoImportClient {
                 .toList();
     }
 
+    private boolean managedFolderMatches(
+            String folderId,
+            String expectedParentId,
+            Map<String, String> expectedProperties) {
+        if (folderId == null || folderId.isBlank()
+                || expectedParentId == null || expectedParentId.isBlank()) {
+            return false;
+        }
+        String parsedFolderId;
+        try {
+            parsedFolderId = DriveFolderId.parse(folderId);
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
+        Map<String, Object> row = fileMetadata(
+                parsedFolderId, "id,mimeType,trashed,parents,appProperties");
+        return matchesManagedFolderMetadata(row, expectedParentId, expectedProperties);
+    }
+
+    static boolean matchesManagedFolderMetadata(
+            Map<String, Object> row,
+            String expectedParentId,
+            Map<String, String> expectedProperties) {
+        if (row == null || booleanValue(row.get("trashed"))
+                || !FOLDER_MIME.equals(string(row.get("mimeType")))) {
+            return false;
+        }
+        if (!(row.get("parents") instanceof List<?> parents)
+                || parents.stream().map(GoogleDrivePhotoImportClient::string)
+                        .noneMatch(expectedParentId::equals)) {
+            return false;
+        }
+        if (!(row.get("appProperties") instanceof Map<?, ?> properties)) {
+            return false;
+        }
+        return expectedProperties.entrySet().stream()
+                .allMatch(entry -> entry.getValue().equals(string(properties.get(entry.getKey()))));
+    }
+
     private ManagedFolder toManagedFolder(Map<?, ?> row) {
         return new ManagedFolder(
                 string(row.get("id")),
@@ -418,6 +486,10 @@ public class GoogleDrivePhotoImportClient {
         }
     }
 
+    private static boolean booleanValue(Object value) {
+        return value instanceof Boolean bool ? bool : Boolean.parseBoolean(string(value));
+    }
+
     public record DriveFolder(String id, String name) {
     }
 
@@ -442,6 +514,19 @@ public class GoogleDrivePhotoImportClient {
         public boolean isXlsx() {
             return name != null && name.toLowerCase(Locale.ROOT).endsWith(".xlsx")
                     && !"application/vnd.google-apps.folder".equals(mimeType);
+        }
+
+        public boolean isSupportedImage() {
+            if (name == null || !name.toLowerCase(Locale.ROOT).matches(".*\\.(jpe?g|png)$")) {
+                return false;
+            }
+            if (mimeType == null || mimeType.isBlank()) {
+                return true;
+            }
+            String normalizedMime = mimeType.toLowerCase(Locale.ROOT);
+            return normalizedMime.startsWith("image/jpeg")
+                    || normalizedMime.startsWith("image/jpg")
+                    || normalizedMime.startsWith("image/png");
         }
     }
 }
