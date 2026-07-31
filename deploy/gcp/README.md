@@ -83,8 +83,10 @@ and academic-year folders.
    - `student-photo-import-drive-oauth-refresh-token-<env>`
 
    Grant the school-core Cloud Run runtime identity
-   `roles/secretmanager.secretAccessor`. Cloud Build binds the credentials only when
-   all three secrets have an enabled `latest` version.
+   `roles/secretmanager.secretAccessor`. Also grant the Cloud Build service identity
+   `roles/secretmanager.viewer` on these three secrets so deployment can verify that
+   each has an enabled `latest` version before binding it. In DEV both identities are
+   currently `305630109861-compute@developer.gserviceaccount.com`.
 8. Set the root folder ID as a GitHub Environment variable and redeploy
    `school-core-service`:
 
