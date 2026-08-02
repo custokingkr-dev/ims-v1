@@ -64,7 +64,7 @@ public class PhotoImportService {
                 "schools", repository.allowedSchools().stream().map(this::schoolContext).toList(),
                 "mappingColumns", List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"),
                 "mappingFileFormats", List.of("XLSX", "XLS", "CSV", "TSV"),
-                "fileNameRule", "DSC5236.jpg or DSC_05236.JPG");
+                "fileNameRule", "DSC5236.jpg, DSC_05236.JPG, or _DSC4521.jpeg");
     }
 
     public Batch create(long requestedSchoolId, String academicYearId, String driveFolderUrl) {

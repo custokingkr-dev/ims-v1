@@ -181,7 +181,7 @@ public class StudentPhotoStorage {
             throw new IllegalArgumentException("Photo must be " + (maxBytes / (1024 * 1024)) + " MB or smaller");
         }
         if (!isSupportedImage(contentType)) {
-            throw new IllegalArgumentException("Only JPG or PNG images are allowed");
+            throw new IllegalArgumentException("Only JPG, PNG, or WEBP images are allowed");
         }
         requireCropCoordinate(cropX, "cropX");
         requireCropCoordinate(cropY, "cropY");
@@ -203,7 +203,7 @@ public class StudentPhotoStorage {
                     .toOutputStream(out);
             return out.toByteArray();
         } catch (IOException | IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Could not read the image; upload a valid JPG or PNG", ex);
+            throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP", ex);
         }
     }
 
@@ -213,7 +213,9 @@ public class StudentPhotoStorage {
         }
         String ct = contentType.toLowerCase();
         return ct.startsWith("image/jpeg") || ct.startsWith("image/jpg")
-                || ct.startsWith("image/png");
+                || ct.startsWith("image/pjpeg")
+                || ct.startsWith("image/png")
+                || ct.startsWith("image/webp");
     }
 
     private Storage storage() {
@@ -305,7 +307,7 @@ public class StudentPhotoStorage {
             }
             var readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) {
-                throw new IllegalArgumentException("Could not read the image; upload a valid JPG or PNG");
+                throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP");
             }
             ImageReader reader = readers.next();
             try {
@@ -320,7 +322,7 @@ public class StudentPhotoStorage {
         } catch (ArithmeticException ex) {
             throw new IllegalArgumentException("Photo dimensions are too large", ex);
         } catch (IOException ex) {
-            throw new IllegalArgumentException("Could not read the image; upload a valid JPG or PNG", ex);
+            throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP", ex);
         }
     }
 

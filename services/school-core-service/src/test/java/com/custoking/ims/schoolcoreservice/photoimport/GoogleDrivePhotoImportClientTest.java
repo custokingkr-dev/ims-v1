@@ -71,6 +71,12 @@ class GoogleDrivePhotoImportClientTest {
         assertThat(new GoogleDrivePhotoImportClient.DriveFile(
                 "file-2", "DSC5236.jpg", "image/jpeg", 100L, null, null)
                 .isSupportedImage()).isTrue();
+        assertThat(new GoogleDrivePhotoImportClient.DriveFile(
+                "file-3", "_DSC5236.jpeg", "image/pjpeg", 100L, null, null)
+                .isSupportedImage()).isTrue();
+        assertThat(new GoogleDrivePhotoImportClient.DriveFile(
+                "file-4", "_DSC5236.webp", "image/webp", 100L, null, null)
+                .isSupportedImage()).isTrue();
     }
 
     @Test

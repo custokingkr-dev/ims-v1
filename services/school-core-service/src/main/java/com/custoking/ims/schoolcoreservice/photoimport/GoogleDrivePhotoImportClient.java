@@ -518,7 +518,7 @@ public class GoogleDrivePhotoImportClient {
         }
 
         public boolean isSupportedImage() {
-            if (name == null || !name.toLowerCase(Locale.ROOT).matches(".*\\.(jpe?g|png)$")) {
+            if (name == null || !name.toLowerCase(Locale.ROOT).matches(".*\\.(jpe?g|png|webp)$")) {
                 return false;
             }
             if (mimeType == null || mimeType.isBlank()) {
@@ -527,7 +527,9 @@ public class GoogleDrivePhotoImportClient {
             String normalizedMime = mimeType.toLowerCase(Locale.ROOT);
             return normalizedMime.startsWith("image/jpeg")
                     || normalizedMime.startsWith("image/jpg")
-                    || normalizedMime.startsWith("image/png");
+                    || normalizedMime.startsWith("image/pjpeg")
+                    || normalizedMime.startsWith("image/png")
+                    || normalizedMime.startsWith("image/webp");
         }
     }
 }

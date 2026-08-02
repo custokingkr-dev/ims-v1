@@ -26,7 +26,9 @@ class DriveMappingRulesTest {
     void extractsOnlyDscImageNumbersCaseInsensitively() {
         assertThat(DscImageNumber.fromFileName("DSC5236.jpg")).contains("5236");
         assertThat(DscImageNumber.fromFileName("dsc_005478.JPG")).contains("5478");
-        assertThat(DscImageNumber.fromFileName("DSC5236.webp")).isEmpty();
+        assertThat(DscImageNumber.fromFileName("_DSC4521.jpg")).contains("4521");
+        assertThat(DscImageNumber.fromFileName("_DSC_004521.jpeg")).contains("4521");
+        assertThat(DscImageNumber.fromFileName("DSC5236.webp")).contains("5236");
         assertThat(DscImageNumber.fromFileName("IMG5236.jpg")).isEmpty();
         assertThat(DscImageNumber.fromFileName("DSC5236 copy.jpg")).isEmpty();
     }
