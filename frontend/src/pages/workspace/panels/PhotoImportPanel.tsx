@@ -95,7 +95,12 @@ const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
 type RowFilter = typeof FILTERS[number];
 
 function errorMessage(error: any): string {
-  return error?.response?.data?.message || error?.message || 'The request could not be completed.';
+  const data = error?.response?.data;
+  if (typeof data === 'string' && data.trim()) return data;
+  if (data?.message) return data.message;
+  if (data?.detail) return data.detail;
+  if (data?.code) return data.code;
+  return error?.message || 'The request could not be completed.';
 }
 
 function statusTone(status: string): string {
@@ -110,6 +115,21 @@ function workflowStep(status?: string): number {
   if (status === 'REVIEW') return 2;
   if (status === 'FROZEN') return 3;
   return 4;
+}
+
+function duplicateSchoolNames(schools: SchoolContext[]): Set<string> {
+  const counts = new Map<string, number>();
+  schools.forEach(school => counts.set(school.name, (counts.get(school.name) || 0) + 1));
+  return new Set([...counts.entries()]
+    .filter(([, count]) => count > 1)
+    .map(([name]) => name));
+}
+
+function schoolOptionLabel(school: SchoolContext, duplicateNames: Set<string>): string {
+  if (!duplicateNames.has(school.name)) {
+    return `${school.name} (${school.shortCode})`;
+  }
+  return `${school.name} (${school.shortCode}, #${school.id})`;
 }
 
 export function PhotoImportPanel() {
@@ -135,6 +155,10 @@ export function PhotoImportPanel() {
   } | null>(null);
 
   const selectedSchool = context?.schools.find(school => school.id === Number(schoolId));
+  const duplicateNames = useMemo(
+    () => duplicateSchoolNames(context?.schools || []),
+    [context?.schools],
+  );
   const currentStep = workflowStep(batch?.status);
   const visibleRows = useMemo(
     () => filter === 'ALL' ? rows : rows.filter(row => row.status === filter),
@@ -438,7 +462,7 @@ export function PhotoImportPanel() {
                   disabled={!!batch && !['COMPLETED', 'PARTIAL', 'FAILED'].includes(batch.status)}
                 >
                   {context.schools.map(school => (
-                    <option key={school.id} value={school.id}>{school.name} ({school.shortCode})</option>
+                    <option key={school.id} value={school.id}>{schoolOptionLabel(school, duplicateNames)}</option>
                   ))}
                 </select>
               </div>

@@ -171,6 +171,61 @@ describe('PhotoImportPanel', () => {
     }));
   });
 
+  it('disambiguates duplicate school names in the selector', async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') {
+        return {
+          data: {
+            ...context,
+            schools: [
+              context.schools[0],
+              {
+                ...context.schools[0],
+                id: 9,
+                schoolUid: '22222222-2222-4222-8222-222222222222',
+                shortCode: 'GVS-N',
+              },
+            ],
+          },
+        } as any;
+      }
+      if (url === '/student-photo-imports') return { data: [] } as any;
+      throw new Error(`unexpected GET ${url}`);
+    });
+
+    render(<PhotoImportPanel />);
+
+    await screen.findByLabelText('School');
+    const options = screen.getAllByRole('option').map(option => option.textContent);
+    expect(options).toContain('Green Valley School (GVS, #7)');
+    expect(options).toContain('Green Valley School (GVS-N, #9)');
+  });
+
+  it('shows problem-detail messages for forbidden import actions', async () => {
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [frozenBatch] } as any;
+      if (url === '/student-photo-imports/batch-2') {
+        return { data: { batch: frozenBatch, rows: [] } } as any;
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockRejectedValue({
+      response: {
+        status: 403,
+        data: { detail: 'permission required: student:photo-import' },
+      },
+      message: 'Request failed with status code 403',
+    });
+
+    render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByLabelText(/confirm green valley school, 2026-27, and 18 ready portraits/i));
+    fireEvent.click(await screen.findByRole('button', { name: /execute import/i }));
+
+    expect(await screen.findByText('permission required: student:photo-import')).toBeInTheDocument();
+  });
+
   it('lets an operator correct a row mapping and crop during review', async () => {
     const reviewBatch = { ...frozenBatch, id: 'batch-review', status: 'REVIEW', readyCount: 0, errorCount: 1 };
     const row = {
