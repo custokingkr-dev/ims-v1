@@ -17,6 +17,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
@@ -46,6 +50,7 @@ public class StudentPhotoStorage {
 
     private static final Logger log = LoggerFactory.getLogger(StudentPhotoStorage.class);
     private static final String IMMUTABLE_CACHE = "public, max-age=31536000, immutable";
+    private static final long MAX_DECODED_PIXELS = 40_000_000L;
 
     private final String bucket;
     private final int ttlMinutes;
@@ -76,27 +81,43 @@ public class StudentPhotoStorage {
 
     /** Validate + resize + store the image; returns the GCS object key to persist. */
     public String upload(String schoolStorageId, long studentId, byte[] data, String contentType) {
+        return upload(schoolStorageId, studentId, data, contentType, 0.5, 0.5);
+    }
+
+    public String upload(
+            String schoolStorageId,
+            long studentId,
+            byte[] data,
+            String contentType,
+            double cropX,
+            double cropY) {
         if (!isEnabled()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Photo storage is not configured");
         }
         String folder = requireStorageFolder(schoolStorageId);
-        if (data == null || data.length == 0) {
-            throw new IllegalArgumentException("The photo file is empty");
+        byte[] resized = normalizePortrait(data, contentType, cropX, cropY);
+        return uploadNormalizedPortrait(folder, studentId, resized);
+    }
+
+    public String uploadNormalizedPortrait(String schoolStorageId, long studentId, byte[] jpegData) {
+        if (!isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Photo storage is not configured");
         }
-        if (data.length > maxBytes) {
-            throw new IllegalArgumentException("Photo must be " + (maxBytes / (1024 * 1024)) + " MB or smaller");
+        String folder = requireStorageFolder(schoolStorageId);
+        if (jpegData == null || jpegData.length == 0) {
+            throw new IllegalArgumentException("The normalized photo file is empty");
         }
-        if (!isSupportedImage(contentType)) {
-            throw new IllegalArgumentException("Only JPG, PNG or WEBP images are allowed");
+        if (jpegData.length > maxBytes) {
+            throw new IllegalArgumentException(
+                    "Normalized photo must be " + (maxBytes / (1024 * 1024)) + " MB or smaller");
         }
-        byte[] resized = resize(data);
-        String key = studentPhotoObjectKey(folder, studentId, resized);
+        String key = studentPhotoObjectKey(folder, studentId, jpegData);
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
                     .setContentType("image/jpeg")
                     .setCacheControl(IMMUTABLE_CACHE)
                     .build();
-            storage().create(blob, resized);
+            storage().create(blob, jpegData);
         } catch (RuntimeException ex) {
             log.error("Failed to store student photo (bucket={}, key={})", bucket, key, ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -155,19 +176,60 @@ public class StudentPhotoStorage {
         }
     }
 
-    private byte[] resize(byte[] data) {
+    /**
+     * Validates orientation/decoded size and produces a centered square JPEG portrait.
+     * Exposed for the review preview so the operator sees the exact crop that execution stores.
+     */
+    public byte[] normalizePortrait(byte[] data, String contentType) {
+        return normalizePortrait(data, contentType, 0.5, 0.5);
+    }
+
+    public byte[] normalizePortrait(
+            byte[] data,
+            String contentType,
+            double cropX,
+            double cropY) {
+        return normalizePortrait(data, contentType, cropX, cropY, maxBytes);
+    }
+
+    public byte[] normalizePortrait(
+            byte[] data,
+            String contentType,
+            double cropX,
+            double cropY,
+            long maxInputBytes) {
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("The photo file is empty");
+        }
+        long effectiveMaxBytes = maxInputBytes > 0 ? maxInputBytes : maxBytes;
+        if (data.length > effectiveMaxBytes) {
+            throw new IllegalArgumentException(
+                    "Photo must be " + (effectiveMaxBytes / (1024 * 1024)) + " MB or smaller");
+        }
+        if (!isSupportedImage(contentType)) {
+            throw new IllegalArgumentException("Only JPG, PNG, or WEBP images are allowed");
+        }
+        requireCropCoordinate(cropX, "cropX");
+        requireCropCoordinate(cropY, "cropY");
+        validatePixelCount(data);
         try {
+            BufferedImage oriented = Thumbnails.of(new ByteArrayInputStream(data))
+                    .useExifOrientation(true)
+                    .scale(1)
+                    .asBufferedImage();
+            int side = Math.min(oriented.getWidth(), oriented.getHeight());
+            int left = cropOrigin(cropX, oriented.getWidth(), side);
+            int top = cropOrigin(cropY, oriented.getHeight(), side);
+            BufferedImage cropped = oriented.getSubimage(left, top, side, side);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            // Fit within dimension x dimension, preserving aspect ratio (the client already crops
-            // to the intended square before upload), then compress to JPEG.
-            Thumbnails.of(new ByteArrayInputStream(data))
+            Thumbnails.of(cropped)
                     .size(dimension, dimension)
                     .outputFormat("jpg")
                     .outputQuality(0.82)
                     .toOutputStream(out);
             return out.toByteArray();
         } catch (IOException | IllegalArgumentException ex) {
-            throw new IllegalArgumentException("Could not read the image; upload a valid JPG or PNG", ex);
+            throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP", ex);
         }
     }
 
@@ -177,7 +239,9 @@ public class StudentPhotoStorage {
         }
         String ct = contentType.toLowerCase();
         return ct.startsWith("image/jpeg") || ct.startsWith("image/jpg")
-                || ct.startsWith("image/png") || ct.startsWith("image/webp");
+                || ct.startsWith("image/pjpeg")
+                || ct.startsWith("image/png")
+                || ct.startsWith("image/webp");
     }
 
     private Storage storage() {
@@ -248,6 +312,43 @@ public class StudentPhotoStorage {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data));
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
+        }
+    }
+
+    private static int cropOrigin(double focus, int dimension, int side) {
+        int origin = (int) Math.round(focus * dimension - side / 2.0);
+        return Math.max(0, Math.min(dimension - side, origin));
+    }
+
+    private static void requireCropCoordinate(double value, String field) {
+        if (!Double.isFinite(value) || value < 0 || value > 1) {
+            throw new IllegalArgumentException(field + " must be between 0 and 1");
+        }
+    }
+
+    private void validatePixelCount(byte[] data) {
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            if (input == null) {
+                throw new IllegalArgumentException("Could not read the image");
+            }
+            var readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                long pixels = Math.multiplyExact((long) reader.getWidth(0), (long) reader.getHeight(0));
+                if (pixels > MAX_DECODED_PIXELS) {
+                    throw new IllegalArgumentException("Photo dimensions are too large");
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("Photo dimensions are too large", ex);
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Could not read the image; upload a valid JPG, PNG, or WEBP", ex);
         }
     }
 

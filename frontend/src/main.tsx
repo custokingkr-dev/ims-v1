@@ -12,6 +12,7 @@ import './styles/sidebar.css';
 import './styles/drawers.css';
 import './styles/attendance.css';
 import './styles/design-preview.css';
+import './styles/photo-import.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

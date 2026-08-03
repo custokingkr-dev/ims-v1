@@ -1,0 +1,134 @@
+package com.custoking.ims.schoolcoreservice.photoimport;
+
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
+import org.testcontainers.DockerClientFactory;
+import org.testcontainers.containers.PostgreSQLContainer;
+
+import java.sql.Connection;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+class PhotoImportWorkflowMigrationIntegrationTest {
+    private static PostgreSQLContainer<?> postgres;
+    private static DriverManagerDataSource dataSource;
+    private static JdbcClient jdbc;
+
+    @BeforeAll
+    static void setUp() throws Exception {
+        Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
+        postgres = new PostgreSQLContainer<>("postgres:16")
+                .withUsername("owner")
+                .withPassword("owner");
+        postgres.start();
+        dataSource = new DriverManagerDataSource(postgres.getJdbcUrl(), "owner", "owner");
+        jdbc = JdbcClient.create(dataSource);
+        jdbc.sql("CREATE SCHEMA student").update();
+        jdbc.sql("""
+                CREATE TABLE student.photo_import_batches (
+                    id UUID PRIMARY KEY,
+                    drive_folder_id VARCHAR(255) NOT NULL,
+                    status VARCHAR(24) NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    version BIGINT NOT NULL DEFAULT 0,
+                    CONSTRAINT uq_photo_import_drive_folder UNIQUE (drive_folder_id)
+                )
+                """).update();
+        jdbc.sql("""
+                CREATE TABLE student.photo_import_rows (
+                    id UUID PRIMARY KEY
+                )
+                """).update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_batches (id, drive_folder_id, status)
+                VALUES (:id, 'shared-intake-folder', 'COMPLETED')
+                """)
+                .param("id", UUID.randomUUID())
+                .update();
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                            "db/migration/student/V13__production_photo_import_workflow.sql"));
+        }
+    }
+
+    @AfterAll
+    static void tearDown() {
+        if (postgres != null) {
+            postgres.stop();
+        }
+    }
+
+    @Test
+    void completedFolderCanBeReusedButOnlyOneNewBatchMayRemainActive() {
+        UUID activeId = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_batches (id, drive_folder_id, status)
+                VALUES (:id, 'shared-intake-folder', 'DRAFT')
+                """)
+                .param("id", activeId)
+                .update();
+
+        assertThatThrownBy(() -> jdbc.sql("""
+                        INSERT INTO student.photo_import_batches (id, drive_folder_id, status)
+                        VALUES (:id, 'shared-intake-folder', 'REVIEW')
+                        """)
+                .param("id", UUID.randomUUID())
+                .update())
+                .hasMessageContaining("uq_photo_import_active_drive_folder");
+
+        jdbc.sql("UPDATE student.photo_import_batches SET status = 'COMPLETED' WHERE id = :id")
+                .param("id", activeId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_batches (id, drive_folder_id, status)
+                VALUES (:id, 'shared-intake-folder', 'DRAFT')
+                """)
+                .param("id", UUID.randomUUID())
+                .update();
+
+        Long batches = jdbc.sql("""
+                SELECT count(*) FROM student.photo_import_batches
+                WHERE drive_folder_id = 'shared-intake-folder'
+                """).query(Long.class).single();
+        assertThat(batches).isEqualTo(3);
+    }
+
+    @Test
+    void cropCoordinatesDefaultToCenterAndAreDatabaseConstrained() {
+        UUID rowId = UUID.randomUUID();
+        jdbc.sql("INSERT INTO student.photo_import_rows (id) VALUES (:id)")
+                .param("id", rowId)
+                .update();
+
+        var crop = jdbc.sql("""
+                SELECT crop_x, crop_y, manually_reviewed
+                FROM student.photo_import_rows WHERE id = :id
+                """)
+                .param("id", rowId)
+                .query((rs, rowNum) -> new Object[]{
+                        rs.getBigDecimal("crop_x"),
+                        rs.getBigDecimal("crop_y"),
+                        rs.getBoolean("manually_reviewed")})
+                .single();
+        assertThat(crop[0].toString()).isEqualTo("0.5000");
+        assertThat(crop[1].toString()).isEqualTo("0.5000");
+        assertThat(crop[2]).isEqualTo(false);
+
+        assertThatThrownBy(() -> jdbc.sql(
+                        "UPDATE student.photo_import_rows SET crop_x = 1.01 WHERE id = :id")
+                .param("id", rowId)
+                .update())
+                .hasMessageContaining("chk_photo_import_row_crop_x");
+    }
+}

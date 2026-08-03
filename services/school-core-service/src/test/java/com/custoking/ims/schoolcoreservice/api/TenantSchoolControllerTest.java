@@ -9,6 +9,7 @@ import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadReposi
 import com.custoking.ims.schoolcoreservice.persistence.ZoneCommandRepository;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneEntity;
 import com.custoking.ims.schoolcoreservice.persistence.ZoneRepository;
+import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningService;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +39,7 @@ class TenantSchoolControllerTest {
     private final ModuleEntitlementGuard moduleGuard = mock(ModuleEntitlementGuard.class);
     private final SchoolStructureReadRepository structure = mock(SchoolStructureReadRepository.class);
     private final ZoneCommandRepository zoneCommands = mock(ZoneCommandRepository.class);
+    private final DriveFolderProvisioningService photoFolders = mock(DriveFolderProvisioningService.class);
     private final TenantSchoolController controller = new TenantSchoolController(
             schools,
             zones,
@@ -45,6 +47,7 @@ class TenantSchoolControllerTest {
             moduleGuard,
             structure,
             zoneCommands,
+            photoFolders,
             "tenant-token");
 
     @AfterEach
@@ -283,6 +286,35 @@ class TenantSchoolControllerTest {
         when(school.getFinancialYearStartMonth()).thenReturn(4);
         when(school.getCreatedAt()).thenReturn(OffsetDateTime.parse("2026-06-01T00:00:00Z"));
         return school;
+    }
+
+    @Test
+    void createSchoolAutomaticallyProvisionsCurrentYearPhotoFolder() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        Map<String, Object> request = Map.of("name", "Delhi Public School", "shortCode", "DPS");
+        Map<String, Object> school = Map.of(
+                "id", 4L,
+                "name", "Delhi Public School",
+                "shortCode", "DPS");
+        var provisioned = new DriveFolderProvisioningService.ProvisioningResult(
+                4L,
+                "11111111-1111-4111-8111-111111111111",
+                "Delhi Public School",
+                "DPS",
+                "ay_2026_27",
+                "2026-27",
+                "READY",
+                "intake-folder",
+                "Student Photo Intake",
+                "https://drive.google.com/drive/folders/intake-folder",
+                null);
+        when(structure.createSchool(request)).thenReturn(school);
+        when(photoFolders.ensureForSchool(4L)).thenReturn(provisioned);
+
+        Map<String, Object> result = controller.createSchool("tenant-token", request);
+
+        assertThat(result).containsEntry("id", 4L).containsEntry("photoImportFolder", provisioned);
+        verify(photoFolders).ensureForSchool(4L);
     }
 
     private ZoneEntity zone(Long id, String name, String code) {

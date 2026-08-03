@@ -23,6 +23,7 @@ import { CatalogPanel } from './workspace/panels/CatalogPanel';
 import { AddStudentPanel } from './workspace/panels/AddStudentPanel';
 import { SchoolStructurePanel } from './workspace/panels/SchoolStructurePanel';
 import { BulkImportPanel } from './workspace/panels/BulkImportPanel';
+import { PhotoImportPanel } from './workspace/panels/PhotoImportPanel';
 import { FirefightingDashboardPanel } from './workspace/panels/FirefightingDashboardPanel';
 import { FirefightingNewPanel } from './workspace/panels/FirefightingNewPanel';
 import { FirefightingApprovalsPanel } from './workspace/panels/FirefightingApprovalsPanel';
@@ -51,6 +52,8 @@ export default function UnifiedWorkspacePage() {
   const isViewer = role === 'VIEWER';
   const defaultPanel: PanelKey = isPlatformAdmin
     ? 'orders'
+    : isOperations
+      ? 'photoimport'
     : isZoneAdmin
       ? 'za-overview'
       : 'home';
@@ -117,6 +120,19 @@ export default function UnifiedWorkspacePage() {
   const refresh = async () => {
     try {
       setWorkspaceError('');
+      if (isOperations && !user?.branchId) {
+        setWorkspace({
+          school: {
+            name: 'Custoking Operations',
+            meta: 'Assigned school workflows',
+          },
+          dashboard: {},
+          orders: [],
+          staff: [],
+        });
+        setActiveModules(withDerivedModuleGroups(['ORDERS', 'FIREFIGHTING']));
+        return;
+      }
       if (!isPlatformAdmin && !user?.branchId) {
         throw new Error('This account is not assigned to a school.');
       }
@@ -283,6 +299,7 @@ export default function UnifiedWorkspacePage() {
       case 'students': return ['student:read'];
       case 'addstudent': return ['student:create'];
       case 'bulkimport': return ['student:import'];
+      case 'photoimport': return ['student:photo-import'];
       case 'attendance': return ['attendance:read'];
       case 'timetable': return ['timetable:read'];
       case 'staff': return ['staff:read'];
@@ -508,6 +525,8 @@ export default function UnifiedWorkspacePage() {
           {panelAllowed && panel === 'classsetup' && <SchoolStructurePanel schoolId={user?.branchId ?? undefined} onSaved={refresh} />}
 
           {panelAllowed && panel === 'bulkimport' && <BulkImportPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canCreateStudents={can('student:create')} />}
+
+          {panelAllowed && panel === 'photoimport' && <PhotoImportPanel />}
 
           {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 

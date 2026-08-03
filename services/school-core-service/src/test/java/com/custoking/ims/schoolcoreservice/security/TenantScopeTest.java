@@ -77,4 +77,21 @@ class TenantScopeTest {
         TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null, Set.of()));
         assertThrows(ResponseStatusException.class, () -> TenantScope.resolvePlatformReadScope(10L));
     }
+
+    @Test
+    void operationsWriteScope_requiresAssignedExplicitSchool() {
+        TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null, Set.of(10L, 20L)));
+        assertEquals(20L, TenantScope.resolveOperationsWriteScope(20L));
+        assertEquals(400, assertThrows(ResponseStatusException.class,
+                () -> TenantScope.resolveOperationsWriteScope(null)).getStatusCode().value());
+        assertEquals(403, assertThrows(ResponseStatusException.class,
+                () -> TenantScope.resolveOperationsWriteScope(30L)).getStatusCode().value());
+    }
+
+    @Test
+    void schoolAdminCannotUseOperationsWriteScope() {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        assertEquals(403, assertThrows(ResponseStatusException.class,
+                () -> TenantScope.resolveOperationsWriteScope(10L)).getStatusCode().value());
+    }
 }

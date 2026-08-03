@@ -71,7 +71,6 @@ describe('workspace nav module filtering', () => {
 
   it.each([
     ['admin', ADMIN_NAV_SECTIONS],
-    ['operations', OPERATIONS_NAV_SECTIONS],
     ['accountant', ACCOUNTANT_NAV_SECTIONS],
     ['teacher', TEACHER_NAV_SECTIONS],
     ['viewer', VIEWER_NAV_SECTIONS],
@@ -84,5 +83,13 @@ describe('workspace nav module filtering', () => {
     );
     expect(filtered[0]?.items[0]).not.toHaveProperty('module');
     expect(filtered.flatMap((section) => section.items).filter((item) => item.key === 'home')).toHaveLength(1);
+  });
+
+  it('opens Operations on multi-school workflows without an empty branch dashboard', () => {
+    const filtered = filteredSectionsFor(OPERATIONS_NAV_SECTIONS, ['SUPPLY_OS']);
+    const items = filtered.flatMap((section) => section.items);
+
+    expect(items).not.toContainEqual(expect.objectContaining({ key: 'home' }));
+    expect(items).toContainEqual(expect.objectContaining({ key: 'photoimport' }));
   });
 });

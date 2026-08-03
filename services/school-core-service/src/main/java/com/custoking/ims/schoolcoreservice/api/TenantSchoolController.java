@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.SchoolEntity;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolRepository;
+import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningService;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import com.custoking.ims.schoolcoreservice.persistence.SchoolStructureReadRepository;
@@ -31,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,6 +47,7 @@ public class TenantSchoolController {
     private final ModuleEntitlementGuard moduleGuard;
     private final SchoolStructureReadRepository structure;
     private final ZoneCommandRepository zoneCommands;
+    private final DriveFolderProvisioningService photoFolders;
     private final String readToken;
 
     public TenantSchoolController(
@@ -54,6 +57,7 @@ public class TenantSchoolController {
             ModuleEntitlementGuard moduleGuard,
             SchoolStructureReadRepository structure,
             ZoneCommandRepository zoneCommands,
+            DriveFolderProvisioningService photoFolders,
             @Value("${tenant-school.read-token:}") String readToken) {
         this.schools = schools;
         this.zones = zones;
@@ -61,6 +65,7 @@ public class TenantSchoolController {
         this.moduleGuard = moduleGuard;
         this.structure = structure;
         this.zoneCommands = zoneCommands;
+        this.photoFolders = photoFolders;
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
@@ -108,7 +113,11 @@ public class TenantSchoolController {
         requireToken(token, "tenant-school:write");
         TenantScope.requirePermissionIfAuthenticated("school:create");
         TenantScope.requireSuperAdmin();
-        return runCommand(() -> structure.createSchool(body));
+        Map<String, Object> school = runCommand(() -> structure.createSchool(body));
+        long schoolId = ((Number) school.get("id")).longValue();
+        Map<String, Object> response = new LinkedHashMap<>(school);
+        response.put("photoImportFolder", photoFolders.ensureForSchool(schoolId));
+        return response;
     }
 
     @PatchMapping("/schools/{id}")

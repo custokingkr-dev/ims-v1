@@ -462,6 +462,12 @@ test('verifyJwtLocally accepts a valid enriched HS512 token', () => {
   assert.equal(claims.ver, 2);
 });
 
+test('student-photo-import routes to student', () => {
+  const resolve = (p) => routes.find((r) => r.matches(p))?.service;
+  assert.equal(resolve('/api/v1/student-photo-imports/context'), 'student');
+  assert.equal(resolve('/api/v1/student-photo-imports/8c1f/scan'), 'student');
+});
+
 test('verifyJwtLocally accepts a valid enriched HS256 token', () => {
   const token = signJwt(enrichedClaims, JWT_SECRET, { alg: 'HS256', typ: 'JWT' });
   const claims = verifyJwtLocally(token, JWT_SECRET, NOW);

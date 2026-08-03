@@ -19,6 +19,8 @@
         <java.version>25</java.version>
         <google-cloud-libraries-bom.version>26.66.0</google-cloud-libraries-bom.version>
         <thumbnailator.version>0.4.20</thumbnailator.version>
+        <apache-poi.version>5.5.1</apache-poi.version>
+        <commons-csv.version>1.14.1</commons-csv.version>
     </properties>
 
     <dependencyManagement>
@@ -123,6 +125,16 @@
             <groupId>net.coobird</groupId>
             <artifactId>thumbnailator</artifactId>
             <version>${thumbnailator.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${apache-poi.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>${commons-csv.version}</version>
         </dependency>
         <!-- Raw Pub/Sub client for the real outbox publisher (PubSubDomainEventPublisher).
              Deliberately NOT spring-cloud-gcp: its Spring Boot compat lags SB4. -->
