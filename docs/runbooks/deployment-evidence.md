@@ -12,7 +12,7 @@ How do we roll back?
 
 ## GitHub Evidence
 
-The `CD / Build release and deploy dev` workflow uploads:
+The `CD / Deploy branch environment` workflow uploads:
 
 ```text
 release-evidence/
@@ -30,10 +30,9 @@ release-evidence/
 - Cloud Deploy release id
 - first target
 
-Promotion and rollback workflows upload their own evidence artifacts:
+Rollback workflows upload their own evidence artifacts:
 
 ```text
-promotion-evidence/promotion.json
 rollback-evidence/rollback.json
 ```
 
@@ -45,12 +44,12 @@ For a release review, export:
 gcloud deploy releases list `
   --project=custoking `
   --region=asia-south2 `
-  --delivery-pipeline=custoking-school-core-service
+  --delivery-pipeline=custoking-school-core-service-<env>
 
 gcloud deploy rollouts list `
   --project=custoking `
   --region=asia-south2 `
-  --delivery-pipeline=custoking-school-core-service `
+  --delivery-pipeline=custoking-school-core-service-<env> `
   --release=<release-id>
 ```
 

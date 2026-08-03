@@ -76,7 +76,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path rollback-evidence | Out-Null
           $summary = @()
           foreach ($service in $services) {
-            $pipeline = "custoking-$service"
+            $pipeline = "custoking-$service-$envName"
             $target = "$service-$envName"
             $rolloutId = ("rollback-{0}-{1}" -f "${{ github.run_id }}", ($service -replace "-", "")).ToLowerInvariant()
             $args = @(

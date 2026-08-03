@@ -98,7 +98,7 @@ Required follow-up:
 - Import existing WIF and Artifact Registry resources into `infra/terraform/cicd`.
 - Apply the CI/CD Terraform module.
 - Set GitHub variables from Terraform outputs.
-- Apply Cloud Deploy YAML through the `CD / Build release and deploy dev` workflow or with `gcloud deploy apply`.
+- Apply Cloud Deploy YAML through the `CD / Deploy branch environment` workflow or with `gcloud deploy apply`.
 - Provision a real stage database and `-stage` Secret Manager secrets before promoting to stage.
 - Do not restore the old `cloudbuild.yaml` deployment path unless there is a documented emergency reason.
 

@@ -1,17 +1,24 @@
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-identity-service
-  labels:
-    app: custoking-ims
-    service: identity-service
-description: identity-service dev -> prod Cloud Run delivery
+  name: custoking-identity-service-dev
+  labels: {app: custoking-ims, env: dev, service: identity-service}
+description: identity-service dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: identity-service-dev
       profiles: [identity-service]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-identity-service-prod
+  labels: {app: custoking-ims, env: prod, service: identity-service}
+description: identity-service main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: identity-service-prod
       profiles: [identity-service]
       strategy:
@@ -25,17 +32,24 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-school-core-service
-  labels:
-    app: custoking-ims
-    service: school-core-service
-description: school-core-service dev -> prod Cloud Run delivery
+  name: custoking-school-core-service-dev
+  labels: {app: custoking-ims, env: dev, service: school-core-service}
+description: school-core-service dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: school-core-service-dev
       profiles: [school-core-service]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-school-core-service-prod
+  labels: {app: custoking-ims, env: prod, service: school-core-service}
+description: school-core-service main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: school-core-service-prod
       profiles: [school-core-service]
       strategy:
@@ -49,17 +63,24 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-operations-service
-  labels:
-    app: custoking-ims
-    service: operations-service
-description: operations-service dev -> prod Cloud Run delivery
+  name: custoking-operations-service-dev
+  labels: {app: custoking-ims, env: dev, service: operations-service}
+description: operations-service dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: operations-service-dev
       profiles: [operations-service]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-operations-service-prod
+  labels: {app: custoking-ims, env: prod, service: operations-service}
+description: operations-service main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: operations-service-prod
       profiles: [operations-service]
       strategy:
@@ -73,17 +94,24 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-platform-service
-  labels:
-    app: custoking-ims
-    service: platform-service
-description: platform-service dev -> prod Cloud Run delivery
+  name: custoking-platform-service-dev
+  labels: {app: custoking-ims, env: dev, service: platform-service}
+description: platform-service dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: platform-service-dev
       profiles: [platform-service]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-platform-service-prod
+  labels: {app: custoking-ims, env: prod, service: platform-service}
+description: platform-service main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: platform-service-prod
       profiles: [platform-service]
       strategy:
@@ -97,17 +125,24 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-billing-service
-  labels:
-    app: custoking-ims
-    service: billing-service
-description: billing-service dev -> prod Cloud Run delivery
+  name: custoking-billing-service-dev
+  labels: {app: custoking-ims, env: dev, service: billing-service}
+description: billing-service dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: billing-service-dev
       profiles: [billing-service]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-billing-service-prod
+  labels: {app: custoking-ims, env: prod, service: billing-service}
+description: billing-service main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: billing-service-prod
       profiles: [billing-service]
       strategy:
@@ -121,17 +156,24 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-api-gateway
-  labels:
-    app: custoking-ims
-    service: api-gateway
-description: api-gateway dev -> prod Cloud Run delivery
+  name: custoking-api-gateway-dev
+  labels: {app: custoking-ims, env: dev, service: api-gateway}
+description: api-gateway dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: api-gateway-dev
       profiles: [api-gateway]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-api-gateway-prod
+  labels: {app: custoking-ims, env: prod, service: api-gateway}
+description: api-gateway main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: api-gateway-prod
       profiles: [api-gateway]
       strategy:
@@ -145,17 +187,24 @@ serialPipeline:
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
 metadata:
-  name: custoking-frontend
-  labels:
-    app: custoking-ims
-    service: frontend
-description: frontend dev -> prod Cloud Run delivery
+  name: custoking-frontend-dev
+  labels: {app: custoking-ims, env: dev, service: frontend}
+description: frontend dev branch Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: frontend-dev
       profiles: [frontend]
       strategy:
         standard: {}
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: DeliveryPipeline
+metadata:
+  name: custoking-frontend-prod
+  labels: {app: custoking-ims, env: prod, service: frontend}
+description: frontend main branch Cloud Run delivery
+serialPipeline:
+  stages:
     - targetId: frontend-prod
       profiles: [frontend]
       strategy:

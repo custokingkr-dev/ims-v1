@@ -3,10 +3,10 @@
 This module is the foundation for CI/CD v2. It manages:
 
 - GitHub Workload Identity Federation.
-- GitHub release/promote/rollback service accounts.
+- GitHub release/rollback service accounts.
 - Cloud Deploy execution service accounts.
 - Artifact Registry repository and cleanup policy.
-- Minimal project IAM for build, release, promote, rollback, and Cloud Run deploy execution.
+- Minimal project IAM for build, release, rollback, and Cloud Run deploy execution.
 
 The live project already has some of these resources from the retired pipeline. Import existing resources before applying, otherwise Terraform will try to create duplicates.
 
@@ -31,9 +31,6 @@ If the new service accounts already exist, import them too:
 terraform import 'google_service_account.github["release_builder"]' `
   projects/custoking/serviceAccounts/github-release-builder@custoking.iam.gserviceaccount.com
 
-terraform import 'google_service_account.github["promoter"]' `
-  projects/custoking/serviceAccounts/github-release-promoter@custoking.iam.gserviceaccount.com
-
 terraform import 'google_service_account.github["rollback"]' `
   projects/custoking/serviceAccounts/github-release-rollback@custoking.iam.gserviceaccount.com
 ```
@@ -48,7 +45,6 @@ GCP_REGION=asia-south2
 ARTIFACT_REGISTRY_REPOSITORY=custoking
 WORKLOAD_IDENTITY_PROVIDER=<terraform output workload_identity_provider>
 RELEASE_BUILDER_SERVICE_ACCOUNT=<terraform output release_builder_service_account>
-PROMOTER_SERVICE_ACCOUNT=<terraform output promoter_service_account>
 ROLLBACK_SERVICE_ACCOUNT=<terraform output rollback_service_account>
 ```
 

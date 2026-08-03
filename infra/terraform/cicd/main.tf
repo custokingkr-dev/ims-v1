@@ -13,7 +13,6 @@ locals {
 
   github_service_accounts = {
     release_builder = "github-release-builder"
-    promoter        = "github-release-promoter"
     rollback        = "github-release-rollback"
   }
 
@@ -143,18 +142,6 @@ resource "google_project_iam_member" "release_builder_roles" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.github["release_builder"].email}"
-}
-
-resource "google_project_iam_member" "promoter_roles" {
-  for_each = toset([
-    "roles/clouddeploy.operator",
-    "roles/clouddeploy.releaser",
-    "roles/serviceusage.serviceUsageConsumer",
-  ])
-
-  project = var.project_id
-  role    = each.value
-  member  = "serviceAccount:${google_service_account.github["promoter"].email}"
 }
 
 resource "google_project_iam_member" "rollback_roles" {

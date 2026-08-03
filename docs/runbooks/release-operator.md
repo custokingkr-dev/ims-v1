@@ -5,11 +5,10 @@ Status: CI/CD v2 implementation runbook.
 ## Release Board
 
 ```text
-PR -> CI / PR -> main -> CD / Build release and deploy dev
-   -> Cloud Deploy releases per service
-   -> dev
-   -> manual promote prod
-   -> prod canary 5, 25, 100
+PR -> CI / PR
+dev  -> CD / Deploy branch environment -> dev Cloud Deploy releases
+main -> CD / Deploy branch environment -> prod Cloud Deploy releases
+     -> prod canary 5, 25, 100
 ```
 
 ## Important Implementation Decision
@@ -26,40 +25,37 @@ custoking-api-gateway
 custoking-frontend
 ```
 
-Each active pipeline has two targets:
+Each service has environment-specific active pipelines:
 
 ```text
-<service>-dev -> <service>-prod
+custoking-<service>-dev   -> <service>-dev
+custoking-<service>-prod  -> <service>-prod
 ```
 
-GitHub Actions is responsible for coordinated fleet order. Cloud Deploy is responsible for each service's target progression and prod canary rollout.
+GitHub Actions is responsible for branch-to-environment ownership and coordinated fleet order. Cloud Deploy is responsible for each service's environment rollout, prod canary traffic, and rollback history.
 
 The stage target templates exist in source, but stage is not active until a real `stage` GitHub Environment, stage database, and `-stage` GCP secrets exist.
 
-## Normal Release
+## Dev Release
 
-1. Merge to `main`.
-2. GitHub Actions runs `CD / Build release and deploy dev`.
+1. Merge or push to `dev`.
+2. GitHub Actions runs `CD / Deploy branch environment`.
 3. The workflow builds and pushes all service images to Artifact Registry using `sha-<commit>` tags.
 4. The workflow resolves each image digest.
-5. The workflow renders dev/prod Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
-6. The workflow creates one Cloud Deploy release per service.
-7. Cloud Deploy deploys each release to the first target, `dev`.
+5. The workflow renders the dev Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
+6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-dev`.
+7. Cloud Deploy deploys each release to `dev`.
 8. The workflow uploads `release-evidence`.
 
-## Promote To Prod
+## Prod Release
 
-Use GitHub Actions:
-
-```text
-Actions -> CD / Promote release
-service: all
-target: prod
-release_id: empty
-reason: <ticket / approval / release note>
-```
-
-Prod promotion must use the GitHub `prod` Environment approval gate.
+1. Merge or push to `main`.
+2. GitHub Actions runs `CD / Deploy branch environment`.
+3. The workflow requires the GitHub `prod` Environment approval gate when configured.
+4. The workflow builds and pushes the `main` commit images using immutable `sha-<commit>` tags.
+5. The workflow renders the prod Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
+6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-prod`.
+7. Cloud Deploy deploys each release to `prod`.
 
 Cloud Deploy then uses the prod target canary:
 
@@ -91,7 +87,7 @@ For every release, keep:
 - `release-evidence` artifact.
 - Cloud Deploy release IDs.
 - Image digests.
-- Promotion reason.
+- Production approval record.
 - Rollback target.
 
 ## Fast Health Check

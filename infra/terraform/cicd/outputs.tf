@@ -6,10 +6,6 @@ output "release_builder_service_account" {
   value = google_service_account.github["release_builder"].email
 }
 
-output "promoter_service_account" {
-  value = google_service_account.github["promoter"].email
-}
-
 output "rollback_service_account" {
   value = google_service_account.github["rollback"].email
 }

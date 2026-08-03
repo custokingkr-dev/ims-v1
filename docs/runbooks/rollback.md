@@ -55,7 +55,7 @@ This prioritizes restoring user traffic quickly.
 2. Confirm the gateway health endpoint is healthy.
 3. Confirm the failed user workflow.
 4. Attach `rollback-evidence` to the incident.
-5. Do not re-promote until the bad release has a documented root cause or a compensating fix.
+5. Do not redeploy the bad release until it has a documented root cause or a compensating fix.
 
 ## Database Rule
 

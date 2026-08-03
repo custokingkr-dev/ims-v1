@@ -29,7 +29,7 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -64,7 +64,7 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -99,7 +99,7 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -134,7 +134,7 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -169,7 +169,7 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -204,7 +204,7 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -239,6 +239,6 @@ deployParameters:
   operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
-requireApproval: true
+requireApproval: false
 run:
   location: projects/custoking/locations/asia-south2

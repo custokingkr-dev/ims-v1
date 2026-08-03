@@ -41,7 +41,6 @@ $changedFiles = @(git diff --name-only $BaseRef $HeadRef | ForEach-Object { $_ -
 $allServiceTriggers = @(
   ".github/workflows/ci-pr.yml",
   ".github/workflows/build-release.yml",
-  ".github/workflows/promote.yml",
   ".github/workflows/rollback.yml",
   ".github/workflows/security-scan.yml",
   "docker-compose.yml",

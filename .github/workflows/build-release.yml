@@ -1,12 +1,18 @@
-name: CD / Build release and deploy dev
+name: CD / Deploy branch environment
 
 on:
   push:
-    branches: [main]
+    branches: [dev, main]
   workflow_dispatch:
     inputs:
+      target_environment:
+        description: Target environment. dev requires the dev branch; prod requires main.
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
       commit_sha:
-        description: Commit SHA to release. Defaults to workflow SHA.
+        description: Commit SHA to release. Must belong to the selected environment branch.
         required: false
         type: string
 
@@ -17,7 +23,7 @@ permissions:
   packages: write
 
 concurrency:
-  group: cd-build-release
+  group: cd-deploy-${{ github.ref_name }}-${{ inputs.target_environment || 'push' }}
   cancel-in-progress: false
 
 env:
@@ -28,9 +34,60 @@ env:
   RELEASE_BUILDER_SERVICE_ACCOUNT: ${{ vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
 
 jobs:
-  build-images:
+  resolve-target:
     runs-on: ubuntu-latest
-    environment: dev
+    outputs:
+      target_env: ${{ steps.resolve.outputs.target_env }}
+      deploy_branch: ${{ steps.resolve.outputs.deploy_branch }}
+      commit_sha: ${{ steps.resolve.outputs.commit_sha }}
+    steps:
+      - id: resolve
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $eventName = "${{ github.event_name }}"
+          $refName = "${{ github.ref_name }}"
+          $targetEnv = "${{ inputs.target_environment || '' }}"
+
+          if ($eventName -ne "workflow_dispatch") {
+            if ($refName -eq "dev") {
+              $targetEnv = "dev"
+            } elseif ($refName -eq "main") {
+              $targetEnv = "prod"
+            } else {
+              throw "Unsupported deployment branch '$refName'. Only dev and main deploy."
+            }
+          }
+
+          if ($targetEnv -eq "dev") {
+            $deployBranch = "dev"
+          } elseif ($targetEnv -eq "prod") {
+            $deployBranch = "main"
+          } else {
+            throw "Unsupported target environment '$targetEnv'."
+          }
+
+          if ($refName -ne $deployBranch) {
+            throw "Environment '$targetEnv' deploys only from branch '$deployBranch'. Current branch is '$refName'."
+          }
+
+          $sha = "${{ inputs.commit_sha || github.sha }}"
+          "target_env=$targetEnv" >> $env:GITHUB_OUTPUT
+          "deploy_branch=$deployBranch" >> $env:GITHUB_OUTPUT
+          "commit_sha=$sha" >> $env:GITHUB_OUTPUT
+          "Resolved $deployBranch -> $targetEnv for $sha"
+
+  environment-gate:
+    needs: resolve-target
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-target.outputs.target_env }}
+    steps:
+      - name: Confirm branch environment
+        run: echo "${{ needs.resolve-target.outputs.deploy_branch }} -> ${{ needs.resolve-target.outputs.target_env }}"
+
+  build-images:
+    needs: [resolve-target, environment-gate]
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -45,8 +102,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit_sha || github.sha }}
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
           fetch-depth: 0
+
+      - name: Verify commit belongs to environment branch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
+          $branch = "${{ needs.resolve-target.outputs.deploy_branch }}"
+          git fetch origin $branch --quiet
+          git merge-base --is-ancestor $sha "origin/$branch"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Commit $sha is not reachable from origin/$branch."
+          }
 
       - uses: google-github-actions/auth@v3
         with:
@@ -66,7 +135,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: true
-          tags: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPOSITORY }}/${{ matrix.image }}:sha-${{ inputs.commit_sha || github.sha }}
+          tags: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPOSITORY }}/${{ matrix.image }}:sha-${{ needs.resolve-target.outputs.commit_sha }}
           build-args: ${{ matrix.build_args }}
           provenance: mode=max
           sbom: true
@@ -87,15 +156,26 @@ jobs:
             echo "- digest: ${{ steps.build.outputs.digest }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  create-dev-releases:
-    needs: build-images
+  create-environment-releases:
+    needs: [resolve-target, environment-gate, build-images]
     runs-on: ubuntu-latest
-    environment: dev
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.commit_sha || github.sha }}
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
           fetch-depth: 0
+
+      - name: Verify commit belongs to environment branch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
+          $branch = "${{ needs.resolve-target.outputs.deploy_branch }}"
+          git fetch origin $branch --quiet
+          git merge-base --is-ancestor $sha "origin/$branch"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Commit $sha is not reachable from origin/$branch."
+          }
 
       - uses: google-github-actions/auth@v3
         with:
@@ -108,17 +188,15 @@ jobs:
 
       - name: Apply Cloud Deploy configuration
         env:
-          DEV_DB_HOST: ${{ vars.DEV_DB_HOST }}
-          DEV_DB_NAME: ${{ vars.DEV_DB_NAME }}
-          DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
-          PROD_DB_HOST: ${{ vars.PROD_DB_HOST }}
-          PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
-          PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+          DEV_DB_HOST: ${{ vars.DEV_DB_HOST || vars.DB_HOST }}
+          DEV_DB_NAME: ${{ vars.DEV_DB_NAME || vars.DB_NAME }}
+          DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+          PROD_DB_HOST: ${{ vars.PROD_DB_HOST || vars.DB_HOST }}
+          PROD_DB_NAME: ${{ vars.PROD_DB_NAME || vars.DB_NAME }}
+          PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/render-clouddeploy-targets.ps1 -Environment dev -OutputPath artifacts/clouddeploy/targets-dev.rendered.yaml
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/render-clouddeploy-targets.ps1 -Environment prod -OutputPath artifacts/clouddeploy/targets-prod.rendered.yaml
-          gcloud deploy apply --file artifacts/clouddeploy/targets-dev.rendered.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
-          gcloud deploy apply --file artifacts/clouddeploy/targets-prod.rendered.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/render-clouddeploy-targets.ps1 -Environment "${{ needs.resolve-target.outputs.target_env }}" -OutputPath "artifacts/clouddeploy/targets-${{ needs.resolve-target.outputs.target_env }}.rendered.yaml"
+          gcloud deploy apply --file "artifacts/clouddeploy/targets-${{ needs.resolve-target.outputs.target_env }}.rendered.yaml" --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
           gcloud deploy apply --file deploy/clouddeploy/delivery-pipelines.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
 
       - name: Create ordered Cloud Deploy releases
@@ -127,7 +205,8 @@ jobs:
           $ErrorActionPreference = "Stop"
           . ./scripts/microservice-build-catalog.ps1
 
-          $sha = "${{ inputs.commit_sha || github.sha }}"
+          $targetEnv = "${{ needs.resolve-target.outputs.target_env }}"
+          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
           $shortSha = $sha.Substring(0, [Math]::Min(12, $sha.Length))
           $registry = "$env:GCP_REGION-docker.pkg.dev/$env:GCP_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
           $builds = @{}
@@ -160,8 +239,8 @@ jobs:
               throw "Could not resolve digest for $tag"
             }
             $digestRef = "$registry/$($entry.Image)@$digest"
-            $releaseId = ("rel-{0}-{1}-{2}" -f $shortSha, ($name -replace "-", ""), "${{ github.run_attempt }}").ToLowerInvariant()
-            $pipeline = "custoking-$name"
+            $releaseId = ("rel-{0}-{1}-{2}-{3}" -f $targetEnv, $shortSha, ($name -replace "-", ""), "${{ github.run_attempt }}").ToLowerInvariant()
+            $pipeline = "custoking-$name-$targetEnv"
             gcloud deploy releases create $releaseId `
               --project="$env:GCP_PROJECT_ID" `
               --region="$env:GCP_REGION" `
@@ -178,7 +257,7 @@ jobs:
               digest = $digestRef
               pipeline = $pipeline
               release = $releaseId
-              firstTarget = "$name-dev"
+              firstTarget = "$name-$targetEnv"
             }
           }
 
@@ -192,6 +271,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: release-evidence-${{ github.sha }}
+          name: release-evidence-${{ needs.resolve-target.outputs.target_env }}-${{ github.sha }}
           path: release-evidence
           if-no-files-found: error
