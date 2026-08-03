@@ -55,16 +55,26 @@ public class PhotoImportWorkbookParser {
             ZipSecureFile.setMinInflateRatio(0.01);
         }
         try (Workbook workbook = WorkbookFactory.create(new ByteArrayInputStream(bytes))) {
-            if (workbook.getNumberOfSheets() != 1) {
-                throw new IllegalArgumentException("The mapping workbook must contain exactly one sheet");
-            }
-            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter formatter = new DataFormatter(Locale.ROOT);
+            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+            Sheet sheet = mappingSheet(workbook, formatter, evaluator);
+            return parseExcelSheet(sheet, formatter, evaluator);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(
+                    "Could not read the mapping file as a valid ." + extension + " workbook", ex);
+        }
+    }
+
+    private ParsedWorkbook parseExcelSheet(
+            Sheet sheet,
+            DataFormatter formatter,
+            FormulaEvaluator evaluator) {
             Row headerRow = sheet.getRow(sheet.getFirstRowNum());
             if (headerRow == null) {
                 throw new IllegalArgumentException("The mapping workbook has no header row");
             }
-            DataFormatter formatter = new DataFormatter(Locale.ROOT);
-            FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
             Map<String, Integer> headerIndexes = headerIndexes(headerRow, formatter, evaluator);
             List<WorkbookRow> rows = new ArrayList<>();
             for (int index = headerRow.getRowNum() + 1; index <= sheet.getLastRowNum(); index++) {
@@ -88,12 +98,48 @@ public class PhotoImportWorkbookParser {
                 throw new IllegalArgumentException("The mapping workbook contains no data rows");
             }
             return new ParsedWorkbook(sheet.getSheetName(), rows, REQUIRED_HEADERS);
-        } catch (IllegalArgumentException ex) {
-            throw ex;
-        } catch (Exception ex) {
-            throw new IllegalArgumentException(
-                    "Could not read the mapping file as a valid ." + extension + " workbook", ex);
+    }
+
+    private Sheet mappingSheet(
+            Workbook workbook,
+            DataFormatter formatter,
+            FormulaEvaluator evaluator) {
+        if (workbook.getNumberOfSheets() == 1) {
+            return workbook.getSheetAt(0);
         }
+        List<Sheet> candidates = new ArrayList<>();
+        for (int index = 0; index < workbook.getNumberOfSheets(); index++) {
+            if (workbook.isSheetHidden(index) || workbook.isSheetVeryHidden(index)) {
+                continue;
+            }
+            Sheet sheet = workbook.getSheetAt(index);
+            Row headerRow = sheet.getRow(sheet.getFirstRowNum());
+            if (headerRow == null) {
+                continue;
+            }
+            try {
+                headerIndexes(headerRow, formatter, evaluator);
+                candidates.add(sheet);
+            } catch (IllegalArgumentException ex) {
+                if (!isMissingHeaderError(ex)) {
+                    throw ex;
+                }
+            }
+        }
+        if (candidates.size() == 1) {
+            return candidates.getFirst();
+        }
+        if (candidates.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "The mapping workbook must contain one visible sheet with columns: "
+                            + String.join(", ", REQUIRED_HEADERS));
+        }
+        throw new IllegalArgumentException(
+                "The mapping workbook contains multiple visible mapping sheets; keep only one");
+    }
+
+    private static boolean isMissingHeaderError(IllegalArgumentException ex) {
+        return ex.getMessage() != null && ex.getMessage().startsWith("Missing workbook columns:");
     }
 
     private ParsedWorkbook parseDelimited(byte[] bytes, char delimiter, String formatName) {

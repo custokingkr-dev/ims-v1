@@ -64,6 +64,60 @@ class PhotoImportWorkbookParserTest {
     }
 
     @Test
+    void ignoresHiddenNonMappingSheetsWhenOneVisibleMappingSheetExists() throws Exception {
+        byte[] workbook;
+        try (XSSFWorkbook xlsx = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            var mapping = xlsx.createSheet("Sheet 1");
+            var header = mapping.createRow(0);
+            String[] headers = {"AdmissionNo", "Name", "Class", "Section", "ImageNo"};
+            for (int index = 0; index < headers.length; index++) {
+                header.createCell(index).setCellValue(headers[index]);
+            }
+            var row = mapping.createRow(1);
+            row.createCell(0).setCellValue(2152);
+            row.createCell(1).setCellValue("ZOHA FATIMA");
+            row.createCell(2).setCellValue("VI");
+            row.createCell(3).setCellValue("B");
+            row.createCell(4).setCellValue(5520);
+
+            var report = xlsx.createSheet("StudentContactDetailsReport (4)");
+            var reportHeader = report.createRow(0);
+            String[] reportHeaders = {"S.No", "Enrollment", "Admn No.", "Student Name", "Class", "SEC"};
+            for (int index = 0; index < reportHeaders.length; index++) {
+                reportHeader.createCell(index).setCellValue(reportHeaders[index]);
+            }
+            xlsx.setSheetHidden(1, true);
+
+            xlsx.write(output);
+            workbook = output.toByteArray();
+        }
+
+        var parsed = parser.parse(workbook, "Adm_No_Image_map.xlsx");
+
+        assertThat(parsed.sheetName()).isEqualTo("Sheet 1");
+        assertThat(parsed.rows()).singleElement().satisfies(row -> {
+            assertThat(row.admissionNo()).isEqualTo("2152");
+            assertThat(row.name()).isEqualTo("ZOHA FATIMA");
+            assertThat(row.imageNo()).isEqualTo("5520");
+        });
+    }
+
+    @Test
+    void rejectsMultipleVisibleMappingSheets() throws Exception {
+        byte[] workbook;
+        try (XSSFWorkbook xlsx = new XSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            addMappingSheet(xlsx, "Class VI");
+            addMappingSheet(xlsx, "Class VII");
+            xlsx.write(output);
+            workbook = output.toByteArray();
+        }
+
+        assertThatThrownBy(() -> parser.parse(workbook, "mapping.xlsx"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("multiple visible mapping sheets");
+    }
+
+    @Test
     void parsesLegacyXlsAndPreservesDisplayedIdentifierFormatting() throws Exception {
         byte[] workbook;
         try (HSSFWorkbook xls = new HSSFWorkbook(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
@@ -151,5 +205,20 @@ class PhotoImportWorkbookParserTest {
                     .append('\n');
         }
         return csv.toString();
+    }
+
+    private static void addMappingSheet(XSSFWorkbook workbook, String name) {
+        var sheet = workbook.createSheet(name);
+        var header = sheet.createRow(0);
+        String[] headers = {"AdmissionNo", "Name", "Class", "Section", "ImageNo"};
+        for (int index = 0; index < headers.length; index++) {
+            header.createCell(index).setCellValue(headers[index]);
+        }
+        var row = sheet.createRow(1);
+        row.createCell(0).setCellValue("ADM-" + name);
+        row.createCell(1).setCellValue("Student " + name);
+        row.createCell(2).setCellValue("I");
+        row.createCell(3).setCellValue("A");
+        row.createCell(4).setCellValue("5001");
     }
 }
