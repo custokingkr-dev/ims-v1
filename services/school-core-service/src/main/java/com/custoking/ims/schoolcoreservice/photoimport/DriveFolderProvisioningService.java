@@ -23,7 +23,16 @@ public class DriveFolderProvisioningService {
     }
 
     public Optional<DriveFolderBinding> binding(long schoolId, String academicYearId) {
-        return repository.find(schoolId, academicYearId);
+        Optional<DriveFolderBinding> binding = repository.find(schoolId, academicYearId);
+        if (binding.isEmpty() || !drive.isProvisioningEnabled()) {
+            return Optional.empty();
+        }
+        try {
+            String rootFolderId = drive.rootFolderId();
+            return binding.filter(candidate -> rootFolderId.equals(candidate.rootFolderId()));
+        } catch (RuntimeException ex) {
+            return Optional.empty();
+        }
     }
 
     public ProvisioningResult ensureForSchool(long schoolId) {

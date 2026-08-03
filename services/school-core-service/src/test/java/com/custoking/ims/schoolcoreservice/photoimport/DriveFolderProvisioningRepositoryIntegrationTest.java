@@ -90,6 +90,14 @@ class DriveFolderProvisioningRepositoryIntegrationTest {
         var repaired = repository.markReady(scope, "root-folder", repair.version(), folders);
         assertThat(repaired.status()).isEqualTo("READY");
         assertThat(repaired.intakeFolderId()).isEqualTo("intake-folder");
+
+        var rootChanged = repository.claimProvisioning(scope, "new-root-folder", false).orElseThrow();
+        assertThat(rootChanged.rootFolderId()).isEqualTo("new-root-folder");
+        assertThat(rootChanged.status()).isEqualTo("PROVISIONING");
+        assertThat(rootChanged.schoolFolderId()).isNull();
+        assertThat(rootChanged.academicYearFolderId()).isNull();
+        assertThat(rootChanged.intakeFolderId()).isNull();
+        assertThat(rootChanged.intakeFolderUrl()).isNull();
     }
 
     @Test

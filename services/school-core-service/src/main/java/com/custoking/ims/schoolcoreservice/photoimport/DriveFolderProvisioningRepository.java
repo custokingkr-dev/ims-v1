@@ -75,8 +75,14 @@ public class DriveFolderProvisioningRepository {
                         ON CONFLICT (school_id, academic_year_id) DO UPDATE
                         SET school_uid = EXCLUDED.school_uid,
                             root_folder_id = EXCLUDED.root_folder_id,
+                            school_folder_id = NULL,
+                            academic_year_folder_id = NULL,
+                            intake_folder_id = NULL,
+                            intake_folder_name = NULL,
+                            intake_folder_url = NULL,
                             status = 'PROVISIONING',
                             last_error = NULL,
+                            provisioned_at = NULL,
                             updated_at = now(),
                             version = student.photo_import_drive_folders.version + 1
                         WHERE student.photo_import_drive_folders.root_folder_id

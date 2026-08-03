@@ -67,6 +67,16 @@ class DriveFolderProvisioningServiceTest {
     }
 
     @Test
+    void hidesSavedBindingWhenRuntimeRootFolderChanges() {
+        DriveFolderBinding ready = binding("READY", null);
+        when(repository.find(7L, "ay_2026_27")).thenReturn(Optional.of(ready));
+        when(drive.isProvisioningEnabled()).thenReturn(true);
+        when(drive.rootFolderId()).thenReturn("new-prod-root");
+
+        assertThat(service.binding(7L, "ay_2026_27")).isEmpty();
+    }
+
+    @Test
     void repairsReadyBindingWhenImmutableDriveHierarchyNoLongerMatches() {
         SchoolDriveScope scope = scope();
         DriveFolderBinding ready = binding("READY", null);
