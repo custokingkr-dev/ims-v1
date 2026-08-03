@@ -19,7 +19,6 @@ on:
 permissions:
   contents: read
   id-token: write
-  attestations: write
   packages: write
 
 concurrency:
@@ -153,13 +152,6 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - name: Generate image provenance attestation
-        uses: actions/attest@v4
-        with:
-          subject-name: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPOSITORY }}/${{ matrix.image }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true
-
       - name: Write image summary
         run: |
           {
@@ -167,6 +159,8 @@ jobs:
             echo ""
             echo "- image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPOSITORY }}/${{ matrix.image }}"
             echo "- digest: ${{ steps.build.outputs.digest }}"
+            echo "- provenance: BuildKit mode=max"
+            echo "- sbom: BuildKit SBOM attestation"
           } >> "$GITHUB_STEP_SUMMARY"
 
   create-environment-releases:

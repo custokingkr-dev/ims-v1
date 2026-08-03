@@ -77,7 +77,7 @@ Only current official docs were used for the core decisions:
 - Cloud Run supports traffic migration and rollback between revisions: [Cloud Run rollouts and rollbacks](https://docs.cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration).
 - Cloud Deploy uses Skaffold to render deployable manifests: [Use Skaffold with Cloud Deploy](https://docs.cloud.google.com/deploy/docs/using-skaffold) and [Manage manifests in Cloud Deploy](https://docs.cloud.google.com/deploy/docs/using-skaffold/managing-manifests).
 - Artifact Analysis supports vulnerability scanning for Artifact Registry images: [Artifact Analysis container scanning](https://docs.cloud.google.com/artifact-analysis/docs/container-scanning-overview).
-- GitHub Actions can generate artifact attestations/provenance for container images: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
+- Docker BuildKit can emit provenance and SBOM attestations during image builds, and GitHub Actions can also generate artifact attestations when needed: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
 - GitHub Environments support required reviewers, wait timers, branch restrictions, and custom protection rules: [GitHub deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 - GitHub reusable workflows and dependency caching are the intended primitives for a maintainable matrix CI setup: [Reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows) and [Dependency caching](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
 
@@ -254,8 +254,8 @@ Jobs:
   - optional semantic release tag when we add release notes.
 - Push to Artifact Registry.
 - Resolve immutable digests.
-- Generate SBOM.
-- Generate artifact attestations.
+- Generate BuildKit SBOM attestations.
+- Generate BuildKit provenance attestations.
 - Render only the target environment's Cloud Deploy target file.
 - Create Cloud Deploy releases using image digests.
 - Start rollout to the branch-owned environment.
@@ -408,7 +408,7 @@ Controls:
 - Dependency review runs on PR.
 - Trivy blocks critical exploitable image vulnerabilities.
 - Artifact Analysis scans images in Artifact Registry.
-- SBOM and attestation are required before Cloud Deploy release creation.
+- SBOM and provenance attestations are required before Cloud Deploy release creation.
 - Prod rollout verifies the artifact digest was built by the trusted release workflow.
 
 Minimum GitHub permissions:
@@ -539,7 +539,7 @@ release-evidence/
   git.json
   images.json
   sbom/
-  attestations/
+  buildkit-attestations/
   vulnerability-summary.json
   clouddeploy-release.json
   rollout-dev.json
