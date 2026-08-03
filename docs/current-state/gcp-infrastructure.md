@@ -1,6 +1,6 @@
 # GCP Infrastructure
 
-Last verified: 2026-07-09 with `gcloud.cmd` against project `custoking`.
+Last verified: 2026-08-03 with `gcloud.cmd` against project `custoking`.
 
 ## Project and Region
 
@@ -113,8 +113,7 @@ Common Spring service config:
 - OTEL endpoint is `https://telemetry.googleapis.com`.
 - OTEL traces protocol is `http/protobuf`.
 - OTEL logs and metrics exporters are disabled.
-- Dev trace sample ratio is `1.0`.
-- Prod trace sample ratio is `0.2`.
+- Live trace sample ratio is `0.05` unless overridden by the deployment workflow environment variables.
 - Java services use `vpc-egress=private-ranges-only` with `network=default` and `subnetwork=default`.
 - Gateway and frontend do not use the VPC network attachment in the current live config.
 
@@ -122,13 +121,13 @@ Scaling verified from Cloud Run annotations:
 
 | Service type | Min instances | Max instances |
 | --- | --- | --- |
-| api-gateway | 1 | 3 |
-| identity-service | 1 | 2 |
-| school-core-service | 1 | 2 |
-| operations-service | 1 | 2 |
-| billing-service | 1 | 2 |
-| platform-service | not set | 2 |
-| frontend | not set | 2 |
+| api-gateway | not set (`0`) | 3 |
+| identity-service | not set (`0`) | 2 |
+| school-core-service | not set (`0`) | 2 |
+| operations-service | not set (`0`) | 2 |
+| billing-service | not set (`0`) | 2 |
+| platform-service | not set (`0`) | 2 |
+| frontend | not set (`0`) | 2 |
 
 Outbox publishers are configured in both envs:
 

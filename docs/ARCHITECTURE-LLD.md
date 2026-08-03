@@ -9,7 +9,6 @@ services/*-service/       Domain microservices
 scripts/                  Audits, smokes, deployment checks
 deploy/gcp/               GCP runbooks and Cloud Run job manifests
 docs/                     Architecture, contracts, runbooks
-cloudbuild.yaml           Build and deploy pipeline
 docker-compose.yml        Local split-service topology
 ```
 

@@ -1,6 +1,7 @@
 # Codebase and Conventions
 
 Last verified: 2026-07-10.
+CI/CD retirement updated: 2026-08-03.
 
 ## Repository Layout
 
@@ -13,11 +14,10 @@ services/operations-service/
 services/platform-service/
 services/billing-service/
 scripts/                  audits, smoke tests, deployment helpers, DB role helpers
-deploy/gcp/               GCP runbook, direct smoke job template, observability Terraform
+deploy/gcp/               retired GCP deploy runbook, direct smoke job template, observability Terraform
 deploy/local/initdb/      local Postgres init scripts
 docs/                     architecture, runbooks, plans, current-state docs
 artifacts/                generated deployment/smoke/evidence artifacts
-cloudbuild.yaml           build/deploy definition
 docker-compose.yml        local split-service stack
 Tiltfile                  local Tilt orchestration
 ```
@@ -281,17 +281,16 @@ Important scripts:
 - `scripts/invoke-production-gateway-smoke.ps1`
 - `scripts/smoke-production-write-paths.ps1`
 
-CI runs Maven tests, frontend tests/build, gateway Node tests, Docker builds, Trivy critical scan, Gitleaks, local integration smokes, and tenant isolation audit.
+The previous GitHub Actions and Cloud Build CI/CD entrypoints were retired on 2026-08-03. See [deployment-cicd.md](deployment-cicd.md) for the CI/CD v2 plan before adding new workflow files.
 
 ## Documentation Drift Convention
 
 If an older plan or runbook conflicts with live code/deploy config, prefer:
 
-1. `cloudbuild.yaml`
-2. `.github/workflows/*.yml`
-3. service source/config
-4. live GCP inventory
-5. latest smoke artifacts
-6. older docs/plans
+1. service source/config
+2. live GCP inventory
+3. latest smoke artifacts
+4. [deployment-cicd.md](deployment-cicd.md) for CI/CD v2 decisions
+5. older docs/plans
 
 Known stale docs are listed in [gaps-and-drift.md](gaps-and-drift.md).
