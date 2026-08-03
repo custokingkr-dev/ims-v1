@@ -21,6 +21,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.CacheControl;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,6 +45,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -151,6 +153,24 @@ public class StudentReadController {
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         return execute(() -> students.workspaceStudentDetail(id));
+    }
+
+    @GetMapping("/{id}/photo/content")
+    public ResponseEntity<byte[]> studentPhotoContent(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id) {
+        requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long schoolId = studentSchoolId(id, true);
+        TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(schoolId);
+        return students.studentPhotoContent(id)
+                .map(photo -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(photo.contentType()))
+                        .cacheControl(CacheControl.maxAge(1, TimeUnit.DAYS).cachePrivate())
+                        .header(HttpHeaders.VARY, "Authorization")
+                        .body(photo.data()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "student photo not found"));
     }
 
     @PostMapping

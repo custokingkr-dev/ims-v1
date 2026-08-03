@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -181,7 +182,7 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
-    void workspaceStudents_doesNotSignPhotoUrlsForListRows() throws Exception {
+    void workspaceStudents_returnsLazyPhotoReferencesForListRows() throws Exception {
         long schoolId = seedSchool(5, 2);
         Long studentId = jdbc.sql("""
                         INSERT INTO student.students
@@ -199,8 +200,9 @@ class StudentImportPhotoIntegrationTest {
                 .query(Long.class)
                 .single();
         StudentPhotoStorage photoStorage = mock(StudentPhotoStorage.class);
-        when(photoStorage.toDisplayUrl("schools/school-1/students/1/photos/photo.jpg"))
-                .thenReturn("https://signed.example/photo.jpg");
+        byte[] photoBytes = "jpeg-data".getBytes(StandardCharsets.UTF_8);
+        when(photoStorage.readStoredPhoto("schools/school-1/students/1/photos/photo.jpg"))
+                .thenReturn(Optional.of(new StudentPhotoStorage.StoredPhoto(photoBytes, "image/jpeg")));
         StudentReadRepository studentRepo = new StudentReadRepository(
                 jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
 
@@ -208,13 +210,20 @@ class StudentImportPhotoIntegrationTest {
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) workspace.get("items");
-        assertThat(items).singleElement().satisfies(row -> assertThat(row.get("photoUrl")).isNull());
+        assertThat(items).singleElement().satisfies(row -> assertThat(row.get("photoUrl"))
+                .asString()
+                .startsWith("/students/" + studentId + "/photo/content?v="));
         verify(photoStorage, never()).toDisplayUrl(anyString());
 
         Map<String, Object> detail = studentRepo.workspaceStudentDetail(studentId);
 
-        assertThat(detail.get("photoUrl")).isEqualTo("https://signed.example/photo.jpg");
-        verify(photoStorage).toDisplayUrl("schools/school-1/students/1/photos/photo.jpg");
+        assertThat(detail.get("photoUrl")).asString().startsWith("/students/" + studentId + "/photo/content?v=");
+        Optional<StudentReadRepository.StudentPhotoContent> content = studentRepo.studentPhotoContent(studentId);
+
+        assertThat(content).isPresent();
+        assertThat(content.orElseThrow().data()).isEqualTo(photoBytes);
+        assertThat(content.orElseThrow().contentType()).isEqualTo("image/jpeg");
+        verify(photoStorage).readStoredPhoto("schools/school-1/students/1/photos/photo.jpg");
     }
 
     @Test

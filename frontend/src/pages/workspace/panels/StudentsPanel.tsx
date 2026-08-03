@@ -6,6 +6,7 @@ import { usePermissions } from '../../../hooks/usePermissions';
 import {
   emptyStudentProfileForm,
   STUDENT_PHOTO_MAX_LABEL,
+  StudentPhotoAvatar,
   studentDetailToProfileForm,
   studentProfileFormToUpdatePayload,
   type StudentClassOption,
@@ -14,7 +15,7 @@ import {
   validateStudentPhotoFile,
 } from '../../../features/students';
 import { ModuleShell, Info } from '../ui';
-import { formatAddress, formatPaise, initials } from '../utils';
+import { formatAddress, formatPaise } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 import { StudentModuleTabs } from './StudentModuleTabs';
@@ -715,10 +716,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                     <tr key={student.id}>
                       <td>
                         <div className="ck-student-cell">
-                          {student.photoUrl
-                            ? <img src={student.photoUrl} alt={student.fullName} className="ck-student-avatar" />
-                            : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(student.fullName)}</div>
-                          }
+                          <StudentPhotoAvatar photoUrl={student.photoUrl} name={student.fullName} />
                           <div>
                             <button type="button" className="ck-table-link" onClick={() => openStudentModal(student)}>{student.fullName}</button>
                             <div className="ts">{student.classSection} · {student.academicYear}{archived ? ` · Deleted${student.deletedReason ? `: ${student.deletedReason}` : ''}` : ''}</div>
@@ -827,9 +825,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 <div className="ck-student-modal-info">
                   {modalError && <div className="ck-alert ck-alert-r" style={{ gridColumn: '1/-1' }}><span>!</span><div>{modalError}</div></div>}
                   <div style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 12 }}>
-                    {studentDetail.photoUrl
-                      ? <img src={studentDetail.photoUrl} alt={studentDetail.fullName || studentDetail.name} className="ck-student-avatar" />
-                      : <div className="ck-student-avatar ck-student-avatar-fallback">{initials(studentDetail.fullName || studentDetail.name)}</div>}
+                    <StudentPhotoAvatar photoUrl={studentDetail.photoUrl} name={studentDetail.fullName || studentDetail.name} />
                     <input ref={editPhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadEditPhoto(f); }} />
                     <button type="button" className="ck-btn ck-btn-ghost" disabled={editPhotoBusy} onClick={() => editPhotoInputRef.current?.click()}>{editPhotoBusy ? 'Uploading…' : 'Change photo'}</button>
                     <div className="ts">JPG, PNG or WEBP · up to {STUDENT_PHOTO_MAX_LABEL}</div>
@@ -859,10 +855,12 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                     </div>
                   ) : null}
                   <div className="ck-student-modal-hero">
-                    {studentDetail.photoUrl
-                      ? <img src={studentDetail.photoUrl} alt={studentDetail.name} className="ck-student-avatar ck-student-avatar-lg" />
-                      : <div className="ck-student-avatar ck-student-avatar-fallback ck-student-avatar-lg">{initials(studentDetail.name)}</div>
-                    }
+                    <StudentPhotoAvatar
+                      photoUrl={studentDetail.photoUrl}
+                      name={studentDetail.name}
+                      className="ck-student-avatar ck-student-avatar-lg"
+                      fallbackClassName="ck-student-avatar ck-student-avatar-fallback ck-student-avatar-lg"
+                    />
                     <div>
                       <div className="ck-modal-title" style={{ fontSize: 24 }}>{studentDetail.fullName || studentDetail.name}</div>
                       <div className="ts">{studentDetail.classSection} · {studentDetail.academicYear}</div>

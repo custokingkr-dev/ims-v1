@@ -13,6 +13,8 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -67,9 +69,9 @@ public class StudentReadRepository {
                 .map(this::signPhoto);
     }
 
-    /** Replace a stored photo object key with a browser-loadable (signed) URL. */
+    /** Replace a stored photo object key with a same-origin lazy media reference. */
     private StudentRow signPhoto(StudentRow row) {
-        return row.withPhotoUrl(photoStorage.toDisplayUrl(row.photoUrl()));
+        return row.withPhotoUrl(photoReference(row.id(), row.photoUrl()));
     }
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
@@ -183,7 +185,7 @@ public class StudentReadRepository {
                     "name", fullName,
                     "fullName", fullName,
                     "avatarInitials", initials(fullName),
-                    "photoUrl", null,
+                    "photoUrl", photoReference(rs.getLong("id"), rs.getString("photo_url")),
                     "className", classLabel,
                     "sectionName", sectionLabel,
                     "classSection", classLabel.replace("Class ", "") + (sectionLabel.isBlank() ? "" : "-" + sectionLabel),
@@ -223,7 +225,7 @@ public class StudentReadRepository {
                             "name", fullName,
                             "fullName", fullName,
                             "avatarInitials", initials(fullName),
-                            "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
+                            "photoUrl", photoReference(rs.getLong("id"), rs.getString("photo_url")),
                             "className", classLabel,
                             "sectionName", sectionLabel,
                             "classSection", classLabel.replace("Class ", "") + (sectionLabel.isBlank() ? "" : "-" + sectionLabel),
@@ -592,6 +594,16 @@ public class StudentReadRepository {
                 .query(Long.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("student not found"));
+    }
+
+    public Optional<StudentPhotoContent> studentPhotoContent(Long id) {
+        String stored = jdbc.sql("SELECT photo_url FROM student.students WHERE id = :id")
+                .param("id", id)
+                .query(String.class)
+                .optional()
+                .orElse(null);
+        return photoStorage.readStoredPhoto(stored)
+                .map(photo -> new StudentPhotoContent(photo.data(), photo.contentType()));
     }
 
     @Transactional
@@ -1876,6 +1888,8 @@ public class StudentReadRepository {
         }
     }
 
+    public record StudentPhotoContent(byte[] data, String contentType) {}
+
     public record ImportBatchRow(
             String id,
             String fileToken,
@@ -1974,7 +1988,7 @@ public class StudentReadRepository {
                             "name", fullName,
                             "fullName", fullName,
                             "avatarInitials", initials,
-                            "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
+                            "photoUrl", photoReference(rs.getLong("id"), rs.getString("photo_url")),
                             "className", className,
                             "classId", rs.getString("class_id"),
                             "classSortOrder", rs.getInt("class_sort_order"),
@@ -2860,6 +2874,27 @@ public class StudentReadRepository {
                 .limit(2)
                 .map(value -> value.substring(0, 1).toUpperCase(Locale.ROOT))
                 .collect(Collectors.joining());
+    }
+
+    private String photoReference(long studentId, String stored) {
+        if (stored == null || stored.isBlank()) {
+            return null;
+        }
+        String trimmed = stored.trim();
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed;
+        }
+        return "/students/" + studentId + "/photo/content?v=" + photoVersion(trimmed);
+    }
+
+    private String photoVersion(String stored) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(stored.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest).substring(0, 16);
+        } catch (Exception ex) {
+            return Integer.toHexString(stored.hashCode());
+        }
     }
 
     private double round(double value) {
