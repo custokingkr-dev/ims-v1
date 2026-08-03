@@ -1,0 +1,244 @@
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: identity-service-stage
+  labels: {app: custoking-ims, env: stage, service: identity-service}
+description: identity-service stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: school-core-service-stage
+  labels: {app: custoking-ims, env: stage, service: school-core-service}
+description: school-core-service stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: STAGE_DB_HOST_REQUIRED:5432
+  db_name: custoking_stage
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: ""
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: operations-service-stage
+  labels: {app: custoking-ims, env: stage, service: operations-service}
+description: operations-service stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: STAGE_DB_HOST_REQUIRED:5432
+  db_name: custoking_stage
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: ""
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: platform-service-stage
+  labels: {app: custoking-ims, env: stage, service: platform-service}
+description: platform-service stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: STAGE_DB_HOST_REQUIRED:5432
+  db_name: custoking_stage
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: ""
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: billing-service-stage
+  labels: {app: custoking-ims, env: stage, service: billing-service}
+description: billing-service stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: STAGE_DB_HOST_REQUIRED:5432
+  db_name: custoking_stage
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: ""
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: api-gateway-stage
+  labels: {app: custoking-ims, env: stage, service: api-gateway}
+description: api-gateway stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: STAGE_DB_HOST_REQUIRED:5432
+  db_name: custoking_stage
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: ""
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: frontend-stage
+  labels: {app: custoking-ims, env: stage, service: frontend}
+description: frontend stage Cloud Run target
+deployParameters:
+  env: stage
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: STAGE_DB_HOST_REQUIRED:5432
+  db_name: custoking_stage
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "2"
+  frontend_max_instances: "1"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: ""
+  frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-stage-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-stage-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-stage-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-stage-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-stage-l7mhms5c2a-em.a.run.app
+requireApproval: true
+run:
+  location: projects/custoking/locations/asia-south2

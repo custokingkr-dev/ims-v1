@@ -1,0 +1,34 @@
+name: Reusable / Test Node service
+
+on:
+  workflow_call:
+    inputs:
+      service_name:
+        required: true
+        type: string
+      service_path:
+        required: true
+        type: string
+      command:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ inputs.service_path }}/package-lock.json
+      - name: Install dependencies
+        working-directory: ${{ inputs.service_path }}
+        run: npm ci --include=dev
+      - name: Test ${{ inputs.service_name }}
+        working-directory: ${{ inputs.service_path }}
+        run: ${{ inputs.command }}

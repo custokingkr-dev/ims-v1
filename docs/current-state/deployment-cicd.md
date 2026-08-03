@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-03.
 
-Status: design approved in-repo; current active CI/CD entrypoints are intentionally retired.
+Status: CI/CD v2 implementation files are present in-repo. Cloud resources must be imported/applied before the workflows are allowed to deploy production.
 
 ## Current Decision
 
@@ -21,10 +21,12 @@ The old model mixed too much responsibility into one Cloud Build file: image bui
 The replacement is a split-brain-on-purpose model:
 
 - GitHub Actions owns source events, tests, image builds, security evidence, and release creation.
-- Google Cloud Deploy owns environment promotion, rollout order, canary traffic, verification, and rollback.
+- Google Cloud Deploy owns environment rollout order, canary traffic, verification, and rollback.
 - Cloud Run stays the runtime platform.
 - Artifact Registry stores immutable images.
-- GitHub Environments and Google IAM decide who can promote what.
+- GitHub Environments and Google IAM decide which branch can deploy each environment.
+
+Implementation note: Google Cloud Deploy's Cloud Run target model supports one Cloud Run service, job, or worker pool per target. The implementation therefore uses one Cloud Deploy delivery pipeline per service per environment. The active branch contract is `dev` branch -> dev environment and `main` branch -> prod environment. Stage target templates remain in source but are not active until a real stage environment exists.
 
 ## North Star
 
@@ -36,28 +38,28 @@ flowchart LR
   B --> C[Changed-service tests]
   C --> D[Build preview images]
   D --> E[Scan and attest]
-  E --> F[Merge to main]
-  F --> G[Build release images once]
-  G --> H[Create Cloud Deploy release]
-  H --> I[Dev rollout]
-  I --> J[Dev smoke]
-  J --> K[Stage rollout]
-  K --> L[Stage smoke and migration rehearsal]
-  L --> M[Prod approval]
+  E --> F[Merge to dev]
+  E --> G[Merge to main]
+  F --> H[Build dev images]
+  H --> I[Create dev Cloud Deploy releases]
+  I --> J[Dev rollout]
+  G --> K[Prod approval]
+  K --> L[Build prod images]
+  L --> M[Create prod Cloud Deploy releases]
   M --> N[Prod canary 5 percent]
   N --> O[Prod canary 25 percent]
   O --> P[Prod 100 percent]
   P --> Q[Evidence bundle]
 ```
 
-Simple rule: build once, promote the digest, never rebuild for prod.
+Simple rule: the deployment branch owns the environment. `dev` deploys dev. `main` deploys prod. A workflow dispatch can only deploy a commit reachable from the matching branch.
 
 ## What This Fixes
 
 | Problem in old path | v2 answer |
 | --- | --- |
 | Cloud Build file did build, deploy, service wiring, and smoke orchestration | Split responsibilities between GitHub Actions and Cloud Deploy |
-| Prod promotion depended on convention around `_SKIP_BUILD=true` | Prod promotion uses immutable image digests from the same release |
+| Prod promotion depended on convention around `_SKIP_BUILD=true` | Prod deployment is tied to the `main` branch and immutable image digests |
 | Rollback was possible but operationally manual | Cloud Deploy release/rollout history becomes the rollback control plane |
 | Runtime config was generated inside shell-heavy deploy commands | Cloud Run service manifests become declarative and reviewable |
 | Security evidence was scattered across jobs | One release evidence bundle per candidate |
@@ -75,7 +77,7 @@ Only current official docs were used for the core decisions:
 - Cloud Run supports traffic migration and rollback between revisions: [Cloud Run rollouts and rollbacks](https://docs.cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration).
 - Cloud Deploy uses Skaffold to render deployable manifests: [Use Skaffold with Cloud Deploy](https://docs.cloud.google.com/deploy/docs/using-skaffold) and [Manage manifests in Cloud Deploy](https://docs.cloud.google.com/deploy/docs/using-skaffold/managing-manifests).
 - Artifact Analysis supports vulnerability scanning for Artifact Registry images: [Artifact Analysis container scanning](https://docs.cloud.google.com/artifact-analysis/docs/container-scanning-overview).
-- GitHub Actions can generate artifact attestations/provenance for container images: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
+- Docker BuildKit can emit provenance and SBOM attestations during image builds, and GitHub Actions can also generate artifact attestations when needed: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
 - GitHub Environments support required reviewers, wait timers, branch restrictions, and custom protection rules: [GitHub deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
 - GitHub reusable workflows and dependency caching are the intended primitives for a maintainable matrix CI setup: [Reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows) and [Dependency caching](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
 
@@ -84,7 +86,7 @@ Only current official docs were used for the core decisions:
 | Decision | Choice | Why |
 | --- | --- | --- |
 | CI orchestrator | GitHub Actions | Native PR feedback, repo-aware permissions, easy branch/environment policy |
-| CD orchestrator | Google Cloud Deploy | Purpose-built promotion, canary, rollout history, Cloud Run target support |
+| CD orchestrator | Google Cloud Deploy | Purpose-built rollout, canary, rollout history, Cloud Run target support |
 | Runtime | Cloud Run | Existing platform; no need to introduce Kubernetes for this workload |
 | Auth from GitHub to GCP | Workload Identity Federation/OIDC only | No JSON keys, short-lived credentials, attribute-conditioned access |
 | Release artifact | Container image digest plus generated manifests | Digest cannot drift like a mutable tag |
@@ -100,9 +102,9 @@ Only current official docs were used for the core decisions:
 flowchart TB
   subgraph GitHub
     PR[Pull Request]
+    Dev[dev branch]
     Main[main branch]
     EnvDev[GitHub Environment: dev]
-    EnvStage[GitHub Environment: stage]
     EnvProd[GitHub Environment: prod]
   end
 
@@ -112,7 +114,6 @@ flowchart TB
     Scan[Artifact Analysis]
     CD[Cloud Deploy Pipeline]
     CRDev[Cloud Run dev]
-    CRStage[Cloud Run stage]
     CRProd[Cloud Run prod]
     Logs[Cloud Logging and Monitoring]
   end
@@ -120,19 +121,17 @@ flowchart TB
   PR --> Tests[Tests, lint, local smokes]
   Tests --> PreviewBuild[Build changed images]
   PreviewBuild --> Scan
-  Main --> ReleaseBuild[Build release images once]
+  Dev --> DevBuild[Build dev images]
+  Main --> ReleaseBuild[Build prod images]
+  DevBuild --> WIF
   ReleaseBuild --> WIF
   WIF --> AR
   AR --> Scan
   AR --> Attest[SBOM and provenance attestation]
   Attest --> CD
   EnvDev --> CD
-  EnvStage --> CD
   EnvProd --> CD
   CD --> CRDev
-  CRDev --> CD
-  CD --> CRStage
-  CRStage --> CD
   CD --> CRProd
   CRProd --> Logs
   Logs --> Verify[Automated verification]
@@ -147,16 +146,16 @@ Keep `dev` and `prod`. Add `stage`.
 
 | Environment | Purpose | Trigger | Approval |
 | --- | --- | --- | --- |
-| `dev` | Fast integration after merge | Automatic after `main` release build | No manual approval |
-| `stage` | Prod rehearsal and migration rehearsal | Automatic after dev smoke passes | Optional approval at first, then automatic |
-| `prod` | Real users | Manual promotion from stage release | Required reviewer, branch restriction, no bypass |
+| `dev` | Fast integration after merge | Push/merge to `dev` | No manual approval |
+| `stage` | Future prod rehearsal and migration rehearsal | Inactive template only | Not configured |
+| `prod` | Real users | Push/merge to `main` | Required reviewer, branch restriction, no bypass |
 
 Recommended naming:
 
 - Cloud Run services: `custoking-<service>-<env>`
 - Artifact Registry repo: `custoking`
-- Delivery pipeline: `custoking-release`
-- Cloud Deploy targets: `dev`, `stage`, `prod`
+- Delivery pipelines: `custoking-<service>-dev`, `custoking-<service>-prod`
+- Cloud Deploy targets: active `<service>-dev`, `<service>-prod`; inactive template `<service>-stage`
 - Runtime service accounts: `custoking-<service>-runtime-<env>@...`
 - Deployment service accounts: `custoking-cd-renderer-<env>@...`, `custoking-cd-deployer-<env>@...`
 
@@ -169,7 +168,6 @@ Create these files in the new implementation phase:
   workflows/
     ci-pr.yml
     build-release.yml
-    promote.yml
     rollback.yml
     _detect-changes.yml
     _test-java-service.yml
@@ -179,11 +177,10 @@ Create these files in the new implementation phase:
 
 deploy/
   clouddeploy/
-    delivery-pipeline.yaml
-    target-dev.yaml
-    target-stage.yaml
-    target-prod.yaml
-    verification.yaml
+    delivery-pipelines.yaml
+    targets-dev.yaml
+    targets-stage.yaml
+    targets-prod.yaml
   skaffold.yaml
   cloudrun/
     identity-service.yaml
@@ -235,57 +232,35 @@ Jobs:
 
 PR CI does not deploy.
 
-### 2. Release Build: `.github/workflows/build-release.yml`
+### 2. Branch Environment Deploy: `.github/workflows/build-release.yml`
 
-Purpose: create one release candidate from `main`.
+Purpose: create one environment release candidate from the branch that owns that environment.
 
 Trigger:
 
-- Push to `main`
-- Manual dispatch with `commit_sha`
+- Push to `dev` deploys dev.
+- Push to `main` deploys prod.
+- Manual dispatch with `target_environment` and `commit_sha`.
 
 Jobs:
 
-- Resolve affected build units.
-- Build all changed service images.
+- Resolve target environment from branch.
+- Refuse mismatches such as prod from `dev` or dev from `main`.
+- Verify the requested commit is reachable from the matching branch.
+- Build service images.
 - Tag with:
   - `sha-<commit>`
   - `release-<github-run-id>`
   - optional semantic release tag when we add release notes.
 - Push to Artifact Registry.
 - Resolve immutable digests.
-- Generate SBOM.
-- Generate artifact attestations.
-- Create Cloud Deploy release using image digests.
-- Start rollout to `dev`.
+- Generate BuildKit SBOM attestations.
+- Generate BuildKit provenance attestations.
+- Render only the target environment's Cloud Deploy target file.
+- Create Cloud Deploy releases using image digests.
+- Start rollout to the branch-owned environment.
 
-No prod deploy happens from this workflow.
-
-### 3. Promotion: `.github/workflows/promote.yml`
-
-Purpose: promote an existing Cloud Deploy release through targets.
-
-Trigger:
-
-- Automatic dev -> stage after dev verification passes.
-- Manual stage -> prod.
-- Manual prod canary advance when required by policy.
-
-Inputs:
-
-- `release_id`
-- `target`
-- `canary_percent` when manually advancing
-- `reason`
-
-Rules:
-
-- `dev` can promote automatically.
-- `stage` can promote automatically after dev passes once the system is stable.
-- `prod` requires GitHub Environment approval.
-- `prod` can only promote releases already successful in `stage`.
-
-### 4. Rollback: `.github/workflows/rollback.yml`
+### 3. Rollback: `.github/workflows/rollback.yml`
 
 Purpose: make rollback boring.
 
@@ -309,19 +284,26 @@ Actions:
 
 ## Cloud Deploy Design
 
-Use one delivery pipeline:
+Use one delivery pipeline per service because Cloud Deploy Cloud Run targets support one Cloud Run service, job, or worker pool per target.
 
 ```text
-custoking-release: dev -> stage -> prod
+custoking-school-core-service-dev: school-core-service-dev
+custoking-school-core-service-prod: school-core-service-prod
+custoking-identity-service-dev: identity-service-dev
+custoking-identity-service-prod: identity-service-prod
+custoking-operations-service-dev: operations-service-dev
+custoking-operations-service-prod: operations-service-prod
+custoking-billing-service-dev: billing-service-dev
+custoking-billing-service-prod: billing-service-prod
+custoking-platform-service-dev: platform-service-dev
+custoking-platform-service-prod: platform-service-prod
+custoking-api-gateway-dev: api-gateway-dev
+custoking-api-gateway-prod: api-gateway-prod
+custoking-frontend-dev: frontend-dev
+custoking-frontend-prod: frontend-prod
 ```
 
-Use Cloud Deploy targets:
-
-```text
-dev
-stage
-prod
-```
+GitHub Actions coordinates multi-service release order across these pipelines.
 
 Use Skaffold render with raw Cloud Run service manifests. Each manifest contains stable runtime configuration such as:
 
@@ -385,7 +367,7 @@ Policy:
 - Deploy domain services before gateway.
 - Deploy gateway before frontend when frontend points to the gateway URL.
 - For no-contract-change releases, services can be deployed independently.
-- For DB or API contract releases, use expand/contract compatibility and promote as a coordinated release.
+- For DB or API contract releases, use expand/contract compatibility and deploy as a coordinated branch release.
 
 ## Database Migration Policy
 
@@ -426,8 +408,8 @@ Controls:
 - Dependency review runs on PR.
 - Trivy blocks critical exploitable image vulnerabilities.
 - Artifact Analysis scans images in Artifact Registry.
-- SBOM and attestation are required before Cloud Deploy release creation.
-- Prod promotion verifies the artifact digest was built by the trusted release workflow.
+- SBOM and provenance attestations are required before Cloud Deploy release creation.
+- Prod rollout verifies the artifact digest was built by the trusted release workflow.
 
 Minimum GitHub permissions:
 
@@ -466,9 +448,9 @@ Do not use broad Editor/Owner roles. If a predefined role is too wide, create a 
 
 | Environment | Branches | Reviewers | Wait timer | Secrets/vars |
 | --- | --- | --- | --- | --- |
-| `dev` | `main` | none | none | Dev-only vars |
-| `stage` | `main` | optional platform reviewer | none | Stage-only vars |
-| `prod` | `main` and release tags only | required owner/platform reviewer | 5-15 minutes | Prod-only vars |
+| `dev` | `dev` only | none | none | Dev-only vars |
+| `stage` | inactive | n/a | n/a | No live vars |
+| `prod` | `main` only | required owner/platform reviewer | 5-15 minutes | Prod-only vars |
 
 Prod environment rules:
 
@@ -488,7 +470,7 @@ Cost reductions:
 - Use dependency caching for Maven and npm.
 - Use Docker layer caching where GitHub/GCP support it safely.
 - Stop using Cloud Build as the always-on deployment script runner.
-- Use Cloud Deploy for promotion and rollout state instead of repeated bespoke build submissions.
+- Use Cloud Deploy for rollout state instead of repeated bespoke build submissions.
 - Keep Cloud Run `min-instances=0` for dev and stage unless a service has a measured background-latency need.
 - Use low max instance caps for dev/stage.
 - Apply Artifact Registry cleanup policies.
@@ -524,7 +506,7 @@ Do not block every deploy on every expensive scenario. Use tiers:
 | Tier | Runs on | Checks |
 | --- | --- | --- |
 | Fast | PR | Unit tests, service tests, build, vulnerability gate |
-| Release | main | Integration smoke, image scan, SBOM, attestation |
+| Release | dev/main | Integration smoke, image scan, SBOM, attestation |
 | Dev | dev rollout | Direct and gateway smoke |
 | Stage | stage rollout | Migration rehearsal, photo smoke, Drive config smoke |
 | Prod | prod canary | SLO watch, smoke, error budget guard |
@@ -557,7 +539,7 @@ release-evidence/
   git.json
   images.json
   sbom/
-  attestations/
+  buildkit-attestations/
   vulnerability-summary.json
   clouddeploy-release.json
   rollout-dev.json
@@ -619,31 +601,31 @@ Add:
 
 Deliverable: PRs get fast feedback again, with no deployment.
 
-### Phase 3: Build Release And Deploy Dev
+### Phase 3: Branch-Owned Dev And Prod Releases
 
 Add:
 
-- Release image build workflow.
+- Branch-aware release image build workflow.
 - Digest manifest generation.
 - SBOM and attestation.
 - Cloud Deploy release creation.
-- Automatic rollout to dev.
+- Automatic rollout to dev from `dev`.
+- Production rollout from `main` behind the GitHub `prod` Environment gate.
 - Dev smoke and evidence artifact.
 
-Deliverable: merge to `main` deploys to dev through Cloud Deploy.
+Deliverable: merge to `dev` deploys dev; merge to `main` deploys prod through Cloud Deploy.
 
-### Phase 4: Add Stage And Prod Promotion
+### Phase 4: Add Verification Gates
 
 Add:
 
-- Stage target and verification.
 - Prod target with approval.
 - Canary strategy.
 - Rollback workflow.
 - Migration rehearsal.
 - Student photo smoke.
 
-Deliverable: prod receives only releases that passed dev and stage.
+Deliverable: prod releases have approval, canary, smoke evidence, and rollback history.
 
 ### Phase 5: Enforce And Polish
 
@@ -672,8 +654,8 @@ These are optional, but they are high-value once the baseline is stable:
 - Preview environments for risky frontend or gateway PRs.
 - Signed container policy enforcement.
 - OpenSSF Scorecard check on scheduled runs.
-- SLSA provenance verification before prod promotion.
-- ChatOps command for `promote`, `hold`, `rollback`, and `status`.
+- SLSA provenance verification before prod rollout.
+- ChatOps command for `deploy`, `hold`, `rollback`, and `status`.
 
 ## What We Might Be Missing
 
@@ -695,13 +677,13 @@ This is the checklist to review before implementation starts:
 
 Default decision if nobody overrides:
 
-- Add `stage`.
+- Keep `stage` inactive until a real stage database and secrets exist.
 - Use Cloud Run jobs for migration and smoke helpers.
 - Keep prod canary at 5 percent, 25 percent, 100 percent.
 - Keep prod approval manual.
 - Keep rollback manual but one-click.
 - Keep dev automatic.
-- Keep stage automatic after two successful manual rehearsals.
+- Keep branch ownership strict: `dev` for dev and `main` for prod.
 
 ## First Implementation Ticket List
 
@@ -713,8 +695,8 @@ Default decision if nobody overrides:
 6. Add PR CI.
 7. Add release build workflow.
 8. Add dev rollout and smoke.
-9. Add stage rollout and smoke.
-10. Add prod canary promotion.
+9. Add prod canary rollout.
+10. Add prod smoke and cleanup.
 11. Add rollback workflow.
 12. Add release evidence bundle.
 13. Add branch/environment protection checklist.
@@ -762,9 +744,8 @@ The final implementation should make this true:
 
 ```text
 PR says: is this change safe to merge?
-main says: build one release candidate.
-dev says: does the system run together?
-stage says: would this survive prod shape?
+dev says: deploy and prove the integration branch.
+main says: deploy the production branch slowly.
 prod says: release slowly, watch closely, rollback quickly.
 ```
 

@@ -1,0 +1,124 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: custoking-identity-service-dev # from-param: custoking-identity-service-${env}
+  labels:
+    app: custoking-ims
+    component: cloud-run
+    service: identity-service
+    env: dev # from-param: ${env}
+    owner: engineering
+    cost-center: school-saas
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0" # from-param: ${domain_min_instances}
+        autoscaling.knative.dev/maxScale: "2" # from-param: ${domain_max_instances}
+        run.googleapis.com/cpu-throttling: "true"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]' # from-param: '[{"network":"${vpc_network}","subnetwork":"${vpc_subnet}"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only # from-param: ${vpc_egress}
+    spec:
+      serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      containers:
+        - image: custoking-identity-service
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 18
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: app_rt
+            - name: FLYWAY_URL
+              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
+            - name: FLYWAY_USERNAME
+              value: appuser
+            - name: IDENTITY_DB_SCHEMA
+              value: identity
+            - name: TENANT_SCHOOL_BASE_URL
+              value: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${school_core_url}
+            - name: TENANT_SCHOOL_CLOUD_RUN_AUTH
+              value: auto
+            - name: APP_COOKIE_SECURE
+              value: "true"
+            - name: APP_COOKIE_SAME_SITE
+              value: None
+            - name: APP_JWT_EXPIRATION_MS
+              value: "900000"
+            - name: APP_REFRESH_TOKEN_EXPIRATION_MS
+              value: "604800000"
+            - name: GCP_PROJECT
+              value: custoking # from-param: ${project_id}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: custoking # from-param: ${project_id}
+            - name: GOOGLE_CLOUD_QUOTA_PROJECT
+              value: custoking # from-param: ${project_id}
+            - name: OTEL_SERVICE_NAME
+              value: identity-service
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_LOGS_EXPORTER
+              value: none
+            - name: OTEL_METRICS_EXPORTER
+              value: none
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: https://telemetry.googleapis.com
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: https://telemetry.googleapis.com/v1/traces
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_TRACES_SAMPLER
+              value: parentbased_traceidratio
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: "0.05" # from-param: ${otel_sample}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: gcp.project_id=custoking # from-param: gcp.project_id=${project_id}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-rt-password-dev # from-param: app-rt-password-${env}
+                  key: latest
+            - name: FLYWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-password-dev # from-param: db-password-${env}
+                  key: latest
+            - name: APP_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: jwt-secret-dev # from-param: jwt-secret-${env}
+                  key: latest
+            - name: IDENTITY_INTROSPECTION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: identity-introspection-token-dev # from-param: identity-introspection-token-${env}
+                  key: latest
+            - name: TENANT_SCHOOL_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-school-read-token-dev # from-param: tenant-school-read-token-${env}
+                  key: latest

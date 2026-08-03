@@ -1,0 +1,153 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: custoking-school-core-service-dev # from-param: custoking-school-core-service-${env}
+  labels:
+    app: custoking-ims
+    component: cloud-run
+    service: school-core-service
+    env: dev # from-param: ${env}
+    owner: engineering
+    cost-center: school-saas
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0" # from-param: ${domain_min_instances}
+        autoscaling.knative.dev/maxScale: "2" # from-param: ${domain_max_instances}
+        run.googleapis.com/cpu-throttling: "true"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]' # from-param: '[{"network":"${vpc_network}","subnetwork":"${vpc_subnet}"}]'
+        run.googleapis.com/vpc-access-egress: private-ranges-only # from-param: ${vpc_egress}
+    spec:
+      serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
+      containerConcurrency: 80
+      timeoutSeconds: 600
+      containers:
+        - image: custoking-school-core-service
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 24
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: app_rt
+            - name: FLYWAY_URL
+              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
+            - name: FLYWAY_USERNAME
+              value: appuser
+            - name: SCHOOL_CORE_MERGED
+              value: "true"
+            - name: SCHOOL_CORE_DATASOURCE_SCHEMAS
+              value: tenant_school,student,attendance,fee,catalog
+            - name: STUDENT_PHOTO_BUCKET
+              value: custoking-student-photos-dev # from-param: custoking-student-photos-${env}
+            - name: STUDENT_PHOTO_IMPORT_DRIVE_ENABLED
+              value: "true"
+            - name: STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID
+              value: "" # from-param: ${photo_import_drive_root_folder_id}
+            - name: STUDENT_PHOTO_DIMENSION
+              value: "512"
+            - name: STUDENT_PHOTO_MAX_BYTES
+              value: "5242880"
+            - name: SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID
+              value: ims-reporting-events-v1-dev # from-param: ${reporting_topic}-${env}
+            - name: SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID
+              value: custoking # from-param: ${project_id}
+            - name: GCP_PROJECT
+              value: custoking # from-param: ${project_id}
+            - name: GOOGLE_CLOUD_PROJECT
+              value: custoking # from-param: ${project_id}
+            - name: GOOGLE_CLOUD_QUOTA_PROJECT
+              value: custoking # from-param: ${project_id}
+            - name: OTEL_SERVICE_NAME
+              value: school-core-service
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_LOGS_EXPORTER
+              value: none
+            - name: OTEL_METRICS_EXPORTER
+              value: none
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: https://telemetry.googleapis.com
+            - name: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+              value: https://telemetry.googleapis.com/v1/traces
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_TRACES_SAMPLER
+              value: parentbased_traceidratio
+            - name: OTEL_TRACES_SAMPLER_ARG
+              value: "0.05" # from-param: ${otel_sample}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: gcp.project_id=custoking # from-param: gcp.project_id=${project_id}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-rt-password-dev # from-param: app-rt-password-${env}
+                  key: latest
+            - name: FLYWAY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-password-dev # from-param: db-password-${env}
+                  key: latest
+            - name: TENANT_SCHOOL_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-school-read-token-dev # from-param: tenant-school-read-token-${env}
+                  key: latest
+            - name: STUDENT_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: student-read-token-dev # from-param: student-read-token-${env}
+                  key: latest
+            - name: ATTENDANCE_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: attendance-read-token-dev # from-param: attendance-read-token-${env}
+                  key: latest
+            - name: FEE_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: fee-read-token-dev # from-param: fee-read-token-${env}
+                  key: latest
+            - name: CATALOG_READ_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: catalog-read-token-dev # from-param: catalog-read-token-${env}
+                  key: latest
+            - name: STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: student-photo-import-drive-oauth-client-id-dev # from-param: student-photo-import-drive-oauth-client-id-${env}
+                  key: latest
+            - name: STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: student-photo-import-drive-oauth-client-secret-dev # from-param: student-photo-import-drive-oauth-client-secret-${env}
+                  key: latest
+            - name: STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_REFRESH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: student-photo-import-drive-oauth-refresh-token-dev # from-param: student-photo-import-drive-oauth-refresh-token-${env}
+                  key: latest

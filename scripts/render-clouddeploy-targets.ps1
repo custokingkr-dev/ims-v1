@@ -1,0 +1,54 @@
+param(
+  [Parameter(Mandatory = $true)]
+  [ValidateSet("dev", "stage", "prod")]
+  [string]$Environment,
+
+  [string]$TemplatePath,
+  [string]$OutputPath
+)
+
+$ErrorActionPreference = "Stop"
+
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+if (-not $TemplatePath) {
+  $TemplatePath = Join-Path $repoRoot "deploy/clouddeploy/targets-$Environment.yaml"
+}
+if (-not $OutputPath) {
+  $OutputPath = Join-Path $repoRoot "artifacts/clouddeploy/targets-$Environment.rendered.yaml"
+}
+
+function Require-DeploymentValue([string]$Name) {
+  $prefix = $Environment.ToUpperInvariant()
+  $value = [Environment]::GetEnvironmentVariable("${prefix}_$Name")
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    $value = [Environment]::GetEnvironmentVariable($Name)
+  }
+  if ([string]::IsNullOrWhiteSpace($value)) {
+    throw "Required environment variable '${prefix}_$Name' or '$Name' is missing for Cloud Deploy $Environment target rendering."
+  }
+  return $value.Trim()
+}
+
+$replacements = @{
+  "__DB_HOST__" = Require-DeploymentValue "DB_HOST"
+  "__DB_NAME__" = Require-DeploymentValue "DB_NAME"
+  "__STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__" = Require-DeploymentValue "STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID"
+}
+
+$text = Get-Content -Raw -Path $TemplatePath
+foreach ($key in $replacements.Keys) {
+  $text = $text.Replace($key, $replacements[$key])
+}
+
+$unresolved = [regex]::Matches($text, "__[A-Z0-9_]+__") | ForEach-Object { $_.Value } | Sort-Object -Unique
+if ($unresolved) {
+  throw "Unresolved Cloud Deploy placeholders remain in ${TemplatePath}: $($unresolved -join ', ')"
+}
+
+$outputDirectory = Split-Path -Parent $OutputPath
+if ($outputDirectory) {
+  New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+}
+
+Set-Content -Path $OutputPath -Value $text -NoNewline
+Write-Host "Rendered Cloud Deploy $Environment targets to $OutputPath"

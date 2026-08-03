@@ -1,0 +1,298 @@
+name: CD / Deploy branch environment
+
+on:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+    inputs:
+      target_environment:
+        description: Target environment. dev requires the dev branch; prod requires main.
+        required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
+      commit_sha:
+        description: Commit SHA to release. Must belong to the selected environment branch.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+concurrency:
+  group: cd-deploy-${{ github.ref_name }}-${{ inputs.target_environment || 'push' }}
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'asia-south2' }}
+  ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY || 'custoking' }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+  RELEASE_BUILDER_SERVICE_ACCOUNT: ${{ vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
+
+jobs:
+  resolve-target:
+    runs-on: ubuntu-latest
+    outputs:
+      target_env: ${{ steps.resolve.outputs.target_env }}
+      deploy_branch: ${{ steps.resolve.outputs.deploy_branch }}
+      commit_sha: ${{ steps.resolve.outputs.commit_sha }}
+    steps:
+      - id: resolve
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $eventName = "${{ github.event_name }}"
+          $refName = "${{ github.ref_name }}"
+          $targetEnv = "${{ inputs.target_environment || '' }}"
+
+          if ($eventName -ne "workflow_dispatch") {
+            if ($refName -eq "dev") {
+              $targetEnv = "dev"
+            } elseif ($refName -eq "main") {
+              $targetEnv = "prod"
+            } else {
+              throw "Unsupported deployment branch '$refName'. Only dev and main deploy."
+            }
+          }
+
+          if ($targetEnv -eq "dev") {
+            $deployBranch = "dev"
+          } elseif ($targetEnv -eq "prod") {
+            $deployBranch = "main"
+          } else {
+            throw "Unsupported target environment '$targetEnv'."
+          }
+
+          if ($refName -ne $deployBranch) {
+            throw "Environment '$targetEnv' deploys only from branch '$deployBranch'. Current branch is '$refName'."
+          }
+
+          $sha = "${{ inputs.commit_sha || github.sha }}"
+          "target_env=$targetEnv" >> $env:GITHUB_OUTPUT
+          "deploy_branch=$deployBranch" >> $env:GITHUB_OUTPUT
+          "commit_sha=$sha" >> $env:GITHUB_OUTPUT
+          "Resolved $deployBranch -> $targetEnv for $sha"
+
+  environment-gate:
+    needs: resolve-target
+    runs-on: ubuntu-latest
+    environment: ${{ needs.resolve-target.outputs.target_env }}
+    steps:
+      - name: Confirm branch environment
+        run: echo "${{ needs.resolve-target.outputs.deploy_branch }} -> ${{ needs.resolve-target.outputs.target_env }}"
+
+  build-images:
+    needs: [resolve-target, environment-gate]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - { service: school-core-service, context: services/school-core-service, image: custoking-school-core-service, build_args: "" }
+          - { service: identity-service, context: services/identity-service, image: custoking-identity-service, build_args: "" }
+          - { service: operations-service, context: services/operations-service, image: custoking-operations-service, build_args: "" }
+          - { service: billing-service, context: services/billing-service, image: custoking-billing-service, build_args: "" }
+          - { service: platform-service, context: services/platform-service, image: custoking-platform-service, build_args: "" }
+          - { service: api-gateway, context: services/api-gateway, image: custoking-api-gateway, build_args: "" }
+          - { service: frontend, context: frontend, image: custoking-frontend, build_args: "VITE_API_BASE_URL=/api/v1" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Verify commit belongs to environment branch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
+          $branch = "${{ needs.resolve-target.outputs.deploy_branch }}"
+          git fetch origin $branch --quiet
+          git merge-base --is-ancestor $sha "origin/$branch"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Commit $sha is not reachable from origin/$branch."
+          }
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.RELEASE_BUILDER_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Export gcloud access token
+        id: gcloud-access-token
+        shell: bash
+        run: echo "token=$(gcloud auth print-access-token)" >> "$GITHUB_OUTPUT"
+
+      - name: Login Docker to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GCP_REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcloud-access-token.outputs.token }}
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPOSITORY }}/${{ matrix.image }}:sha-${{ needs.resolve-target.outputs.commit_sha }}
+          build-args: ${{ matrix.build_args }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Write image summary
+        run: |
+          {
+            echo "## ${{ matrix.service }}"
+            echo ""
+            echo "- image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.ARTIFACT_REGISTRY_REPOSITORY }}/${{ matrix.image }}"
+            echo "- digest: ${{ steps.build.outputs.digest }}"
+            echo "- provenance: BuildKit mode=max"
+            echo "- sbom: BuildKit SBOM attestation"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  create-environment-releases:
+    needs: [resolve-target, environment-gate, build-images]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
+          fetch-depth: 0
+
+      - name: Verify commit belongs to environment branch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
+          $branch = "${{ needs.resolve-target.outputs.deploy_branch }}"
+          git fetch origin $branch --quiet
+          git merge-base --is-ancestor $sha "origin/$branch"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Commit $sha is not reachable from origin/$branch."
+          }
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.RELEASE_BUILDER_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Export gcloud access token
+        id: release-gcloud-access-token
+        shell: bash
+        run: echo "token=$(gcloud auth print-access-token)" >> "$GITHUB_OUTPUT"
+
+      - name: Login Docker to Artifact Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.GCP_REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.release-gcloud-access-token.outputs.token }}
+
+      - name: Apply Cloud Deploy configuration
+        env:
+          DEV_DB_HOST: ${{ vars.DEV_DB_HOST || vars.DB_HOST }}
+          DEV_DB_NAME: ${{ vars.DEV_DB_NAME || vars.DB_NAME }}
+          DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+          PROD_DB_HOST: ${{ vars.PROD_DB_HOST || vars.DB_HOST }}
+          PROD_DB_NAME: ${{ vars.PROD_DB_NAME || vars.DB_NAME }}
+          PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/render-clouddeploy-targets.ps1 -Environment "${{ needs.resolve-target.outputs.target_env }}" -OutputPath "artifacts/clouddeploy/targets-${{ needs.resolve-target.outputs.target_env }}.rendered.yaml"
+          gcloud deploy apply --file "artifacts/clouddeploy/targets-${{ needs.resolve-target.outputs.target_env }}.rendered.yaml" --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
+          gcloud deploy apply --file deploy/clouddeploy/delivery-pipelines.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
+
+      - name: Create ordered Cloud Deploy releases
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . ./scripts/microservice-build-catalog.ps1
+
+          $targetEnv = "${{ needs.resolve-target.outputs.target_env }}"
+          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
+          $shortSha = $sha.Substring(0, [Math]::Min(12, $sha.Length))
+          $registry = "$env:GCP_REGION-docker.pkg.dev/$env:GCP_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
+          $builds = @{}
+          foreach ($entry in @(Get-MicroserviceBuildCatalog)) {
+            $builds[$entry.Name] = $entry
+          }
+          $releaseOrder = @(
+            "school-core-service",
+            "identity-service",
+            "operations-service",
+            "billing-service",
+            "platform-service",
+            "api-gateway",
+            "frontend"
+          )
+          $evidence = [ordered]@{
+            commit = $sha
+            registry = $registry
+            createdAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+            services = @()
+          }
+          New-Item -ItemType Directory -Force -Path release-evidence | Out-Null
+
+          foreach ($name in $releaseOrder) {
+            $entry = $builds[$name]
+            if (-not $entry) { throw "Missing build catalog entry for $name" }
+            $tag = "$registry/$($entry.Image):sha-$sha"
+            $digest = docker buildx imagetools inspect $tag --format '{{.Manifest.Digest}}'
+            if ([string]::IsNullOrWhiteSpace($digest) -or -not $digest.StartsWith("sha256:")) {
+              throw "Could not resolve digest for $tag"
+            }
+            $digestRef = "$registry/$($entry.Image)@$digest"
+            $releaseId = ("rel-{0}-{1}-{2}-{3}" -f $targetEnv, $shortSha, ($name -replace "-", ""), "${{ github.run_attempt }}").ToLowerInvariant()
+            $pipeline = "custoking-$name-$targetEnv"
+            gcloud deploy releases create $releaseId `
+              --project="$env:GCP_PROJECT_ID" `
+              --region="$env:GCP_REGION" `
+              --delivery-pipeline="$pipeline" `
+              --skaffold-file=deploy/skaffold.yaml `
+              --images="$($entry.Image)=$digestRef" `
+              --deploy-parameters="git_sha=$sha" `
+              --quiet
+
+            $evidence.services += [ordered]@{
+              service = $name
+              image = $entry.Image
+              tag = $tag
+              digest = $digestRef
+              pipeline = $pipeline
+              release = $releaseId
+              firstTarget = "$name-$targetEnv"
+            }
+          }
+
+          $evidence | ConvertTo-Json -Depth 10 | Set-Content -Path release-evidence/release.json
+          "# Release $shortSha" | Set-Content -Path release-evidence/summary.md
+          "" | Add-Content -Path release-evidence/summary.md
+          foreach ($svc in $evidence.services) {
+            "- $($svc.service): $($svc.digest) -> $($svc.pipeline)/$($svc.release)" | Add-Content -Path release-evidence/summary.md
+          }
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-evidence-${{ needs.resolve-target.outputs.target_env }}-${{ github.sha }}
+          path: release-evidence
+          if-no-files-found: error

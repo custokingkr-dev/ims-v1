@@ -39,10 +39,12 @@ if (-not $BaseRef) {
 
 $changedFiles = @(git diff --name-only $BaseRef $HeadRef | ForEach-Object { $_ -replace "\\", "/" })
 $allServiceTriggers = @(
-  ".github/workflows/ci.yml",
-  ".github/workflows/whole-application-validation.yml",
+  ".github/workflows/ci-pr.yml",
+  ".github/workflows/build-release.yml",
+  ".github/workflows/rollback.yml",
+  ".github/workflows/security-scan.yml",
   "docker-compose.yml",
-  "cloudbuild.yaml",
+  "deploy/skaffold.yaml",
   "Tiltfile"
 )
 
@@ -58,8 +60,11 @@ $scriptTriggers = @(
 
 $deployTriggers = @(
   "deploy/",
-  ".github/workflows/deploy.yml",
-  ".github/workflows/gcp-deploy-"
+  ".github/workflows/_build-image.yml",
+  ".github/workflows/_detect-changes.yml",
+  ".github/workflows/_smoke-environment.yml",
+  ".github/workflows/_test-java-service.yml",
+  ".github/workflows/_test-node-service.yml"
 )
 
 $allAffected = $false
