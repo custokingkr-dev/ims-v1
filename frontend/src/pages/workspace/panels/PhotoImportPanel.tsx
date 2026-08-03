@@ -95,6 +95,11 @@ interface ImportRow {
 
 const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
 type RowFilter = typeof FILTERS[number];
+const PHOTO_IMPORT_REQUEST_CONFIG = { timeout: 120000 };
+
+function isTimeoutError(error: any): boolean {
+  return error?.code === 'ECONNABORTED' || String(error?.message || '').toLowerCase().includes('timeout');
+}
 
 function errorMessage(error: any): string {
   const data = error?.response?.data;
@@ -170,7 +175,7 @@ export function PhotoImportPanel() {
   const loadContext = async () => {
     setBusy('context');
     try {
-      const response = await api.get<ImportContext>('/student-photo-imports/context');
+      const response = await api.get<ImportContext>('/student-photo-imports/context', PHOTO_IMPORT_REQUEST_CONFIG);
       setContext(response.data);
       const firstSchool = response.data.schools[0];
       if (firstSchool) setSchoolId(current => current || firstSchool.id);
@@ -184,6 +189,7 @@ export function PhotoImportPanel() {
   const loadBatches = async (selectedId: number) => {
     try {
       const response = await api.get<ImportBatch[]>('/student-photo-imports', {
+        ...PHOTO_IMPORT_REQUEST_CONFIG,
         params: { schoolId: selectedId },
       });
       setBatches(response.data || []);
@@ -197,6 +203,7 @@ export function PhotoImportPanel() {
     try {
       const response = await api.get<{ batch: ImportBatch; rows: ImportRow[]; access: AccessState }>(
         `/student-photo-imports/${id}`,
+        PHOTO_IMPORT_REQUEST_CONFIG,
       );
       setBatch(response.data.batch);
       setRows(response.data.rows || []);
@@ -244,9 +251,7 @@ export function PhotoImportPanel() {
         academicYearId: selectedSchool.academicYearId,
       };
       if (!managedReady) payload.driveFolderUrl = driveFolderUrl.trim();
-      const response = await api.post<ImportBatch>('/student-photo-imports', {
-        ...payload,
-      });
+      const response = await api.post<ImportBatch>('/student-photo-imports', { ...payload }, PHOTO_IMPORT_REQUEST_CONFIG);
       setBatch(response.data);
       setRows([]);
       setAccess(null);
@@ -265,7 +270,11 @@ export function PhotoImportPanel() {
     setBusy('provision');
     setNotice(null);
     try {
-      const response = await api.post(`/student-photo-imports/folders/${selectedSchool.id}/provision`);
+      const response = await api.post(
+        `/student-photo-imports/folders/${selectedSchool.id}/provision`,
+        undefined,
+        PHOTO_IMPORT_REQUEST_CONFIG,
+      );
       await loadContext();
       const ready = response.data?.status === 'READY';
       setNotice({
@@ -297,10 +306,36 @@ export function PhotoImportPanel() {
     setBusy(action);
     setNotice(null);
     try {
-      let response = await api.post<ImportBatch>(`/student-photo-imports/${batch.id}/${action}`);
-      while (action === 'execute' && response.data.status === 'EXECUTING') {
-        setBatch(response.data);
-        response = await api.post<ImportBatch>(`/student-photo-imports/${batch.id}/${action}`);
+      const postAction = () => api.post<ImportBatch>(
+        `/student-photo-imports/${batch.id}/${action}`,
+        undefined,
+        action === 'execute' ? PHOTO_IMPORT_REQUEST_CONFIG : undefined,
+      );
+      const refreshExecution = async () => {
+        const response = await api.get<{ batch: ImportBatch; rows: ImportRow[]; access: AccessState }>(
+          `/student-photo-imports/${batch.id}`,
+          PHOTO_IMPORT_REQUEST_CONFIG,
+        );
+        setBatch(response.data.batch);
+        setRows(response.data.rows || []);
+        setAccess(response.data.access || null);
+        return response.data.batch;
+      };
+      let current: ImportBatch;
+      try {
+        current = (await postAction()).data;
+      } catch (error) {
+        if (action !== 'execute' || !isTimeoutError(error)) throw error;
+        current = await refreshExecution();
+      }
+      while (action === 'execute' && current.status === 'EXECUTING') {
+        setBatch(current);
+        try {
+          current = (await postAction()).data;
+        } catch (error) {
+          if (!isTimeoutError(error)) throw error;
+          current = await refreshExecution();
+        }
       }
       await loadDetail(batch.id);
       await loadBatches(batch.schoolId);

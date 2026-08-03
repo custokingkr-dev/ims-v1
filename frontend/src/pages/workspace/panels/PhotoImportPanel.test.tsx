@@ -89,7 +89,7 @@ describe('PhotoImportPanel', () => {
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/student-photo-imports', {
       schoolId: 7,
       academicYearId: 'ay_2026_27',
-    }));
+    }, expect.objectContaining({ timeout: 120000 })));
     expect(await screen.findByRole('heading', { name: 'Green Valley School / 2026-27' }))
       .toBeInTheDocument();
   });
@@ -131,6 +131,53 @@ describe('PhotoImportPanel', () => {
     expect(await screen.findByText('COMPLETED')).toBeInTheDocument();
   });
 
+  it('continues execution after a transient timeout by refreshing batch progress', async () => {
+    let detailBatch = frozenBatch;
+    let detailCalls = 0;
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [detailBatch] } as any;
+      if (url === '/student-photo-imports/batch-2') {
+        detailCalls += 1;
+        if (detailCalls >= 2 && detailBatch.status === 'FROZEN') {
+          detailBatch = {
+            ...frozenBatch,
+            status: 'EXECUTING',
+            readyCount: 16,
+            appliedCount: 2,
+          };
+        }
+        return { data: { batch: detailBatch, rows: [], access: null } } as any;
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({
+        data: { ...frozenBatch, status: 'EXECUTING', readyCount: 17, appliedCount: 1 },
+      } as any)
+      .mockRejectedValueOnce({
+        code: 'ECONNABORTED',
+        message: 'timeout of 120000ms exceeded',
+      })
+      .mockImplementationOnce(async () => {
+        detailBatch = {
+          ...frozenBatch,
+          status: 'COMPLETED',
+          readyCount: 0,
+          appliedCount: 18,
+        };
+        return { data: detailBatch } as any;
+      });
+
+    render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByLabelText(/confirm green valley school, 2026-27, and 18 ready portraits/i));
+    fireEvent.click(await screen.findByRole('button', { name: /execute import/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(3));
+    expect((await screen.findAllByText('COMPLETED')).length).toBeGreaterThan(0);
+  });
+
   it('keeps manual Drive binding available only while managed Drive is unconfigured', async () => {
     const unconfigured = {
       ...context,
@@ -168,7 +215,7 @@ describe('PhotoImportPanel', () => {
       schoolId: 7,
       academicYearId: 'ay_2026_27',
       driveFolderUrl: 'https://drive.google.com/drive/folders/manual-folder',
-    }));
+    }, expect.objectContaining({ timeout: 120000 })));
   });
 
   it('disambiguates duplicate school names in the selector', async () => {
