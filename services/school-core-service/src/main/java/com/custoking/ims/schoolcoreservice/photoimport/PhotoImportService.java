@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @Service
 public class PhotoImportService {
     private static final long MAX_SOURCE_IMAGE_BYTES = 20L * 1024 * 1024;
-    private static final int EXECUTION_CHUNK_SIZE = 10;
+    private static final int EXECUTION_CHUNK_SIZE = 1;
     private static final Map<String, Integer> ROMAN_CLASSES = Map.ofEntries(
             Map.entry("I", 1), Map.entry("II", 2), Map.entry("III", 3),
             Map.entry("IV", 4), Map.entry("V", 5), Map.entry("VI", 6),
