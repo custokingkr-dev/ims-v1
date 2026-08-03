@@ -17,7 +17,7 @@ spec:
         autoscaling.knative.dev/maxScale: "2" # from-param: ${domain_max_instances}
         run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/startup-cpu-boost: "true"
-        run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]' # from-param: '[{"network":"${vpc_network}","subnetwork":"${vpc_subnet}"}]'
+        run.googleapis.com/network-interfaces: [{"network":"default","subnetwork":"default"}] # from-param: '[{"network":"${vpc_network}","subnetwork":"${vpc_subnet}"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only # from-param: ${vpc_egress}
     spec:
       serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
