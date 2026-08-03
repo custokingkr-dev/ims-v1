@@ -1,6 +1,7 @@
 # Custoking IMS Current-State Documentation
 
 Last verified: 2026-07-09 from repository files and live GCP project `custoking`.
+CI/CD retirement updated: 2026-08-03.
 
 This documentation bundle captures the current project state after the dev/prod greenfield deployment and the CI/CD/observability rebuild. It is intentionally evidence-led: if a fact could not be verified from code, deployment configuration, local artifacts, or live GCP inventory, it is listed in [gaps-and-drift.md](gaps-and-drift.md) instead of being assumed.
 
@@ -8,7 +9,7 @@ This documentation bundle captures the current project state after the dev/prod 
 
 - [project-architecture.md](project-architecture.md) - service topology, runtime flow, data ownership, auth, RLS, and frontend/gateway boundaries.
 - [gcp-infrastructure.md](gcp-infrastructure.md) - live GCP services, Cloud Run, Cloud SQL, Pub/Sub, IAM, WIF, Artifact Registry, buckets, secrets, and drift.
-- [deployment-cicd.md](deployment-cicd.md) - GitHub Actions, Cloud Build, build-once-promote flow, deployment substitutions, evidence, and smoke gates.
+- [deployment-cicd.md](deployment-cicd.md) - retired CI/CD entrypoints and the CI/CD v2 architecture plan.
 - [codebase-conventions.md](codebase-conventions.md) - repository layout, Java/Node/React conventions, service config, route ownership, testing, and local dev.
 - [event-models.md](event-models.md) - event envelope, transactional outbox, Pub/Sub push ingress, projection projectors, event types, and idempotency.
 - [observability-operations.md](observability-operations.md) - dashboards, uptime, alerts, log metrics, traces, runtime evidence, and operations checks.
@@ -24,11 +25,7 @@ Primary repository files used:
 - `docs/EVENT-ENVELOPE-CONTRACT.md`
 - `docs/MICROSERVICE-OBSERVABILITY-RUNBOOK.md`
 - `docs/MICROSERVICE-RLS-ROLLOUT-RUNBOOK.md`
-- `.github/workflows/ci.yml`
-- `.github/workflows/deploy.yml`
-- `.github/workflows/release.yml`
-- `.github/workflows/security-scan.yml`
-- `cloudbuild.yaml`
+- Former active CI/CD entrypoints, now retired: `.github/workflows/ci.yml`, `.github/workflows/deploy.yml`, `.github/workflows/release.yml`, `.github/workflows/security-scan.yml`, and `cloudbuild.yaml`
 - `deploy/gcp/observability/*.tf`
 - `docker-compose.yml`
 - service `application.yml`, controllers, outbox, security, and projector source files under `services/`

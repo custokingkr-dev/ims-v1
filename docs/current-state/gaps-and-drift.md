@@ -79,26 +79,24 @@ Required follow-up:
 
 - Either create/update the custom role and cut over IAM, or update docs/source to reflect the intentional predefined-role model.
 
-### Direct Service Smoke Was Re-Enabled And Needs Next-Run Evidence
+### CI/CD v2 Is Designed But Not Implemented
 
-`release.yml` now requests:
+The former active CI/CD files and `cloudbuild.yaml` were retired on 2026-08-03. The replacement architecture is documented in:
 
-```yaml
-run_direct_smoke: true
-run_gateway_smoke: true
+```text
+docs/current-state/deployment-cicd.md
 ```
-
-The direct smoke job template now uses env-suffixed secrets (`catalog-read-token-<env>`, `tenant-school-read-token-<env>`), and the deployed gateway smoke receives the GitHub environment's `DB_HOST`, `DB_NAME`, and `db-password-<env>` secret.
 
 Impact:
 
-- The smoke gates are part of the next main-line release path.
-- Evidence from the next dev/prod deployment run must be captured to confirm both smoke gates pass in live CI/CD.
+- New commits will not be deployed by the retired GitHub Actions/Cloud Build path.
+- The next deployable implementation must add GitHub Actions, Cloud Deploy, Skaffold, Cloud Run manifests, WIF/IAM, smoke verification, evidence, and rollback as described in the v2 plan.
 
 Required follow-up:
 
-- Confirm the next release run shows successful direct-service and gateway smoke steps for dev and prod.
-- If a smoke step fails, fix the smoke setup rather than disabling the gate.
+- Implement Phase 1 foundation from the v2 plan.
+- Reintroduce PR CI before reintroducing deployment automation.
+- Do not restore the old `cloudbuild.yaml` deployment path unless there is a documented emergency reason.
 
 ### Terraform CLI Not Found on Current PATH
 

@@ -59,7 +59,7 @@ Direct runtime reads from retired public domain tables are not allowed.
 
 ## Deployment
 
-GitHub Actions authenticates to GCP through Workload Identity Federation and delegates builds/deploys to `cloudbuild.yaml`. Cloud Build builds all service images, pushes to Artifact Registry, and deploys Cloud Run services. The deploy workflow can run `ims-direct-service-smoke` after deployment to verify private service paths.
+The previous GitHub Actions plus `cloudbuild.yaml` deployment path was retired on 2026-08-03. The replacement design uses GitHub Actions for CI/release creation and Google Cloud Deploy for dev -> stage -> prod promotion, Cloud Run canary rollout, verification, and rollback. See `docs/current-state/deployment-cicd.md`.
 
 ## Current Migration State
 
