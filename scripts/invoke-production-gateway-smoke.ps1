@@ -325,11 +325,11 @@ function Retire-SmokeUsers {
     $adminEmailSql = ConvertTo-SqlLiteral $adminEmail
     $smokeAdmissionNoSql = ConvertTo-SqlLiteral $smokeAdmissionNo
     $sql = @"
-WITH smoke_users AS (
-    SELECT id
-      FROM identity.app_users
-     WHERE email IN ($superEmailSql, $adminEmailSql)
-)
+CREATE TEMP TABLE smoke_users AS
+SELECT id
+  FROM identity.app_users
+ WHERE email IN ($superEmailSql, $adminEmailSql);
+
 DELETE FROM identity.auth_sessions
  WHERE user_id IN (SELECT id FROM smoke_users);
 
