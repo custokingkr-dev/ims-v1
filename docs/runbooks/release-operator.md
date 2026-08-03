@@ -8,7 +8,7 @@ Status: CI/CD v2 implementation runbook.
 PR -> CI / PR
 dev  -> CD / Deploy branch environment -> dev Cloud Deploy releases
 main -> CD / Deploy branch environment -> prod Cloud Deploy releases
-     -> prod canary 5, 25, 100
+     -> prod canary 5, 25, 50, then stable
 ```
 
 ## Important Implementation Decision

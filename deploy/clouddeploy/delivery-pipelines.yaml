@@ -27,7 +27,7 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
@@ -58,7 +58,7 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
@@ -89,7 +89,7 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
@@ -120,7 +120,7 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
@@ -151,7 +151,7 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
@@ -182,7 +182,7 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: DeliveryPipeline
@@ -213,4 +213,4 @@ serialPipeline:
             cloudRun:
               automaticTrafficControl: true
           canaryDeployment:
-            percentages: [5, 25, 100]
+            percentages: [5, 25, 50]
