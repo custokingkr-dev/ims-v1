@@ -261,7 +261,7 @@ jobs:
               throw "Could not resolve digest for $tag"
             }
             $digestRef = "$registry/$($entry.Image)@$digest"
-            $releaseId = ("rel-{0}-{1}-{2}-{3}" -f $targetEnv, $shortSha, ($name -replace "-", ""), "${{ github.run_attempt }}").ToLowerInvariant()
+            $releaseId = ("rel-{0}-{1}-{2}" -f $targetEnv, $shortSha, "${{ github.run_attempt }}").ToLowerInvariant()
             $pipeline = "custoking-$name-$targetEnv"
             gcloud deploy releases create $releaseId `
               --project="$env:GCP_PROJECT_ID" `
@@ -272,6 +272,17 @@ jobs:
               --images="$($entry.Image)=$digestRef" `
               --deploy-parameters="git_sha=$sha" `
               --quiet
+
+            $rollout = gcloud deploy rollouts list `
+              --project="$env:GCP_PROJECT_ID" `
+              --region="$env:GCP_REGION" `
+              --delivery-pipeline="$pipeline" `
+              --release="$releaseId" `
+              --limit=1 `
+              --format="value(name)"
+            if ([string]::IsNullOrWhiteSpace($rollout)) {
+              throw "Cloud Deploy release $pipeline/$releaseId did not create an initial rollout."
+            }
 
             $evidence.services += [ordered]@{
               service = $name
