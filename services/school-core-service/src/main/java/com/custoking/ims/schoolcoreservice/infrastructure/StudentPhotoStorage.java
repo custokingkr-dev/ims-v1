@@ -96,13 +96,28 @@ public class StudentPhotoStorage {
         }
         String folder = requireStorageFolder(schoolStorageId);
         byte[] resized = normalizePortrait(data, contentType, cropX, cropY);
-        String key = studentPhotoObjectKey(folder, studentId, resized);
+        return uploadNormalizedPortrait(folder, studentId, resized);
+    }
+
+    public String uploadNormalizedPortrait(String schoolStorageId, long studentId, byte[] jpegData) {
+        if (!isEnabled()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Photo storage is not configured");
+        }
+        String folder = requireStorageFolder(schoolStorageId);
+        if (jpegData == null || jpegData.length == 0) {
+            throw new IllegalArgumentException("The normalized photo file is empty");
+        }
+        if (jpegData.length > maxBytes) {
+            throw new IllegalArgumentException(
+                    "Normalized photo must be " + (maxBytes / (1024 * 1024)) + " MB or smaller");
+        }
+        String key = studentPhotoObjectKey(folder, studentId, jpegData);
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
                     .setContentType("image/jpeg")
                     .setCacheControl(IMMUTABLE_CACHE)
                     .build();
-            storage().create(blob, resized);
+            storage().create(blob, jpegData);
         } catch (RuntimeException ex) {
             log.error("Failed to store student photo (bucket={}, key={})", bucket, key, ex);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -174,11 +189,22 @@ public class StudentPhotoStorage {
             String contentType,
             double cropX,
             double cropY) {
+        return normalizePortrait(data, contentType, cropX, cropY, maxBytes);
+    }
+
+    public byte[] normalizePortrait(
+            byte[] data,
+            String contentType,
+            double cropX,
+            double cropY,
+            long maxInputBytes) {
         if (data == null || data.length == 0) {
             throw new IllegalArgumentException("The photo file is empty");
         }
-        if (data.length > maxBytes) {
-            throw new IllegalArgumentException("Photo must be " + (maxBytes / (1024 * 1024)) + " MB or smaller");
+        long effectiveMaxBytes = maxInputBytes > 0 ? maxInputBytes : maxBytes;
+        if (data.length > effectiveMaxBytes) {
+            throw new IllegalArgumentException(
+                    "Photo must be " + (effectiveMaxBytes / (1024 * 1024)) + " MB or smaller");
         }
         if (!isSupportedImage(contentType)) {
             throw new IllegalArgumentException("Only JPG, PNG, or WEBP images are allowed");

@@ -28,7 +28,7 @@ import java.util.Set;
 
 @Component
 public class PhotoImportWorkbookParser {
-    static final int MAX_ROWS = 500;
+    static final int MAX_ROWS = 1000;
     static final long MAX_WORKBOOK_BYTES = 10L * 1024 * 1024;
     private static final List<String> REQUIRED_HEADERS =
             List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo");
@@ -73,7 +73,8 @@ public class PhotoImportWorkbookParser {
                     continue;
                 }
                 if (rows.size() >= MAX_ROWS) {
-                    throw new IllegalArgumentException("A photo import can contain at most 500 data rows");
+                    throw new IllegalArgumentException(
+                            "A photo import can contain at most " + MAX_ROWS + " data rows");
                 }
                 rows.add(new WorkbookRow(
                         index + 1,
@@ -118,7 +119,8 @@ public class PhotoImportWorkbookParser {
                     continue;
                 }
                 if (rows.size() >= MAX_ROWS) {
-                    throw new IllegalArgumentException("A photo import can contain at most 500 data rows");
+                    throw new IllegalArgumentException(
+                            "A photo import can contain at most " + MAX_ROWS + " data rows");
                 }
                 rows.add(new WorkbookRow(
                         Math.toIntExact(record.getRecordNumber()),

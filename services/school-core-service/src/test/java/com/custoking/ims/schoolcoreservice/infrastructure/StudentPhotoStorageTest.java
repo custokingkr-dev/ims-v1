@@ -53,6 +53,26 @@ class StudentPhotoStorageTest {
     }
 
     @Test
+    void importNormalizationCanUseHigherSourceLimitThanStandardUploadLimit() throws Exception {
+        BufferedImage image = new BufferedImage(200, 200, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream input = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", input);
+
+        StudentPhotoStorage storage = new StudentPhotoStorage("", 60, 128, 10, "");
+
+        assertThatThrownBy(() -> storage.normalizePortrait(input.toByteArray(), "image/jpeg"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Photo must be")
+                .hasMessageContaining("or smaller");
+        byte[] normalized = storage.normalizePortrait(
+                input.toByteArray(), "image/jpeg", 0.5, 0.5, 1024 * 1024);
+
+        BufferedImage result = ImageIO.read(new ByteArrayInputStream(normalized));
+        assertThat(result.getWidth()).isEqualTo(128);
+        assertThat(result.getHeight()).isEqualTo(128);
+    }
+
+    @Test
     void cropFocusSelectsTheRequestedSideOfALandscapePhoto() throws Exception {
         BufferedImage landscape = new BufferedImage(800, 400, BufferedImage.TYPE_INT_RGB);
         var graphics = landscape.createGraphics();

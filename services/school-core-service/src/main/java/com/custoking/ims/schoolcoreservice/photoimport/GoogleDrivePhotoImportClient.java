@@ -28,7 +28,7 @@ import java.util.Map;
 public class GoogleDrivePhotoImportClient {
     private static final String API = "https://www.googleapis.com/drive/v3/files";
     private static final String FOLDER_MIME = "application/vnd.google-apps.folder";
-    private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
+    private static final long DEFAULT_MAX_DOWNLOAD_BYTES = 20L * 1024 * 1024;
 
     private final boolean enabled;
     private final String configuredRootFolder;
@@ -182,7 +182,7 @@ public class GoogleDrivePhotoImportClient {
 
     public byte[] download(DriveFile file, long maxBytes) {
         requireEnabled();
-        long effectiveMax = maxBytes > 0 ? maxBytes : MAX_IMAGE_BYTES;
+        long effectiveMax = maxBytes > 0 ? maxBytes : DEFAULT_MAX_DOWNLOAD_BYTES;
         if (file.size() != null && file.size() > effectiveMax) {
             throw new DrivePhotoImportException("file_too_large",
                     file.name() + " is larger than " + (effectiveMax / (1024 * 1024)) + " MB");

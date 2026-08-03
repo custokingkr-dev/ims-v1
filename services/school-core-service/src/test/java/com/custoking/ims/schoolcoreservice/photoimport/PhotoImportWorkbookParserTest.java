@@ -129,4 +129,27 @@ class PhotoImportWorkbookParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("UTF-8");
     }
+
+    @Test
+    void acceptsOneThousandRowsAndRejectsOneThousandOne() {
+        String thousandRows = csvWithRows(1000);
+        String tooManyRows = csvWithRows(1001);
+
+        assertThat(parser.parse(thousandRows.getBytes(StandardCharsets.UTF_8), "mapping.csv").rows())
+                .hasSize(1000);
+        assertThatThrownBy(() -> parser.parse(tooManyRows.getBytes(StandardCharsets.UTF_8), "mapping.csv"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at most 1000 data rows");
+    }
+
+    private static String csvWithRows(int rows) {
+        StringBuilder csv = new StringBuilder("AdmissionNo,Name,Class,Section,ImageNo\n");
+        for (int index = 0; index < rows; index++) {
+            csv.append("ADM-").append(index)
+                    .append(",Student ").append(index)
+                    .append(",I,A,").append(5000 + index)
+                    .append('\n');
+        }
+        return csv.toString();
+    }
 }

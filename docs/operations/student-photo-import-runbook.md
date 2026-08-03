@@ -47,7 +47,9 @@ manually replace database folder IDs or move managed folders outside the configu
 3. Ask for exactly one `.xlsx`, `.xls`, `.csv`, or `.tsv` mapping file and the
    JPG/JPEG/PNG camera files. Excel files must contain exactly one sheet. CSV and TSV
    files must use UTF-8. Every format uses the exact headings `AdmissionNo`, `Name`,
-   `Class`, `Section`, and `ImageNo`.
+   `Class`, `Section`, and `ImageNo`. A batch can contain up to 1000 mapping rows.
+   Each source image can be up to 20 MB; execution reduces the stored student portrait
+   to a normalized JPEG without modifying the original Drive file.
 4. Start a manual import and scan the folder.
 5. Review the immutable school/year scope and validation totals.
 6. Correct admission/image identifiers, exclude intentionally blank rows, adjust crop

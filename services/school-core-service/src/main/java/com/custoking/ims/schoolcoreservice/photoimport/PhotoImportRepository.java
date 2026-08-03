@@ -580,7 +580,12 @@ public class PhotoImportRepository {
     }
 
     @Transactional
-    public String applyPhoto(Batch batch, ImportRow row, byte[] data, String contentType) {
+    public String applyPhoto(
+            Batch batch,
+            ImportRow row,
+            byte[] sourceData,
+            String sourceContentType,
+            byte[] normalizedPortrait) {
         selectSchoolScope(batch.schoolId());
         ImportRow currentRow = rowInTransaction(row.id(), batch.schoolId());
         if ("APPLIED".equals(currentRow.status())) {
@@ -610,16 +615,13 @@ public class PhotoImportRepository {
         String sourceObjectKey = photoStorage.uploadImportFile(
                 batch.schoolUid(),
                 "photo-import-" + batch.id(),
-                data,
-                contentType,
+                sourceData,
+                sourceContentType,
                 currentRow.driveFileName());
-        String key = photoStorage.upload(
+        String key = photoStorage.uploadNormalizedPortrait(
                 batch.schoolUid(),
                 currentRow.studentId(),
-                data,
-                contentType,
-                currentRow.cropX(),
-                currentRow.cropY());
+                normalizedPortrait);
         jdbc.sql("""
                 UPDATE student.students
                 SET photo_url = :key, updated_at = now(), updated_by = :updatedBy, version = version + 1

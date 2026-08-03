@@ -43,6 +43,8 @@ interface ImportContext {
   schools: SchoolContext[];
   mappingColumns: string[];
   mappingFileFormats: string[];
+  mappingRowLimit?: number;
+  imageFileLimit?: string;
   fileNameRule: string;
 }
 
@@ -579,8 +581,9 @@ export function PhotoImportPanel() {
                   <span>
                     <strong>Mapping file:</strong> {context.mappingFileFormats?.join(', ') || 'XLSX, XLS, CSV, TSV'}
                     {' / '}{context.mappingColumns.join(', ')}
+                    {context.mappingRowLimit ? ` / up to ${context.mappingRowLimit} rows` : ''}
                   </span>
-                  <span><strong>Images:</strong> {context.fileNameRule}</span>
+                  <span><strong>Images:</strong> {context.fileNameRule}{context.imageFileLimit ? ` / ${context.imageFileLimit}` : ''}</span>
                 </div>
               </section>
             )}

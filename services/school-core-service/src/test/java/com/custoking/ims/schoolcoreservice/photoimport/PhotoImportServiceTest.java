@@ -158,7 +158,7 @@ class PhotoImportServiceTest {
     }
 
     @Test
-    void flagsOversizedCameraImageDuringScanBeforeStudentLookup() {
+    void flagsImagesOverImportSourceLimitDuringScanBeforeStudentLookup() {
         UUID batchId = UUID.randomUUID();
         long schoolId = 7L;
         TenantContext.set(new TenantContext(
@@ -176,7 +176,7 @@ class PhotoImportServiceTest {
                 100L, "workbook-checksum", "2026-07-31T00:00:00Z");
         DriveFile oversized = new DriveFile(
                 "photo-file", "DSC5236.jpg", "image/jpeg",
-                6L * 1024 * 1024, "photo-checksum", "2026-07-31T00:00:00Z");
+                21L * 1024 * 1024, "photo-checksum", "2026-07-31T00:00:00Z");
         var parsed = new PhotoImportWorkbookParser.ParsedWorkbook(
                 "Sheet1",
                 List.of(new PhotoImportWorkbookParser.WorkbookRow(
@@ -203,9 +203,55 @@ class PhotoImportServiceTest {
                 isNull(), eq("snapshot-1"), any(), rows.capture());
         assertThat(rows.getValue()).singleElement().satisfies(row -> {
             assertThat(row.status()).isEqualTo("ERROR");
-            assertThat(row.message()).contains("larger than 5 MB");
+            assertThat(row.message()).contains("larger than 20 MB");
         });
         verify(repository, never()).studentByAdmission(anyLong(), any(), any());
+    }
+
+    @Test
+    void acceptsCameraImagesAboveStandardUploadLimitDuringScan() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch draft = batch(batchId, schoolId, "DRAFT", 0);
+        Batch review = batch(batchId, schoolId, "REVIEW", 1);
+        DriveFile workbook = new DriveFile(
+                "workbook-file", "mapping.csv", "text/csv",
+                100L, "workbook-checksum", "2026-07-31T00:00:00Z");
+        DriveFile cameraImage = new DriveFile(
+                "photo-file", "DSC5236.jpg", "image/jpeg",
+                6L * 1024 * 1024, "photo-checksum", "2026-07-31T00:00:00Z");
+        var parsed = new PhotoImportWorkbookParser.ParsedWorkbook(
+                "Sheet1",
+                List.of(new PhotoImportWorkbookParser.WorkbookRow(
+                        2, "ADM-1", "Student One", "I", "A", "5236")),
+                List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"));
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(draft);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(workbook, cameraImage));
+        when(drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES))
+                .thenReturn(new byte[]{1});
+        when(parser.parse(any(byte[].class), eq("mapping.csv"))).thenReturn(parsed);
+        when(drive.snapshotHash(List.of(workbook, cameraImage))).thenReturn("snapshot-1");
+        when(repository.studentByAdmission(schoolId, "ay-2026", "ADM-1"))
+                .thenReturn(java.util.Optional.of(new PhotoImportRepository.StudentMatch(
+                        101L, "ADM-1", "Student One", "I", 1, "A", null)));
+        when(repository.replaceScan(
+                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.csv"),
+                isNull(), eq("snapshot-1"), any(), any())).thenReturn(review);
+
+        service.scan(batchId);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RowInput>> rows = ArgumentCaptor.forClass(List.class);
+        verify(repository).replaceScan(
+                eq(batchId), eq(schoolId), eq("workbook-file"), eq("mapping.csv"),
+                isNull(), eq("snapshot-1"), any(), rows.capture());
+        assertThat(rows.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.status()).isEqualTo("READY");
+            assertThat(row.driveFileId()).isEqualTo("photo-file");
+        });
     }
 
     @Test
@@ -359,7 +405,11 @@ class PhotoImportServiceTest {
         when(repository.startExecution(batchId, schoolId, 42L)).thenReturn(executing);
         when(repository.rows(batchId, schoolId)).thenReturn(rows);
         when(drive.download(any(DriveFile.class), anyLong())).thenReturn(new byte[]{1, 2, 3});
-        when(repository.applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg")))
+        when(storage.normalizePortrait(
+                any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024)))
+                .thenReturn(new byte[]{9, 8, 7});
+        when(repository.applyPhoto(
+                eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"), any(byte[].class)))
                 .thenReturn("photo-key");
         when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
 
@@ -367,8 +417,10 @@ class PhotoImportServiceTest {
 
         assertThat(result.status()).isEqualTo("EXECUTING");
         verify(drive, org.mockito.Mockito.times(10)).download(any(DriveFile.class), anyLong());
+        verify(storage, org.mockito.Mockito.times(10)).normalizePortrait(
+                any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024));
         verify(repository, org.mockito.Mockito.times(10))
-                .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"));
+                .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"), any(byte[].class));
     }
 
     private static Batch batch(UUID id, long schoolId, String status, int readyCount) {

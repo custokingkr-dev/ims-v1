@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class PhotoImportService {
-    private static final long MAX_IMAGE_BYTES = 5L * 1024 * 1024;
+    private static final long MAX_SOURCE_IMAGE_BYTES = 20L * 1024 * 1024;
     private static final int EXECUTION_CHUNK_SIZE = 10;
     private static final Map<String, Integer> ROMAN_CLASSES = Map.ofEntries(
             Map.entry("I", 1), Map.entry("II", 2), Map.entry("III", 3),
@@ -64,6 +64,8 @@ public class PhotoImportService {
                 "schools", repository.allowedSchools().stream().map(this::schoolContext).toList(),
                 "mappingColumns", List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"),
                 "mappingFileFormats", List.of("XLSX", "XLS", "CSV", "TSV"),
+                "mappingRowLimit", PhotoImportWorkbookParser.MAX_ROWS,
+                "imageFileLimit", "20 MB per image; stored portraits are reduced to JPEG",
                 "fileNameRule", "DSC5236.jpg, DSC_05236.JPG, or _DSC4521.jpeg");
     }
 
@@ -320,8 +322,14 @@ public class PhotoImportService {
                         && !row.sourceChecksum().equals(currentChecksum)) {
                     throw new IllegalArgumentException("Source image changed after review");
                 }
-                byte[] bytes = drive.download(source, MAX_IMAGE_BYTES);
-                repository.applyPhoto(batch, row, bytes, source.mimeType());
+                byte[] sourceBytes = drive.download(source, MAX_SOURCE_IMAGE_BYTES);
+                byte[] normalized = photoStorage.normalizePortrait(
+                        sourceBytes,
+                        source.mimeType(),
+                        row.cropX(),
+                        row.cropY(),
+                        MAX_SOURCE_IMAGE_BYTES);
+                repository.applyPhoto(batch, row, sourceBytes, source.mimeType(), normalized);
             } catch (Exception ex) {
                 repository.markRowFailed(row.id(), schoolId, ex.getMessage());
             }
@@ -340,10 +348,11 @@ public class PhotoImportService {
         }
         DriveFile source = repository.sourceFile(batchId, schoolId, row.driveFileId());
         byte[] normalized = photoStorage.normalizePortrait(
-                drive.download(source, MAX_IMAGE_BYTES),
+                drive.download(source, MAX_SOURCE_IMAGE_BYTES),
                 source.mimeType(),
                 row.cropX(),
-                row.cropY());
+                row.cropY(),
+                MAX_SOURCE_IMAGE_BYTES);
         return new Preview(normalized, "image/jpeg");
     }
 
@@ -406,9 +415,9 @@ public class PhotoImportService {
                     "Multiple Drive images match ImageNo " + canonicalImageNo, null);
         }
         DriveFile image = images.getFirst();
-        if (image.size() != null && image.size() > MAX_IMAGE_BYTES) {
+        if (image.size() != null && image.size() > MAX_SOURCE_IMAGE_BYTES) {
             return input(row, canonicalImageNo, image, null, "ERROR",
-                    image.name() + " is larger than 5 MB", null);
+                    image.name() + " is larger than 20 MB", null);
         }
         StudentMatch student = repository.studentByAdmission(
                         batch.schoolId(), batch.academicYearId(), admissionNo)
