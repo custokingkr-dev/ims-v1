@@ -267,6 +267,7 @@ jobs:
               --project="$env:GCP_PROJECT_ID" `
               --region="$env:GCP_REGION" `
               --delivery-pipeline="$pipeline" `
+              --to-target="$name-$targetEnv" `
               --skaffold-file=deploy/skaffold.yaml `
               --images="$($entry.Image)=$digestRef" `
               --deploy-parameters="git_sha=$sha" `

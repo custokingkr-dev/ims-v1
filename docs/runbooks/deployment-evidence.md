@@ -29,6 +29,7 @@ release-evidence/
 - Cloud Deploy pipeline
 - Cloud Deploy release id
 - first target
+- initial rollout target
 
 Rollback workflows upload their own evidence artifacts:
 

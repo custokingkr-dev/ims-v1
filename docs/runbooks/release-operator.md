@@ -6,8 +6,8 @@ Status: CI/CD v2 implementation runbook.
 
 ```text
 PR -> CI / PR
-dev  -> CD / Deploy branch environment -> dev Cloud Deploy releases
-main -> CD / Deploy branch environment -> prod Cloud Deploy releases
+dev  -> CD / Deploy branch environment -> dev Cloud Deploy releases + rollouts
+main -> CD / Deploy branch environment -> prod Cloud Deploy releases + rollouts
      -> prod canary 5, 25, 50, then stable
 ```
 
@@ -43,7 +43,7 @@ The stage target templates exist in source, but stage is not active until a real
 3. The workflow builds and pushes all service images to Artifact Registry using `sha-<commit>` tags.
 4. The workflow resolves each image digest.
 5. The workflow renders the dev Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
-6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-dev`.
+6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-dev` and starts the initial rollout to `<service>-dev`.
 7. Cloud Deploy deploys each release to `dev`.
 8. The workflow uploads `release-evidence`.
 
@@ -54,13 +54,13 @@ The stage target templates exist in source, but stage is not active until a real
 3. The workflow requires the GitHub `prod` Environment approval gate when configured.
 4. The workflow builds and pushes the `main` commit images using immutable `sha-<commit>` tags.
 5. The workflow renders the prod Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
-6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-prod`.
+6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-prod` and starts the initial rollout to `<service>-prod`.
 7. Cloud Deploy deploys each release to `prod`.
 
 Cloud Deploy then uses the prod target canary:
 
 ```text
-5 percent -> 25 percent -> 100 percent
+5 percent -> 25 percent -> 50 percent -> stable
 ```
 
 ## Service Order
