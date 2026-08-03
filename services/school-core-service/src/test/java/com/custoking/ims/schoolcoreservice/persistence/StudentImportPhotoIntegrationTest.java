@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -177,6 +178,43 @@ class StudentImportPhotoIntegrationTest {
                 .query(String.class)
                 .single();
         assertThat(stored).isEqualTo(key);
+    }
+
+    @Test
+    void workspaceStudents_doesNotSignPhotoUrlsForListRows() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        Long studentId = jdbc.sql("""
+                        INSERT INTO student.students
+                            (admission_no, roll_no, full_name, gender, father_name, father_contact,
+                             phone, fee_status, attendance_percent, photo_url, created_at, updated_at,
+                             school_id, class_id, section_id, academic_year_id)
+                        VALUES
+                            ('PHOTO-LIST-1', '1', 'Photo List Student', 'Female', '', '',
+                             '9876543210', 'Pending', 0, 'schools/school-1/students/1/photos/photo.jpg', now(), now(),
+                             :schoolId, 'c1', :sectionId, 'ay1')
+                        RETURNING id
+                        """)
+                .param("schoolId", schoolId)
+                .param("sectionId", schoolId + "-c1-A")
+                .query(Long.class)
+                .single();
+        StudentPhotoStorage photoStorage = mock(StudentPhotoStorage.class);
+        when(photoStorage.toDisplayUrl("schools/school-1/students/1/photos/photo.jpg"))
+                .thenReturn("https://signed.example/photo.jpg");
+        StudentReadRepository studentRepo = new StudentReadRepository(
+                jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> workspace = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, false);
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> items = (List<Map<String, Object>>) workspace.get("items");
+        assertThat(items).singleElement().satisfies(row -> assertThat(row.get("photoUrl")).isNull());
+        verify(photoStorage, never()).toDisplayUrl(anyString());
+
+        Map<String, Object> detail = studentRepo.workspaceStudentDetail(studentId);
+
+        assertThat(detail.get("photoUrl")).isEqualTo("https://signed.example/photo.jpg");
+        verify(photoStorage).toDisplayUrl("schools/school-1/students/1/photos/photo.jpg");
     }
 
     @Test

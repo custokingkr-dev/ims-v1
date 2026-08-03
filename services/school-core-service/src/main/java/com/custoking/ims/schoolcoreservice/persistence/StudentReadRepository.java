@@ -183,7 +183,7 @@ public class StudentReadRepository {
                     "name", fullName,
                     "fullName", fullName,
                     "avatarInitials", initials(fullName),
-                    "photoUrl", photoStorage.toDisplayUrl(rs.getString("photo_url")),
+                    "photoUrl", null,
                     "className", classLabel,
                     "sectionName", sectionLabel,
                     "classSection", classLabel.replace("Class ", "") + (sectionLabel.isBlank() ? "" : "-" + sectionLabel),
