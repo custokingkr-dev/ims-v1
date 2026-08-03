@@ -48,6 +48,10 @@ Thumbs.db
 # Local dot-c tool state
 .c*/
 
+# Terraform local working directories
+**/.terraform/
+*.tfplan
+
 # Coverage and test reports
 coverage/
 playwright-report/

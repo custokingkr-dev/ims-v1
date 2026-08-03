@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-03.
 
-Status: design approved in-repo; current active CI/CD entrypoints are intentionally retired.
+Status: CI/CD v2 implementation files are present in-repo. Cloud resources must be imported/applied before the workflows are allowed to deploy production.
 
 ## Current Decision
 
@@ -25,6 +25,8 @@ The replacement is a split-brain-on-purpose model:
 - Cloud Run stays the runtime platform.
 - Artifact Registry stores immutable images.
 - GitHub Environments and Google IAM decide who can promote what.
+
+Implementation note: Google Cloud Deploy's Cloud Run target model supports one Cloud Run service, job, or worker pool per target. The implementation therefore uses one Cloud Deploy delivery pipeline per service, each with `dev`, `stage`, and `prod` targets. GitHub Actions coordinates the fleet order across those service pipelines.
 
 ## North Star
 
@@ -155,8 +157,8 @@ Recommended naming:
 
 - Cloud Run services: `custoking-<service>-<env>`
 - Artifact Registry repo: `custoking`
-- Delivery pipeline: `custoking-release`
-- Cloud Deploy targets: `dev`, `stage`, `prod`
+- Delivery pipelines: `custoking-<service>`
+- Cloud Deploy targets: `<service>-dev`, `<service>-stage`, `<service>-prod`
 - Runtime service accounts: `custoking-<service>-runtime-<env>@...`
 - Deployment service accounts: `custoking-cd-renderer-<env>@...`, `custoking-cd-deployer-<env>@...`
 
@@ -179,11 +181,10 @@ Create these files in the new implementation phase:
 
 deploy/
   clouddeploy/
-    delivery-pipeline.yaml
-    target-dev.yaml
-    target-stage.yaml
-    target-prod.yaml
-    verification.yaml
+    delivery-pipelines.yaml
+    targets-dev.yaml
+    targets-stage.yaml
+    targets-prod.yaml
   skaffold.yaml
   cloudrun/
     identity-service.yaml
@@ -309,19 +310,19 @@ Actions:
 
 ## Cloud Deploy Design
 
-Use one delivery pipeline:
+Use one delivery pipeline per service because Cloud Deploy Cloud Run targets support one Cloud Run service, job, or worker pool per target.
 
 ```text
-custoking-release: dev -> stage -> prod
+custoking-school-core-service: school-core-service-dev -> school-core-service-stage -> school-core-service-prod
+custoking-identity-service: identity-service-dev -> identity-service-stage -> identity-service-prod
+custoking-operations-service: operations-service-dev -> operations-service-stage -> operations-service-prod
+custoking-billing-service: billing-service-dev -> billing-service-stage -> billing-service-prod
+custoking-platform-service: platform-service-dev -> platform-service-stage -> platform-service-prod
+custoking-api-gateway: api-gateway-dev -> api-gateway-stage -> api-gateway-prod
+custoking-frontend: frontend-dev -> frontend-stage -> frontend-prod
 ```
 
-Use Cloud Deploy targets:
-
-```text
-dev
-stage
-prod
-```
+GitHub Actions coordinates multi-service release order across these pipelines.
 
 Use Skaffold render with raw Cloud Run service manifests. Each manifest contains stable runtime configuration such as:
 

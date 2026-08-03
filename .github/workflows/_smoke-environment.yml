@@ -1,0 +1,56 @@
+name: Reusable / Smoke environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+      gateway_url:
+        required: false
+        type: string
+        default: ""
+      run_gateway_smoke:
+        required: false
+        type: boolean
+        default: true
+      run_direct_smoke:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      SMOKE_SUPERADMIN_EMAIL:
+        required: false
+      SMOKE_SUPERADMIN_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gateway health smoke
+        if: ${{ inputs.run_gateway_smoke }}
+        shell: pwsh
+        env:
+          GATEWAY_URL: ${{ inputs.gateway_url }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:GATEWAY_URL)) {
+            throw "gateway_url is required when run_gateway_smoke=true"
+          }
+          $health = Invoke-RestMethod -Uri "$($env:GATEWAY_URL.TrimEnd('/'))/gateway-health" -TimeoutSec 30
+          if ($health.status -ne "UP") {
+            throw "Gateway health is not UP: $($health | ConvertTo-Json -Compress)"
+          }
+          @{ environment = '${{ inputs.environment }}'; gateway = $env:GATEWAY_URL; status = $health.status; checkedAtUtc = (Get-Date).ToUniversalTime().ToString("o") } |
+            ConvertTo-Json -Depth 5 | Set-Content -Path smoke-${{ inputs.environment }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-${{ inputs.environment }}
+          path: smoke-${{ inputs.environment }}.json
+          if-no-files-found: ignore

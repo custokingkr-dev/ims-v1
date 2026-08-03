@@ -1,0 +1,121 @@
+name: CI / PR
+
+on:
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: read
+
+concurrency:
+  group: ci-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect:
+    uses: ./.github/workflows/_detect-changes.yml
+    with:
+      base_ref: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+
+  service-test:
+    needs: detect
+    if: ${{ needs.detect.outputs.has_service_changes == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.service_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        if: ${{ matrix.tool == 'maven' }}
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - uses: actions/setup-node@v4
+        if: ${{ matrix.tool != 'maven' }}
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+      - name: Install Node dependencies
+        if: ${{ matrix.tool != 'maven' }}
+        working-directory: ${{ matrix.path }}
+        run: npm ci --include=dev
+      - name: Run Maven tests
+        if: ${{ matrix.tool == 'maven' }}
+        working-directory: ${{ matrix.path }}
+        run: mvn -B test --no-transfer-progress
+      - name: Run gateway tests
+        if: ${{ matrix.tool == 'node' }}
+        working-directory: ${{ matrix.path }}
+        run: node --test server.test.js
+      - name: Run frontend tests and build
+        if: ${{ matrix.tool == 'npm' }}
+        working-directory: ${{ matrix.path }}
+        run: |
+          npm audit --audit-level=critical
+          npm test
+          npm run build
+
+  docker-build:
+    needs: detect
+    if: ${{ needs.detect.outputs.has_service_changes == 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.docker_matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        shell: pwsh
+        run: |
+          $imageRef = "ci/${{ matrix.image }}:${{ github.sha }}"
+          $args = @("buildx", "build", "--load", "--tag", $imageRef)
+          $buildArgs = @'
+          ${{ matrix.build_args }}
+          '@ -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+          foreach ($buildArg in $buildArgs) {
+            $args += @("--build-arg", $buildArg.Trim())
+          }
+          $args += "${{ matrix.context }}"
+          docker @args
+          "IMAGE_REF=$imageRef" >> $env:GITHUB_ENV
+      - name: Trivy critical gate
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.IMAGE_REF }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    needs: [detect, service-test, docker-build, secret-scan]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Write summary
+        run: |
+          {
+            echo "## CI PR Summary"
+            echo ""
+            echo "- Service changes: ${{ needs.detect.outputs.has_service_changes }}"
+            echo "- Service tests: ${{ needs.service-test.result }}"
+            echo "- Docker builds: ${{ needs.docker-build.result }}"
+            echo "- Secret scan: ${{ needs.secret-scan.result }}"
+          } >> "$GITHUB_STEP_SUMMARY"

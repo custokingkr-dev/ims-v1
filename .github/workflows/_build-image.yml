@@ -1,0 +1,80 @@
+name: Reusable / Build image
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        required: true
+        type: string
+      context:
+        required: true
+        type: string
+      tag:
+        required: true
+        type: string
+      push:
+        required: false
+        type: boolean
+        default: false
+      build_args:
+        required: false
+        type: string
+        default: ""
+      registry:
+        required: false
+        type: string
+        default: ""
+    outputs:
+      image_ref:
+        value: ${{ jobs.build.outputs.image_ref }}
+      digest:
+        value: ${{ jobs.build.outputs.digest }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.meta.outputs.image_ref }}
+      digest: ${{ steps.digest.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        shell: pwsh
+        run: |
+          $imageRef = if ('${{ inputs.registry }}') {
+            '${{ inputs.registry }}/${{ inputs.image_name }}:${{ inputs.tag }}'
+          } else {
+            '${{ inputs.image_name }}:${{ inputs.tag }}'
+          }
+          $args = @('buildx', 'build', '--tag', $imageRef)
+          if ('${{ inputs.push }}' -eq 'true') {
+            $args += '--push'
+          } else {
+            $args += '--load'
+          }
+          $buildArgs = @'
+          ${{ inputs.build_args }}
+          '@ -split "`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+          foreach ($buildArg in $buildArgs) {
+            $args += @('--build-arg', $buildArg.Trim())
+          }
+          $args += '${{ inputs.context }}'
+          docker @args
+          "IMAGE_REF=$imageRef" >> $env:GITHUB_ENV
+      - name: Capture image ref
+        id: meta
+        run: echo "image_ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+      - name: Resolve digest
+        id: digest
+        shell: bash
+        run: |
+          if [[ '${{ inputs.push }}' == 'true' ]]; then
+            digest="$(docker buildx imagetools inspect "${IMAGE_REF}" --format '{{.Manifest.Digest}}')"
+            echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+          else
+            echo "digest=" >> "$GITHUB_OUTPUT"
+          fi

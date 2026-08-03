@@ -79,9 +79,9 @@ Required follow-up:
 
 - Either create/update the custom role and cut over IAM, or update docs/source to reflect the intentional predefined-role model.
 
-### CI/CD v2 Is Designed But Not Implemented
+### CI/CD v2 Repo Implementation Needs Cloud-Side Apply
 
-The former active CI/CD files and `cloudbuild.yaml` were retired on 2026-08-03. The replacement architecture is documented in:
+The former active CI/CD files and `cloudbuild.yaml` were retired on 2026-08-03. The replacement GitHub Actions, Cloud Deploy YAML, Skaffold config, Cloud Run manifests, Terraform foundation, and runbooks are now present in source. The architecture and implementation notes are documented in:
 
 ```text
 docs/current-state/deployment-cicd.md
@@ -89,27 +89,36 @@ docs/current-state/deployment-cicd.md
 
 Impact:
 
-- New commits will not be deployed by the retired GitHub Actions/Cloud Build path.
-- The next deployable implementation must add GitHub Actions, Cloud Deploy, Skaffold, Cloud Run manifests, WIF/IAM, smoke verification, evidence, and rollback as described in the v2 plan.
+- New commits should use the new v2 workflows after the Terraform imports/apply and GitHub variables are completed.
+- Stage promotion is intentionally blocked by `STAGE_DB_HOST_REQUIRED:5432` until a real stage database and stage secrets exist.
+- Production promotion should not be used until Cloud Deploy targets/pipelines are applied and GitHub `prod` Environment protection is verified.
 
 Required follow-up:
 
-- Implement Phase 1 foundation from the v2 plan.
-- Reintroduce PR CI before reintroducing deployment automation.
+- Import existing WIF and Artifact Registry resources into `infra/terraform/cicd`.
+- Apply the CI/CD Terraform module.
+- Set GitHub variables from Terraform outputs.
+- Apply Cloud Deploy YAML through the `CD / Build release and deploy dev` workflow or with `gcloud deploy apply`.
+- Provision a real stage database and `-stage` Secret Manager secrets before promoting to stage.
 - Do not restore the old `cloudbuild.yaml` deployment path unless there is a documented emergency reason.
 
-### Terraform CLI Not Found on Current PATH
+### Terraform CLI Availability Was Repaired For This Shell
 
-`Get-Command terraform` returned no command in the current PowerShell environment.
+`Get-Command terraform` now resolves to:
+
+```text
+C:\Users\Shubham-Work\AppData\Local\Microsoft\WinGet\Packages\Hashicorp.Terraform_Microsoft.Winget.Source_8wekyb3d8bbwe\terraform.exe
+```
 
 Impact:
 
-- Terraform source is present, and live observability resources exist, but this shell cannot currently run `terraform plan/apply`.
+- The new CI/CD Terraform module can be formatted and validated locally.
+- Observability Terraform can also be planned from this shell if credentials are available.
 
 Required follow-up:
 
-- Add Terraform to PATH or document the installed location.
-- Re-run `terraform -chdir=deploy/gcp/observability plan` for dev and prod.
+- Keep Terraform available on operator machines.
+- Re-run `terraform -chdir=deploy/gcp/observability plan` for dev and prod when changing observability resources.
 
 ## Documentation Drift
 

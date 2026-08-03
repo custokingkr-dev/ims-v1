@@ -1,0 +1,43 @@
+name: Security / Container scan
+
+on:
+  schedule:
+    - cron: "30 20 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: identity-service, context: services/identity-service, image: custoking-identity-service }
+          - { name: school-core-service, context: services/school-core-service, image: custoking-school-core-service }
+          - { name: operations-service, context: services/operations-service, image: custoking-operations-service }
+          - { name: platform-service, context: services/platform-service, image: custoking-platform-service }
+          - { name: billing-service, context: services/billing-service, image: custoking-billing-service }
+          - { name: frontend, context: frontend, image: custoking-frontend }
+          - { name: api-gateway, context: services/api-gateway, image: custoking-api-gateway }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build local image
+        run: docker buildx build --load --tag security/${{ matrix.image }}:${{ github.sha }} ${{ matrix.context }}
+      - name: Trivy SARIF
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: security/${{ matrix.image }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "0"
+          format: sarif
+          output: trivy-${{ matrix.name }}.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ matrix.name }}.sarif

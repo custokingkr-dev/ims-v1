@@ -1,0 +1,244 @@
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: identity-service-dev
+  labels: {app: custoking-ims, env: dev, service: identity-service}
+description: identity-service dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: school-core-service-dev
+  labels: {app: custoking-ims, env: dev, service: school-core-service}
+description: school-core-service dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: operations-service-dev
+  labels: {app: custoking-ims, env: dev, service: operations-service}
+description: operations-service dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: platform-service-dev
+  labels: {app: custoking-ims, env: dev, service: platform-service}
+description: platform-service dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: billing-service-dev
+  labels: {app: custoking-ims, env: dev, service: billing-service}
+description: billing-service dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: api-gateway-dev
+  labels: {app: custoking-ims, env: dev, service: api-gateway}
+description: api-gateway dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2
+---
+apiVersion: deploy.cloud.google.com/v1
+kind: Target
+metadata:
+  name: frontend-dev
+  labels: {app: custoking-ims, env: dev, service: frontend}
+description: frontend dev Cloud Run target
+deployParameters:
+  env: dev
+  project_id: custoking
+  region: asia-south2
+  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  db_host: 10.92.0.4:5432
+  db_name: custoking_dev
+  domain_min_instances: "0"
+  domain_max_instances: "2"
+  gateway_min_instances: "0"
+  gateway_max_instances: "3"
+  frontend_max_instances: "2"
+  vpc_network: default
+  vpc_subnet: default
+  vpc_egress: private-ranges-only
+  otel_sample: "0.05"
+  reporting_topic: ims-reporting-events-v1
+  photo_import_drive_root_folder_id: 1_2YNstuksCBWBmEwDgYXJ7e15u7inrrQ
+  frontend_url: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app
+  gateway_url: https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app
+  identity_url: https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app
+  school_core_url: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app
+  operations_url: https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app
+  platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
+  billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
+requireApproval: false
+run:
+  location: projects/custoking/locations/asia-south2

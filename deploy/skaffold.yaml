@@ -1,0 +1,38 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+metadata:
+  name: custoking-cloud-run
+manifests:
+  rawYaml:
+    - cloudrun/identity-service.yaml
+deploy:
+  cloudrun: {}
+profiles:
+  - name: identity-service
+    manifests:
+      rawYaml:
+        - cloudrun/identity-service.yaml
+  - name: school-core-service
+    manifests:
+      rawYaml:
+        - cloudrun/school-core-service.yaml
+  - name: operations-service
+    manifests:
+      rawYaml:
+        - cloudrun/operations-service.yaml
+  - name: platform-service
+    manifests:
+      rawYaml:
+        - cloudrun/platform-service.yaml
+  - name: billing-service
+    manifests:
+      rawYaml:
+        - cloudrun/billing-service.yaml
+  - name: api-gateway
+    manifests:
+      rawYaml:
+        - cloudrun/api-gateway.yaml
+  - name: frontend
+    manifests:
+      rawYaml:
+        - cloudrun/frontend.yaml
