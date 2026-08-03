@@ -107,10 +107,18 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: Apply Cloud Deploy configuration
+        env:
+          DEV_DB_HOST: ${{ vars.DEV_DB_HOST }}
+          DEV_DB_NAME: ${{ vars.DEV_DB_NAME }}
+          DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+          PROD_DB_HOST: ${{ vars.PROD_DB_HOST }}
+          PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
+          PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
         run: |
-          gcloud deploy apply --file deploy/clouddeploy/targets-dev.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
-          gcloud deploy apply --file deploy/clouddeploy/targets-stage.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
-          gcloud deploy apply --file deploy/clouddeploy/targets-prod.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/render-clouddeploy-targets.ps1 -Environment dev -OutputPath artifacts/clouddeploy/targets-dev.rendered.yaml
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/render-clouddeploy-targets.ps1 -Environment prod -OutputPath artifacts/clouddeploy/targets-prod.rendered.yaml
+          gcloud deploy apply --file artifacts/clouddeploy/targets-dev.rendered.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
+          gcloud deploy apply --file artifacts/clouddeploy/targets-prod.rendered.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
           gcloud deploy apply --file deploy/clouddeploy/delivery-pipelines.yaml --project="${GCP_PROJECT_ID}" --region="${GCP_REGION}"
 
       - name: Create ordered Cloud Deploy releases

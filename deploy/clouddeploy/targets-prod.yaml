@@ -9,8 +9,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -21,7 +21,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
@@ -44,8 +44,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -56,7 +56,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
@@ -79,8 +79,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -91,7 +91,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
@@ -114,8 +114,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -126,7 +126,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
@@ -149,8 +149,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -161,7 +161,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
@@ -184,8 +184,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -196,7 +196,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
@@ -219,8 +219,8 @@ deployParameters:
   project_id: custoking
   region: asia-south2
   runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
-  db_host: 10.92.0.5:5432
-  db_name: custoking_prod
+  db_host: __DB_HOST__
+  db_name: __DB_NAME__
   domain_min_instances: "0"
   domain_max_instances: "2"
   gateway_min_instances: "0"
@@ -231,7 +231,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
-  photo_import_drive_root_folder_id: 1ibK-z3PwHto3Ho-gxgTvAlXu8eatmSTX
+  photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
   identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app

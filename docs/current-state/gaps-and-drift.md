@@ -90,7 +90,7 @@ docs/current-state/deployment-cicd.md
 Impact:
 
 - New commits should use the new v2 workflows after the Terraform imports/apply and GitHub variables are completed.
-- Stage promotion is intentionally blocked by `STAGE_DB_HOST_REQUIRED:5432` until a real stage database and stage secrets exist.
+- Stage target templates exist, but stage promotion is not active until a real stage database, GitHub Environment, and `-stage` secrets exist.
 - Production promotion should not be used until Cloud Deploy targets/pipelines are applied and GitHub `prod` Environment protection is verified.
 
 Required follow-up:

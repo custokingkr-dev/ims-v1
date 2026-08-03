@@ -21,7 +21,7 @@ on:
         description: Target environment to roll back.
         required: true
         type: choice
-        options: [dev, stage, prod]
+        options: [dev, prod]
       release_id:
         description: Optional release to roll back to. Empty means last successful release.
         required: false
@@ -58,10 +58,16 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
       - name: Roll back selected targets
         shell: pwsh
+        env:
+          DB_HOST: ${{ vars.DB_HOST }}
+          DB_NAME: ${{ vars.DB_NAME }}
+          STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
         run: |
           $ErrorActionPreference = "Stop"
           $requested = '${{ inputs.service }}'
           $envName = '${{ inputs.environment }}'
+          ./scripts/render-clouddeploy-targets.ps1 -Environment $envName -OutputPath "artifacts/clouddeploy/targets-$envName.rendered.yaml"
+          gcloud deploy apply --file="artifacts/clouddeploy/targets-$envName.rendered.yaml" --project="$env:GCP_PROJECT_ID" --region="$env:GCP_REGION"
           $services = if ($requested -eq 'all') {
             @("frontend", "api-gateway", "platform-service", "billing-service", "operations-service", "identity-service", "school-core-service")
           } else {

@@ -5,14 +5,10 @@ metadata:
   labels:
     app: custoking-ims
     service: identity-service
-description: identity-service dev -> stage -> prod Cloud Run delivery
+description: identity-service dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: identity-service-dev
-      profiles: [identity-service]
-      strategy:
-        standard: {}
-    - targetId: identity-service-stage
       profiles: [identity-service]
       strategy:
         standard: {}
@@ -33,14 +29,10 @@ metadata:
   labels:
     app: custoking-ims
     service: school-core-service
-description: school-core-service dev -> stage -> prod Cloud Run delivery
+description: school-core-service dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: school-core-service-dev
-      profiles: [school-core-service]
-      strategy:
-        standard: {}
-    - targetId: school-core-service-stage
       profiles: [school-core-service]
       strategy:
         standard: {}
@@ -61,14 +53,10 @@ metadata:
   labels:
     app: custoking-ims
     service: operations-service
-description: operations-service dev -> stage -> prod Cloud Run delivery
+description: operations-service dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: operations-service-dev
-      profiles: [operations-service]
-      strategy:
-        standard: {}
-    - targetId: operations-service-stage
       profiles: [operations-service]
       strategy:
         standard: {}
@@ -89,14 +77,10 @@ metadata:
   labels:
     app: custoking-ims
     service: platform-service
-description: platform-service dev -> stage -> prod Cloud Run delivery
+description: platform-service dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: platform-service-dev
-      profiles: [platform-service]
-      strategy:
-        standard: {}
-    - targetId: platform-service-stage
       profiles: [platform-service]
       strategy:
         standard: {}
@@ -117,14 +101,10 @@ metadata:
   labels:
     app: custoking-ims
     service: billing-service
-description: billing-service dev -> stage -> prod Cloud Run delivery
+description: billing-service dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: billing-service-dev
-      profiles: [billing-service]
-      strategy:
-        standard: {}
-    - targetId: billing-service-stage
       profiles: [billing-service]
       strategy:
         standard: {}
@@ -145,14 +125,10 @@ metadata:
   labels:
     app: custoking-ims
     service: api-gateway
-description: api-gateway dev -> stage -> prod Cloud Run delivery
+description: api-gateway dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: api-gateway-dev
-      profiles: [api-gateway]
-      strategy:
-        standard: {}
-    - targetId: api-gateway-stage
       profiles: [api-gateway]
       strategy:
         standard: {}
@@ -173,14 +149,10 @@ metadata:
   labels:
     app: custoking-ims
     service: frontend
-description: frontend dev -> stage -> prod Cloud Run delivery
+description: frontend dev -> prod Cloud Run delivery
 serialPipeline:
   stages:
     - targetId: frontend-dev
-      profiles: [frontend]
-      strategy:
-        standard: {}
-    - targetId: frontend-stage
       profiles: [frontend]
       strategy:
         standard: {}

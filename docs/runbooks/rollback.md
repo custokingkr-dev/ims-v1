@@ -20,7 +20,7 @@ Use:
 ```text
 Actions -> CD / Rollback target
 service: all or one service
-environment: dev | stage | prod
+environment: dev | prod
 release_id: optional
 reason: required incident reason
 ```

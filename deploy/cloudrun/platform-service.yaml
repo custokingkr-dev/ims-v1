@@ -50,11 +50,11 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: prod
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://127.0.0.1:5432/custoking_dev # from-param: jdbc:postgresql://${db_host}/${db_name}
+              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
             - name: SPRING_DATASOURCE_USERNAME
               value: app_rt
             - name: FLYWAY_URL
-              value: jdbc:postgresql://127.0.0.1:5432/custoking_dev # from-param: jdbc:postgresql://${db_host}/${db_name}
+              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
             - name: FLYWAY_USERNAME
               value: appuser
             - name: PLATFORM_DB_SCHEMA

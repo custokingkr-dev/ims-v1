@@ -8,7 +8,6 @@ Status: CI/CD v2 implementation runbook.
 PR -> CI / PR -> main -> CD / Build release and deploy dev
    -> Cloud Deploy releases per service
    -> dev
-   -> manual promote stage
    -> manual promote prod
    -> prod canary 5, 25, 100
 ```
@@ -27,13 +26,15 @@ custoking-api-gateway
 custoking-frontend
 ```
 
-Each pipeline has three targets:
+Each active pipeline has two targets:
 
 ```text
-<service>-dev -> <service>-stage -> <service>-prod
+<service>-dev -> <service>-prod
 ```
 
 GitHub Actions is responsible for coordinated fleet order. Cloud Deploy is responsible for each service's target progression and prod canary rollout.
+
+The stage target templates exist in source, but stage is not active until a real `stage` GitHub Environment, stage database, and `-stage` GCP secrets exist.
 
 ## Normal Release
 
@@ -41,32 +42,10 @@ GitHub Actions is responsible for coordinated fleet order. Cloud Deploy is respo
 2. GitHub Actions runs `CD / Build release and deploy dev`.
 3. The workflow builds and pushes all service images to Artifact Registry using `sha-<commit>` tags.
 4. The workflow resolves each image digest.
-5. The workflow applies Cloud Deploy target/pipeline YAML.
+5. The workflow renders dev/prod Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
 6. The workflow creates one Cloud Deploy release per service.
 7. Cloud Deploy deploys each release to the first target, `dev`.
 8. The workflow uploads `release-evidence`.
-
-## Promote To Stage
-
-Use GitHub Actions:
-
-```text
-Actions -> CD / Promote release
-service: all
-target: stage
-release_id: empty
-reason: <why this release is ready for stage>
-```
-
-Leaving `release_id` empty promotes the latest release for each selected service.
-
-Stage currently has a deliberate placeholder:
-
-```text
-STAGE_DB_HOST_REQUIRED:5432
-```
-
-Do not promote to stage until a real stage database and `-stage` secrets exist.
 
 ## Promote To Prod
 
