@@ -104,6 +104,24 @@ class StudentReadControllerTest {
     }
 
     @Test
+    void studentPhotoContentReturnsPrivateCacheableImage() {
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
+        byte[] body = "jpeg-data".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        when(students.schoolIdForStudentIncludingDeleted(42L)).thenReturn(10L);
+        when(students.studentPhotoContent(42L))
+                .thenReturn(Optional.of(new StudentReadRepository.StudentPhotoContent(body, "image/jpeg")));
+
+        ResponseEntity<byte[]> response = controller.studentPhotoContent("student-token", 42L);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(org.springframework.http.MediaType.IMAGE_JPEG);
+        assertThat(response.getHeaders().getCacheControl()).contains("private", "max-age");
+        assertThat(response.getHeaders().getVary()).contains("Authorization");
+        assertThat(response.getBody()).isEqualTo(body);
+        verify(students).studentPhotoContent(42L);
+    }
+
+    @Test
     void legacyImportTemplateReturnsDownloadResponse() {
         TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:import")));
 

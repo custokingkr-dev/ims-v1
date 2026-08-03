@@ -30,6 +30,7 @@ import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -173,6 +174,26 @@ public class StudentPhotoStorage {
         } catch (Exception ex) {
             log.warn("Failed to sign student photo URL for key {}: {}", stored, ex.toString());
             return null;
+        }
+    }
+
+    public Optional<StoredPhoto> readStoredPhoto(String stored) {
+        if (!StringUtils.hasText(stored) || stored.startsWith("http://") || stored.startsWith("https://")) {
+            return Optional.empty();
+        }
+        if (!isEnabled()) {
+            return Optional.empty();
+        }
+        try {
+            var blob = storage().get(bucket, stored);
+            if (blob == null || !blob.exists()) {
+                return Optional.empty();
+            }
+            String contentType = StringUtils.hasText(blob.getContentType()) ? blob.getContentType() : "image/jpeg";
+            return Optional.of(new StoredPhoto(blob.getContent(), contentType));
+        } catch (RuntimeException ex) {
+            log.warn("Failed to read student photo for key {}: {}", stored, ex.toString());
+            return Optional.empty();
         }
     }
 
@@ -355,6 +376,8 @@ public class StudentPhotoStorage {
     public static String sha256Hex(byte[] data) {
         return sha256(data == null ? new byte[0] : data);
     }
+
+    public record StoredPhoto(byte[] data, String contentType) {}
 
     static String studentPhotoObjectKey(String schoolStorageId, long studentId, byte[] resized) {
         String folder = requireStorageFolder(schoolStorageId);
