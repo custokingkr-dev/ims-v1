@@ -368,7 +368,7 @@ class PhotoImportServiceTest {
     }
 
     @Test
-    void executeProcessesAtMostTenReadyRowsPerRequest() {
+    void executeProcessesOneReadyRowPerRequest() {
         UUID batchId = UUID.randomUUID();
         long schoolId = 7L;
         TenantContext.set(new TenantContext(
@@ -416,10 +416,10 @@ class PhotoImportServiceTest {
         Batch result = service.execute(batchId);
 
         assertThat(result.status()).isEqualTo("EXECUTING");
-        verify(drive, org.mockito.Mockito.times(10)).download(any(DriveFile.class), anyLong());
-        verify(storage, org.mockito.Mockito.times(10)).normalizePortrait(
+        verify(drive, org.mockito.Mockito.times(1)).download(any(DriveFile.class), anyLong());
+        verify(storage, org.mockito.Mockito.times(1)).normalizePortrait(
                 any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024));
-        verify(repository, org.mockito.Mockito.times(10))
+        verify(repository, org.mockito.Mockito.times(1))
                 .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"), any(byte[].class));
     }
 
