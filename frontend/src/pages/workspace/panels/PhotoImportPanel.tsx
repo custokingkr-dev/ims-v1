@@ -198,8 +198,8 @@ export function PhotoImportPanel() {
     }
   };
 
-  const loadDetail = async (id: string) => {
-    setBusy('detail');
+  const refreshDetail = async (id: string, options: { resetFilter?: boolean; showBusy?: boolean; showError?: boolean } = {}) => {
+    if (options.showBusy) setBusy('detail');
     try {
       const response = await api.get<{ batch: ImportBatch; rows: ImportRow[]; access: AccessState }>(
         `/student-photo-imports/${id}`,
@@ -208,11 +208,21 @@ export function PhotoImportPanel() {
       setBatch(response.data.batch);
       setRows(response.data.rows || []);
       setAccess(response.data.access || null);
-      setFilter('ALL');
+      if (options.resetFilter) setFilter('ALL');
+      return response.data.batch;
     } catch (error) {
-      setNotice({ tone: 'bad', text: errorMessage(error) });
+      if (options.showError !== false) setNotice({ tone: 'bad', text: errorMessage(error) });
+      throw error;
     } finally {
-      setBusy('');
+      if (options.showBusy) setBusy('');
+    }
+  };
+
+  const loadDetail = async (id: string) => {
+    try {
+      await refreshDetail(id, { resetFilter: true, showBusy: true });
+    } catch {
+      // refreshDetail already surfaced the error to the user.
     }
   };
 
@@ -234,6 +244,15 @@ export function PhotoImportPanel() {
   useEffect(() => {
     setExecutionConfirmed(false);
   }, [batch?.id, batch?.status]);
+
+  useEffect(() => {
+    if (!batch || batch.status !== 'EXECUTING') return undefined;
+    const intervalId = window.setInterval(() => {
+      void refreshDetail(batch.id, { showError: false }).catch(() => undefined);
+      void loadBatches(batch.schoolId);
+    }, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [batch?.id, batch?.schoolId, batch?.status]);
 
   const createBatch = async () => {
     if (!selectedSchool) return;
@@ -311,22 +330,12 @@ export function PhotoImportPanel() {
         undefined,
         action === 'execute' ? PHOTO_IMPORT_REQUEST_CONFIG : undefined,
       );
-      const refreshExecution = async () => {
-        const response = await api.get<{ batch: ImportBatch; rows: ImportRow[]; access: AccessState }>(
-          `/student-photo-imports/${batch.id}`,
-          PHOTO_IMPORT_REQUEST_CONFIG,
-        );
-        setBatch(response.data.batch);
-        setRows(response.data.rows || []);
-        setAccess(response.data.access || null);
-        return response.data.batch;
-      };
       let current: ImportBatch;
       try {
         current = (await postAction()).data;
       } catch (error) {
         if (action !== 'execute' || !isTimeoutError(error)) throw error;
-        current = await refreshExecution();
+        current = await refreshDetail(batch.id, { showError: false });
       }
       while (action === 'execute' && current.status === 'EXECUTING') {
         setBatch(current);
@@ -334,7 +343,7 @@ export function PhotoImportPanel() {
           current = (await postAction()).data;
         } catch (error) {
           if (!isTimeoutError(error)) throw error;
-          current = await refreshExecution();
+          current = await refreshDetail(batch.id, { showError: false });
         }
       }
       await loadDetail(batch.id);
