@@ -500,6 +500,54 @@ public class StudentReadController {
         return students.fullNameVerificationStatus(scope);
     }
 
+    @PostMapping("/reviews/profile/initiate")
+    public Map<String, Object> initiateProfileVerification(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> req) {
+        requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Map<String, Object> params = req == null ? new HashMap<>() : new HashMap<>(req);
+        params.put("actorId", TenantContext.get().userId());
+        applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
+        return execute(() -> students.initiateProfileVerification(params));
+    }
+
+    @GetMapping("/reviews/profile/status")
+    public Map<String, Object> profileVerificationStatus(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestParam Long schoolId) {
+        requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
+        return students.profileVerificationStatus(scope);
+    }
+
+    @PostMapping("/reviews/photo/initiate")
+    public Map<String, Object> initiatePhotoVerification(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> req) {
+        requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Map<String, Object> params = req == null ? new HashMap<>() : new HashMap<>(req);
+        params.put("actorId", TenantContext.get().userId());
+        applyResolvedSchool(params);
+        requireStudentModule(longValue(params.get("schoolId")));
+        return execute(() -> students.initiatePhotoVerification(params));
+    }
+
+    @GetMapping("/reviews/photo/status")
+    public Map<String, Object> photoVerificationStatus(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestParam Long schoolId) {
+        requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
+        return students.photoVerificationStatus(scope);
+    }
+
     @PostMapping("/reviews/items/{itemId}")
     public Map<String, Object> updateReviewItem(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,

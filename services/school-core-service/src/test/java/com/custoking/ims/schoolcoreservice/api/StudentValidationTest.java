@@ -267,4 +267,39 @@ class StudentValidationTest {
                 .andExpect(status().isBadRequest());
         verify(repo).initiateFullNameVerification(anyMap());
     }
+
+    @Test
+    void initiateProfileVerification_valid_callsRepositoryWithExpectedKeys() throws Exception {
+        when(repo.initiateProfileVerification(anyMap())).thenReturn(Map.of("campaignId", "profile-1"));
+        mvc.perform(post("/api/v1/students/reviews/profile/initiate")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"schoolId\":4,\"actorId\":10,\"dueDate\":\"2026-08-01\"}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).initiateProfileVerification(captor.capture());
+        Map<String, Object> captured = captor.getValue();
+        assertEquals(4L, captured.get("schoolId"));
+        assertEquals(1L, captured.get("actorId"));
+        assertEquals("2026-08-01", captured.get("dueDate"));
+    }
+
+    @Test
+    void initiatePhotoVerification_valid_callsRepositoryWithExpectedKeys() throws Exception {
+        when(repo.initiatePhotoVerification(anyMap())).thenReturn(Map.of("campaignId", "photo-1"));
+        mvc.perform(post("/api/v1/students/reviews/photo/initiate")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"schoolId\":4,\"actorId\":10}"))
+                .andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(repo).initiatePhotoVerification(captor.capture());
+        Map<String, Object> captured = captor.getValue();
+        assertEquals(4L, captured.get("schoolId"));
+        assertEquals(1L, captured.get("actorId"));
+    }
 }

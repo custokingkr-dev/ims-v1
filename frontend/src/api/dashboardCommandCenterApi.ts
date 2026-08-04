@@ -9,6 +9,7 @@ import type {
   SendEventPaymentRemindersResult,
   IdCardReviewStatusResponse,
   FullNameVerificationStatusResponse,
+  StudentVerificationStatusResponse,
   ReviewItemDetail,
   InitiateIdCardReviewRequest,
   InitiateFullNameVerificationRequest,
@@ -101,6 +102,42 @@ export async function initiateFullNameVerification(
 ): Promise<FullNameVerificationStatusResponse> {
   const res = await api.post<FullNameVerificationStatusResponse>(
     '/students/reviews/full-name/initiate',
+    request
+  );
+  return res.data;
+}
+
+export async function fetchProfileVerificationStatus(schoolId: number): Promise<StudentVerificationStatusResponse> {
+  const res = await api.get<StudentVerificationStatusResponse>(
+    '/students/reviews/profile/status',
+    { params: { schoolId } }
+  );
+  return res.data;
+}
+
+export async function initiateProfileVerification(
+  request: InitiateIdCardReviewRequest
+): Promise<StudentVerificationStatusResponse> {
+  const res = await api.post<StudentVerificationStatusResponse>(
+    '/students/reviews/profile/initiate',
+    request
+  );
+  return res.data;
+}
+
+export async function fetchPhotoVerificationStatus(schoolId: number): Promise<StudentVerificationStatusResponse> {
+  const res = await api.get<StudentVerificationStatusResponse>(
+    '/students/reviews/photo/status',
+    { params: { schoolId } }
+  );
+  return res.data;
+}
+
+export async function initiatePhotoVerification(
+  request: InitiateIdCardReviewRequest
+): Promise<StudentVerificationStatusResponse> {
+  const res = await api.post<StudentVerificationStatusResponse>(
+    '/students/reviews/photo/initiate',
     request
   );
   return res.data;

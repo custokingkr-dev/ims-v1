@@ -1472,6 +1472,68 @@ public class StudentReadRepository {
     }
 
     @Transactional
+    public Map<String, Object> initiateProfileVerification(Map<String, Object> request) {
+        return initiateStudentVerification(
+                request,
+                "PROFILE_VERIFICATION",
+                "Profile Verification",
+                "An active Profile Verification campaign already exists for this school");
+    }
+
+    @Transactional
+    public Map<String, Object> initiatePhotoVerification(Map<String, Object> request) {
+        return initiateStudentVerification(
+                request,
+                "PHOTO_VERIFICATION",
+                "Photo Verification",
+                "An active Photo Verification campaign already exists for this school");
+    }
+
+    private Map<String, Object> initiateStudentVerification(
+            Map<String, Object> request, String reviewType, String titlePrefix, String duplicateMessage) {
+        Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
+        Long actorId = longValue(request.get("actorId"), null);
+        Long active = jdbc.sql("""
+                        SELECT COUNT(*)
+                        FROM student.student_review_campaigns
+                        WHERE school_id = :schoolId AND review_type = :reviewType AND status = 'ACTIVE'
+                        """)
+                .param("schoolId", schoolId)
+                .param("reviewType", reviewType)
+                .query(Long.class)
+                .single();
+        if (active != null && active > 0) {
+            throw new IllegalArgumentException(duplicateMessage);
+        }
+        String academicYearId = currentAcademicYearId(schoolId);
+        String academicYearLabel = jdbc.sql("SELECT label FROM tenant_school.academic_years WHERE id = :id")
+                .param("id", academicYearId)
+                .query(String.class)
+                .optional()
+                .orElse(academicYearId);
+        String campaignId = UUID.randomUUID().toString();
+        jdbc.sql("""
+                        INSERT INTO student.student_review_campaigns
+                            (id, school_id, academic_year_id, review_type, title, status, initiated_by,
+                             initiated_at, due_date, created_at, updated_at)
+                        VALUES
+                            (:id, :schoolId, :academicYearId, :reviewType, :title, 'ACTIVE', :actorId,
+                             now(), :dueDate, now(), now())
+                        """)
+                .param("id", campaignId)
+                .param("schoolId", schoolId)
+                .param("academicYearId", academicYearId)
+                .param("reviewType", reviewType)
+                .param("title", titlePrefix + " - " + academicYearLabel)
+                .param("actorId", actorId)
+                .param("dueDate", parseDate(str(request.get("dueDate"), "")))
+                .update();
+        insertReviewItems(campaignId, schoolId, stringList(request.get("classIds")),
+                stringList(request.get("sectionIds")), longValue(request.get("assignedToUserId"), null));
+        return reviewStatus(campaignId);
+    }
+
+    @Transactional
     public Map<String, Object> updateReviewItem(String itemId, Map<String, Object> request) {
         requireCampaignEditable(itemId);
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
@@ -1491,13 +1553,20 @@ public class StudentReadRepository {
         String correctionNotes = request.containsKey("correctionNotes")
                 ? str(request.get("correctionNotes"), null)
                 : (String) current.get("correctionNotes");
+        String reviewType = reviewTypeForItem(itemId);
         String status = str(request.get("status"), null);
         if (status == null || status.isBlank()) {
             boolean hasCorrection = correctionNotes != null && !correctionNotes.isBlank();
-            boolean allRequired = verifiedPhoto && verifiedFullName && verifiedAdmissionNo && verifiedClassSection
-                    && verifiedRollNo && verifiedFatherName && verifiedFatherContact && verifiedAddress;
+            boolean allRequired = switch (reviewType) {
+                case "PHOTO_VERIFICATION" -> verifiedPhoto;
+                case "PROFILE_VERIFICATION" -> verifiedFullName && verifiedAdmissionNo && verifiedClassSection
+                        && verifiedRollNo && verifiedFatherName && verifiedFatherContact && verifiedAddress;
+                default -> verifiedPhoto && verifiedFullName && verifiedAdmissionNo && verifiedClassSection
+                        && verifiedRollNo && verifiedFatherName && verifiedFatherContact && verifiedAddress;
+            };
             status = hasCorrection ? "NEEDS_CORRECTION" : allRequired ? "COMPLETED" : (String) current.get("status");
         }
+        boolean correctionRequested = "NEEDS_CORRECTION".equals(status);
         jdbc.sql("""
                         UPDATE student.student_review_items
                         SET verified_photo = :verifiedPhoto,
@@ -1509,9 +1578,10 @@ public class StudentReadRepository {
                             verified_father_contact = :verifiedFatherContact,
                             verified_address = :verifiedAddress,
                             verified_blood_group = :verifiedBloodGroup,
+                            correction_requested = :correctionRequested,
                             correction_notes = :correctionNotes,
                             status = :status,
-                            completed_at = CASE WHEN :status = 'COMPLETED' THEN now() ELSE completed_at END,
+                            completed_at = CASE WHEN :status = 'COMPLETED' THEN COALESCE(completed_at, now()) ELSE NULL END,
                             updated_at = now()
                         WHERE id = :itemId AND school_id = :schoolId
                         """)
@@ -1526,6 +1596,7 @@ public class StudentReadRepository {
                 .param("verifiedFatherContact", verifiedFatherContact)
                 .param("verifiedAddress", verifiedAddress)
                 .param("verifiedBloodGroup", verifiedBloodGroup)
+                .param("correctionRequested", correctionRequested)
                 .param("correctionNotes", correctionNotes)
                 .param("status", status)
                 .update();
@@ -1635,9 +1706,9 @@ public class StudentReadRepository {
         outbox.append("student-review-campaign.completed.v1", "StudentReviewCampaignCompleted:" + campaignId,
                 "StudentReviewCampaign", campaignId, schoolId,
                 row("campaignId", campaignId, "schoolId", schoolId, "status", "COMPLETED"));
-        return "ID_CARD_DETAILS".equals(campaign.get("reviewType"))
-                ? idCardStatus(campaignId)
-                : fullNameStatus(campaignId);
+        return "FULL_NAME_VERIFICATION".equals(campaign.get("reviewType"))
+                ? fullNameStatus(campaignId)
+                : reviewStatus(campaignId);
     }
 
     /** Rejects a mutation when the item's owning campaign is COMPLETED (frozen archive). */
@@ -1746,6 +1817,18 @@ public class StudentReadRepository {
                         "completionPercent", 0.0));
     }
 
+    public Map<String, Object> profileVerificationStatus(Long schoolId) {
+        return activeReviewCampaign(schoolId, "PROFILE_VERIFICATION")
+                .map(this::reviewStatus)
+                .orElseGet(this::emptyReviewStatus);
+    }
+
+    public Map<String, Object> photoVerificationStatus(Long schoolId) {
+        return activeReviewCampaign(schoolId, "PHOTO_VERIFICATION")
+                .map(this::reviewStatus)
+                .orElseGet(this::emptyReviewStatus);
+    }
+
     public List<ReviewItemRow> reviewItems(String campaignId, Long schoolId, String status, int limit) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, campaign_id, student_id, school_id, assigned_to_user_id, status,
@@ -1790,7 +1873,8 @@ public class StudentReadRepository {
                 .param("schoolId", schoolId);
         var listSpec = jdbc.sql("""
                         SELECT i.id, i.student_id, s.full_name, s.admission_no, c.name AS class_name,
-                               sec.name AS section_name, i.current_full_name, i.suggested_full_name,
+                               sec.name AS section_name, s.photo_url,
+                               i.current_full_name, i.suggested_full_name,
                                i.status, i.verified_photo, i.verified_full_name, i.verified_admission_no,
                                i.verified_class_section, i.verified_roll_no, i.verified_father_name,
                                i.verified_father_contact, i.verified_address, i.verified_blood_group,
@@ -1825,6 +1909,7 @@ public class StudentReadRepository {
                         "admissionNo", rs.getString("admission_no"),
                         "className", rs.getString("class_name"),
                         "sectionName", rs.getString("section_name"),
+                        "photoUrl", photoReference(rs.getLong("student_id"), rs.getString("photo_url")),
                         "currentFullName", rs.getString("current_full_name"),
                         "suggestedFullName", rs.getString("suggested_full_name"),
                         "status", rs.getString("status"),
@@ -2126,14 +2211,9 @@ public class StudentReadRepository {
     }
 
     private Map<String, Object> idCardStatus(String campaignId) {
-        ReviewCounts counts = reviewCounts(campaignId);
-        return row("campaignId", campaignId,
-                "totalStudents", counts.total(),
-                "completed", counts.completed(),
-                "pending", counts.pending(),
-                "needsCorrection", counts.needsCorrection(),
-                "completionPercent", counts.percent(),
-                "classWiseStatus", List.of());
+        Map<String, Object> status = reviewStatus(campaignId);
+        status.put("classWiseStatus", List.of());
+        return status;
     }
 
     private Map<String, Object> fullNameStatus(String campaignId) {
@@ -2144,6 +2224,26 @@ public class StudentReadRepository {
                 "correctionRequested", counts.needsCorrection(),
                 "pending", counts.pending(),
                 "completionPercent", counts.percent());
+    }
+
+    private Map<String, Object> reviewStatus(String campaignId) {
+        ReviewCounts counts = reviewCounts(campaignId);
+        return row("campaignId", campaignId,
+                "totalStudents", counts.total(),
+                "completed", counts.completed(),
+                "pending", counts.pending(),
+                "needsCorrection", counts.needsCorrection(),
+                "completionPercent", counts.percent());
+    }
+
+    private Map<String, Object> emptyReviewStatus() {
+        return row(
+                "campaignId", null,
+                "totalStudents", 0,
+                "completed", 0,
+                "pending", 0,
+                "needsCorrection", 0,
+                "completionPercent", 0.0);
     }
 
     private Optional<String> activeReviewCampaign(Long schoolId, String reviewType) {
@@ -2188,7 +2288,8 @@ public class StudentReadRepository {
     private Optional<Map<String, Object>> reviewItemDetail(String itemId, Long schoolId) {
         return jdbc.sql("""
                         SELECT i.id, i.student_id, s.full_name, s.admission_no, c.name AS class_name,
-                               sec.name AS section_name, i.current_full_name, i.suggested_full_name,
+                               sec.name AS section_name, s.photo_url,
+                               i.current_full_name, i.suggested_full_name,
                                i.status, i.verified_photo, i.verified_full_name, i.verified_admission_no,
                                i.verified_class_section, i.verified_roll_no, i.verified_father_name,
                                i.verified_father_contact, i.verified_address, i.verified_blood_group,
@@ -2209,6 +2310,7 @@ public class StudentReadRepository {
                         "admissionNo", rs.getString("admission_no"),
                         "className", rs.getString("class_name"),
                         "sectionName", rs.getString("section_name"),
+                        "photoUrl", photoReference(rs.getLong("student_id"), rs.getString("photo_url")),
                         "currentFullName", rs.getString("current_full_name"),
                         "suggestedFullName", rs.getString("suggested_full_name"),
                         "status", rs.getString("status"),
@@ -2252,6 +2354,19 @@ public class StudentReadRepository {
                         "verifiedBloodGroup", rs.getBoolean("verified_blood_group"),
                         "correctionNotes", rs.getString("correction_notes")))
                 .single();
+    }
+
+    private String reviewTypeForItem(String itemId) {
+        return jdbc.sql("""
+                        SELECT c.review_type
+                        FROM student.student_review_items i
+                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                        WHERE i.id = :itemId
+                        """)
+                .param("itemId", itemId)
+                .query(String.class)
+                .optional()
+                .orElse("");
     }
 
     private ImportValidation validatePreviewRow(Map<String, Object> normalized, Long schoolId, List<Integer> duplicateAdmissionRows) {

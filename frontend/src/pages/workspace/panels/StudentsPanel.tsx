@@ -19,11 +19,14 @@ import { formatAddress, formatPaise } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 import { StudentModuleTabs } from './StudentModuleTabs';
+import { StudentVerificationDrawer } from './StudentVerificationDrawer';
 import {
   Archive,
   ArrowUpRight,
+  ClipboardCheck,
   Eye,
   FileSpreadsheet,
+  Image,
   Pencil,
   Search,
   Trash2,
@@ -117,6 +120,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [promotionBatch, setPromotionBatch] = useState<PromotionBatch | null>(null);
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
+  const [verificationMode, setVerificationMode] = useState<'profile' | 'photo' | null>(null);
   const studentsRequestId = useRef(0);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode, search = studentSearch) => {
@@ -630,6 +634,24 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 Archived
               </button>
             </div>
+            {can('student:update') && schoolScopedParams && studentListMode === 'active' ? (
+              <div className="ck-actions-inline ck-student-verification-actions" aria-label="Student verification actions">
+                <button
+                  type="button"
+                  className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label"
+                  onClick={() => setVerificationMode('profile')}
+                >
+                  <ClipboardCheck size={14} aria-hidden="true" />Verify profiles
+                </button>
+                <button
+                  type="button"
+                  className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label"
+                  onClick={() => setVerificationMode('photo')}
+                >
+                  <Image size={14} aria-hidden="true" />Verify photos
+                </button>
+              </div>
+            ) : null}
             <select
               value={studentFilters.className}
               onChange={e => applyFilters({ ...studentFilters, className: e.target.value, sectionName: 'All' })}
@@ -810,6 +832,19 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           onPageChange={handlePageChange}
         />
       </ModuleShell>
+
+      {verificationMode ? (
+        <StudentVerificationDrawer
+          open={!!verificationMode}
+          mode={verificationMode}
+          schoolId={schoolScopedParams!.schoolId}
+          onClose={() => setVerificationMode(null)}
+          onChanged={() => {
+            onRefresh();
+            void loadStudents(studentFilters, studentsPage, studentListMode, studentSearch);
+          }}
+        />
+      ) : null}
 
       {studentModalOpen && (
         <div className="ck-modal-bg" onClick={closeStudentModal}>

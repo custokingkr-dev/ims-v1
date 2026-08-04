@@ -189,6 +189,15 @@ export interface FullNameVerificationStatusResponse {
   completionPercent: number;
 }
 
+export interface StudentVerificationStatusResponse {
+  campaignId: string | null;
+  totalStudents: number;
+  completed: number;
+  pending: number;
+  needsCorrection: number;
+  completionPercent: number;
+}
+
 export interface ReviewItemDetail {
   itemId: string;
   studentId: number;
@@ -196,6 +205,7 @@ export interface ReviewItemDetail {
   admissionNo: string;
   className: string;
   sectionName: string;
+  photoUrl?: string | null;
   currentFullName: string | null;
   suggestedFullName: string | null;
   status: 'PENDING' | 'COMPLETED' | 'NEEDS_CORRECTION';
@@ -216,6 +226,7 @@ export interface ReviewItemDetail {
 }
 
 export interface InitiateIdCardReviewRequest {
+  schoolId?: number | null;
   classIds?: string[] | null;
   sectionIds?: string[] | null;
   dueDate?: string | null;
@@ -223,6 +234,7 @@ export interface InitiateIdCardReviewRequest {
 }
 
 export interface InitiateFullNameVerificationRequest {
+  schoolId?: number | null;
   classIds?: string[] | null;
   sectionIds?: string[] | null;
   verifier: 'TEACHER' | 'PARENT' | 'BOTH';
