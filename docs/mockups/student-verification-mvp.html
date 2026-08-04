@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Verification MVP Mockup</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #657180;
+      --line: #d8dee8;
+      --surface: #ffffff;
+      --soft: #f5f7fa;
+      --brand: #275d50;
+      --brand-weak: #e6f1ed;
+      --warn: #8a5b10;
+      --warn-weak: #fff4d8;
+      --bad: #a33a32;
+      --bad-weak: #fdebea;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #eef2f5;
+      color: var(--ink);
+    }
+    .app {
+      max-width: 1180px;
+      margin: 24px auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+    .brand { font-weight: 700; }
+    .school { color: var(--muted); font-size: 14px; }
+    .layout {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 700px;
+    }
+    .side {
+      border-right: 1px solid var(--line);
+      background: #f8fafb;
+      padding: 14px;
+    }
+    .nav {
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+    }
+    .nav button {
+      border: 0;
+      background: transparent;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      font: inherit;
+    }
+    .nav .active {
+      color: var(--ink);
+      background: var(--brand-weak);
+      font-weight: 600;
+    }
+    main { padding: 18px; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    h1 { margin: 0 0 4px; font-size: 24px; letter-spacing: 0; }
+    .sub { color: var(--muted); font-size: 14px; }
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      padding: 9px 12px;
+      border-radius: 6px;
+      font: inherit;
+      font-weight: 600;
+    }
+    .btn.primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: white;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: var(--surface);
+    }
+    .stat strong { display: block; font-size: 24px; }
+    .stat span { color: var(--muted); font-size: 13px; }
+    .filters {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px;
+      background: var(--soft);
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+    select, input, textarea {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 9px 10px;
+      font: inherit;
+      background: white;
+    }
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(310px, 0.95fr) minmax(420px, 1.35fr);
+      gap: 14px;
+    }
+    .queue, .detail {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .queue-head, .detail-head {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: #fbfcfd;
+    }
+    .rows { display: grid; }
+    .row {
+      width: 100%;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: white;
+      text-align: left;
+      padding: 12px 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      font: inherit;
+    }
+    .row.active { background: var(--brand-weak); }
+    .student-name { font-weight: 650; }
+    .meta { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 24px;
+      border-radius: 999px;
+      padding: 0 9px;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
+    .pending { background: var(--bad-weak); color: var(--bad); }
+    .needs { background: var(--warn-weak); color: var(--warn); }
+    .verified { background: var(--brand-weak); color: var(--brand); }
+    .detail-body { padding: 16px; }
+    .review-top {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+    .photo {
+      aspect-ratio: 3 / 4;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 50% 30%, #d7aa82 0 19%, transparent 20%),
+        radial-gradient(circle at 50% 78%, #314f63 0 36%, transparent 37%),
+        linear-gradient(#dfe7eb, #f7f8f9);
+    }
+    .fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .field {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 10px;
+      min-height: 64px;
+    }
+    .label { color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .value { font-weight: 600; overflow-wrap: anywhere; }
+    .checks {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 12px 0;
+    }
+    .check {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfd;
+      font-weight: 600;
+    }
+    .correction {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    @media (max-width: 860px) {
+      .layout, .workspace, .review-top { grid-template-columns: 1fr; }
+      .side { border-right: 0; border-bottom: 1px solid var(--line); }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .photo { max-width: 170px; }
+    }
+    @media (max-width: 520px) {
+      .app { margin: 0; border-radius: 0; }
+      .header, .topbar { flex-direction: column; align-items: stretch; }
+      .stats, .fields, .checks { grid-template-columns: 1fr; }
+      .actions { flex-direction: column; }
+      .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">Custoking IMS</div>
+      <div class="school">Neo Schol Aizza High School / AY 2026-27</div>
+    </div>
+    <div class="layout">
+      <aside class="side">
+        <div class="school">Workspace</div>
+        <div class="nav">
+          <button>Students</button>
+          <button class="active">Verification</button>
+          <button>Student photo import</button>
+          <button>Attendance</button>
+          <button>Fees</button>
+        </div>
+      </aside>
+      <main>
+        <div class="header">
+          <div>
+            <h1>Student verification</h1>
+            <div class="sub">Profile and photo checks for current students.</div>
+          </div>
+          <button class="btn primary">Complete campaign</button>
+        </div>
+        <section class="stats" aria-label="Campaign summary">
+          <div class="stat"><strong>600</strong><span>Total students</span></div>
+          <div class="stat"><strong>548</strong><span>Verified</span></div>
+          <div class="stat"><strong>39</strong><span>Pending</span></div>
+          <div class="stat"><strong>13</strong><span>Needs correction</span></div>
+        </section>
+        <section class="filters" aria-label="Review filters">
+          <select aria-label="Class"><option>All classes</option><option>Class 8</option></select>
+          <select aria-label="Section"><option>All sections</option><option>Section A</option></select>
+          <select aria-label="Status"><option>Pending first</option><option>Needs correction</option><option>Verified</option></select>
+          <input aria-label="Search student" placeholder="Search name or admission no.">
+        </section>
+        <section class="workspace">
+          <div class="queue">
+            <div class="queue-head">
+              <strong>Review queue</strong>
+              <span class="sub">52 remaining</span>
+            </div>
+            <div class="rows">
+              <button class="row active">
+                <span><span class="student-name">Aarav Mehta</span><span class="meta">ADM-0831 / 8 A / Roll 14</span></span>
+                <span class="pill pending">Pending</span>
+              </button>
+              <button class="row">
+                <span><span class="student-name">Sara Khan</span><span class="meta">ADM-0832 / 8 A / Roll 15</span></span>
+                <span class="pill needs">Needs correction</span>
+              </button>
+              <button class="row">
+                <span><span class="student-name">Kabir Sharma</span><span class="meta">ADM-0833 / 8 A / Roll 16</span></span>
+                <span class="pill verified">Verified</span>
+              </button>
+              <button class="row">
+                <span><span class="student-name">Zoya Ali</span><span class="meta">ADM-0834 / 8 B / Roll 05</span></span>
+                <span class="pill pending">Pending</span>
+              </button>
+            </div>
+          </div>
+          <div class="detail">
+            <div class="detail-head">
+              <strong>Aarav Mehta</strong>
+              <span class="pill pending">Pending</span>
+            </div>
+            <div class="detail-body">
+              <div class="review-top">
+                <div class="photo" role="img" aria-label="Student portrait preview"></div>
+                <div class="fields">
+                  <div class="field"><div class="label">Admission number</div><div class="value">ADM-0831</div></div>
+                  <div class="field"><div class="label">Class / section</div><div class="value">8 A</div></div>
+                  <div class="field"><div class="label">Roll number</div><div class="value">14</div></div>
+                  <div class="field"><div class="label">Father contact</div><div class="value">+91 98xxxx3210</div></div>
+                  <div class="field"><div class="label">Blood group</div><div class="value">B+</div></div>
+                  <div class="field"><div class="label">Address</div><div class="value">Shahpur, Ahmedabad</div></div>
+                </div>
+              </div>
+              <div class="checks">
+                <label class="check"><input type="checkbox"> Profile fields match school record</label>
+                <label class="check"><input type="checkbox"> Photo belongs to this student</label>
+                <label class="check"><input type="checkbox"> Photo is clear and centered</label>
+                <label class="check"><input type="checkbox"> Ready for ID card</label>
+              </div>
+              <div class="correction">
+                <select aria-label="Correction reason">
+                  <option>No correction needed</option>
+                  <option>Wrong student photo</option>
+                  <option>Low quality photo</option>
+                  <option>Name or admission number issue</option>
+                  <option>Parent contact or address issue</option>
+                </select>
+                <textarea rows="3" aria-label="Correction notes" placeholder="Correction note, required only when a correction is requested."></textarea>
+              </div>
+              <div class="actions">
+                <button class="btn">Request correction</button>
+                <button class="btn primary">Save review</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
