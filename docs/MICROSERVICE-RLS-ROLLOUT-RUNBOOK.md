@@ -6,6 +6,8 @@
 
 ---
 
+> Historical topology note, updated 2026-08-04: this runbook preserves Phase 1 RLS rollout details and logical domain service names. Current runtime services are consolidated into `school-core-service`, `operations-service`, `platform-service`, `identity-service`, and `billing-service`; current deployments use GitHub Actions plus Cloud Deploy.
+
 ## 1. Overview
 
 PostgreSQL Row-Level Security (RLS) has been enabled as a database-enforced tenant-isolation backstop on the cleanly-scoped tables (all have NOT-NULL `school_id`) in three services:

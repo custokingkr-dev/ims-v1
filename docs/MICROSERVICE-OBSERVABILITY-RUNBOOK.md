@@ -157,7 +157,8 @@ with Application Default Credentials and sets:
 - `x-goog-user-project: <GOOGLE_CLOUD_QUOTA_PROJECT|GCP_PROJECT|GOOGLE_CLOUD_PROJECT>`
 
 Cloud Run must also provide `GOOGLE_CLOUD_QUOTA_PROJECT=custoking` and the OTLP
-endpoint/protocol env vars from `cloudbuild.yaml`. Terraform grants the runtime
+endpoint/protocol env vars from the Cloud Run manifests rendered by Cloud Deploy.
+Terraform grants the runtime
 service account `roles/cloudtrace.agent`, `roles/telemetry.tracesWriter`, and
 `roles/serviceusage.serviceUsageConsumer`.
 

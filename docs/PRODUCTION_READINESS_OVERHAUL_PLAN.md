@@ -3,6 +3,8 @@
 > Historical snapshot: this document records the pre-greenfield `custoking-ims`
 > environment as it existed on 2026-06-26. Do not use the project names,
 > service account names, or bucket names in this file for current deployment.
+> Updated 2026-08-04: current deployment behavior is documented in
+> `docs/current-state/deployment-cicd.md`; Cloud Build entries below are historical.
 
 Generated: 2026-06-26
 

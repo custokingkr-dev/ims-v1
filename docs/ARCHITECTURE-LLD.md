@@ -5,9 +5,11 @@
 ```text
 frontend/                 React/Vite SPA
 services/api-gateway/     nginx gateway
-services/*-service/       Domain microservices
+services/*-service/       Consolidated domain services
 scripts/                  Audits, smokes, deployment checks
-deploy/gcp/               GCP runbooks and Cloud Run job manifests
+deploy/clouddeploy/       Cloud Deploy pipelines and targets
+deploy/cloudrun/          Cloud Run service manifests
+deploy/gcp/               GCP support files and Cloud Run job manifests
 docs/                     Architecture, contracts, runbooks
 docker-compose.yml        Local split-service topology
 ```
@@ -20,19 +22,20 @@ docker-compose.yml        Local split-service topology
 
 ## Service Contracts
 
-| Gateway route group | Header | Owning service |
+| Gateway route group | Header | Owning runtime service |
 | --- | --- | --- |
 | Identity client | `X-Identity-Service-Token` | `identity-service` |
-| Tenant school client | `X-Tenant-School-Token` | `tenant-school-service` |
-| Student client | `X-Student-Service-Token` | `student-service` |
-| Attendance client | `X-Attendance-Service-Token` | `attendance-service` |
-| Fee client | `X-Fee-Service-Token` | `fee-service` |
-| Catalog client | `X-Catalog-Service-Token` | `catalog-service` |
-| Workflow client | `X-Workflow-Service-Token` | `workflow-service` |
-| Firefighting client | `X-Firefighting-Service-Token` | `firefighting-service` |
-| Reporting client | `X-Reporting-Service-Token` | `reporting-service` |
+| Tenant school client | `X-Tenant-School-Token` | `school-core-service` |
+| Student client | `X-Student-Service-Token` | `school-core-service` |
+| Attendance client | `X-Attendance-Service-Token` | `school-core-service` |
+| Fee client | `X-Fee-Service-Token` | `school-core-service` |
+| Catalog client | `X-Catalog-Service-Token` | `school-core-service` |
+| Workflow client | `X-Workflow-Service-Token` | `operations-service` |
+| Firefighting client | `X-Firefighting-Service-Token` | `operations-service` |
+| Reporting client | `X-Reporting-Service-Token` | `platform-service` |
 | Billing client | `X-Billing-Service-Token` | `billing-service` |
-| Audit client | `X-Audit-Ingest-Token` | `audit-service` |
+| Notification client | `X-Notification-Service-Token` | `platform-service` |
+| Audit client | `X-Audit-Ingest-Token` | `platform-service` |
 
 ## Database Design
 
@@ -59,7 +62,7 @@ Domain services expose synchronous compatibility APIs today. Event publishing re
 
 ## MSG91 Notification Design
 
-Notification delivery is centralized in `notification-service`.
+Notification delivery is centralized in `platform-service`.
 
 - Custoking-shared launch mode sends email from tenant aliases such as `school@custoking.com`.
 - WhatsApp uses Custoking-managed MSG91 setup initially.
@@ -68,7 +71,7 @@ Notification delivery is centralized in `notification-service`.
 
 ## Cloud Run Configuration
 
-Service containers use Java 21 with constrained JVM memory. Cloud Run services are private except the frontend/API gateway. Domain services need:
+Service containers use Java 25 with constrained JVM memory. Cloud Run services are private except the frontend/API gateway. Domain services need:
 
 - `SPRING_DATASOURCE_URL`
 - `SPRING_DATASOURCE_USERNAME`

@@ -15,7 +15,7 @@ All externally published outbox messages use a canonical JSON envelope as Pub/Su
   "aggregateId": "123",
   "occurredAt": "2026-06-25T12:34:56Z",
   "publishedAttempt": 1,
-  "producer": "backend",
+  "producer": "school-core-service",
   "tenantId": "optional",
   "schoolId": "optional",
   "actorUserId": "optional",
@@ -39,7 +39,7 @@ All externally published outbox messages use a canonical JSON envelope as Pub/Su
 
 ## Notification Compatibility
 
-`notification-service` accepts both:
+`platform-service` notification ingress accepts both:
 
 - legacy raw notification payload message data;
 - canonical envelope message data with the notification request under `payload`.
@@ -48,7 +48,7 @@ The service stores the unwrapped notification payload in `notification_inbox_eve
 
 ## Reporting Ingress
 
-`reporting-service` accepts Pub/Sub-wrapped canonical envelope messages and direct canonical envelope payloads at:
+`platform-service` reporting ingress accepts Pub/Sub-wrapped canonical envelope messages and direct canonical envelope payloads at:
 
 ```text
 POST /api/v1/pubsub/reporting-events
@@ -56,7 +56,7 @@ POST /api/v1/pubsub/reporting-events
 
 The endpoint stores events idempotently in `reporting.reporting_event_inbox` by `eventId`. `ReportingEventInboxProcessor` drains `RECEIVED` rows into `reporting.command_center_feed` with `source_type = EVENT_INBOX` and `source_id = eventId`, so feed projection is also idempotent.
 
-Local compose routes these event type prefixes to reporting-service:
+Local compose routes these event type prefixes to the reporting handlers in `platform-service`:
 
 - `fees.`
 - `attendance.`
@@ -67,4 +67,4 @@ Local compose routes these event type prefixes to reporting-service:
 - `schools.`
 - `identity.`
 
-`notifications.` remains routed to notification-service.
+`notifications.` remains routed to the notification handlers in `platform-service`.

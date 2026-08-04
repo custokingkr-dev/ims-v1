@@ -1,5 +1,7 @@
 # Microservices Completion Plan
 
+> Historical note, updated 2026-08-04: this plan includes older Cloud Build deployment assumptions. Current deployment behavior is GitHub Actions plus Cloud Deploy; see `docs/current-state/deployment-cicd.md`.
+
 ## Current State
 
 The repository is physically split into backend/BFF, frontend, API gateway, and extracted services for identity, tenant-school, student, attendance, fee, catalog, workflow, firefighting, reporting, billing, notification, and audit.

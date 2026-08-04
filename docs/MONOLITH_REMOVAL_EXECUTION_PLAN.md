@@ -2,6 +2,8 @@
 
 Date: 2026-06-26
 
+> Historical note, updated 2026-08-04: this execution plan preserves older migration commands and file references, including retired Cloud Build paths. Use current-state docs for present deployment behavior.
+
 This document is an execution playbook for safely and completely removing the remaining monolithic backend code from this repository after the domain services have been physically extracted. It is written for a high-context coding agent and should be followed as an implementation plan, not as background reading.
 
 ## Objective

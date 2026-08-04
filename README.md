@@ -11,7 +11,7 @@ Detailed architecture docs:
 - [Event Envelope Contract](docs/EVENT-ENVELOPE-CONTRACT.md)
 - [Local Setup](docs/LOCAL-SETUP.md)
 - [Logical E2E Tests](docs/LOGICAL-E2E-TESTS.md)
-- [GCP Deployment Runbook](deploy/gcp/README.md)
+- [GCP Support Files](deploy/gcp/README.md)
 - [MSG91 Production Setup](docs/MSG91-PRODUCTION-SETUP.md)
 
 Runtime topology:
@@ -255,35 +255,30 @@ npm run build
 
 ## Deployment
 
-GitHub Actions deployment:
+Current deployment is branch-owned:
 
-1. Open **Actions -> Deploy to GCP**.
-2. Choose `prod` or `dev`.
-3. Leave `commit_sha` empty to deploy the workflow commit, or provide an image tag.
-4. Choose `deploy_services`; default `frontend` deploys one service only.
-5. Choose `all` only for an approved full fleet rollout.
+- push to `dev` deploys dev.
+- push to `main` deploys prod through the protected GitHub `prod` Environment.
+- manual dispatch of **CD / Deploy branch environment** must run from the branch that owns the selected environment.
 
-Each deploy writes a visual GitHub Actions summary and uploads `deployment-evidence/`,
-including the Mermaid deploy flow, stage timings, Cloud Build ID/log URL, smoke gate
-durations, and current Cloud Run revisions. See `docs/current-state/deployment-cicd.md`
-for the detailed CI/CD model.
+The workflow builds all seven deployable units, creates Cloud Deploy releases, waits for every rollout to succeed, runs gateway `/gateway-health`, and uploads `release-evidence/`.
 
-Manual Cloud Build deployment:
+Do not use old Cloud Build commands. The repository no longer contains `cloudbuild.yaml`.
 
-```powershell
-gcloud builds submit --config=cloudbuild.yaml --substitutions=_COMMIT_SHA=<tag>,_REGION=asia-south2,_DEPLOY_SERVICES=frontend --project=custoking .
-```
+Detailed deployment docs:
 
-Cloud Build builds and deploys the selected service. Use `_DEPLOY_SERVICES=all` for the previous all-service rollout.
+- [CI/CD Current State](docs/current-state/deployment-cicd.md)
+- [Release Operator Runbook](docs/runbooks/release-operator.md)
+- [Rollback Runbook](docs/runbooks/rollback.md)
 
 ## Secrets
 
-Production secrets live in GCP Secret Manager. Important secrets include:
+Production secrets live in GCP Secret Manager with environment suffixes such as `-dev` and `-prod`. Important secret families include:
 
-- `db-password` (appuser — single app + Flyway DB user)
-- `jwt-secret`
-- `aadhar-secret`
-- per-service internal tokens such as `catalog-read-token`, `tenant-school-read-token`, and `identity-introspection-token`
+- `db-password-<env>` for Flyway/appuser
+- `app-rt-password-<env>` for runtime database access
+- `jwt-secret-<env>`
+- per-service internal tokens such as `catalog-read-token-<env>`, `tenant-school-read-token-<env>`, and `identity-introspection-token-<env>`
 - MSG91 secrets when notification delivery is enabled
 
 Never commit `.env`, production smoke tokens, MSG91 auth keys, or generated evidence artifacts.

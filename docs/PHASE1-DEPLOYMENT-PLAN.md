@@ -1,5 +1,7 @@
 # Phase 1 Deployment Plan (Tenant-Isolation Hardening)
 
+> Historical note, updated 2026-08-04: this plan contains retired `deploy.yml` and `cloudbuild.yaml` commands. Do not use it for current deployment operations. Use `docs/current-state/deployment-cicd.md` and `docs/runbooks/release-operator.md`.
+
 Consolidated cutover plan for Phase 1 (Tasks 1.1–1.7). It **orchestrates** the
 per-domain runbooks in the correct order — it does not repeat their SQL. Deploy
 mechanics: `deploy.yml` (`workflow_dispatch`) → `cloudbuild.yaml` → Cloud Run +

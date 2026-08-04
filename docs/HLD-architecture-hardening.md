@@ -3,6 +3,8 @@
 Date: 2026-06-16
 Branch: architecture-hardening-local-dev
 
+> Historical note, updated 2026-08-04: this hardening design predates the active Cloud Deploy implementation and contains retired Cloud Build deployment references. Use `docs/current-state/deployment-cicd.md` for current CI/CD behavior.
+
 ## 1. Executive Summary
 
 Custoking IMS should stay a modular monolith for the current stage. The product still has tightly coupled workflows across schools, students, fees, attendance, supply orders, firefighting procurement, workflows, and audit. Splitting these into microservices now would add distributed transaction, deployment, observability, and data consistency overhead before the internal boundaries are mature.

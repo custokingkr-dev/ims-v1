@@ -1,752 +1,383 @@
-# CI/CD v2 Architecture Plan
+# CI/CD Current State
 
-Last updated: 2026-08-03.
+Last verified: 2026-08-04 from repository files, GitHub Actions runs, and live GCP project `custoking`.
 
-Status: CI/CD v2 implementation files are present in-repo. Cloud resources must be imported/applied before the workflows are allowed to deploy production.
+## Status
 
-## Current Decision
+CI/CD v2 is implemented and active.
 
-The previous CI/CD implementation has been removed from the repository so nobody can accidentally trigger a stale deployment path while we rebuild the pipeline properly.
+Verified deployment commit:
 
-Removed active entrypoints:
-
-- `.github/workflows/ci.yml`
-- `.github/workflows/deploy.yml`
-- `.github/workflows/release.yml`
-- `.github/workflows/security-scan.yml`
-- `cloudbuild.yaml`
-
-The old model mixed too much responsibility into one Cloud Build file: image build, service wiring, Cloud Run deployment, smoke execution, evidence, and promotion behavior. It worked, but it was becoming hard to reason about, hard to secure tightly, and easy to drift between dev and prod.
-
-The replacement is a split-brain-on-purpose model:
-
-- GitHub Actions owns source events, tests, image builds, security evidence, and release creation.
-- Google Cloud Deploy owns environment rollout order, canary traffic, verification, and rollback.
-- Cloud Run stays the runtime platform.
-- Artifact Registry stores immutable images.
-- GitHub Environments and Google IAM decide which branch can deploy each environment.
-
-Implementation note: Google Cloud Deploy's Cloud Run target model supports one Cloud Run service, job, or worker pool per target. The implementation therefore uses one Cloud Deploy delivery pipeline per service per environment. The active branch contract is `dev` branch -> dev environment and `main` branch -> prod environment. Stage target templates remain in source but are not active until a real stage environment exists.
-
-## North Star
-
-The pipeline should feel like a clean release board:
-
-```mermaid
-flowchart LR
-  A[Pull request] --> B[Fast checks]
-  B --> C[Changed-service tests]
-  C --> D[Build preview images]
-  D --> E[Scan and attest]
-  E --> F[Merge to dev]
-  E --> G[Merge to main]
-  F --> H[Build dev images]
-  H --> I[Create dev Cloud Deploy releases]
-  I --> J[Dev rollout]
-  G --> K[Prod approval]
-  K --> L[Build prod images]
-  L --> M[Create prod Cloud Deploy releases]
-  M --> N[Prod canary 5 percent]
-  N --> O[Prod canary 25 percent]
-  O --> P[Prod 100 percent]
-  P --> Q[Evidence bundle]
+```text
+8607912b7f85378086c4602294f610f907538084
 ```
 
-Simple rule: the deployment branch owns the environment. `dev` deploys dev. `main` deploys prod. A workflow dispatch can only deploy a commit reachable from the matching branch.
+Verified GitHub Actions runs:
 
-## What This Fixes
-
-| Problem in old path | v2 answer |
-| --- | --- |
-| Cloud Build file did build, deploy, service wiring, and smoke orchestration | Split responsibilities between GitHub Actions and Cloud Deploy |
-| Prod promotion depended on convention around `_SKIP_BUILD=true` | Prod deployment is tied to the `main` branch and immutable image digests |
-| Rollback was possible but operationally manual | Cloud Deploy release/rollout history becomes the rollback control plane |
-| Runtime config was generated inside shell-heavy deploy commands | Cloud Run service manifests become declarative and reviewable |
-| Security evidence was scattered across jobs | One release evidence bundle per candidate |
-| Dev/prod differences were easy to hide in workflow variables | Target-specific Cloud Deploy configuration makes drift visible |
-| Long deploys consumed GitHub runner time | Google Cloud handles rollouts; GitHub creates and observes releases |
-
-## Source Research
-
-Only current official docs were used for the core decisions:
-
-- GitHub documents OIDC for Google Cloud as a way for workflows to access GCP without long-lived credentials: [GitHub OIDC in Google Cloud](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-google-cloud-platform).
-- Google recommends Workload Identity Federation to avoid service account keys and restrict access using attribute mappings and conditions: [Google Workload Identity Federation](https://docs.cloud.google.com/iam/docs/workload-identity-federation).
-- Google Cloud Deploy is built for delivery through a defined environment sequence: [Cloud Deploy overview](https://docs.cloud.google.com/deploy/docs).
-- Cloud Deploy supports canary deployments for Cloud Run services: [Canary deployments to Cloud Run](https://docs.cloud.google.com/deploy/docs/deployment-strategies/canary/cloud-run).
-- Cloud Run supports traffic migration and rollback between revisions: [Cloud Run rollouts and rollbacks](https://docs.cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration).
-- Cloud Deploy uses Skaffold to render deployable manifests: [Use Skaffold with Cloud Deploy](https://docs.cloud.google.com/deploy/docs/using-skaffold) and [Manage manifests in Cloud Deploy](https://docs.cloud.google.com/deploy/docs/using-skaffold/managing-manifests).
-- Artifact Analysis supports vulnerability scanning for Artifact Registry images: [Artifact Analysis container scanning](https://docs.cloud.google.com/artifact-analysis/docs/container-scanning-overview).
-- Docker BuildKit can emit provenance and SBOM attestations during image builds, and GitHub Actions can also generate artifact attestations when needed: [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/secure-your-work/use-artifact-attestations/use-artifact-attestations).
-- GitHub Environments support required reviewers, wait timers, branch restrictions, and custom protection rules: [GitHub deployments and environments](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
-- GitHub reusable workflows and dependency caching are the intended primitives for a maintainable matrix CI setup: [Reusable workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows) and [Dependency caching](https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching).
-
-## Big Decisions
-
-| Decision | Choice | Why |
-| --- | --- | --- |
-| CI orchestrator | GitHub Actions | Native PR feedback, repo-aware permissions, easy branch/environment policy |
-| CD orchestrator | Google Cloud Deploy | Purpose-built rollout, canary, rollout history, Cloud Run target support |
-| Runtime | Cloud Run | Existing platform; no need to introduce Kubernetes for this workload |
-| Auth from GitHub to GCP | Workload Identity Federation/OIDC only | No JSON keys, short-lived credentials, attribute-conditioned access |
-| Release artifact | Container image digest plus generated manifests | Digest cannot drift like a mutable tag |
-| Deployment style | Declarative Cloud Run manifests rendered by Skaffold | Reviewable service config and repeatable target rendering |
-| Prod rollout | Canary with automated verification and manual final approval | Safer than all-at-once promotion |
-| Rollback | Cloud Deploy rollback to previous release/revision | Keeps rollback in the same control plane as deploy |
-| Security | Shift-left checks plus registry scanning plus attestations | Catches obvious issues early and proves what was shipped |
-| Cost posture | Build only changed services, cache dependencies, scale Cloud Run to zero where acceptable | Faster and cheaper without hiding release risk |
-
-## Target Architecture
-
-```mermaid
-flowchart TB
-  subgraph GitHub
-    PR[Pull Request]
-    Dev[dev branch]
-    Main[main branch]
-    EnvDev[GitHub Environment: dev]
-    EnvProd[GitHub Environment: prod]
-  end
-
-  subgraph GCP
-    WIF[Workload Identity Federation]
-    AR[Artifact Registry]
-    Scan[Artifact Analysis]
-    CD[Cloud Deploy Pipeline]
-    CRDev[Cloud Run dev]
-    CRProd[Cloud Run prod]
-    Logs[Cloud Logging and Monitoring]
-  end
-
-  PR --> Tests[Tests, lint, local smokes]
-  Tests --> PreviewBuild[Build changed images]
-  PreviewBuild --> Scan
-  Dev --> DevBuild[Build dev images]
-  Main --> ReleaseBuild[Build prod images]
-  DevBuild --> WIF
-  ReleaseBuild --> WIF
-  WIF --> AR
-  AR --> Scan
-  AR --> Attest[SBOM and provenance attestation]
-  Attest --> CD
-  EnvDev --> CD
-  EnvProd --> CD
-  CD --> CRDev
-  CD --> CRProd
-  CRProd --> Logs
-  Logs --> Verify[Automated verification]
-  Verify --> CD
-```
-
-## Environment Model
-
-Keep `dev` and `prod`. Add `stage`.
-
-`stage` is not a luxury environment. It is the place where we rehearse production with production-like permissions, secrets shape, Cloud Run limits, migration order, Google Drive behavior, and smoke cleanup without touching real schools.
-
-| Environment | Purpose | Trigger | Approval |
+| Environment | Branch | Run | Result |
 | --- | --- | --- | --- |
-| `dev` | Fast integration after merge | Push/merge to `dev` | No manual approval |
-| `stage` | Future prod rehearsal and migration rehearsal | Inactive template only | Not configured |
-| `prod` | Real users | Push/merge to `main` | Required reviewer, branch restriction, no bypass |
+| dev | `dev` | `30884975624` | success |
+| prod | `main` | `30888032307` | success |
 
-Recommended naming:
-
-- Cloud Run services: `custoking-<service>-<env>`
-- Artifact Registry repo: `custoking`
-- Delivery pipelines: `custoking-<service>-dev`, `custoking-<service>-prod`
-- Cloud Deploy targets: active `<service>-dev`, `<service>-prod`; inactive template `<service>-stage`
-- Runtime service accounts: `custoking-<service>-runtime-<env>@...`
-- Deployment service accounts: `custoking-cd-renderer-<env>@...`, `custoking-cd-deployer-<env>@...`
-
-## Repository Layout
-
-Create these files in the new implementation phase:
+Verified production smoke:
 
 ```text
-.github/
-  workflows/
-    ci-pr.yml
-    build-release.yml
-    rollback.yml
-    _detect-changes.yml
-    _test-java-service.yml
-    _test-node-service.yml
-    _build-image.yml
-    _smoke-environment.yml
-
-deploy/
-  clouddeploy/
-    delivery-pipelines.yaml
-    targets-dev.yaml
-    targets-stage.yaml
-    targets-prod.yaml
-  skaffold.yaml
-  cloudrun/
-    identity-service.yaml
-    school-core-service.yaml
-    operations-service.yaml
-    platform-service.yaml
-    billing-service.yaml
-    api-gateway.yaml
-    frontend.yaml
-
-infra/
-  terraform/
-    cicd/
-      github-oidc.tf
-      artifact-registry.tf
-      cloud-deploy.tf
-      deploy-service-accounts.tf
-      github-environment-notes.md
-
-docs/
-  runbooks/
-    release-operator.md
-    rollback.md
-    cicd-break-glass.md
-    deployment-evidence.md
+https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app/gateway-health -> UP
 ```
 
-## Workflow Set
+The old `cloudbuild.yaml` deployment path is retired. The repository no longer contains `cloudbuild.yaml`, `.github/workflows/deploy.yml`, `.github/workflows/release.yml`, or `.github/workflows/promote.yml`.
 
-### 1. PR CI: `.github/workflows/ci-pr.yml`
-
-Purpose: give fast, specific feedback before merge.
-
-Trigger:
-
-- Pull request to `main`
-- Manual dispatch for debugging
-
-Jobs:
-
-- Detect changed services.
-- Run Java/Node/frontend tests only for affected units.
-- Run global contract checks when shared packages, DB migrations, or deployment manifests change.
-- Build changed Docker images locally or push to a short-retention preview namespace.
-- Run Trivy on preview images.
-- Run Gitleaks.
-- Run dependency review where GitHub supports it.
-- Upload a PR evidence summary.
-
-PR CI does not deploy.
-
-### 2. Branch Environment Deploy: `.github/workflows/build-release.yml`
-
-Purpose: create one environment release candidate from the branch that owns that environment.
-
-Trigger:
-
-- Push to `dev` deploys dev.
-- Push to `main` deploys prod.
-- Manual dispatch with `target_environment` and `commit_sha`.
-
-Jobs:
-
-- Resolve target environment from branch.
-- Refuse mismatches such as prod from `dev` or dev from `main`.
-- Verify the requested commit is reachable from the matching branch.
-- Build service images.
-- Tag with:
-  - `sha-<commit>`
-  - `release-<github-run-id>`
-  - optional semantic release tag when we add release notes.
-- Push to Artifact Registry.
-- Resolve immutable digests.
-- Generate BuildKit SBOM attestations.
-- Generate BuildKit provenance attestations.
-- Render only the target environment's Cloud Deploy target file.
-- Create Cloud Deploy releases using image digests.
-- Start rollout to the branch-owned environment.
-
-### 3. Rollback: `.github/workflows/rollback.yml`
-
-Purpose: make rollback boring.
-
-Trigger:
-
-- Manual dispatch only.
-
-Inputs:
-
-- `environment`
-- `service` or `all`
-- `rollback_to_release`
-- `reason`
-
-Actions:
-
-- Calls Cloud Deploy rollback for the selected target.
-- Runs smoke.
-- Captures Cloud Run revisions before and after.
-- Opens/updates an incident note in the release evidence artifact.
-
-## Cloud Deploy Design
-
-Use one delivery pipeline per service because Cloud Deploy Cloud Run targets support one Cloud Run service, job, or worker pool per target.
+## Active Workflow Files
 
 ```text
-custoking-school-core-service-dev: school-core-service-dev
-custoking-school-core-service-prod: school-core-service-prod
-custoking-identity-service-dev: identity-service-dev
-custoking-identity-service-prod: identity-service-prod
-custoking-operations-service-dev: operations-service-dev
-custoking-operations-service-prod: operations-service-prod
-custoking-billing-service-dev: billing-service-dev
-custoking-billing-service-prod: billing-service-prod
-custoking-platform-service-dev: platform-service-dev
-custoking-platform-service-prod: platform-service-prod
-custoking-api-gateway-dev: api-gateway-dev
-custoking-api-gateway-prod: api-gateway-prod
-custoking-frontend-dev: frontend-dev
-custoking-frontend-prod: frontend-prod
+.github/workflows/
+  ci-pr.yml
+  build-release.yml
+  rollback.yml
+  security-scan.yml
+  _detect-changes.yml
+  _test-java-service.yml
+  _test-node-service.yml
+  _build-image.yml
+  _smoke-environment.yml
 ```
 
-GitHub Actions coordinates multi-service release order across these pipelines.
+## Branch Ownership
 
-Use Skaffold render with raw Cloud Run service manifests. Each manifest contains stable runtime configuration such as:
+The deployment branch owns the environment:
 
-- Service name
-- Region
-- Runtime service account
-- Container port
-- CPU/memory
-- Scaling caps
-- VPC access
-- Public/private ingress behavior
-- Secret bindings by environment suffix
-- Health check behavior
+| Branch | Environment | Trigger |
+| --- | --- | --- |
+| `dev` | dev | push or matching manual dispatch |
+| `main` | prod | push or matching manual dispatch |
 
-Image references are substituted by digest during release creation.
+`build-release.yml` enforces this in code:
 
-### Prod Canary Plan
+- `dev` can deploy only `dev`.
+- `main` can deploy only `prod`.
+- manual dispatch must run from the matching branch.
+- manual `commit_sha` must be reachable from the matching remote branch.
 
-Default production rollout:
+The GitHub `prod` Environment is configured as the production approval gate. The workflow also uses the `dev` Environment, but the GitHub UI branch restriction for `dev` still needs a repository admin to add it. The workflow-level guard is already active.
+
+## Release Workflow
+
+Workflow:
 
 ```text
-0 percent traffic: deploy revision, run direct smoke
-5 percent traffic: watch core SLOs for 10 minutes
-25 percent traffic: watch core SLOs for 20 minutes
-100 percent traffic: final smoke and evidence bundle
+CD / Deploy branch environment
 ```
 
-Rollback triggers:
+Source file:
 
-- Gateway 5xx rate above threshold.
-- Domain service 5xx rate above threshold.
-- P95 latency regression above threshold.
-- Error logs with new deployment digest above threshold.
-- Smoke failure.
-- Migration verification failure.
-- Manual stop by release operator.
-
-Initial thresholds should be conservative and tuned after two weeks of real data.
-
-## Service Rollout Order
-
-The old Cloud Build file encoded service order in shell steps. In v2 the order becomes documented policy and Cloud Deploy orchestration.
-
-```mermaid
-flowchart LR
-  SC[school-core-service] --> ID[identity-service]
-  SC --> OP[operations-service]
-  SC --> BI[billing-service]
-  OP --> PL[platform-service]
-  ID --> GW[api-gateway]
-  SC --> GW
-  OP --> GW
-  PL --> GW
-  BI --> GW
-  GW --> FE[frontend]
+```text
+.github/workflows/build-release.yml
 ```
 
-Policy:
+High-level flow:
 
-- Deploy `school-core-service` before services that depend on student/school context.
-- Deploy domain services before gateway.
-- Deploy gateway before frontend when frontend points to the gateway URL.
-- For no-contract-change releases, services can be deployed independently.
-- For DB or API contract releases, use expand/contract compatibility and deploy as a coordinated branch release.
-
-## Database Migration Policy
-
-This is the part most teams under-design. We should make it strict now.
-
-Rules:
-
-- Migrations must be forward compatible for at least one release.
-- No destructive migration in the same release that removes application fallback code.
-- Every migration gets a dry-run against stage.
-- Production migration creates a backup checkpoint or proves a recent usable backup exists.
-- Rollback plan must say whether rollback is application-only or database-involved.
-- Contract removals happen in a later release after production has run safely.
-
-Release categories:
-
-| Category | Example | Deploy mode |
-| --- | --- | --- |
-| App only | UI fix, API logic change | Normal canary |
-| Additive DB | Add column/table/index | Normal canary after migration dry-run |
-| Contract change | Rename field, change API shape | Coordinated release with compatibility window |
-| Destructive DB | Drop column/table, rewrite data | Separate approved change window |
-
-## Security Design
-
-The pipeline should be boring to attack.
-
-Controls:
-
-- Default GitHub token permissions are read-only.
-- Each workflow declares minimal permissions.
-- OIDC requires `id-token: write` only in jobs that need GCP.
-- No service account JSON keys in GitHub.
-- Workload Identity Provider restricts by repository, branch, workflow, and GitHub Environment.
-- Use separate deploy service accounts for dev, stage, and prod.
-- Pin third-party actions by SHA for production paths.
-- Secret scanning runs on PR and schedule.
-- Dependency review runs on PR.
-- Trivy blocks critical exploitable image vulnerabilities.
-- Artifact Analysis scans images in Artifact Registry.
-- SBOM and provenance attestations are required before Cloud Deploy release creation.
-- Prod rollout verifies the artifact digest was built by the trusted release workflow.
-
-Minimum GitHub permissions:
-
-```yaml
-permissions:
-  contents: read
+```text
+resolve target
+-> GitHub Environment gate
+-> build and push all seven images
+-> apply Cloud Deploy targets and delivery pipelines
+-> create one Cloud Deploy release per service
+-> wait for every rollout to succeed
+-> run gateway /gateway-health smoke
+-> upload release-evidence
 ```
 
-Release jobs that authenticate to GCP add:
+Deployable units:
 
-```yaml
-permissions:
-  contents: read
-  id-token: write
-  attestations: write
-  packages: write
+```text
+school-core-service
+identity-service
+operations-service
+billing-service
+platform-service
+api-gateway
+frontend
 ```
 
-## IAM Model
+Build behavior:
 
-Use narrow service accounts:
+- all seven deployable units are built for each branch deployment.
+- build matrix `max-parallel` is `2`.
+- images are pushed to Artifact Registry with immutable `sha-<commit>` tags.
+- image digests are resolved before Cloud Deploy release creation.
+- Docker BuildKit provenance and SBOM output are enabled.
 
-| Service account | Used by | Permissions |
-| --- | --- | --- |
-| `github-ci-reader` | PR CI | Read-only where possible; no prod access |
-| `github-release-builder` | Release build | Push Artifact Registry images; create attestations; create Cloud Deploy releases |
-| `clouddeploy-renderer` | Cloud Deploy render | Read Artifact Registry and deployment manifests |
-| `clouddeploy-dev-deployer` | Dev target | Deploy only dev Cloud Run services/jobs |
-| `clouddeploy-stage-deployer` | Stage target | Deploy only stage Cloud Run services/jobs |
-| `clouddeploy-prod-deployer` | Prod target | Deploy only prod Cloud Run services/jobs |
-| `smoke-runner-<env>` | Verification | Invoke services/jobs, read needed logs, create and delete smoke data |
+Current release workflow does not build only changed services. Path-aware changed-service selection exists for PR CI.
 
-Do not use broad Editor/Owner roles. If a predefined role is too wide, create a custom role after proving the exact permissions from audit logs.
+## Cloud Deploy Model
 
-## GitHub Environment Policy
+Cloud Deploy is active in `asia-south2`.
 
-| Environment | Branches | Reviewers | Wait timer | Secrets/vars |
-| --- | --- | --- | --- | --- |
-| `dev` | `dev` only | none | none | Dev-only vars |
-| `stage` | inactive | n/a | n/a | No live vars |
-| `prod` | `main` only | required owner/platform reviewer | 5-15 minutes | Prod-only vars |
+Cloud Deploy Cloud Run targets support one Cloud Run service, job, or worker pool per target, so this repo uses one delivery pipeline per service per environment:
 
-Prod environment rules:
+```text
+custoking-<service>-dev  -> <service>-dev
+custoking-<service>-prod -> <service>-prod
+```
 
-- Prevent self-approval.
-- No admin bypass for normal releases.
-- Restrict deployment branches.
-- Require release reason in manual workflow input.
-- Require linked evidence bundle.
+Active service/environment pipelines:
 
-## Cost Design
+```text
+custoking-school-core-service-dev
+custoking-school-core-service-prod
+custoking-identity-service-dev
+custoking-identity-service-prod
+custoking-operations-service-dev
+custoking-operations-service-prod
+custoking-billing-service-dev
+custoking-billing-service-prod
+custoking-platform-service-dev
+custoking-platform-service-prod
+custoking-api-gateway-dev
+custoking-api-gateway-prod
+custoking-frontend-dev
+custoking-frontend-prod
+```
 
-The old pipeline spent money in places that are easy to control.
+Source files:
 
-Cost reductions:
+```text
+deploy/clouddeploy/delivery-pipelines.yaml
+deploy/clouddeploy/targets-dev.yaml
+deploy/clouddeploy/targets-prod.yaml
+deploy/skaffold.yaml
+deploy/cloudrun/*.yaml
+```
 
-- Build only changed images.
-- Use dependency caching for Maven and npm.
-- Use Docker layer caching where GitHub/GCP support it safely.
-- Stop using Cloud Build as the always-on deployment script runner.
-- Use Cloud Deploy for rollout state instead of repeated bespoke build submissions.
-- Keep Cloud Run `min-instances=0` for dev and stage unless a service has a measured background-latency need.
-- Use low max instance caps for dev/stage.
-- Apply Artifact Registry cleanup policies.
-- Keep source/archive buckets on lifecycle policies.
-- Avoid scheduled full-fleet scans that rebuild everything; scan registry images instead.
+`targets-stage.yaml` exists as a source template, but stage is not an active deployment environment. There is no branch-owned stage workflow and no verified stage database, GitHub Environment, or stage secrets.
 
-Cost guardrails to add:
+## Rollout Strategies
 
-- Budget alert for CI/CD spend.
-- Artifact Registry storage alert.
-- GitHub Actions minutes review.
-- Cloud Run min-instance drift check.
-- Cloud Deploy release retention policy.
-- Weekly report of unchanged services that were rebuilt.
+Dev pipelines use a standard strategy.
 
-## Runtime Performance Guardrails
+Prod pipelines use Cloud Deploy canary:
 
-CI/CD should protect API response time, not only deploy code.
+```text
+5 percent
+25 percent
+50 percent
+stable
+```
 
-Add deployment verification checks:
+The release workflow waits for each rollout with:
 
-- Gateway `/health` and domain `/actuator/health`.
-- Login/read smoke through gateway.
-- Student list smoke for school login.
-- Student photo smoke for one known test student with photo present.
-- Google Drive integration config smoke in dev/stage.
-- P95 latency comparison against previous release.
-- Error-rate comparison by Cloud Run revision.
-- Cold-start count and instance startup time tracking.
+```text
+scripts/wait-clouddeploy-rollout.ps1
+```
 
-Do not block every deploy on every expensive scenario. Use tiers:
+For prod, the workflow auto-advances the next canary phase when no deployment phase is still running. A rollout in a terminal bad state fails the workflow.
 
-| Tier | Runs on | Checks |
-| --- | --- | --- |
-| Fast | PR | Unit tests, service tests, build, vulnerability gate |
-| Release | dev/main | Integration smoke, image scan, SBOM, attestation |
-| Dev | dev rollout | Direct and gateway smoke |
-| Stage | stage rollout | Migration rehearsal, photo smoke, Drive config smoke |
-| Prod | prod canary | SLO watch, smoke, error budget guard |
+The latest verified API gateway rollouts for `8607912b`:
 
-## Student Photo Import Specific Gates
+| Environment | Release | Rollout | State |
+| --- | --- | --- | --- |
+| dev | `rel-dev-8607912b7f85-1` | `rel-dev-8607912b7f85-1-to-api-gateway-dev-0001` | `SUCCEEDED` |
+| prod | `rel-prod-8607912b7f85-1` | `rel-prod-8607912b7f85-1-to-api-gateway-prod-0001` | `SUCCEEDED` |
 
-Because recent work touched Google Drive import, image size reduction, and lazy photo serving, the new pipeline should contain explicit photo checks.
+GitHub run `30888032307` also verified that the release job completed all seven production rollouts and the gateway smoke step.
 
-Stage smoke should:
+## Release Evidence
 
-- Create a temporary school/school admin/student context.
-- Provision or verify a stage Drive intake folder.
-- Upload/import a tiny fixture image named like `_DSC4521.jpg`.
-- Upload/import at least one `.jpeg`, `.jpg`, `.png`, and `.webp` if supported by product policy.
-- Verify admission-number matching from mapping workbook to DB student.
-- Verify duplicate school-name handling uses stable school identity, not name-only matching.
-- Verify oversized image behavior uses reducer or clean failure.
-- Verify frontend student tab returns data with photo references.
-- Remove all test data and Drive fixture files.
-
-Prod smoke should not import 1000 real files. It should do a tiny reversible smoke using a known test school and then clean up.
-
-## Evidence Bundle
-
-Each release should produce one durable folder/artifact:
+The release workflow uploads:
 
 ```text
 release-evidence/
+  release.json
+  smoke.json
   summary.md
-  git.json
-  images.json
-  sbom/
-  buildkit-attestations/
-  vulnerability-summary.json
-  clouddeploy-release.json
-  rollout-dev.json
-  rollout-stage.json
-  rollout-prod.json
-  cloudrun-revisions-before.json
-  cloudrun-revisions-after.json
-  smoke-dev.json
-  smoke-stage.json
-  smoke-prod.json
-  migration-report.json
-  config-diff.md
-  cleanup-report.json
 ```
 
-The evidence summary should answer five questions quickly:
+`release.json` records:
 
-- What commit was shipped?
-- What image digests were shipped?
-- Who approved prod?
-- What tests/smokes passed?
-- How do we roll it back?
+- commit SHA
+- Artifact Registry root
+- image tag
+- image digest reference
+- Cloud Deploy pipeline
+- Cloud Deploy release id
+- first target
+- initial rollout id
 
-## Implementation Phases
+`smoke.json` records:
 
-### Phase 0: Retire Old Entry Points
+- environment
+- gateway Cloud Run service
+- gateway URL
+- `/gateway-health` endpoint
+- health status
+- timestamp
 
-Status: done in this branch.
+The only automatic post-rollout smoke currently implemented in `build-release.yml` is gateway `/gateway-health`. Direct service smoke jobs and deeper business-flow smokes exist as scripts/templates elsewhere in the repo, but they are not currently run by this release workflow.
 
-The previous workflows and `cloudbuild.yaml` were removed so the repo cannot advertise a known-stale deployment path.
+## PR CI
 
-### Phase 1: Provision Foundation
-
-Create infrastructure as code for:
-
-- Workload Identity Federation pools/providers.
-- GitHub OIDC attribute mappings and conditions.
-- Artifact Registry scanning.
-- Cloud Deploy delivery pipeline and targets.
-- Environment-specific deploy service accounts.
-- Minimal IAM bindings.
-- GitHub Environment setup notes.
-- Artifact cleanup policies.
-- Budget and alert policies.
-
-Deliverable: Terraform plan applied to dev/stage/prod foundation.
-
-### Phase 2: Reintroduce PR CI
-
-Add:
-
-- Reusable test workflows.
-- Path-aware service matrix.
-- Maven/npm caching.
-- Gitleaks.
-- Trivy.
-- Dependency review.
-- Docker build validation.
-
-Deliverable: PRs get fast feedback again, with no deployment.
-
-### Phase 3: Branch-Owned Dev And Prod Releases
-
-Add:
-
-- Branch-aware release image build workflow.
-- Digest manifest generation.
-- SBOM and attestation.
-- Cloud Deploy release creation.
-- Automatic rollout to dev from `dev`.
-- Production rollout from `main` behind the GitHub `prod` Environment gate.
-- Dev smoke and evidence artifact.
-
-Deliverable: merge to `dev` deploys dev; merge to `main` deploys prod through Cloud Deploy.
-
-### Phase 4: Add Verification Gates
-
-Add:
-
-- Prod target with approval.
-- Canary strategy.
-- Rollback workflow.
-- Migration rehearsal.
-- Student photo smoke.
-
-Deliverable: prod releases have approval, canary, smoke evidence, and rollback history.
-
-### Phase 5: Enforce And Polish
-
-Add:
-
-- Required status checks.
-- Branch protection.
-- SHA-pinned actions.
-- Scheduled registry scans.
-- Drift detection.
-- Cost reports.
-- Release dashboard.
-
-Deliverable: new CI/CD is the only supported path.
-
-## Advanced Features To Add After Baseline
-
-These are optional, but they are high-value once the baseline is stable:
-
-- Custom GitHub Environment protection rule that checks Cloud Deploy release evidence before prod approval.
-- SLO-based canary gate using Cloud Monitoring metrics.
-- Automated config drift detector comparing Cloud Run live config to rendered manifests.
-- Release freeze switch.
-- Deployment calendar integration.
-- Progressive delivery per service instead of full fleet.
-- Preview environments for risky frontend or gateway PRs.
-- Signed container policy enforcement.
-- OpenSSF Scorecard check on scheduled runs.
-- SLSA provenance verification before prod rollout.
-- ChatOps command for `deploy`, `hold`, `rollback`, and `status`.
-
-## What We Might Be Missing
-
-This is the checklist to review before implementation starts:
-
-- Do we have a real `stage` database, or only dev/prod?
-- Who approves production when the primary owner is unavailable?
-- What is the maximum acceptable prod canary duration?
-- What exact Cloud Monitoring metrics define rollback?
-- Which services are allowed to scale to zero in prod?
-- What is the retention period for deployment evidence?
-- What test school is safe for prod smoke?
-- How do we clean Google Drive test files after failed smokes?
-- Do we need regional disaster recovery, or only rollback inside one region?
-- Who owns secret rotation?
-- Should DB migrations run as Cloud Run jobs, Cloud Deploy hooks, or a separate controlled workflow?
-- Do we need a temporary break-glass deploy path for emergencies?
-- Should `prod` deployments be blocked during school operating hours?
-
-Default decision if nobody overrides:
-
-- Keep `stage` inactive until a real stage database and secrets exist.
-- Use Cloud Run jobs for migration and smoke helpers.
-- Keep prod canary at 5 percent, 25 percent, 100 percent.
-- Keep prod approval manual.
-- Keep rollback manual but one-click.
-- Keep dev automatic.
-- Keep branch ownership strict: `dev` for dev and `main` for prod.
-
-## First Implementation Ticket List
-
-1. Add Terraform for WIF, deploy service accounts, Artifact Registry scanning, Cloud Deploy pipeline, and target IAM.
-2. Add Cloud Run manifests for all seven deployable units.
-3. Add `deploy/skaffold.yaml`.
-4. Add Cloud Deploy pipeline and targets.
-5. Add reusable GitHub test/build workflows.
-6. Add PR CI.
-7. Add release build workflow.
-8. Add dev rollout and smoke.
-9. Add prod canary rollout.
-10. Add prod smoke and cleanup.
-11. Add rollback workflow.
-12. Add release evidence bundle.
-13. Add branch/environment protection checklist.
-14. Add runbooks for release, rollback, break-glass, and evidence review.
-
-## Rollback Policy
-
-Rollback must be faster than deploy.
-
-Rollback path:
-
-```mermaid
-flowchart LR
-  A[Incident or failed canary] --> B[Hold rollout]
-  B --> C[Select previous known-good release]
-  C --> D[Cloud Deploy rollback]
-  D --> E[Smoke]
-  E --> F[Confirm metrics]
-  F --> G[Evidence update]
-```
-
-Rollback rules:
-
-- If prod canary fails before 100 percent, stop rollout and send traffic back to the previous revision.
-- If prod fails after 100 percent, roll back to the previous successful Cloud Deploy release.
-- If database migration is involved, follow the migration rollback note in the release evidence.
-- Never roll forward blindly during an incident unless rollback is technically impossible.
-
-## Break-Glass Policy
-
-Break-glass exists, but it should be noisy.
-
-Allowed only when:
-
-- Production is down or data integrity is at risk.
-- Normal Cloud Deploy path is unavailable.
-- Two people agree in writing.
-- The exact command and reason are recorded in the incident notes.
-
-Break-glass should still deploy an existing trusted image digest. It should not build new code from a laptop.
-
-## Final Shape
-
-The final implementation should make this true:
+Workflow:
 
 ```text
-PR says: is this change safe to merge?
-dev says: deploy and prove the integration branch.
-main says: deploy the production branch slowly.
-prod says: release slowly, watch closely, rollback quickly.
+CI / PR
 ```
 
-That is the CI/CD v2 contract.
+Source file:
+
+```text
+.github/workflows/ci-pr.yml
+```
+
+Verified behavior from source:
+
+- detects changed services through `_detect-changes.yml`.
+- runs Java tests for Maven services.
+- runs Node gateway tests.
+- runs frontend audit/test/build for frontend changes.
+- builds changed Docker images locally.
+- runs Trivy critical gate on built images.
+- runs Gitleaks.
+
+PR CI does not deploy.
+
+## Scheduled Security Scan
+
+Workflow:
+
+```text
+Security / Container scan
+```
+
+Source file:
+
+```text
+.github/workflows/security-scan.yml
+```
+
+Verified behavior from source:
+
+- weekly scheduled run plus manual dispatch.
+- builds each deployable image locally.
+- scans HIGH and CRITICAL findings with Trivy.
+- uploads SARIF through `github/codeql-action/upload-sarif@v4`.
+
+## Rollback
+
+Workflow:
+
+```text
+CD / Rollback target
+```
+
+Source file:
+
+```text
+.github/workflows/rollback.yml
+```
+
+Inputs:
+
+```text
+service: all or one deployable unit
+environment: dev or prod
+release_id: optional
+reason: required
+```
+
+The workflow calls Cloud Deploy target rollback for the selected service(s) and uploads:
+
+```text
+rollback-evidence/rollback.json
+```
+
+For `service=all`, rollback order is:
+
+```text
+frontend
+api-gateway
+platform-service
+billing-service
+operations-service
+identity-service
+school-core-service
+```
+
+## GCP Authentication
+
+GitHub Actions authenticates to GCP through Workload Identity Federation.
+
+Verified live deploy service account:
+
+```text
+github-actions-sa@custoking.iam.gserviceaccount.com
+```
+
+Verified project-level roles on 2026-08-04:
+
+```text
+roles/artifactregistry.writer
+roles/cloudbuild.builds.editor
+roles/clouddeploy.admin
+roles/iam.serviceAccountUser
+roles/logging.viewer
+roles/run.developer
+roles/secretmanager.viewer
+roles/serviceusage.serviceUsageConsumer
+roles/storage.admin
+```
+
+The Cloud Build role remains present even though `cloudbuild.yaml` deployment is retired. That is IAM drift/broadness, not an active deployment path.
+
+## Action Runtime Status
+
+The workflows have been updated to current Node 24-compatible major versions where available:
+
+```text
+actions/checkout@v7
+actions/setup-node@v7
+actions/setup-java@v5
+actions/upload-artifact@v7
+docker/setup-buildx-action@v4
+docker/login-action@v4
+docker/build-push-action@v7
+github/codeql-action/upload-sarif@v4
+gitleaks/gitleaks-action@v3
+aquasecurity/trivy-action@v0.36.0
+```
+
+Google actions are currently:
+
+```text
+google-github-actions/auth@v3
+google-github-actions/setup-gcloud@v3
+```
+
+The production deployment path is not SHA-pinned. Treat SHA pinning as a future hardening task, not an implemented control.
+
+## Stale Release Cleanup
+
+Cloud Deploy releases cannot be deleted. Failed or canceled releases can be abandoned so no new rollouts can be created from them.
+
+Script:
+
+```text
+scripts/abandon-stale-clouddeploy-releases.ps1
+```
+
+Verified on 2026-08-04:
+
+- five failed dev releases from `rel-dev-8097cb5aadbf-1` were abandoned.
+- a final dry run reported no stale failed/canceled releases in dev or prod.
+
+The script does not prune successful releases unless `-PruneSucceeded` is explicitly provided.
+
+## Current Gaps
+
+Known gaps are documented in [gaps-and-drift.md](gaps-and-drift.md). CI/CD-specific gaps:
+
+- GitHub `dev` Environment branch restriction still needs to be added by a repository admin in the GitHub UI.
+- Stage remains inactive.
+- Release workflow runs only gateway health smoke, not authenticated business smokes.
+- Deploy service account still has broad legacy roles.
+- Production actions are not pinned by SHA.
+- There is no automated Cloud Monitoring SLO gate in the prod canary yet.

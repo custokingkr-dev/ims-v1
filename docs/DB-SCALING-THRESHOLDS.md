@@ -125,14 +125,14 @@ directly.
 ## Connection pooling
 
 - **Current headroom:** peak ≈ 5 domain services × Hikari `maximum-pool-size` 5 ×
-  `max-instances` ≤2 ≈ ~50, plus identity/gateway (`min-instances` 1) and transient
+  `max-instances` ≤2 ≈ ~50, plus transient
   per-schema Flyway migration pools (max 3, min-idle 0, drain after migrate) — vs
   `max_connections=200` (≈25% utilization). There is substantial headroom before pooling
   or connection limits become a concern.
 - **Single source of truth:** pool size/min-idle are defined **only** in each service's
   `application.yml` (`spring.datasource.hikari.maximum-pool-size: ${DB_POOL_MAX:5}`,
   `minimum-idle: ${DB_POOL_MIN:0}`); override per-env via `DB_POOL_MAX`/`DB_POOL_MIN`. The
-  duplicate `SPRING_DATASOURCE_HIKARI_*` env vars previously set in `cloudbuild.yaml`
+  duplicate `SPRING_DATASOURCE_HIKARI_*` env vars previously set in retired deployment config
   common_env and per-service blocks in `docker-compose.yml` have been removed — Spring's
   relaxed env-var binding meant they silently overrode the yml defaults, so two sources of
   truth could (and did) drift out of sync.

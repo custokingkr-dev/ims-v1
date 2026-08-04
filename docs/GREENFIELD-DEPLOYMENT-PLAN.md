@@ -1,5 +1,7 @@
 # Greenfield Deployment Plan — `custoking` (dev + prod)
 
+> Historical note, updated 2026-08-04: this document records the earlier greenfield deployment plan and contains retired `cloudbuild.yaml`, `deploy.yml`, and `release.yml` instructions. Do not use it as the current deployment runbook. The active deployment path is documented in `docs/current-state/deployment-cicd.md`.
+
 Deploys the Custoking IMS microservices stack to a **brand-new GCP project `custoking`**, with
 **two environments in one project** separated by an `-<env>` suffix (`dev`, `prod`), driven
 entirely through **GitHub Actions** (build-once-promote). Demos run from a seeded demo tenant in

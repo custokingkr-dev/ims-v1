@@ -19,17 +19,12 @@ Browser
 
 | Service | Responsibility | Data owner |
 | --- | --- | --- |
+| `frontend` | React/Vite SPA served from Cloud Run | n/a |
+| `api-gateway` | Public `/api/v1/**` compatibility routing, auth context propagation, frontend fallback | n/a |
 | `identity-service` | Login, refresh/logout, token introspection, users, roles, permissions, scoped assignments | `identity` schema |
-| `tenant-school-service` | Schools, zones, classes, sections, staff, school module entitlements | `tenant_school` schema |
-| `student-service` | Student records, imports, review campaigns, photos metadata | `student` schema |
-| `attendance-service` | Daily attendance summaries and student attendance records | `attendance` schema |
-| `fee-service` | Fee bands/items, assignments, payments, fee status updates | `fee` schema |
-| `catalog-service` | Catalog items, catalog orders, annual plans, supply orders | `catalog` schema |
-| `workflow-service` | Workflow definitions, instances, steps, actions | `workflow` schema |
-| `firefighting-service` | Firefighting requests, quotes, approval/fulfilment workflow | `firefighting` schema |
-| `reporting-service` | Command center projections, fee/attendance/event reporting | `reporting` schema |
-| `notification-service` | MSG91 sender profiles, email/SMS/WhatsApp delivery, broadcast logs | `notification` schema |
-| `audit-service` | Audit ingestion and read models | `audit` schema |
+| `school-core-service` | Schools, zones, classes, sections, students, attendance, fee, catalog, student photos | `tenant_school`, `student`, `attendance`, `fee`, `catalog` schemas |
+| `operations-service` | Workflow and firefighting operations | `workflow`, `firefighting` schemas |
+| `platform-service` | Reporting projections, notification, audit | `reporting`, `notification`, `audit` schemas |
 | `billing-service` | Superadmin invoices and order sequences | `billing` schema |
 
 ## Data Ownership
@@ -59,7 +54,7 @@ Direct runtime reads from retired public domain tables are not allowed.
 
 ## Deployment
 
-The previous GitHub Actions plus `cloudbuild.yaml` deployment path was retired on 2026-08-03. The replacement design uses GitHub Actions for CI/release creation and Google Cloud Deploy for dev -> stage -> prod promotion, Cloud Run canary rollout, verification, and rollback. See `docs/current-state/deployment-cicd.md`.
+The previous GitHub Actions plus `cloudbuild.yaml` deployment path was retired on 2026-08-03. The active path uses GitHub Actions for image build/release creation and Google Cloud Deploy for dev/prod rollouts. `dev` branch deploys dev; `main` branch deploys prod. Stage templates exist in source but stage is not active. See `docs/current-state/deployment-cicd.md`.
 
 ## Current Migration State
 

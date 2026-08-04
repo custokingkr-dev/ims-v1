@@ -20,20 +20,13 @@ Expected response:
 
 ```bash
 for service in \
-  custoking-identity-service \
-  custoking-tenant-school-service \
-  custoking-student-service \
-  custoking-attendance-service \
-  custoking-fee-service \
-  custoking-catalog-service \
-  custoking-workflow-service \
-  custoking-firefighting-service \
-  custoking-reporting-service \
-  custoking-billing-service \
-  custoking-audit-service \
-  custoking-notification-service \
-  custoking-frontend \
-  custoking-api-gateway; do
+  custoking-frontend-<env> \
+  custoking-api-gateway-<env> \
+  custoking-identity-service-<env> \
+  custoking-school-core-service-<env> \
+  custoking-operations-service-<env> \
+  custoking-platform-service-<env> \
+  custoking-billing-service-<env>; do
   gcloud run services describe "$service" \
     --region=<REGION> \
     --project=<PROJECT_ID> \
@@ -53,7 +46,23 @@ gcloud run services update <cloud-run-service-name> \
   --project=<PROJECT_ID>
 ```
 
-### Roll Back A Cloud Run Revision
+### Roll Back With Cloud Deploy
+
+Use the GitHub workflow first:
+
+```text
+Actions -> CD / Rollback target
+service: all or one service
+environment: dev | prod
+release_id: optional
+reason: required
+```
+
+See `docs/runbooks/rollback.md`.
+
+### Emergency Cloud Run Revision Traffic Shift
+
+Use direct Cloud Run traffic shifting only as an emergency operator action when the Cloud Deploy rollback workflow is unavailable.
 
 ```bash
 gcloud run revisions list \
@@ -69,23 +78,16 @@ gcloud run services update-traffic <cloud-run-service-name> \
 
 Public services:
 
-- `custoking-frontend`
-- `custoking-api-gateway`
+- `custoking-frontend-<env>`
+- `custoking-api-gateway-<env>`
 
 Private domain services:
 
-- `custoking-identity-service`
-- `custoking-tenant-school-service`
-- `custoking-student-service`
-- `custoking-attendance-service`
-- `custoking-fee-service`
-- `custoking-catalog-service`
-- `custoking-workflow-service`
-- `custoking-firefighting-service`
-- `custoking-reporting-service`
-- `custoking-billing-service`
-- `custoking-audit-service`
-- `custoking-notification-service`
+- `custoking-identity-service-<env>`
+- `custoking-school-core-service-<env>`
+- `custoking-operations-service-<env>`
+- `custoking-platform-service-<env>`
+- `custoking-billing-service-<env>`
 
 ### Local Compose
 

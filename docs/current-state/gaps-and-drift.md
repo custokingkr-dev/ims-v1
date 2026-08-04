@@ -1,6 +1,6 @@
 # Gaps, Drift, and Missing Verification
 
-Last verified: 2026-07-09.
+Last verified: 2026-08-04.
 
 This file intentionally lists unresolved or partially verified items. These are not assumptions.
 
@@ -79,27 +79,29 @@ Required follow-up:
 
 - Either create/update the custom role and cut over IAM, or update docs/source to reflect the intentional predefined-role model.
 
-### CI/CD v2 Repo Implementation Needs Cloud-Side Apply
+### CI/CD v2 Is Active, But Hardening Remains
 
-The former active CI/CD files and `cloudbuild.yaml` were retired on 2026-08-03. The replacement GitHub Actions, Cloud Deploy YAML, Skaffold config, Cloud Run manifests, Terraform foundation, and runbooks are now present in source. The architecture and implementation notes are documented in:
+The former active CI/CD files and `cloudbuild.yaml` were retired on 2026-08-03. The replacement GitHub Actions and Cloud Deploy implementation is active as of 2026-08-04. The implementation notes are documented in:
 
 ```text
 docs/current-state/deployment-cicd.md
 ```
 
-Impact:
+Verified:
 
-- New commits should use the new v2 workflows after the Terraform imports/apply and GitHub variables are completed.
+- commit `8607912b7f85378086c4602294f610f907538084` deployed successfully to dev and prod.
+- GitHub run `30884975624` succeeded for dev.
+- GitHub run `30888032307` succeeded for prod.
+- prod `/gateway-health` returned `UP`.
+
+Remaining gaps:
+
+- GitHub `dev` Environment branch restriction still needs a repository admin to add `dev` as the only allowed deployment branch in the GitHub UI.
 - Stage target templates exist, but stage promotion is not active until a real stage database, GitHub Environment, and `-stage` secrets exist.
-- Production promotion should not be used until Cloud Deploy targets/pipelines are applied and GitHub `prod` Environment protection is verified.
-
-Required follow-up:
-
-- Import existing WIF and Artifact Registry resources into `infra/terraform/cicd`.
-- Apply the CI/CD Terraform module.
-- Set GitHub variables from Terraform outputs.
-- Apply Cloud Deploy YAML through the `CD / Deploy branch environment` workflow or with `gcloud deploy apply`.
-- Provision a real stage database and `-stage` Secret Manager secrets before promoting to stage.
+- Release workflow smoke is currently gateway `/gateway-health` only; authenticated business-flow smokes are not automatic.
+- Deploy service account still has broad legacy roles, including `roles/cloudbuild.builds.editor` and `roles/storage.admin`.
+- Production actions are not pinned by SHA.
+- Cloud Monitoring/SLO-based canary gates are not automatic.
 - Do not restore the old `cloudbuild.yaml` deployment path unless there is a documented emergency reason.
 
 ### Terraform CLI Availability Was Repaired For This Shell
@@ -122,9 +124,9 @@ Required follow-up:
 
 ## Documentation Drift
 
-### README and Some Architecture Docs Still Mention Twelve Services
+### Historical Docs Still Mention Retired Service Names
 
-Older docs list separate services such as:
+Older dated plans still mention separate physical services such as:
 
 - tenant-school-service
 - student-service
@@ -147,13 +149,21 @@ Current deployed topology is:
 - platform-service
 - billing-service
 
+Current active docs have been updated:
+
+- `README.md`
+- `docs/ARCHITECTURE-HLD.md`
+- `docs/ARCHITECTURE-LLD.md`
+- `docs/current-state/*`
+
 Impact:
 
-- New operators may follow stale service names or outdated deployment assumptions.
+- New operators may still hit stale service names if they use historical plans instead of current-state docs.
 
 Required follow-up:
 
-- Update `README.md`, `docs/ARCHITECTURE-HLD.md`, and `docs/ARCHITECTURE-LLD.md` to point to the current-state docs or revise their service tables.
+- Keep historical-plan archive banners visible.
+- Prefer `docs/current-state/` and the root `README.md` for current topology.
 
 ### Old Artifact References Project `custoking-ims`
 

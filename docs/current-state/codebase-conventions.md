@@ -1,7 +1,7 @@
 # Codebase and Conventions
 
-Last verified: 2026-07-10.
-CI/CD retirement updated: 2026-08-03.
+Last verified: 2026-08-04.
+CI/CD active-state updated: 2026-08-04.
 
 ## Repository Layout
 
@@ -14,7 +14,9 @@ services/operations-service/
 services/platform-service/
 services/billing-service/
 scripts/                  audits, smoke tests, deployment helpers, DB role helpers
-deploy/gcp/               retired GCP deploy runbook, direct smoke job template, observability Terraform
+deploy/gcp/               GCP support files, direct smoke job template, observability Terraform, legacy deploy notes
+deploy/clouddeploy/       active Cloud Deploy delivery pipelines and target templates
+deploy/cloudrun/          active Cloud Run service manifests rendered by Skaffold/Cloud Deploy
 deploy/local/initdb/      local Postgres init scripts
 docs/                     architecture, runbooks, plans, current-state docs
 artifacts/                generated deployment/smoke/evidence artifacts
@@ -281,7 +283,7 @@ Important scripts:
 - `scripts/invoke-production-gateway-smoke.ps1`
 - `scripts/smoke-production-write-paths.ps1`
 
-The previous GitHub Actions and Cloud Build CI/CD entrypoints were retired on 2026-08-03. See [deployment-cicd.md](deployment-cicd.md) for the CI/CD v2 plan before adding new workflow files.
+The previous GitHub Actions and Cloud Build CI/CD entrypoints were retired on 2026-08-03. The active deployment path is now branch-owned GitHub Actions plus Google Cloud Deploy. See [deployment-cicd.md](deployment-cicd.md).
 
 ## Documentation Drift Convention
 
@@ -290,7 +292,7 @@ If an older plan or runbook conflicts with live code/deploy config, prefer:
 1. service source/config
 2. live GCP inventory
 3. latest smoke artifacts
-4. [deployment-cicd.md](deployment-cicd.md) for CI/CD v2 decisions
+4. [deployment-cicd.md](deployment-cicd.md) for active CI/CD behavior
 5. older docs/plans
 
 Known stale docs are listed in [gaps-and-drift.md](gaps-and-drift.md).

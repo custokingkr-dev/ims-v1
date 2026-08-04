@@ -1,6 +1,6 @@
 # GCP Cost Optimization Plan - Production School Onboarding
 
-Last updated: 2026-08-03  
+Last updated: 2026-08-04
 Project inspected: `custoking`  
 Region inspected: `asia-south2`  
 Primary goal: reduce fixed monthly GCP cost while keeping production safe as more schools are onboarded.
@@ -27,7 +27,7 @@ Recommended direction:
 
 ## Verified Current State
 
-This section is based on live `gcloud.cmd` checks on 2026-08-03 plus repo files.
+This section is based on live `gcloud.cmd` checks on 2026-08-04 plus repo files.
 
 ### Runtime Topology
 
@@ -73,12 +73,10 @@ Other relevant facts:
 - Startup CPU boost is enabled everywhere.
 - Java services use Direct VPC egress with `private-ranges-only`.
 - Gateway and frontend do not attach to the VPC.
-- `cloudbuild.yaml` defaults `_DOMAIN_MIN_INSTANCES=0` and `_GATEWAY_MIN_INSTANCES=0`.
-- GitHub `prod` Environment currently has no `CLOUD_RUN_DOMAIN_MIN_INSTANCES` or `CLOUD_RUN_GATEWAY_MIN_INSTANCES`, so future prod deploys keep min at `0`.
+- Cloud Deploy target parameters currently set `domain_min_instances="0"` and `gateway_min_instances="0"`.
+- Cloud Run manifests consume those parameters through Skaffold/Cloud Deploy.
 
-Important drift:
-
-- `docs/current-state/gcp-infrastructure.md` still claims several services have min instances `1`. That is stale. Live Cloud Run and deployment source both show `0`.
+Important drift: none identified for Cloud Run min instances in current-state docs after the 2026-08-04 documentation update. Live Cloud Run and deployment source both show `0`.
 
 ### Cloud SQL
 
@@ -251,17 +249,13 @@ Use those counters to compute per-school unit economics from the monthly GCP bil
 
 ### P0 - This Week
 
-#### 1. Fix Documentation Drift
+#### 1. Keep Documentation Drift Checked
 
-Update stale current-state docs to reflect:
-
-- Cloud Run min instances are currently `0`.
-- Runtime `OTEL_TRACES_SAMPLER_ARG` is currently `0.05` in live services unless workflow vars override it.
-- Artifact Registry cleanup policies are applied.
+Current-state docs were updated on 2026-08-04 for active CI/CD and Cloud Run min instances. Re-check them after each deployment-system change.
 
 Why:
 
-- New-school onboarding decisions should not be based on stale min-instance assumptions.
+- New-school onboarding decisions should not be based on stale min-instance, CI/CD, or rollout assumptions.
 
 #### 2. Add Billing Guardrails
 
@@ -572,7 +566,7 @@ This keeps the expensive baseline to Cloud SQL and avoids paying continuously fo
    - `docs/current-state/gcp-infrastructure.md`
    - `docs/current-state/deployment-cicd.md`
 2. Use the cost guardrails runbook: `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`.
-3. Add labels in `cloudbuild.yaml` deploy commands and remaining non-Cloud-Run GCP resources.
+3. Add labels in Cloud Run manifests/Cloud Deploy target configuration and remaining non-Cloud-Run GCP resources.
 4. Design and implement scheduled outbox relay job.
 5. Add per-school usage counters.
 6. Add weekly cost review SQL and dashboard.

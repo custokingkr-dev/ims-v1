@@ -12,20 +12,22 @@ Extracted services are private runtime boundaries. Cloud Run IAM is the transpor
 
 ## Current Scopes
 
-| Service | Scopes |
-| --- | --- |
-| `attendance-service` | `attendance:read`, `attendance:write` |
-| `audit-service` | `audit:ingest`, `audit:read` |
-| `billing-service` | `billing:read`, `billing:write` |
-| `catalog-service` | `catalog:read`, `catalog:write` |
-| `fee-service` | `fee:read`, `fee:write` |
-| `firefighting-service` | `firefighting:read`, `firefighting:write` |
-| `identity-service` | `identity:read`, `identity:write`, `identity:introspect` |
-| `notification-service` | `notification:read`, `notification:write`, `notification:ingest`, `notification:status:read` |
-| `reporting-service` | `reporting:read`, `reporting:write` |
-| `student-service` | `student:read`, `student:write` |
-| `tenant-school-service` | `tenant-school:read`, `tenant-school:write` |
-| `workflow-service` | `workflow:read`, `workflow:write` |
+The scope names preserve the logical domain boundary even where multiple domains are merged into one runtime service.
+
+| Logical domain | Runtime service | Scopes |
+| --- | --- | --- |
+| attendance | `school-core-service` | `attendance:read`, `attendance:write` |
+| audit | `platform-service` | `audit:ingest`, `audit:read` |
+| billing | `billing-service` | `billing:read`, `billing:write` |
+| catalog | `school-core-service` | `catalog:read`, `catalog:write` |
+| fee | `school-core-service` | `fee:read`, `fee:write` |
+| firefighting | `operations-service` | `firefighting:read`, `firefighting:write` |
+| identity | `identity-service` | `identity:read`, `identity:write`, `identity:introspect` |
+| notification | `platform-service` | `notification:read`, `notification:write`, `notification:ingest`, `notification:status:read` |
+| reporting | `platform-service` | `reporting:read`, `reporting:write` |
+| student | `school-core-service` | `student:read`, `student:write` |
+| tenant-school | `school-core-service` | `tenant-school:read`, `tenant-school:write` |
+| workflow | `operations-service` | `workflow:read`, `workflow:write` |
 
 ## Guardrail
 
@@ -40,4 +42,4 @@ The audit fails if a controller:
 - omits a token guard on a mapped protected endpoint;
 - uses a generic `requireToken(token)` or `requireValidToken(token)` guard;
 - permits requests when the configured service token is blank;
-- loses the gateway, compose, or Cloud Build Secret Manager token wiring.
+- loses the gateway, compose, or Cloud Run manifest Secret Manager token wiring.

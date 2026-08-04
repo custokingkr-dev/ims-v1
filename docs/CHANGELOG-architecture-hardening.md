@@ -3,6 +3,8 @@
 Date: 2026-06-16
 Branch: architecture-hardening-local-dev
 
+> Historical note, updated 2026-08-04: this changelog intentionally records past Cloud Build/GitHub Actions work. It is not the current deployment runbook. Current CI/CD state is in `docs/current-state/deployment-cicd.md`.
+
 ## Summary
 
 This branch turns the earlier architecture review into concrete code and project changes. It keeps the application as a modular monolith, strengthens local development with Tilt/Compose, hardens authentication and tenant isolation, improves API contracts, splits frontend bundles, restores CI, and adds architecture documentation.

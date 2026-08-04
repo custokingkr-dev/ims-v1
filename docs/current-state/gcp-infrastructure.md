@@ -1,6 +1,6 @@
 # GCP Infrastructure
 
-Last verified: 2026-08-03 with `gcloud.cmd` against project `custoking`.
+Last verified: 2026-08-04 with `gcloud.cmd` against project `custoking`.
 
 ## Project and Region
 
@@ -17,6 +17,7 @@ Main enabled APIs relevant to this stack:
 
 - `artifactregistry.googleapis.com`
 - `cloudbuild.googleapis.com`
+- `clouddeploy.googleapis.com`
 - `cloudresourcemanager.googleapis.com`
 - `cloudtrace.googleapis.com`
 - `compute.googleapis.com`
@@ -39,24 +40,24 @@ Main enabled APIs relevant to this stack:
 
 ## Cloud Run Services
 
-All listed services were Ready on 2026-07-09.
+All listed services were Ready on 2026-08-04.
 
 | Service | URL | Latest ready revision |
 | --- | --- | --- |
-| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-00061-556` |
-| `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-00004-hrb` |
-| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-00061-hth` |
-| `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-00003-tsl` |
-| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-00120-n9w` |
-| `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-00008-j5t` |
-| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-00063-8bd` |
-| `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-00004-xmh` |
-| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-00061-tjx` |
-| `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-00003-6wk` |
-| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-00060-mv5` |
-| `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-00004-fwh` |
-| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-00072-gqg` |
-| `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-00008-mrp` |
+| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-mseb1ggj` |
+| `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-msecp82x` |
+| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-mseb00d8` |
+| `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-msecnzyt` |
+| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-mseb22a1` |
+| `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-msecpvpk` |
+| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-mseaypug` |
+| `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-msecmmbk` |
+| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-mseazdli` |
+| `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-msecn9qa` |
+| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-mseb0sod` |
+| `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-msecomtz` |
+| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-mseay1qp` |
+| `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-mseclx1n` |
 
 ## Cloud Run IAM
 
@@ -280,14 +281,37 @@ principalSet://iam.googleapis.com/projects/305630109861/locations/global/workloa
 
 Verified project-level IAM bindings for `github-actions-sa`:
 
+- `roles/artifactregistry.writer`
 - `roles/cloudbuild.builds.editor`
+- `roles/clouddeploy.admin`
 - `roles/iam.serviceAccountUser`
 - `roles/logging.viewer`
 - `roles/run.developer`
 - `roles/secretmanager.viewer`
+- `roles/serviceusage.serviceUsageConsumer`
 - `roles/storage.admin`
 
-Verified drift: the source file `deploy/gcp/github-deploy-runtime-operator-role.yaml` exists, but no project custom role was found by `gcloud iam roles list --project=custoking`, and `githubDeployRuntimeOperator` could not be described. Deploys are currently succeeding with predefined project-level roles.
+Verified drift: the source file `deploy/gcp/github-deploy-runtime-operator-role.yaml` exists, but no project custom role was found by `gcloud iam roles list --project=custoking`, and `githubDeployRuntimeOperator` could not be described. Deploys are currently succeeding with predefined project-level roles. `roles/cloudbuild.builds.editor` remains present even though `cloudbuild.yaml` deployment is retired.
+
+## Cloud Deploy
+
+Cloud Deploy is enabled and active in `asia-south2`.
+
+The active deployment model uses one delivery pipeline per service per environment:
+
+```text
+custoking-<service>-dev
+custoking-<service>-prod
+```
+
+Dev pipelines use a standard strategy. Prod pipelines use canary percentages `5`, `25`, `50`, then stable.
+
+Latest verified API gateway rollouts for commit `8607912b7f85378086c4602294f610f907538084`:
+
+| Environment | Release | Rollout | State |
+| --- | --- | --- | --- |
+| dev | `rel-dev-8607912b7f85-1` | `rel-dev-8607912b7f85-1-to-api-gateway-dev-0001` | `SUCCEEDED` |
+| prod | `rel-prod-8607912b7f85-1` | `rel-prod-8607912b7f85-1-to-api-gateway-prod-0001` | `SUCCEEDED` |
 
 ## Cloud Run Jobs
 
@@ -300,7 +324,7 @@ Live jobs:
 - `ims-seed-dev`
 - `ims-seedfull-dev`
 
-`ims-direct-service-smoke` exists. The release workflow now enables direct-service smoke and replaces this job from `deploy/gcp/direct-service-smoke-job.template.yaml` during each deploy.
+`ims-direct-service-smoke` exists. The current `build-release.yml` workflow does not invoke this job; the automatic post-rollout smoke currently calls only the public gateway `/gateway-health` endpoint through `scripts/smoke-gateway-health.ps1`.
 
 Verified live IAM for the direct smoke runtime:
 

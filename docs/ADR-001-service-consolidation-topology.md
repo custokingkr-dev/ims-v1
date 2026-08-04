@@ -1,9 +1,11 @@
 # ADR-001 — Service Consolidation Topology (Phase 2, Task 2.1)
 
-**Status:** Proposed (awaiting sign-off) · **Date:** 2026-07-02
+**Status:** Implemented in current runtime topology · **Date:** 2026-07-02 · **Implementation verified:** 2026-08-04
 **Context:** Remediation program Phase 2 — consolidate 12 nanoservices → ~5 domain services. Phase 0/1 (EOL upgrade, gateway hardening, `app_rt`/RLS/enforce, tenant isolation, validation) are complete and deployed to prod.
 
 ## Decision
+
+Current status, verified 2026-08-04: the consolidation described by this ADR is implemented in the deployed topology. Runtime services are `identity-service`, `school-core-service`, `operations-service`, `platform-service`, and `billing-service`, plus `api-gateway` and `frontend`.
 
 Consolidate to **5 services** (chosen topology "A — aggressive co-location"):
 
@@ -37,7 +39,7 @@ A merge combines N Spring Boot apps into one, preserving the public `/api/v1/**`
 3. **Datasource & roles.** Single datasource per merged service, runtime role `app_rt` (RLS-subject), migration role `appuser` (owner) — unchanged from Phase 1. The `TenantAwareDataSource`/GUC/RLS wiring is copied once into the merged service and applies to all its schemas' RLS-enabled tables.
 4. **Internal service tokens.** The merged service **accepts each domain's existing token** (e.g. `WORKFLOW_READ_TOKEN` and `FIREFIGHTING_READ_TOKEN`), fail-closed per Phase 0. The gateway keeps injecting the per-route token, so no token contract changes. (A later cleanup can unify tokens.)
 5. **Gateway.** In `services/api-gateway/server.js`, the route **path prefixes are unchanged**; only the upstream target changes — the merged group's `*_UPSTREAM` envs all point at the one merged Cloud Run URL. `GATEWAY_AUTH_MODE=enforce` and header injection are unchanged.
-6. **Deployment.** `cloudbuild.yaml`, `deploy.yml` (the `deploy_services` matrix), `docker-compose.yml`, and the Tiltfile lose the retired service names and gain the merged one. Cloud Run: deploy the merged service, repoint the gateway envs, then delete the retired services **after** verification.
+6. **Deployment.** The historical implementation path used `cloudbuild.yaml` and `deploy.yml`; the current deployment path is GitHub Actions plus Cloud Deploy. `docker-compose.yml`, Cloud Run manifests, and gateway upstream envs now use the merged runtime services.
 7. **Cross-service calls become in-process.** Any current HTTP call between two now-merged domains (e.g. attendance→student) becomes a direct method/repository call within the merged service. Calls to services **outside** the group stay as HTTP/events.
 
 ## Merge order (lowest risk first — proves the pattern before the big one)
