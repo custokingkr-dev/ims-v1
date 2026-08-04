@@ -103,7 +103,7 @@ If the backend keeps separate campaign types, use `PROFILE_VERIFICATION` and `PH
 
 ## UI Decisions
 
-- Keep the first screen dense: campaign status, class/section filters, queue, and selected student detail.
+- Keep the first screen minimal: campaign status, class/section filters, queue, and selected student detail.
 - Show the student photo near the fields being verified; photo review without a visible portrait is not acceptable.
 - Use plain statuses: `Pending`, `Verified`, `Needs correction`.
 - Use a single high-emphasis action: `Save review`.
@@ -149,5 +149,5 @@ Priority 3:
 
 Separate mockups are available at:
 
-- `docs/mockups/student-verification-mvp.html` for the minimal school verification flow.
-- `docs/mockups/student-verification-future.html` for gaps, improvements, and future features.
+- `docs/mockups/student-verification-mvp.html` for the reduced school verification flow.
+- `docs/mockups/student-verification-future.html` for a small later-improvements view.
