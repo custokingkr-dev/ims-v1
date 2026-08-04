@@ -1489,6 +1489,38 @@ public class StudentReadRepository {
                 "An active Photo Verification campaign already exists for this school");
     }
 
+    @Transactional
+    public Map<String, Object> verifyStudentProfile(Long studentId, Long schoolId, Long actorId) {
+        String itemId = ensureStudentReviewItem(studentId, schoolId, "PROFILE_VERIFICATION", "Profile Verification", actorId);
+        return updateReviewItem(itemId, row(
+                "schoolId", schoolId,
+                "verifiedFullName", true,
+                "verifiedAdmissionNo", true,
+                "verifiedClassSection", true,
+                "verifiedRollNo", true,
+                "verifiedFatherName", true,
+                "verifiedFatherContact", true,
+                "verifiedAddress", true,
+                "status", "COMPLETED",
+                "correctionNotes", null));
+    }
+
+    @Transactional
+    public Map<String, Object> verifyStudentPhoto(Long studentId, Long schoolId, Long actorId) {
+        String itemId = ensureStudentReviewItem(studentId, schoolId, "PHOTO_VERIFICATION", "Photo Verification", actorId);
+        return updateReviewItem(itemId, row(
+                "schoolId", schoolId,
+                "verifiedPhoto", true,
+                "status", "COMPLETED",
+                "correctionNotes", null));
+    }
+
+    public Map<String, Object> studentVerificationSummary(Long studentId, Long schoolId) {
+        return row(
+                "profile", activeStudentReviewItem(studentId, schoolId, "PROFILE_VERIFICATION").orElse(null),
+                "photo", activeStudentReviewItem(studentId, schoolId, "PHOTO_VERIFICATION").orElse(null));
+    }
+
     private Map<String, Object> initiateStudentVerification(
             Map<String, Object> request, String reviewType, String titlePrefix, String duplicateMessage) {
         Long schoolId = requireLong(request.get("schoolId"), "schoolId is required");
@@ -1531,6 +1563,41 @@ public class StudentReadRepository {
         insertReviewItems(campaignId, schoolId, stringList(request.get("classIds")),
                 stringList(request.get("sectionIds")), longValue(request.get("assignedToUserId"), null));
         return reviewStatus(campaignId);
+    }
+
+    private String ensureStudentReviewItem(Long studentId, Long schoolId, String reviewType, String titlePrefix, Long actorId) {
+        validateStudentSchool(studentId, schoolId);
+        Optional<String> activeCampaign = activeReviewCampaign(schoolId, reviewType);
+        String campaignId = activeCampaign.orElseGet(() -> createStudentVerificationCampaign(schoolId, reviewType, titlePrefix, actorId));
+        return activeStudentReviewItemId(studentId, schoolId, reviewType)
+                .orElseGet(() -> insertSingleReviewItem(campaignId, studentId, schoolId));
+    }
+
+    private String createStudentVerificationCampaign(Long schoolId, String reviewType, String titlePrefix, Long actorId) {
+        String academicYearId = currentAcademicYearId(schoolId);
+        String academicYearLabel = jdbc.sql("SELECT label FROM tenant_school.academic_years WHERE id = :id")
+                .param("id", academicYearId)
+                .query(String.class)
+                .optional()
+                .orElse(academicYearId);
+        String campaignId = UUID.randomUUID().toString();
+        jdbc.sql("""
+                        INSERT INTO student.student_review_campaigns
+                            (id, school_id, academic_year_id, review_type, title, status, initiated_by,
+                             initiated_at, created_at, updated_at)
+                        VALUES
+                            (:id, :schoolId, :academicYearId, :reviewType, :title, 'ACTIVE', :actorId,
+                             now(), now(), now())
+                        """)
+                .param("id", campaignId)
+                .param("schoolId", schoolId)
+                .param("academicYearId", academicYearId)
+                .param("reviewType", reviewType)
+                .param("title", titlePrefix + " - " + academicYearLabel)
+                .param("actorId", actorId)
+                .update();
+        insertReviewItems(campaignId, schoolId, List.of(), List.of(), null);
+        return campaignId;
     }
 
     @Transactional
@@ -2179,6 +2246,51 @@ public class StudentReadRepository {
         }
     }
 
+    private String insertSingleReviewItem(String campaignId, Long studentId, Long schoolId) {
+        String fullName = jdbc.sql("""
+                        SELECT full_name
+                        FROM student.students
+                        WHERE id = :studentId AND school_id = :schoolId AND deleted_at IS NULL
+                        """)
+                .param("studentId", studentId)
+                .param("schoolId", schoolId)
+                .query(String.class)
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+        String itemId = UUID.randomUUID().toString();
+        jdbc.sql("""
+                        INSERT INTO student.student_review_items
+                            (id, campaign_id, student_id, school_id, status, current_full_name, created_at, updated_at)
+                        VALUES
+                            (:id, :campaignId, :studentId, :schoolId, 'PENDING', :currentFullName, now(), now())
+                        ON CONFLICT (campaign_id, student_id) DO NOTHING
+                        """)
+                .param("id", itemId)
+                .param("campaignId", campaignId)
+                .param("studentId", studentId)
+                .param("schoolId", schoolId)
+                .param("currentFullName", fullName)
+                .update();
+        String resolvedItemId = activeStudentReviewItemId(studentId, schoolId, reviewTypeForCampaign(campaignId)).orElse(itemId);
+        emitReviewItemUpserted(resolvedItemId);
+        return resolvedItemId;
+    }
+
+    private void validateStudentSchool(Long studentId, Long schoolId) {
+        Long count = jdbc.sql("""
+                        SELECT COUNT(*)
+                        FROM student.students
+                        WHERE id = :studentId AND school_id = :schoolId AND deleted_at IS NULL
+                        """)
+                .param("studentId", studentId)
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .single();
+        if (count == null || count == 0) {
+            throw new IllegalArgumentException("Student not found");
+        }
+    }
+
     /**
      * Emits {@code student-review-item.upserted.v1} for the reporting
      * fact_student_review_item projection (SP7 student-review). school_id already lives
@@ -2260,6 +2372,42 @@ public class StudentReadRepository {
                 .param("reviewType", reviewType)
                 .query(String.class)
                 .optional();
+    }
+
+    private Optional<String> activeStudentReviewItemId(Long studentId, Long schoolId, String reviewType) {
+        return jdbc.sql("""
+                        SELECT i.id
+                        FROM student.student_review_items i
+                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                        WHERE i.student_id = :studentId
+                          AND i.school_id = :schoolId
+                          AND c.review_type = :reviewType
+                          AND c.status = 'ACTIVE'
+                        ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
+                        LIMIT 1
+                        """)
+                .param("studentId", studentId)
+                .param("schoolId", schoolId)
+                .param("reviewType", reviewType)
+                .query(String.class)
+                .optional();
+    }
+
+    private Optional<Map<String, Object>> activeStudentReviewItem(Long studentId, Long schoolId, String reviewType) {
+        return activeStudentReviewItemId(studentId, schoolId, reviewType)
+                .flatMap(itemId -> reviewItemDetail(itemId, schoolId));
+    }
+
+    private String reviewTypeForCampaign(String campaignId) {
+        return jdbc.sql("""
+                        SELECT review_type
+                        FROM student.student_review_campaigns
+                        WHERE id = :campaignId
+                        """)
+                .param("campaignId", campaignId)
+                .query(String.class)
+                .optional()
+                .orElse("");
     }
 
     private ReviewCounts reviewCounts(String campaignId) {

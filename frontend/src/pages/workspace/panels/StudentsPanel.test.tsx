@@ -14,6 +14,7 @@ describe('StudentsPanel', () => {
 
   beforeEach(() => {
     vi.mocked(api.get).mockReset();
+    vi.mocked(api.post).mockReset();
     vi.mocked(api.delete).mockReset();
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === '/students') {
@@ -38,7 +39,39 @@ describe('StudentsPanel', () => {
           },
         });
       }
+      if (url === '/students/101/workspace') {
+        return Promise.resolve({
+          data: {
+            id: 101,
+            fullName: 'Aarav Sharma',
+            name: 'Aarav Sharma',
+            admissionNumber: 'ADM-101',
+            rollNo: '7',
+            className: 'Class 2',
+            sectionName: 'A',
+            classSection: 'Class 2 - A',
+            academicYear: '2026-27',
+            fatherName: 'Ravi Sharma',
+            fatherContact: '9876543210',
+            feeStatus: 'Pending',
+            attendancePercent: 92,
+            address: {},
+          },
+        });
+      }
+      if (url === '/students/101/verification') {
+        return Promise.resolve({ data: { profile: null, photo: null } });
+      }
       return Promise.resolve({ data: [] });
+    });
+    vi.mocked(api.post).mockImplementation((url: string) => {
+      if (url === '/students/101/verification/photo/verify') {
+        return Promise.resolve({ data: { itemId: 'photo-1', studentId: 101, status: 'COMPLETED' } });
+      }
+      if (url === '/students/101/verification/profile/verify') {
+        return Promise.resolve({ data: { itemId: 'profile-1', studentId: 101, status: 'COMPLETED' } });
+      }
+      return Promise.resolve({ data: {} });
     });
   });
 
@@ -143,6 +176,35 @@ describe('StudentsPanel', () => {
       },
     });
     await screen.findByText('No students found for "Mira"');
+  });
+
+  it('opens student details from the row and removes the old view action', async () => {
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+
+    const studentName = await screen.findByText('Aarav Sharma');
+    expect(screen.queryByRole('button', { name: /view aarav sharma/i })).not.toBeInTheDocument();
+
+    fireEvent.click(studentName.closest('tr') as HTMLTableRowElement);
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/101/workspace'));
+    expect(await screen.findByText('Student details')).toBeInTheDocument();
+    expect(screen.getByText('Verification')).toBeInTheDocument();
+  });
+
+  it('opens per-student verification from the row and verifies the photo', async () => {
+    const onRefresh = vi.fn();
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={onRefresh} />);
+
+    await screen.findByText('Aarav Sharma');
+    fireEvent.click(screen.getByRole('button', { name: /verify details for aarav sharma/i }));
+
+    await screen.findByRole('button', { name: /verify image/i });
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/101/verification'));
+
+    fireEvent.click(screen.getByRole('button', { name: /verify image/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/101/verification/photo/verify', {}));
+    expect(onRefresh).toHaveBeenCalled();
   });
 
   it('requires admission number confirmation before deleting a student', async () => {

@@ -225,6 +225,11 @@ export interface ReviewItemDetail {
   completedAt: string | null;
 }
 
+export interface StudentVerificationSummaryResponse {
+  profile: ReviewItemDetail | null;
+  photo: ReviewItemDetail | null;
+}
+
 export interface InitiateIdCardReviewRequest {
   schoolId?: number | null;
   classIds?: string[] | null;

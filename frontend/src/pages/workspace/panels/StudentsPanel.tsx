@@ -19,14 +19,20 @@ import { formatAddress, formatPaise } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 import { StudentModuleTabs } from './StudentModuleTabs';
-import { StudentVerificationDrawer } from './StudentVerificationDrawer';
+import {
+  fetchStudentVerificationSummary,
+  verifyStudentPhoto,
+  verifyStudentProfile,
+} from '../../../api/dashboardCommandCenterApi';
+import type { ReviewItemDetail, StudentVerificationSummaryResponse } from '../../../types/dashboardCommandCenter';
 import {
   Archive,
   ArrowUpRight,
+  BadgeCheck,
   ClipboardCheck,
-  Eye,
   FileSpreadsheet,
   Image,
+  LoaderCircle,
   Pencil,
   Search,
   Trash2,
@@ -120,7 +126,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [promotionBatch, setPromotionBatch] = useState<PromotionBatch | null>(null);
   const [promotionLoading, setPromotionLoading] = useState(false);
   const [promotionError, setPromotionError] = useState<string | null>(null);
-  const [verificationMode, setVerificationMode] = useState<'profile' | 'photo' | null>(null);
+  const [verificationSummary, setVerificationSummary] = useState<StudentVerificationSummaryResponse | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationBusy, setVerificationBusy] = useState<'profile' | 'photo' | ''>('');
+  const [verificationError, setVerificationError] = useState<string | null>(null);
+  const [verificationPanelOpen, setVerificationPanelOpen] = useState(false);
   const studentsRequestId = useRef(0);
 
   const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode, search = studentSearch) => {
@@ -208,6 +218,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     setStudentDetailLimited(false);
     setEditing(false);
     setModalError(null);
+    setVerificationSummary(null);
+    setVerificationError(null);
+    setVerificationPanelOpen(false);
     setStudentHistory(null);
     setStudentHistoryError(null);
     setHistoryYearFilter('all');
@@ -230,10 +243,20 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   };
 
+  const openStudentVerification = async (student: any) => {
+    await openStudentModal(student);
+    setVerificationPanelOpen(true);
+    void loadStudentVerification(Number(student.id));
+  };
+
   const closeStudentModal = () => {
     setStudentModalOpen(false);
     setEditing(false);
     setModalError(null);
+    setVerificationSummary(null);
+    setVerificationError(null);
+    setVerificationPanelOpen(false);
+    setVerificationBusy('');
     setStudentHistory(null);
     setStudentHistoryError(null);
     setHistoryYearFilter('all');
@@ -268,6 +291,50 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     } finally {
       setEditPhotoBusy(false);
       if (editPhotoInputRef.current) editPhotoInputRef.current.value = '';
+    }
+  };
+
+  const loadStudentVerification = async (studentId = Number(studentDetail?.id)) => {
+    if (!studentId || !can('student:update') || !schoolScopedParams) return;
+    setVerificationLoading(true);
+    setVerificationError(null);
+    try {
+      const next = await fetchStudentVerificationSummary(studentId);
+      setVerificationSummary(next);
+    } catch (err: unknown) {
+      setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : 'Could not load verification status.'));
+    } finally {
+      setVerificationLoading(false);
+    }
+  };
+
+  const openVerificationPanel = () => {
+    setVerificationPanelOpen(true);
+    if (!verificationSummary && !verificationLoading) {
+      void loadStudentVerification();
+    }
+  };
+
+  const markStudentVerified = async (kind: 'profile' | 'photo') => {
+    if (!studentDetail?.id) return;
+    setVerificationBusy(kind);
+    setVerificationError(null);
+    try {
+      const item = kind === 'profile'
+        ? await verifyStudentProfile(Number(studentDetail.id))
+        : await verifyStudentPhoto(Number(studentDetail.id));
+      setVerificationSummary((current) => ({
+        profile: kind === 'profile' ? item : current?.profile ?? null,
+        photo: kind === 'photo' ? item : current?.photo ?? null,
+      }));
+      await loadStudents(studentFilters, studentsPage, studentListMode, studentSearch);
+      onRefresh();
+    } catch (err: unknown) {
+      setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
+        || (err instanceof Error ? err.message : 'Could not save verification.'));
+    } finally {
+      setVerificationBusy('');
     }
   };
 
@@ -531,6 +598,21 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     }
   }
 
+  const verificationStatusText = (item?: ReviewItemDetail | null) => {
+    if (!item) return 'Not verified';
+    if (item.status === 'COMPLETED') return 'Verified';
+    if (item.status === 'NEEDS_CORRECTION') return 'Needs correction';
+    return 'Pending';
+  };
+
+  const verificationStatusClass = (item?: ReviewItemDetail | null) => {
+    if (item?.status === 'COMPLETED') return 'sgr';
+    if (item?.status === 'NEEDS_CORRECTION') return 'sam';
+    return 'sr';
+  };
+
+  const canVerifyStudentDetails = can('student:update') && !!schoolScopedParams && studentListMode === 'active';
+
   return (
     <>
       <ModuleShell
@@ -634,24 +716,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 Archived
               </button>
             </div>
-            {can('student:update') && schoolScopedParams && studentListMode === 'active' ? (
-              <div className="ck-actions-inline ck-student-verification-actions" aria-label="Student verification actions">
-                <button
-                  type="button"
-                  className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label"
-                  onClick={() => setVerificationMode('profile')}
-                >
-                  <ClipboardCheck size={14} aria-hidden="true" />Verify profiles
-                </button>
-                <button
-                  type="button"
-                  className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label"
-                  onClick={() => setVerificationMode('photo')}
-                >
-                  <Image size={14} aria-hidden="true" />Verify photos
-                </button>
-              </div>
-            ) : null}
             <select
               value={studentFilters.className}
               onChange={e => applyFilters({ ...studentFilters, className: e.target.value, sectionName: 'All' })}
@@ -735,12 +799,23 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                 {(studentsView.items || []).map((student: any) => {
                   const archived = Boolean(student.deletedAt);
                   return (
-                    <tr key={student.id}>
+                    <tr
+                      key={student.id}
+                      className="ck-student-row"
+                      tabIndex={0}
+                      onClick={() => openStudentModal(student)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          void openStudentModal(student);
+                        }
+                      }}
+                    >
                       <td>
                         <div className="ck-student-cell">
                           <StudentPhotoAvatar photoUrl={student.photoUrl} name={student.fullName} />
                           <div>
-                            <button type="button" className="ck-table-link" onClick={() => openStudentModal(student)}>{student.fullName}</button>
+                            <div className="ck-table-link ck-table-link-static">{student.fullName}</div>
                             <div className="ts">{student.classSection} · {student.academicYear}{archived ? ` · Deleted${student.deletedReason ? `: ${student.deletedReason}` : ''}` : ''}</div>
                           </div>
                         </div>
@@ -768,12 +843,31 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                         </div>
                       </td>
                       <td>
-                        <div className="ck-actions-inline">
-                          <button className="ck-icon-btn" title="View student" aria-label={`View ${student.fullName}`} onClick={() => openStudentModal(student)}>
-                            <Eye size={16} aria-hidden="true" />
-                          </button>
+                        <div className="ck-actions-inline ck-student-row-actions">
+                          {canVerifyStudentDetails && !archived ? (
+                            <button
+                              type="button"
+                              className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label ck-student-verify-row-btn"
+                              title={`Verify details for ${student.fullName}`}
+                              aria-label={`Verify details for ${student.fullName}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void openStudentVerification(student);
+                              }}
+                            >
+                              <BadgeCheck size={14} aria-hidden="true" />Verify details
+                            </button>
+                          ) : null}
                           {can('student:update') && !archived ? (
-                            <button className="ck-icon-btn" title="Edit student" aria-label={`Edit ${student.fullName}`} onClick={() => openStudentModal(student, true)}>
+                            <button
+                              className="ck-icon-btn"
+                              title="Edit student"
+                              aria-label={`Edit ${student.fullName}`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void openStudentModal(student, true);
+                              }}
+                            >
                               <Pencil size={15} aria-hidden="true" />
                             </button>
                           ) : null}
@@ -784,7 +878,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                               title={`Delete ${student.fullName}`}
                               aria-label="Delete"
                               disabled={deleteBusyId === student.id}
-                              onClick={() => requestDeleteStudent(student, { closeModal: false })}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                requestDeleteStudent(student, { closeModal: false });
+                              }}
                             >
                               <Trash2 size={15} aria-hidden="true" />
                             </button>
@@ -832,19 +929,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
           onPageChange={handlePageChange}
         />
       </ModuleShell>
-
-      {verificationMode ? (
-        <StudentVerificationDrawer
-          open={!!verificationMode}
-          mode={verificationMode}
-          schoolId={schoolScopedParams!.schoolId}
-          onClose={() => setVerificationMode(null)}
-          onChanged={() => {
-            onRefresh();
-            void loadStudents(studentFilters, studentsPage, studentListMode, studentSearch);
-          }}
-        />
-      ) : null}
 
       {studentModalOpen && (
         <div className="ck-modal-bg" onClick={closeStudentModal}>
@@ -901,6 +985,71 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <div className="ts">{studentDetail.classSection} · {studentDetail.academicYear}</div>
                     </div>
                   </div>
+                  {canVerifyStudentDetails && !studentDetail.deletedAt ? (
+                    <div className="ck-form-card ck-student-verification-card" style={{ gridColumn: '1 / -1' }}>
+                      <div className="ck-form-head ck-card-h-wrap">
+                        <span>Verification</span>
+                        <button
+                          type="button"
+                          className="ck-btn ck-btn-ghost ck-btn-sm ck-icon-label"
+                          onClick={openVerificationPanel}
+                          disabled={verificationLoading}
+                        >
+                          {verificationLoading ? <LoaderCircle className="pi-spin" size={14} /> : <BadgeCheck size={14} />}
+                          {verificationPanelOpen ? 'Refresh' : 'Verify details'}
+                        </button>
+                      </div>
+                      {verificationPanelOpen ? (
+                        <div className="ck-form-body ck-student-verification-body">
+                          {verificationError ? (
+                            <div className="ck-alert ck-alert-r"><span>!</span><div>{verificationError}</div></div>
+                          ) : null}
+                          <div className="ck-student-verification-target">
+                            <StudentPhotoAvatar
+                              photoUrl={studentDetail.photoUrl}
+                              name={studentDetail.fullName || studentDetail.name}
+                              className="ck-student-avatar ck-student-avatar-xl"
+                              fallbackClassName="ck-student-avatar ck-student-avatar-fallback ck-student-avatar-xl"
+                            />
+                            <div>
+                              <strong>{studentDetail.fullName || studentDetail.name}</strong>
+                              <span>{studentDetail.admissionNumber} / {studentDetail.className} {studentDetail.sectionName}</span>
+                            </div>
+                          </div>
+                          <div className="ck-student-verification-actions-grid">
+                            <div>
+                              <span className={`ck-status ${verificationStatusClass(verificationSummary?.photo)}`}>
+                                {verificationStatusText(verificationSummary?.photo)}
+                              </span>
+                              <button
+                                type="button"
+                                className="ck-btn ck-btn-g ck-icon-label"
+                                onClick={() => void markStudentVerified('photo')}
+                                disabled={verificationBusy === 'photo'}
+                              >
+                                {verificationBusy === 'photo' ? <LoaderCircle className="pi-spin" size={15} /> : <Image size={15} />}
+                                Verify image
+                              </button>
+                            </div>
+                            <div>
+                              <span className={`ck-status ${verificationStatusClass(verificationSummary?.profile)}`}>
+                                {verificationStatusText(verificationSummary?.profile)}
+                              </span>
+                              <button
+                                type="button"
+                                className="ck-btn ck-btn-g ck-icon-label"
+                                onClick={() => void markStudentVerified('profile')}
+                                disabled={verificationBusy === 'profile'}
+                              >
+                                {verificationBusy === 'profile' ? <LoaderCircle className="pi-spin" size={15} /> : <ClipboardCheck size={15} />}
+                                Verify student details
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="ck-student-modal-info">
                     <Info label="Admission No" value={studentDetail.admissionNumber} />
                     <Info label="Roll No" value={studentDetail.rollNo} />

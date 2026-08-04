@@ -1001,9 +1001,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-student-directory .ck-table th:nth-child(4) { width:15%; }
 .ck-student-directory .ck-table th:nth-child(5) { width:12%; }
 .ck-student-directory .ck-table th:nth-child(6) { width:11%; }
-.ck-student-directory .ck-table th:nth-child(7) { width:112px; }
+.ck-student-directory .ck-table th:nth-child(7) { width:190px; }
 .ck-student-directory .ck-table th:last-child,
 .ck-student-directory .ck-table td:last-child { text-align:right; }
+.ck-student-directory .ck-student-row { cursor:pointer; }
+.ck-student-directory .ck-student-row:focus-visible td {
+  outline:2px solid var(--b);
+  outline-offset:-2px;
+  background:#fafcff;
+}
 .ck-student-directory .ck-student-cell,
 .ck-student-directory .ck-student-cell > div { min-width:0; }
 .ck-student-directory .ck-student-cell {
@@ -1034,10 +1040,18 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   white-space:nowrap;
 }
 .ck-student-directory .ck-table-link { line-height:1.25; }
+.ck-student-directory .ck-table-link-static { color:var(--ink); cursor:inherit; }
 .ck-student-directory .ck-student-cell .ts { margin:0; line-height:1.25; }
 .ck-student-directory .ck-mini-progress-cell { min-width:0; }
 .ck-student-directory .ck-mini-progress { width:100%; max-width:100px; }
 .ck-student-directory .ck-actions-inline { flex-wrap:nowrap; justify-content:flex-end; }
+.ck-student-row-actions { align-items:center; gap:8px; }
+.ck-student-verify-row-btn {
+  min-width:124px;
+  justify-content:center;
+  padding-right:10px;
+  padding-left:10px;
+}
 .ck-student-delete-inline:hover:not(:disabled) { color:var(--re); background:var(--re1); border-color:#f0c5c0; }
 .ck-student-detail-drawer {
   width:min(760px,calc(100vw - 32px));
@@ -1049,7 +1063,34 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   flex-direction:column;
 }
 .ck-student-detail-drawer .ck-modal-body { max-height:none; flex:1; }
-.ck-student-verification-actions { padding-right:4px; border-right:1px solid var(--border); }
+.ck-student-avatar-xl { width:88px; height:88px; font-size:22px; }
+.ck-student-verification-body { display:grid; gap:14px; }
+.ck-student-verification-target {
+  display:grid;
+  grid-template-columns:88px minmax(0,1fr);
+  gap:14px;
+  align-items:center;
+}
+.ck-student-verification-target strong,
+.ck-student-verification-target span { display:block; min-width:0; overflow-wrap:anywhere; }
+.ck-student-verification-target span { margin-top:4px; color:var(--ink3); font-size:12px; }
+.ck-student-verification-actions-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+}
+.ck-student-verification-actions-grid > div {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  min-width:0;
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px;
+  background:#fff;
+}
+.ck-student-verification-actions-grid .ck-btn { flex:0 0 auto; }
 .ck-verification-drawer {
   width:min(980px,calc(100vw - 32px));
   max-height:calc(100vh - 56px);
@@ -1505,14 +1546,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   .ck-card-inline-filters select { flex:1 1 130px; min-width:0; }
   .ck-students-toolbar .ck-card-inline-filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .ck-students-toolbar .ck-card-inline-filters .ck-actions-inline { grid-column:1 / -1; }
-  .ck-student-verification-actions {
-    border-right:0;
-    border-bottom:1px solid var(--border);
-    padding-right:0;
-    padding-bottom:8px;
-  }
   .ck-students-toolbar .ck-card-inline-filters select:last-child { grid-column:1 / -1; }
   .ck-student-detail-drawer { width:100vw; margin:-28px -16px; }
+  .ck-student-verification-target,
+  .ck-student-verification-actions-grid { grid-template-columns:1fr; }
+  .ck-student-verification-actions-grid > div { align-items:flex-start; flex-direction:column; }
   .ck-verification-drawer { width:100vw; max-height:none; height:100vh; margin:-28px -16px; border-radius:0; }
   .ck-verification-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .ck-verification-summary > div:nth-child(2) { border-right:0; }

@@ -10,6 +10,7 @@ import type {
   IdCardReviewStatusResponse,
   FullNameVerificationStatusResponse,
   StudentVerificationStatusResponse,
+  StudentVerificationSummaryResponse,
   ReviewItemDetail,
   InitiateIdCardReviewRequest,
   InitiateFullNameVerificationRequest,
@@ -140,6 +141,21 @@ export async function initiatePhotoVerification(
     '/students/reviews/photo/initiate',
     request
   );
+  return res.data;
+}
+
+export async function fetchStudentVerificationSummary(studentId: number): Promise<StudentVerificationSummaryResponse> {
+  const res = await api.get<StudentVerificationSummaryResponse>(`/students/${studentId}/verification`);
+  return res.data;
+}
+
+export async function verifyStudentProfile(studentId: number): Promise<ReviewItemDetail> {
+  const res = await api.post<ReviewItemDetail>(`/students/${studentId}/verification/profile/verify`, {});
+  return res.data;
+}
+
+export async function verifyStudentPhoto(studentId: number): Promise<ReviewItemDetail> {
+  const res = await api.post<ReviewItemDetail>(`/students/${studentId}/verification/photo/verify`, {});
   return res.data;
 }
 

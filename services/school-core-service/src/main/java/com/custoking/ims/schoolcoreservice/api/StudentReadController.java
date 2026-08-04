@@ -548,6 +548,44 @@ public class StudentReadController {
         return students.photoVerificationStatus(scope);
     }
 
+    @GetMapping("/{id}/verification")
+    public Map<String, Object> studentVerificationSummary(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id) {
+        requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long schoolId = studentSchoolId(id, false);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
+        return execute(() -> students.studentVerificationSummary(id, scope));
+    }
+
+    @PostMapping("/{id}/verification/profile/verify")
+    public Map<String, Object> verifyStudentProfile(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id) {
+        requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Long schoolId = studentSchoolId(id, false);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
+        Long actorId = TenantContext.get().userId();
+        return execute(() -> students.verifyStudentProfile(id, scope, actorId));
+    }
+
+    @PostMapping("/{id}/verification/photo/verify")
+    public Map<String, Object> verifyStudentPhoto(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id) {
+        requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Long schoolId = studentSchoolId(id, false);
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
+        Long actorId = TenantContext.get().userId();
+        return execute(() -> students.verifyStudentPhoto(id, scope, actorId));
+    }
+
     @PostMapping("/reviews/items/{itemId}")
     public Map<String, Object> updateReviewItem(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,

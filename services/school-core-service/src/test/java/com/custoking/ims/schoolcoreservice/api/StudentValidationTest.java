@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -135,6 +136,45 @@ class StudentValidationTest {
         ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
         verify(repo).attachPhoto(eq(42L), bytesCaptor.capture(), eq("image/jpeg"));
         assertArrayEquals(jpeg, bytesCaptor.getValue());
+    }
+
+    @Test
+    void studentVerificationSummary_resolvesStudentSchool() throws Exception {
+        when(repo.schoolIdForStudent(42L)).thenReturn(4L);
+        when(repo.studentVerificationSummary(42L, 4L)).thenReturn(Map.of("profile", Map.of("status", "COMPLETED")));
+
+        mvc.perform(get("/api/v1/students/42/verification")
+                        .header("X-Student-Service-Token", VALID_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.profile.status").value("COMPLETED"));
+
+        verify(repo).studentVerificationSummary(42L, 4L);
+    }
+
+    @Test
+    void verifyStudentPhoto_resolvesStudentSchoolAndActor() throws Exception {
+        when(repo.schoolIdForStudent(42L)).thenReturn(4L);
+        when(repo.verifyStudentPhoto(42L, 4L, 1L)).thenReturn(Map.of("itemId", "photo-1", "status", "COMPLETED"));
+
+        mvc.perform(post("/api/v1/students/42/verification/photo/verify")
+                        .header("X-Student-Service-Token", VALID_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        verify(repo).verifyStudentPhoto(42L, 4L, 1L);
+    }
+
+    @Test
+    void verifyStudentProfile_resolvesStudentSchoolAndActor() throws Exception {
+        when(repo.schoolIdForStudent(42L)).thenReturn(4L);
+        when(repo.verifyStudentProfile(42L, 4L, 1L)).thenReturn(Map.of("itemId", "profile-1", "status", "COMPLETED"));
+
+        mvc.perform(post("/api/v1/students/42/verification/profile/verify")
+                        .header("X-Student-Service-Token", VALID_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("COMPLETED"));
+
+        verify(repo).verifyStudentProfile(42L, 4L, 1L);
     }
 
     // --- POST /imports/preview ---
