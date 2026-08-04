@@ -66,6 +66,8 @@ class StudentOutboxEmissionIntegrationTest {
             st.execute("DELETE FROM fee.fee_assignments");
             st.execute("DELETE FROM fee.fee_items");
             st.execute("DELETE FROM fee.fee_bands");
+            st.execute("DELETE FROM student.student_review_items");
+            st.execute("DELETE FROM student.student_review_campaigns");
             st.execute("DELETE FROM student.student_enrollments");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.outbox_events");
@@ -149,6 +151,81 @@ class StudentOutboxEmissionIntegrationTest {
         assertThat(rows).hasSize(1);
         assertThat(rows.get(0).get("eventType")).isEqualTo("student.upserted.v1");
         assertThat(rows.get(0).get("payload")).contains("Jane Updated");
+    }
+
+    @Test
+    void profileEditInvalidatesOnlyTheActiveProfileVerification() throws Exception {
+        long schoolId = seedSchool(3, 2);
+        Map<String, Object> created = studentRepo.createStudent(Map.of(
+                "schoolId", schoolId,
+                "fullName", "Verified Student",
+                "admissionNumber", "ADM-VERIFY-1",
+                "gradeLevel", "1",
+                "sectionName", "A",
+                "phone", "9876500000"));
+        Long id = ((Number) created.get("id")).longValue();
+        String profileCampaign = java.util.UUID.randomUUID().toString();
+        String photoCampaign = java.util.UUID.randomUUID().toString();
+        String profileItem = java.util.UUID.randomUUID().toString();
+        String photoItem = java.util.UUID.randomUUID().toString();
+        jdbc.sql("""
+                INSERT INTO student.student_review_campaigns
+                    (id, school_id, review_type, title, status, initiated_at, created_at, updated_at)
+                VALUES (:profileCampaign, :schoolId, 'PROFILE_VERIFICATION', 'Profile', 'ACTIVE', now(), now(), now()),
+                       (:photoCampaign, :schoolId, 'PHOTO_VERIFICATION', 'Photo', 'ACTIVE', now(), now(), now())
+                """)
+                .param("profileCampaign", profileCampaign)
+                .param("photoCampaign", photoCampaign)
+                .param("schoolId", schoolId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.student_review_items
+                    (id, campaign_id, student_id, school_id, status, verified_photo,
+                     verified_full_name, verified_admission_no, verified_class_section,
+                     verified_roll_no, verified_father_name, verified_father_contact,
+                     verified_address, completed_at)
+                VALUES (:profileItem, :profileCampaign, :studentId, :schoolId, 'COMPLETED', false,
+                        true, true, true, true, true, true, true, now()),
+                       (:photoItem, :photoCampaign, :studentId, :schoolId, 'COMPLETED', true,
+                        false, false, false, false, false, false, false, now())
+                """)
+                .param("profileItem", profileItem)
+                .param("profileCampaign", profileCampaign)
+                .param("photoItem", photoItem)
+                .param("photoCampaign", photoCampaign)
+                .param("studentId", id)
+                .param("schoolId", schoolId)
+                .update();
+
+        studentRepo.updateStudent(id, Map.of(
+                "schoolId", schoolId,
+                "fullName", "Updated Student",
+                "admissionNumber", "ADM-VERIFY-1",
+                "classId", created.get("classId"),
+                "sectionId", created.get("sectionId"),
+                "phone", "9876500000"));
+
+        Map<String, Object> profile = jdbc.sql("""
+                        SELECT status, verified_full_name, completed_at
+                        FROM student.student_review_items WHERE id = :id
+                        """)
+                .param("id", profileItem)
+                .query((rs, n) -> Map.<String, Object>of(
+                        "status", rs.getString("status"),
+                        "verified", rs.getBoolean("verified_full_name"),
+                        "completed", rs.getObject("completed_at") != null))
+                .single();
+        assertThat(profile).containsEntry("status", "PENDING")
+                .containsEntry("verified", false)
+                .containsEntry("completed", false);
+        assertThat(jdbc.sql("SELECT status FROM student.student_review_items WHERE id = :id")
+                .param("id", photoItem).query(String.class).single()).isEqualTo("COMPLETED");
+
+        Map<String, Object> listRow = ((java.util.List<Map<String, Object>>) studentRepo
+                .workspaceStudents(schoolId, "All", "All", "All", 0, 50, false)
+                .get("items")).get(0);
+        assertThat(listRow).containsEntry("profileVerificationStatus", "PENDING")
+                .containsEntry("photoVerificationStatus", "COMPLETED");
     }
 
     @Test

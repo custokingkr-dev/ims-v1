@@ -15,6 +15,7 @@ describe('StudentsPanel', () => {
   beforeEach(() => {
     vi.mocked(api.get).mockReset();
     vi.mocked(api.post).mockReset();
+    vi.mocked(api.put).mockReset();
     vi.mocked(api.delete).mockReset();
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === '/students') {
@@ -31,6 +32,8 @@ describe('StudentsPanel', () => {
               fatherContact: '9876543210',
               feeStatus: 'Pending',
               attendancePercent: 92,
+              profileVerificationStatus: 'PENDING',
+              photoVerificationStatus: 'PENDING',
             }],
             filteredCount: 1,
             filteredSections: 1,
@@ -56,6 +59,8 @@ describe('StudentsPanel', () => {
             feeStatus: 'Pending',
             attendancePercent: 92,
             address: {},
+            profileVerificationStatus: 'PENDING',
+            photoVerificationStatus: 'PENDING',
           },
         });
       }
@@ -205,6 +210,79 @@ describe('StudentsPanel', () => {
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/101/verification/photo/verify', {}));
     expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('disables verification when both checks are complete and enables it after an edit', async () => {
+    let edited = false;
+    vi.mocked(api.put).mockImplementation(() => {
+      edited = true;
+      return Promise.resolve({ data: {} });
+    });
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      const verificationStatus = edited ? 'PENDING' : 'COMPLETED';
+      if (url === '/students') {
+        return Promise.resolve({
+          data: {
+            items: [{
+              id: 101,
+              fullName: 'Aarav Sharma',
+              admissionNumber: 'ADM-101',
+              rollNo: '7',
+              classSection: 'Class 2 - A',
+              academicYear: '2026-27',
+              fatherName: 'Ravi Sharma',
+              fatherContact: '9876543210',
+              feeStatus: 'Pending',
+              attendancePercent: 92,
+              profileVerificationStatus: verificationStatus,
+              photoVerificationStatus: 'COMPLETED',
+            }],
+            filteredCount: 1,
+            filteredSections: 1,
+            totalPages: 1,
+            filters: { classes: ['Class 2'], sections: ['A'], feeStatuses: ['Pending'] },
+          },
+        });
+      }
+      if (url === '/students/101/workspace') {
+        return Promise.resolve({
+          data: {
+            id: 101,
+            fullName: 'Aarav Sharma',
+            name: 'Aarav Sharma',
+            admissionNumber: 'ADM-101',
+            rollNo: '7',
+            classId: 'class-2',
+            sectionId: 'section-a',
+            className: 'Class 2',
+            sectionName: 'A',
+            classSection: 'Class 2 - A',
+            academicYear: '2026-27',
+            fatherName: 'Ravi Sharma',
+            fatherContact: '9876543210',
+            phone: '9876543210',
+            feeStatus: 'Pending',
+            attendancePercent: 92,
+            address: {},
+            profileVerificationStatus: verificationStatus,
+            photoVerificationStatus: 'COMPLETED',
+          },
+        });
+      }
+      return Promise.resolve({ data: [] });
+    });
+
+    render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+
+    const verifyButton = await screen.findByRole('button', { name: /verify details for aarav sharma/i });
+    expect(verifyButton).toBeDisabled();
+    expect(verifyButton).toHaveTextContent('Verified');
+
+    fireEvent.click(screen.getByRole('button', { name: /edit aarav sharma/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /save changes/i }));
+
+    await waitFor(() => expect(api.put).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole('button', { name: /verify details for aarav sharma/i })).not.toBeDisabled());
   });
 
   it('requires admission number confirmation before deleting a student', async () => {

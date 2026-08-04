@@ -132,11 +132,31 @@ public class StudentReadRepository {
                        s.deleted_at, s.deleted_reason,
                        sc.id AS class_id, sc.name AS class_name, sc.sort_order,
                        ss.id AS section_id, ss.name AS section_name,
-                       ay.label AS academic_year_label
+                       ay.label AS academic_year_label,
+                       profile_review.status AS profile_verification_status,
+                       photo_review.status AS photo_verification_status
                 FROM student.students s
                 JOIN tenant_school.school_classes sc ON sc.id = s.class_id
                 JOIN tenant_school.school_sections ss ON ss.id = s.section_id
                 JOIN tenant_school.academic_years ay ON ay.id = s.academic_year_id
+                LEFT JOIN LATERAL (
+                    SELECT i.status
+                    FROM student.student_review_items i
+                    JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                    WHERE i.student_id = s.id AND i.school_id = s.school_id
+                      AND c.review_type = 'PROFILE_VERIFICATION' AND c.status = 'ACTIVE'
+                    ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
+                    LIMIT 1
+                ) profile_review ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT i.status
+                    FROM student.student_review_items i
+                    JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                    WHERE i.student_id = s.id AND i.school_id = s.school_id
+                      AND c.review_type = 'PHOTO_VERIFICATION' AND c.status = 'ACTIVE'
+                    ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
+                    LIMIT 1
+                ) photo_review ON TRUE
                 WHERE
                 """)
                 .append(deleted ? " s.deleted_at IS NOT NULL" : " s.deleted_at IS NULL")
@@ -195,6 +215,8 @@ public class StudentReadRepository {
                     "fatherName", rs.getString("father_name"),
                     "fatherContact", rs.getString("father_contact"),
                     "feeStatus", rs.getString("fee_status"),
+                    "profileVerificationStatus", rs.getString("profile_verification_status"),
+                    "photoVerificationStatus", rs.getString("photo_verification_status"),
                     "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class),
                     "deletedReason", rs.getString("deleted_reason"),
                     "attendancePercent", attendance == null ? 0 : round(attendance));
@@ -208,11 +230,31 @@ public class StudentReadRepository {
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
                        s.photo_url, s.fee_status, s.attendance_percent, s.school_id, s.class_id, s.section_id,
                        s.deleted_at, s.deleted_reason,
-                       sc.name AS class_name, ss.name AS section_name, ay.label AS academic_year_label
+                       sc.name AS class_name, ss.name AS section_name, ay.label AS academic_year_label,
+                       profile_review.status AS profile_verification_status,
+                       photo_review.status AS photo_verification_status
                 FROM student.students s
                 JOIN tenant_school.school_classes sc ON sc.id = s.class_id
                 JOIN tenant_school.school_sections ss ON ss.id = s.section_id
                 JOIN tenant_school.academic_years ay ON ay.id = s.academic_year_id
+                LEFT JOIN LATERAL (
+                    SELECT i.status
+                    FROM student.student_review_items i
+                    JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                    WHERE i.student_id = s.id AND i.school_id = s.school_id
+                      AND c.review_type = 'PROFILE_VERIFICATION' AND c.status = 'ACTIVE'
+                    ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
+                    LIMIT 1
+                ) profile_review ON TRUE
+                LEFT JOIN LATERAL (
+                    SELECT i.status
+                    FROM student.student_review_items i
+                    JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                    WHERE i.student_id = s.id AND i.school_id = s.school_id
+                      AND c.review_type = 'PHOTO_VERIFICATION' AND c.status = 'ACTIVE'
+                    ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
+                    LIMIT 1
+                ) photo_review ON TRUE
                 WHERE s.id = :id
                 """)
                 .param("id", id)
@@ -235,6 +277,8 @@ public class StudentReadRepository {
                             "fatherName", rs.getString("father_name"),
                             "fatherContact", rs.getString("father_contact"),
                             "feeStatus", rs.getString("fee_status"),
+                            "profileVerificationStatus", rs.getString("profile_verification_status"),
+                            "photoVerificationStatus", rs.getString("photo_verification_status"),
                             "attendancePercent", attendance == null ? 0 : round(attendance));
                     LinkedHashMap<String, Object> detail = new LinkedHashMap<>(base);
                     detail.put("schoolId", rs.getLong("school_id"));
@@ -455,6 +499,7 @@ public class StudentReadRepository {
         } else {
             refreshActiveEnrollmentRollNo(id, str(request.get("rollNo"), ""));
         }
+        invalidateActiveVerification(id, "PROFILE_VERIFICATION");
         emitStudentUpserted(id);
         return studentDetail(id);
     }
@@ -624,7 +669,53 @@ public class StudentReadRepository {
                 .param("photoUrl", key)
                 .param("updatedAt", OffsetDateTime.now())
                 .update();
+        invalidateActiveVerification(id, "PHOTO_VERIFICATION");
         return studentDetail(id);
+    }
+
+    private void invalidateActiveVerification(Long studentId, String reviewType) {
+        List<String> itemIds = jdbc.sql("""
+                        SELECT i.id
+                        FROM student.student_review_items i
+                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
+                        WHERE i.student_id = :studentId
+                          AND c.review_type = :reviewType
+                          AND c.status = 'ACTIVE'
+                        """)
+                .param("studentId", studentId)
+                .param("reviewType", reviewType)
+                .query(String.class)
+                .list();
+        if (itemIds.isEmpty()) return;
+
+        String verificationReset = "PHOTO_VERIFICATION".equals(reviewType)
+                ? "verified_photo = false"
+                : """
+                  verified_full_name = false,
+                  verified_admission_no = false,
+                  verified_class_section = false,
+                  verified_roll_no = false,
+                  verified_father_name = false,
+                  verified_father_contact = false,
+                  verified_address = false,
+                  verified_blood_group = false,
+                  current_full_name = (SELECT full_name FROM student.students WHERE id = :studentId)
+                  """;
+        jdbc.sql("""
+                        UPDATE student.student_review_items
+                        SET %s,
+                            status = 'PENDING',
+                            correction_requested = false,
+                            correction_notes = NULL,
+                            suggested_full_name = NULL,
+                            completed_at = NULL,
+                            updated_at = now()
+                        WHERE id IN (:itemIds)
+                        """.formatted(verificationReset))
+                .param("studentId", studentId)
+                .param("itemIds", itemIds)
+                .update();
+        itemIds.forEach(this::emitReviewItemUpserted);
     }
 
     @Transactional

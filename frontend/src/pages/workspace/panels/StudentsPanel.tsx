@@ -284,6 +284,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       await api.post(`/students/${studentDetail.id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       const res = await api.get(`/students/${studentDetail.id}/workspace`);
       setStudentDetail(res.data);
+      setVerificationSummary(null);
+      setVerificationPanelOpen(false);
       await loadStudents(studentFilters, studentsPage);
     } catch (err: unknown) {
       setModalError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -360,6 +362,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       await api.put(`/workspace/students/${studentDetail.id}`, { ...studentProfileFormToUpdatePayload(form), ...(schoolScopedParams || {}) });
       const res = await api.get(`/students/${studentDetail.id}/workspace`);
       setStudentDetail(res.data);
+      setVerificationSummary(null);
+      setVerificationPanelOpen(false);
       setEditing(false);
       await loadStudents(studentFilters, studentsPage);
     } catch (err: unknown) {
@@ -612,6 +616,9 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   };
 
   const canVerifyStudentDetails = can('student:update') && !!schoolScopedParams && studentListMode === 'active';
+  const profileVerified = (verificationSummary?.profile?.status ?? studentDetail?.profileVerificationStatus) === 'COMPLETED';
+  const photoVerified = (verificationSummary?.photo?.status ?? studentDetail?.photoVerificationStatus) === 'COMPLETED';
+  const studentFullyVerified = profileVerified && photoVerified;
 
   return (
     <>
@@ -798,6 +805,8 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               <tbody>
                 {(studentsView.items || []).map((student: any) => {
                   const archived = Boolean(student.deletedAt);
+                  const fullyVerified = student.profileVerificationStatus === 'COMPLETED'
+                    && student.photoVerificationStatus === 'COMPLETED';
                   return (
                     <tr
                       key={student.id}
@@ -848,14 +857,15 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                             <button
                               type="button"
                               className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label ck-student-verify-row-btn"
-                              title={`Verify details for ${student.fullName}`}
+                              title={fullyVerified ? `${student.fullName} is verified` : `Verify details for ${student.fullName}`}
                               aria-label={`Verify details for ${student.fullName}`}
+                              disabled={fullyVerified}
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void openStudentVerification(student);
                               }}
                             >
-                              <BadgeCheck size={14} aria-hidden="true" />Verify details
+                              <BadgeCheck size={14} aria-hidden="true" />{fullyVerified ? 'Verified' : 'Verify details'}
                             </button>
                           ) : null}
                           {can('student:update') && !archived ? (
@@ -993,10 +1003,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                           type="button"
                           className="ck-btn ck-btn-ghost ck-btn-sm ck-icon-label"
                           onClick={openVerificationPanel}
-                          disabled={verificationLoading}
+                          disabled={verificationLoading || studentFullyVerified}
                         >
                           {verificationLoading ? <LoaderCircle className="pi-spin" size={14} /> : <BadgeCheck size={14} />}
-                          {verificationPanelOpen ? 'Refresh' : 'Verify details'}
+                          {studentFullyVerified ? 'Verified' : verificationPanelOpen ? 'Refresh' : 'Verify details'}
                         </button>
                       </div>
                       {verificationPanelOpen ? (
@@ -1025,10 +1035,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                                 type="button"
                                 className="ck-btn ck-btn-g ck-icon-label"
                                 onClick={() => void markStudentVerified('photo')}
-                                disabled={verificationBusy === 'photo'}
+                                disabled={verificationBusy === 'photo' || photoVerified}
                               >
                                 {verificationBusy === 'photo' ? <LoaderCircle className="pi-spin" size={15} /> : <Image size={15} />}
-                                Verify image
+                                {photoVerified ? 'Image verified' : 'Verify image'}
                               </button>
                             </div>
                             <div>
@@ -1039,10 +1049,10 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                                 type="button"
                                 className="ck-btn ck-btn-g ck-icon-label"
                                 onClick={() => void markStudentVerified('profile')}
-                                disabled={verificationBusy === 'profile'}
+                                disabled={verificationBusy === 'profile' || profileVerified}
                               >
                                 {verificationBusy === 'profile' ? <LoaderCircle className="pi-spin" size={15} /> : <ClipboardCheck size={15} />}
-                                Verify student details
+                                {profileVerified ? 'Details verified' : 'Verify student details'}
                               </button>
                             </div>
                           </div>

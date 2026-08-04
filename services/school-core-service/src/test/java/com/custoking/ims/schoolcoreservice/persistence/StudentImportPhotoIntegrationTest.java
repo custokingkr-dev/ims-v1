@@ -61,6 +61,8 @@ class StudentImportPhotoIntegrationTest {
     @BeforeEach
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM student.student_review_items");
+            st.execute("DELETE FROM student.student_review_campaigns");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.school_sections");
             st.execute("DELETE FROM tenant_school.school_classes");
@@ -171,6 +173,27 @@ class StudentImportPhotoIntegrationTest {
         StudentReadRepository studentRepo = new StudentReadRepository(
                 jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
 
+        String campaignId = java.util.UUID.randomUUID().toString();
+        String itemId = java.util.UUID.randomUUID().toString();
+        jdbc.sql("""
+                INSERT INTO student.student_review_campaigns
+                    (id, school_id, review_type, title, status, initiated_at, created_at, updated_at)
+                VALUES (:id, :schoolId, 'PHOTO_VERIFICATION', 'Photo', 'ACTIVE', now(), now(), now())
+                """)
+                .param("id", campaignId)
+                .param("schoolId", schoolId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.student_review_items
+                    (id, campaign_id, student_id, school_id, status, verified_photo, completed_at)
+                VALUES (:id, :campaignId, :studentId, :schoolId, 'COMPLETED', true, now())
+                """)
+                .param("id", itemId)
+                .param("campaignId", campaignId)
+                .param("studentId", studentId)
+                .param("schoolId", schoolId)
+                .update();
+
         studentRepo.attachPhoto(studentId, photo, "image/jpeg");
 
         verify(photoStorage).upload(eq(schoolUid), eq(studentId), same(photo), eq("image/jpeg"));
@@ -179,6 +202,19 @@ class StudentImportPhotoIntegrationTest {
                 .query(String.class)
                 .single();
         assertThat(stored).isEqualTo(key);
+        Map<String, Object> verification = jdbc.sql("""
+                        SELECT status, verified_photo, completed_at
+                        FROM student.student_review_items WHERE id = :id
+                        """)
+                .param("id", itemId)
+                .query((rs, n) -> Map.<String, Object>of(
+                        "status", rs.getString("status"),
+                        "verified", rs.getBoolean("verified_photo"),
+                        "completed", rs.getObject("completed_at") != null))
+                .single();
+        assertThat(verification).containsEntry("status", "PENDING")
+                .containsEntry("verified", false)
+                .containsEntry("completed", false);
     }
 
     @Test
