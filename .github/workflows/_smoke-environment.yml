@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Gateway health smoke
         if: ${{ inputs.run_gateway_smoke }}
         shell: pwsh
@@ -48,7 +48,7 @@ jobs:
           }
           @{ environment = '${{ inputs.environment }}'; gateway = $env:GATEWAY_URL; status = $health.status; checkedAtUtc = (Get-Date).ToUniversalTime().ToString("o") } |
             ConvertTo-Json -Depth 5 | Set-Content -Path smoke-${{ inputs.environment }}.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: smoke-${{ inputs.environment }}

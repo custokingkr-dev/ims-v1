@@ -24,12 +24,12 @@ jobs:
           - { name: frontend, context: frontend, image: custoking-frontend }
           - { name: api-gateway, context: services/api-gateway, image: custoking-api-gateway }
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build local image
         run: docker buildx build --load --tag security/${{ matrix.image }}:${{ github.sha }} ${{ matrix.context }}
       - name: Trivy SARIF
-        uses: aquasecurity/trivy-action@0.24.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: security/${{ matrix.image }}:${{ github.sha }}
           severity: HIGH,CRITICAL
@@ -37,7 +37,7 @@ jobs:
           exit-code: "0"
           format: sarif
           output: trivy-${{ matrix.name }}.sarif
-      - uses: github/codeql-action/upload-sarif@v3
+      - uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: trivy-${{ matrix.name }}.sarif

@@ -32,7 +32,7 @@ jobs:
       docker_matrix: ${{ steps.detect.outputs.docker_matrix }}
       changed_files: ${{ steps.detect.outputs.changed_files }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

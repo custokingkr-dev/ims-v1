@@ -17,6 +17,7 @@ The `CD / Deploy branch environment` workflow uploads:
 ```text
 release-evidence/
   release.json
+  smoke.json
   summary.md
 ```
 
@@ -30,6 +31,16 @@ release-evidence/
 - Cloud Deploy release id
 - first target
 - initial rollout target
+- initial rollout id
+
+`smoke.json` contains:
+
+- environment
+- Cloud Run gateway service
+- gateway URL
+- `/gateway-health` endpoint
+- health status
+- check timestamp
 
 Rollback workflows upload their own evidence artifacts:
 

@@ -44,8 +44,9 @@ The stage target templates exist in source, but stage is not active until a real
 4. The workflow resolves each image digest.
 5. The workflow renders the dev Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
 6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-dev` and starts the initial rollout to `<service>-dev`.
-7. Cloud Deploy deploys each release to `dev`.
-8. The workflow uploads `release-evidence`.
+7. The workflow waits for every Cloud Deploy rollout to reach `SUCCEEDED`.
+8. The workflow resolves `custoking-api-gateway-dev` from Cloud Run and calls `/gateway-health`.
+9. The workflow uploads `release-evidence`.
 
 ## Prod Release
 
@@ -55,7 +56,9 @@ The stage target templates exist in source, but stage is not active until a real
 4. The workflow builds and pushes the `main` commit images using immutable `sha-<commit>` tags.
 5. The workflow renders the prod Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
 6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-prod` and starts the initial rollout to `<service>-prod`.
-7. Cloud Deploy deploys each release to `prod`.
+7. The workflow waits for every Cloud Deploy rollout to reach `SUCCEEDED`.
+8. The workflow auto-advances Cloud Deploy canary phases when no deploy phase is still running. Any failed/canceled/halted rollout fails the workflow.
+9. The workflow resolves `custoking-api-gateway-prod` from Cloud Run and calls `/gateway-health`.
 
 Cloud Deploy then uses the prod target canary:
 
@@ -89,6 +92,31 @@ For every release, keep:
 - Image digests.
 - Production approval record.
 - Rollback target.
+- `release-evidence/smoke.json`.
+
+## Cleanup Stale Releases
+
+Cloud Deploy releases cannot be deleted. Stale failed or canceled releases can be abandoned so no new rollouts can be created from them:
+
+```powershell
+./scripts/abandon-stale-clouddeploy-releases.ps1 -Environment dev,prod
+./scripts/abandon-stale-clouddeploy-releases.ps1 -Environment dev,prod -Execute
+```
+
+The first command is a dry run. The second command abandons only failed/canceled releases by default. Do not use `-PruneSucceeded` unless you intentionally want to abandon old successful rollback targets after keeping the latest successful releases.
+
+## Dev GitHub Environment Branch Restriction
+
+The workflow already enforces `dev` branch -> `dev` environment and `main` branch -> `prod` environment. To add the matching GitHub UI protection later, use a repository admin account:
+
+1. Open GitHub repository settings.
+2. Go to `Environments`.
+3. Open `dev`.
+4. Set deployment branches to `Selected branches`.
+5. Add only `dev`.
+6. Save the rule.
+
+The previous API attempt failed with `403` because the active account did not have repository admin rights.
 
 ## Fast Health Check
 
