@@ -1034,8 +1034,6 @@ Verified:
 
 ### 2026-06-28: Inter-Service Retry And Connection-Pool Hardening
 
-Plan: `docs/superpowers/plans/2026-06-28-production-hardening-resilience.md`.
-
 Completed:
 
 - Phase 1 — Bounded retry for idempotent tenant-school reads. The

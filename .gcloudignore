@@ -4,7 +4,6 @@
 # Local tooling and editor state
 .c*/
 .idea/
-.superpowers/
 .vscode/
 .tools/
 

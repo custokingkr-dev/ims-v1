@@ -9,15 +9,15 @@ CI/CD v2 is implemented and active.
 Verified deployment commit:
 
 ```text
-8607912b7f85378086c4602294f610f907538084
+9996a254cd763e876332290d865b606eaa7e592e
 ```
 
 Verified GitHub Actions runs:
 
 | Environment | Branch | Run | Result |
 | --- | --- | --- | --- |
-| dev | `dev` | `30884975624` | success |
-| prod | `main` | `30888032307` | success |
+| dev | `dev` | `30893483035` | success |
+| prod | `main` | `30893486470` | success |
 
 Verified production smoke:
 
@@ -85,6 +85,44 @@ resolve target
 -> wait for every rollout to succeed
 -> run gateway /gateway-health smoke
 -> upload release-evidence
+```
+
+Operator view:
+
+```text
+Pull request
+  |
+  v
+CI / PR
+  - detect changed services
+  - test changed Java, Node, or frontend units
+  - build changed Docker images locally
+  - run Trivy and Gitleaks gates
+  |
+  v
+Merge to dev
+  |
+  v
+CD / Deploy branch environment
+  - deploys dev only
+  - builds all seven deployable images
+  - creates Cloud Deploy releases in asia-south2
+  - waits for every rollout
+  - smokes dev gateway health
+  |
+  v
+Merge to main
+  |
+  v
+GitHub prod Environment approval
+  |
+  v
+CD / Deploy branch environment
+  - deploys prod only
+  - builds all seven deployable images
+  - creates Cloud Deploy releases in asia-south2
+  - auto-advances prod canary phases
+  - smokes prod gateway health
 ```
 
 Deployable units:
@@ -172,14 +210,19 @@ scripts/wait-clouddeploy-rollout.ps1
 
 For prod, the workflow auto-advances the next canary phase when no deployment phase is still running. A rollout in a terminal bad state fails the workflow.
 
-The latest verified API gateway rollouts for `8607912b`:
+The latest verified deployment runs for `9996a254` completed every service rollout and gateway smoke:
 
 | Environment | Release | Rollout | State |
 | --- | --- | --- | --- |
-| dev | `rel-dev-8607912b7f85-1` | `rel-dev-8607912b7f85-1-to-api-gateway-dev-0001` | `SUCCEEDED` |
-| prod | `rel-prod-8607912b7f85-1` | `rel-prod-8607912b7f85-1-to-api-gateway-prod-0001` | `SUCCEEDED` |
+| dev | GitHub run `30893483035` | all seven service rollouts | `SUCCEEDED` |
+| prod | GitHub run `30893486470` | all seven service rollouts | `SUCCEEDED` |
 
-GitHub run `30888032307` also verified that the release job completed all seven production rollouts and the gateway smoke step.
+Manual gateway health checks after those runs returned:
+
+```text
+dev  -> 200 {"status":"UP","service":"custoking-api-gateway"}
+prod -> 200 {"status":"UP","service":"custoking-api-gateway"}
+```
 
 ## Release Evidence
 

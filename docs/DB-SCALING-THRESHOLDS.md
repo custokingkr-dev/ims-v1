@@ -92,9 +92,8 @@ Flyway history. Summary of findings:
 - No Flyway migration was added as a result of this audit — nothing changed; the audit
   is documentation confirming the existing schema is already correct.
 
-Full per-path table and constraint spot-checks: see the Task 1 audit notes
-(`.superpowers/sdd/task-1-report.md` in the working tree at the time of this task; not
-committed as it is process documentation, not a durable architecture doc).
+Full per-path table and constraint spot-checks were captured during the Task 1 audit,
+but the scratch report was not kept as durable project documentation.
 
 ## How to re-measure
 

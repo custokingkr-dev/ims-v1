@@ -3,7 +3,7 @@
 > Historical deployment note, updated 2026-08-04: the `app_rt` role remains current, but references below to `cloudbuild.yaml` describe the retired deployment path. Current deployments use GitHub Actions plus Cloud Deploy.
 
 Cuts the application runtime over to the unprivileged `app_rt` role. `appuser` stays the
-owner + Flyway role. See `docs/superpowers/specs/2026-06-28-app-rt-runtime-role-design.md`.
+owner + Flyway role.
 
 ## Order of operations (MUST be done before the cloudbuild cutover deploys)
 
