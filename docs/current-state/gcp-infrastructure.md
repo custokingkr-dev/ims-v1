@@ -44,20 +44,20 @@ All listed services were Ready on 2026-08-04.
 
 | Service | URL | Latest ready revision |
 | --- | --- | --- |
-| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-mseb1ggj` |
-| `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-msecp82x` |
-| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-mseb00d8` |
-| `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-msecnzyt` |
-| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-mseb22a1` |
-| `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-msecpvpk` |
-| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-mseaypug` |
-| `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-msecmmbk` |
-| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-mseazdli` |
-| `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-msecn9qa` |
-| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-mseb0sod` |
-| `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-msecomtz` |
-| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-mseay1qp` |
-| `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-mseclx1n` |
+| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-msehsuir` |
+| `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-msehtfvk` |
+| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-msehrkdq` |
+| `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-msehs0ib` |
+| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-msehtf9x` |
+| `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-msehu2a8` |
+| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-msehqdz7` |
+| `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-msehqk4a` |
+| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-msehqyra` |
+| `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-msehr8tn` |
+| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-msehs8gh` |
+| `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-msehsr41` |
+| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-msehpsus` |
+| `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-msehpsbg` |
 
 ## Cloud Run IAM
 
@@ -120,15 +120,15 @@ Common Spring service config:
 
 Scaling verified from Cloud Run annotations:
 
-| Service type | Min instances | Max instances |
-| --- | --- | --- |
-| api-gateway | not set (`0`) | 3 |
-| identity-service | not set (`0`) | 2 |
-| school-core-service | not set (`0`) | 2 |
-| operations-service | not set (`0`) | 2 |
-| billing-service | not set (`0`) | 2 |
-| platform-service | not set (`0`) | 2 |
-| frontend | not set (`0`) | 2 |
+| Service type | CPU | Memory | Min instances | Max instances |
+| --- | --- | --- | --- | --- |
+| api-gateway | 1 vCPU | 512 MiB | `0` | 3 |
+| identity-service | 1 vCPU | 768 MiB | `0` | 2 |
+| school-core-service | 1 vCPU | 2 GiB | `0` | 2 |
+| operations-service | 1 vCPU | 768 MiB | `0` | 2 |
+| billing-service | 1 vCPU | 768 MiB | `0` | 2 |
+| platform-service | 1 vCPU | 768 MiB | `0` | 2 |
+| frontend | 1 vCPU | 512 MiB | `0` | 2 |
 
 Outbox publishers are configured in both envs:
 
@@ -306,12 +306,12 @@ custoking-<service>-prod
 
 Dev pipelines use a standard strategy. Prod pipelines use canary percentages `5`, `25`, `50`, then stable.
 
-Latest verified API gateway rollouts for commit `8607912b7f85378086c4602294f610f907538084`:
+Latest verified Cloud Deploy releases for commit `83abe626f32d64e4701d6f3c838008bfaabfa3b4`:
 
-| Environment | Release | Rollout | State |
+| Environment | Release pattern | Services | State |
 | --- | --- | --- | --- |
-| dev | `rel-dev-8607912b7f85-1` | `rel-dev-8607912b7f85-1-to-api-gateway-dev-0001` | `SUCCEEDED` |
-| prod | `rel-prod-8607912b7f85-1` | `rel-prod-8607912b7f85-1-to-api-gateway-prod-0001` | `SUCCEEDED` |
+| dev | `rel-dev-83abe626f32d-1` | all seven service pipelines | `SUCCEEDED` |
+| prod | `rel-prod-83abe626f32d-1` | all seven service pipelines | `SUCCEEDED` |
 
 ## Cloud Run Jobs
 

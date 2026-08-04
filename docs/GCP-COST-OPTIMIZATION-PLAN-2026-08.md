@@ -27,7 +27,7 @@ Recommended direction:
 
 ## Verified Current State
 
-This section is based on live `gcloud.cmd` checks on 2026-08-04 plus repo files.
+This section is based on live `gcloud.cmd` checks on 2026-08-04 plus repo files, after the latest dev/prod deployment of commit `83abe626f32d64e4701d6f3c838008bfaabfa3b4`.
 
 ### Runtime Topology
 
@@ -66,7 +66,8 @@ Current live shape:
 | --- | ---: | ---: | ---: | ---: | ---: |
 | frontend | 1 vCPU | 512 MiB | 80 | 2 | unset = 0 |
 | api-gateway | 1 vCPU | 512 MiB | 80 | 3 | unset = 0 |
-| Java domain services | 1 vCPU | 768 MiB | 80 | 2 | unset = 0 |
+| identity, operations, platform, billing | 1 vCPU | 768 MiB | 80 | 2 | unset = 0 |
+| school-core | 1 vCPU | 2 GiB | 80 | 2 | unset = 0 |
 
 Other relevant facts:
 
@@ -387,7 +388,7 @@ Decision rule:
 
 #### 8. Java Startup And Memory Right-Sizing
 
-Current Java services are 1 vCPU / 768 MiB with `MaxRAMPercentage=75`.
+Current Java services are 1 vCPU. Identity, operations, platform, and billing are 768 MiB. School-core is 2 GiB because it owns the larger consolidated tenant school, student, attendance, fee, catalog, and photo-import surface. Java services use `MaxRAMPercentage=75`.
 
 Test changes in dev under a realistic seed:
 
@@ -396,7 +397,8 @@ Test changes in dev under a realistic seed:
 - reduce unnecessary classpath scanning
 - keep startup probes
 - measure actual RSS/memory utilization
-- evaluate whether any service can move from 768 MiB to 640 MiB or 512 MiB without OOM risk
+- evaluate whether identity, operations, platform, or billing can move from 768 MiB to 640 MiB or 512 MiB without OOM risk
+- evaluate school-core separately; do not lower it from 2 GiB until photo import, student directory, fee, and attendance paths have memory evidence under realistic load
 
 Do not blindly lower CPU below 1 vCPU. Cloud Run sub-1-vCPU settings carry constraints and can reduce concurrency; for Java/Spring the latency hit may outweigh active-time savings.
 
@@ -562,11 +564,9 @@ This keeps the expensive baseline to Cloud SQL and avoids paying continuously fo
 
 ## Follow-Up Work Items
 
-1. Patch stale docs:
-   - `docs/current-state/gcp-infrastructure.md`
-   - `docs/current-state/deployment-cicd.md`
+1. Keep this plan and the current-state docs in sync after deployment-system or runtime-size changes.
 2. Use the cost guardrails runbook: `docs/GCP-COST-GUARDRAILS-RUNBOOK.md`.
-3. Add labels in Cloud Run manifests/Cloud Deploy target configuration and remaining non-Cloud-Run GCP resources.
+3. Add labels to remaining non-Cloud-Run GCP resources. Cloud Run manifests already carry `app`, `env`, `component`, `service`, `owner`, and `cost-center`.
 4. Design and implement scheduled outbox relay job.
 5. Add per-school usage counters.
 6. Add weekly cost review SQL and dashboard.

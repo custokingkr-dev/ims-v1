@@ -9,15 +9,15 @@ CI/CD v2 is implemented and active.
 Verified deployment commit:
 
 ```text
-9996a254cd763e876332290d865b606eaa7e592e
+83abe626f32d64e4701d6f3c838008bfaabfa3b4
 ```
 
 Verified GitHub Actions runs:
 
 | Environment | Branch | Run | Result |
 | --- | --- | --- | --- |
-| dev | `dev` | `30893483035` | success |
-| prod | `main` | `30893486470` | success |
+| dev | `dev` | `30898224156` | success |
+| prod | `main` | `30898227674` | success |
 
 Verified production smoke:
 
@@ -210,12 +210,12 @@ scripts/wait-clouddeploy-rollout.ps1
 
 For prod, the workflow auto-advances the next canary phase when no deployment phase is still running. A rollout in a terminal bad state fails the workflow.
 
-The latest verified deployment runs for `9996a254` completed every service rollout and gateway smoke:
+The latest verified deployment runs for `83abe626` completed every service rollout and gateway smoke:
 
 | Environment | Release | Rollout | State |
 | --- | --- | --- | --- |
-| dev | GitHub run `30893483035` | all seven service rollouts | `SUCCEEDED` |
-| prod | GitHub run `30893486470` | all seven service rollouts | `SUCCEEDED` |
+| dev | GitHub run `30898224156` | all seven service rollouts | `SUCCEEDED` |
+| prod | GitHub run `30898227674` | all seven service rollouts | `SUCCEEDED` |
 
 Manual gateway health checks after those runs returned:
 
