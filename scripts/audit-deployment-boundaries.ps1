@@ -1,97 +1,129 @@
 param(
-    [string]$CloudBuildFile = "cloudbuild.yaml",
-    [string]$ComposeFile = "docker-compose.yml",
-    [string]$GatewayTemplate = "services/api-gateway/nginx.conf.template"
+  [string]$WorkflowFile = ".github/workflows/build-release.yml",
+  [string]$ComposeFile = "docker-compose.yml",
+  [string]$GatewayFile = "services/api-gateway/server.js",
+  [string]$CloudRunDirectory = "deploy/cloudrun"
 )
 
 $ErrorActionPreference = "Stop"
 
-function Read-RequiredFile {
-    param([string]$Path)
-    if (-not (Test-Path $Path)) {
-        throw "Required file not found: $Path"
-    }
-    Get-Content -Raw $Path
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+. (Join-Path $PSScriptRoot "microservice-build-catalog.ps1")
+
+function Read-RequiredFile([string]$Path) {
+  $resolved = Join-Path $repoRoot $Path
+  if (-not (Test-Path -LiteralPath $resolved)) {
+    throw "Required file not found: $Path"
+  }
+  return Get-Content -Raw -Path $resolved
 }
 
-$cloudBuild = Read-RequiredFile $CloudBuildFile
+$workflow = Read-RequiredFile $WorkflowFile
 $compose = Read-RequiredFile $ComposeFile
-$gateway = Read-RequiredFile $GatewayTemplate
+$gateway = Read-RequiredFile $GatewayFile
+$directRelease = Read-RequiredFile "scripts/invoke-direct-cloudrun-release.ps1"
+$releaseVerification = Read-RequiredFile "scripts/verify-cloudrun-release.ps1"
 $violations = New-Object System.Collections.Generic.List[string]
+$catalog = @(Get-MicroserviceBuildCatalog)
 
-$services = @(
-    @{ Key = "IDENTITY"; Name = "custoking-identity-service"; Context = "services/identity-service"; Upstream = "IDENTITY_UPSTREAM"; Token = "IDENTITY_SERVICE_TOKEN" },
-    @{ Key = "TENANT_SCHOOL"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "TENANT_SCHOOL_UPSTREAM"; Token = "TENANT_SCHOOL_SERVICE_TOKEN" },
-    @{ Key = "STUDENT"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "STUDENT_UPSTREAM"; Token = "STUDENT_SERVICE_TOKEN" },
-    @{ Key = "ATTENDANCE"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "ATTENDANCE_UPSTREAM"; Token = "ATTENDANCE_SERVICE_TOKEN" },
-    @{ Key = "FEE"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "FEE_UPSTREAM"; Token = "FEE_SERVICE_TOKEN" },
-    @{ Key = "CATALOG"; Name = "custoking-school-core-service"; Context = "services/school-core-service"; Upstream = "CATALOG_UPSTREAM"; Token = "CATALOG_SERVICE_TOKEN" },
-    # Phase 2: workflow + firefighting route groups are both served by the merged operations-service.
-    @{ Key = "WORKFLOW"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "WORKFLOW_UPSTREAM"; Token = "WORKFLOW_SERVICE_TOKEN" },
-    @{ Key = "FIREFIGHTING"; Name = "custoking-operations-service"; Context = "services/operations-service"; Upstream = "FIREFIGHTING_UPSTREAM"; Token = "FIREFIGHTING_SERVICE_TOKEN" },
-    # Phase 2: reporting + notification + audit route groups are all served by the merged platform-service.
-    @{ Key = "REPORTING"; Name = "custoking-platform-service"; Context = "services/platform-service"; Upstream = "REPORTING_UPSTREAM"; Token = "REPORTING_SERVICE_TOKEN" },
-    @{ Key = "BILLING"; Name = "custoking-billing-service"; Context = "services/billing-service"; Upstream = "BILLING_UPSTREAM"; Token = "BILLING_SERVICE_TOKEN" },
-    @{ Key = "AUDIT"; Name = "custoking-platform-service"; Context = "services/platform-service"; Upstream = "AUDIT_UPSTREAM"; Token = "AUDIT_SERVICE_TOKEN" },
-    @{ Key = "NOTIFICATION"; Name = "custoking-platform-service"; Context = "services/platform-service"; Upstream = "NOTIFICATION_UPSTREAM"; Token = "NOTIFICATION_SERVICE_TOKEN" }
-)
-
-foreach ($retired in @("custoking-backend", "_BACKEND_SERVICE", "_BACKEND_IMAGE", "BACKEND_UPSTREAM", "./backend", "backend:")) {
-    if ($cloudBuild.Contains($retired) -or $compose.Contains($retired) -or $gateway.Contains($retired)) {
-        $violations.Add("Retired backend deployment reference still present: $retired")
-    }
+$activeDeploymentText = "$workflow`n$compose`n$gateway"
+foreach ($manifest in Get-ChildItem (Join-Path $repoRoot $CloudRunDirectory) -Filter "*.yaml" -File) {
+  $activeDeploymentText += "`n" + (Get-Content -Raw -Path $manifest.FullName)
 }
 
-foreach ($service in $services) {
-    foreach ($required in @($service.Name, $service.Context)) {
-        if (-not $cloudBuild.Contains($required)) {
-            $violations.Add("cloudbuild.yaml missing service deployment value: $required")
-        }
-    }
-    if (-not $compose.Contains($service.Name)) {
-        $violations.Add("docker-compose.yml missing service: $($service.Name)")
-    }
-    if (-not $gateway.Contains('${' + $service.Upstream + '}')) {
-        $violations.Add("api-gateway template missing upstream: $($service.Upstream)")
-    }
-    if (-not $gateway.Contains('${' + $service.Token + '}')) {
-        $violations.Add("api-gateway template missing internal token: $($service.Token)")
-    }
-    if (-not ($cloudBuild -match "$([regex]::Escape($service.Name))[\s\S]+?--no-allow-unauthenticated")) {
-        $violations.Add("cloudbuild.yaml must keep extracted service private: $($service.Name)")
-    }
+foreach ($retired in @("custoking-backend", "BACKEND_UPSTREAM", "./backend", "backend:")) {
+  if ($activeDeploymentText.Contains($retired)) {
+    $violations.Add("Retired backend deployment reference still present: $retired")
+  }
 }
 
-foreach ($publicService in @("custoking-frontend", "custoking-api-gateway")) {
-    if (-not ($cloudBuild -match "$([regex]::Escape($publicService))[\s\S]+?--allow-unauthenticated")) {
-        $violations.Add("cloudbuild.yaml must expose public service: $publicService")
+foreach ($service in $catalog) {
+  $manifestPath = Join-Path $repoRoot "$CloudRunDirectory/$($service.Name).yaml"
+  if (-not (Test-Path -LiteralPath $manifestPath)) {
+    $violations.Add("Cloud Run manifest missing for $($service.Name): $manifestPath")
+    continue
+  }
+  $manifest = Get-Content -Raw -Path $manifestPath
+  foreach ($required in @("custoking-$($service.Name)-dev", $service.Image)) {
+    if (-not $manifest.Contains($required)) {
+      $violations.Add("Cloud Run manifest for $($service.Name) is missing: $required")
     }
+  }
+  if (-not $compose.Contains($service.Name)) {
+    $violations.Add("docker-compose.yml is missing service: $($service.Name)")
+  }
+
+  $dockerfilePath = Join-Path $repoRoot "$($service.Context)/Dockerfile"
+  $dockerfile = Get-Content -Raw -Path $dockerfilePath
+  foreach ($fromLine in @($dockerfile -split "`r?`n" | Where-Object { $_ -match "^FROM\s" })) {
+    if ($fromLine -notmatch "@sha256:[0-9a-f]{64}") {
+      $violations.Add("Docker base image is not pinned by digest for $($service.Name): $fromLine")
+    }
+  }
 }
 
-foreach ($correlationHeader in @(
-    'proxy_set_header X-Request-ID $request_id;',
-    'proxy_set_header traceparent $http_traceparent;')) {
-    if (-not $gateway.Contains($correlationHeader)) {
-        $violations.Add("api-gateway template missing correlation forwarding header: $correlationHeader")
-    }
+foreach ($required in @(
+  "needs.detect.outputs.docker_matrix",
+  "max-parallel: 4",
+  "cache-from: type=gha",
+  "cache-to: type=gha",
+  "resolve-image-source-id.ps1",
+  "dev-approved-",
+  "invoke-direct-cloudrun-release.ps1",
+  "invoke-clouddeploy-release.ps1",
+  "verify-cloudrun-release.ps1",
+  "smoke-gateway-health.ps1",
+  "group: cd-environment-",
+  "cancel-in-progress:")) {
+  if (-not $workflow.Contains($required)) {
+    $violations.Add("Release workflow missing required deployment control: $required")
+  }
 }
 
-foreach ($publicRoute in @(
-    "location /api/v1/auth/",
-    "location /api/v1/rbac/",
-    "location /api/v1/students",
-    "location /api/v1/fee-structure",
-    "location /api/v1/supply/",
-    "location /api/v1/dashboard")) {
-    if (-not $gateway.Contains($publicRoute)) {
-        $violations.Add("api-gateway template missing public route: $publicRoute")
-    }
+foreach ($required in @("--async", 'status = "submitted"')) {
+  if (-not $directRelease.Contains($required)) {
+    $violations.Add("Direct dev release is missing asynchronous deployment control: $required")
+  }
+}
+
+foreach ($required in @("runtimeRef", "TimeoutMinutes", "latestTraffic")) {
+  if (-not $releaseVerification.Contains($required)) {
+    $violations.Add("Cloud Run release verification is missing bounded runtime-digest validation: $required")
+  }
+}
+
+foreach ($required in @(
+  "IDENTITY_UPSTREAM",
+  "TENANT_SCHOOL_UPSTREAM",
+  "STUDENT_UPSTREAM",
+  "ATTENDANCE_UPSTREAM",
+  "FEE_UPSTREAM",
+  "CATALOG_UPSTREAM",
+  "WORKFLOW_UPSTREAM",
+  "FIREFIGHTING_UPSTREAM",
+  "REPORTING_UPSTREAM",
+  "BILLING_UPSTREAM",
+  "AUDIT_UPSTREAM",
+  "NOTIFICATION_UPSTREAM",
+  "IDENTITY_SERVICE_TOKEN",
+  "X-Request-ID",
+  "traceparent")) {
+  if (-not $gateway.Contains($required)) {
+    $violations.Add("API gateway missing routing/security value: $required")
+  }
+}
+
+$frontendDockerfile = Get-Content -Raw -Path (Join-Path $repoRoot "frontend/Dockerfile")
+$npmInstallIndex = $frontendDockerfile.IndexOf("RUN npm ci")
+$sourceCopyIndex = $frontendDockerfile.IndexOf("COPY src ./src")
+if ($npmInstallIndex -lt 0 -or $sourceCopyIndex -lt 0 -or $npmInstallIndex -gt $sourceCopyIndex) {
+  $violations.Add("Frontend Dockerfile must install dependencies before copying application source.")
 }
 
 if ($violations.Count -gt 0) {
-    Write-Host "Deployment boundary violations found:"
-    $violations | ForEach-Object { Write-Host "  $_" }
-    exit 1
+  Write-Host "Deployment boundary violations found:"
+  $violations | ForEach-Object { Write-Host "  $_" }
+  exit 1
 }
 
-Write-Host "Deployment boundary audit passed: Cloud Run and local gateway are service-only."
+Write-Host "Deployment boundary audit passed: affected-service promotion, pinned images, Cloud Run manifests, and gateway routes are guarded."

@@ -46,7 +46,7 @@ gcloud run services update <cloud-run-service-name> \
   --project=<PROJECT_ID>
 ```
 
-### Roll Back With Cloud Deploy
+### Roll Back With The Release Controller
 
 Use the GitHub workflow first:
 
@@ -60,9 +60,11 @@ reason: required
 
 See `docs/runbooks/rollback.md`.
 
+Dev rollback moves Cloud Run traffic to a prior ready revision. Production rollback remains Cloud Deploy target rollback. The GitHub workflow selects the correct controller from the environment.
+
 ### Emergency Cloud Run Revision Traffic Shift
 
-Use direct Cloud Run traffic shifting only as an emergency operator action when the Cloud Deploy rollback workflow is unavailable.
+Use manual Cloud Run traffic shifting only when the GitHub rollback workflow is unavailable. The normal dev rollback workflow already performs a controlled Cloud Run traffic shift.
 
 ```bash
 gcloud run revisions list \

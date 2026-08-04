@@ -79,7 +79,7 @@ Required follow-up:
 
 - Either create/update the custom role and cut over IAM, or update docs/source to reflect the intentional predefined-role model.
 
-### CI/CD v2 Is Active, But Hardening Remains
+### CI/CD Affected-Service Promotion Is Active, But Hardening Remains
 
 The former active CI/CD files and `cloudbuild.yaml` were retired on 2026-08-03. The replacement GitHub Actions and Cloud Deploy implementation is active as of 2026-08-04. The implementation notes are documented in:
 
@@ -98,7 +98,7 @@ Remaining gaps:
 
 - GitHub `dev` Environment branch restriction still needs a repository admin to add `dev` as the only allowed deployment branch in the GitHub UI.
 - Stage target templates exist, but stage promotion is not active until a real stage database, GitHub Environment, and `-stage` secrets exist.
-- Release workflow smoke is currently gateway `/gateway-health` only; authenticated business-flow smokes are not automatic.
+- Release workflow verifies every changed Cloud Run revision, exact digest, 100 percent traffic, changed frontend HTTP response, and gateway health. Authenticated business-flow smokes are still not automatic.
 - Deploy service account still has broad legacy roles, including `roles/cloudbuild.builds.editor` and `roles/storage.admin`.
 - Production actions are not pinned by SHA.
 - Cloud Monitoring/SLO-based canary gates are not automatic.

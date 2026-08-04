@@ -6,18 +6,18 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 
 $catalog = @(Get-MicroserviceBuildCatalog)
 $testCatalog = @(Get-MicroserviceTestCatalog)
-$ciPath = Join-Path $repoRoot ".github/workflows/ci.yml"
+$ciPath = Join-Path $repoRoot ".github/workflows/ci-pr.yml"
+$deployPath = Join-Path $repoRoot ".github/workflows/build-release.yml"
 $resolverPath = Join-Path $repoRoot "scripts/resolve-affected-ci-targets.ps1"
-$cloudBuildPath = Join-Path $repoRoot "cloudbuild.yaml"
 $verifyPath = Join-Path $repoRoot "scripts/verify-microservice-migration.ps1"
 
 $ci = Get-Content -Raw -Path $ciPath
+$deploy = Get-Content -Raw -Path $deployPath
 $resolver = Get-Content -Raw -Path $resolverPath
-$cloudBuild = Get-Content -Raw -Path $cloudBuildPath
 $verify = Get-Content -Raw -Path $verifyPath
 $violations = New-Object System.Collections.Generic.List[string]
 
-foreach ($required in @("resolve-affected-ci-targets.ps1", "service_matrix", "docker_matrix", "fromJson(needs.detect-changes.outputs.service_matrix)", "fromJson(needs.detect-changes.outputs.docker_matrix)", "matrix.context", "matrix.image")) {
+foreach ($required in @("_detect-changes.yml", "service_matrix", "docker_matrix", "fromJSON(needs.detect.outputs.service_matrix)", "fromJSON(needs.detect.outputs.docker_matrix)", "matrix.context", "matrix.image")) {
     if ($ci -notmatch [regex]::Escape($required)) {
         $violations.Add("CI workflow missing dynamic catalog contract: $required")
     }
@@ -31,21 +31,22 @@ foreach ($required in @("Get-MicroserviceBuildCatalog", "Get-MicroserviceTestCat
 
 foreach ($service in $catalog) {
     $context = $service.Context
-    $posixContext = $context -replace "\\", "/"
-    $image = $service.Image
-
-    if ($cloudBuild -notmatch [regex]::Escape($posixContext) -and
-        $cloudBuild -notmatch [regex]::Escape("./$posixContext")) {
-        $violations.Add("Cloud Build missing build context for $($service.Name): $posixContext")
-    }
-
-    if ($cloudBuild -notmatch [regex]::Escape($image)) {
-        $violations.Add("Cloud Build missing image name for $($service.Name): $image")
+    $contextPath = Join-Path $repoRoot $context
+    if (-not (Test-Path -LiteralPath $contextPath)) {
+        $violations.Add("Build catalog context does not exist for $($service.Name): $context")
+    } elseif (-not (Test-Path -LiteralPath (Join-Path $contextPath "Dockerfile"))) {
+        $violations.Add("Build catalog context has no Dockerfile for $($service.Name): $context")
     }
 
     if ($verify -notmatch [regex]::Escape("Get-MicroserviceBuildCatalog")) {
         $violations.Add("verify-microservice-migration.ps1 must use the shared microservice build catalog.")
         break
+    }
+}
+
+foreach ($required in @("needs.detect.outputs.docker_matrix", "cache-from: type=gha", "cache-to: type=gha", "resolve-image-source-id.ps1", "matrix.context", "matrix.image")) {
+    if ($deploy -notmatch [regex]::Escape($required)) {
+        $violations.Add("Deployment workflow missing affected-image build contract: $required")
     }
 }
 
@@ -59,4 +60,4 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Microservice build catalog audit passed: CI, Cloud Build, and local verification include all catalogued services."
+Write-Host "Microservice build catalog audit passed: PR CI, branch CD, and local verification use the shared catalog."

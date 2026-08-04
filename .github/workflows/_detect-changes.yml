@@ -10,6 +10,18 @@ on:
         required: false
         type: string
         default: HEAD
+      checkout_ref:
+        required: false
+        type: string
+        default: ""
+      force_all:
+        required: false
+        type: boolean
+        default: false
+      target_environment:
+        required: false
+        type: string
+        default: ""
     outputs:
       has_service_changes:
         value: ${{ jobs.detect.outputs.has_service_changes }}
@@ -19,6 +31,8 @@ on:
         value: ${{ jobs.detect.outputs.docker_matrix }}
       changed_files:
         value: ${{ jobs.detect.outputs.changed_files }}
+      deployment_config_changed:
+        value: ${{ jobs.detect.outputs.deployment_config_changed }}
 
 permissions:
   contents: read
@@ -31,10 +45,12 @@ jobs:
       service_matrix: ${{ steps.detect.outputs.service_matrix }}
       docker_matrix: ${{ steps.detect.outputs.docker_matrix }}
       changed_files: ${{ steps.detect.outputs.changed_files }}
+      deployment_config_changed: ${{ steps.detect.outputs.deployment_config_changed }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          ref: ${{ inputs.checkout_ref || github.sha }}
 
       - name: Detect affected services
         id: detect
@@ -51,11 +67,20 @@ jobs:
           if ($baseRef.StartsWith('origin/')) {
             git fetch origin ($baseRef -replace '^origin/', '') --depth=1
           }
-          $json = ./scripts/resolve-affected-ci-targets.ps1 -BaseRef $baseRef -HeadRef '${{ inputs.head_ref }}'
+          $arguments = @{
+            BaseRef = $baseRef
+            HeadRef = '${{ inputs.head_ref }}'
+            Environment = '${{ inputs.target_environment }}'
+          }
+          if ('${{ inputs.force_all }}' -eq 'true') {
+            $arguments.ForceAll = $true
+          }
+          $json = ./scripts/resolve-affected-ci-targets.ps1 @arguments
           $result = $json | ConvertFrom-Json
           "has_service_changes=$($result.has_service_changes.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "service_matrix=$($result.service_matrix | ConvertTo-Json -Depth 20 -Compress)" >> $env:GITHUB_OUTPUT
           "docker_matrix=$($result.docker_matrix | ConvertTo-Json -Depth 20 -Compress)" >> $env:GITHUB_OUTPUT
           "changed_files=$($result.changed_files | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
+          "deployment_config_changed=$($result.deployment_config_changed.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "### Changed files" >> $env:GITHUB_STEP_SUMMARY
           $result.changed_files | ForEach-Object { "- $_" >> $env:GITHUB_STEP_SUMMARY }

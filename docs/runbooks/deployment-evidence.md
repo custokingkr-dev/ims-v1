@@ -1,72 +1,63 @@
 # Deployment Evidence Runbook
 
-Every release must answer five questions:
+Every release must answer:
 
 ```text
-What commit shipped?
-What image digest shipped?
-Who approved prod?
+What source changed?
+What immutable image digest shipped?
+Was that digest tested on dev before prod?
+Which revision or rollout received it?
 What checks passed?
-How do we roll back?
+How is it rolled back?
 ```
 
-## GitHub Evidence
+## Release Artifact
 
-The `CD / Deploy branch environment` workflow uploads:
+`CD / Deploy branch environment` uploads:
 
 ```text
 release-evidence/
-  release.json
-  smoke.json
+  images.json
+  deployment.json
+  services-smoke.json
+  gateway-smoke.json
+  dev-approvals.json
   summary.md
 ```
 
-`release.json` contains:
+`dev-approvals.json` exists only for dev. Its tags are created after all automatic dev checks pass.
 
-- commit SHA
-- Artifact Registry root
-- image tag
-- image digest
-- Cloud Deploy pipeline
-- Cloud Deploy release id
-- first target
-- initial rollout target
-- initial rollout id
+## Required Review
 
-`smoke.json` contains:
-
-- environment
-- Cloud Run gateway service
-- gateway URL
-- `/gateway-health` endpoint
-- health status
-- check timestamp
-
-Rollback workflows upload their own evidence artifacts:
+For each service in `images.json`, match:
 
 ```text
-rollback-evidence/rollback.json
+sourceId -> resolvedTag -> digest -> immutableRef -> runtimeDigest -> runtimeRef
 ```
 
-## Cloud Evidence
+For normal dev releases, `deployment.json` records the asynchronous Cloud Run submissions and `services-smoke.json` records the ready revisions. A dev configuration release and every prod release record the Cloud Deploy pipeline, release, target, and rollout.
 
-For a release review, export:
+BuildKit attestations make `immutableRef` an OCI index. `services-smoke.json` must show the matching `runtimeRef` child manifest from `images.json`, a ready revision, and 100 percent traffic. `gateway-smoke.json` must show `UP`.
 
-```powershell
-gcloud deploy releases list `
-  --project=custoking `
-  --region=asia-south2 `
-  --delivery-pipeline=custoking-school-core-service-<env>
+## Production Proof
 
-gcloud deploy rollouts list `
-  --project=custoking `
-  --region=asia-south2 `
-  --delivery-pipeline=custoking-school-core-service-<env> `
-  --release=<release-id>
+The production resolver accepts only `dev-approved-src-<source-id>`. This is the machine-enforced proof that production is consuming a digest that completed dev deployment checks.
+
+Do not manually move a `dev-approved-*` tag. A manual tag would bypass the evidence chain.
+
+## Rollback Evidence
+
+`CD / Rollback target` uploads:
+
+```text
+rollback-evidence/
+  rollback.json
+  deployment.json       prod
+  gateway-smoke.json
 ```
 
-Repeat for each service in the release.
+Dev evidence records traffic movement between revisions. Prod evidence records Cloud Deploy rollback rollouts.
 
 ## Retention
 
-Keep release evidence for at least 90 days or longer if a school onboarding, billing, photo import, or production incident depends on it.
+Keep release and rollback evidence for at least 90 days, and longer when it supports school onboarding, billing, photo import, a database migration, or an incident.

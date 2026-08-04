@@ -23,7 +23,7 @@ on:
         type: choice
         options: [dev, prod]
       release_id:
-        description: Optional release to roll back to. Empty means last successful release.
+        description: Optional prod Cloud Deploy release or dev Cloud Run revision. Empty selects the previous version.
         required: false
         type: string
       reason:
@@ -36,7 +36,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: cd-rollback-${{ inputs.environment }}
+  group: cd-environment-${{ inputs.environment }}
   cancel-in-progress: false
 
 env:
@@ -66,8 +66,6 @@ jobs:
           $ErrorActionPreference = "Stop"
           $requested = '${{ inputs.service }}'
           $envName = '${{ inputs.environment }}'
-          ./scripts/render-clouddeploy-targets.ps1 -Environment $envName -OutputPath "artifacts/clouddeploy/targets-$envName.rendered.yaml"
-          gcloud deploy apply --file="artifacts/clouddeploy/targets-$envName.rendered.yaml" --project="$env:GCP_PROJECT_ID" --region="$env:GCP_REGION"
           $services = if ($requested -eq 'all') {
             @("frontend", "api-gateway", "platform-service", "billing-service", "operations-service", "identity-service", "school-core-service")
           } else {
@@ -75,24 +73,99 @@ jobs:
           }
           New-Item -ItemType Directory -Force -Path rollback-evidence | Out-Null
           $summary = @()
-          foreach ($service in $services) {
-            $pipeline = "custoking-$service-$envName"
-            $target = "$service-$envName"
-            $rolloutId = ("rollback-{0}-{1}" -f "${{ github.run_id }}", ($service -replace "-", "")).ToLowerInvariant()
-            $args = @(
-              "deploy", "targets", "rollback", $target,
-              "--project=$env:GCP_PROJECT_ID",
-              "--region=$env:GCP_REGION",
-              "--delivery-pipeline=$pipeline",
-              "--rollout-id=$rolloutId",
-              "--quiet"
-            )
-            $release = '${{ inputs.release_id }}'
-            if (-not [string]::IsNullOrWhiteSpace($release)) {
-              $args += "--release=$release"
+
+          if ($envName -eq "dev") {
+            $requestedRevision = '${{ inputs.release_id }}'
+            if ($requested -eq "all" -and -not [string]::IsNullOrWhiteSpace($requestedRevision)) {
+              throw "An explicit dev revision can only be used with one selected service."
             }
-            gcloud @args
-            $summary += [ordered]@{ service = $service; pipeline = $pipeline; target = $target; rollout = $rolloutId; release = $release }
+            foreach ($service in $services) {
+              $cloudRunService = "custoking-$service-dev"
+              $serviceData = gcloud run services describe $cloudRunService `
+                --project="$env:GCP_PROJECT_ID" `
+                --region="$env:GCP_REGION" `
+                --format=json | ConvertFrom-Json
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not describe $cloudRunService."
+              }
+              $currentRevision = @($serviceData.status.traffic | Where-Object { [int]$_.percent -eq 100 } | Select-Object -First 1).revisionName
+              if ([string]::IsNullOrWhiteSpace($currentRevision)) {
+                throw "$cloudRunService does not have one revision receiving 100 percent traffic; provide a manual traffic decision."
+              }
+
+              $targetRevision = $requestedRevision
+              if ([string]::IsNullOrWhiteSpace($targetRevision)) {
+                $revisions = @(gcloud run revisions list `
+                  --service=$cloudRunService `
+                  --project="$env:GCP_PROJECT_ID" `
+                  --region="$env:GCP_REGION" `
+                  --sort-by="~metadata.creationTimestamp" `
+                  --format=json | ConvertFrom-Json)
+                if ($LASTEXITCODE -ne 0) {
+                  throw "Could not list revisions for $cloudRunService."
+                }
+                $readyRevisions = @($revisions | Where-Object {
+                  @($_.status.conditions | Where-Object { $_.type -eq "Ready" -and $_.status -eq "True" }).Count -gt 0
+                })
+                $currentIndex = -1
+                for ($index = 0; $index -lt $readyRevisions.Count; $index++) {
+                  if ([string]$readyRevisions[$index].metadata.name -eq $currentRevision) {
+                    $currentIndex = $index
+                    break
+                  }
+                }
+                if ($currentIndex -lt 0 -or $currentIndex + 1 -ge $readyRevisions.Count) {
+                  throw "No previous ready revision exists for $cloudRunService."
+                }
+                $targetRevision = [string]$readyRevisions[$currentIndex + 1].metadata.name
+              }
+
+              gcloud run services update-traffic $cloudRunService `
+                --project="$env:GCP_PROJECT_ID" `
+                --region="$env:GCP_REGION" `
+                --to-revisions="$targetRevision=100" `
+                --quiet
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not move $cloudRunService traffic to $targetRevision."
+              }
+              $summary += [ordered]@{
+                service = $service
+                mode = "cloud-run-traffic"
+                fromRevision = $currentRevision
+                toRevision = $targetRevision
+              }
+            }
+          } else {
+            ./scripts/render-clouddeploy-targets.ps1 -Environment prod -OutputPath "artifacts/clouddeploy/targets-prod.rendered.yaml"
+            gcloud deploy apply --file="artifacts/clouddeploy/targets-prod.rendered.yaml" --project="$env:GCP_PROJECT_ID" --region="$env:GCP_REGION"
+            foreach ($service in $services) {
+              $pipeline = "custoking-$service-prod"
+              $target = "$service-prod"
+              $rolloutId = ("rollback-{0}-{1}" -f "${{ github.run_id }}", ($service -replace "-", "")).ToLowerInvariant()
+              $args = @(
+                "deploy", "targets", "rollback", $target,
+                "--project=$env:GCP_PROJECT_ID",
+                "--region=$env:GCP_REGION",
+                "--delivery-pipeline=$pipeline",
+                "--rollout-id=$rolloutId",
+                "--quiet",
+                "--format=json"
+              )
+              $release = '${{ inputs.release_id }}'
+              if (-not [string]::IsNullOrWhiteSpace($release)) {
+                $args += "--release=$release"
+              }
+              $rollbackJson = gcloud @args
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not create rollback rollout for $pipeline."
+              }
+              $rollback = $rollbackJson | ConvertFrom-Json
+              $actualRelease = ([string]$rollback.release).Split("/")[-1]
+              if ([string]::IsNullOrWhiteSpace($actualRelease)) {
+                throw "Cloud Deploy rollback for $pipeline did not return its source release."
+              }
+              $summary += [ordered]@{ service = $service; mode = "cloud-deploy"; pipeline = $pipeline; target = $target; rollout = $rolloutId; release = $actualRelease }
+            }
           }
           [ordered]@{
             environment = $envName
@@ -100,6 +173,30 @@ jobs:
             rolledBackAtUtc = (Get-Date).ToUniversalTime().ToString("o")
             rollbacks = $summary
           } | ConvertTo-Json -Depth 10 | Set-Content rollback-evidence/rollback.json
+          if ($envName -eq "prod") {
+            [ordered]@{
+              mode = "cloud-deploy"
+              environment = "prod"
+              services = $summary
+            } | ConvertTo-Json -Depth 10 | Set-Content rollback-evidence/deployment.json
+          }
+      - name: Wait for production rollback rollouts
+        if: ${{ inputs.environment == 'prod' }}
+        shell: pwsh
+        run: |
+          ./scripts/wait-clouddeploy-rollouts.ps1 `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -Region "$env:GCP_REGION" `
+            -DeploymentJson rollback-evidence/deployment.json `
+            -AutoAdvanceCanary
+      - name: Gateway health smoke after rollback
+        shell: pwsh
+        run: |
+          ./scripts/smoke-gateway-health.ps1 `
+            -Environment '${{ inputs.environment }}' `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -Region "$env:GCP_REGION" `
+            -OutputPath rollback-evidence/gateway-smoke.json
       - uses: actions/upload-artifact@v7
         if: always()
         with:

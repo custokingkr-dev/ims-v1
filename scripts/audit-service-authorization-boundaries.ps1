@@ -1,8 +1,8 @@
 param(
     [string]$ServicesRoot = "services",
-    [string]$GatewayTemplate = "services/api-gateway/nginx.conf.template",
+    [string]$GatewayTemplate = "services/api-gateway/server.js",
     [string]$ComposeFile = "docker-compose.yml",
-    [string]$CloudBuildFile = "cloudbuild.yaml"
+    [string]$CloudRunDirectory = "deploy/cloudrun"
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,7 +18,8 @@ function Read-RequiredFile {
 $violations = New-Object System.Collections.Generic.List[string]
 $gateway = Read-RequiredFile $GatewayTemplate
 $compose = Read-RequiredFile $ComposeFile
-$cloudBuild = Read-RequiredFile $CloudBuildFile
+$cloudRun = (Get-ChildItem -Path $CloudRunDirectory -Filter "*.yaml" -File |
+    ForEach-Object { Get-Content -Raw -Path $_.FullName }) -join "`n"
 
 $serviceContracts = @(
     @{ Service = "platform-service"; Header = "X-Notification-Service-Token"; Secret = "notification-status-token"; Env = "NOTIFICATION_SERVICE_TOKEN" },
@@ -37,14 +38,14 @@ $serviceContracts = @(
 )
 
 foreach ($contract in $serviceContracts) {
-    if (-not $gateway.Contains("proxy_set_header $($contract.Header) `$`{$($contract.Env)`};")) {
-        $violations.Add("Gateway template missing service token header for $($contract.Service): $($contract.Header)")
+    if (-not $gateway.Contains($contract.Header) -or -not $gateway.Contains($contract.Env)) {
+        $violations.Add("Gateway implementation missing service token contract for $($contract.Service): $($contract.Header) / $($contract.Env)")
     }
     if (-not $compose.Contains($contract.Env)) {
         $violations.Add("docker-compose.yml missing local service token env: $($contract.Env)")
     }
-    if (-not $cloudBuild.Contains($contract.Secret)) {
-        $violations.Add("cloudbuild.yaml missing Secret Manager token for $($contract.Service): $($contract.Secret)")
+    if (-not $cloudRun.Contains($contract.Secret)) {
+        $violations.Add("Cloud Run manifests missing Secret Manager token for $($contract.Service): $($contract.Secret)")
     }
 }
 

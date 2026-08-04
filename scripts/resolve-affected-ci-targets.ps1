@@ -1,6 +1,9 @@
 param(
   [string]$BaseRef,
-  [string]$HeadRef = "HEAD"
+  [string]$HeadRef = "HEAD",
+  [ValidateSet("", "dev", "prod")]
+  [string]$Environment = "",
+  [switch]$ForceAll
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,6 +41,10 @@ if (-not $BaseRef) {
 }
 
 $changedFiles = @(git diff --name-only $BaseRef $HeadRef | ForEach-Object { $_ -replace "\\", "/" })
+if ($LASTEXITCODE -ne 0) {
+  throw "Could not resolve changed files between '$BaseRef' and '$HeadRef'."
+}
+
 $allServiceTriggers = @(
   ".github/workflows/ci-pr.yml",
   ".github/workflows/build-release.yml",
@@ -54,12 +61,19 @@ $scriptTriggers = @(
   "scripts/microservice-test-catalog.ps1",
   "scripts/microservice-build-catalog.ps1",
   "scripts/verify-microservice-migration.ps1",
+  "scripts/resolve-image-source-id.ps1",
+  "scripts/invoke-direct-cloudrun-release.ps1",
+  "scripts/invoke-clouddeploy-release.ps1",
+  "scripts/wait-clouddeploy-rollouts.ps1",
+  "scripts/verify-cloudrun-release.ps1",
+  "scripts/render-clouddeploy-targets.ps1",
   "scripts/smoke-gateway-routes.ps1",
   "scripts/smoke-microservice-features.ps1"
 )
 
-$deployTriggers = @(
-  "deploy/",
+$globalDeployTriggers = @(
+  "deploy/clouddeploy/delivery-pipelines.yaml",
+  "deploy/skaffold.yaml",
   ".github/workflows/_build-image.yml",
   ".github/workflows/_detect-changes.yml",
   ".github/workflows/_smoke-environment.yml",
@@ -67,7 +81,8 @@ $deployTriggers = @(
   ".github/workflows/_test-node-service.yml"
 )
 
-$allAffected = $false
+$allAffected = $ForceAll.IsPresent
+$deploymentConfigChanged = $false
 foreach ($file in $changedFiles) {
   if ($allServiceTriggers -contains $file) {
     $allAffected = $true
@@ -75,10 +90,25 @@ foreach ($file in $changedFiles) {
   if ($scriptTriggers -contains $file) {
     $allAffected = $true
   }
-  foreach ($prefix in $deployTriggers) {
+  foreach ($prefix in $globalDeployTriggers) {
     if ($file.StartsWith($prefix)) {
       $allAffected = $true
     }
+  }
+  $targetConfigMatches = if ([string]::IsNullOrWhiteSpace($Environment)) {
+    $file.StartsWith("deploy/clouddeploy/targets-")
+  } else {
+    $file -eq "deploy/clouddeploy/targets-$Environment.yaml"
+  }
+  if ($targetConfigMatches) {
+    $allAffected = $true
+  }
+  if ($file.StartsWith("deploy/cloudrun/") -or
+      $file -eq "deploy/clouddeploy/delivery-pipelines.yaml" -or
+      $file -eq "deploy/skaffold.yaml" -or
+      $file -eq "scripts/render-clouddeploy-targets.ps1" -or
+      $targetConfigMatches) {
+    $deploymentConfigChanged = $true
   }
 }
 
@@ -90,7 +120,7 @@ if ($allAffected) {
 } else {
   foreach ($service in $services) {
     foreach ($file in $changedFiles) {
-      if ($file.StartsWith("$($service.path)/")) {
+      if ($file.StartsWith("$($service.path)/") -or $file -eq "deploy/cloudrun/$($service.name).yaml") {
         $affected.Add($service)
         break
       }
@@ -116,6 +146,7 @@ $dockerMatrix = @{
 [pscustomobject]@{
   changed_files = $changedFiles
   has_service_changes = ($unique.Count -gt 0)
+  deployment_config_changed = $deploymentConfigChanged
   service_matrix = $serviceMatrix
   docker_matrix = $dockerMatrix
 } | ConvertTo-Json -Depth 10 -Compress

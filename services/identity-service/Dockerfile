@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-25 AS build
+FROM maven:3.9-eclipse-temurin-25@sha256:1b1fc6d0168ea616afd1c861d6f32ec37c9ec2ffe88a0351b3771dd4ad86b0d8 AS build
 WORKDIR /app
 COPY pom.xml .
 RUN for attempt in 1 2 3; do \
@@ -9,7 +9,7 @@ RUN for attempt in 1 2 3; do \
 COPY src ./src
 RUN mvn -q -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre@sha256:f19dbf0a22d0b3658fda48ce7d7181df05ad14bda151dd5ad12cc09d1451c70e
 ARG APP_NAME=custoking-identity-service
 ARG APP_VERSION=0.1.0-SNAPSHOT
 ARG APP_DESCRIPTION="Custoking IMS identity microservice"

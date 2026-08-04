@@ -1,8 +1,8 @@
 param(
-    [string]$GatewayTemplate = "services/api-gateway/nginx.conf.template",
+    [string]$GatewayTemplate = "services/api-gateway/server.js",
     [string]$DeploymentSmokeScript = "scripts/smoke-deployment-readiness.ps1",
     [string]$GatewaySmokeScript = "scripts/smoke-gateway-routes.ps1",
-    [string]$CloudBuildFile = "cloudbuild.yaml"
+    [string]$GatewayCloudRunManifest = "deploy/cloudrun/api-gateway.yaml"
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $gateway = Get-Content -Raw -Path $GatewayTemplate
 $deploymentSmoke = Get-Content -Raw -Path $DeploymentSmokeScript
 $gatewaySmoke = Get-Content -Raw -Path $GatewaySmokeScript
-$cloudBuild = Get-Content -Raw -Path $CloudBuildFile
+$gatewayDeployment = Get-Content -Raw -Path $GatewayCloudRunManifest
 
 $contracts = @(
     @{ Name = "identity"; Upstream = "IDENTITY_UPSTREAM"; Token = "IDENTITY_SERVICE_TOKEN"; GatewayPrefix = "/identity-api/v1/"; PublicPrefix = "/api/v1/auth/"; SmokeFeature = "identity:roles" }
@@ -31,19 +31,19 @@ $violations = New-Object System.Collections.Generic.List[string]
 
 foreach ($contract in $contracts) {
     foreach ($required in @($contract.Upstream, $contract.Token)) {
-        if (-not $cloudBuild.Contains($required)) {
-            $violations.Add("cloudbuild.yaml missing gateway contract for $($contract.Name): $required")
+        if (-not $gatewayDeployment.Contains($required)) {
+            $violations.Add("Cloud Run gateway manifest missing contract for $($contract.Name): $required")
         }
-        if (-not $gateway.Contains('${' + $required + '}')) {
-            $violations.Add("Gateway template missing rendered value for $($contract.Name): $required")
+        if (-not $gateway.Contains($required)) {
+            $violations.Add("Gateway implementation missing value for $($contract.Name): $required")
         }
     }
 
-    if (-not $gateway.Contains("location $($contract.GatewayPrefix)")) {
-        $violations.Add("Gateway template missing diagnostic route prefix for $($contract.Name): $($contract.GatewayPrefix)")
+    if (-not $gateway.Contains($contract.GatewayPrefix)) {
+        $violations.Add("Gateway implementation missing diagnostic route prefix for $($contract.Name): $($contract.GatewayPrefix)")
     }
     if (-not $gateway.Contains($contract.PublicPrefix)) {
-        $violations.Add("Gateway template missing public compatibility route for $($contract.Name): $($contract.PublicPrefix)")
+        $violations.Add("Gateway implementation missing public compatibility route for $($contract.Name): $($contract.PublicPrefix)")
     }
     if (-not $gatewaySmoke.Contains($contract.GatewayPrefix)) {
         $violations.Add("Gateway route smoke missing diagnostic route for $($contract.Name): $($contract.GatewayPrefix)")

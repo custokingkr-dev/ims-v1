@@ -4,7 +4,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 . (Join-Path $PSScriptRoot "microservice-test-catalog.ps1")
 
 $catalog = @(Get-MicroserviceTestCatalog)
-$ciPath = Join-Path $repoRoot ".github/workflows/ci.yml"
+$ciPath = Join-Path $repoRoot ".github/workflows/ci-pr.yml"
 $resolverPath = Join-Path $repoRoot "scripts/resolve-affected-ci-targets.ps1"
 $runnerPath = Join-Path $repoRoot "scripts/invoke-microservice-tests.ps1"
 $ci = Get-Content -Raw -Path $ciPath
@@ -42,7 +42,7 @@ foreach ($required in @("Get-MicroserviceTestCatalog", "Get-MicroserviceBuildCat
     }
 }
 
-foreach ($required in @("fromJson(needs.detect-changes.outputs.service_matrix)", "matrix.tool", "matrix.path", "matrix.name")) {
+foreach ($required in @("fromJSON(needs.detect.outputs.service_matrix)", "matrix.tool", "matrix.path", "matrix.name")) {
     if ($ci -notmatch [regex]::Escape($required)) {
         $violations.Add("CI service-test job missing dynamic matrix contract: $required")
     }

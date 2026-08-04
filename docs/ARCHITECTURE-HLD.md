@@ -54,7 +54,7 @@ Direct runtime reads from retired public domain tables are not allowed.
 
 ## Deployment
 
-The previous GitHub Actions plus `cloudbuild.yaml` deployment path was retired on 2026-08-03. The active path uses GitHub Actions for image build/release creation and Google Cloud Deploy for dev/prod rollouts. `dev` branch deploys dev; `main` branch deploys prod. Stage templates exist in source but stage is not active. See `docs/current-state/deployment-cicd.md`.
+The previous GitHub Actions plus `cloudbuild.yaml` deployment path was retired on 2026-08-03. The active path uses affected-service GitHub Actions builds, content-addressed Artifact Registry images, direct Cloud Run deployment for normal dev changes, and Google Cloud Deploy canaries for production. Production promotes the exact digest approved by dev checks. `dev` branch owns dev; `main` owns prod. Stage templates exist in source but stage is not active. See `docs/current-state/deployment-cicd.md`.
 
 ## Current Migration State
 

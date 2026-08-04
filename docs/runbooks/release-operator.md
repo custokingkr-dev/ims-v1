@@ -1,136 +1,80 @@
 # Release Operator Runbook
 
-Status: CI/CD v2 implementation runbook.
-
 ## Release Board
 
 ```text
-PR -> CI / PR
-dev  -> CD / Deploy branch environment -> dev Cloud Deploy releases + rollouts
-main -> CD / Deploy branch environment -> prod Cloud Deploy releases + rollouts
-     -> prod canary 5, 25, 50, then stable
+PR   -> CI / PR
+dev  -> affected images -> fast Cloud Run dev release -> dev approval tags
+main -> approved digests -> Cloud Deploy prod canary
 ```
 
-## Important Implementation Decision
-
-Cloud Deploy Cloud Run targets support one Cloud Run service per target. Custoking therefore uses one delivery pipeline per service:
-
-```text
-custoking-school-core-service
-custoking-identity-service
-custoking-operations-service
-custoking-billing-service
-custoking-platform-service
-custoking-api-gateway
-custoking-frontend
-```
-
-Each service has environment-specific active pipelines:
-
-```text
-custoking-<service>-dev   -> <service>-dev
-custoking-<service>-prod  -> <service>-prod
-```
-
-GitHub Actions is responsible for branch-to-environment ownership and coordinated fleet order. Cloud Deploy is responsible for each service's environment rollout, prod canary traffic, and rollback history.
-
-The stage target templates exist in source, but stage is not active until a real `stage` GitHub Environment, stage database, and `-stage` GCP secrets exist.
-
-## Dev Release
+## Normal Dev Release
 
 1. Merge or push to `dev`.
-2. GitHub Actions runs `CD / Deploy branch environment`.
-3. The workflow builds and pushes all service images to Artifact Registry using `sha-<commit>` tags.
-4. The workflow resolves each image digest.
-5. The workflow renders the dev Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
-6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-dev` and starts the initial rollout to `<service>-dev`.
-7. The workflow waits for every Cloud Deploy rollout to reach `SUCCEEDED`.
-8. The workflow resolves `custoking-api-gateway-dev` from Cloud Run and calls `/gateway-health`.
-9. The workflow uploads `release-evidence`.
+2. Do not also click manual dispatch for the same commit. The concurrency guard prevents overlap, but the push is already sufficient.
+3. Open `CD / Deploy branch environment` in GitHub Actions.
+4. Confirm the affected-service list matches the changed paths.
+5. Confirm each image was either built once or reused by source ID.
+6. Confirm `Verify changed Cloud Run services` and `Gateway health smoke after rollout` passed.
+7. Download `release-evidence` when the release supports a school onboarding, migration, billing change, or incident fix.
 
-## Prod Release
+Normal code changes use direct Cloud Run deployment by immutable digest. A deployment-manifest, target, pipeline, or Skaffold change automatically uses Cloud Deploy instead.
 
-1. Merge or push to `main`.
-2. GitHub Actions runs `CD / Deploy branch environment`.
-3. The workflow requires the GitHub `prod` Environment approval gate when configured.
-4. The workflow builds and pushes the `main` commit images using immutable `sha-<commit>` tags.
-5. The workflow renders the prod Cloud Deploy targets from GitHub variables, then applies target/pipeline YAML.
-6. The workflow creates one Cloud Deploy release per service in `custoking-<service>-prod` and starts the initial rollout to `<service>-prod`.
-7. The workflow waits for every Cloud Deploy rollout to reach `SUCCEEDED`.
-8. The workflow auto-advances Cloud Deploy canary phases when no deploy phase is still running. Any failed/canceled/halted rollout fails the workflow.
-9. The workflow resolves `custoking-api-gateway-prod` from Cloud Run and calls `/gateway-health`.
+## Manual Dev Release
 
-Cloud Deploy then uses the prod target canary:
+Run the workflow from the `dev` branch and select `dev`.
 
-```text
-5 percent -> 25 percent -> 50 percent -> stable
-```
+Use `force_full_deploy` only when every service must be reconciled. Use `apply_deployment_config` when infrastructure source must be reapplied even though Git did not detect a deployment-file change.
 
-## Service Order
+## Production Release
 
-The release workflow builds and creates service releases in this order:
+1. Merge the dev-tested change to `main`.
+2. The `main` push starts the production workflow.
+3. Review the affected services at the protected `prod` Environment gate.
+4. Approve only when each affected source was successfully deployed to dev.
+5. The workflow resolves `dev-approved-src-*` tags. It does not rebuild.
+6. Cloud Deploy advances affected services through `5`, `25`, `50`, and stable.
+7. Confirm service digest checks, frontend check when applicable, and gateway health.
+8. Retain `release-evidence` and the GitHub approval record.
 
-```text
-school-core-service
-identity-service
-operations-service
-billing-service
-platform-service
-api-gateway
-frontend
-```
+If production reports a missing dev-approved image, deploy that exact source on `dev`; do not create or move an approval tag manually.
 
-Use the same order for manual coordinated work unless there is a narrower service-only change.
+## Manual Inputs
 
-## Evidence
+| Input | Use |
+| --- | --- |
+| `target_environment` | Must match the branch: `dev` or `prod` |
+| `commit_sha` | Optional ancestor commit from the owning branch |
+| `force_full_deploy` | Includes all seven services |
+| `apply_deployment_config` | Reapplies targets and pipelines; dev uses Cloud Deploy |
 
-For every release, keep:
+## Evidence Review
 
-- GitHub workflow run URL.
-- `release-evidence` artifact.
-- Cloud Deploy release IDs.
-- Image digests.
-- Production approval record.
-- Rollback target.
-- `release-evidence/smoke.json`.
+Check:
 
-## Cleanup Stale Releases
+- `images.json`: source ID, immutable OCI index, and runnable manifest digest for each affected service.
+- `deployment.json`: deployment mode and Cloud Run submissions or Cloud Deploy rollouts.
+- `services-smoke.json`: exact runtime digest, ready revision, and traffic validation.
+- `gateway-smoke.json`: final public health result.
+- `dev-approvals.json`: digests eligible for production.
 
-Cloud Deploy releases cannot be deleted. Stale failed or canceled releases can be abandoned so no new rollouts can be created from them:
+## Timing Expectations
 
-```powershell
-./scripts/abandon-stale-clouddeploy-releases.ps1 -Environment dev,prod
-./scripts/abandon-stale-clouddeploy-releases.ps1 -Environment dev,prod -Execute
-```
+Timing depends on cache state and Cloud Run startup:
 
-The first command is a dry run. The second command abandons only failed/canceled releases by default. Do not use `-PruneSucceeded` unless you intentionally want to abandon old successful rollback targets after keeping the latest successful releases.
+- no-op documentation change: under one minute in normal runner conditions;
+- cached frontend-only dev release: usually several minutes;
+- cached single Java service: usually under ten minutes;
+- first full-fleet cache warm-up: materially longer.
 
-## Dev GitHub Environment Branch Restriction
+Treat these as operating expectations, not an SLA. Use job timestamps to distinguish runner queue time, image build time, and deployment time.
 
-The workflow already enforces `dev` branch -> `dev` environment and `main` branch -> `prod` environment. To add the matching GitHub UI protection later, use a repository admin account:
+## Failure Handling
 
-1. Open GitHub repository settings.
-2. Go to `Environments`.
-3. Open `dev`.
-4. Set deployment branches to `Selected branches`.
-5. Add only `dev`.
-6. Save the rule.
+- Build failure: fix the service; no approval tag is created.
+- Dev deployment or smoke failure: roll back dev and fix forward.
+- Missing prod approval tag: deploy the source to dev successfully.
+- Canary failure: stop advancing and use `CD / Rollback target`.
+- Deployment configuration failure: inspect rendered targets and do not use direct deployment to bypass it.
 
-The previous API attempt failed with `403` because the active account did not have repository admin rights.
-
-## Fast Health Check
-
-After dev/prod deployment, check:
-
-```powershell
-gcloud run services describe custoking-api-gateway-<env> `
-  --project=custoking `
-  --region=asia-south2 `
-  --format="value(status.url)"
-```
-
-Then call:
-
-```text
-<gateway-url>/gateway-health
-```
+See [rollback.md](rollback.md) and [deployment-evidence.md](deployment-evidence.md).

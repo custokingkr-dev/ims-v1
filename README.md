@@ -261,7 +261,7 @@ Current deployment is branch-owned:
 - push to `main` deploys prod through the protected GitHub `prod` Environment.
 - manual dispatch of **CD / Deploy branch environment** must run from the branch that owns the selected environment.
 
-The workflow builds all seven deployable units, creates Cloud Deploy releases, waits for every rollout to succeed, runs gateway `/gateway-health`, and uploads `release-evidence/`.
+The workflow detects affected services. Dev builds or reuses content-addressed images, deploys only affected Cloud Run services, verifies exact digests/readiness/traffic, checks gateway health, and marks successful digests as eligible for production. Prod promotes those same immutable digests through Cloud Deploy canaries without rebuilding them. Deployment-configuration changes automatically use Cloud Deploy in dev as well.
 
 Do not use old Cloud Build commands. The repository no longer contains `cloudbuild.yaml`.
 

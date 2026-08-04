@@ -297,14 +297,14 @@ Verified drift: the source file `deploy/gcp/github-deploy-runtime-operator-role.
 
 Cloud Deploy is enabled and active in `asia-south2`.
 
-The active deployment model uses one delivery pipeline per service per environment:
+Cloud Deploy retains one delivery pipeline per service per environment:
 
 ```text
 custoking-<service>-dev
 custoking-<service>-prod
 ```
 
-Dev pipelines use a standard strategy. Prod pipelines use canary percentages `5`, `25`, `50`, then stable.
+Normal dev code releases update affected Cloud Run services directly by immutable digest. Dev Cloud Deploy pipelines use a standard strategy when deployment configuration changes or an operator explicitly requests configuration reconciliation. Prod pipelines use canary percentages `5`, `25`, `50`, then stable and consume dev-approved image digests.
 
 Latest verified Cloud Deploy releases for commit `83abe626f32d64e4701d6f3c838008bfaabfa3b4`:
 
@@ -324,7 +324,7 @@ Live jobs:
 - `ims-seed-dev`
 - `ims-seedfull-dev`
 
-`ims-direct-service-smoke` exists. The current `build-release.yml` workflow does not invoke this job; the automatic post-rollout smoke currently calls only the public gateway `/gateway-health` endpoint through `scripts/smoke-gateway-health.ps1`.
+`ims-direct-service-smoke` exists but is not invoked by `build-release.yml`. Automatic release verification now checks each changed service's Cloud Run readiness, exact image digest, latest revision traffic, changed frontend HTTP response, and final public gateway health. The job remains available for deeper authenticated business checks.
 
 Verified live IAM for the direct smoke runtime:
 
