@@ -3,16 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Minimal Student Verification Mockup</title>
+  <title>Students View Verification Mockup</title>
   <style>
     :root {
       --ink: #182027;
       --muted: #68737f;
       --line: #d9e0e7;
-      --soft: #f5f7f8;
+      --soft: #f6f8f9;
       --brand: #275d50;
       --warn: #8a5b10;
-      --bad: #9d3731;
     }
     * { box-sizing: border-box; }
     body {
@@ -46,97 +45,115 @@
       padding: 9px 12px;
       font: inherit;
       font-weight: 600;
+      white-space: nowrap;
     }
     .primary { background: var(--brand); border-color: var(--brand); color: white; }
-    .filters {
+    .tabs {
       display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      padding: 12px 16px;
+      gap: 6px;
+      padding: 10px 16px 0;
       border-bottom: 1px solid var(--line);
     }
-    select, textarea {
+    .tabs button {
+      border: 0;
+      background: transparent;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 650;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+    }
+    .tabs .on { color: var(--brand); border-bottom-color: var(--brand); }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .filters, .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    select, input {
       border: 1px solid var(--line);
       border-radius: 6px;
       padding: 8px 10px;
       font: inherit;
       background: white;
     }
-    .body {
-      display: grid;
-      grid-template-columns: 330px minmax(0, 1fr);
-      min-height: 520px;
-    }
-    .list { border-right: 1px solid var(--line); background: var(--soft); }
-    .row {
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 14px;
-      border: 0;
-      border-bottom: 1px solid var(--line);
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
       text-align: left;
-      background: transparent;
-      font: inherit;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
     }
-    .row.active { background: #e7f2ee; }
-    .name { font-weight: 650; display: block; }
+    th { color: var(--muted); font-size: 12px; font-weight: 650; }
+    .student {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 220px;
+    }
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 50% 35%, #d7aa82 0 24%, transparent 25%),
+        radial-gradient(circle at 50% 95%, #314f63 0 42%, transparent 43%),
+        #e4eaee;
+      flex: 0 0 auto;
+    }
+    .name { font-weight: 650; }
     .pill {
-      height: 24px;
+      display: inline-flex;
       border-radius: 999px;
       padding: 4px 8px;
       font-size: 12px;
       font-weight: 650;
       white-space: nowrap;
     }
-    .pending { color: var(--bad); background: #fdebea; }
-    .fix { color: var(--warn); background: #fff4d8; }
+    .pending { color: var(--warn); background: #fff4d8; }
     .done { color: var(--brand); background: #e7f2ee; }
-    .detail { padding: 16px; }
-    .student {
-      display: grid;
-      grid-template-columns: 130px minmax(0, 1fr);
-      gap: 16px;
-      margin-bottom: 14px;
+    .drawer {
+      border-top: 1px solid var(--line);
+      background: var(--soft);
+      padding: 16px;
     }
-    .photo {
-      aspect-ratio: 3 / 4;
+    .drawer-inner {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      background: white;
       border: 1px solid var(--line);
       border-radius: 8px;
+      padding: 14px;
+    }
+    .portrait {
+      aspect-ratio: 3 / 4;
+      border-radius: 8px;
+      border: 1px solid var(--line);
       background:
         radial-gradient(circle at 50% 30%, #d7aa82 0 19%, transparent 20%),
         radial-gradient(circle at 50% 78%, #314f63 0 36%, transparent 37%),
         linear-gradient(#dfe7eb, #f7f8f9);
     }
-    .facts {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px;
-    }
-    .fact { padding: 9px; border: 1px solid var(--line); border-radius: 6px; }
-    .label { color: var(--muted); font-size: 12px; margin-bottom: 3px; }
-    .value { font-weight: 600; overflow-wrap: anywhere; }
-    .checks { display: grid; gap: 8px; margin: 14px 0; }
-    label.check {
+    .checks { display: grid; gap: 8px; }
+    label {
       display: flex;
       gap: 8px;
       align-items: center;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
       font-weight: 600;
     }
-    textarea { width: 100%; resize: vertical; margin-top: 8px; }
-    .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
     @media (max-width: 760px) {
       .page { margin: 0; border-radius: 0; }
-      header, .body, .student { display: block; }
-      .list { border-right: 0; }
-      .photo { max-width: 140px; margin-bottom: 12px; }
-      .facts { grid-template-columns: 1fr; }
-      .actions { flex-direction: column; }
-      .btn { width: 100%; }
+      header, .toolbar, .drawer-inner { display: block; }
+      .actions, .filters { margin-top: 8px; }
+      .portrait { max-width: 130px; margin-bottom: 12px; }
+      table { display: block; overflow-x: auto; }
+      .drawer-inner .btn { margin-top: 12px; width: 100%; }
     }
   </style>
 </head>
@@ -144,53 +161,62 @@
   <div class="page">
     <header>
       <div>
-        <h1>Student verification</h1>
-        <div class="muted">39 pending / 13 need correction</div>
+        <h1>Students</h1>
+        <div class="muted">Student records, enrollment, bulk import</div>
       </div>
-      <button class="btn primary">Complete when done</button>
+      <button class="btn primary">Add student</button>
     </header>
 
-    <div class="filters">
-      <select aria-label="Class"><option>All classes</option></select>
-      <select aria-label="Section"><option>All sections</option></select>
-      <select aria-label="Status"><option>Pending first</option></select>
-    </div>
+    <nav class="tabs" aria-label="Student management">
+      <button class="on">Students</button>
+      <button>Add Student</button>
+      <button>Bulk Import</button>
+    </nav>
 
-    <section class="body">
-      <div class="list">
-        <button class="row active"><span><span class="name">Aarav Mehta</span><span class="muted">ADM-0831 / 8 A</span></span><span class="pill pending">Pending</span></button>
-        <button class="row"><span><span class="name">Sara Khan</span><span class="muted">ADM-0832 / 8 A</span></span><span class="pill fix">Fix</span></button>
-        <button class="row"><span><span class="name">Kabir Sharma</span><span class="muted">ADM-0833 / 8 A</span></span><span class="pill done">Done</span></button>
+    <section class="toolbar">
+      <div class="filters">
+        <select aria-label="Class"><option>All classes</option></select>
+        <select aria-label="Section"><option>All sections</option></select>
+        <input aria-label="Search" placeholder="Search students">
       </div>
+      <div class="actions">
+        <button class="btn">Verify profiles</button>
+        <button class="btn">Verify photos</button>
+      </div>
+    </section>
 
-      <div class="detail">
-        <div class="student">
-          <div class="photo" role="img" aria-label="Student portrait preview"></div>
-          <div class="facts">
-            <div class="fact"><div class="label">Admission no.</div><div class="value">ADM-0831</div></div>
-            <div class="fact"><div class="label">Class</div><div class="value">8 A</div></div>
-            <div class="fact"><div class="label">Roll no.</div><div class="value">14</div></div>
-            <div class="fact"><div class="label">Parent contact</div><div class="value">+91 98xxxx3210</div></div>
+    <table>
+      <thead>
+        <tr><th>Student</th><th>Class</th><th>Profile</th><th>Photo</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="student"><span class="avatar"></span><span><span class="name">Aarav Mehta</span><br><span class="muted">ADM-0831</span></span></div></td>
+          <td>8 A</td>
+          <td><span class="pill pending">Pending</span></td>
+          <td><span class="pill pending">Pending</span></td>
+        </tr>
+        <tr>
+          <td><div class="student"><span class="avatar"></span><span><span class="name">Sara Khan</span><br><span class="muted">ADM-0832</span></span></div></td>
+          <td>8 A</td>
+          <td><span class="pill done">Done</span></td>
+          <td><span class="pill pending">Needs correction</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <section class="drawer" aria-label="Example opened from Verify photos">
+      <div class="drawer-inner">
+        <div class="portrait" role="img" aria-label="Student portrait preview"></div>
+        <div>
+          <strong>Photo verification / Aarav Mehta</strong>
+          <div class="muted">Opened from Students using current class, section, and search filters.</div>
+          <div class="checks">
+            <label><input type="checkbox"> Photo belongs to this student</label>
+            <label><input type="checkbox"> Photo is clear enough for ID card</label>
           </div>
         </div>
-
-        <div class="checks">
-          <label class="check"><input type="checkbox"> Profile is correct</label>
-          <label class="check"><input type="checkbox"> Photo is correct and usable</label>
-        </div>
-
-        <select aria-label="Correction reason">
-          <option>No correction needed</option>
-          <option>Wrong student photo</option>
-          <option>Low quality photo</option>
-          <option>Profile data issue</option>
-        </select>
-        <textarea rows="3" aria-label="Correction note" placeholder="Note only if correction is needed"></textarea>
-
-        <div class="actions">
-          <button class="btn">Needs correction</button>
-          <button class="btn primary">Save review</button>
-        </div>
+        <button class="btn primary">Save review</button>
       </div>
     </section>
   </div>

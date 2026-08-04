@@ -41,21 +41,54 @@ Reference links:
 
 ## Minimal MVP
 
-Add a school-facing `Verification` entry in the Students module. It can still open the existing command-center drawer, but the user-facing language should be school-operational rather than "lifecycle".
+Keep verification inside the existing `Students` view. Do not add a fourth `StudentModuleTabs` tab unless the workflow becomes large enough later.
 
-The MVP should have two tabs:
+The MVP should add two small actions to the student directory toolbar:
 
-- `Profile`: verifies core profile fields needed for ID cards, attendance, fees, and parent communication.
-- `Photo`: verifies that the imported/uploaded photo is usable and belongs to the student record.
+- `Verify profiles`: verifies core profile fields needed for ID cards, attendance, fees, and parent communication.
+- `Verify photos`: verifies that the imported/uploaded photo is usable and belongs to the student record.
+
+Those actions open a compact review drawer or modal seeded from the same Students filters. The reviewer should feel they are still working from the student directory, not entering a separate product area.
+
+## Product Lineage
+
+Recommended lineage:
+
+```text
+ERP workspace
+  -> Students module
+     -> Students tab
+        -> Student directory toolbar
+           -> Verify profiles
+              -> Profile review campaign
+              -> student_review_campaigns.review_type = PROFILE_VERIFICATION
+           -> Verify photos
+              -> Photo review campaign
+              -> student_review_campaigns.review_type = PHOTO_VERIFICATION
+```
+
+Operational lineage:
+
+```text
+Student record created/imported
+  -> Student photo uploaded or imported from Drive
+  -> School verifies profile fields and photo
+  -> Corrections are handled in the student record/photo import flow
+  -> Verified students become ready for ID-card printing and downstream use
+```
+
+Photo import should remain a source/intake workflow. Verification is the school approval layer after intake.
 
 The smallest useful workflow:
 
-1. Start campaign for the selected school and academic year.
-2. Filter by class, section, and status.
-3. Review one student at a time in a compact detail pane.
-4. Mark `Profile verified`, `Photo verified`, or `Needs correction`.
-5. Require a reason/note when `Needs correction` is selected.
-6. Complete campaign only when every item is `COMPLETED` or intentionally closed as `NEEDS_CORRECTION`.
+1. Open `Students`.
+2. Use the existing class, section, mode, and search filters.
+3. Click `Verify profiles` or `Verify photos`.
+4. Start or resume the campaign for that filtered scope.
+5. Review one student at a time in a compact pane.
+6. Mark `Verified` or `Needs correction`.
+7. Require a reason/note when `Needs correction` is selected.
+8. Complete campaign only when every item is `COMPLETED` or intentionally closed as `NEEDS_CORRECTION`.
 
 The school user should not need to understand batches, object keys, import internals, or service topology.
 
@@ -99,11 +132,18 @@ Prefer extending the existing student-review endpoints instead of adding a new s
 - `PUT /api/v1/student-review-items/{itemId}`
 - `POST /api/v1/students/review-campaigns/{campaignId}/complete`
 
-If the backend keeps separate campaign types, use `PROFILE_VERIFICATION` and `PHOTO_VERIFICATION` as clear values. If product wants one school workflow, use `PROFILE_PHOTO_VERIFICATION` with separate field flags inside each item.
+Use separate campaign types for this product shape:
+
+- `PROFILE_VERIFICATION`
+- `PHOTO_VERIFICATION`
+
+This keeps the two toolbar actions simple and avoids forcing profile and photo review to finish at the same pace.
 
 ## UI Decisions
 
-- Keep the first screen minimal: campaign status, class/section filters, queue, and selected student detail.
+- Put the entry point in the existing Students toolbar, next to existing import/add actions.
+- Use exactly two visible verification actions: `Verify profiles` and `Verify photos`.
+- The review surface should inherit the current Students filters by default.
 - Show the student photo near the fields being verified; photo review without a visible portrait is not acceptable.
 - Use plain statuses: `Pending`, `Verified`, `Needs correction`.
 - Use a single high-emphasis action: `Save review`.
@@ -125,7 +165,7 @@ If the backend keeps separate campaign types, use `PROFILE_VERIFICATION` and `PH
 
 Priority 1:
 
-- Add a school `Verification` tab inside Students.
+- Add `Verify profiles` and `Verify photos` actions inside the existing Students view.
 - Add profile/photo campaign status cards to the command center lifecycle area.
 - Add selected-student detail with protected photo preview, profile fields, structured correction reasons, and save action.
 - Reopen photo verification automatically when `students.photo_url` changes after verification.
