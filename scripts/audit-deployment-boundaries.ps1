@@ -80,7 +80,7 @@ foreach ($required in @(
   }
 }
 
-foreach ($required in @("--async", 'status = "submitted"')) {
+foreach ($required in @("--async", 'status = "submitted"', 'status = "already-current"')) {
   if (-not $directRelease.Contains($required)) {
     $violations.Add("Direct dev release is missing asynchronous deployment control: $required")
   }

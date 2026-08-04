@@ -186,11 +186,27 @@ jobs:
 
       - name: Attach commit tag to reused image
         if: ${{ steps.source.outputs.should_build == 'false' }}
+        shell: pwsh
         run: |
-          gcloud artifacts docker tags add \
-            "${{ steps.source.outputs.source_ref }}" \
-            "${{ steps.source.outputs.sha_ref }}" \
-            --quiet
+          $expectedDigest = "${{ steps.source.outputs.existing_digest }}"
+          $existingOutput = & gcloud artifacts docker images describe "${{ steps.source.outputs.sha_ref }}" --format="value(image_summary.digest)" 2>$null
+          $describeExitCode = $LASTEXITCODE
+          $global:LASTEXITCODE = 0
+          $existingDigest = if ($null -eq $existingOutput) { "" } else { ([string]$existingOutput).Trim() }
+          if ($describeExitCode -eq 0) {
+            if ($existingDigest -ne $expectedDigest) {
+              throw "Commit tag conflict: expected $expectedDigest but found $existingDigest."
+            }
+            Write-Host "Commit tag already points to $expectedDigest."
+          } else {
+            gcloud artifacts docker tags add `
+              "${{ steps.source.outputs.source_ref }}" `
+              "${{ steps.source.outputs.sha_ref }}" `
+              --quiet
+            if ($LASTEXITCODE -ne 0) {
+              throw "Could not create commit image tag."
+            }
+          }
 
       - name: Build and push image
         id: build
@@ -421,9 +437,20 @@ jobs:
           $approvals = @()
           foreach ($service in @($images.services)) {
             $approvalRef = "$($images.registry)/$($service.image):dev-approved-$($service.sourceTag)"
-            gcloud artifacts docker tags add $service.immutableRef $approvalRef --quiet
-            if ($LASTEXITCODE -ne 0) {
-              throw "Could not approve $($service.service) digest $($service.immutableRef)."
+            $existingOutput = & gcloud artifacts docker images describe $approvalRef --format="value(image_summary.digest)" 2>$null
+            $describeExitCode = $LASTEXITCODE
+            $global:LASTEXITCODE = 0
+            $existingDigest = if ($null -eq $existingOutput) { "" } else { ([string]$existingOutput).Trim() }
+            if ($describeExitCode -eq 0) {
+              if ($existingDigest -ne [string]$service.digest) {
+                throw "Approval tag conflict for $($service.service): expected $($service.digest) but found $existingDigest."
+              }
+              Write-Host "Approval tag for $($service.service) already points to $existingDigest."
+            } else {
+              gcloud artifacts docker tags add $service.immutableRef $approvalRef --quiet
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not approve $($service.service) digest $($service.immutableRef)."
+              }
             }
             $approvals += [ordered]@{
               service = [string]$service.service

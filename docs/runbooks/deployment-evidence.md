@@ -43,7 +43,7 @@ BuildKit attestations make `immutableRef` an OCI index. `services-smoke.json` mu
 
 The production resolver accepts only `dev-approved-src-<source-id>`. This is the machine-enforced proof that production is consuming a digest that completed dev deployment checks.
 
-Do not manually move a `dev-approved-*` tag. A manual tag would bypass the evidence chain.
+Do not manually move a `dev-approved-*` tag. A manual tag would bypass the evidence chain. The workflow treats an existing tag at the same digest as an idempotent success and rejects a tag that points anywhere else.
 
 ## Rollback Evidence
 
