@@ -124,7 +124,7 @@ Normal dev changes use:
 gcloud run deploy <affected-service> --image=<immutable-digest>
 ```
 
-Only the image is updated, so existing Cloud Run environment variables, secret references, service accounts, networking, scaling, and probes remain intact. Updates are submitted with `--async`, allowing independent services to create revisions concurrently. The verification loop then waits up to 15 minutes for every affected service to expose the expected ready digest at 100 percent traffic.
+Only the image is updated, so existing Cloud Run environment variables, secret references, service accounts, networking, scaling, and probes remain intact. Updates are submitted with `--async`, allowing independent services to create revisions concurrently. The verification loop then waits up to 15 minutes for every affected service to expose the expected ready digest at 100 percent traffic. If a previous Cloud Deploy rollout pinned dev traffic to a named revision, verification restores `LATEST` traffic mode after the new revision is ready; this also makes the next direct deployment route normally.
 
 If deployment configuration changed, dev automatically uses the Cloud Deploy path instead. This renders and applies the target configuration and deploys the affected manifest(s), preventing configuration changes from being skipped by the fast image-only path.
 

@@ -18,7 +18,7 @@ main -> approved digests -> Cloud Deploy prod canary
 6. Confirm `Verify changed Cloud Run services` and `Gateway health smoke after rollout` passed.
 7. Download `release-evidence` when the release supports a school onboarding, migration, billing change, or incident fix.
 
-Normal code changes use direct Cloud Run deployment by immutable digest. A deployment-manifest, target, pipeline, or Skaffold change automatically uses Cloud Deploy instead.
+Normal code changes use direct Cloud Run deployment by immutable digest. A deployment-manifest, target, pipeline, or Skaffold change automatically uses Cloud Deploy instead. The verifier restores dev's `LATEST` traffic mode when a prior Cloud Deploy rollout left traffic pinned to a named revision.
 
 ## Manual Dev Release
 

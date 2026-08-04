@@ -86,7 +86,7 @@ foreach ($required in @("--async", 'status = "submitted"')) {
   }
 }
 
-foreach ($required in @("runtimeRef", "TimeoutMinutes", "latestTraffic")) {
+foreach ($required in @("runtimeRef", "TimeoutMinutes", "latestTraffic", "update-traffic", "--to-latest")) {
   if (-not $releaseVerification.Contains($required)) {
     $violations.Add("Cloud Run release verification is missing bounded runtime-digest validation: $required")
   }

@@ -34,6 +34,7 @@ foreach ($image in $images) {
 
 $checks = @()
 $lastStatus = @{}
+$trafficRequested = @{}
 $deadline = (Get-Date).ToUniversalTime().AddMinutes($TimeoutMinutes)
 
 while ($pending.Count -gt 0 -and (Get-Date).ToUniversalTime() -lt $deadline) {
@@ -53,17 +54,17 @@ while ($pending.Count -gt 0 -and (Get-Date).ToUniversalTime() -lt $deadline) {
     $latestReady = [string]$service.status.latestReadyRevisionName
     $latestCreated = [string]$service.status.latestCreatedRevisionName
     $serviceReady = @($service.status.conditions | Where-Object { $_.type -eq "Ready" -and $_.status -eq "True" }).Count -gt 0
-    if (-not $serviceReady -or [string]::IsNullOrWhiteSpace($latestReady) -or $latestReady -ne $latestCreated) {
+    if (-not $serviceReady -or [string]::IsNullOrWhiteSpace($latestCreated)) {
       $lastStatus[$serviceKey] = "latestReady=$latestReady latestCreated=$latestCreated serviceReady=$serviceReady"
       continue
     }
 
-    $revisionJson = & $GcloudCommand run revisions describe $latestReady `
+    $revisionJson = & $GcloudCommand run revisions describe $latestCreated `
       "--project=$ProjectId" `
       "--region=$Region" `
       --format=json 2>$null
     if ($LASTEXITCODE -ne 0) {
-      $lastStatus[$serviceKey] = "revision describe failed for $latestReady"
+      $lastStatus[$serviceKey] = "revision describe failed for $latestCreated"
       continue
     }
 
@@ -75,9 +76,33 @@ while ($pending.Count -gt 0 -and (Get-Date).ToUniversalTime() -lt $deadline) {
       [string]$image.immutableRef
     }
     $revisionReady = @($revision.status.conditions | Where-Object { $_.type -eq "Ready" -and $_.status -eq "True" }).Count -gt 0
-    $latestTraffic = @($service.status.traffic | Where-Object { $_.revisionName -eq $latestReady -and [int]$_.percent -eq 100 }).Count -gt 0
-    if (-not $revisionReady -or $actualDigest -ne $expectedDigest -or -not $latestTraffic) {
-      $lastStatus[$serviceKey] = "revisionReady=$revisionReady expected=$expectedDigest actual=$actualDigest latestTraffic100=$latestTraffic"
+    if (-not $revisionReady -or $actualDigest -ne $expectedDigest) {
+      $lastStatus[$serviceKey] = "revisionReady=$revisionReady expected=$expectedDigest actual=$actualDigest"
+      continue
+    }
+
+    $latestTraffic = @($service.status.traffic | Where-Object { $_.revisionName -eq $latestCreated -and [int]$_.percent -eq 100 }).Count -gt 0
+    $tracksLatest = @($service.spec.traffic | Where-Object { $_.latestRevision -eq $true -and [int]$_.percent -eq 100 }).Count -gt 0
+    if ($Environment -eq "dev" -and -not $tracksLatest) {
+      if (-not $trafficRequested[$serviceKey]) {
+        Write-Host "Restoring LATEST traffic mode for $serviceName."
+        & $GcloudCommand run services update-traffic $serviceName `
+          "--project=$ProjectId" `
+          "--region=$Region" `
+          --to-latest `
+          --async `
+          --quiet
+        if ($LASTEXITCODE -ne 0) {
+          throw "Could not restore LATEST traffic mode for $serviceName."
+        }
+        $trafficRequested[$serviceKey] = $true
+      }
+      $lastStatus[$serviceKey] = "ready expected digest; waiting for LATEST traffic mode"
+      continue
+    }
+
+    if ($latestReady -ne $latestCreated -or -not $latestTraffic) {
+      $lastStatus[$serviceKey] = "latestReady=$latestReady latestCreated=$latestCreated latestTraffic100=$latestTraffic tracksLatest=$tracksLatest"
       continue
     }
 
@@ -99,14 +124,14 @@ while ($pending.Count -gt 0 -and (Get-Date).ToUniversalTime() -lt $deadline) {
     $checks += [ordered]@{
       service = $serviceKey
       cloudRunService = $serviceName
-      revision = $latestReady
+      revision = $latestCreated
       image = $actualDigest
       ready = $true
       latestTrafficPercent = 100
       httpStatus = $httpStatus
     }
     $pending.Remove($serviceKey)
-    Write-Host "Verified $serviceName revision $latestReady."
+    Write-Host "Verified $serviceName revision $latestCreated."
   }
 
   if ($pending.Count -gt 0) {
