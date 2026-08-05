@@ -136,6 +136,7 @@ resource "google_project_iam_member" "release_builder_roles" {
   for_each = toset([
     "roles/artifactregistry.writer",
     "roles/clouddeploy.releaser",
+    "roles/cloudsql.editor",
     "roles/serviceusage.serviceUsageConsumer",
   ])
 

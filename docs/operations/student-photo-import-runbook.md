@@ -87,14 +87,17 @@ so the audit event and operator identity are retained.
 
 The database retains the workbook mapping, Drive metadata, snapshot hash, crop values,
 prior/final photo keys, outcomes, and operator timestamps. When the private photo bucket
-is configured, the original workbook and each applied source image are stored under the
-school-scoped import evidence prefix. Final student images are normalized 512 by 512
-JPEGs with metadata removed.
+is configured, the original workbook remains under the school-scoped import evidence prefix.
+Applied source images are retained for 14 days under the isolated
+`temporary/photo-imports/` prefix, then deleted by bucket lifecycle. Final student images are
+normalized 512 by 512 JPEGs with metadata removed and remain under
+`schools/<school-storage-id>/students/<student-id>/photos/`; the temporary lifecycle cannot match
+that permanent prefix. The original camera file also remains in the controlled Google Drive
+intake until Operations archives or removes it.
 
 Treat the intake and evidence bucket as child personal data. Access is least-privilege,
 objects are private, and result CSV files belong only in the restricted operations case.
-Apply the approved data-retention policy before PROD; do not invent a lifecycle deletion
-period without the data owner's written approval.
+Do not broaden the lifecycle prefix or add a lifecycle rule to the permanent `students/` path.
 
 ## DEV Pilot And PROD Gate
 

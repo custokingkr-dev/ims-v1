@@ -272,6 +272,16 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
       - uses: docker/setup-buildx-action@v4
 
+      - name: Ensure development database is running
+        if: ${{ needs.resolve-target.outputs.target_env == 'dev' }}
+        shell: pwsh
+        run: |
+          ./scripts/set-dev-cloudsql-state.ps1 `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -InstanceName custoking-db-dev `
+            -State start `
+            -Wait
+
       - name: Configure Docker for Artifact Registry inspection
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 

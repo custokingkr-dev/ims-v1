@@ -1043,20 +1043,34 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    fetchCommandCenterMetrics()
-      .then(data => {
-        if (!cancelled) {
-          setCommandCenterMetrics(data);
-          setDataIssue('metrics', null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setDataIssue('metrics', 'Command-center metrics could not be loaded.');
-      })
-      .finally(() => {
-        if (!cancelled) markInitialLoadComplete('metrics');
-      });
-    return () => { cancelled = true; };
+    const loadMetrics = () => {
+      if (document.visibilityState === 'hidden') return;
+      fetchCommandCenterMetrics()
+        .then(data => {
+          if (!cancelled) {
+            setCommandCenterMetrics(data);
+            setDataIssue('metrics', null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setDataIssue('metrics', 'Command-center metrics could not be loaded.');
+        })
+        .finally(() => {
+          if (!cancelled) markInitialLoadComplete('metrics');
+        });
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') loadMetrics();
+    };
+
+    loadMetrics();
+    const intervalId = window.setInterval(loadMetrics, 60_000);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
   }, [markInitialLoadComplete, setDataIssue]);
 
   // Fee Defaulters drawer

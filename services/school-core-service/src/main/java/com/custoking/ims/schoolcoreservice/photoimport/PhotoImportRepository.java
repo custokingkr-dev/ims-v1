@@ -612,7 +612,7 @@ public class PhotoImportRepository {
         if (!Objects.equals(currentRow.priorPhotoKey(), student.photoKey())) {
             throw new IllegalArgumentException("Student photo changed after review; rescan before overwriting");
         }
-        String sourceObjectKey = photoStorage.uploadImportFile(
+        String sourceObjectKey = photoStorage.uploadTemporaryPhotoImportFile(
                 batch.schoolUid(),
                 "photo-import-" + batch.id(),
                 sourceData,

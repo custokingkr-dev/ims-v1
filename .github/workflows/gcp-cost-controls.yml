@@ -1,0 +1,60 @@
+name: Ops / GCP cost controls
+
+on:
+  schedule:
+    - cron: '30 2 * * 1-5'
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+    inputs:
+      dev_database_action:
+        description: Start, stop, or inspect the development Cloud SQL instance.
+        required: true
+        default: status
+        type: choice
+        options: [status, start, stop]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: gcp-cost-controls-dev-database
+  cancel-in-progress: false
+
+jobs:
+  dev-database:
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+      COST_CONTROLLER_SERVICE_ACCOUNT: ${{ vars.COST_CONTROLLER_SERVICE_ACCOUNT || vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.COST_CONTROLLER_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Resolve requested state
+        id: action
+        shell: pwsh
+        run: |
+          $action = "${{ inputs.dev_database_action || '' }}"
+          if ([string]::IsNullOrWhiteSpace($action)) {
+            $action = if ("${{ github.event.schedule }}" -eq "30 2 * * 1-5") { "start" } else { "stop" }
+          }
+          "value=$action" >> $env:GITHUB_OUTPUT
+          "Development database action: $action" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Apply development database state
+        shell: pwsh
+        run: |
+          ./scripts/set-dev-cloudsql-state.ps1 `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -InstanceName custoking-db-dev `
+            -State "${{ steps.action.outputs.value }}" `
+            -Wait

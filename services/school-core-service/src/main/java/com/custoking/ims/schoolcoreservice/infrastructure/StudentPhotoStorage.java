@@ -136,8 +136,23 @@ public class StudentPhotoStorage {
         if (!isEnabled() || data == null || data.length == 0) {
             return null;
         }
-        String folder = requireStorageFolder(schoolStorageId);
-        String key = importFileObjectKey(folder, batchId, data, fileName);
+        return uploadPrivateFile(importFileObjectKey(schoolStorageId, batchId, data, fileName), data, contentType);
+    }
+
+    /** Stores resumable photo-import source evidence under the bucket's temporary lifecycle prefix. */
+    public String uploadTemporaryPhotoImportFile(
+            String schoolStorageId,
+            String batchId,
+            byte[] data,
+            String contentType,
+            String fileName) {
+        if (!isEnabled() || data == null || data.length == 0) {
+            return null;
+        }
+        return uploadPrivateFile(temporaryPhotoImportObjectKey(schoolStorageId, batchId, data, fileName), data, contentType);
+    }
+
+    private String uploadPrivateFile(String key, byte[] data, String contentType) {
         try {
             BlobInfo blob = BlobInfo.newBuilder(bucket, key)
                     .setContentType(StringUtils.hasText(contentType) ? contentType : "application/octet-stream")
@@ -387,6 +402,16 @@ public class StudentPhotoStorage {
     static String importFileObjectKey(String schoolStorageId, String batchId, byte[] data, String fileName) {
         String folder = requireStorageFolder(schoolStorageId);
         return "schools/" + folder + "/student-imports/" + batchId + "/" + sha256(data) + "-"
+                + sanitizeFileName(fileName);
+    }
+
+    static String temporaryPhotoImportObjectKey(
+            String schoolStorageId,
+            String batchId,
+            byte[] data,
+            String fileName) {
+        String folder = requireStorageFolder(schoolStorageId);
+        return "temporary/photo-imports/" + folder + "/" + batchId + "/" + sha256(data) + "-"
                 + sanitizeFileName(fileName);
     }
 

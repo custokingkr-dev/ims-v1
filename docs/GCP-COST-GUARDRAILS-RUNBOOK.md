@@ -48,7 +48,10 @@ Before adding a school to prod, confirm:
 
 ## Budget Setup
 
-Create at least one project budget:
+The live project budget is `Custoking Monthly Guardrail`, INR 5,000/month. It must use
+`EXCLUDE_ALL_CREDITS` so temporary promotional credits cannot hide gross consumption.
+
+Maintain at least one project budget:
 
 - Scope: project `custoking`.
 - Alert thresholds: 50%, 75%, 90%, 100%.
@@ -57,7 +60,13 @@ Create at least one project budget:
 
 Add a second budget filtered to Cloud SQL if the billing account supports the filter. Cloud SQL is the fixed-cost anchor, so it deserves separate visibility.
 
-Budget alerts do not stop spend. They are escalation triggers.
+Budget alerts do not stop spend. They are escalation triggers. Apply and verify the repository,
+bucket, secret-version, and budget controls with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\apply-gcp-cost-controls.ps1
+powershell -ExecutionPolicy Bypass -File scripts\apply-gcp-cost-controls.ps1 -Apply
+```
 
 ## Billing Export
 
@@ -134,20 +143,22 @@ Prefer the smallest scope:
 
 ## Dev Cost Control
 
-Dev Cloud SQL is stoppable. Use this only for dev:
+The `Ops / GCP cost controls` workflow starts dev Cloud SQL at 08:00 IST on weekdays and stops it
+at 20:00 IST daily. A dev deployment starts the database and waits until it is runnable before
+deployment verification. GitHub schedule execution can be delayed by platform load.
+
+Use the guarded helper only for dev:
 
 ```powershell
-gcloud sql instances patch custoking-db-dev `
-  --project=custoking `
-  --activation-policy=NEVER
+powershell -ExecutionPolicy Bypass -File scripts\set-dev-cloudsql-state.ps1 `
+  -State stop -Wait
 ```
 
 Start it again before dev deploys or smokes:
 
 ```powershell
-gcloud sql instances patch custoking-db-dev `
-  --project=custoking `
-  --activation-policy=ALWAYS
+powershell -ExecutionPolicy Bypass -File scripts\set-dev-cloudsql-state.ps1 `
+  -State start -Wait
 ```
 
 Do not apply this to `custoking-db-prod`.

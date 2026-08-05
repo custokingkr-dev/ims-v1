@@ -1,4 +1,4 @@
-import api from '../services/api';
+import api, { getAuthSessionVersion } from '../services/api';
 import type {
   DashboardCommandCenterResponse,
   FeeDefaulterListResponse,
@@ -25,9 +25,39 @@ import type {
   ReorderSignalsResponse,
 } from '../types/dashboardCommandCenter';
 
+const COMMAND_CENTER_CACHE_MS = 55_000;
+let commandCenterCache: {
+  authSessionVersion: number;
+  loadedAt: number;
+  data: DashboardCommandCenterResponse;
+} | null = null;
+let commandCenterRequest: {
+  authSessionVersion: number;
+  promise: Promise<DashboardCommandCenterResponse>;
+} | null = null;
+
 export async function fetchCommandCenterMetrics(): Promise<DashboardCommandCenterResponse> {
-  const res = await api.get<DashboardCommandCenterResponse>('/dashboard/command-center');
-  return res.data;
+  const sessionVersion = getAuthSessionVersion();
+  const cache = commandCenterCache;
+  const cacheMatchesSession = cache?.authSessionVersion === sessionVersion;
+  const tabIsHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  if (cache && cacheMatchesSession && (tabIsHidden || Date.now() - cache.loadedAt < COMMAND_CENTER_CACHE_MS)) {
+    return cache.data;
+  }
+  if (commandCenterRequest?.authSessionVersion === sessionVersion) return commandCenterRequest.promise;
+
+  const request = api.get<DashboardCommandCenterResponse>('/dashboard/command-center')
+    .then((res) => {
+      if (getAuthSessionVersion() === sessionVersion) {
+        commandCenterCache = { authSessionVersion: sessionVersion, loadedAt: Date.now(), data: res.data };
+      }
+      return res.data;
+    })
+    .finally(() => {
+      if (commandCenterRequest?.promise === request) commandCenterRequest = null;
+    });
+  commandCenterRequest = { authSessionVersion: sessionVersion, promise: request };
+  return request;
 }
 
 export async function fetchFeeDefaulters(params: {

@@ -25,6 +25,23 @@ class StudentPhotoStorageTest {
         assertThat(StudentPhotoStorage.importFileObjectKey(schoolUid, "batch-1", data, "students import.xlsx"))
                 .startsWith("schools/" + schoolUid + "/student-imports/batch-1/")
                 .endsWith("-students_import.xlsx");
+        assertThat(StudentPhotoStorage.temporaryPhotoImportObjectKey(
+                schoolUid, "photo-import-batch-1", data, "_DSC4521.jpeg"))
+                .startsWith("temporary/photo-imports/" + schoolUid + "/photo-import-batch-1/")
+                .endsWith("-_DSC4521.jpeg");
+    }
+
+    @Test
+    void temporaryLifecyclePrefixCannotMatchPermanentStudentPhotos() {
+        String schoolUid = "11111111-1111-4111-8111-111111111111";
+        byte[] data = "bytes".getBytes(StandardCharsets.UTF_8);
+
+        String permanent = StudentPhotoStorage.studentPhotoObjectKey(schoolUid, 42L, data);
+        String temporary = StudentPhotoStorage.temporaryPhotoImportObjectKey(
+                schoolUid, "photo-import-batch-1", data, "photo.jpg");
+
+        assertThat(permanent).doesNotStartWith("temporary/photo-imports/");
+        assertThat(temporary).startsWith("temporary/photo-imports/");
     }
 
     @Test

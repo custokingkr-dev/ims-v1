@@ -5,9 +5,15 @@ import type { AuthUser } from '../types/auth';
 // localStorage or sessionStorage so XSS cannot steal it.  Lost on page refresh;
 // AuthProvider calls refreshToken() on mount to restore it via the HttpOnly cookie.
 let accessToken: string | null = null;
+let authSessionVersion = 0;
 
 export function setAccessToken(token: string | null): void {
+  if (accessToken !== token) authSessionVersion += 1;
   accessToken = token;
+}
+
+export function getAuthSessionVersion(): number {
+  return authSessionVersion;
 }
 
 const api = axios.create({
@@ -35,11 +41,11 @@ let refreshing: Promise<AuthUser | null> | null = null;
 export async function refreshToken(): Promise<AuthUser | null> {
   refreshing ??= api.post<AuthUser>('/auth/refresh')
     .then((res) => {
-      accessToken = res.data.accessToken;
+      setAccessToken(res.data.accessToken);
       return res.data;
     })
     .catch(() => {
-      accessToken = null;
+      setAccessToken(null);
       localStorage.removeItem('custoking_isLoggedIn');
       return null;
     })

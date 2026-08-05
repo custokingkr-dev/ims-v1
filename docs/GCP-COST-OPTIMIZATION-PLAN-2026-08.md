@@ -1,11 +1,40 @@
 # GCP Cost Optimization Plan - Production School Onboarding
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 Project inspected: `custoking`  
 Region inspected: `asia-south2`  
 Primary goal: reduce fixed monthly GCP cost while keeping production safe as more schools are onboarded.
 
 ## Executive Summary
+
+### Measured Billing Baseline - 2026-08-05
+
+The detailed billing export covers 2026-07-05 through partial 2026-08-05. Gross usage was
+`INR 17,113.65`; temporary Free Trial credits and ordinary Cloud Run discounts reduced the
+exported net cost to approximately zero. Gross cost, not the promotional-credit net, is the
+operating baseline.
+
+| Service | Gross cost |
+| --- | ---: |
+| Cloud Run | INR 10,572.67 |
+| Cloud SQL | INR 4,193.46 |
+| Cloud Build | INR 1,059.72 |
+| Networking | INR 735.93 |
+| Artifact Registry | INR 336.36 |
+| Secret Manager | INR 203.55 |
+| Other storage/transfer | INR 12.00 |
+
+Two historical charges no longer represent the deployed baseline: July included INR 7,847 of
+Cloud Run minimum-instance CPU/memory and INR 736 of Cloud NAT. Cloud Run now has zero minimum
+instances and the NAT path has been removed.
+
+The active avoidable runtime issue was an authenticated browser repeatedly requesting
+`/api/v1/dashboard/command-center`, producing matching frontend, gateway, and platform request
+counts. The frontend now single-flights and caches that request per authenticated session,
+refreshes at most once per minute while visible, and pauses refreshes in hidden tabs.
+
+Expected post-fix monthly gross cost is INR 5,100-6,000 with dev SQL always running, or
+INR 4,500-5,500 with the weekday dev schedule. These are planning ranges, not invoice guarantees.
 
 The current architecture is already using several good cost-control choices: Cloud Run request-driven services, min instances effectively set to `0`, Direct VPC egress instead of a Serverless VPC Access connector, small Cloud SQL shared-core instances, short Cloud Logging retention, Artifact Registry cleanup policies, and lifecycle rules on build/source buckets.
 
@@ -116,18 +145,21 @@ Pub/Sub itself should not be a near-term cost driver. The operational issue is t
 
 ### Storage
 
-Live bucket sizes at inspection time:
+Live bucket sizes at the 2026-08-05 inspection:
 
 | Bucket | Size | Lifecycle |
 | --- | ---: | --- |
-| `custoking-student-photos-prod` | ~1.5 MB | none |
-| `custoking-student-photos-dev` | ~0.37 MB | none |
+| `custoking-student-photos-prod` | ~2.34 GB | delete isolated temporary photo-import sources after 14 days |
+| `custoking-student-photos-dev` | ~10.3 MB | delete isolated temporary photo-import sources after 14 days |
 | `custoking-db-snapshots` | ~0.27 MB | delete after 30 days |
 | `custoking-github-deploy-source` | ~106 MB | delete after 14 days |
 | `custoking_cloudbuild` | ~17.8 MB | delete after 14 days |
 | `custoking-terraform-state` | ~0.73 MB | versioning enabled |
 
-The student-photo buckets are tiny today, but they are the storage surface most likely to grow with school onboarding.
+Production contained 729 temporary source objects using ~2.31 GB and 693 normalized student
+photos using ~29.1 MB. Permanent photos use `schools/<school>/students/<id>/photos/`. New temporary
+photo-import sources use `temporary/photo-imports/`; exact legacy `student-imports/photo-import-*`
+batch prefixes are included during migration. Lifecycle rules cannot match the permanent path.
 
 ### Artifact Registry
 
@@ -137,7 +169,7 @@ Repository:
 asia-south2-docker.pkg.dev/custoking/custoking
 ```
 
-Current size: ~8.1 GB.
+Current size: ~38.6 GB before the cleanup policy's next background application.
 
 Cleanup policies are applied:
 

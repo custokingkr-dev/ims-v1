@@ -46,9 +46,14 @@ ARTIFACT_REGISTRY_REPOSITORY=custoking
 WORKLOAD_IDENTITY_PROVIDER=<terraform output workload_identity_provider>
 RELEASE_BUILDER_SERVICE_ACCOUNT=<terraform output release_builder_service_account>
 ROLLBACK_SERVICE_ACCOUNT=<terraform output rollback_service_account>
+COST_CONTROLLER_SERVICE_ACCOUNT=<release builder or dedicated cost controller account>
 ```
 
 Keep the existing `DEPLOY_SERVICE_ACCOUNT` variable only as a temporary compatibility fallback.
+
+The active compatibility account needs `roles/cloudsql.editor` so dev deployments and the
+scheduled cost-control workflow can start or stop only `custoking-db-dev`. The helper script
+rejects instance names that do not end in `-dev`.
 
 The release workflow also needs repo-level deployment coordinate variables because Cloud Deploy compiles deploy parameters when a release is created:
 
