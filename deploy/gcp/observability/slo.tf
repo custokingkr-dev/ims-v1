@@ -60,7 +60,7 @@ resource "google_monitoring_alert_policy" "availability_slo_burn" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-availability-burn-rate"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.effective_notification_channel_ids
   severity              = "ERROR"
 
   conditions {
@@ -96,7 +96,7 @@ resource "google_monitoring_alert_policy" "latency_slo_burn" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-latency-burn-rate"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.effective_notification_channel_ids
   severity              = "WARNING"
 
   conditions {

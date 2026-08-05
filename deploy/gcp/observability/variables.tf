@@ -70,6 +70,34 @@ variable "enable_uptime_checks" {
   default     = false
 }
 
+variable "notification_email_addresses" {
+  description = "Operator email channels to create, keyed by a stable short name such as primary or backup."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for address in values(var.notification_email_addresses) : can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", address))])
+    error_message = "Every notification email address must be syntactically valid."
+  }
+}
+
+variable "manage_compliance_logging" {
+  description = "Create the single project-wide India-resident compliance log bucket and sink. Enable only in the prod state."
+  type        = bool
+  default     = false
+}
+
+variable "compliance_log_retention_days" {
+  description = "Retention for security, request, and audit logs routed to the India-resident compliance bucket."
+  type        = number
+  default     = 180
+
+  validation {
+    condition     = var.compliance_log_retention_days >= 180 && var.compliance_log_retention_days <= 3650
+    error_message = "Compliance log retention must be between 180 and 3650 days."
+  }
+}
+
 variable "uptime_period" {
   description = "How often uptime checks run. Supported values include 60s, 300s, 600s, and 900s."
   type        = string
@@ -128,6 +156,12 @@ variable "notification_inbox_backlog_threshold" {
   description = "Alert threshold for the extracted notification inbox backlog count."
   type        = number
   default     = 100
+}
+
+variable "notification_inbox_dead_letter_threshold" {
+  description = "Alert threshold for notification inbox events in terminal dead-letter state."
+  type        = number
+  default     = 0
 }
 
 variable "async_count_metric_buckets" {

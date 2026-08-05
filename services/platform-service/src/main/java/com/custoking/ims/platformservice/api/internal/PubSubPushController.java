@@ -83,8 +83,14 @@ public class PubSubPushController {
 
         NotificationInboxEvent existing = inboxRepository.findById(eventId).orElse(null);
         if (existing != null) {
-            if (NotificationInboxEvent.STATUS_PROCESSED.equals(existing.getStatus())) {
+            if (NotificationInboxEvent.STATUS_PROCESSED.equals(existing.getStatus())
+                    || NotificationInboxEvent.STATUS_DEAD_LETTER.equals(existing.getStatus())) {
                 return;
+            }
+            if (NotificationInboxEvent.STATUS_FAILED.equals(existing.getStatus())
+                    && existing.getNextAttemptAt() != null
+                    && existing.getNextAttemptAt().isAfter(java.time.OffsetDateTime.now())) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Notification retry is scheduled");
             }
             inboxProcessor.process(existing);
             return;

@@ -37,8 +37,8 @@ public class NotificationInboxRetryService {
             return;
         }
 
-        List<NotificationInboxEvent> failedEvents = inboxRepository.findByStatusOrderByReceivedAtAsc(
-                NotificationInboxEvent.STATUS_FAILED,
+        List<NotificationInboxEvent> failedEvents = inboxRepository.findRetryable(
+                NotificationInboxEvent.STATUS_FAILED, java.time.OffsetDateTime.now(),
                 PageRequest.of(0, batchSize));
         for (NotificationInboxEvent event : failedEvents) {
             retry(event);

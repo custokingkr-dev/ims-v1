@@ -1,6 +1,6 @@
 # Observability and Operations
 
-Last verified: 2026-07-24.
+Last verified: 2026-08-05.
 
 ## Observability Architecture
 
@@ -11,8 +11,7 @@ The current observability stack is GCP-native:
 - Cloud Trace through OpenTelemetry OTLP export.
 - Cloud Monitoring dashboards.
 - Cloud Monitoring alert policies.
-- Cloud Monitoring uptime checks are supported by Terraform but disabled during
-  the current cost-controlled shutdown.
+- Cloud Monitoring uptime checks run at a cost-controlled 900-second period.
 - Log-based metrics for async health.
 - Monitoring services and SLOs from Terraform source.
 
@@ -82,11 +81,9 @@ Async dashboards include:
 
 ## Uptime Checks
 
-Live uptime checks: none during the cost-controlled shutdown.
-
-The previous dev/prod uptime check definitions were exported before deletion
-under `artifacts/gcp-cost-shutdown/monitoring-shutdown-*`. Terraform can
-recreate them after restore by applying with:
+Six production uptime checks were restored from Terraform on 2026-08-05 at a
+900-second period. Two obsolete five-minute production checks were removed.
+Terraform can manage their enabled state with:
 
 ```powershell
 terraform -chdir=deploy/gcp/observability apply `
@@ -114,8 +111,10 @@ Private service uptime checks use Monitoring service-agent OIDC and Cloud Run re
 
 ## Alert Policies
 
-68 enabled Custoking alert policies were verified after deleting the 12 uptime
-alert policies during shutdown.
+Production Terraform manages 34 alert policies, including uptime, service health,
+SLO burn, asynchronous backlog, and dead-letter policies. A live email channel is
+attached to every production-managed policy. Mailbox verification and a received
+test incident still require the mailbox owner.
 
 Policy families:
 
@@ -128,6 +127,7 @@ Policy families:
 - Outbox dead-letter.
 - Outbox oldest pending age.
 - Notification inbox backlog.
+- Notification inbox dead-letter.
 
 Default thresholds from Terraform source:
 
@@ -138,14 +138,13 @@ Default thresholds from Terraform source:
 - outbox dead-letter: `0`
 - outbox oldest pending age: `900` seconds
 - notification inbox backlog: `100`
+- notification inbox dead-letter: `0`
 - availability SLO goal: `0.995`
 - latency SLO goal: `0.95`
 - latency SLO threshold: `2s`
 - SLO rolling period: 30 days
 - burn rate lookback: `60m`
 - burn rate threshold: `2`
-
-Verified gap: no Cloud Monitoring notification channels were listed by `gcloud beta monitoring channels list --project=custoking`. Alert policies exist and are enabled, but no live notification channels were verified.
 
 ## Log-Based Metrics
 
@@ -159,6 +158,7 @@ Live log-based metrics:
 - `custoking/prod/outbox_oldest_pending_age_seconds`
 - `custoking/prod/outbox_dead_letter_count`
 - `custoking/prod/notification_inbox_backlog_count`
+- `custoking/prod/notification_inbox_dead_letter_count`
 
 Expected structured log fields:
 
@@ -166,6 +166,18 @@ Expected structured log fields:
 - `jsonPayload.health.outbox.deadLetterCount`
 - `jsonPayload.health.outbox.oldestPendingAgeSeconds`
 - `jsonPayload.health.notificationInbox.backlogCount`
+- `jsonPayload.health.notificationInbox.deadLetterCount`
+
+## Compliance Logging
+
+Production owns `custoking-compliance-india` in `asia-south2` with 180-day
+retention. The project sink routes Cloud Audit logs plus selected Cloud Run request,
+error, security, audit, authentication, and authorization logs. The broad `_Default`
+bucket remains short-lived to control cost.
+
+Routing was proven on 2026-08-05 by issuing a production gateway health request and
+reading the resulting HTTP 200 Cloud Run request log from the bucket's `_AllLogs`
+view.
 
 The metrics are distribution metrics using p95/max alignment over five-minute windows.
 

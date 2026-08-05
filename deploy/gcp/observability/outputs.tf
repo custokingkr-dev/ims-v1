@@ -27,3 +27,13 @@ output "latency_slo_names" {
   description = "Full Cloud Monitoring latency SLO resource names keyed by service."
   value       = { for service, slo in google_monitoring_slo.latency : service => slo.name }
 }
+
+output "notification_channel_names" {
+  description = "All existing and Terraform-created notification channels attached to alert policies."
+  value       = local.effective_notification_channel_ids
+}
+
+output "compliance_log_bucket" {
+  description = "India-resident compliance log bucket, when managed by this state."
+  value       = try(google_logging_project_bucket_config.compliance_india[0].id, null)
+}

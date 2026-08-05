@@ -91,10 +91,16 @@ notification:
     whatsapp-integrated-number: ${MSG91_WHATSAPP_INTEGRATED_NUMBER:}
     whatsapp-language-code: ${MSG91_WHATSAPP_LANGUAGE_CODE:en}
   inbox:
+    health-log:
+      initial-delay-ms: ${NOTIFICATION_INBOX_HEALTH_LOG_INITIAL_DELAY_MS:30000}
+      fixed-delay-ms: ${NOTIFICATION_INBOX_HEALTH_LOG_FIXED_DELAY_MS:60000}
     retry:
       enabled: ${NOTIFICATION_INBOX_RETRY_ENABLED:true}
       batch-size: ${NOTIFICATION_INBOX_RETRY_BATCH_SIZE:25}
       fixed-delay-ms: ${NOTIFICATION_INBOX_RETRY_FIXED_DELAY_MS:30000}
+      max-attempts: ${NOTIFICATION_INBOX_RETRY_MAX_ATTEMPTS:8}
+      initial-backoff: ${NOTIFICATION_INBOX_RETRY_INITIAL_BACKOFF:30s}
+      max-backoff: ${NOTIFICATION_INBOX_RETRY_MAX_BACKOFF:1h}
 
 audit:
   ingest-token: ${AUDIT_INGEST_TOKEN:}

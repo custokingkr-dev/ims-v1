@@ -55,6 +55,10 @@ public class NotificationStatusController {
                 event.getReceivedAt(),
                 event.getProcessedAt(),
                 event.getLastError(),
+                event.getAttemptCount(),
+                event.getNextAttemptAt(),
+                event.getLastAttemptAt(),
+                event.getDeadLetteredAt(),
                 attempts);
     }
 
@@ -80,6 +84,10 @@ public class NotificationStatusController {
             OffsetDateTime receivedAt,
             OffsetDateTime processedAt,
             String lastError,
+            int attemptCount,
+            OffsetDateTime nextAttemptAt,
+            OffsetDateTime lastAttemptAt,
+            OffsetDateTime deadLetteredAt,
             List<DeliveryAttemptResponse> attempts
     ) {
     }

@@ -29,6 +29,7 @@ public class NotificationInboxHealthIndicator implements HealthIndicator {
             long received = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_RECEIVED);
             long processed = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_PROCESSED);
             long failed = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_FAILED);
+            long deadLetter = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_DEAD_LETTER);
             long deliveredAttempts = attemptRepository.countByStatus(NotificationDeliveryAttempt.STATUS_DELIVERED);
             long failedAttempts = attemptRepository.countByStatus(NotificationDeliveryAttempt.STATUS_FAILED);
             long oldestFailedAgeSeconds = inboxRepository
@@ -40,6 +41,7 @@ public class NotificationInboxHealthIndicator implements HealthIndicator {
                     .withDetail("received", received)
                     .withDetail("processed", processed)
                     .withDetail("failed", failed)
+                    .withDetail("deadLetter", deadLetter)
                     .withDetail("deliveredAttempts", deliveredAttempts)
                     .withDetail("failedAttempts", failedAttempts)
                     .withDetail("oldestFailedAgeSeconds", oldestFailedAgeSeconds)

@@ -1,12 +1,12 @@
 # Gaps, Drift, and Missing Verification
 
-Last verified: 2026-08-04.
+Last verified: 2026-08-05.
 
 This file intentionally lists unresolved or partially verified items. These are not assumptions.
 
 ## Critical or High Priority
 
-### Notification Delivery Is Not Proven Real in Prod
+### Notification Delivery Is Intentionally In Safe Mode
 
 Verified live platform-service prod env includes:
 
@@ -14,11 +14,10 @@ Verified live platform-service prod env includes:
 MSG91_DRY_RUN=true
 ```
 
-The live Cloud Run env did not show `NOTIFICATION_DELIVERY_PROVIDER`. In `platform-service` `application.yml`, the default is:
-
-```text
-notification.delivery.provider=logging
-```
+The live Cloud Run env verified on 2026-08-05 had `MSG91_DRY_RUN=true` and did not
+show `NOTIFICATION_DELIVERY_PROVIDER`. A private production database audit found one
+active sender profile and zero profiles with an MSG91 SMS flow ID. Source therefore
+keeps production on `logging`/dry-run while adding bounded retry/dead-letter handling.
 
 Impact:
 
@@ -27,24 +26,33 @@ Impact:
 
 Required follow-up:
 
-- Decide if prod should send real MSG91 messages now.
-- If yes, set `NOTIFICATION_DELIVERY_PROVIDER=msg91` and `MSG91_DRY_RUN=false` after validating MSG91 templates and auth.
+- Configure an approved MSG91 SMS flow ID on the applicable sender profile.
+- Validate MSG91 templates, integrated numbers, auth, and the static-egress allowlist.
+- Change the prod target to `NOTIFICATION_DELIVERY_PROVIDER=msg91` and `MSG91_DRY_RUN=false`.
 - Run a controlled provider smoke with an approved recipient.
 
-### Alert Policies Have No Verified Notification Channels
+### Monitoring Email Receipt Requires Human Verification
 
-`gcloud beta monitoring channels list --project=custoking` returned no channels.
+Production observability Terraform was applied on 2026-08-05. It created email
+channel `11561348974326363261` and attached it to all 34 production-managed alert
+policies. Six production uptime checks are active at a 900-second period.
 
 Impact:
 
-- 80 alert policies are enabled, but no email/SMS/PagerDuty/etc. target was verified.
-- Alerts may be visible in Cloud Monitoring but may not notify operators.
+- Alert routing is configured, but mailbox receipt and channel verification require
+  the human mailbox owner.
 
 Required follow-up:
 
-- Create notification channels.
-- Re-apply observability Terraform with `notification_channel_ids`.
+- Complete Google email-channel verification and send a test alert.
 - Verify at least one test incident reaches the operator channel.
+
+### Compliance Log Routing Is Live; Retention Ownership Requires Review
+
+Production now has `custoking-compliance-india` in `asia-south2` with 180-day
+retention and a project sink for audit, security, Cloud Run request, and error logs.
+Legal/security ownership must still confirm whether 180 days is the required policy
+before the bucket is ever locked.
 
 ## Infrastructure Drift
 
@@ -62,7 +70,9 @@ But:
 gcloud iam roles describe githubDeployRuntimeOperator --project=custoking
 ```
 
-returned not found, and project custom role list was empty.
+returned not found. The project now has the unrelated
+`custokingRecoveryBucketIamOperator` role for recovery-bucket IAM only; it does not
+replace the missing deploy role.
 
 Live deploys are succeeding through predefined role bindings on `github-actions-sa`:
 

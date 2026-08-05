@@ -107,11 +107,37 @@ resource "google_logging_metric" "notification_inbox_backlog_count" {
   }
 }
 
+resource "google_logging_metric" "notification_inbox_dead_letter_count" {
+  project     = var.project
+  name        = "custoking/${var.env}/notification_inbox_dead_letter_count"
+  description = "Distribution of terminal notification dead-letter counts emitted by platform-service health logs."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=~\"${local.notification_service_name_regex}\"",
+    "jsonPayload.health.notificationInbox.deadLetterCount:*",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Notification inbox dead-letter count"
+  }
+
+  value_extractor = "EXTRACT(jsonPayload.health.notificationInbox.deadLetterCount)"
+
+  bucket_options {
+    explicit_buckets {
+      bounds = var.async_count_metric_buckets
+    }
+  }
+}
+
 resource "google_monitoring_alert_policy" "outbox_pending" {
   project               = var.project
   display_name          = "custoking-${var.env}-outbox-pending"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.effective_notification_channel_ids
   severity              = "WARNING"
 
   conditions {
@@ -150,7 +176,7 @@ resource "google_monitoring_alert_policy" "outbox_dead_letter" {
   project               = var.project
   display_name          = "custoking-${var.env}-outbox-dead-letter"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.effective_notification_channel_ids
   severity              = "ERROR"
 
   conditions {
@@ -189,7 +215,7 @@ resource "google_monitoring_alert_policy" "outbox_oldest_pending_age" {
   project               = var.project
   display_name          = "custoking-${var.env}-outbox-oldest-pending-age"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.effective_notification_channel_ids
   severity              = "WARNING"
 
   conditions {
@@ -228,7 +254,7 @@ resource "google_monitoring_alert_policy" "notification_inbox_backlog" {
   project               = var.project
   display_name          = "custoking-${var.env}-notification-inbox-backlog"
   combiner              = "OR"
-  notification_channels = var.notification_channel_ids
+  notification_channels = local.effective_notification_channel_ids
   severity              = "WARNING"
 
   conditions {
@@ -257,6 +283,45 @@ resource "google_monitoring_alert_policy" "notification_inbox_backlog" {
 
   documentation {
     content   = "Notification inbox backlog is above threshold. Check Pub/Sub push delivery, provider failures, and platform-service retry logs."
+    mime_type = "text/markdown"
+  }
+
+  user_labels = local.common_user_labels
+}
+
+resource "google_monitoring_alert_policy" "notification_inbox_dead_letter" {
+  project               = var.project
+  display_name          = "custoking-${var.env}-notification-inbox-dead-letter"
+  combiner              = "OR"
+  notification_channels = local.effective_notification_channel_ids
+  severity              = "ERROR"
+
+  conditions {
+    display_name = "notification dead-letter count above ${var.notification_inbox_dead_letter_threshold}"
+
+    condition_threshold {
+      filter = join(" AND ", [
+        "metric.type=\"logging.googleapis.com/user/${google_logging_metric.notification_inbox_dead_letter_count.name}\"",
+        "resource.type=\"cloud_run_revision\"",
+      ])
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.notification_inbox_dead_letter_threshold
+      duration        = "300s"
+
+      aggregations {
+        alignment_period     = "300s"
+        per_series_aligner   = "ALIGN_PERCENTILE_95"
+        cross_series_reducer = "REDUCE_MAX"
+      }
+
+      trigger {
+        count = 1
+      }
+    }
+  }
+
+  documentation {
+    content   = "Notification delivery exhausted all retries. Inspect the event status and provider response before replaying or replacing the event."
     mime_type = "text/markdown"
   }
 

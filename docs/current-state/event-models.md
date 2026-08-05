@@ -1,6 +1,6 @@
 # Event Models and Async Architecture
 
-Last verified: 2026-07-09.
+Last verified: 2026-08-05.
 
 ## Current Pattern
 
@@ -159,14 +159,22 @@ Behavior:
 - Stores `eventId`, event metadata, payload, trace context.
 - Processes immediately on new push when possible.
 - Existing processed event ids return without duplicate processing.
+- Failed provider attempts commit independently of push-request rollback.
+- Retryable failures use bounded exponential backoff from 30 seconds to one hour.
+- Events move to `DEAD_LETTER` after eight failed attempts and are then acknowledged.
 
 Config:
 
 - `NOTIFICATION_INBOX_RETRY_ENABLED=true` by default.
 - `NOTIFICATION_INBOX_RETRY_FIXED_DELAY_MS=30000` by default.
 - `NOTIFICATION_INBOX_RETRY_BATCH_SIZE=25` by default.
+- `NOTIFICATION_INBOX_RETRY_INITIAL_DELAY_SECONDS=30` by default.
+- `NOTIFICATION_INBOX_RETRY_MAX_DELAY_SECONDS=3600` by default.
+- `NOTIFICATION_INBOX_RETRY_MAX_ATTEMPTS=8` by default.
 
-Verified prod caveat: current live env has `MSG91_DRY_RUN=true` and no verified `NOTIFICATION_DELIVERY_PROVIDER=msg91`, so real provider delivery is not proven enabled.
+Verified prod caveat: one active sender profile exists but no active profile has an
+MSG91 SMS flow ID. Production intentionally remains `logging`/dry-run until provider
+configuration and a controlled send are proven.
 
 ## Published Business Event Types
 

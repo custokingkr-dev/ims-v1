@@ -60,7 +60,9 @@ spec:
             - name: PLATFORM_DB_SCHEMA
               value: reporting,notification,audit
             - name: MSG91_DRY_RUN
-              value: "true"
+              value: "true" # from-param: ${msg91_dry_run}
+            - name: NOTIFICATION_DELIVERY_PROVIDER
+              value: logging # from-param: ${notification_delivery_provider}
             - name: SCHOOL_CORE_URL
               value: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${school_core_url}
             - name: OPERATIONS_URL

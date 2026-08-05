@@ -11,10 +11,12 @@ import tools.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
+import java.time.OffsetDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class PubSubPushControllerTest {
@@ -36,6 +38,41 @@ class PubSubPushControllerTest {
                 .isEqualTo("00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01");
         assertThat(captor.getValue().getTraceState()).isEqualTo("vendor=value");
         verify(processor).process(captor.getValue());
+    }
+
+    @Test
+    void terminalDeadLetterAcknowledgesWithoutAnotherProviderAttempt() throws Exception {
+        NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
+        NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
+        PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "push-token");
+        NotificationInboxEvent event = new NotificationInboxEvent();
+        event.setEventId("event-1");
+        event.setStatus(NotificationInboxEvent.STATUS_DEAD_LETTER);
+        when(inbox.findById("event-1")).thenReturn(Optional.of(event));
+
+        controller.receiveNotificationRequest("push-token", null, envelopeWithTrace());
+
+        verify(processor, never()).process(event);
+    }
+
+    @Test
+    void redeliveryBeforeScheduledRetryDoesNotCallProvider() throws Exception {
+        NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
+        NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
+        PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "push-token");
+        NotificationInboxEvent event = new NotificationInboxEvent();
+        event.setEventId("event-1");
+        event.setStatus(NotificationInboxEvent.STATUS_FAILED);
+        event.setNextAttemptAt(OffsetDateTime.now().plusMinutes(5));
+        when(inbox.findById("event-1")).thenReturn(Optional.of(event));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                controller.receiveNotificationRequest("push-token", null, envelopeWithTrace()))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error)
+                        .getStatusCode().value()).isEqualTo(503));
+
+        verify(processor, never()).process(event);
     }
 
     private JsonNode envelopeWithTrace() throws Exception {

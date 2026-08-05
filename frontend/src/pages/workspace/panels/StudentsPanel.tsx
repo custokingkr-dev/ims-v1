@@ -19,6 +19,7 @@ import { formatAddress, formatPaise } from '../utils';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 import { StudentModuleTabs } from './StudentModuleTabs';
+import { GuardianConsentCard } from './GuardianConsentCard';
 import {
   fetchStudentVerificationSummary,
   verifyStudentPhoto,
@@ -372,6 +373,19 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleGuardianProfileChanged = async () => {
+    setVerificationSummary(null);
+    setVerificationPanelOpen(false);
+    await loadStudents(studentFilters, studentsPage, studentListMode, studentSearch);
+    try {
+      const response = await api.get(`/students/${studentDetail?.id}/workspace`);
+      setStudentDetail(response.data);
+    } catch {
+      // The guardian card keeps its saved state; the student summary can be refreshed later.
+    }
+    onRefresh();
   };
 
   const loadStudentHistory = async () => {
@@ -1069,6 +1083,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                     <Info label="Mother name" value={studentDetail.motherName || '—'} />
                     <Info label="Date of birth" value={studentDetail.dateOfBirth || '—'} />
                   </div>
+                  <GuardianConsentCard
+                    studentId={Number(studentDetail.id)}
+                    canManage={can('student:update') && !studentDetail.deletedAt}
+                    onProfileChanged={() => { void handleGuardianProfileChanged(); }}
+                  />
                   <div className="ck-form-card">
                     <div className="ck-form-head">Address</div>
                     <div className="ck-form-body">

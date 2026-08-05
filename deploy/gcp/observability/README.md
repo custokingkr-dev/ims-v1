@@ -8,6 +8,8 @@ environment in project `custoking`:
   private services use Cloud Run revision targets with Monitoring service-agent
   OIDC.
 - Alert policies for 5xx rate, p95 latency, max-instance saturation, uptime, async health, and SLO burn rate.
+- Managed operator email channels, attached to every alert policy.
+- An optional project-wide `asia-south2` compliance log bucket and sink with 180-day retention.
 - Log-based distribution metrics for outbox and notification inbox health.
 - Cloud Monitoring services and availability/latency SLOs for Cloud Run.
 - trace-writer IAM for the default Cloud Run runtime service account:
@@ -94,8 +96,13 @@ For production, pass `-var="env=prod"` and production notification channels:
 terraform -chdir=deploy/gcp/observability plan `
   -var="env=prod" `
   -var="enable_uptime_checks=true" `
-  -var='notification_channel_ids=["projects/custoking/notificationChannels/<id>"]'
+  -var='notification_email_addresses={primary="operator@example.com"}' `
+  -var="manage_compliance_logging=true"
 ```
+
+Only the production state may manage the single project-wide compliance bucket.
+Existing externally managed channels can still be supplied through
+`notification_channel_ids`.
 
 ## Planning Without Cloud Run Discovery
 
@@ -122,6 +129,7 @@ these fields when the values are available:
 - `jsonPayload.health.outbox.deadLetterCount`
 - `jsonPayload.health.outbox.oldestPendingAgeSeconds`
 - `jsonPayload.health.notificationInbox.backlogCount`
+- `jsonPayload.health.notificationInbox.deadLetterCount`
 
 These are distribution metrics, so dashboards and alerts use p95/max alignment
 over each five-minute window rather than treating the extracted log values as

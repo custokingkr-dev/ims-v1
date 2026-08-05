@@ -1,0 +1,7 @@
+title: Custoking Recovery Bucket IAM Operator
+description: Manage temporary Cloud SQL clone bindings on the dedicated recovery bucket.
+stage: GA
+includedPermissions:
+  - storage.buckets.get
+  - storage.buckets.getIamPolicy
+  - storage.buckets.setIamPolicy

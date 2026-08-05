@@ -1,6 +1,6 @@
 # Project Architecture
 
-Last verified: 2026-07-09.
+Last verified: 2026-08-05.
 
 ## Product Scope
 
@@ -57,7 +57,7 @@ Older documentation in the repo still contains the pre-consolidation twelve-serv
 | --- | --- | --- |
 | `identity` | identity-service | Users, auth sessions, roles, permissions, user role assignments, RBAC audit |
 | `tenant_school` | school-core-service | Schools, classes, sections, zones, staff, modules, timetable, shared outbox |
-| `student` | school-core-service | Students, imports, photo metadata, review campaigns/items |
+| `student` | school-core-service | Students, normalized guardians, append-only consent evidence, imports, photo metadata, review campaigns/items |
 | `attendance` | school-core-service | Daily attendance, student records, absentee notifications |
 | `fee` | school-core-service | Fee bands, fee items, assignments, payment records |
 | `catalog` | school-core-service | Catalog items, supply orders, catalog orders, annual plans |

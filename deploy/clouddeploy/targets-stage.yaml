@@ -125,6 +125,8 @@ deployParameters:
   vpc_subnet: default
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
+  notification_delivery_provider: logging
+  msg91_dry_run: "true"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: ""
   frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app

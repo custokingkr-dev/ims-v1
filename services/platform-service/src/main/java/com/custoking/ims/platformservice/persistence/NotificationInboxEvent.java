@@ -14,6 +14,7 @@ public class NotificationInboxEvent {
     public static final String STATUS_RECEIVED = "RECEIVED";
     public static final String STATUS_PROCESSED = "PROCESSED";
     public static final String STATUS_FAILED = "FAILED";
+    public static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
 
     @Id
     @Column(name = "event_id", nullable = false, length = 120)
@@ -46,6 +47,18 @@ public class NotificationInboxEvent {
     @Column(name = "last_error")
     private String lastError;
 
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount;
+
+    @Column(name = "next_attempt_at")
+    private OffsetDateTime nextAttemptAt;
+
+    @Column(name = "last_attempt_at")
+    private OffsetDateTime lastAttemptAt;
+
+    @Column(name = "dead_lettered_at")
+    private OffsetDateTime deadLetteredAt;
+
     @Column(name = "trace_parent")
     private String traceParent;
 
@@ -72,6 +85,14 @@ public class NotificationInboxEvent {
     public void setProcessedAt(OffsetDateTime processedAt) { this.processedAt = processedAt; }
     public String getLastError() { return lastError; }
     public void setLastError(String lastError) { this.lastError = lastError; }
+    public int getAttemptCount() { return attemptCount; }
+    public void setAttemptCount(int attemptCount) { this.attemptCount = attemptCount; }
+    public OffsetDateTime getNextAttemptAt() { return nextAttemptAt; }
+    public void setNextAttemptAt(OffsetDateTime nextAttemptAt) { this.nextAttemptAt = nextAttemptAt; }
+    public OffsetDateTime getLastAttemptAt() { return lastAttemptAt; }
+    public void setLastAttemptAt(OffsetDateTime lastAttemptAt) { this.lastAttemptAt = lastAttemptAt; }
+    public OffsetDateTime getDeadLetteredAt() { return deadLetteredAt; }
+    public void setDeadLetteredAt(OffsetDateTime deadLetteredAt) { this.deadLetteredAt = deadLetteredAt; }
     public String getTraceParent() { return traceParent; }
     public void setTraceParent(String traceParent) { this.traceParent = traceParent; }
     public String getTraceState() { return traceState; }

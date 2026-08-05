@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.Duration;
 
 @Service
 public class NotificationInboxProcessor {
@@ -23,6 +24,9 @@ public class NotificationInboxProcessor {
     private final ObjectMapper objectMapper;
     private final TraceContextBridge traceContextBridge;
     private final String provider;
+    private final int maxAttempts;
+    private final Duration initialBackoff;
+    private final Duration maxBackoff;
 
     public NotificationInboxProcessor(NotificationInboxRepository inboxRepository,
                                       NotificationDeliveryAttemptRepository attemptRepository,
@@ -30,7 +34,7 @@ public class NotificationInboxProcessor {
                                       ObjectMapper objectMapper,
                                       String provider) {
         this(inboxRepository, attemptRepository, deliveryService, objectMapper,
-                TraceContextBridge.noop(), provider);
+                TraceContextBridge.noop(), provider, 8, Duration.ofSeconds(30), Duration.ofHours(1));
     }
 
     @Autowired
@@ -39,16 +43,24 @@ public class NotificationInboxProcessor {
                                       NotificationDeliveryService deliveryService,
                                       ObjectMapper objectMapper,
                                       TraceContextBridge traceContextBridge,
-                                      @Value("${notification.delivery.provider:logging}") String provider) {
+                                      @Value("${notification.delivery.provider:logging}") String provider,
+                                      @Value("${notification.inbox.retry.max-attempts:8}") int maxAttempts,
+                                      @Value("${notification.inbox.retry.initial-backoff:30s}") Duration initialBackoff,
+                                      @Value("${notification.inbox.retry.max-backoff:1h}") Duration maxBackoff) {
         this.inboxRepository = inboxRepository;
         this.attemptRepository = attemptRepository;
         this.deliveryService = deliveryService;
         this.objectMapper = objectMapper;
         this.traceContextBridge = traceContextBridge;
         this.provider = provider == null || provider.isBlank() ? "logging" : provider;
+        this.maxAttempts = Math.max(1, maxAttempts);
+        this.initialBackoff = initialBackoff == null || initialBackoff.isNegative() || initialBackoff.isZero()
+                ? Duration.ofSeconds(30) : initialBackoff;
+        this.maxBackoff = maxBackoff == null || maxBackoff.compareTo(this.initialBackoff) < 0
+                ? this.initialBackoff : maxBackoff;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = NotificationDeliveryFailedException.class)
     public void process(NotificationInboxEvent event) {
         traceContextBridge.runInSpan(
                 "notification.process " + safe(event.getEventType(), "event"),
@@ -60,18 +72,44 @@ public class NotificationInboxProcessor {
     private void processOne(NotificationInboxEvent event) {
         try {
             deliveryService.deliver(event);
-            event.setStatus(NotificationInboxEvent.STATUS_PROCESSED);
-            event.setProcessedAt(OffsetDateTime.now());
-            event.setLastError(null);
-            inboxRepository.save(event);
-            recordAttempt(event, NotificationDeliveryAttempt.STATUS_DELIVERED, null);
         } catch (RuntimeException ex) {
-            event.setStatus(NotificationInboxEvent.STATUS_FAILED);
+            OffsetDateTime attemptedAt = OffsetDateTime.now();
+            int attempts = event.getAttemptCount() + 1;
+            event.setAttemptCount(attempts);
+            event.setLastAttemptAt(attemptedAt);
             event.setLastError(ex.getMessage());
+            if (attempts >= maxAttempts) {
+                event.setStatus(NotificationInboxEvent.STATUS_DEAD_LETTER);
+                event.setDeadLetteredAt(attemptedAt);
+                event.setNextAttemptAt(null);
+            } else {
+                event.setStatus(NotificationInboxEvent.STATUS_FAILED);
+                event.setNextAttemptAt(attemptedAt.plus(backoffFor(attempts)));
+            }
             inboxRepository.save(event);
             recordAttempt(event, NotificationDeliveryAttempt.STATUS_FAILED, ex.getMessage());
-            throw ex;
+            throw new NotificationDeliveryFailedException(event.getEventId(), ex);
         }
+        event.setStatus(NotificationInboxEvent.STATUS_PROCESSED);
+        event.setProcessedAt(OffsetDateTime.now());
+        event.setLastError(null);
+        event.setAttemptCount(event.getAttemptCount() + 1);
+        event.setLastAttemptAt(OffsetDateTime.now());
+        event.setNextAttemptAt(null);
+        event.setDeadLetteredAt(null);
+        inboxRepository.save(event);
+        recordAttempt(event, NotificationDeliveryAttempt.STATUS_DELIVERED, null);
+    }
+
+    private Duration backoffFor(int attempts) {
+        long multiplier = 1L << Math.min(20, Math.max(0, attempts - 1));
+        long seconds;
+        try {
+            seconds = Math.multiplyExact(initialBackoff.toSeconds(), multiplier);
+        } catch (ArithmeticException ignored) {
+            seconds = maxBackoff.toSeconds();
+        }
+        return Duration.ofSeconds(Math.min(maxBackoff.toSeconds(), Math.max(1, seconds)));
     }
 
     private String safe(String value, String fallback) {

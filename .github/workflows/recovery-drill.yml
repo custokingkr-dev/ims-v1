@@ -1,0 +1,62 @@
+name: Monthly production recovery drill
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 1 * *"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-recovery-drill
+  cancel-in-progress: false
+
+jobs:
+  restore-drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: prod
+    env:
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+      RECOVERY_OPERATOR_SERVICE_ACCOUNT: ${{ vars.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
+      PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - name: Verify required configuration
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:RECOVERY_OPERATOR_SERVICE_ACCOUNT)) {
+            throw "RECOVERY_OPERATOR_SERVICE_ACCOUNT is not configured in the prod GitHub environment."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:PROD_DB_NAME)) {
+            throw "PROD_DB_NAME is not configured in the prod GitHub environment."
+          }
+
+      - name: Execute isolated PITR restore drill
+        shell: pwsh
+        run: |
+          ./scripts/invoke-cloudsql-restore-drill.ps1 `
+            -ProjectId custoking `
+            -Region asia-south2 `
+            -SourceInstance custoking-db-prod `
+            -Database $env:PROD_DB_NAME `
+            -Apply
+
+      - name: Upload non-sensitive drill evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-recovery-drill-${{ github.run_id }}
+          path: artifacts/recovery/*.json
+          if-no-files-found: warn
+          retention-days: 365

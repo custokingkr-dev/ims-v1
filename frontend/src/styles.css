@@ -902,6 +902,26 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 }
 .ck-icon-btn:hover:not(:disabled) { border-color:var(--border2); color:var(--g); background:var(--g1); }
 .ck-icon-btn:disabled { opacity:.45; cursor:not-allowed; }
+
+.ck-inline-actions { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.ck-guardian-list { display:grid; gap:8px; }
+.ck-guardian-row { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:64px; padding:10px 0; border-bottom:1px solid var(--border); }
+.ck-guardian-row:last-child { border-bottom:0; }
+.ck-guardian-row > div:first-child { display:grid; gap:2px; min-width:0; }
+.ck-guardian-row strong { font-size:13px; overflow-wrap:anywhere; }
+.ck-guardian-row span,.ck-guardian-row small { font-size:12px; color:var(--ink3); }
+.ck-consent-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px; margin-top:14px; }
+.ck-consent-grid > div { display:grid; align-content:start; gap:5px; min-height:82px; padding:10px; border:1px solid var(--border); border-radius:6px; }
+.ck-consent-grid span,.ck-consent-grid small { font-size:11px; color:var(--ink3); overflow-wrap:anywhere; }
+.ck-consent-grid .ck-status { width:max-content; max-width:100%; }
+.ck-check-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-content:start; gap:8px 14px; padding-top:24px; }
+.ck-check-grid label { display:flex; align-items:center; gap:7px; font-size:12px; }
+.ck-check-grid input { width:16px; height:16px; margin:0; }
+@media (max-width: 680px) {
+  .ck-guardian-row { align-items:flex-start; }
+  .ck-check-grid { grid-template-columns:1fr; padding-top:0; }
+  .ck-card-h-wrap { align-items:flex-start; }
+}
 .ck-student-module-tabs {
   display:flex;
   gap:4px;

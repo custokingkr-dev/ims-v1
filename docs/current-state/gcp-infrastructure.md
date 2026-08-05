@@ -1,6 +1,6 @@
 # GCP Infrastructure
 
-Last verified: 2026-08-04 with `gcloud.cmd` against project `custoking`.
+Last verified: 2026-08-05 with `gcloud.cmd` against project `custoking`.
 
 ## Project and Region
 
@@ -154,6 +154,17 @@ Users present on both instances:
 - `appuser`
 - `postgres`
 
+Production recovery controls were applied and verified on 2026-08-05:
+
+- automated regional backups in `asia-south2`
+- 14 retained backups
+- seven days of point-in-time recovery transaction logs
+- deletion protection enabled
+- monthly isolated restore drill through `.github/workflows/recovery-drill.yml`
+
+A live production drill passed on 2026-08-05 and cleanup verification found zero
+temporary restore instances and zero validation exports afterward.
+
 ## Artifact Registry
 
 Artifact Registry repository:
@@ -173,12 +184,16 @@ Live buckets:
 | Bucket | Location |
 | --- | --- |
 | `custoking-github-deploy-source` | `ASIA-SOUTH2` |
+| `custoking-db-snapshots` | `ASIA-SOUTH2` |
 | `custoking-student-photos-dev` | `ASIA-SOUTH2` |
 | `custoking-student-photos-prod` | `ASIA-SOUTH2` |
 | `custoking-terraform-state` | `ASIA-SOUTH2` |
 | `custoking_cloudbuild` | `US` |
 
 Student photo buckets use uniform bucket-level access and public access prevention. The Cloud Run runtime service account has object administration access for the student photo buckets.
+
+Cloud Logging also owns `custoking-compliance-india` as a log bucket in
+`asia-south2` with 180-day retention. It is not a Cloud Storage bucket.
 
 ## Secret Manager
 
@@ -291,7 +306,23 @@ Verified project-level IAM bindings for `github-actions-sa`:
 - `roles/serviceusage.serviceUsageConsumer`
 - `roles/storage.admin`
 
-Verified drift: the source file `deploy/gcp/github-deploy-runtime-operator-role.yaml` exists, but no project custom role was found by `gcloud iam roles list --project=custoking`, and `githubDeployRuntimeOperator` could not be described. Deploys are currently succeeding with predefined project-level roles. `roles/cloudbuild.builds.editor` remains present even though `cloudbuild.yaml` deployment is retired.
+Verified drift: the source file `deploy/gcp/github-deploy-runtime-operator-role.yaml`
+exists, but the `githubDeployRuntimeOperator` custom role is not live. Deploys are
+currently succeeding with predefined project-level roles.
+`custokingRecoveryBucketIamOperator` is a separate live three-permission custom role
+used only by the recovery workflow. `roles/cloudbuild.builds.editor` remains present
+on the deploy identity even though `cloudbuild.yaml` deployment is retired.
+
+Recovery workflow identity:
+
+```text
+custoking-recovery-operator@custoking.iam.gserviceaccount.com
+```
+
+It is repository-scoped through the same Workload Identity provider, has Cloud SQL
+administration for isolated drills, object administration on
+`custoking-db-snapshots`, and the custom bucket-IAM role on that bucket so temporary
+clone service identities can be granted and revoked.
 
 ## Cloud Deploy
 
