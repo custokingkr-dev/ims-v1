@@ -12,6 +12,15 @@ environment in project `custoking`:
 - An optional project-wide `asia-south2` compliance log bucket and sink with 180-day retention.
 - Log-based distribution metrics for outbox and notification inbox health.
 - Cloud Monitoring services and availability/latency SLOs for Cloud Run.
+
+SLO alerting uses two paired-window policy families:
+
+- Fast burn: `14.4x` over both `60m` and `5m`, with a `180s` retest window.
+- Sustained burn: `6x` over both `360m` and `30m`, with a `300s` retest window.
+
+Both conditions in a family must be violated. Burn-rate policies email when an
+incident opens but do not email again when it recovers; recovery state remains
+available in Cloud Monitoring.
 - trace-writer IAM for the default Cloud Run runtime service account:
   `roles/cloudtrace.agent` for Cloud Trace exporters, plus
   `roles/telemetry.tracesWriter` and `roles/serviceusage.serviceUsageConsumer`

@@ -223,6 +223,12 @@ SLOs are managed for availability and latency per Cloud Run service. Burn-rate
 alerts should be investigated from the service dashboard first, then Cloud Trace
 for representative failing or slow requests.
 
+Burn-rate alerts require paired long and short windows. Fast burn is `14.4x`
+over both `60m` and `5m` for three minutes. Sustained burn is `6x` over both
+`360m` and `30m` for five minutes. This distinguishes an active error-budget
+threat from a transient or historical spike. Email is sent when an incident
+opens; use Cloud Monitoring incidents to confirm recovery.
+
 ## Async Health
 
 Outbox-owning services:

@@ -201,13 +201,49 @@ variable "slo_rolling_period_days" {
 }
 
 variable "slo_burn_rate_window" {
-  description = "Cloud Monitoring burn-rate selector lookback window."
+  description = "Long lookback window for sustained SLO burn-rate alerts."
+  type        = string
+  default     = "360m"
+}
+
+variable "slo_burn_rate_threshold" {
+  description = "Alert when sustained SLO error-budget burn exceeds this multiple."
+  type        = number
+  default     = 6
+}
+
+variable "slo_burn_rate_short_window" {
+  description = "Short confirmation window for sustained SLO burn-rate alerts."
+  type        = string
+  default     = "30m"
+}
+
+variable "slo_burn_rate_retest_window" {
+  description = "Time both sustained-burn conditions must remain violated before opening an incident."
+  type        = string
+  default     = "300s"
+}
+
+variable "slo_fast_burn_rate_window" {
+  description = "Long lookback window for fast SLO burn-rate alerts."
   type        = string
   default     = "60m"
 }
 
-variable "slo_burn_rate_threshold" {
-  description = "Alert when SLO error budget burns faster than this multiple over the lookback window."
+variable "slo_fast_burn_rate_short_window" {
+  description = "Short confirmation window for fast SLO burn-rate alerts."
+  type        = string
+  default     = "5m"
+}
+
+variable "slo_fast_burn_rate_threshold" {
+  description = "Alert when fast SLO error-budget burn exceeds this multiple."
   type        = number
-  default     = 2
+  default     = 14.4
+}
+
+variable "slo_fast_burn_rate_retest_window" {
+  description = "Time both fast-burn conditions must remain violated before opening an incident."
+  type        = string
+  default     = "180s"
 }

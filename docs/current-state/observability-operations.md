@@ -111,7 +111,7 @@ Private service uptime checks use Monitoring service-agent OIDC and Cloud Run re
 
 ## Alert Policies
 
-Production Terraform manages 34 alert policies, including uptime, service health,
+Production Terraform manages 53 alert policies, including uptime, service health,
 SLO burn, asynchronous backlog, and dead-letter policies. A live email channel is
 attached to every production-managed policy. Mailbox verification and a received
 test incident still require the mailbox owner.
@@ -143,8 +143,14 @@ Default thresholds from Terraform source:
 - latency SLO goal: `0.95`
 - latency SLO threshold: `2s`
 - SLO rolling period: 30 days
-- burn rate lookback: `60m`
-- burn rate threshold: `2`
+- fast burn: `14.4x` across both `60m` and `5m`, sustained for `180s`
+- sustained burn: `6x` across both `360m` and `30m`, sustained for `300s`
+- SLO burn-rate email prompts: incident opened only; recovery remains visible in Cloud Monitoring
+
+The paired windows prevent a historical spike from keeping an incident active
+after the service has recovered. The retest windows also prevent one evaluation
+from opening an incident. Fast-burn policies are `ERROR`; sustained-burn and
+latency policies are `WARNING` unless the fast-burn threshold is met.
 
 ## Log-Based Metrics
 
