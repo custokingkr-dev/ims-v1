@@ -80,7 +80,7 @@ frontend/**                       -> frontend
 
 A service-specific `deploy/cloudrun/<service>.yaml` change affects that service. Shared build catalogs, reusable service workflows, Skaffold, the relevant environment target, or delivery-pipeline changes affect the full fleet. A `targets-dev.yaml` change does not redeploy prod, and a `targets-prod.yaml` change does not redeploy dev.
 
-Documentation-only, top-level workflow-only, resolver-only, and rollout-monitor-only commits complete as a no-op and do not build or deploy containers. These orchestration changes take effect on the next application or deployment-configuration release.
+Documentation-only, top-level workflow-only, resolver-only, release-orchestration-only, and rollout-monitor-only commits complete as a no-op and do not build or deploy containers. These orchestration changes take effect on the next application or deployment-configuration release.
 
 Manual dispatch supports:
 
@@ -142,7 +142,9 @@ Production strategy:
 5% -> 25% -> 50% -> stable
 ```
 
-The rollout monitor polls all affected releases in one loop and advances ready canary phases without serially waiting for an entire service pipeline before observing the next one. It does not advance a rollout while Cloud Deploy reports `PENDING_RELEASE`; phase advancement starts only after rendering completes and the rollout is `IN_PROGRESS`.
+Production creates and completes releases in service dependency order: school core, identity, operations, billing, platform, gateway, then frontend. Each service reaches stable before the next release is created. This bounds the temporary Cloud Run CPU reserved by old and canary revisions and prevents a full release from exhausting the regional CPU quota. The rollout monitor does not advance a rollout while Cloud Deploy reports `PENDING_RELEASE`; phase advancement starts only after rendering completes and the rollout is `IN_PROGRESS`.
+
+`deployment.json` is rewritten after every release is created, so a failed serial rollout still leaves evidence identifying the exact pipeline, release, target, image, and rollout that requires investigation.
 
 Production runs are never automatically cancelled. Deploy and rollback share the same environment concurrency group, so those mutations cannot overlap.
 

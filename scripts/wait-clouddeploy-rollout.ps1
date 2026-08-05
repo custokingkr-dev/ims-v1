@@ -81,7 +81,8 @@ while ((Get-Date).ToUniversalTime() -lt $deadline) {
     }
   }
 
-  if ($AutoAdvanceCanary -and -not $hasRunningPhase) {
+  # PENDING_RELEASE exposes pending phases before release rendering is complete.
+  if ($AutoAdvanceCanary -and $state -eq "IN_PROGRESS" -and -not $hasRunningPhase) {
     $nextPhase = $phases | Where-Object {
       @("PENDING", "NOT_STARTED") -contains [string]$_.state
     } | Select-Object -First 1

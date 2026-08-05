@@ -58,7 +58,6 @@ $scriptTriggers = @(
   "scripts/verify-microservice-migration.ps1",
   "scripts/resolve-image-source-id.ps1",
   "scripts/invoke-direct-cloudrun-release.ps1",
-  "scripts/invoke-clouddeploy-release.ps1",
   "scripts/verify-cloudrun-release.ps1",
   "scripts/render-clouddeploy-targets.ps1",
   "scripts/smoke-gateway-routes.ps1",

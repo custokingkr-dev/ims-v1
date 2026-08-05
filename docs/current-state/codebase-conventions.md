@@ -206,7 +206,7 @@ Important env/config:
 - `FIREFIGHTING_READ_TOKEN`
 - `AUDIT_INGEST_TOKEN`
 
-Verified live prod config did not show `NOTIFICATION_DELIVERY_PROVIDER`, so the default `logging` provider applies unless set elsewhere.
+Verified live prod config explicitly sets `NOTIFICATION_DELIVERY_PROVIDER=logging` and `MSG91_DRY_RUN=true` until an approved MSG91 flow and recipient smoke are available.
 
 ### billing-service
 

@@ -11,18 +11,19 @@ This file intentionally lists unresolved or partially verified items. These are 
 Verified live platform-service prod env includes:
 
 ```text
+NOTIFICATION_DELIVERY_PROVIDER=logging
 MSG91_DRY_RUN=true
 ```
 
-The live Cloud Run env verified on 2026-08-05 had `MSG91_DRY_RUN=true` and did not
-show `NOTIFICATION_DELIVERY_PROVIDER`. A private production database audit found one
-active sender profile and zero profiles with an MSG91 SMS flow ID. Source therefore
-keeps production on `logging`/dry-run while adding bounded retry/dead-letter handling.
+The live Cloud Run env verified after the 2026-08-05 foundation deployment explicitly
+selects `logging` and dry-run. A private production database audit found one active
+sender profile and zero profiles with an MSG91 SMS flow ID. Production therefore stays
+in safe mode while bounded retry/dead-letter handling remains active.
 
 Impact:
 
 - Pub/Sub notification ingress and notification DB flows may work, but actual MSG91 delivery is not proven enabled.
-- Current prod config appears dry-run/logging unless provider selection is set elsewhere outside the verified env.
+- Current prod config is explicitly dry-run/logging.
 
 Required follow-up:
 
@@ -34,7 +35,7 @@ Required follow-up:
 ### Monitoring Email Receipt Requires Human Verification
 
 Production observability Terraform was applied on 2026-08-05. It created email
-channel `11561348974326363261` and attached it to all 34 production-managed alert
+channel `11561348974326363261` and attached it to all 41 production alert
 policies. Six production uptime checks are active at a 900-second period.
 
 Impact:
@@ -99,9 +100,9 @@ docs/current-state/deployment-cicd.md
 
 Verified:
 
-- commit `8607912b7f85378086c4602294f610f907538084` deployed successfully to dev and prod.
-- GitHub run `30884975624` succeeded for dev.
-- GitHub run `30888032307` succeeded for prod.
+- foundation commit `a8acfbe78992404a87d30d0e7eb19ace1b0638a2` deployed successfully to dev and prod.
+- GitHub dev run `30997099794` succeeded.
+- Production releases `rel-prod-a8acfbe78992-1` and `rel-prod-a8acfbe78992-2` reached `SUCCEEDED`; the second release replaced the frontend revision that failed when the first workflow exhausted the regional 20 vCPU quota.
 - prod `/gateway-health` returned `UP`.
 
 Remaining gaps:
@@ -112,6 +113,7 @@ Remaining gaps:
 - Deploy service account still has broad legacy roles, including `roles/cloudbuild.builds.editor` and `roles/storage.admin`.
 - Production actions are not pinned by SHA.
 - Cloud Monitoring/SLO-based canary gates are not automatic.
+- Cloud Quotas currently marks this project ineligible for a Cloud Run CPU increase because it lacks enough usage history; production promotion is serialized to remain within the current 20 vCPU limit.
 - Do not restore the old `cloudbuild.yaml` deployment path unless there is a documented emergency reason.
 
 ### Terraform CLI Availability Was Repaired For This Shell

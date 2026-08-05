@@ -392,20 +392,26 @@ jobs:
             -ImagesJson release-evidence/images.json `
             -OutputPath release-evidence/deployment.json
 
-      - name: Create Cloud Deploy releases
+      - name: Create and serially promote Cloud Deploy releases
         if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.apply_deployment_config == true }}
         shell: pwsh
         run: |
-          ./scripts/invoke-clouddeploy-release.ps1 `
-            -ProjectId "$env:GCP_PROJECT_ID" `
-            -Region "$env:GCP_REGION" `
-            -Environment "${{ needs.resolve-target.outputs.target_env }}" `
-            -CommitSha "${{ needs.resolve-target.outputs.commit_sha }}" `
-            -RunAttempt "${{ github.run_attempt }}" `
-            -ImagesJson release-evidence/images.json `
-            -OutputPath release-evidence/deployment.json
+          $arguments = @{
+            ProjectId = "$env:GCP_PROJECT_ID"
+            Region = "$env:GCP_REGION"
+            Environment = "${{ needs.resolve-target.outputs.target_env }}"
+            CommitSha = "${{ needs.resolve-target.outputs.commit_sha }}"
+            RunAttempt = "${{ github.run_attempt }}"
+            ImagesJson = "release-evidence/images.json"
+            OutputPath = "release-evidence/deployment.json"
+            WaitForRollout = $true
+          }
+          if ("${{ needs.resolve-target.outputs.target_env }}" -eq "prod") {
+            $arguments.AutoAdvanceCanary = $true
+          }
+          ./scripts/invoke-clouddeploy-release.ps1 @arguments
 
-      - name: Wait for Cloud Deploy rollouts
+      - name: Confirm Cloud Deploy rollouts
         if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.apply_deployment_config == true }}
         shell: pwsh
         run: |

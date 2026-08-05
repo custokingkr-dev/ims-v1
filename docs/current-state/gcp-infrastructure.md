@@ -130,6 +130,8 @@ Scaling verified from Cloud Run annotations:
 | platform-service | 1 vCPU | 768 MiB | `0` | 2 |
 | frontend | 1 vCPU | 512 MiB | `0` | 2 |
 
+The live `asia-south2` Cloud Run CPU allocation quota was verified on 2026-08-05 as `20,000` milli-vCPU (20 vCPU). Cloud Quotas currently reports this project as ineligible for an increase because it does not yet have enough usage history. Production Cloud Deploy therefore promotes one service to stable before creating the next release, limiting overlap between old and canary instances. This quota limits concurrent capacity; it does not create cost by itself.
+
 Outbox publishers are configured in both envs:
 
 - school-core: `SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID=ims-reporting-events-v1-<env>`
@@ -337,12 +339,14 @@ custoking-<service>-prod
 
 Normal dev code releases update affected Cloud Run services directly by immutable digest. Dev Cloud Deploy pipelines use a standard strategy when deployment configuration changes or an operator explicitly requests configuration reconciliation. Prod pipelines use canary percentages `5`, `25`, `50`, then stable and consume dev-approved image digests.
 
-Latest verified Cloud Deploy releases for commit `83abe626f32d64e4701d6f3c838008bfaabfa3b4`:
+Latest verified production Cloud Deploy releases for foundation commit `a8acfbe78992404a87d30d0e7eb19ace1b0638a2`:
 
-| Environment | Release pattern | Services | State |
-| --- | --- | --- | --- |
-| dev | `rel-dev-83abe626f32d-1` | all seven service pipelines | `SUCCEEDED` |
-| prod | `rel-prod-83abe626f32d-1` | all seven service pipelines | `SUCCEEDED` |
+| Release | Services | State |
+| --- | --- | --- |
+| `rel-prod-a8acfbe78992-1` | school-core, identity, operations, billing, platform, api-gateway | `SUCCEEDED` |
+| `rel-prod-a8acfbe78992-2` | frontend | `SUCCEEDED` |
+
+The frontend required a fresh release after the first revision exhausted the 20 vCPU regional quota and became permanently failed. The release orchestrator now completes one service before creating the next and protects `PENDING_RELEASE` from premature phase advancement.
 
 ## Cloud Run Jobs
 
@@ -366,7 +370,8 @@ Verified live IAM for the direct smoke runtime:
 
 Verified deployed platform-service env vars include:
 
+- `NOTIFICATION_DELIVERY_PROVIDER=logging`
 - `MSG91_DRY_RUN=true`
 - `MSG91_AUTH_KEY` injected from Secret Manager
 
-The deployed Cloud Run env did not show `NOTIFICATION_DELIVERY_PROVIDER`. In `platform-service` application config, the default is `notification.delivery.provider=logging`. Therefore, based on current verified config, real MSG91 delivery is not proven enabled in prod; notification records and Pub/Sub ingress may work while provider delivery remains logging/dry-run. See [gaps-and-drift.md](gaps-and-drift.md).
+The deployed provider is intentionally logging/dry-run because the production sender profile does not yet have an MSG91 SMS flow ID. Notification persistence, retry, and dead-letter handling are active; real MSG91 delivery is not enabled. See [gaps-and-drift.md](gaps-and-drift.md).

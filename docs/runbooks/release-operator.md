@@ -33,7 +33,7 @@ Use `force_full_deploy` only when every service must be reconciled. Use `apply_d
 3. Review the affected services at the protected `prod` Environment gate.
 4. Approve only when each affected source was successfully deployed to dev.
 5. The workflow resolves `dev-approved-src-*` tags. It does not rebuild.
-6. Cloud Deploy advances affected services through `5`, `25`, `50`, and stable.
+6. Cloud Deploy advances each affected service through `5`, `25`, `50`, and stable before creating the next service release.
 7. Confirm service digest checks, frontend check when applicable, and gateway health.
 8. Retain `release-evidence` and the GitHub approval record.
 

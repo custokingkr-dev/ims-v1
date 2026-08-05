@@ -18,7 +18,13 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$ImagesJson,
 
-  [string]$OutputPath = "release-evidence/deployment.json"
+  [string]$OutputPath = "release-evidence/deployment.json",
+
+  [switch]$WaitForRollout,
+
+  [switch]$AutoAdvanceCanary,
+
+  [int]$RolloutTimeoutMinutes = 45
 )
 
 $ErrorActionPreference = "Stop"
@@ -48,6 +54,20 @@ foreach ($image in $images) {
 $shortSha = $CommitSha.Substring(0, [Math]::Min(12, $CommitSha.Length))
 $releaseId = ("rel-{0}-{1}-{2}" -f $Environment, $shortSha, $RunAttempt).ToLowerInvariant()
 $deployments = @()
+
+function Write-DeploymentEvidence {
+  $outputDirectory = Split-Path -Parent $OutputPath
+  if ($outputDirectory) {
+    New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+  }
+
+  [ordered]@{
+    mode = "cloud-deploy"
+    environment = $Environment
+    createdAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+    services = $deployments
+  } | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath
+}
 
 foreach ($service in $releaseOrder) {
   $image = $byService[$service]
@@ -90,18 +110,27 @@ foreach ($service in $releaseOrder) {
     target = "$service-$Environment"
     rollout = $rollout.Split("/")[-1]
   }
+
+  # Persist after every release so failed jobs retain actionable rollout evidence.
+  Write-DeploymentEvidence
+
+  if ($WaitForRollout) {
+    $waitArguments = @{
+      ProjectId = $ProjectId
+      Region = $Region
+      Pipeline = $pipeline
+      Release = $releaseId
+      Rollout = $rollout.Split("/")[-1]
+      TimeoutMinutes = $RolloutTimeoutMinutes
+    }
+    if ($AutoAdvanceCanary) {
+      $waitArguments.AutoAdvanceCanary = $true
+    }
+
+    & (Join-Path $PSScriptRoot "wait-clouddeploy-rollout.ps1") @waitArguments
+  }
 }
 
-$outputDirectory = Split-Path -Parent $OutputPath
-if ($outputDirectory) {
-  New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
-}
-
-[ordered]@{
-  mode = "cloud-deploy"
-  environment = $Environment
-  createdAtUtc = (Get-Date).ToUniversalTime().ToString("o")
-  services = $deployments
-} | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath
+Write-DeploymentEvidence
 
 Write-Host "Created Cloud Deploy releases for $($deployments.Count) service(s)."

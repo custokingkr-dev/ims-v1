@@ -22,6 +22,8 @@ $workflow = Read-RequiredFile $WorkflowFile
 $compose = Read-RequiredFile $ComposeFile
 $gateway = Read-RequiredFile $GatewayFile
 $directRelease = Read-RequiredFile "scripts/invoke-direct-cloudrun-release.ps1"
+$cloudDeployRelease = Read-RequiredFile "scripts/invoke-clouddeploy-release.ps1"
+$cloudDeployWaiter = Read-RequiredFile "scripts/wait-clouddeploy-rollout.ps1"
 $releaseVerification = Read-RequiredFile "scripts/verify-cloudrun-release.ps1"
 $violations = New-Object System.Collections.Generic.List[string]
 $catalog = @(Get-MicroserviceBuildCatalog)
@@ -71,6 +73,7 @@ foreach ($required in @(
   "dev-approved-",
   "invoke-direct-cloudrun-release.ps1",
   "invoke-clouddeploy-release.ps1",
+  "WaitForRollout",
   "verify-cloudrun-release.ps1",
   "smoke-gateway-health.ps1",
   "group: cd-environment-",
@@ -83,6 +86,18 @@ foreach ($required in @(
 foreach ($required in @("--async", 'status = "submitted"', 'status = "already-current"')) {
   if (-not $directRelease.Contains($required)) {
     $violations.Add("Direct dev release is missing asynchronous deployment control: $required")
+  }
+}
+
+foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout.ps1")) {
+  if (-not $cloudDeployRelease.Contains($required)) {
+    $violations.Add("Cloud Deploy release orchestration is missing serialized rollout control: $required")
+  }
+}
+
+foreach ($required in @('$state -eq "IN_PROGRESS"', 'PENDING_RELEASE')) {
+  if (-not $cloudDeployWaiter.Contains($required)) {
+    $violations.Add("Cloud Deploy rollout waiter is missing pending-release protection: $required")
   }
 }
 
