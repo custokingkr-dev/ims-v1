@@ -63,7 +63,8 @@ while ($pending.Count -gt 0 -and (Get-Date).ToUniversalTime() -lt $deadline) {
       throw "Cloud Deploy rollout $pipeline/$($deployment.release)/$($deployment.rollout) ended in $state."
     }
 
-    if ($AutoAdvanceCanary) {
+    # PENDING_RELEASE phases are visible before Cloud Deploy is ready to accept advance requests.
+    if ($AutoAdvanceCanary -and $state -eq "IN_PROGRESS") {
       $hasRunningPhase = @($phases | Where-Object { @("IN_PROGRESS", "RUNNING") -contains [string]$_.state }).Count -gt 0
       if (-not $hasRunningPhase) {
         $nextPhase = $phases | Where-Object { @("PENDING", "NOT_STARTED") -contains [string]$_.state } | Select-Object -First 1
