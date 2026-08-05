@@ -28,7 +28,7 @@ const IMPORT_COLUMNS: Array<{ key: string; required: boolean; example: string; n
   { key: 'Class', required: true, example: '9', note: 'Must match an active class in this school setup' },
   { key: 'Section', required: true, example: 'B', note: 'Must match an active section in this school setup' },
   { key: 'AdmissionNo', required: true, example: 'ADM-1001', note: 'Unique admission number' },
-  { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Formats YYYY-MM-DD or YYYY/MM/DD' },
+  { key: 'DateOfBirth', required: false, example: '2010-05-12', note: 'Use YYYY-MM-DD; Excel date cells are also supported' },
   { key: 'Gender', required: false, example: 'Male', note: 'Male / Female / Other' },
   { key: 'FatherName', required: false, example: 'R. Mehta', note: '' },
   { key: 'Phone', required: true, example: '9876543210', note: '10-digit contact number' },
@@ -150,7 +150,11 @@ export type StagedPhoto =
 
 export function normalizeImportCellValue(value: string | number | boolean | Date | null | undefined): string | number {
   if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? '' : value.toISOString().slice(0, 10);
+    if (Number.isNaN(value.getTime())) return '';
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, '0');
+    const day = String(value.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
   if (value == null) return '';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
@@ -233,7 +237,7 @@ export function BulkImportPanel({
   const [bulkImportError, setBulkImportError] = useState('');
   const [bulkImportWarning, setBulkImportWarning] = useState('');
   const [bulkImportFileName, setBulkImportFileName] = useState('');
-  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
+  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; dateOfBirth?: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
   const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; pct?: number; inserted?: number; skipped?: number; skippedRows?: SkippedImportRow[] } | null>(null);
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
@@ -569,9 +573,9 @@ export function BulkImportPanel({
           </div>
           <div className="ck-table-wrap">
             <table className="ck-table">
-              <thead><tr><th>#</th><th>Name</th><th>Class</th><th>Section</th><th>Admission No.</th><th>Phone</th><th>Status</th></tr></thead>
+              <thead><tr><th>#</th><th>Name</th><th>Class</th><th>Section</th><th>Admission No.</th><th>Date of birth</th><th>Phone</th><th>Status</th></tr></thead>
               <tbody>
-                {filteredPreviewRows.map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description || row.message}</div> : null}</td></tr>)}
+                {filteredPreviewRows.map((row) => <tr key={row.rowNumber} className={row.statusTone === 'sr' ? 'ck-row-error' : row.statusTone === 'sam' ? 'ck-row-warning' : row.statusTone === 'spu' ? 'ck-row-duplicate' : ''}><td>{row.rowNumber}</td><td>{row.name}</td><td>{row.className}</td><td>{row.sectionName}</td><td>{row.admissionNo}</td><td>{row.dateOfBirth || '-'}</td><td>{row.phone}</td><td><span className={`ck-status ${row.statusTone}`}>{row.status}</span>{row.status !== 'Valid' ? <div className="ts" style={{ marginTop: 4 }}>{row.description || row.message}</div> : null}</td></tr>)}
               </tbody>
             </table>
           </div>

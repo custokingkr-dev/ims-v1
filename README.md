@@ -268,6 +268,7 @@ Do not use old Cloud Build commands. The repository no longer contains `cloudbui
 Detailed deployment docs:
 
 - [CI/CD Current State](docs/current-state/deployment-cicd.md)
+- [Time and Timezones](docs/architecture/time-and-timezones.md)
 - [Release Operator Runbook](docs/runbooks/release-operator.md)
 - [Rollback Runbook](docs/runbooks/rollback.md)
 

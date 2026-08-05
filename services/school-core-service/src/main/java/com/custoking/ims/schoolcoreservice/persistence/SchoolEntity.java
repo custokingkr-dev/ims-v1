@@ -38,6 +38,8 @@ public class SchoolEntity {
     private Integer configuredSectionCount;
     private Integer academicYearStartMonth;
     private Integer financialYearStartMonth;
+    @Column(name = "time_zone", nullable = false)
+    private String timeZone;
     private OffsetDateTime createdAt;
 
     public Long getId() { return id; }
@@ -53,5 +55,6 @@ public class SchoolEntity {
     public Integer getConfiguredSectionCount() { return configuredSectionCount; }
     public Integer getAcademicYearStartMonth() { return academicYearStartMonth; }
     public Integer getFinancialYearStartMonth() { return financialYearStartMonth; }
+    public String getTimeZone() { return timeZone; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }

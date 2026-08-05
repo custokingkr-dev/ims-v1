@@ -210,6 +210,7 @@ class TenantSchoolControllerTest {
                 0L,
                 4,
                 4,
+                "Asia/Kolkata",
                 "Jun 2026")));
 
         Object response = controller.schoolAdmin("tenant-token", 4L);

@@ -575,6 +575,7 @@ public class TenantSchoolController {
             Integer configuredSectionCount,
             Integer academicYearStartMonth,
             Integer financialYearStartMonth,
+            String timeZone,
             OffsetDateTime createdAt) {
         static SchoolResponse from(SchoolEntity school) {
             return new SchoolResponse(
@@ -591,6 +592,7 @@ public class TenantSchoolController {
                     school.getConfiguredSectionCount(),
                     school.getAcademicYearStartMonth(),
                     school.getFinancialYearStartMonth(),
+                    school.getTimeZone(),
                     school.getCreatedAt());
         }
     }

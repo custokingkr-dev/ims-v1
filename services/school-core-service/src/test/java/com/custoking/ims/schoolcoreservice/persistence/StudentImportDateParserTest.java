@@ -38,4 +38,17 @@ class StudentImportDateParserTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Date must");
     }
+
+    @Test
+    void validatesDateOfBirthWithoutDependingOnARegionalTimezone() {
+        LocalDate today = LocalDate.of(2026, 8, 5);
+
+        assertThat(StudentImportDateParser.parseDateOfBirth("2010-05-12", today))
+                .isEqualTo(LocalDate.of(2010, 5, 12));
+        assertThat(StudentImportDateParser.parseDateOfBirth("", today)).isNull();
+        assertThatThrownBy(() -> StudentImportDateParser.parseDateOfBirth("2026-08-06", today))
+                .hasMessageContaining("future");
+        assertThatThrownBy(() -> StudentImportDateParser.parseDateOfBirth("1899-12-31", today))
+                .hasMessageContaining("1900-01-01");
+    }
 }

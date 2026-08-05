@@ -763,6 +763,7 @@ public class StudentReadRepository {
                     "className", normalized.get("className"),
                     "sectionName", normalized.get("sectionName"),
                     "admissionNo", normalized.get("admissionNo"),
+                    "dateOfBirth", normalized.get("dateOfBirth"),
                     "phone", normalized.get("phone"),
                     "status", validation.status(),
                     "statusTone", validation.error() ? "sr" : validation.warning() ? "sam" : "sg",
@@ -2623,7 +2624,7 @@ public class StudentReadRepository {
                     false, true, false);
         }
         try {
-            parseDate(str(normalized.get("dateOfBirth"), ""));
+            StudentImportDateParser.parseDateOfBirth(str(normalized.get("dateOfBirth"), ""));
         } catch (IllegalArgumentException ex) {
             return new ImportValidation("Invalid date", ex.getMessage(), false, true, false);
         }
@@ -2700,7 +2701,7 @@ public class StudentReadRepository {
                 .param("rollNo", String.valueOf(countBySection(String.valueOf(section.get("id"))) + 1))
                 .param("boardRegNo", str(normalized.get("boardRegistrationNo"), ""))
                 .param("fullName", str(normalized.get("name"), ""))
-                .param("dob", parseDate(str(normalized.get("dateOfBirth"), "")))
+                .param("dob", StudentImportDateParser.parseDateOfBirth(str(normalized.get("dateOfBirth"), "")))
                 .param("gender", str(normalized.get("gender"), "Unspecified"))
                 .param("fatherName", str(normalized.get("fatherName"), ""))
                 .param("fatherContact", str(normalized.get("phone"), ""))

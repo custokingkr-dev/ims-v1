@@ -13,10 +13,11 @@ describe('SaSchoolsPanel structure edit', () => {
   beforeEach(() => {
     vi.mocked(api.get).mockResolvedValue({ data: [
       { id: 7, name: 'Demo School', shortCode: 'DEMO', city: 'Hyd', active: true,
-        configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, financialYearStartMonth: 4, adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
+        configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, financialYearStartMonth: 4, timeZone: 'Asia/Kolkata', adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
     ] });
     vi.mocked(api.put).mockReset();
     vi.mocked(api.post).mockReset();
+    vi.mocked(api.patch).mockReset();
   });
 
   it('surfaces a 409 in-use message and does not close on failure', async () => {
@@ -58,13 +59,27 @@ describe('SaSchoolsPanel structure edit', () => {
       expect(api.put).toHaveBeenCalledWith('/schools/7/structure', { classCount: 12, sectionCount: 4 }));
   });
 
+  it('updates an onboarded school timezone with an IANA identifier', async () => {
+    vi.mocked(api.put).mockResolvedValue({ data: { id: 7 } });
+    vi.mocked(api.patch).mockResolvedValue({ data: { id: 7, timeZone: 'Europe/London' } });
+    render(<SaSchoolsPanel />);
+    await waitFor(() => expect(screen.getByText('Demo School')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /edit structure/i }));
+    const dialog = screen.getByRole('dialog');
+
+    fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'Europe/London' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: /save/i }));
+
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/schools/7', { timeZone: 'Europe/London' }));
+  });
+
   it('loads archived students and restores a selected student', async () => {
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === '/sa/schools') {
         return Promise.resolve({ data: [
           { id: 7, name: 'Demo School', shortCode: 'DEMO', city: 'Hyd', active: true,
-            configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, financialYearStartMonth: 4, adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
+            configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4, financialYearStartMonth: 4, timeZone: 'Asia/Kolkata', adminEmail: 'a@x.com', ordersYTD: 0, gmvYTD: 0 },
         ] });
       }
       if (url === '/rbac/user-role-assignments') {

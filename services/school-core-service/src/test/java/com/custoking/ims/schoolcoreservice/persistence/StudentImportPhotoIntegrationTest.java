@@ -287,6 +287,33 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
+    void confirmImport_preservesDateOfBirthAsCalendarDate() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        StudentReadRepository studentRepo = new StudentReadRepository(jdbc,
+                mock(StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = studentRepo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", List.of(Map.of(
+                        "Name", "Calendar Date", "Class", "1", "Section", "A",
+                        "AdmissionNo", "DOB-1", "DateOfBirth", "2012-06-01",
+                        "Gender", "Female", "Phone", "9876543210"))));
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> previewRows = (List<Map<String, Object>>) preview.get("rows");
+        assertThat(previewRows).singleElement().extracting(row -> row.get("dateOfBirth"))
+                .isEqualTo("2012-06-01");
+
+        studentRepo.confirmImport(Map.of("schoolId", schoolId, "fileToken", preview.get("fileToken")));
+
+        String storedDate = jdbc.sql("SELECT dob::text FROM student.students WHERE admission_no = 'DOB-1'")
+                .query(String.class)
+                .single();
+        assertThat(storedDate).isEqualTo("2012-06-01");
+    }
+
+    @Test
     void confirmImport_persistsStructuredAddressAndKeepsLegacyAddressCompatible() throws Exception {
         long schoolId = seedSchool(5, 2);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,

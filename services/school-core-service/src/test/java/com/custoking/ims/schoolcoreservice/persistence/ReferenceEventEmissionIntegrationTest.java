@@ -101,4 +101,19 @@ class ReferenceEventEmissionIntegrationTest {
                 .isInstanceOf(RuntimeException.class);
         assertThat(countOutbox()).isEqualTo(before);             // rolled back with the transaction
     }
+
+    @Test
+    void schoolTimeZoneUsesIanaIdsAndCanBeChangedAfterOnboarding() {
+        var created = repo.createSchool(Map.of(
+                "name", "London School",
+                "shortCode", "LON",
+                "timeZone", "Europe/London"));
+        Long id = ((Number) created.get("id")).longValue();
+
+        assertThat(created).containsEntry("timeZone", "Europe/London");
+        assertThat(repo.updateSchool(id, Map.of("timeZone", "America/New_York")))
+                .containsEntry("timeZone", "America/New_York");
+        assertThatThrownBy(() -> repo.updateSchool(id, Map.of("timeZone", "India/Hyderabad")))
+                .hasMessageContaining("valid IANA timezone");
+    }
 }

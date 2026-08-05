@@ -46,6 +46,7 @@ const schools = [
     active: true,
     academicYearStartMonth: 4,
     financialYearStartMonth: 4,
+    timeZone: 'Asia/Kolkata',
   },
   {
     id: 20,
@@ -56,6 +57,7 @@ const schools = [
     active: false,
     academicYearStartMonth: 6,
     financialYearStartMonth: 4,
+    timeZone: 'Asia/Kolkata',
   },
 ];
 
@@ -188,6 +190,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
       sectionCount: 3,
       academicYearStartMonth: 6,
       financialYearStartMonth: 4,
+      timeZone: 'Asia/Kolkata',
     })));
     await waitFor(() => expect(api.put).toHaveBeenCalledWith('/schools/77/modules/ORDERS', { enabled: true }));
     expect(api.delete).toHaveBeenCalledWith('/schools/77/modules/STUDENTS');

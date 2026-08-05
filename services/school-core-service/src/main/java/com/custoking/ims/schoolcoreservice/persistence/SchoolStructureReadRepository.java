@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -20,6 +21,7 @@ import java.util.regex.Pattern;
 
 @Repository
 public class SchoolStructureReadRepository {
+    public static final String DEFAULT_TIME_ZONE = "Asia/Kolkata";
     public static final int DEFAULT_CONFIGURED_CLASS_COUNT = 15;
     public static final int MAX_CONFIGURED_CLASS_COUNT = 15;
     public static final int MAX_CONFIGURED_SECTION_COUNT = 26;
@@ -219,7 +221,7 @@ public class SchoolStructureReadRepository {
 
     public List<SuperadminSchoolStatsRow> schoolStats() {
         return jdbc.sql("""
-                        SELECT s.id, s.school_uid, s.name, s.short_code, s.city, s.active, s.created_at,
+                        SELECT s.id, s.school_uid, s.name, s.short_code, s.city, s.active, s.created_at, s.time_zone,
                                s.academic_year_start_month, s.financial_year_start_month,
                                '' AS admin_email,
                                0 AS orders_ytd,
@@ -239,6 +241,7 @@ public class SchoolStructureReadRepository {
                         rs.getLong("gmv_ytd"),
                         rs.getObject("academic_year_start_month", Integer.class),
                         rs.getObject("financial_year_start_month", Integer.class),
+                        rs.getString("time_zone"),
                         erpSince(rs.getObject("created_at", OffsetDateTime.class))))
                 .list();
     }
@@ -264,14 +267,15 @@ public class SchoolStructureReadRepository {
                 request.get("academicYearStartMonth"), AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH, 1, 12);
         int financialYearStartMonth = boundedInt(
                 request.get("financialYearStartMonth"), AcademicCalendar.DEFAULT_FINANCIAL_YEAR_START_MONTH, 1, 12);
+        String timeZone = validTimeZone(request.get("timeZone"), DEFAULT_TIME_ZONE);
         Long id = jdbc.sql("""
                 INSERT INTO tenant_school.schools (
                     name, short_code, city, state, contact_email, contact_phone, active,
                     configured_class_count, configured_section_count, academic_year_start_month,
-                    financial_year_start_month, created_at
+                    financial_year_start_month, time_zone, created_at
                 ) VALUES (
                     :name, :shortCode, :city, :state, :contactEmail, :contactPhone, true,
-                    :classCount, :sectionCount, :academicYearStartMonth, :financialYearStartMonth, :createdAt
+                    :classCount, :sectionCount, :academicYearStartMonth, :financialYearStartMonth, :timeZone, :createdAt
                 )
                 RETURNING id
                 """)
@@ -285,6 +289,7 @@ public class SchoolStructureReadRepository {
                 .param("sectionCount", sectionCount)
                 .param("academicYearStartMonth", academicYearStartMonth)
                 .param("financialYearStartMonth", financialYearStartMonth)
+                .param("timeZone", timeZone)
                 .param("createdAt", OffsetDateTime.now())
                 .query(Long.class)
                 .single();
@@ -303,6 +308,7 @@ public class SchoolStructureReadRepository {
                     city = :city,
                     academic_year_start_month = COALESCE(:academicYearStartMonth, academic_year_start_month),
                     financial_year_start_month = COALESCE(:financialYearStartMonth, financial_year_start_month),
+                    time_zone = COALESCE(:timeZone, time_zone),
                     active = COALESCE(:active, active)
                 WHERE id = :schoolId
                 """)
@@ -314,6 +320,9 @@ public class SchoolStructureReadRepository {
                         : null)
                 .param("financialYearStartMonth", request.containsKey("financialYearStartMonth")
                         ? boundedInt(request.get("financialYearStartMonth"), AcademicCalendar.DEFAULT_FINANCIAL_YEAR_START_MONTH, 1, 12)
+                        : null)
+                .param("timeZone", request.containsKey("timeZone")
+                        ? validTimeZone(request.get("timeZone"), null)
                         : null)
                 .param("active", request.get("active"))
                 .update();
@@ -334,6 +343,7 @@ public class SchoolStructureReadRepository {
         payload.put("active", details.get("active"));
         payload.put("academicYearStartMonth", details.get("academicYearStartMonth"));
         payload.put("financialYearStartMonth", details.get("financialYearStartMonth"));
+        payload.put("timeZone", details.get("timeZone"));
         outbox.append("school.upserted.v1", "SchoolUpserted:" + id, "School", String.valueOf(id), id, payload);
     }
 
@@ -560,7 +570,7 @@ public class SchoolStructureReadRepository {
         return jdbc.sql("""
                 SELECT id, school_uid, name, short_code, city, state, active,
                        configured_class_count, configured_section_count,
-                       academic_year_start_month, financial_year_start_month
+                       academic_year_start_month, financial_year_start_month, time_zone
                 FROM tenant_school.schools
                 WHERE id = :schoolId
                 """)
@@ -576,7 +586,8 @@ public class SchoolStructureReadRepository {
                         "configuredClassCount", rs.getObject("configured_class_count"),
                         "configuredSectionCount", rs.getObject("configured_section_count"),
                         "academicYearStartMonth", rs.getObject("academic_year_start_month", Integer.class),
-                        "financialYearStartMonth", rs.getObject("financial_year_start_month", Integer.class)))
+                        "financialYearStartMonth", rs.getObject("financial_year_start_month", Integer.class),
+                        "timeZone", rs.getString("time_zone")))
                 .single();
     }
 
@@ -653,6 +664,19 @@ public class SchoolStructureReadRepository {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String validTimeZone(Object value, String fallback) {
+        String timeZone = str(value, "").trim();
+        if (timeZone.isEmpty()) {
+            if (fallback != null) return fallback;
+            throw new IllegalArgumentException("timeZone is required");
+        }
+        try {
+            return ZoneId.of(timeZone).getId();
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException("timeZone must be a valid IANA timezone", ex);
+        }
     }
 
     private LocalDate localDate(Object value) {
@@ -762,5 +786,6 @@ public class SchoolStructureReadRepository {
             Long gmvYTD,
             Integer academicYearStartMonth,
             Integer financialYearStartMonth,
+            String timeZone,
             String erpSince) {}
 }

@@ -2,7 +2,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as XLSX from 'xlsx';
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { BulkImportPanel, extractXlsxPhotos, attachPhotos } from './BulkImportPanel';
+import { BulkImportPanel, extractXlsxPhotos, attachPhotos, normalizeImportCellValue } from './BulkImportPanel';
 import api from '../../../services/api';
 
 vi.mock('../../../services/api');
@@ -59,7 +59,7 @@ describe('BulkImportPanel Excel format', () => {
     vi.mocked(api.post).mockReset();
     const ws = XLSX.utils.aoa_to_sheet([
       ['Name', 'Class', 'Section', 'AdmissionNo', 'DateOfBirth'],
-      ['Aya', 'Nursery', 'A', 'A-1', new Date(Date.UTC(2022, 5, 1))],
+      ['Aya', 'Nursery', 'A', 'A-1', new Date(2022, 5, 1)],
     ], { cellDates: true });
     ws.E2.z = 'yyyy/mm/dd';
     const wb = XLSX.utils.book_new();
@@ -75,6 +75,13 @@ describe('BulkImportPanel Excel format', () => {
     const previewCall = vi.mocked(api.post).mock.calls.find(([url]) => url === '/students/import/upload-preview');
     const fd = previewCall?.[1] as FormData;
     expect(JSON.parse(String(fd.get('rowsJson')))[0]).toEqual(expect.objectContaining({ DateOfBirth: '2022-06-01' }));
+  });
+
+  it('formats spreadsheet dates from calendar fields without UTC conversion', () => {
+    const date = new Date(2022, 5, 1);
+    vi.spyOn(date, 'toISOString').mockReturnValue('2022-05-31T18:30:00.000Z');
+
+    expect(normalizeImportCellValue(date)).toBe('2022-06-01');
   });
 
   it('extracts an embedded image and maps it to the row anchored in the Photo column', async () => {

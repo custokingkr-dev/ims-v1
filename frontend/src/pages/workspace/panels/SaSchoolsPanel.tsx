@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, Stat } from '../ui';
 import { formatMoney } from '../utils';
+import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../../../utils/timeZones';
 
 type RoleAssignmentRow = {
   userId: number;
@@ -87,12 +88,12 @@ export function SaSchoolsPanel() {
   const [saSchoolsLoading, setSaSchoolsLoading] = useState(false);
   const [saSchoolsError, setSaSchoolsError] = useState('');
   const [saOnboardOpen, setSaOnboardOpen] = useState(false);
-  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
+  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', timeZone: DEFAULT_SCHOOL_TIME_ZONE });
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [editSchool, setEditSchool] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2' });
+  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2', timeZone: DEFAULT_SCHOOL_TIME_ZONE });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [restoreSchool, setRestoreSchool] = useState<any | null>(null);
@@ -106,6 +107,7 @@ export function SaSchoolsPanel() {
     setEditForm({
       classCount: String(school.configuredClassCount ?? MAX_CLASS_COUNT),
       sectionCount: String(school.configuredSectionCount ?? 2),
+      timeZone: school.timeZone || DEFAULT_SCHOOL_TIME_ZONE,
     });
     setEditError('');
   };
@@ -118,6 +120,9 @@ export function SaSchoolsPanel() {
     setEditError(''); setEditSaving(true);
     try {
       await api.put(`/schools/${editSchool.id}/structure`, { classCount, sectionCount });
+      if (editForm.timeZone !== (editSchool.timeZone || DEFAULT_SCHOOL_TIME_ZONE)) {
+        await api.patch(`/schools/${editSchool.id}`, { timeZone: editForm.timeZone });
+      }
       setToast(`${editSchool.name} structure updated`);
       setEditSchool(null);
       await loadSaSchools();
@@ -246,7 +251,7 @@ export function SaSchoolsPanel() {
       await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
       setToast(`${saOnboardForm.name} onboarded successfully`);
       setSaOnboardOpen(false);
-      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4' });
+      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', timeZone: DEFAULT_SCHOOL_TIME_ZONE });
       await loadSaSchools();
     } catch (e: any) {
       setSaOnboardErrors({ _: e?.response?.data?.message || 'Save failed. Please try again.' });
@@ -276,15 +281,16 @@ export function SaSchoolsPanel() {
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
           : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
           : <table className="ck-table">
-            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={13}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={14}><div className="ts">No schools found.</div></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'}</div></td>
                     <td>{school.shortCode || '—'}</td>
                     <td>{school.city || '—'}</td>
+                    <td>{school.timeZone || DEFAULT_SCHOOL_TIME_ZONE}</td>
                     <td>{school.configuredClassCount ?? '—'}</td>
                     <td>{school.configuredSectionCount ?? '—'}</td>
                     <td>{academicStartLabel(school.academicYearStartMonth)}</td>
@@ -341,6 +347,7 @@ export function SaSchoolsPanel() {
                   </select>
                   {saOnboardErrors.financialYearStartMonth ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.financialYearStartMonth}</div> : null}
                 </Field>
+                <Field label="Timezone *"><select value={saOnboardForm.timeZone} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, timeZone: e.target.value })}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></Field>
                 <Field label="Contact email"><input value={saOnboardForm.contactEmail} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, contactEmail: e.target.value })} /></Field>
                 <Field label="Contact phone"><input value={saOnboardForm.contactPhone} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, contactPhone: e.target.value })} /></Field>
               </div>
@@ -365,6 +372,7 @@ export function SaSchoolsPanel() {
               <div className="ck-form-grid ck-fg-2">
                 <Field label="No. of classes *"><input type="number" min={1} max={MAX_CLASS_COUNT} value={editForm.classCount} onChange={(e) => setEditForm({ ...editForm, classCount: e.target.value })} /></Field>
                 <Field label="Sections per class *"><input type="number" min={1} max={26} value={editForm.sectionCount} onChange={(e) => setEditForm({ ...editForm, sectionCount: e.target.value })} /></Field>
+                <Field label="Timezone *"><select value={editForm.timeZone} onChange={(e) => setEditForm({ ...editForm, timeZone: e.target.value })}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></Field>
               </div>
               <div className="ts" style={{ marginTop: 10 }}>Reducing a count is blocked if a removed class or section still has students.</div>
             </div>

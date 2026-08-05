@@ -20,6 +20,7 @@ import {
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
+import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../utils/timeZones';
 import {
   MODULE_CHILD_CODES,
   MODULE_GROUPS,
@@ -38,6 +39,7 @@ type SchoolRow = {
   operationsEmail?: string;
   academicYearStartMonth?: number;
   financialYearStartMonth?: number;
+  timeZone?: string;
 };
 
 type ModuleEntitlement = {
@@ -95,7 +97,8 @@ const defaultSchoolForm = {
   classCount: '15',
   sectionCount: '2',
   academicYearStartMonth: '4',
-  financialYearStartMonth: '4'
+  financialYearStartMonth: '4',
+  timeZone: DEFAULT_SCHOOL_TIME_ZONE,
 };
 
 const defaultAdminForm = {
@@ -833,6 +836,7 @@ export default function SchoolManagementPage() {
                 <div className="sms-detail-label"><Building2 size={14} /> Selected school</div>
                 <strong>{focusedSchool.name}</strong>
                 <span>{focusedSchool.shortCode || 'No code'}{focusedSchool.city ? ` - ${focusedSchool.city}` : ''}</span>
+                <span>{focusedSchool.timeZone || DEFAULT_SCHOOL_TIME_ZONE}</span>
               </div>
               <div className="sms-detail-cell">
                 <div className="sms-detail-label"><ShieldCheck size={14} /> Admin accounts</div>
@@ -937,6 +941,7 @@ export default function SchoolManagementPage() {
                   <div className="ck-field"><label>Sections per Class</label><input aria-label="Sections per Class" type="number" min={1} max={26} value={schoolForm.sectionCount} onChange={(e) => setSchoolForm((s) => ({ ...s, sectionCount: e.target.value }))} required /></div>
                   <div className="ck-field"><label>Academic Year Starts</label><select aria-label="Academic Year Starts" value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
                   <div className="ck-field"><label>Financial Year Starts</label><select aria-label="Financial Year Starts" value={schoolForm.financialYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, financialYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+                  <div className="ck-field"><label>Timezone</label><select aria-label="Timezone" value={schoolForm.timeZone} onChange={(e) => setSchoolForm((s) => ({ ...s, timeZone: e.target.value }))}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></div>
                   <div className="ck-field"><label>Contact Email</label><input aria-label="Contact Email" type="email" value={schoolForm.contactEmail} onChange={(e) => setSchoolForm((s) => ({ ...s, contactEmail: e.target.value }))} /></div>
                   <div className="ck-field"><label>Contact Phone</label><input aria-label="Contact Phone" value={schoolForm.contactPhone} onChange={(e) => setSchoolForm((s) => ({ ...s, contactPhone: e.target.value }))} /></div>
                 </div>
