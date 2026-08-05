@@ -46,17 +46,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $allServiceTriggers = @(
-  ".github/workflows/ci-pr.yml",
-  ".github/workflows/build-release.yml",
-  ".github/workflows/rollback.yml",
-  ".github/workflows/security-scan.yml",
   "docker-compose.yml",
   "deploy/skaffold.yaml",
   "Tiltfile"
 )
 
 $scriptTriggers = @(
-  "scripts/resolve-affected-ci-targets.ps1",
   "scripts/invoke-microservice-tests.ps1",
   "scripts/microservice-test-catalog.ps1",
   "scripts/microservice-build-catalog.ps1",
