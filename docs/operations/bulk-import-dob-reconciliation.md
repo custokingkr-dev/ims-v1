@@ -23,9 +23,10 @@ changes.
 A candidate must satisfy every condition below:
 
 - original workbook SHA-256 matches the immutable bulk-import object;
-- workbook batch ID, parsed row number, and case-insensitive admission number match an import row;
-- the import row has an `applied_student_id`;
-- student ID, school ID, import batch ID, and admission number match that applied row;
+- workbook batch ID, stored source SHA-256, and parsed row number match an import row;
+- the completed import row has an `applied_student_id`, and its normalized DOB equals the
+  reproduced historical shifted value;
+- applied student ID and school ID match that import row and batch;
 - current DOB equals the exact historical UTC-shifted value;
 - workbook calendar DOB is exactly one day after that shifted value.
 
@@ -33,6 +34,12 @@ Rows rejected during import remain unmatched and are never changed. A record alr
 is reported as `alreadyIntended`. A record changed to any other value after import is reported
 as `other` and is never overwritten. School names are display-only and are never identity keys,
 so two schools with the same name cannot affect one another.
+
+Historical batches stored source rows as one-based data-row indexes, while newer batches store
+physical workbook row numbers that include the header. The repair detects the convention once
+per batch and requires that exact row identity. This also handles legacy workbooks where Excel
+formatted an admission-number cell as a date and its text serialization changed during import.
+The normalized DOB, source hash, applied student ID, and school must still agree.
 
 ## Build Evidence
 

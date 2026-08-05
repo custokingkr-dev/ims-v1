@@ -38,8 +38,29 @@ $config = if ($Environment -eq "prod") {
 }
 $evidence = Get-Content -Raw -LiteralPath $EvidenceJson | ConvertFrom-Json
 $records = @($evidence.records)
+$workbooks = @($evidence.workbooks)
 if ($records.Count -eq 0) {
   throw "DOB evidence contains no shifted-date records."
+}
+if ($workbooks.Count -eq 0) {
+  throw "DOB evidence contains no source workbook metadata."
+}
+$workbookByBatch = @{}
+foreach ($workbook in $workbooks) {
+  $batchId = [string]$workbook.batchId
+  $sha256 = ([string]$workbook.sha256).ToLowerInvariant()
+  if (-not $batchId -or $sha256 -notmatch '^[0-9a-f]{64}$') {
+    throw "DOB evidence contains invalid source workbook metadata."
+  }
+  if ($workbookByBatch.ContainsKey($batchId)) {
+    throw "DOB evidence contains duplicate workbook metadata for batch $batchId."
+  }
+  $workbookByBatch[$batchId] = $sha256
+}
+foreach ($record in $records) {
+  if (-not $workbookByBatch.ContainsKey([string]$record.batchId)) {
+    throw "DOB evidence record references batch $($record.batchId) without source workbook metadata."
+  }
 }
 
 function ConvertTo-SqlLiteral([object]$Value) {
@@ -84,32 +105,42 @@ function Invoke-RepairSql([string]$Sql, [string]$MarkerPrefix) {
 
 function New-EvidenceValues([object[]]$Chunk) {
   return ($Chunk | ForEach-Object {
-    "($(ConvertTo-SqlLiteral $_.batchId), $([int]$_.rowNumber), $(ConvertTo-SqlLiteral $_.admissionNo), $(ConvertTo-SqlLiteral $_.intendedDob)::date, $(ConvertTo-SqlLiteral $_.observedBuggyDob)::date)"
+    $sourceSha256 = $workbookByBatch[[string]$_.batchId]
+    "($(ConvertTo-SqlLiteral $_.batchId), $([int]$_.rowNumber), $(ConvertTo-SqlLiteral $_.admissionNo), $(ConvertTo-SqlLiteral $_.intendedDob)::date, $(ConvertTo-SqlLiteral $_.observedBuggyDob)::date, $(ConvertTo-SqlLiteral $sourceSha256))"
   }) -join ",`n"
 }
 
 function New-MatchesCte([object[]]$Chunk) {
   $values = New-EvidenceValues $Chunk
   return @"
-WITH evidence(batch_id, row_no, admission_no, intended_dob, observed_dob) AS (
+WITH evidence(batch_id, workbook_row_no, admission_no, intended_dob, observed_dob, source_sha256) AS (
   VALUES
 $values
 ), matches AS (
-  SELECT e.batch_id, e.row_no, e.admission_no, e.intended_dob, e.observed_dob,
+  SELECT e.batch_id, e.workbook_row_no, e.admission_no, e.intended_dob, e.observed_dob,
          ir.id AS import_row_id, ir.school_id, s.id AS student_id, s.dob AS current_dob,
+         NULLIF(ir.normalized_json, '')::jsonb ->> 'dateOfBirth' AS normalized_dob,
          sch.name AS school_name,
          md5((to_jsonb(s) - 'dob')::text) AS other_columns_hash
   FROM evidence e
+  JOIN student.import_batches b
+    ON b.id = e.batch_id
+   AND b.status = 'DONE'
+   AND lower(b.original_file_sha256) = e.source_sha256
   JOIN student.import_rows ir
     ON ir.batch_id = e.batch_id
-   AND ir.row_no = e.row_no
-   AND lower(ir.admission_no) = lower(e.admission_no)
+   -- Old batches numbered the first data row as 1; newer batches retain workbook row numbers.
+   AND ir.row_no = e.workbook_row_no - CASE
+     WHEN EXISTS (
+       SELECT 1 FROM student.import_rows convention
+       WHERE convention.batch_id = e.batch_id AND convention.row_no = 1
+     ) THEN 1 ELSE 0 END
+   AND ir.status = 'Imported'
    AND ir.applied_student_id IS NOT NULL
   JOIN student.students s
     ON s.id = ir.applied_student_id
    AND s.school_id = ir.school_id
-   AND s.import_batch_id = e.batch_id
-   AND lower(s.admission_no) = lower(e.admission_no)
+   AND s.school_id = b.school_id
   JOIN tenant_school.schools sch ON sch.id = s.school_id
 )
 "@
@@ -136,9 +167,9 @@ SELECT json_build_object(
   'schoolId', school_id,
   'schoolName', school_name,
   'matched', count(*),
-  'eligible', count(*) FILTER (WHERE current_dob = observed_dob AND intended_dob = observed_dob + 1),
+  'eligible', count(*) FILTER (WHERE normalized_dob = observed_dob::text AND current_dob = observed_dob AND intended_dob = observed_dob + 1),
   'alreadyIntended', count(*) FILTER (WHERE current_dob = intended_dob),
-  'other', count(*) FILTER (WHERE NOT (current_dob = observed_dob AND intended_dob = observed_dob + 1) AND current_dob IS DISTINCT FROM intended_dob)
+  'other', count(*) FILTER (WHERE NOT (normalized_dob = observed_dob::text AND current_dob = observed_dob AND intended_dob = observed_dob + 1) AND current_dob IS DISTINCT FROM intended_dob)
 )::text
 FROM matches
 GROUP BY batch_id, school_id, school_name
@@ -187,7 +218,8 @@ if ($Apply) {
     $sql = "BEGIN;`n" + $cte + @"
 , eligible AS (
   SELECT * FROM matches
-  WHERE current_dob = observed_dob
+  WHERE normalized_dob = observed_dob::text
+    AND current_dob = observed_dob
     AND intended_dob = observed_dob + 1
 ), updated AS (
   UPDATE student.students s
