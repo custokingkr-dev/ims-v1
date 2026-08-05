@@ -78,9 +78,9 @@ services/api-gateway/**           -> api-gateway
 frontend/**                       -> frontend
 ```
 
-A service-specific `deploy/cloudrun/<service>.yaml` change affects that service. Global workflow, catalog, Skaffold, relevant environment target, or delivery-pipeline changes affect the full fleet. A `targets-dev.yaml` change does not redeploy prod, and a `targets-prod.yaml` change does not redeploy dev.
+A service-specific `deploy/cloudrun/<service>.yaml` change affects that service. Shared build catalogs, reusable service workflows, Skaffold, the relevant environment target, or delivery-pipeline changes affect the full fleet. A `targets-dev.yaml` change does not redeploy prod, and a `targets-prod.yaml` change does not redeploy dev.
 
-Documentation-only commits complete as a no-op and do not build or deploy containers.
+Documentation-only, top-level workflow-only, resolver-only, and rollout-monitor-only commits complete as a no-op and do not build or deploy containers. These orchestration changes take effect on the next application or deployment-configuration release.
 
 Manual dispatch supports:
 
@@ -142,7 +142,7 @@ Production strategy:
 5% -> 25% -> 50% -> stable
 ```
 
-The rollout monitor polls all affected releases in one loop and advances ready canary phases without serially waiting for an entire service pipeline before observing the next one.
+The rollout monitor polls all affected releases in one loop and advances ready canary phases without serially waiting for an entire service pipeline before observing the next one. It does not advance a rollout while Cloud Deploy reports `PENDING_RELEASE`; phase advancement starts only after rendering completes and the rollout is `IN_PROGRESS`.
 
 Production runs are never automatically cancelled. Deploy and rollback share the same environment concurrency group, so those mutations cannot overlap.
 

@@ -43,7 +43,7 @@ The biggest remaining cost risk is not raw traffic from new schools. It is fixed
 1. Cloud SQL is the main unavoidable fixed component. Prod is `db-g1-small`, zonal, 10 GB PD-SSD, backups enabled. This is intentionally small; do not scale it up until metrics force it.
 2. Cloud Run min instances are currently `0`. Keep that default. Turning on `min-instances=1` across the gateway plus five Java services would create continuous idle spend.
 3. The current outbox relays are `@Scheduled` pollers inside request-based Cloud Run services. With min instances `0`, those pollers only run while a service is awake. This is a product-latency/correctness tradeoff, not just a cost setting.
-4. Dev and prod are both deployed in the same project. Dev Cloud SQL is small, but still `activationPolicy=ALWAYS`. Dev should become schedulable/off-hours rather than always running.
+4. Dev and prod are both deployed in the same project. Dev Cloud SQL is scheduled to start at 08:00 IST on weekdays and stop at 20:00 IST every day; deployments also start and wait for it when required. Production remains continuously available.
 5. Cost attribution by school is not available from GCP billing alone because schools share the same services, database, buckets, and topics. Per-school unit economics must be added at the application metrics layer.
 
 Recommended direction:
@@ -56,7 +56,7 @@ Recommended direction:
 
 ## Verified Current State
 
-This section is based on live `gcloud.cmd` checks on 2026-08-04 plus repo files, after the latest dev/prod deployment of commit `83abe626f32d64e4701d6f3c838008bfaabfa3b4`.
+This section is based on live `gcloud.cmd` checks on 2026-08-05 plus repo files. The cost-control application release is `rel-prod-58061a5e8e23-1`; the repository and both environment branches include the subsequent rollout-waiter fix at commit `96fb1eb71209dd8b21009489493b2811069217ff`.
 
 ### Runtime Topology
 
