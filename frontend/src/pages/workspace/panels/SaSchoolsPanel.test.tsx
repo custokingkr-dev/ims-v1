@@ -67,10 +67,12 @@ describe('SaSchoolsPanel structure edit', () => {
     fireEvent.click(screen.getByRole('button', { name: /edit structure/i }));
     const dialog = screen.getByRole('dialog');
 
-    fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'Europe/London' } });
+    fireEvent.change(within(dialog).getAllByRole('combobox')[0], { target: { value: 'Europe/London' } });
     fireEvent.click(within(dialog).getByRole('button', { name: /save/i }));
 
-    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/schools/7', { timeZone: 'Europe/London' }));
+    await waitFor(() => expect(api.patch).toHaveBeenCalledWith('/schools/7', expect.objectContaining({
+      timeZone: 'Europe/London', countryCode: 'IN', locale: 'en-IN', currencyCode: 'INR', phoneRegion: 'IN',
+    })));
   });
 
   it('loads archived students and restores a selected student', async () => {

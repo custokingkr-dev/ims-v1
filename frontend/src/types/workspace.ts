@@ -129,6 +129,11 @@ export interface WorkspaceSchool {
   students?: number;
   academicYearStartMonth?: number;
   financialYearStartMonth?: number;
+  timeZone?: string;
+  countryCode?: string;
+  locale?: string;
+  currencyCode?: string;
+  phoneRegion?: string;
 }
 
 export interface WorkspaceDashboard {

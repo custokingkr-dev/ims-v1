@@ -29,6 +29,7 @@ import { deriveCommandCentreCards, panelForCard } from './command/commandCentreU
 import { ProofOfLifeModal } from './command/ProofOfLifeModals';
 import { fetchCommandCenterMetrics } from '../../../api/dashboardCommandCenterApi';
 import type { DashboardCommandCenterResponse } from '../../../types/dashboardCommandCenter';
+import { formatSchoolCurrency } from '../../../utils/schoolLocalization';
 import { ActionInsightCard } from '../dashboard/components/ActionInsightCard';
 import { FeeDefaultersDrawer } from '../dashboard/drawers/FeeDefaultersDrawer';
 import { ClassPhotographyDrawer } from '../dashboard/drawers/ClassPhotographyDrawer';
@@ -250,7 +251,7 @@ interface KpiDef {
   panelKey: PanelKey;
 }
 
-function buildKpis(d: WorkspaceData['dashboard'], moduleAccess: DashboardModuleAccess): KpiDef[] {
+function buildKpis(d: WorkspaceData['dashboard'], moduleAccess: DashboardModuleAccess, school: WorkspaceData['school']): KpiDef[] {
   const attendanceState = d.attendanceState
     ?? (d.attendanceSubmittedSections ? 'SUBMITTED' : 'NOT_STARTED');
   const submittedSections = d.attendanceSubmittedSections ?? 0;
@@ -276,9 +277,9 @@ function buildKpis(d: WorkspaceData['dashboard'], moduleAccess: DashboardModuleA
     },
     {
       id: 'fees', label: 'Fees Collected',
-      value: feesConfigured ? `₹${d.feeCollectedLakh}L` : 'Not set',
+      value: feesConfigured ? formatSchoolCurrency(Number(d.feeCollectedLakh) * 100_000, school) : 'Not set',
       unit: '',
-      sub: feesConfigured ? `of ₹${d.feeTargetLakh}L this academic year` : 'No active fee target',
+      sub: feesConfigured ? `of ${formatSchoolCurrency(Number(d.feeTargetLakh) * 100_000, school)} this academic year` : 'No active fee target',
       status: d.feeOverdueCount > 0 ? `${d.feeOverdueCount} overdue` : feesConfigured ? 'On track' : 'Setup needed',
       tone: d.feeOverdueCount > 0 || !feesConfigured ? 'warn' : 'ok',
       module: 'fees',
@@ -311,7 +312,9 @@ function GreetingHeader({
   onAcceptCritical: (a: CommandCentreCard) => void;
 }) {
   const { can } = usePermissions();
-  const h = new Date().getHours();
+  const h = Number(new Intl.DateTimeFormat('en', {
+    hour: '2-digit', hourCycle: 'h23', timeZone: workspace.school.timeZone || 'Asia/Kolkata',
+  }).formatToParts(new Date()).find((part) => part.type === 'hour')?.value || new Date().getHours());
   const d = workspace.dashboard;
   const summaryParts: string[] = [];
   if (moduleAccess.erp) {
@@ -388,7 +391,7 @@ function PulseKpis({
   setPanel: (k: PanelKey) => void;
   moduleAccess: DashboardModuleAccess;
 }) {
-  const kpis = buildKpis(workspace.dashboard, moduleAccess);
+  const kpis = buildKpis(workspace.dashboard, moduleAccess, workspace.school);
   if (kpis.length === 0) return null;
 
   return (
@@ -423,9 +426,10 @@ function PulseKpis({
 
 // §3b: Action Insights — real-time metrics from backend command-center endpoint
 function ActionInsightsSection({
-  metrics, moduleAccess, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
+  metrics, school, moduleAccess, onOpenFeeDefaulters, onOpenClassPhotography, onOpenStudentReview, onOpenLowAttendance, onOpenVendorDues, onOpenReorderSignals,
 }: {
   metrics: DashboardCommandCenterResponse | null;
+  school: WorkspaceData['school'];
   moduleAccess: DashboardModuleAccess;
   onOpenFeeDefaulters: () => void;
   onOpenClassPhotography: () => void;
@@ -458,7 +462,7 @@ function ActionInsightsSection({
           description="Students with outstanding fee balance in the active academic year."
           metrics={[
             { value: fees.defaulterCount, label: 'defaulters', variant: feeVariant },
-            ...(overdueRupees > 0 ? [{ value: `₹${overdueRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'overdue', variant: 'danger' as const }] : []),
+            ...(overdueRupees > 0 ? [{ value: formatSchoolCurrency(overdueRupees, school), label: 'overdue', variant: 'danger' as const }] : []),
             ...(fees.oldestDueDays > 0 ? [{ value: `${fees.oldestDueDays}d`, label: 'oldest due', variant: 'warn' as const }] : []),
           ]}
           ctaLabel="View Defaulters"
@@ -483,8 +487,8 @@ function ActionInsightsSection({
           title="Class Photography"
           description="Student contribution status for the upcoming photography event."
           metrics={[
-            ...(photoCollectedRupees > 0 ? [{ value: `₹${photoCollectedRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'collected', variant: 'ok' as const }] : []),
-            ...(photoPendingRupees > 0 ? [{ value: `₹${photoPendingRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'pending', variant: 'warn' as const }] : []),
+            ...(photoCollectedRupees > 0 ? [{ value: formatSchoolCurrency(photoCollectedRupees, school), label: 'collected', variant: 'ok' as const }] : []),
+            ...(photoPendingRupees > 0 ? [{ value: formatSchoolCurrency(photoPendingRupees, school), label: 'pending', variant: 'warn' as const }] : []),
             ...(photography.eventId == null ? [{ value: '—', label: 'no active event' }] : []),
           ]}
           ctaLabel="View Payments"
@@ -515,7 +519,7 @@ function ActionInsightsSection({
           description="Approved orders and urgent procurement requests with outstanding vendor payment."
           metrics={[
             { value: (vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0), label: 'unpaid orders', variant: ((vendorDues?.catalogOrderCount ?? 0) + (vendorDues?.firefightingCount ?? 0)) > 0 ? 'warn' : 'ok' },
-            ...(vendorDues?.totalDuesPaise > 0 ? [{ value: `₹${(vendorDues.totalDuesPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label: 'total due', variant: 'warn' as const }] : []),
+            ...(vendorDues?.totalDuesPaise > 0 ? [{ value: formatSchoolCurrency(vendorDues.totalDuesPaise / 100, school), label: 'total due', variant: 'warn' as const }] : []),
           ]}
           ctaLabel="View Dues"
           onCta={onOpenVendorDues}
@@ -1355,6 +1359,7 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
       {/* §3b Action Insights */}
       <ActionInsightsSection
         metrics={commandCenterMetrics}
+        school={workspace.school}
         moduleAccess={moduleAccess}
         onOpenFeeDefaulters={() => setShowFeeDefaulters(true)}
         onOpenClassPhotography={() => setShowClassPhotography(true)}

@@ -362,7 +362,28 @@ public class TenantSchoolController {
         requireToken(token, "tenant-school:read");
         TenantScope.requirePermissionIfAuthenticated("school:read");
         TenantScope.requireSuperAdmin();
-        return structure.schoolStats();
+        return structure.schoolStats().stream().map(row -> {
+            Map<String, Object> school = new LinkedHashMap<>();
+            school.put("id", row.id());
+            school.put("schoolUid", row.schoolUid());
+            school.put("name", row.name());
+            school.put("shortCode", row.shortCode());
+            school.put("city", row.city());
+            school.put("active", row.active());
+            school.put("adminEmail", row.adminEmail());
+            school.put("ordersYTD", row.ordersYTD());
+            school.put("gmvYTD", row.gmvYTD());
+            school.put("academicYearStartMonth", row.academicYearStartMonth());
+            school.put("financialYearStartMonth", row.financialYearStartMonth());
+            school.put("timeZone", row.timeZone());
+            school.put("countryCode", row.countryCode());
+            school.put("locale", row.locale());
+            school.put("currencyCode", row.currencyCode());
+            school.put("phoneRegion", row.phoneRegion());
+            school.put("erpSince", row.erpSince());
+            school.put("photoImportFolder", photoFolders.statusForSchool(row.id()));
+            return school;
+        }).toList();
     }
 
     @GetMapping("/zones")
@@ -576,6 +597,10 @@ public class TenantSchoolController {
             Integer academicYearStartMonth,
             Integer financialYearStartMonth,
             String timeZone,
+            String countryCode,
+            String locale,
+            String currencyCode,
+            String phoneRegion,
             OffsetDateTime createdAt) {
         static SchoolResponse from(SchoolEntity school) {
             return new SchoolResponse(
@@ -593,6 +618,10 @@ public class TenantSchoolController {
                     school.getAcademicYearStartMonth(),
                     school.getFinancialYearStartMonth(),
                     school.getTimeZone(),
+                    school.getCountryCode(),
+                    school.getLocale(),
+                    school.getCurrencyCode(),
+                    school.getPhoneRegion(),
                     school.getCreatedAt());
         }
     }

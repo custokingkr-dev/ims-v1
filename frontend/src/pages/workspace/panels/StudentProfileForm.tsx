@@ -73,7 +73,7 @@ export function StudentProfileForm({
             </select>
           </Field>
           <Field label="Academic year">
-            <input value={form.academicYear} onChange={(e) => update({ academicYear: e.target.value })} />
+            <input value={form.academicYear} readOnly />
           </Field>
           <Field label="Admission date">
             <input type="date" value={form.admissionDate} onChange={(e) => update({ admissionDate: e.target.value })} />
@@ -91,13 +91,13 @@ export function StudentProfileForm({
             <input value={form.fatherName} onChange={(e) => update({ fatherName: e.target.value })} />
           </Field>
           <Field label="Father contact number">
-            <input value={form.fatherContact} onChange={(e) => update({ fatherContact: e.target.value.replace(/\D/g, '').slice(0, 10) })} />
+            <input type="tel" value={form.fatherContact} onChange={(e) => update({ fatherContact: normalizePhoneInput(e.target.value) })} />
           </Field>
           <Field label="Mother name">
             <input value={form.motherName} onChange={(e) => update({ motherName: e.target.value })} />
           </Field>
           <Field label="Phone">
-            <input value={form.phone} onChange={(e) => update({ phone: e.target.value.replace(/\D/g, '').slice(0, 10) })} />
+            <input type="tel" value={form.phone} onChange={(e) => update({ phone: normalizePhoneInput(e.target.value) })} />
           </Field>
         </div>
       </div>
@@ -123,8 +123,8 @@ export function StudentProfileForm({
           <Field label="State">
             <input value={form.state} onChange={(e) => update({ state: e.target.value })} />
           </Field>
-          <Field label="PIN code">
-            <input value={form.pinCode} onChange={(e) => update({ pinCode: e.target.value.replace(/\D/g, '').slice(0, 6) })} />
+          <Field label="Postal code">
+            <input value={form.pinCode} onChange={(e) => update({ pinCode: e.target.value.slice(0, 16) })} />
           </Field>
         </div>
         {form.fullAddress ? (
@@ -141,4 +141,10 @@ export function StudentProfileForm({
       </div>
     </>
   );
+}
+
+function normalizePhoneInput(value: string): string {
+  const trimmed = value.trimStart();
+  const prefix = trimmed.startsWith('+') ? '+' : '';
+  return prefix + trimmed.replace(/\D/g, '').slice(0, 15);
 }

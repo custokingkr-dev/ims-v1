@@ -29,6 +29,11 @@ Changing a school timezone does not rewrite DOBs, historical timestamps, or any 
 data. It changes only how future timezone-aware features interpret local schedules and present
 instants for that school.
 
+Migration `V25__school_localization.sql` adds the school's ISO country, BCP 47 locale, ISO
+currency, and phone region. Existing schools are backfilled to `IN`, `en-IN`, `INR`, and `IN`.
+The `school.upserted.v1` projection copies these fields plus `timeZone` into
+`reporting.dim_school`; `GET /api/v1/workspace` returns the projected values under `school`.
+
 ## Application Rules
 
 - Keep service and database runtime clocks in UTC.
@@ -39,6 +44,7 @@ instants for that school.
 - Persist the timezone used when a business event's local interpretation must remain auditable.
 - Test positive offsets, negative offsets, midnight boundaries, and a daylight-saving zone.
 - Do not infer timezone from school name, city, state, IP address, browser, or GCP region.
+- Format currency with the school's locale and ISO currency; do not infer it from timezone.
 
 ## Bulk Import DOB
 
@@ -46,3 +52,7 @@ Excel stores a date cell as a calendar serial. SheetJS can expose that value as 
 `Date` at local midnight. Read `getFullYear()`, `getMonth()`, and `getDate()` and serialize those
 calendar fields directly. Calling `toISOString()` changes the day in positive-offset zones and
 was the source of the historical bulk-import defect.
+
+Manual student create/edit calls the same bounded DOB parser as bulk import. Admission date is
+also persisted as PostgreSQL `date` by student migration V15. Neither date is converted through
+the school timezone.

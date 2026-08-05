@@ -276,6 +276,7 @@ public class ReportingReadRepository {
         String yearId = currentAcademicYearId(schoolId);
         int academicYearStartMonth = schoolYearStartMonth(schoolId, "academic_year_start_month");
         int financialYearStartMonth = schoolYearStartMonth(schoolId, "financial_year_start_month");
+        Map<String, String> localization = schoolLocalization(schoolId);
         String schoolName = schoolId == null
                 ? "All Schools"
                 : jdbc.sql("SELECT name FROM reporting.dim_school WHERE id = :schoolId")
@@ -406,6 +407,7 @@ public class ReportingReadRepository {
         result.put("schoolMeta", academicYearLabel);
         result.put("academicYearStartMonth", academicYearStartMonth);
         result.put("financialYearStartMonth", financialYearStartMonth);
+        result.putAll(localization);
         result.put("students", students);
         result.put("sections", sections);
         result.put("attendancePercent", attendancePercent);
@@ -1002,6 +1004,25 @@ public class ReportingReadRepository {
             return 4;
         }
         return configuredSchoolYearStartMonth(schoolId, column).orElse(4);
+    }
+
+    private Map<String, String> schoolLocalization(Long schoolId) {
+        Map<String, String> defaults = Map.of(
+                "timeZone", "Asia/Kolkata", "countryCode", "IN", "locale", "en-IN",
+                "currencyCode", "INR", "phoneRegion", "IN");
+        if (schoolId == null) return defaults;
+        return jdbc.sql("""
+                        SELECT time_zone, country_code, locale, currency_code, phone_region
+                        FROM reporting.dim_school WHERE id = :schoolId
+                        """)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> Map.of(
+                        "timeZone", rs.getString("time_zone"),
+                        "countryCode", rs.getString("country_code"),
+                        "locale", rs.getString("locale"),
+                        "currencyCode", rs.getString("currency_code"),
+                        "phoneRegion", rs.getString("phone_region")))
+                .optional().orElse(defaults);
     }
 
     private Optional<Integer> configuredSchoolYearStartMonth(Long schoolId, String column) {

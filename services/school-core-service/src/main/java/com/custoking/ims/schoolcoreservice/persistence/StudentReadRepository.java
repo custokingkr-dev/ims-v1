@@ -226,7 +226,7 @@ public class StudentReadRepository {
     public Map<String, Object> workspaceStudentDetail(Long id) {
         return jdbc.sql("""
                 SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
-                       s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
+                       s.admission_date, s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
                        s.photo_url, s.fee_status, s.attendance_percent, s.school_id, s.class_id, s.section_id,
                        s.deleted_at, s.deleted_reason,
@@ -285,6 +285,8 @@ public class StudentReadRepository {
                     detail.put("classId", rs.getString("class_id"));
                     detail.put("sectionId", rs.getString("section_id"));
                     detail.put("dateOfBirth", rs.getObject("dob", LocalDate.class) == null ? null : rs.getObject("dob", LocalDate.class).toString());
+                    detail.put("admissionDate", rs.getObject("admission_date", LocalDate.class) == null
+                            ? null : rs.getObject("admission_date", LocalDate.class).toString());
                     detail.put("gender", rs.getString("gender"));
                     detail.put("boardRegistrationNumber", rs.getString("board_reg_no"));
                     detail.put("motherName", rs.getString("mother_name"));
@@ -340,12 +342,12 @@ public class StudentReadRepository {
         Long id;
         try {
             id = jdbc.sql("""
-                    INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, gender,
+                    INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, admission_date, gender,
                                          father_name, father_contact, mother_name, phone, address,
                                          house_number, street, locality, city, state, pin_code, photo_url,
                                          fee_status, attendance_percent, created_at, updated_at,
                                          school_id, class_id, section_id, academic_year_id, version)
-                    VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :gender,
+                    VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :admissionDate, :gender,
                             :fatherName, :fatherContact, :motherName, :phone, :address,
                             :houseNumber, :street, :locality, :city, :state, :pinCode, :photoUrl,
                             'Pending', 0, :createdAt, :updatedAt,
@@ -356,7 +358,8 @@ public class StudentReadRepository {
                     .param("rollNo", str(request.get("rollNo"), String.valueOf(countBySection(String.valueOf(section.get("id"))) + 1)))
                     .param("boardRegNo", str(request.get("boardRegistrationNumber"), ""))
                     .param("fullName", fullName)
-                    .param("dob", parseDate(str(request.get("dateOfBirth"), "")))
+                    .param("dob", parseDateOfBirth(str(request.get("dateOfBirth"), "")))
+                    .param("admissionDate", parseDate(str(request.get("admissionDate"), "")))
                     .param("gender", str(request.get("gender"), "Unspecified"))
                     .param("fatherName", str(request.get("fatherName"), ""))
                     .param("fatherContact", str(firstPresent(request, "fatherContactNumber", "fatherContact"), ""))
@@ -372,8 +375,8 @@ public class StudentReadRepository {
                     .param("houseNumber", str(request.get("houseNumber"), ""))
                     .param("street", str(request.get("street"), ""))
                     .param("locality", str(request.get("locality"), ""))
-                    .param("city", str(request.get("city"), "Hyderabad"))
-                    .param("state", str(request.get("state"), "Telangana"))
+                    .param("city", str(request.get("city"), ""))
+                    .param("state", str(request.get("state"), ""))
                     .param("pinCode", str(request.get("pinCode"), ""))
                     .param("photoUrl", str(request.get("photoUrl"), null))
                     .param("createdAt", now)
@@ -452,7 +455,7 @@ public class StudentReadRepository {
             jdbc.sql("""
                     UPDATE student.students SET
                         full_name = :fullName, roll_no = :rollNo, admission_no = :admissionNo,
-                        board_reg_no = :boardRegNo, dob = :dob, gender = :gender,
+                        board_reg_no = :boardRegNo, dob = :dob, admission_date = :admissionDate, gender = :gender,
                         father_name = :fatherName, father_contact = :fatherContact, mother_name = :motherName,
                         phone = :phone, address = :address, house_number = :houseNumber, street = :street,
                         locality = :locality, city = :city, state = :state, pin_code = :pinCode,
@@ -465,7 +468,8 @@ public class StudentReadRepository {
                     .param("rollNo", str(request.get("rollNo"), ""))
                     .param("admissionNo", admissionNo)
                     .param("boardRegNo", str(firstPresent(request, "boardRegistrationNumber", "boardRegNo"), ""))
-                    .param("dob", parseDate(str(firstPresent(request, "dateOfBirth", "dob"), "")))
+                    .param("dob", parseDateOfBirth(str(firstPresent(request, "dateOfBirth", "dob"), "")))
+                    .param("admissionDate", parseDate(str(request.get("admissionDate"), "")))
                     .param("gender", str(request.get("gender"), "Unspecified"))
                     .param("fatherName", str(request.get("fatherName"), ""))
                     .param("fatherContact", str(firstPresent(request, "fatherContactNumber", "fatherContact"), ""))
@@ -2625,6 +2629,7 @@ public class StudentReadRepository {
         }
         try {
             StudentImportDateParser.parseDateOfBirth(str(normalized.get("dateOfBirth"), ""));
+            StudentImportDateParser.parseOptional(str(normalized.get("admissionDate"), ""));
         } catch (IllegalArgumentException ex) {
             return new ImportValidation("Invalid date", ex.getMessage(), false, true, false);
         }
@@ -2657,7 +2662,7 @@ public class StudentReadRepository {
                     "Class section is not active for this school's configured setup",
                     false, true, false);
         }
-        if (!str(normalized.get("phone"), "").replaceAll("\\D+", "").matches("\\d{10}")) {
+        if (!validInternationalPhone(str(normalized.get("phone"), ""))) {
             return new ImportValidation("Warning", "Phone is unusual format", true, false, true);
         }
         return new ImportValidation("Valid", "", true, false, false);
@@ -2685,12 +2690,12 @@ public class StudentReadRepository {
         }
         OffsetDateTime now = OffsetDateTime.now();
         return jdbc.sql("""
-                        INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, gender,
+                        INSERT INTO student.students(admission_no, roll_no, board_reg_no, full_name, dob, admission_date, gender,
                                              father_name, father_contact, phone, address,
                                              house_number, street, locality, city, state, pin_code,
                                              fee_status, attendance_percent, imported_at, import_batch_id,
                                              created_at, updated_at, school_id, class_id, section_id, academic_year_id, version)
-                        VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :gender,
+                        VALUES (:admissionNo, :rollNo, :boardRegNo, :fullName, :dob, :admissionDate, :gender,
                                 :fatherName, :fatherContact, :phone, :address,
                                 :houseNumber, :street, :locality, :city, :state, :pinCode,
                                 'Pending', 0, :importedAt, :batchId,
@@ -2702,6 +2707,7 @@ public class StudentReadRepository {
                 .param("boardRegNo", str(normalized.get("boardRegistrationNo"), ""))
                 .param("fullName", str(normalized.get("name"), ""))
                 .param("dob", StudentImportDateParser.parseDateOfBirth(str(normalized.get("dateOfBirth"), "")))
+                .param("admissionDate", StudentImportDateParser.parseOptional(str(normalized.get("admissionDate"), "")))
                 .param("gender", str(normalized.get("gender"), "Unspecified"))
                 .param("fatherName", str(normalized.get("fatherName"), ""))
                 .param("fatherContact", str(normalized.get("phone"), ""))
@@ -2785,6 +2791,7 @@ public class StudentReadRepository {
                 "sectionName", firstPresentIgnoreCase(rawRow, "Section", "section", "sectionName"),
                 "admissionNo", firstPresentIgnoreCase(rawRow, "AdmissionNo", "admissionNo", "Admission No"),
                 "dateOfBirth", firstPresentIgnoreCase(rawRow, "DateOfBirth", "dateOfBirth"),
+                "admissionDate", firstPresentIgnoreCase(rawRow, "AdmissionDate", "Admission Date", "admissionDate"),
                 "gender", firstPresentIgnoreCase(rawRow, "Gender", "gender"),
                 "fatherName", firstPresentIgnoreCase(rawRow, "FatherName", "fatherName"),
                 "phone", firstPresentIgnoreCase(rawRow, "Phone", "phone"),
@@ -2793,7 +2800,7 @@ public class StudentReadRepository {
                 "locality", firstPresentIgnoreCase(rawRow, "Locality", "locality"),
                 "city", firstPresentIgnoreCase(rawRow, "City", "city"),
                 "state", firstPresentIgnoreCase(rawRow, "State", "state"),
-                "pinCode", firstPresentIgnoreCase(rawRow, "PinCode", "PIN Code", "Pincode", "pinCode"),
+                "pinCode", firstPresentIgnoreCase(rawRow, "PostalCode", "Postal Code", "PinCode", "PIN Code", "Pincode", "pinCode"),
                 "address", firstPresentIgnoreCase(rawRow, "Address", "address"),
                 "boardRegistrationNo", firstPresentIgnoreCase(rawRow, "BoardRegistrationNo", "boardRegistrationNo"));
     }
@@ -3289,6 +3296,16 @@ public class StudentReadRepository {
 
     private LocalDate parseDate(String value) {
         return StudentImportDateParser.parseOptional(value);
+    }
+
+    private LocalDate parseDateOfBirth(String value) {
+        return StudentImportDateParser.parseDateOfBirth(value);
+    }
+
+    private boolean validInternationalPhone(String value) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.isEmpty() || !normalized.matches("\\+?[0-9() .-]+")) return false;
+        return normalized.replaceAll("\\D+", "").matches("\\d{7,15}");
     }
 
     private int classSortOrder(String classId) {

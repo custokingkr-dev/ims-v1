@@ -99,6 +99,22 @@ public class DriveFolderProvisioningService {
         }
     }
 
+    public ProvisioningResult statusForSchool(long schoolId) {
+        SchoolDriveScope scope = repository.currentScope(schoolId);
+        if (!drive.isProvisioningEnabled()) return ProvisioningResult.notConfigured(scope);
+        String rootFolderId;
+        try {
+            rootFolderId = drive.rootFolderId();
+        } catch (RuntimeException ex) {
+            return ProvisioningResult.failed(scope, ex.getMessage());
+        }
+        return repository.find(schoolId, scope.academicYearId())
+                .map(binding -> rootFolderId.equals(binding.rootFolderId())
+                        ? ProvisioningResult.from(scope, binding)
+                        : ProvisioningResult.failed(scope, "Drive binding belongs to a different configured root; reprovision it"))
+                .orElseGet(() -> ProvisioningResult.pending(scope));
+    }
+
     public record ProvisioningResult(
             long schoolId,
             String schoolUid,
@@ -169,6 +185,13 @@ public class DriveFolderProvisioningService {
                     null,
                     null,
                     "Drive folder provisioning is already in progress; retry shortly");
+        }
+
+        static ProvisioningResult pending(SchoolDriveScope scope) {
+            return new ProvisioningResult(
+                    scope.schoolId(), scope.schoolUid(), scope.schoolName(), scope.shortCode(),
+                    scope.academicYearId(), scope.academicYearLabel(), "PENDING",
+                    null, null, null, "Drive intake folder has not been provisioned");
         }
     }
 }

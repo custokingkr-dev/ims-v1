@@ -41,7 +41,6 @@ export interface StudentProfilePayload {
   boardRegistrationNumber?: string;
   dateOfBirth?: string;
   gender?: string;
-  academicYear?: string;
   admissionDate?: string;
   fatherName?: string;
   fatherContact?: string;
@@ -76,8 +75,8 @@ export function emptyStudentProfileForm(): StudentProfileFormState {
     houseNumber: '',
     street: '',
     locality: '',
-    city: 'Hyderabad',
-    state: 'Telangana',
+    city: '',
+    state: '',
     pinCode: '',
     fullAddress: '',
   };
@@ -115,8 +114,8 @@ export function studentDetailToProfileForm(detail: Record<string, any>): Student
     houseNumber: text(address.houseNumber),
     street: text(address.street),
     locality: text(address.locality),
-    city: hasStructuredAddress || !legacyFullAddress ? text(address.city, 'Hyderabad') : '',
-    state: hasStructuredAddress || !legacyFullAddress ? text(address.state, 'Telangana') : '',
+    city: hasStructuredAddress || !legacyFullAddress ? text(address.city) : '',
+    state: hasStructuredAddress || !legacyFullAddress ? text(address.state) : '',
     pinCode: text(address.pinCode),
     fullAddress: legacyFullAddress,
   };
@@ -141,9 +140,6 @@ function compactPayload(form: StudentProfileFormState): StudentProfilePayload {
   put(payload, 'boardRegistrationNumber', form.boardRegistrationNumber);
   put(payload, 'dateOfBirth', form.dateOfBirth);
   put(payload, 'gender', form.gender);
-  if (form.academicYear.trim() !== 'Current academic year') {
-    put(payload, 'academicYear', form.academicYear);
-  }
   put(payload, 'admissionDate', form.admissionDate);
   put(payload, 'fatherName', form.fatherName);
   put(payload, 'fatherContact', form.fatherContact);

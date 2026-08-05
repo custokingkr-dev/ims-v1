@@ -61,13 +61,19 @@ public class ReportingPublicCompatibilityController {
         double feeProgressPercent = feeTargetPaise <= 0
                 ? 0
                 : Math.round((feeCollectedPaise * 10000) / feeTargetPaise) / 100.0;
-        response.put("school", Map.of(
-                "name", text(summary.get("schoolName"), "Custoking School"),
-                "meta", text(summary.get("schoolMeta"), "Service workspace"),
-                "academicYearStartMonth", number(summary.getOrDefault("academicYearStartMonth", 4)),
-                "financialYearStartMonth", number(summary.getOrDefault("financialYearStartMonth", 4)),
-                "students", number(summary.get("students")),
-                "sections", number(summary.get("sections"))));
+        LinkedHashMap<String, Object> school = new LinkedHashMap<>();
+        school.put("name", text(summary.get("schoolName"), "Custoking School"));
+        school.put("meta", text(summary.get("schoolMeta"), "Service workspace"));
+        school.put("academicYearStartMonth", number(summary.getOrDefault("academicYearStartMonth", 4)));
+        school.put("financialYearStartMonth", number(summary.getOrDefault("financialYearStartMonth", 4)));
+        school.put("timeZone", text(summary.get("timeZone"), "Asia/Kolkata"));
+        school.put("countryCode", text(summary.get("countryCode"), "IN"));
+        school.put("locale", text(summary.get("locale"), "en-IN"));
+        school.put("currencyCode", text(summary.get("currencyCode"), "INR"));
+        school.put("phoneRegion", text(summary.get("phoneRegion"), "IN"));
+        school.put("students", number(summary.get("students")));
+        school.put("sections", number(summary.get("sections")));
+        response.put("school", school);
         LinkedHashMap<String, Object> dashboard = new LinkedHashMap<>();
         dashboard.put("students", number(summary.get("students")));
         dashboard.put("sections", number(summary.get("sections")));

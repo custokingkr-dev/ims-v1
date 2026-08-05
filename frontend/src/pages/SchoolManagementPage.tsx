@@ -21,6 +21,7 @@ import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../utils/timeZones';
+import { DEFAULT_SCHOOL_LOCALIZATION, SCHOOL_COUNTRY_PRESETS, localizationForCountry } from '../utils/schoolLocalization';
 import {
   MODULE_CHILD_CODES,
   MODULE_GROUPS,
@@ -40,6 +41,10 @@ type SchoolRow = {
   academicYearStartMonth?: number;
   financialYearStartMonth?: number;
   timeZone?: string;
+  countryCode?: string;
+  locale?: string;
+  currencyCode?: string;
+  phoneRegion?: string;
 };
 
 type ModuleEntitlement = {
@@ -98,7 +103,7 @@ const defaultSchoolForm = {
   sectionCount: '2',
   academicYearStartMonth: '4',
   financialYearStartMonth: '4',
-  timeZone: DEFAULT_SCHOOL_TIME_ZONE,
+  ...DEFAULT_SCHOOL_LOCALIZATION,
 };
 
 const defaultAdminForm = {
@@ -455,7 +460,7 @@ export default function SchoolManagementPage() {
     try {
       setSaving(true);
       setError('');
-      const res = await api.post<{ id: number }>('/schools', {
+      const res = await api.post<{ id: number; photoImportFolder?: { status?: string } }>('/schools', {
         ...schoolForm,
         classCount: Number(schoolForm.classCount || MAX_CLASS_COUNT),
         sectionCount: Number(schoolForm.sectionCount || 2),
@@ -469,7 +474,9 @@ export default function SchoolManagementPage() {
       setShowSchoolModal(false);
       setSchoolForm(defaultSchoolForm);
       setModuleSelections(defaultModuleSelections());
-      setNotice('School created successfully.');
+      setNotice(res.data?.photoImportFolder?.status === 'READY'
+        ? 'School created. Add an administrator to complete setup.'
+        : `School created, but Drive setup needs attention (${res.data?.photoImportFolder?.status || 'unknown'}).`);
       await loadAll();
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Unable to create school.');
@@ -942,6 +949,9 @@ export default function SchoolManagementPage() {
                   <div className="ck-field"><label>Academic Year Starts</label><select aria-label="Academic Year Starts" value={schoolForm.academicYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, academicYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
                   <div className="ck-field"><label>Financial Year Starts</label><select aria-label="Financial Year Starts" value={schoolForm.financialYearStartMonth} onChange={(e) => setSchoolForm((s) => ({ ...s, financialYearStartMonth: e.target.value }))}>{YEAR_START_MONTHS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
                   <div className="ck-field"><label>Timezone</label><select aria-label="Timezone" value={schoolForm.timeZone} onChange={(e) => setSchoolForm((s) => ({ ...s, timeZone: e.target.value }))}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></div>
+                  <div className="ck-field"><label>Country</label><select aria-label="Country" value={schoolForm.countryCode} onChange={(e) => { const localization = localizationForCountry(e.target.value); setSchoolForm((s) => ({ ...s, ...(localization || { countryCode: e.target.value, phoneRegion: e.target.value }) })); }}>{SCHOOL_COUNTRY_PRESETS.map((country) => <option key={country.countryCode} value={country.countryCode}>{country.name}</option>)}</select></div>
+                  <div className="ck-field"><label>Locale</label><input aria-label="Locale" value={schoolForm.locale} onChange={(e) => setSchoolForm((s) => ({ ...s, locale: e.target.value }))} required /></div>
+                  <div className="ck-field"><label>Currency</label><input aria-label="Currency" value={schoolForm.currencyCode} maxLength={3} onChange={(e) => setSchoolForm((s) => ({ ...s, currencyCode: e.target.value.toUpperCase() }))} required /></div>
                   <div className="ck-field"><label>Contact Email</label><input aria-label="Contact Email" type="email" value={schoolForm.contactEmail} onChange={(e) => setSchoolForm((s) => ({ ...s, contactEmail: e.target.value }))} /></div>
                   <div className="ck-field"><label>Contact Phone</label><input aria-label="Contact Phone" value={schoolForm.contactPhone} onChange={(e) => setSchoolForm((s) => ({ ...s, contactPhone: e.target.value }))} /></div>
                 </div>

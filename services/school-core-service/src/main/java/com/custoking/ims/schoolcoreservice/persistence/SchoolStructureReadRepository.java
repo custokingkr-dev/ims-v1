@@ -10,6 +10,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -222,6 +223,7 @@ public class SchoolStructureReadRepository {
     public List<SuperadminSchoolStatsRow> schoolStats() {
         return jdbc.sql("""
                         SELECT s.id, s.school_uid, s.name, s.short_code, s.city, s.active, s.created_at, s.time_zone,
+                               s.country_code, s.locale, s.currency_code, s.phone_region,
                                s.academic_year_start_month, s.financial_year_start_month,
                                '' AS admin_email,
                                0 AS orders_ytd,
@@ -242,6 +244,10 @@ public class SchoolStructureReadRepository {
                         rs.getObject("academic_year_start_month", Integer.class),
                         rs.getObject("financial_year_start_month", Integer.class),
                         rs.getString("time_zone"),
+                        rs.getString("country_code"),
+                        rs.getString("locale"),
+                        rs.getString("currency_code"),
+                        rs.getString("phone_region"),
                         erpSince(rs.getObject("created_at", OffsetDateTime.class))))
                 .list();
     }
@@ -268,14 +274,19 @@ public class SchoolStructureReadRepository {
         int financialYearStartMonth = boundedInt(
                 request.get("financialYearStartMonth"), AcademicCalendar.DEFAULT_FINANCIAL_YEAR_START_MONTH, 1, 12);
         String timeZone = validTimeZone(request.get("timeZone"), DEFAULT_TIME_ZONE);
+        String countryCode = validCountryCode(request.get("countryCode"), "IN", "countryCode");
+        String locale = validLocale(request.get("locale"), "en-IN");
+        String currencyCode = validCurrencyCode(request.get("currencyCode"), "INR");
+        String phoneRegion = validCountryCode(request.get("phoneRegion"), countryCode, "phoneRegion");
         Long id = jdbc.sql("""
                 INSERT INTO tenant_school.schools (
                     name, short_code, city, state, contact_email, contact_phone, active,
                     configured_class_count, configured_section_count, academic_year_start_month,
-                    financial_year_start_month, time_zone, created_at
+                    financial_year_start_month, time_zone, country_code, locale, currency_code, phone_region, created_at
                 ) VALUES (
                     :name, :shortCode, :city, :state, :contactEmail, :contactPhone, true,
-                    :classCount, :sectionCount, :academicYearStartMonth, :financialYearStartMonth, :timeZone, :createdAt
+                    :classCount, :sectionCount, :academicYearStartMonth, :financialYearStartMonth, :timeZone,
+                    :countryCode, :locale, :currencyCode, :phoneRegion, :createdAt
                 )
                 RETURNING id
                 """)
@@ -290,6 +301,10 @@ public class SchoolStructureReadRepository {
                 .param("academicYearStartMonth", academicYearStartMonth)
                 .param("financialYearStartMonth", financialYearStartMonth)
                 .param("timeZone", timeZone)
+                .param("countryCode", countryCode)
+                .param("locale", locale)
+                .param("currencyCode", currencyCode)
+                .param("phoneRegion", phoneRegion)
                 .param("createdAt", OffsetDateTime.now())
                 .query(Long.class)
                 .single();
@@ -309,6 +324,10 @@ public class SchoolStructureReadRepository {
                     academic_year_start_month = COALESCE(:academicYearStartMonth, academic_year_start_month),
                     financial_year_start_month = COALESCE(:financialYearStartMonth, financial_year_start_month),
                     time_zone = COALESCE(:timeZone, time_zone),
+                    country_code = COALESCE(:countryCode, country_code),
+                    locale = COALESCE(:locale, locale),
+                    currency_code = COALESCE(:currencyCode, currency_code),
+                    phone_region = COALESCE(:phoneRegion, phone_region),
                     active = COALESCE(:active, active)
                 WHERE id = :schoolId
                 """)
@@ -324,6 +343,13 @@ public class SchoolStructureReadRepository {
                 .param("timeZone", request.containsKey("timeZone")
                         ? validTimeZone(request.get("timeZone"), null)
                         : null)
+                .param("countryCode", request.containsKey("countryCode")
+                        ? validCountryCode(request.get("countryCode"), null, "countryCode") : null)
+                .param("locale", request.containsKey("locale") ? validLocale(request.get("locale"), null) : null)
+                .param("currencyCode", request.containsKey("currencyCode")
+                        ? validCurrencyCode(request.get("currencyCode"), null) : null)
+                .param("phoneRegion", request.containsKey("phoneRegion")
+                        ? validCountryCode(request.get("phoneRegion"), null, "phoneRegion") : null)
                 .param("active", request.get("active"))
                 .update();
         Map<String, Object> details = schoolDetails(schoolId);
@@ -344,6 +370,10 @@ public class SchoolStructureReadRepository {
         payload.put("academicYearStartMonth", details.get("academicYearStartMonth"));
         payload.put("financialYearStartMonth", details.get("financialYearStartMonth"));
         payload.put("timeZone", details.get("timeZone"));
+        payload.put("countryCode", details.get("countryCode"));
+        payload.put("locale", details.get("locale"));
+        payload.put("currencyCode", details.get("currencyCode"));
+        payload.put("phoneRegion", details.get("phoneRegion"));
         outbox.append("school.upserted.v1", "SchoolUpserted:" + id, "School", String.valueOf(id), id, payload);
     }
 
@@ -570,7 +600,8 @@ public class SchoolStructureReadRepository {
         return jdbc.sql("""
                 SELECT id, school_uid, name, short_code, city, state, active,
                        configured_class_count, configured_section_count,
-                       academic_year_start_month, financial_year_start_month, time_zone
+                       academic_year_start_month, financial_year_start_month, time_zone,
+                       country_code, locale, currency_code, phone_region
                 FROM tenant_school.schools
                 WHERE id = :schoolId
                 """)
@@ -587,7 +618,11 @@ public class SchoolStructureReadRepository {
                         "configuredSectionCount", rs.getObject("configured_section_count"),
                         "academicYearStartMonth", rs.getObject("academic_year_start_month", Integer.class),
                         "financialYearStartMonth", rs.getObject("financial_year_start_month", Integer.class),
-                        "timeZone", rs.getString("time_zone")))
+                        "timeZone", rs.getString("time_zone"),
+                        "countryCode", rs.getString("country_code"),
+                        "locale", rs.getString("locale"),
+                        "currencyCode", rs.getString("currency_code"),
+                        "phoneRegion", rs.getString("phone_region")))
                 .single();
     }
 
@@ -676,6 +711,44 @@ public class SchoolStructureReadRepository {
             return ZoneId.of(timeZone).getId();
         } catch (RuntimeException ex) {
             throw new IllegalArgumentException("timeZone must be a valid IANA timezone", ex);
+        }
+    }
+
+    private String validCountryCode(Object value, String fallback, String field) {
+        String code = str(value, "").trim().toUpperCase(Locale.ROOT);
+        if (code.isEmpty()) {
+            if (fallback != null) return fallback;
+            throw new IllegalArgumentException(field + " is required");
+        }
+        if (!List.of(Locale.getISOCountries()).contains(code)) {
+            throw new IllegalArgumentException(field + " must be an ISO 3166-1 alpha-2 country code");
+        }
+        return code;
+    }
+
+    private String validLocale(Object value, String fallback) {
+        String tag = str(value, "").trim().replace('_', '-');
+        if (tag.isEmpty()) {
+            if (fallback != null) return fallback;
+            throw new IllegalArgumentException("locale is required");
+        }
+        Locale parsed = Locale.forLanguageTag(tag);
+        if (parsed.getLanguage().isBlank() || "und".equals(parsed.toLanguageTag())) {
+            throw new IllegalArgumentException("locale must be a valid BCP 47 language tag");
+        }
+        return parsed.toLanguageTag();
+    }
+
+    private String validCurrencyCode(Object value, String fallback) {
+        String code = str(value, "").trim().toUpperCase(Locale.ROOT);
+        if (code.isEmpty()) {
+            if (fallback != null) return fallback;
+            throw new IllegalArgumentException("currencyCode is required");
+        }
+        try {
+            return Currency.getInstance(code).getCurrencyCode();
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("currencyCode must be an ISO 4217 currency code", ex);
         }
     }
 
@@ -787,5 +860,18 @@ public class SchoolStructureReadRepository {
             Integer academicYearStartMonth,
             Integer financialYearStartMonth,
             String timeZone,
-            String erpSince) {}
+            String countryCode,
+            String locale,
+            String currencyCode,
+            String phoneRegion,
+            String erpSince) {
+        public SuperadminSchoolStatsRow(
+                Long id, UUID schoolUid, String name, String shortCode, String city, Boolean active,
+                String adminEmail, Long ordersYTD, Long gmvYTD, Integer academicYearStartMonth,
+                Integer financialYearStartMonth, String timeZone, String erpSince) {
+            this(id, schoolUid, name, shortCode, city, active, adminEmail, ordersYTD, gmvYTD,
+                    academicYearStartMonth, financialYearStartMonth, timeZone,
+                    "IN", "en-IN", "INR", "IN", erpSince);
+        }
+    }
 }

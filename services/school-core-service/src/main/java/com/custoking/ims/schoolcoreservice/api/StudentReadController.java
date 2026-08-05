@@ -192,6 +192,7 @@ public class StudentReadController {
         if (req.rollNo() != null) params.put("rollNo", req.rollNo());
         if (req.boardRegistrationNumber() != null) params.put("boardRegistrationNumber", req.boardRegistrationNumber());
         if (req.dateOfBirth() != null) params.put("dateOfBirth", req.dateOfBirth());
+        if (req.admissionDate() != null) params.put("admissionDate", req.admissionDate());
         if (req.gender() != null) params.put("gender", req.gender());
         if (req.fatherName() != null) params.put("fatherName", req.fatherName());
         if (req.fatherContactNumber() != null) params.put("fatherContactNumber", req.fatherContactNumber());
@@ -745,10 +746,10 @@ public class StudentReadController {
 
     private static byte[] importTemplateWorkbook() {
         List<List<String>> rows = List.of(
-                List.of("Name", "Class", "Section", "AdmissionNo", "DateOfBirth", "Gender",
+                List.of("Name", "Class", "Section", "AdmissionNo", "DateOfBirth", "AdmissionDate", "Gender",
                         "FatherName", "Phone", "HouseNumber", "Street", "Locality", "City", "State",
-                        "PinCode", "Address", "BoardRegistrationNo", "Photo", "PhotoUrl"),
-                List.of("Aryan Mehta", "9", "B", "ADM-1001", "2010-05-12", "Male",
+                        "PostalCode", "Address", "BoardRegistrationNo", "Photo", "PhotoUrl"),
+                List.of("Aryan Mehta", "9", "B", "ADM-1001", "2010-05-12", "2024-04-01", "Male",
                         "R. Mehta", "9876543210", "17-8-547", "Main Road", "Shah Colony",
                         "Hyderabad", "Telangana", "500024", "", "BRN1001", "",
                         "https://school.example/photos/ADM-1001.jpg"));

@@ -70,6 +70,11 @@ Older documentation in the repo still contains the pre-consolidation twelve-serv
 
 Runtime code must not reintroduce reads or writes to retired monolithic `public` domain tables.
 
+School localization is owned by `tenant_school.schools` and projected through
+`school.upserted.v1` into `reporting.dim_school`. The workspace reads the projection rather than
+cross-querying school-core. Student DOB and admission date remain date-only values in the
+student schema and never depend on the deployment region or school timezone.
+
 ## Request Flow
 
 1. The browser calls the gateway through `/api/v1/**`.

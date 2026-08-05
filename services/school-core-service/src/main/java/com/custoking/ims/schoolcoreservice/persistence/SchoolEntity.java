@@ -40,6 +40,14 @@ public class SchoolEntity {
     private Integer financialYearStartMonth;
     @Column(name = "time_zone", nullable = false)
     private String timeZone;
+    @Column(name = "country_code", nullable = false)
+    private String countryCode;
+    @Column(nullable = false)
+    private String locale;
+    @Column(name = "currency_code", nullable = false)
+    private String currencyCode;
+    @Column(name = "phone_region", nullable = false)
+    private String phoneRegion;
     private OffsetDateTime createdAt;
 
     public Long getId() { return id; }
@@ -56,5 +64,9 @@ public class SchoolEntity {
     public Integer getAcademicYearStartMonth() { return academicYearStartMonth; }
     public Integer getFinancialYearStartMonth() { return financialYearStartMonth; }
     public String getTimeZone() { return timeZone; }
+    public String getCountryCode() { return countryCode; }
+    public String getLocale() { return locale; }
+    public String getCurrencyCode() { return currencyCode; }
+    public String getPhoneRegion() { return phoneRegion; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
 }

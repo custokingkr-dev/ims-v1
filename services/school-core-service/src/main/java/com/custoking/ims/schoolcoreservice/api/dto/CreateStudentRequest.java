@@ -20,6 +20,7 @@ public record CreateStudentRequest(
         String rollNo,
         String boardRegistrationNumber,
         String dateOfBirth,
+        String admissionDate,
         String gender,
         String fatherName,
         String fatherContactNumber,

@@ -3,6 +3,7 @@ import api from '../../../services/api';
 import { ModuleShell, Field, Stat } from '../ui';
 import { formatMoney } from '../utils';
 import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../../../utils/timeZones';
+import { DEFAULT_SCHOOL_LOCALIZATION, SCHOOL_COUNTRY_PRESETS, formatSchoolCurrency, localizationForCountry } from '../../../utils/schoolLocalization';
 
 type RoleAssignmentRow = {
   userId: number;
@@ -72,6 +73,7 @@ const YEAR_START_MONTHS = [
 ] as const;
 
 const MAX_CLASS_COUNT = 15;
+const EMPTY_ONBOARD_FORM = { name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', ...DEFAULT_SCHOOL_LOCALIZATION };
 
 function academicStartLabel(value?: number | string) {
   const month = String(value || 4);
@@ -83,17 +85,23 @@ function financialStartLabel(value?: number | string) {
   return YEAR_START_MONTHS.find(([id]) => id === month)?.[1] || 'April';
 }
 
+function setupStatus(school: any) {
+  const hasAdmin = accountList(school, 'adminAccounts', 'adminEmail').length > 0;
+  const driveReady = school.photoImportFolder?.status === 'READY';
+  return { ready: hasAdmin && driveReady, hasAdmin, driveReady };
+}
+
 export function SaSchoolsPanel() {
   const [saSchools, setSaSchools] = useState<any[]>([]);
   const [saSchoolsLoading, setSaSchoolsLoading] = useState(false);
   const [saSchoolsError, setSaSchoolsError] = useState('');
   const [saOnboardOpen, setSaOnboardOpen] = useState(false);
-  const [saOnboardForm, setSaOnboardForm] = useState({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', timeZone: DEFAULT_SCHOOL_TIME_ZONE });
+  const [saOnboardForm, setSaOnboardForm] = useState(EMPTY_ONBOARD_FORM);
   const [saOnboardErrors, setSaOnboardErrors] = useState<Record<string, string>>({});
   const [saOnboardSaving, setSaOnboardSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [editSchool, setEditSchool] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2', timeZone: DEFAULT_SCHOOL_TIME_ZONE });
+  const [editForm, setEditForm] = useState({ classCount: '15', sectionCount: '2', ...DEFAULT_SCHOOL_LOCALIZATION });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [restoreSchool, setRestoreSchool] = useState<any | null>(null);
@@ -108,6 +116,10 @@ export function SaSchoolsPanel() {
       classCount: String(school.configuredClassCount ?? MAX_CLASS_COUNT),
       sectionCount: String(school.configuredSectionCount ?? 2),
       timeZone: school.timeZone || DEFAULT_SCHOOL_TIME_ZONE,
+      countryCode: school.countryCode || DEFAULT_SCHOOL_LOCALIZATION.countryCode,
+      locale: school.locale || DEFAULT_SCHOOL_LOCALIZATION.locale,
+      currencyCode: school.currencyCode || DEFAULT_SCHOOL_LOCALIZATION.currencyCode,
+      phoneRegion: school.phoneRegion || school.countryCode || DEFAULT_SCHOOL_LOCALIZATION.phoneRegion,
     });
     setEditError('');
   };
@@ -120,9 +132,13 @@ export function SaSchoolsPanel() {
     setEditError(''); setEditSaving(true);
     try {
       await api.put(`/schools/${editSchool.id}/structure`, { classCount, sectionCount });
-      if (editForm.timeZone !== (editSchool.timeZone || DEFAULT_SCHOOL_TIME_ZONE)) {
-        await api.patch(`/schools/${editSchool.id}`, { timeZone: editForm.timeZone });
-      }
+      await api.patch(`/schools/${editSchool.id}`, {
+        timeZone: editForm.timeZone,
+        countryCode: editForm.countryCode,
+        locale: editForm.locale,
+        currencyCode: editForm.currencyCode,
+        phoneRegion: editForm.phoneRegion,
+      });
       setToast(`${editSchool.name} structure updated`);
       setEditSchool(null);
       await loadSaSchools();
@@ -232,6 +248,26 @@ export function SaSchoolsPanel() {
 
   useEffect(() => { void loadSaSchools(); }, []);
 
+  const applyOnboardCountry = (countryCode: string) => {
+    const localization = localizationForCountry(countryCode);
+    setSaOnboardForm((current) => ({ ...current, ...(localization || { countryCode, phoneRegion: countryCode }) }));
+  };
+
+  const applyEditCountry = (countryCode: string) => {
+    const localization = localizationForCountry(countryCode);
+    setEditForm((current) => ({ ...current, ...(localization || { countryCode, phoneRegion: countryCode }) }));
+  };
+
+  const retryDriveProvisioning = async (school: any) => {
+    try {
+      const response = await api.post(`/student-photo-imports/folders/${school.id}/provision`);
+      setToast(response.data?.status === 'READY' ? `${school.name} Drive folder is ready` : `${school.name} Drive status: ${response.data?.status || 'unknown'}`);
+      await loadSaSchools();
+    } catch (e: any) {
+      setToast(e?.response?.data?.message || `Drive provisioning failed for ${school.name}`);
+    }
+  };
+
   const submitSaOnboard = async () => {
     const errors: Record<string, string> = {};
     if (!saOnboardForm.name) errors.name = 'School name is required';
@@ -248,10 +284,13 @@ export function SaSchoolsPanel() {
     if (Object.keys(errors).length) { setSaOnboardErrors(errors); return; }
     setSaOnboardErrors({}); setSaOnboardSaving(true);
     try {
-      await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
-      setToast(`${saOnboardForm.name} onboarded successfully`);
+      const response = await api.post('/schools', { ...saOnboardForm, classCount, sectionCount, academicYearStartMonth, financialYearStartMonth });
+      const folderStatus = response.data?.photoImportFolder?.status;
+      setToast(folderStatus === 'READY'
+        ? `${saOnboardForm.name} created. Add an administrator to complete setup.`
+        : `${saOnboardForm.name} created. Drive setup needs attention (${folderStatus || 'unknown'}).`);
       setSaOnboardOpen(false);
-      setSaOnboardForm({ name: '', shortCode: '', city: '', state: '', contactEmail: '', contactPhone: '', classCount: '15', sectionCount: '2', academicYearStartMonth: '4', financialYearStartMonth: '4', timeZone: DEFAULT_SCHOOL_TIME_ZONE });
+      setSaOnboardForm(EMPTY_ONBOARD_FORM);
       await loadSaSchools();
     } catch (e: any) {
       setSaOnboardErrors({ _: e?.response?.data?.message || 'Save failed. Please try again.' });
@@ -267,13 +306,13 @@ export function SaSchoolsPanel() {
           const activeSchools = saSchools.filter((s: any) => s.active).length;
           const totalOrders = saSchools.reduce((n: number, s: any) => n + (s.ordersYTD ?? 0), 0);
           const totalGmvPaise = saSchools.reduce((n: number, s: any) => n + Number(s.gmvYTD ?? 0), 0);
-          const pendingSetup = saSchools.filter((s: any) => accountList(s, 'adminAccounts', 'adminEmail').length === 0).length;
+          const pendingSetup = saSchools.filter((school: any) => !setupStatus(school).ready).length;
           return (
             <div className="ck-stats ck-s4" style={{ marginBottom: 18 }}>
               <Stat label="Active schools" value={activeSchools} sub={`${saSchools.length} total onboarded`} pill="Platform" tone="blue" />
               <Stat label="Orders YTD" value={totalOrders} sub="Supply orders across all schools" pill="All schools" tone="green" />
               <Stat label="Order value YTD" value={`₹${formatMoney(totalGmvPaise / 100)}`} sub="Platform GMV" pill="Gross" tone="orange" />
-              <Stat label="Pending setup" value={pendingSetup} sub="Schools without admin user" pill={pendingSetup > 0 ? 'Action needed' : 'All set'} tone={pendingSetup > 0 ? 'red' : 'green'} />
+              <Stat label="Pending setup" value={pendingSetup} sub="Administrator or Drive action needed" pill={pendingSetup > 0 ? 'Action needed' : 'All set'} tone={pendingSetup > 0 ? 'red' : 'green'} />
             </div>
           );
         })()}
@@ -281,13 +320,14 @@ export function SaSchoolsPanel() {
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
           : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
           : <table className="ck-table">
-            <thead><tr><th>School</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={14}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={15}><div className="ts">No schools found.</div></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
-                    <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'}</div></td>
+                    <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'} · {school.countryCode || 'IN'} · {school.currencyCode || 'INR'}</div></td>
+                    <td><span className={`ck-pill ${setupStatus(school).ready ? 'ck-pill-gr' : 'ck-pill-am'}`}>{setupStatus(school).ready ? 'Ready' : 'Action needed'}</span><div className="ts">Admin {setupStatus(school).hasAdmin ? 'ready' : 'missing'} · Drive {school.photoImportFolder?.status || 'unknown'}</div></td>
                     <td>{school.shortCode || '—'}</td>
                     <td>{school.city || '—'}</td>
                     <td>{school.timeZone || DEFAULT_SCHOOL_TIME_ZONE}</td>
@@ -298,11 +338,12 @@ export function SaSchoolsPanel() {
                     <td>{renderAccountList(accountList(school, 'adminAccounts', 'adminEmail'))}</td>
                     <td>{renderAccountList(accountList(school, 'operatorAccounts', 'operationsEmail'))}</td>
                     <td>{school.ordersYTD ?? 0}</td>
-                    <td>₹{formatMoney(Number(school.gmvYTD || 0) / 100)}</td>
+                    <td>{formatSchoolCurrency(Number(school.gmvYTD || 0) / 100, school)}</td>
                     <td>{school.erpSince || '—'}</td>
                     <td>
                       <div className="ck-actions-inline">
                         <button className="ck-btn ck-btn-ghost" onClick={() => openEdit(school)}>Edit structure</button>
+                        {school.photoImportFolder?.status !== 'READY' ? <button className="ck-btn ck-btn-ghost" onClick={() => void retryDriveProvisioning(school)}>Retry Drive</button> : null}
                         <button className="ck-btn ck-btn-ghost" onClick={() => void openRestoreStudents(school)}>Archived students</button>
                       </div>
                     </td>
@@ -348,6 +389,9 @@ export function SaSchoolsPanel() {
                   {saOnboardErrors.financialYearStartMonth ? <div className="ts" style={{ color: 'var(--re)', marginTop: 6 }}>{saOnboardErrors.financialYearStartMonth}</div> : null}
                 </Field>
                 <Field label="Timezone *"><select value={saOnboardForm.timeZone} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, timeZone: e.target.value })}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></Field>
+                <Field label="Country *"><select value={saOnboardForm.countryCode} onChange={(e) => applyOnboardCountry(e.target.value)}>{SCHOOL_COUNTRY_PRESETS.map((country) => <option key={country.countryCode} value={country.countryCode}>{country.name}</option>)}</select></Field>
+                <Field label="Locale *"><input value={saOnboardForm.locale} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, locale: e.target.value })} /></Field>
+                <Field label="Currency *"><input value={saOnboardForm.currencyCode} maxLength={3} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, currencyCode: e.target.value.toUpperCase() })} /></Field>
                 <Field label="Contact email"><input value={saOnboardForm.contactEmail} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, contactEmail: e.target.value })} /></Field>
                 <Field label="Contact phone"><input value={saOnboardForm.contactPhone} onChange={(e) => setSaOnboardForm({ ...saOnboardForm, contactPhone: e.target.value })} /></Field>
               </div>
@@ -373,6 +417,9 @@ export function SaSchoolsPanel() {
                 <Field label="No. of classes *"><input type="number" min={1} max={MAX_CLASS_COUNT} value={editForm.classCount} onChange={(e) => setEditForm({ ...editForm, classCount: e.target.value })} /></Field>
                 <Field label="Sections per class *"><input type="number" min={1} max={26} value={editForm.sectionCount} onChange={(e) => setEditForm({ ...editForm, sectionCount: e.target.value })} /></Field>
                 <Field label="Timezone *"><select value={editForm.timeZone} onChange={(e) => setEditForm({ ...editForm, timeZone: e.target.value })}>{SCHOOL_TIME_ZONES.map((timeZone) => <option key={timeZone} value={timeZone}>{timeZone}</option>)}</select></Field>
+                <Field label="Country *"><select value={editForm.countryCode} onChange={(e) => applyEditCountry(e.target.value)}>{SCHOOL_COUNTRY_PRESETS.map((country) => <option key={country.countryCode} value={country.countryCode}>{country.name}</option>)}</select></Field>
+                <Field label="Locale *"><input value={editForm.locale} onChange={(e) => setEditForm({ ...editForm, locale: e.target.value })} /></Field>
+                <Field label="Currency *"><input value={editForm.currencyCode} maxLength={3} onChange={(e) => setEditForm({ ...editForm, currencyCode: e.target.value.toUpperCase() })} /></Field>
               </div>
               <div className="ts" style={{ marginTop: 10 }}>Reducing a count is blocked if a removed class or section still has students.</div>
             </div>

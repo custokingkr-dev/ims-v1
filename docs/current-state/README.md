@@ -1,6 +1,6 @@
 # Custoking IMS Current-State Documentation
 
-Last verified: 2026-08-04 from repository files, GitHub Actions runs, and live GCP project `custoking`.
+Last verified: 2026-08-05 from repository files, GitHub Actions runs, and live GCP project `custoking`.
 CI/CD active-state updated: 2026-08-04.
 
 This documentation bundle captures the current project state after the dev/prod greenfield deployment and the CI/CD/observability rebuild. It is intentionally evidence-led: if a fact could not be verified from code, deployment configuration, local artifacts, or live GCP inventory, it is listed in [gaps-and-drift.md](gaps-and-drift.md) instead of being assumed.
@@ -12,6 +12,7 @@ This documentation bundle captures the current project state after the dev/prod 
 - [deployment-cicd.md](deployment-cicd.md) - active branch-owned GitHub Actions and Cloud Deploy implementation.
 - [codebase-conventions.md](codebase-conventions.md) - repository layout, Java/Node/React conventions, service config, route ownership, testing, and local dev.
 - [event-models.md](event-models.md) - event envelope, transactional outbox, Pub/Sub push ingress, projection projectors, event types, and idempotency.
+- [school-student-lifecycle.md](school-student-lifecycle.md) - implemented school onboarding readiness, localization lineage, student date handling, and import semantics.
 - [observability-operations.md](observability-operations.md) - dashboards, uptime, alerts, log metrics, traces, runtime evidence, and operations checks.
 - [gaps-and-drift.md](gaps-and-drift.md) - verified missing items, stale docs, and follow-up work.
 

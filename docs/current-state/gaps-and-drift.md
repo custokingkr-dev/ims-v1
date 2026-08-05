@@ -4,6 +4,17 @@ Last verified: 2026-08-05.
 
 This file intentionally lists unresolved or partially verified items. These are not assumptions.
 
+## Product Internationalization
+
+School timezone, country, locale, currency, and phone region are now tenant settings and reach
+the main workspace projection. The active fee workspace and dashboard use them. Some older
+Supply OS, invoice, command-center drawer, and legacy fee components still contain India-specific
+currency labels, GST wording, or `en-IN` formatting. These screens must be converted before a
+non-India tenant can use those modules without India-specific presentation or tax semantics.
+
+This is not a storage blocker for onboarding a non-India school. It is a product-localization and
+tax-rule blocker for enabling every commercial module in that tenant.
+
 ## Critical or High Priority
 
 ### Notification Delivery Is Intentionally In Safe Mode

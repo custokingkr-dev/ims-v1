@@ -23,14 +23,17 @@ public class DimensionProjectionRepository {
 
     @Transactional
     public void upsertSchool(long id, String name, String shortCode, String city, String state, boolean active,
-                             Integer academicYearStartMonth, Integer financialYearStartMonth) {
+                             Integer academicYearStartMonth, Integer financialYearStartMonth,
+                             String timeZone, String countryCode, String locale, String currencyCode, String phoneRegion) {
         jdbc.sql("""
                         INSERT INTO reporting.dim_school (
                             id, name, short_code, city, state, active,
-                            academic_year_start_month, financial_year_start_month, updated_at
+                            academic_year_start_month, financial_year_start_month,
+                            time_zone, country_code, locale, currency_code, phone_region, updated_at
                         ) VALUES (
                             :id, :name, :shortCode, :city, :state, :active,
-                            :academicYearStartMonth, :financialYearStartMonth, now()
+                            :academicYearStartMonth, :financialYearStartMonth,
+                            :timeZone, :countryCode, :locale, :currencyCode, :phoneRegion, now()
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             name = EXCLUDED.name,
@@ -40,6 +43,11 @@ public class DimensionProjectionRepository {
                             active = EXCLUDED.active,
                             academic_year_start_month = EXCLUDED.academic_year_start_month,
                             financial_year_start_month = EXCLUDED.financial_year_start_month,
+                            time_zone = EXCLUDED.time_zone,
+                            country_code = EXCLUDED.country_code,
+                            locale = EXCLUDED.locale,
+                            currency_code = EXCLUDED.currency_code,
+                            phone_region = EXCLUDED.phone_region,
                             updated_at = now()
                         """)
                 .param("id", id)
@@ -50,7 +58,16 @@ public class DimensionProjectionRepository {
                 .param("active", active)
                 .param("academicYearStartMonth", normalizeMonth(academicYearStartMonth))
                 .param("financialYearStartMonth", normalizeMonth(financialYearStartMonth))
+                .param("timeZone", defaultText(timeZone, "Asia/Kolkata"))
+                .param("countryCode", defaultText(countryCode, "IN"))
+                .param("locale", defaultText(locale, "en-IN"))
+                .param("currencyCode", defaultText(currencyCode, "INR"))
+                .param("phoneRegion", defaultText(phoneRegion, "IN"))
                 .update();
+    }
+
+    private static String defaultText(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private static int normalizeMonth(Integer month) {

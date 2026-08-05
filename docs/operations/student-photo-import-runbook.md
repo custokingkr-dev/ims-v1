@@ -39,6 +39,11 @@ New schools are provisioned during onboarding. For an existing school:
 Provisioning is idempotent. Use the repair action after a transient failure; do not
 manually replace database folder IDs or move managed folders outside the configured root.
 
+The superadmin **School accounts** view derives onboarding readiness from two independent facts:
+an assigned administrator and a `READY` current-year Drive binding. A school created while Drive
+returns `FAILED` or `NOT_CONFIGURED` remains valid but is shown as **Action needed**; use
+**Retry Drive** after correcting credentials/root configuration. Do not create a duplicate school.
+
 ## Import Procedure
 
 1. Empty or archive the previous delivery from the intake folder.

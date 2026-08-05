@@ -15,6 +15,7 @@ describe('student profile form mappers', () => {
       classId: '9',
       sectionId: '4-9-A',
       fatherContact: '9876543210',
+      admissionDate: '2024-04-01',
     };
 
     expect(studentProfileFormToCreatePayload(form)).toMatchObject({
@@ -25,6 +26,7 @@ describe('student profile form mappers', () => {
       fatherContact: '9876543210',
       fatherContactNumber: '9876543210',
       phone: '9876543210',
+      admissionDate: '2024-04-01',
     });
   });
 
@@ -39,6 +41,7 @@ describe('student profile form mappers', () => {
       classId: '10',
       sectionId: '4-10-B',
       academicYear: '2026-27',
+      admissionDate: '2024-06-01',
       fatherName: 'Rao',
       fatherContact: '9000000000',
       motherName: 'Kavya',
@@ -68,7 +71,9 @@ describe('student profile form mappers', () => {
       classId: '10',
       sectionId: '4-10-B',
       phone: '9111111111',
+      admissionDate: '2024-06-01',
     });
+    expect(studentProfileFormToUpdatePayload(form)).not.toHaveProperty('academicYear');
   });
 
   it('keeps an imported full address visible in the edit form', () => {

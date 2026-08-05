@@ -77,6 +77,20 @@ class DriveFolderProvisioningServiceTest {
     }
 
     @Test
+    void readinessRejectsBindingFromAnotherEnvironmentRoot() {
+        SchoolDriveScope scope = scope();
+        when(repository.currentScope(7L)).thenReturn(scope);
+        when(repository.find(7L, "ay_2026_27")).thenReturn(Optional.of(binding("READY", null)));
+        when(drive.isProvisioningEnabled()).thenReturn(true);
+        when(drive.rootFolderId()).thenReturn("prod-root-folder");
+
+        var result = service.statusForSchool(7L);
+
+        assertThat(result.status()).isEqualTo("FAILED");
+        assertThat(result.error()).contains("different configured root");
+    }
+
+    @Test
     void repairsReadyBindingWhenImmutableDriveHierarchyNoLongerMatches() {
         SchoolDriveScope scope = scope();
         DriveFolderBinding ready = binding("READY", null);
