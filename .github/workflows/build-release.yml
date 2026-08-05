@@ -272,6 +272,10 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v3
       - uses: docker/setup-buildx-action@v4
 
+      - name: Initialize release evidence
+        shell: pwsh
+        run: New-Item -ItemType Directory -Force -Path release-evidence | Out-Null
+
       - name: Ensure development database is running
         if: ${{ needs.resolve-target.outputs.target_env == 'dev' }}
         shell: pwsh
@@ -485,6 +489,7 @@ jobs:
         if: always()
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force -Path release-evidence | Out-Null
           $lines = @(
             "# Release ${{ needs.resolve-target.outputs.commit_sha }}",
             "",

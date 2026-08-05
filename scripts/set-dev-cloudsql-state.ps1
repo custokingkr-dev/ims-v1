@@ -32,11 +32,23 @@ if ($State -eq "status") {
 }
 
 $activationPolicy = if ($State -eq "start") { "ALWAYS" } else { "NEVER" }
-& $GcloudCommand sql instances patch $InstanceName `
-  "--project=$ProjectId" `
-  "--activation-policy=$activationPolicy" `
-  --quiet
-if ($LASTEXITCODE -ne 0) { throw "Could not $State Cloud SQL instance '$InstanceName'." }
+$current = Get-InstanceStatus
+$activationMatches = $current.ActivationPolicy -eq $activationPolicy
+$runtimeMatches = $State -eq "stop" -or $current.State -eq "RUNNABLE"
+
+if ($activationMatches -and $runtimeMatches) {
+  Write-Host "Cloud SQL instance $InstanceName is already $($current.State) with activation policy $($current.ActivationPolicy)."
+  exit 0
+}
+
+if (-not $activationMatches) {
+  & $GcloudCommand sql instances patch $InstanceName `
+    "--project=$ProjectId" `
+    "--activation-policy=$activationPolicy" `
+    --async `
+    --quiet
+  if ($LASTEXITCODE -ne 0) { throw "Could not request Cloud SQL $State for '$InstanceName'." }
+}
 
 if (-not $Wait) {
   Write-Host "Requested Cloud SQL $State for $InstanceName."
