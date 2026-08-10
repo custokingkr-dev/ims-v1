@@ -3,8 +3,17 @@ import { check, sleep } from 'k6';
 import { SharedArray } from 'k6/data';
 
 const fixturesFile = __ENV.K6_FIXTURES_FILE || './fixtures.json';
-const fixtures = new SharedArray('school fixtures', () => JSON.parse(open(fixturesFile)));
+const fixtures = new SharedArray('school fixtures', () => {
+  if (__ENV.K6_ACCESS_TOKEN && __ENV.K6_SCHOOL_ID) {
+    return [{
+      schoolId: __ENV.K6_SCHOOL_ID,
+      accessToken: __ENV.K6_ACCESS_TOKEN,
+    }];
+  }
+  return JSON.parse(open(fixturesFile));
+});
 const baseUrl = (__ENV.BASE_URL || '').replace(/\/$/, '');
+const attendanceDate = __ENV.ATTENDANCE_DATE || new Date().toISOString().slice(0, 10);
 
 if (!baseUrl) throw new Error('BASE_URL is required');
 if (fixtures.length === 0) throw new Error('At least one school fixture is required');
@@ -48,6 +57,6 @@ export default function () {
   sleep(Math.random() * 2);
   request(`/api/v1/dashboard/command-center?schoolId=${school}`, fixture, { flow: 'dashboard' });
   sleep(Math.random() * 2);
-  request(`/api/v1/attendance/daily-summary?schoolId=${school}`, fixture, { flow: 'attendance-summary' });
+  request(`/api/v1/attendance/daily-summary?schoolId=${school}&date=${attendanceDate}`, fixture, { flow: 'attendance-summary' });
   sleep(1 + Math.random() * 4);
 }
