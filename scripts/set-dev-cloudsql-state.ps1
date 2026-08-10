@@ -75,7 +75,7 @@ if (-not [string]::IsNullOrWhiteSpace($operationName)) {
     if ($LASTEXITCODE -ne 0) { throw "Could not read Cloud SQL operation '$operationName'." }
     $operation = ($operationJson -join "`n") | ConvertFrom-Json
     if ([string]$operation.status -eq "DONE") {
-      if ($operation.error -or @($operation.errors).Count -gt 0) {
+      if ($null -ne $operation.PSObject.Properties["error"]) {
         throw "Cloud SQL $State operation '$operationName' completed with an error."
       }
       break
