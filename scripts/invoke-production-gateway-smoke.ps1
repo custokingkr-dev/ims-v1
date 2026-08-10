@@ -17,6 +17,7 @@ param(
     [string]$PreflightJson = "artifacts/real-environment-readiness-final.json",
     [string]$PreflightMarkdown = "artifacts/real-environment-readiness-final.md",
     [string]$LegacyCompatibilityJson = "artifacts/legacy-compatibility-audit-cloudsql.json",
+    [int]$SmokeTimeoutSeconds = 60,
     [string]$Gcloud = "C:\Program Files (x86)\Google\Cloud SDK\google-cloud-sdk\bin\gcloud.cmd"
 )
 
@@ -81,19 +82,46 @@ function Invoke-CloudSqlJob {
     $executionMarker = $Marker + "-" + ((New-Guid).ToString("n").Substring(0, 8))
     $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Sql))
     $script = "printf '%s' '$encodedSql' | base64 -d > /tmp/smoke.sql && psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/smoke.sql | sed 's/^/$executionMarker|/'"
-    $jobArgs = "-c,$script"
-
     Ensure-CloudSqlJob
 
     Write-Host "Executing $NamePrefix through reusable Cloud Run job $script:CloudSqlJobName"
-    & $Gcloud run jobs execute $script:CloudSqlJobName `
-        --project=$Project `
-        --region=$Region `
-        "--args=$jobArgs" `
-        --wait | Write-Output
+    # Use the Cloud Run v2 API for the execution override. Passing the encoded SQL through
+    # gcloud.cmd exceeds the Windows command-line limit for the provisioning statement.
+    $accessToken = ((& $Gcloud auth print-access-token) -join "").Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($accessToken)) {
+        throw "Could not obtain a gcloud access token for the Cloud SQL smoke job."
+    }
+    $runUri = "https://run.googleapis.com/v2/projects/$Project/locations/$Region/jobs/$($script:CloudSqlJobName):run"
+    $runBody = @{
+        overrides = @{
+            containerOverrides = @(
+                @{ args = @("-c", $script) }
+            )
+        }
+    } | ConvertTo-Json -Depth 8
+    $headers = @{ Authorization = "Bearer $accessToken" }
+    $operation = Invoke-RestMethod -Uri $runUri -Method Post -Headers $headers `
+        -ContentType "application/json" -Body $runBody -TimeoutSec 60
+    if ([string]::IsNullOrWhiteSpace([string]$operation.name)) {
+        throw "Cloud SQL smoke job execution did not return an operation name."
+    }
+    $operationUri = "https://run.googleapis.com/v2/$($operation.name)"
+    $operationDeadline = (Get-Date).AddMinutes(5)
+    do {
+        Start-Sleep -Seconds 5
+        $operation = Invoke-RestMethod -Uri $operationUri -Headers $headers -TimeoutSec 60
+    } while (-not $operation.done -and (Get-Date) -lt $operationDeadline)
+    if (-not $operation.done) {
+        throw "Timed out waiting for Cloud SQL smoke job operation $($operation.name)."
+    }
+    if ($operation.error) {
+        throw "Cloud SQL smoke job failed: $($operation.error.message)"
+    }
     Start-Sleep -Seconds 1
 
-    $filter = "resource.type=`"cloud_run_job`" AND resource.labels.job_name=`"$($script:CloudSqlJobName)`" AND textPayload:`"$executionMarker`""
+    # Keep the marker filter free of embedded quotes. On Windows, gcloud.cmd is mediated by
+    # cmd.exe and nested filter quotes can be consumed before the Cloud Logging CLI sees them.
+    $filter = "resource.type=cloud_run_job AND resource.labels.job_name=$($script:CloudSqlJobName) AND textPayload:$executionMarker"
     $lines = @()
     for ($attempt = 1; $attempt -le 10; $attempt++) {
         $lines = @(& $Gcloud logging read $filter `
@@ -377,6 +405,7 @@ try {
         -AdminUserId $context.adminUserId `
         -ClassId $context.classId `
         -SectionId $context.sectionId `
+        -TimeoutSeconds $SmokeTimeoutSeconds `
         -RunPhotoUploadSmoke `
         -OutputJson $OutputJson
     if ($LASTEXITCODE -ne 0) {

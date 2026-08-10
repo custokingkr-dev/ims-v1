@@ -78,6 +78,30 @@ PostgreSQL 16 test schema.
 - Direct service Cloud Run job: `ims-direct-service-smoke-8xbzx`, success.
 - Cloud Run 5xx during the validation window: zero across the five affected services.
 
+### Full authenticated business smoke
+
+The cross-platform smoke wrapper was corrected to send long SQL execution overrides through the
+Cloud Run v2 REST API instead of the Windows command line. It also now loads `System.Net.Http`
+explicitly for Windows PowerShell and uses a 60-second endpoint ceiling so a cold service is not
+misclassified by the former 20-second limit.
+
+Final live dev result:
+
+- authenticated checks: 40/40 passed;
+- failures: zero;
+- health, identity, tenant-school and RBAC: passed;
+- student list/detail/import template and photo upload: passed;
+- attendance, fees, catalog and workflows: passed;
+- firefighting, reporting, notifications and audit: passed;
+- billing and superadmin endpoints: passed;
+- real-environment preflight: ready;
+- preflight blockers: zero;
+- temporary smoke users and student: retired successfully by
+  `ims-gateway-smoke-sql-dev-sf5lh`.
+
+The missing legacy compatibility artifact remains a warning only for the environment-suffixed
+deployment path.
+
 ### Refresh-token boundary
 
 Live dev result:

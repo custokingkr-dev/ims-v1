@@ -19,6 +19,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Net.Http
 
 $results = New-Object System.Collections.Generic.List[object]
 
