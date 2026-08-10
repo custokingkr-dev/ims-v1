@@ -212,6 +212,19 @@ class ReportingReadControllerTest {
     }
 
     @Test
+    void pubSubAcceptsCloudRunIamAuthenticatedDeliveryWithoutSharedUrlToken() throws Exception {
+        ReportingEventInboxRepository inbox = mock(ReportingEventInboxRepository.class);
+        ObjectMapper mapper = new ObjectMapper();
+        ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "", false);
+        when(inbox.exists("event-1")).thenReturn(false);
+
+        pubSub.receiveReportingEvent(null, null, directEnvelope(mapper));
+
+        verify(inbox).exists("event-1");
+        verify(inbox).record(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void pubSubRecordsDirectEventEnvelope() throws Exception {
         ReportingEventInboxRepository inbox = mock(ReportingEventInboxRepository.class);
         ObjectMapper mapper = new ObjectMapper();

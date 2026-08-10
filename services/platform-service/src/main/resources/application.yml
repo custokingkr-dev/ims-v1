@@ -61,6 +61,7 @@ reporting:
   read-token: ${REPORTING_READ_TOKEN:}
   pubsub:
     push-token: ${REPORTING_PUBSUB_PUSH_TOKEN:${REPORTING_READ_TOKEN:}}
+    require-shared-token: ${REPORTING_PUBSUB_REQUIRE_SHARED_TOKEN:true}
   event-projection:
     enabled: ${REPORTING_EVENT_PROJECTION_ENABLED:true}
     fixed-delay-ms: ${REPORTING_EVENT_PROJECTION_FIXED_DELAY_MS:10000}

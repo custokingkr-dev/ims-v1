@@ -32,13 +32,22 @@ public class ReportingPubSubPushController {
     private final ReportingEventInboxRepository inbox;
     private final ObjectMapper objectMapper;
     private final String pushToken;
+    private final boolean requireSharedToken;
     private final TraceContextBridge traceContextBridge;
 
     public ReportingPubSubPushController(
             ReportingEventInboxRepository inbox,
             ObjectMapper objectMapper,
             String pushToken) {
-        this(inbox, objectMapper, pushToken, TraceContextBridge.noop());
+        this(inbox, objectMapper, pushToken, true, TraceContextBridge.noop());
+    }
+
+    public ReportingPubSubPushController(
+            ReportingEventInboxRepository inbox,
+            ObjectMapper objectMapper,
+            String pushToken,
+            boolean requireSharedToken) {
+        this(inbox, objectMapper, pushToken, requireSharedToken, TraceContextBridge.noop());
     }
 
     @Autowired
@@ -46,10 +55,12 @@ public class ReportingPubSubPushController {
             ReportingEventInboxRepository inbox,
             ObjectMapper objectMapper,
             @Value("${reporting.pubsub.push-token:${reporting.read-token:}}") String pushToken,
+            @Value("${reporting.pubsub.require-shared-token:true}") boolean requireSharedToken,
             TraceContextBridge traceContextBridge) {
         this.inbox = inbox;
         this.objectMapper = objectMapper;
         this.pushToken = pushToken == null ? "" : pushToken.trim();
+        this.requireSharedToken = requireSharedToken;
         this.traceContextBridge = traceContextBridge;
     }
 
@@ -108,6 +119,12 @@ public class ReportingPubSubPushController {
     private void requireToken(String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope");
+        }
+        // When disabled, Cloud Run IAM is the authentication boundary: the service is private and
+        // only the dedicated Pub/Sub push identity has run.invoker. Keep the default true for local,
+        // direct and legacy deployments where that infrastructure guarantee is absent.
+        if (!requireSharedToken) {
+            return;
         }
         if (!StringUtils.hasText(pushToken) || !pushToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid reporting pubsub token");
