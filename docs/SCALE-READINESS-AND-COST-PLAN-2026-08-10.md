@@ -191,7 +191,7 @@ views begin transferring full portraits.
 | Student search | Tenant-scoped `%LIKE%` across many fields | Acceptable at 10k/school; measure before adding costly indexes |
 | Attendance storage | Correct indexes, no partitions | Suitable initially; must partition/retain before large history |
 | Attendance submission | Set validation and multi-row upsert | Deployed and passed 300-VU write stage |
-| Student import | 500 rows, synchronous row loop | Must become resumable async for 10k schools |
+| Student import | 500-row explicit batches, retry-safe confirmation | Cost-minimized onboarding path; 20 batches for 10k students |
 | Review campaign creation | Set insert plus 500-row event chunks | Deployed; 10k-school path is about 21 statements |
 | Reporting projections | Idempotent projections but formerly permanent failure/no lease | Retry, lease and dead-letter added here |
 | Billing outbox | At-least-once but formerly no concurrent claim | `SKIP LOCKED` added here |
@@ -417,6 +417,9 @@ High:
     has a measured 80-connection theoretical pool ceiling against database maximum 200.
 18. Cloud SQL state control now waits for the exact asynchronous operation before declaring start
     or stop complete, correcting a race exposed by the scheduled cost-control shutdown.
+19. Student import confirmation now locks its batch and returns the original completed job/result
+    on retries. The 500-row frontend/backend cap is retained as the explicit low-cost onboarding
+    process, avoiding always-on workers and limiting a 10,000-student school to 20 bounded batches.
 
 These changes are repository changes only. They are not deployed to production by this review.
 
@@ -449,7 +452,9 @@ Evidence: seed manifest, row counts, query-plan bundle, baseline database metric
 - Completed in dev: replace per-student attendance validation/upserts with set-based validation and
   one multi-row upsert.
 - Completed in dev: batch student review campaign items and their projection outbox events.
-- Make student imports resumable asynchronous jobs with 250-500-row transactions.
+- Completed with the cost-minimized option: retain explicit 500-row transactions and make
+  confirmation idempotent/retry-safe. Introduce asynchronous infrastructure only if a measured
+  onboarding SLA requires unattended single-file processing.
 - Add idempotency/retry tests for each path.
 
 Evidence: statement count before/after, transaction tests, failed-job replay test.
@@ -557,7 +562,7 @@ dev scenarios after batching is implemented.
 - [ ] Zonal-versus-HA risk accepted by business owner.
 - [x] 300,000-student seed and 10,000-student tenant tests pass in dev.
 - [x] Attendance batch path passes burst, sustained 300-VU, duplicate and transaction tests in dev.
-- [ ] Imports are resumable or an explicit operational batching process is accepted.
+- [x] Imports use an explicit 500-row operational batching process with retry-safe confirmation.
 - [ ] Student list/search meets p95/p99 targets.
 - [ ] Reporting retries, dead-letter and replay are verified.
 - [ ] Background relay operates while user-facing services are idle.
@@ -571,7 +576,7 @@ dev scenarios after batching is implemented.
 - [ ] Canary cohort completes a real school-day peak before the next wave.
 
 Production remains a no-go while any mandatory item above is open. In particular, the passing
-300-VU stage does not replace the four-hour soak, import resumability, controlled recovery/PITR,
+300-VU stage does not replace the four-hour soak, controlled recovery/PITR,
 runtime IAM/OIDC, production database/HA decision, or staged canary evidence.
 
 ## 16. Sources

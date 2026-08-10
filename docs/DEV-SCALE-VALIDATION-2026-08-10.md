@@ -118,6 +118,11 @@ tests across 70 suites and passed with zero failures, errors, or skips. The new 
 compares the row's `xmin` before and after repeated current-year resolution and proves that the
 read path no longer rewrites an unchanged academic year.
 
+The import retry correction increased the complete suite to 483 tests across the same 70 suites,
+again with zero failures, errors, or skips. Its PostgreSQL integration test confirms that confirming
+the same preview twice returns the original job/result, creates exactly one student, and leaves the
+batch `DONE` instead of overwriting it as skipped.
+
 ### Cloud Run release verification
 
 - Five affected revisions ready: pass.
@@ -309,6 +314,21 @@ Application logs showed no request-processing exceptions during the validation w
 billing. These do not appear in request results, but telemetry delivery should be corrected or
 reclassified before production so exporter failures do not obscure application errors.
 
+## Student Import Operating Model
+
+Student data imports intentionally remain capped at 500 rows in both the frontend and backend. A
+10,000-student onboarding is therefore twenty independently auditable batches. This keeps request
+memory, transaction duration, rollback scope, and Cloud SQL bursts bounded without adding Cloud
+Tasks, an always-on worker, or another paid queue/compute path.
+
+Confirmation is now retry-safe. It locks the preview batch with `SELECT ... FOR UPDATE`, reuses the
+existing job id, and returns the stored completed result—including the admission-number/student-id
+mapping needed by the photo step—when a gateway, browser, or operator repeats the request. Concurrent
+confirmations serialize on the batch row. An uncommitted failure rolls the batch transaction back;
+the same file token can then be retried. This is the selected low-cost explicit batching process,
+not an unattended 10,000-row asynchronous import. If schools require a single-file/background SLA,
+Cloud Tasks or a request-driven Cloud Run Job remains a later, measured enhancement.
+
 ## Incomplete Gates
 
 This dev release is validated for functional deployment, the exact 300,000-student fleet shape,
@@ -319,11 +339,10 @@ The following remain required:
 1. Four-hour soak at the approved 300-VU ceiling and a separate morning burst.
 2. Intentional failure-injection/recovery drill and PITR evidence. The unplanned scheduled shutdown
    proved application reconnection but is not a substitute for a controlled recovery drill.
-3. Asynchronous/resumable student imports (review campaign creation is batched and deployed).
-4. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
-5. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
+3. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
+4. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
    decision before tens of millions of attendance-detail rows accumulate.
-6. Production database choice and availability decision: two versus four vCPU and zonal cost mode
+5. Production database choice and availability decision: two versus four vCPU and zonal cost mode
    versus regional HA.
 
 ## Production Gate

@@ -287,6 +287,36 @@ class StudentImportPhotoIntegrationTest {
     }
 
     @Test
+    void confirmImport_retryReturnsOriginalResultWithoutDuplicatingOrCorruptingBatch() throws Exception {
+        long schoolId = seedSchool(5, 2);
+        StudentReadRepository repo = new StudentReadRepository(jdbc,
+                mock(StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> preview = repo.previewImport(Map.of(
+                "schoolId", schoolId,
+                "rows", List.of(Map.of(
+                        "Name", "Retry Safe", "Class", "1", "Section", "A",
+                        "AdmissionNo", "RETRY-1", "Gender", "Female", "Phone", "9876543210"))));
+        Map<String, Object> first = repo.confirmImport(Map.of(
+                "schoolId", schoolId, "fileToken", preview.get("fileToken")));
+        Map<String, Object> retry = repo.confirmImport(Map.of(
+                "schoolId", schoolId, "fileToken", preview.get("fileToken")));
+
+        assertThat(retry.get("jobId")).isEqualTo(first.get("jobId"));
+        assertThat(retry).containsEntry("inserted", 1).containsEntry("skipped", 0).containsEntry("done", true);
+        assertThat((List<?>) retry.get("insertedStudents")).singleElement();
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE school_id = :schoolId AND admission_no = 'RETRY-1'")
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .single()).isEqualTo(1L);
+        assertThat(jdbc.sql("SELECT status FROM student.import_batches WHERE file_token = :fileToken")
+                .param("fileToken", preview.get("fileToken"))
+                .query(String.class)
+                .single()).isEqualTo("DONE");
+    }
+
+    @Test
     void confirmImport_preservesDateOfBirthAsCalendarDate() throws Exception {
         long schoolId = seedSchool(5, 2);
         StudentReadRepository studentRepo = new StudentReadRepository(jdbc,

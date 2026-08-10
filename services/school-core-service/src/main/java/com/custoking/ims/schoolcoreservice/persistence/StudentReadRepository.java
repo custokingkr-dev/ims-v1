@@ -894,18 +894,28 @@ public class StudentReadRepository {
         String fileToken = requireText(request.get("fileToken"), "Preview token not found");
         Long schoolId = longValue(request.get("schoolId"), null);
         if (schoolId == null) throw new IllegalArgumentException("School not found");
-        String batchId = jdbc.sql("""
-                        SELECT id
+        ImportBatchRow batch = jdbc.sql("""
+                        SELECT id, file_token, job_id, total_rows, valid_count, error_count,
+                               warning_count, status, pct, inserted, skipped, skipped_json,
+                               created_at, completed_at
                         FROM student.import_batches
                         WHERE file_token = :fileToken
                           AND school_id = :schoolId
+                        FOR UPDATE
                         """)
                 .param("fileToken", fileToken)
                 .param("schoolId", schoolId)
-                .query(String.class)
+                .query(ImportBatchRow.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Preview token not found"));
-        String jobId = UUID.randomUUID().toString();
+        if ("DONE".equalsIgnoreCase(batch.status())) {
+            return completedImportResult(batch, schoolId);
+        }
+
+        String batchId = batch.id();
+        String jobId = batch.jobId() == null || batch.jobId().isBlank()
+                ? UUID.randomUUID().toString()
+                : batch.jobId();
         jdbc.sql("UPDATE student.import_batches SET job_id = :jobId, status = 'RUNNING', pct = 20 WHERE id = :batchId")
                 .param("jobId", jobId)
                 .param("batchId", batchId)
@@ -980,6 +990,33 @@ public class StudentReadRepository {
                 "insertedStudents", insertedStudents);
     }
 
+    private Map<String, Object> completedImportResult(ImportBatchRow batch, Long schoolId) {
+        List<Map<String, Object>> skippedRows = parseSkippedImportRows(batch.skippedJson());
+        List<Map<String, Object>> insertedStudents = jdbc.sql("""
+                        SELECT admission_no, applied_student_id
+                        FROM student.import_rows
+                        WHERE batch_id = :batchId
+                          AND school_id = :schoolId
+                          AND applied_student_id IS NOT NULL
+                        ORDER BY row_no
+                        """)
+                .param("batchId", batch.id())
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> row(
+                        "admissionNo", rs.getString("admission_no"),
+                        "studentId", rs.getLong("applied_student_id")))
+                .list();
+        return row("batchId", batch.id(),
+                "jobId", batch.jobId(),
+                "schoolId", schoolId,
+                "totalRows", batch.totalRows(),
+                "inserted", batch.inserted(),
+                "skipped", batch.skipped(),
+                "done", true,
+                "skippedRows", skippedRows,
+                "insertedStudents", insertedStudents);
+    }
+
     public Map<String, Object> importStatus(String jobId, Long schoolId) {
         ImportBatchRow batch = jdbc.sql("""
                         SELECT id, file_token, job_id, total_rows, valid_count, error_count,
@@ -994,16 +1031,18 @@ public class StudentReadRepository {
                 .query(ImportBatchRow.class)
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Import job not found"));
-        List<Map<String, Object>> skippedRows = List.of();
-        if (batch.skippedJson() != null && !batch.skippedJson().isBlank()) {
-            try {
-                skippedRows = objectMapper.readValue(batch.skippedJson(), new TypeReference<>() {});
-            } catch (Exception ignored) {
-                skippedRows = List.of();
-            }
-        }
+        List<Map<String, Object>> skippedRows = parseSkippedImportRows(batch.skippedJson());
         return row("pct", batch.pct(), "done", "DONE".equalsIgnoreCase(batch.status()),
                 "inserted", batch.inserted(), "skipped", batch.skipped(), "skippedRows", skippedRows);
+    }
+
+    private List<Map<String, Object>> parseSkippedImportRows(String skippedJson) {
+        if (skippedJson == null || skippedJson.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(skippedJson, new TypeReference<>() {});
+        } catch (Exception ignored) {
+            return List.of();
+        }
     }
 
     @Transactional
