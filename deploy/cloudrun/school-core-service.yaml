@@ -14,7 +14,7 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "0" # from-param: ${domain_min_instances}
-        autoscaling.knative.dev/maxScale: "2" # from-param: ${domain_max_instances}
+        autoscaling.knative.dev/maxScale: "4" # from-param: ${domain_max_instances}
         run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/startup-cpu-boost: "true"
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
@@ -53,6 +53,10 @@ spec:
               value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
             - name: SPRING_DATASOURCE_USERNAME
               value: app_rt
+            # Four peak instances x 20 connections = 80, leaving at least 120 of the
+            # dev/prod Cloud SQL max_connections=200 budget for other services/admin work.
+            - name: DB_POOL_MAX
+              value: "20"
             - name: FLYWAY_URL
               value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
             - name: FLYWAY_USERNAME

@@ -1,17 +1,34 @@
 import http from 'k6/http';
 import { check, fail, sleep } from 'k6';
 import { SharedArray } from 'k6/data';
+import { Counter } from 'k6/metrics';
 
 const baseUrl = (__ENV.BASE_URL || '').replace(/\/$/, '');
-const accessToken = __ENV.K6_ACCESS_TOKEN || '';
+const accessTokens = (__ENV.K6_ACCESS_TOKENS || __ENV.K6_ACCESS_TOKEN || '')
+  .split(',')
+  .map((value) => value.trim())
+  .filter(Boolean);
 const baseSchoolId = Number(__ENV.SCALE_BASE_SCHOOL_ID || 900000000);
 const schoolCount = Number(__ENV.SCALE_SCHOOL_COUNT || 100);
 const totalStudents = Number(__ENV.SCALE_TOTAL_STUDENTS || 300000);
 const largeSchoolStudents = Number(__ENV.SCALE_LARGE_SCHOOL_STUDENTS || 10000);
 const attendanceDate = __ENV.ATTENDANCE_DATE || new Date().toISOString().slice(0, 10);
+const iterationSleepSeconds = Number(__ENV.ITERATION_SLEEP_SECONDS || 2);
+const peakVus = Number(__ENV.PEAK_VUS || 100);
+
+const responsesByClass = {
+  success: new Counter('attendance_http_2xx'),
+  unauthorized: new Counter('attendance_http_401'),
+  forbidden: new Counter('attendance_http_403'),
+  notFound: new Counter('attendance_http_404'),
+  conflict: new Counter('attendance_http_409'),
+  throttled: new Counter('attendance_http_429'),
+  other4xx: new Counter('attendance_http_other_4xx'),
+  serverError: new Counter('attendance_http_5xx'),
+};
 
 if (!baseUrl) throw new Error('BASE_URL is required');
-if (!accessToken) throw new Error('K6_ACCESS_TOKEN is required');
+if (accessTokens.length === 0) throw new Error('K6_ACCESS_TOKEN or K6_ACCESS_TOKENS is required');
 if (__ENV.ALLOW_SCALE_WRITES !== '1') throw new Error('ALLOW_SCALE_WRITES=1 is required');
 if (!baseUrl.includes('-dev-') && !baseUrl.includes('localhost')) {
   throw new Error('Attendance write load is restricted to dev or localhost');
@@ -46,6 +63,10 @@ const sections = new SharedArray('synthetic attendance sections', () => {
   return rows;
 });
 
+if (peakVus < 1 || peakVus > sections.length) {
+  throw new Error(`PEAK_VUS must be between 1 and the ${sections.length} synthetic sections`);
+}
+
 export const options = {
   scenarios: {
     attendance_writes: {
@@ -53,7 +74,7 @@ export const options = {
       startVUs: 0,
       stages: [
         { duration: __ENV.RAMP_UP || '2m', target: Number(__ENV.PEAK_VUS || 100) },
-        { duration: __ENV.HOLD || '10m', target: Number(__ENV.PEAK_VUS || 100) },
+        { duration: __ENV.HOLD || '10m', target: peakVus },
         { duration: __ENV.RAMP_DOWN || '2m', target: 0 },
       ],
       gracefulRampDown: '30s',
@@ -66,13 +87,33 @@ export const options = {
   },
 };
 
-const headers = {
-  Authorization: `Bearer ${accessToken}`,
-  'Content-Type': 'application/json',
-};
+function headersForVu() {
+  const token = accessTokens[(__VU - 1) % accessTokens.length];
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+function recordStatus(operation, status) {
+  const tags = { operation };
+  if (status >= 200 && status < 300) responsesByClass.success.add(1, tags);
+  else if (status === 401) responsesByClass.unauthorized.add(1, tags);
+  else if (status === 403) responsesByClass.forbidden.add(1, tags);
+  else if (status === 404) responsesByClass.notFound.add(1, tags);
+  else if (status === 409) responsesByClass.conflict.add(1, tags);
+  else if (status === 429) responsesByClass.throttled.add(1, tags);
+  else if (status >= 400 && status < 500) responsesByClass.other4xx.add(1, tags);
+  else if (status >= 500) responsesByClass.serverError.add(1, tags);
+}
 
 export default function () {
-  const fixture = sections[((__VU - 1) + (__ITER * Math.max(1, Number(__ENV.PEAK_VUS || 100)))) % sections.length];
+  const headers = headersForVu();
+  // Each VU owns a disjoint modulo partition of the fixture. This keeps broad table/index
+  // coverage without making multiple synthetic teachers update the same section/date row.
+  const ownedSlot = __VU - 1;
+  const ownedSectionCount = Math.floor((sections.length - 1 - ownedSlot) / peakVus) + 1;
+  const fixture = sections[ownedSlot + ((__ITER % ownedSectionCount) * peakVus)];
   if (!fixture || !String(fixture.sectionId).startsWith('scale-')) {
     fail('Refusing to write outside a synthetic scale section');
   }
@@ -83,12 +124,16 @@ export default function () {
     + `&sectionId=${encodeURIComponent(fixture.sectionId)}`;
   const register = http.get(`${baseUrl}/api/v1/attendance/section-register?${query}`, {
     headers,
-    tags: { flow: 'attendance-register-read' },
+    tags: { flow: 'attendance-register-read', name: 'attendance-register-read' },
   });
+  recordStatus('read', register.status);
   const readOk = check(register, {
     'register read succeeds': (r) => r.status === 200,
   });
-  if (!readOk) return;
+  if (!readOk) {
+    sleep(iterationSleepSeconds);
+    return;
+  }
 
   let payload;
   try {
@@ -114,12 +159,13 @@ export default function () {
     records,
   }), {
     headers,
-    tags: { flow: 'attendance-write' },
+    tags: { flow: 'attendance-write', name: 'attendance-write' },
   });
+  recordStatus('write', response.status);
 
   check(response, {
     'attendance write succeeds': (r) => r.status === 200,
     'attendance write is not a server error': (r) => r.status < 500,
   });
-  sleep(Number(__ENV.ITERATION_SLEEP_SECONDS || 2));
+  sleep(iterationSleepSeconds);
 }

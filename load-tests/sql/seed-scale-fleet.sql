@@ -9,7 +9,8 @@ SELECT :base_school_id::bigint AS base_school_id,
        :school_count::integer AS school_count,
        :total_students::integer AS total_students,
        :large_school_students::integer AS large_school_students,
-       :'academic_year_id'::text AS academic_year_id;
+       :'academic_year_id'::text AS academic_year_id,
+       'scale-load-superadmin@custoking.local'::text AS load_user_email;
 
 DO $$
 DECLARE
@@ -72,6 +73,18 @@ DELETE FROM tenant_school.school_sections
 WHERE school_id IN (SELECT id FROM previous_scale_schools);
 DELETE FROM tenant_school.schools
 WHERE id IN (SELECT id FROM previous_scale_schools);
+
+CREATE TEMP TABLE previous_scale_users AS
+SELECT u.id
+FROM identity.app_users u, scale_config c
+WHERE u.email = c.load_user_email;
+
+DELETE FROM identity.auth_sessions
+WHERE user_id IN (SELECT id FROM previous_scale_users);
+DELETE FROM identity.user_role_assignments
+WHERE user_id IN (SELECT id FROM previous_scale_users);
+DELETE FROM identity.app_users
+WHERE id IN (SELECT id FROM previous_scale_users);
 
 INSERT INTO tenant_school.academic_years(id, label, active)
 SELECT academic_year_id, academic_year_id, true
@@ -169,6 +182,39 @@ FROM scale_targets t
 CROSS JOIN scale_config c
 CROSS JOIN LATERAL generate_series(1, t.student_count) AS student_no;
 
+DO $$
+DECLARE
+    load_user_id bigint;
+    super_role_id bigint;
+    load_user_email text;
+BEGIN
+    SELECT c.load_user_email INTO load_user_email FROM scale_config c;
+    SELECT r.id INTO super_role_id
+    FROM identity.roles r
+    WHERE upper(r.name) = 'SUPERADMIN'
+    LIMIT 1;
+
+    IF super_role_id IS NULL THEN
+        RAISE EXCEPTION 'SUPERADMIN role is missing';
+    END IF;
+
+    INSERT INTO identity.app_users(
+        full_name, email, password_hash, role, branch_id, branch_name,
+        created_at, deleted_at, deleted_by)
+    VALUES (
+        'Synthetic Scale Load Superadmin', load_user_email,
+        '$2a$10$J7RjqxrkPBk31.tolxpMkO0LHevKKGCNi6AsSPAsGeHtnyvHfmXlG',
+        'SUPERADMIN', NULL, NULL, now(), NULL, NULL)
+    RETURNING id INTO load_user_id;
+
+    INSERT INTO identity.user_role_assignments(
+        user_id, role_id, school_id, zone_id, assigned_by, assigned_at,
+        active, valid_from)
+    VALUES (
+        load_user_id, super_role_id, NULL, NULL, load_user_id, now(),
+        true, now());
+END $$;
+
 ANALYZE tenant_school.schools;
 ANALYZE tenant_school.school_sections;
 ANALYZE student.students;
@@ -179,7 +225,8 @@ SELECT 'IMS_SCALE_RESULT|' || json_build_object(
     'largestSchoolStudents', (SELECT max(student_count) FROM scale_targets),
     'sections', (SELECT sum(ceil(student_count / 40.0)::integer) FROM scale_targets),
     'baseSchoolId', (SELECT base_school_id FROM scale_config),
-    'academicYearId', (SELECT academic_year_id FROM scale_config)
+    'academicYearId', (SELECT academic_year_id FROM scale_config),
+    'loadUserEmail', (SELECT load_user_email FROM scale_config)
 )::text;
 
 COMMIT;

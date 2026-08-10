@@ -84,6 +84,34 @@ class AttendanceLateLeaveRoundTripTest {
     }
 
     @Test
+    void resolvingExistingAcademicYearDoesNotRewriteSharedCalendarRow() {
+        JdbcClient jdbc = JdbcClient.create(ds);
+        AcademicCalendar.AcademicYear expected =
+                AcademicCalendar.currentAcademicYear(AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH);
+        String before = jdbc.sql("""
+                        SELECT xmin::text
+                        FROM tenant_school.academic_years
+                        WHERE id = :id
+                        """)
+                .param("id", expected.id())
+                .query(String.class)
+                .single();
+
+        assertThat(AcademicCalendar.currentAcademicYearId(jdbc, 1L)).isEqualTo(expected.id());
+        assertThat(AcademicCalendar.currentAcademicYearId(jdbc, 1L)).isEqualTo(expected.id());
+
+        String after = jdbc.sql("""
+                        SELECT xmin::text
+                        FROM tenant_school.academic_years
+                        WHERE id = :id
+                        """)
+                .param("id", expected.id())
+                .query(String.class)
+                .single();
+        assertThat(after).isEqualTo(before);
+    }
+
+    @Test
     void saveThenRead_computesBuckets_andWritesLateLeaveToDaily() {
         String academicYearId = AcademicCalendar.currentAcademicYearId(JdbcClient.create(ds), 1L);
         // P, Late, Leave, Absent — one each.

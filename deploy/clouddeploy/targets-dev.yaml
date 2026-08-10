@@ -12,9 +12,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default
@@ -47,9 +47,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default
@@ -82,9 +82,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default
@@ -117,9 +117,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default
@@ -154,9 +154,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default
@@ -189,9 +189,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default
@@ -224,9 +224,9 @@ deployParameters:
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
-  domain_max_instances: "2"
+  domain_max_instances: "4"
   gateway_min_instances: "0"
-  gateway_max_instances: "3"
+  gateway_max_instances: "4"
   frontend_max_instances: "2"
   vpc_network: default
   vpc_subnet: default

@@ -14,7 +14,7 @@ spec:
     metadata:
       annotations:
         autoscaling.knative.dev/minScale: "0" # from-param: ${gateway_min_instances}
-        autoscaling.knative.dev/maxScale: "3" # from-param: ${gateway_max_instances}
+        autoscaling.knative.dev/maxScale: "4" # from-param: ${gateway_max_instances}
         run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/startup-cpu-boost: "true"
     spec:

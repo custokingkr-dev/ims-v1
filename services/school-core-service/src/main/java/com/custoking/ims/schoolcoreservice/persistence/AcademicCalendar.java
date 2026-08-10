@@ -4,6 +4,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 import java.time.LocalDate;
+import java.util.Objects;
 import java.util.Optional;
 
 final class AcademicCalendar {
@@ -96,10 +97,15 @@ final class AcademicCalendar {
     }
 
     static AcademicYear ensureAcademicYear(JdbcClient jdbc, AcademicYear year) {
+        Optional<AcademicYear> existing = academicYear(jdbc, year.id());
+        if (existing.filter(value -> Objects.equals(value.label(), year.label())).isPresent()) {
+            return year;
+        }
         int updated = jdbc.sql("""
                 UPDATE tenant_school.academic_years
                 SET label = :label
                 WHERE id = :id
+                  AND label IS DISTINCT FROM :label
                 """)
                 .param("id", year.id())
                 .param("label", year.label())
@@ -118,6 +124,7 @@ final class AcademicCalendar {
                         UPDATE tenant_school.academic_years
                         SET label = :label
                         WHERE id = :id
+                          AND label IS DISTINCT FROM :label
                         """)
                         .param("id", year.id())
                         .param("label", year.label())

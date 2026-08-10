@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("Status", "Seed", "Cleanup")]
+    [ValidateSet("Status", "Diagnostics", "Seed", "Cleanup")]
     [string]$Action = "Status",
     [ValidateSet("dev")]
     [string]$Environment = "dev",
@@ -28,7 +28,7 @@ $ErrorActionPreference = "Stop"
 $jobName = "ims-scale-fixture-$Environment"
 $startedAt = Get-Date
 
-if ($Action -ne "Status" -and -not $AllowScaleWrites) {
+if ($Action -in @("Seed", "Cleanup") -and -not $AllowScaleWrites) {
     throw "-$Action modifies the dev database. Pass -AllowScaleWrites after reviewing the reserved scale tenant range."
 }
 if ($BaseSchoolId -lt 900000000) {
@@ -94,6 +94,45 @@ switch ($Action) {
         $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\cleanup-scale-fleet.sql"
         $sql = Get-Content $sqlPath -Raw
         $psqlVariables = "-v base_school_id=$BaseSchoolId"
+    }
+    "Diagnostics" {
+        $sql = @"
+SELECT 'IMS_SCALE_DIAGNOSTICS|' || json_build_object(
+    'capturedAt', now(),
+    'activity', COALESCE(json_agg(row_to_json(activity_rows)), '[]'::json)
+)::text
+FROM (
+    SELECT pid,
+           application_name,
+           state,
+           wait_event_type,
+           wait_event,
+           round(extract(epoch FROM (clock_timestamp() - query_start))::numeric, 3) AS query_age_seconds,
+           pg_blocking_pids(pid) AS blocking_pids,
+           left(regexp_replace(query, '[[:space:]]+', ' ', 'g'), 180) AS query_shape
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND pid <> pg_backend_pid()
+      AND state <> 'idle'
+    ORDER BY query_start
+    LIMIT 100
+) activity_rows;
+
+SELECT 'IMS_SCALE_WAITS|' || COALESCE(json_agg(row_to_json(wait_rows)), '[]'::json)::text
+FROM (
+    SELECT COALESCE(wait_event_type, 'CPU') AS wait_event_type,
+           COALESCE(wait_event, 'CPU') AS wait_event,
+           count(*) AS backends,
+           round(max(extract(epoch FROM (clock_timestamp() - query_start)))::numeric, 3) AS oldest_query_seconds
+    FROM pg_stat_activity
+    WHERE datname = current_database()
+      AND pid <> pg_backend_pid()
+      AND state <> 'idle'
+    GROUP BY wait_event_type, wait_event
+    ORDER BY backends DESC, wait_event_type, wait_event
+) wait_rows;
+"@
+        $psqlVariables = ""
     }
     default {
         $sql = @"
