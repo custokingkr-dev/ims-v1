@@ -190,16 +190,16 @@ views begin transferring full portraits.
 | Student list pagination | Previously paginated in Java | Corrected in this change |
 | Student search | Tenant-scoped `%LIKE%` across many fields | Acceptable at 10k/school; measure before adding costly indexes |
 | Attendance storage | Correct indexes, no partitions | Suitable initially; must partition/retain before large history |
-| Attendance submission | Row-by-row validation/upsert | Must batch before fleet onboarding |
+| Attendance submission | Set validation and multi-row upsert | Deployed and passed 300-VU write stage |
 | Student import | 500 rows, synchronous row loop | Must become resumable async for 10k schools |
-| Review campaign creation | Loads selected students and inserts one row at a time | Batch before mass campaigns |
+| Review campaign creation | Set insert plus 500-row event chunks | Deployed; 10k-school path is about 21 statements |
 | Reporting projections | Idempotent projections but formerly permanent failure/no lease | Retry, lease and dead-letter added here |
 | Billing outbox | At-least-once but formerly no concurrent claim | `SKIP LOCKED` added here |
 | Cloud Run background timers | Stop at zero instances/CPU throttling | Replace with request-triggered work or jobs |
 | Frontend student paging | Uses 50-row server pages | Suitable |
 | Frontend bundle | Workspace and spreadsheet chunks exceed 900 KiB | Functional; split for latency/mobile use |
-| Database connection pools | Five connections/Java instance | Cost-aware; recalculate with every max-scale increase |
-| Load testing | No fleet-scale test existed | Read workload added; write/data tests remain a week-one gate |
+| Database connection pools | School-core dev uses 20 per instance | Four-instance test ceiling is 80/200 connections |
+| Load testing | Exact 300k fixture and write workload | 300 VUs pass; 500 VUs stops at database CPU gate |
 
 ## 6. Cloud SQL Recommendation
 
@@ -223,6 +223,12 @@ excluded from the Cloud SQL SLA.
 5. Enforce encrypted database connections.
 6. Recalculate pools before increasing Cloud Run max instances.
 
+Measured dev evidence now supports `db-custom-2-7680` for the tested 300-VU attendance-write
+profile: clean sustained peak CPU 57.4%, memory 50.6%, and 67 application backends. The 500-VU stage
+crossed 80% CPU for consecutive samples while memory and connections remained healthy, establishing
+CPU as the first scale-up trigger. This is evidence for a two-vCPU starting shape with onboarding
+limits, not permission to run production on the current shared-core instance.
+
 ### Availability path
 
 Use a regional HA dedicated instance when school operations require an SLA. HA approximately
@@ -231,17 +237,17 @@ Backups alone do not provide comparable recovery time.
 
 ### Connection budget
 
-Current production theoretical application pool ceiling:
+Current dev scale-test school-core pool ceiling:
 
 ```text
-5 Java services * 2 max instances * 5 Hikari connections = 50 connections
+4 school-core instances * 20 Hikari connections = 80 connections
 Cloud SQL max_connections = 200
 ```
 
-Cloud Run concurrency 80 does not create 80 database connections. It can create request queues
-behind a five-connection pool. For database-heavy Spring services, start load testing with Cloud
-Run concurrency 16-32 rather than assuming 80 is efficient. Maintain at least 30% database
-connection headroom for migrations, administration, jobs and failover behavior.
+Cloud Run concurrency 80 does not create 80 database connections. The measured 300-VU stage used
+67 application backends and remained under the 70% connection gate. Maintain at least 30% database
+connection headroom for migrations, administration, jobs and failover behavior; do not increase
+maximum instances or pools independently of this budget.
 
 ## 7. Cloud Run Recommendation
 
@@ -252,9 +258,9 @@ Change the current fleet-wide assumptions as follows:
 | Service | Current max | Initial scale-test max | Notes |
 | --- | ---: | ---: | --- |
 | Frontend | 2 | 3-5 | Mostly static/cacheable |
-| Gateway | 3 | 5-10 | Node async I/O; distributed rate limiting still needed |
+| Gateway | 3 | 4 measured | Node async I/O; distributed rate limiting still needed |
 | Identity | 2 | 3 | Login bursts, otherwise low traffic |
-| School-core | 2 | 5 | Main capacity service; database pool limits first |
+| School-core | 2 | 4 measured | 20-connection pool; 300 VUs pass on two-vCPU SQL |
 | Operations | 2 | 3 | Lower traffic |
 | Platform | 2 | 3-5 | Pub/Sub projections and dashboards |
 | Billing | 2 | 2 | Low frequency |
@@ -399,6 +405,18 @@ High:
     school and 300,000-student fleet shapes without production PII.
 12. Student review campaigns now use one set-based item insert and 500-row outbox chunks; a
     520-student integration test verifies chunk-boundary correctness.
+13. Live dev generated exactly 100 schools, 300,000 students, a 10,000-student largest school and
+    7,576 sections in 74.76 seconds; cleanup and an independent zero-residue status check passed.
+14. The sustained 300-VU write stage passed at 217.60 requests/second with 0.01% errors, write p95
+    122.91 ms, write p99 235.06 ms, 57.4% peak database CPU and 67/200 application backends.
+15. The 500-VU stage was conservatively stopped after consecutive 87.9% and 87.6% database CPU samples. The
+    two-vCPU approved envelope is therefore capped below 500 concurrent attendance writers.
+16. A read-path academic-year rewrite that serialized attendance transactions was removed and is
+    protected by a PostgreSQL `xmin` no-rewrite regression test.
+17. Dev max instances are four for gateway and school-core with minimum instances zero; the latter
+    has a measured 80-connection theoretical pool ceiling against database maximum 200.
+18. Cloud SQL state control now waits for the exact asynchronous operation before declaring start
+    or stop complete, correcting a race exposed by the scheduled cost-control shutdown.
 
 These changes are repository changes only. They are not deployed to production by this review.
 
@@ -537,8 +555,8 @@ dev scenarios after batching is implemented.
 
 - [ ] Dedicated production Cloud SQL chosen from measured load results.
 - [ ] Zonal-versus-HA risk accepted by business owner.
-- [ ] 300,000-student seed and 10,000-student tenant tests pass.
-- [ ] Attendance batch path passes burst and idempotency tests.
+- [x] 300,000-student seed and 10,000-student tenant tests pass in dev.
+- [x] Attendance batch path passes burst, sustained 300-VU, duplicate and transaction tests in dev.
 - [ ] Imports are resumable or an explicit operational batching process is accepted.
 - [ ] Student list/search meets p95/p99 targets.
 - [ ] Reporting retries, dead-letter and replay are verified.
@@ -551,6 +569,10 @@ dev scenarios after batching is implemented.
 - [ ] Per-school usage/cost telemetry exists.
 - [ ] Notification-provider unit economics and consent controls are approved.
 - [ ] Canary cohort completes a real school-day peak before the next wave.
+
+Production remains a no-go while any mandatory item above is open. In particular, the passing
+300-VU stage does not replace the four-hour soak, import resumability, controlled recovery/PITR,
+runtime IAM/OIDC, production database/HA decision, or staged canary evidence.
 
 ## 16. Sources
 

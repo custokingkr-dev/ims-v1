@@ -12,6 +12,10 @@ These assets are restricted to `dev`/localhost and use the reserved school id ra
 - Do not seed 300,000 students into the shared-core `db-f1-micro`. Temporarily use at least
   `db-custom-2-7680`, run the bounded test window, clean the fixture, and restore the cheaper shape.
 - Always run `Status` before and `Cleanup` after the test, even when k6 fails.
+- The fixture creates `scale-load-superadmin@custoking.local` with the documented local password
+  `password` only while the dev fixture exists. Cleanup hard-deletes its sessions, role and user.
+- The evening GCP cost-control workflow can stop dev Cloud SQL during a test window. Coordinate the
+  bounded test with that schedule; do not disable the savings policy permanently.
 
 ## Fixture sizes
 
@@ -31,11 +35,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-f
   -LargeSchoolStudents 10000 -OutputJson artifacts\scale-seed-300k.json
 ```
 
-Read-only status and cleanup:
+Read-only status/diagnostics and cleanup:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-fixture.ps1 `
   -Action Status -OutputJson artifacts\scale-status.json
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-fixture.ps1 `
+  -Action Diagnostics -OutputJson artifacts\scale-diagnostics.json
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-fixture.ps1 `
   -Action Cleanup -AllowScaleWrites -OutputJson artifacts\scale-cleanup.json
@@ -43,20 +50,24 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-f
 
 The seed distributes students into sections of at most 40 across 12 synthetic classes, enables
 `STUDENTS`, `ATTENDANCE`, and `REPORTS`, analyzes the affected tables, and emits exact counts.
+`Diagnostics` is read-only and captures active PostgreSQL query shapes, wait events, blockers and
+transaction ages for contention analysis.
 
 ## Attendance write workload
 
-Use a short-lived dev access token with `attendance:read` and `attendance:manage`. The workload
+Use short-lived dev access tokens with `attendance:read` and `attendance:manage`. The workload
 reads each synthetic section register, then writes all students in one section request. It refuses
 non-dev URLs, requires `ALLOW_SCALE_WRITES=1`, and refuses section ids outside the scale namespace.
+It partitions sections into disjoint per-VU ownership so the harness does not manufacture lock
+contention by writing the same register concurrently.
 
 Example 100-VU stage using the containerized k6 client:
 
 ```powershell
-$env:K6_ACCESS_TOKEN = '<short-lived-dev-token>'
+$env:K6_ACCESS_TOKENS = '<token-1>,<token-2>,<token-3>'
 docker run --rm `
   -e BASE_URL=https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app `
-  -e K6_ACCESS_TOKEN `
+  -e K6_ACCESS_TOKENS `
   -e ALLOW_SCALE_WRITES=1 `
   -e SCALE_SCHOOL_COUNT=100 `
   -e SCALE_TOTAL_STUDENTS=300000 `
@@ -66,12 +77,21 @@ docker run --rm `
   -v "${PWD}\artifacts:/results" `
   grafana/k6:latest run --summary-export=/results/attendance-summary.json `
   /scripts/school-day-attendance-write.js
-Remove-Item Env:K6_ACCESS_TOKEN
+Remove-Item Env:K6_ACCESS_TOKENS
 ```
+
+`K6_ACCESS_TOKEN` remains supported for a one-user smoke. Use `K6_ACCESS_TOKENS` for concurrent
+stages because the gateway currently applies its 50-request/second, burst-100 limiter per raw bearer
+token. Tokens are assigned deterministically by VU. Do not commit tokens or include them in exported
+artifacts.
 
 Repeat at 100, 300, and 500 VUs only when the prior stage passes. Stop if error rate reaches 1%,
 attendance-write p95 reaches 1.5 seconds, Cloud SQL CPU remains above 80%, connections reach 70%, or
 tenant-isolation checks fail.
+
+Measured on 2026-08-10, the two-vCPU dev database passed the clean sustained 300-VU stage but crossed
+80% CPU at 500 VUs; 500 VUs is therefore a stop boundary, not an approved operating target for that
+database shape.
 
 ## Tooling validation evidence
 

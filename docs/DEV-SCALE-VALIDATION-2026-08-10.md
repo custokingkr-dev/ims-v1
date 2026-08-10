@@ -73,6 +73,22 @@ This second school-core-only release deployed revision
 `sha256:33274218f8674b0e11b685104ae914505ebe64052ffb0595a30c4d8f19cb1fcc`. Image, runtime,
 gateway health, release evidence, and dev-approved digest checks passed.
 
+Academic-year contention release commit: `8bca2f6c179f21d28b217f05affbdcc93a69d0c1`
+
+Release workflow:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31401679102
+
+The workflow passed all service builds, the serialized Cloud Deploy release, rollout completion,
+runtime digest verification, gateway health, and dev-approved image publication. The deployed
+school-core revision is `custoking-school-core-service-dev-msnddpe5`, serving 100% of traffic with
+digest `sha256:ec402f10c4b0d46389b10062beef0b429f4ea01fa4b7032e40d8b9d41be2dfdd`.
+The gateway revision is `custoking-api-gateway-dev-msndnt01`, also serving 100% of traffic.
+
+For the bounded dev scale profile, gateway and school-core maximum instances were raised to four while
+minimum instances remained zero. School-core uses a 20-connection pool, giving a theoretical
+school-core ceiling of 80 connections (`4 * 20`) against `max_connections=200`. These maximums do
+not reserve idle Cloud Run instances.
+
 ## Verification Results
 
 ### Local affected suites before release
@@ -96,6 +112,11 @@ request test that proves validation occurs before any attendance mutation.
 After review campaign batching, the complete school-core suite increased to 481 tests and again
 passed with zero failures, errors, or skips. A 520-student test crosses the 500-event chunk boundary
 and verifies one distinct review item and outbox event per student.
+
+After the academic-year contention correction, the complete school-core suite increased to 482
+tests across 70 suites and passed with zero failures, errors, or skips. The new PostgreSQL regression
+compares the row's `xmin` before and after repeated current-year resolution and proves that the
+read path no longer rewrites an unchanged academic year.
 
 ### Cloud Run release verification
 
@@ -183,8 +204,11 @@ The isolated test tooling is now implemented. Against a disposable PostgreSQL 16
 real tenant-school, student, attendance, and reporting migrations, it generated exactly 100 schools,
 300,000 students, a largest school of 10,000 students, and 7,576 sections in 13.51 seconds. The local
 database occupied 121 MB, and cleanup completed in 5.49 seconds with zero reserved rows remaining.
-The dev-only Cloud Run runner status check also passed and confirmed the live dev fixture is empty.
-These results validate fixture generation and recovery only; the cloud load stages remain pending.
+
+The same exact shape was then seeded into live dev on a temporary `db-custom-2-7680` database in
+74.76 seconds. A guarded, dev-only identity was created with the fixture and removed by cleanup.
+Cleanup completed in 71.71 seconds, and an independent status run confirmed zero reserved schools,
+students, sections, and attendance records. No production data or environment was used.
 
 ### Student review campaign batching
 
@@ -235,6 +259,49 @@ and the shared-core shape mean this environment must not be used to certify the 
 student target. Production-like scale testing requires a temporary dedicated 2-vCPU database and
 synthetic data volume.
 
+### Full-volume attendance write stages
+
+The write workload used 100 schools, 300,000 students, a 10,000-student largest school, 7,576
+sections, ten independently authenticated tokens, and disjoint per-VU section ownership. Stable k6
+metric tags prevent URL-cardinality distortion. Failed reads back off instead of creating a retry
+storm. The gateway's current limiter is per bearer token at 50 requests/second with burst 100, so a
+single shared token is not representative of independent staff sessions.
+
+| Stage | Requests | Error rate | Attendance write p95 | Attendance write p99 | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| 10 VU diagnostic | 858 | 0% | 66 ms | 79 ms | Pass |
+| 100 VU short | 8,360 | 0% | 142 ms | 208 ms | Pass |
+| 100 VU sustained, 14 min | 66,944 | 0% | 125.56 ms | 176.87 ms | Pass |
+| 300 VU short, after fix | 18,834 | 0.27% | 901 ms | 1.29 s | Pass |
+| 300 VU sustained, 9 min | 117,838 | 0.01% | 122.91 ms | 235.06 ms | Pass |
+| 500 VU bounded | stopped by safety guard | n/a | n/a | n/a | CPU >80% for two samples |
+
+The clean 300-VU sustained run averaged 217.60 requests/second. It returned 117,822 successful 2xx
+responses, six 429 responses and ten 5xx responses; successful attendance saves remained well inside
+the 1.5-second write threshold. Peak observed Cloud SQL CPU was 57.4%, memory 50.6%, and application
+backends 67/200.
+
+At 500 VUs, Cloud SQL CPU rose from 78.8% to 87.9% and 87.6% in consecutive one-minute samples.
+The run was deliberately terminated by a conservative safety guard before the longer 15-minute
+production-sizing threshold could be exercised. Memory remained approximately 52% and
+application backends 68/200, so CPU—not memory or connection exhaustion—was the first database
+constraint. This proves the tested two-vCPU shape supports the clean 300-VU profile with headroom,
+but 500 concurrent attendance writers are outside its approved envelope.
+
+The first attempted sustained 300-VU run is excluded from capacity results. The scheduled
+`Ops / GCP cost controls` workflow started at `2026-08-10T15:30:45Z` and stopped Cloud SQL during the
+test. PostgreSQL recorded administrator-command connection termination. This exposed an operational
+race in `set-dev-cloudsql-state.ps1`: it could observe a transient RUNNABLE state before the async
+patch operation completed. The helper now waits on the exact Cloud SQL operation id before verifying
+the final runtime and activation state.
+
+The pre-fix 300-VU diagnostic also found the principal application bottleneck. About 57 database
+sessions waited behind an unconditional
+`UPDATE tenant_school.academic_years SET label = ? WHERE id = ?` executed by the nominal read path.
+`AcademicCalendar` now returns immediately when the stored label already matches and uses
+`IS DISTINCT FROM` for the remaining race-safe updates. Before that correction, 300-VU p95 was about
+3.05 seconds and p99 about 4.72 seconds; after it, the sustained write p95 was 122.91 ms.
+
 ## Observability Finding
 
 Application logs showed no request-processing exceptions during the validation window. The only
@@ -244,24 +311,27 @@ reclassified before production so exporter failures do not obscure application e
 
 ## Incomplete Gates
 
-This dev release is validated for functional deployment and a controlled 25-user read workload.
-It is not yet the final fleet-scale certification.
+This dev release is validated for functional deployment, the exact 300,000-student fleet shape,
+and a controlled 300-VU attendance-write stage. It is not yet the final production certification.
 
 The following remain required:
 
-1. Run the implemented synthetic 10,000/300,000-student fixture in a temporarily right-sized dev
-   database (local generation and cleanup are validated).
-2. Temporary dedicated Cloud SQL test shape (`db-custom-2-7680` minimum).
-3. Controlled attendance write-load scenario against an isolated synthetic tenant (batching is
-   implemented and deployed).
-4. Asynchronous/resumable student imports (review campaign creation is now batched and deployed).
-5. Four-hour soak, 100/300/500-user stages, failure injection and recovery drill.
-6. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
-7. Production availability decision: zonal cost mode versus regional HA.
+1. Four-hour soak at the approved 300-VU ceiling and a separate morning burst.
+2. Intentional failure-injection/recovery drill and PITR evidence. The unplanned scheduled shutdown
+   proved application reconnection but is not a substitute for a controlled recovery drill.
+3. Asynchronous/resumable student imports (review campaign creation is batched and deployed).
+4. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
+5. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
+   decision before tens of millions of attendance-detail rows accumulate.
+6. Production database choice and availability decision: two versus four vCPU and zonal cost mode
+   versus regional HA.
 
 ## Production Gate
 
 Do not begin production deployment before 23:00 IST on 2026-08-10.
+
+Passing the time restriction alone is insufficient. Production remains a no-go until the incomplete
+gates above are closed and explicitly reviewed.
 
 Before promotion:
 

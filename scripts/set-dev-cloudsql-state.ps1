@@ -35,6 +35,7 @@ $activationPolicy = if ($State -eq "start") { "ALWAYS" } else { "NEVER" }
 $current = Get-InstanceStatus
 $activationMatches = $current.ActivationPolicy -eq $activationPolicy
 $runtimeMatches = $State -eq "stop" -or $current.State -eq "RUNNABLE"
+$operationName = $null
 
 if ($activationMatches -and $runtimeMatches) {
   Write-Host "Cloud SQL instance $InstanceName is already $($current.State) with activation policy $($current.ActivationPolicy)."
@@ -42,12 +43,18 @@ if ($activationMatches -and $runtimeMatches) {
 }
 
 if (-not $activationMatches) {
-  & $GcloudCommand sql instances patch $InstanceName `
+  $operationJson = & $GcloudCommand sql instances patch $InstanceName `
     "--project=$ProjectId" `
     "--activation-policy=$activationPolicy" `
     --async `
-    --quiet
+    --quiet `
+    --format=json
   if ($LASTEXITCODE -ne 0) { throw "Could not request Cloud SQL $State for '$InstanceName'." }
+  $operation = ($operationJson -join "`n") | ConvertFrom-Json
+  $operationName = [string]$operation.name
+  if ([string]::IsNullOrWhiteSpace($operationName)) {
+    throw "Cloud SQL $State request did not return an operation id for '$InstanceName'."
+  }
 }
 
 if (-not $Wait) {
@@ -56,6 +63,27 @@ if (-not $Wait) {
 }
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+if (-not [string]::IsNullOrWhiteSpace($operationName)) {
+  do {
+    $operationJson = & $GcloudCommand sql operations describe $operationName `
+      "--project=$ProjectId" `
+      --format=json
+    if ($LASTEXITCODE -ne 0) { throw "Could not read Cloud SQL operation '$operationName'." }
+    $operation = ($operationJson -join "`n") | ConvertFrom-Json
+    if ([string]$operation.status -eq "DONE") {
+      if ($operation.error -or @($operation.errors).Count -gt 0) {
+        throw "Cloud SQL $State operation '$operationName' completed with an error."
+      }
+      break
+    }
+    Start-Sleep -Seconds 10
+  } while ((Get-Date) -lt $deadline)
+
+  if ([string]$operation.status -ne "DONE") {
+    throw "Timed out waiting for Cloud SQL operation '$operationName'."
+  }
+}
+
 do {
   $current = Get-InstanceStatus
   $activationMatches = $current.ActivationPolicy -eq $activationPolicy
