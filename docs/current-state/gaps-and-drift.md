@@ -278,6 +278,9 @@ Required follow-up:
 
 All Cloud Run services currently use the default compute service account.
 
+The dev reporting Pub/Sub push caller is now a separate dedicated service account. This narrows the
+push authentication boundary but does not change any Cloud Run runtime identity.
+
 Impact:
 
 - Simpler deployment.
@@ -285,7 +288,8 @@ Impact:
 
 Required follow-up:
 
-- Consider per-service runtime service accounts after production stabilizes.
+- Create and deploy per-service, per-environment runtime service accounts before broad production
+  onboarding; use an explicit secret/topic/bucket permission matrix.
 - Split Secret Manager and Pub/Sub permissions by service.
 
 ### Dev and Prod Share One Project

@@ -53,8 +53,11 @@ if (-not $Apply) {
   exit 0
 }
 
-& $GcloudCommand iam service-accounts describe $pushServiceAccount "--project=$ProjectId" *> $null
-if ($LASTEXITCODE -ne 0) {
+$existingPushServiceAccount = ((Invoke-Gcloud iam service-accounts list `
+  "--project=$ProjectId" `
+  "--filter=email:$pushServiceAccount" `
+  --format="value(email)") -join "").Trim()
+if ([string]::IsNullOrWhiteSpace($existingPushServiceAccount)) {
   Invoke-Gcloud iam service-accounts create $pushServiceAccountName `
     "--project=$ProjectId" `
     "--display-name=IMS reporting Pub/Sub push ($Environment)"

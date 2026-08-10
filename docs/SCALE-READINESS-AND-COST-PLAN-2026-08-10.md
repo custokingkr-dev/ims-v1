@@ -369,8 +369,9 @@ Critical:
    now rejects them in both gateway and identity; deployment remains required.
 2. All 14 Cloud Run services use one overprivileged default compute service account. Create a
    service/environment identity matrix with per-secret and per-resource permissions.
-3. Pub/Sub push authentication tokens exist in subscription query strings. Move to verified OIDC
-   identity/audience, then rotate the static secrets.
+3. Dev reporting push moved to a dedicated OIDC identity/audience and no longer has a query
+   credential. Dev notification and both production push subscriptions still require migration;
+   rotate the static secrets only after every remaining consumer is cut over.
 4. The public repository has no protected branches/rulesets while a repo-wide WIF trust can assume
    a broad deployment account. Restrict branches, workflow claims and service accounts.
 
@@ -464,7 +465,10 @@ Evidence: statement count before/after, transaction tests, failed-job replay tes
 - Deploy reporting retry/lease migration in dev.
 - Move outbox relay triggering to Cloud Scheduler + Cloud Run Jobs or another request-driven relay.
 - Keep Pub/Sub push for projection wake-up.
-- Remove tokens from subscription query strings and rotate them.
+- Completed for dev reporting push: remove the query credential, use a dedicated OIDC identity and
+  exact Cloud Run audience, and prove one canonical event is acknowledged with HTTP 204.
+- Remove query credentials from dev notification and both production subscriptions, then rotate the
+  static secrets after consumer compatibility is verified.
 - Create least-privilege runtime identities per service/environment.
 
 Evidence: zero stale outbox age under idle APIs, dead-letter replay, IAM policy diff, rotated secrets.
@@ -567,7 +571,8 @@ dev scenarios after batching is implemented.
 - [ ] Reporting retries, dead-letter and replay are verified.
 - [ ] Background relay operates while user-facing services are idle.
 - [ ] Per-service runtime IAM is deployed.
-- [ ] Pub/Sub query credentials are removed and rotated.
+- [x] Dev reporting Pub/Sub query credential is removed and dedicated OIDC delivery is verified.
+- [ ] Dev notification and both production Pub/Sub query credentials are removed and rotated.
 - [ ] Branch protection, required CI and restricted WIF are active.
 - [ ] PITR recovery drill passes with recorded RTO/RPO.
 - [ ] Cost budget is raised from INR 5,000 to the selected fleet envelope.
@@ -601,6 +606,10 @@ Primary Google documentation:
   https://docs.cloud.google.com/run/docs/tips/java
 - Pub/Sub pricing:
   https://cloud.google.com/pubsub/pricing
+- Authenticated Pub/Sub push subscriptions:
+  https://docs.cloud.google.com/pubsub/docs/authenticate-push-subscriptions
+- Cloud Run service-to-service authentication:
+  https://docs.cloud.google.com/run/docs/authenticating/service-to-service
 - Cloud Storage pricing:
   https://cloud.google.com/storage/pricing
 

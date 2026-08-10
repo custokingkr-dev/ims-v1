@@ -227,6 +227,18 @@ Verified on 2026-07-09:
 - Real `PubSubDomainEventPublisher` startup logs were found for dev/prod billing, operations, and school-core.
 - Prod DB audit showed outbox and inbox backlog/open/error counts at 0.
 
+Dev reporting push was reverified on 2026-08-10 after its OIDC cutover:
+
+- Dedicated push identity: `ims-reporting-push-dev@custoking.iam.gserviceaccount.com`.
+- OIDC audience exactly equals the platform-service dev Cloud Run URL.
+- The push path contains no query string.
+- A canonical reporting envelope reached revision `custoking-platform-service-dev-msnjqtb0` and was
+  acknowledged with HTTP 204.
+- The post-cutover authenticated gateway suite passed 40/40 and environment preflight had zero
+  blockers.
+- Dev notification and both production subscriptions remain on the default compute push identity
+  and still require their own cutover.
+
 Not freshly verified in the latest check:
 
 - A new prod write-path event through producer -> Pub/Sub -> reporting/notification consumer.

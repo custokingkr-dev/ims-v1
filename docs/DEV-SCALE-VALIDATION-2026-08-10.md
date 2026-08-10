@@ -103,6 +103,52 @@ deployment concurrency group; every release-job step had already completed succe
 superseding no-deployment workflow passed:
 https://github.com/custokingkr-dev/ims-v1/actions/runs/31412915663
 
+### Reporting Pub/Sub OIDC release
+
+OIDC migration release commit: `3baaae1d9c369dabafa8ee91dda039dc3899cfc8`
+
+Release workflow:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31415791322
+
+The workflow completed successfully. Because environment target parameters changed, it built,
+released, and serially verified all seven deployables through Cloud Deploy. The exact Cloud SQL
+start operation `711d696b-b6bb-4630-9287-5c9500000049` completed in 9 minutes 49 seconds, within the
+hardened 20-minute operation timeout. All services serve 100% of dev traffic:
+
+| Service | Revision |
+| --- | --- |
+| API gateway | `custoking-api-gateway-dev-msnjst4c` |
+| Billing | `custoking-billing-service-dev-msnjoscg` |
+| Frontend | `custoking-frontend-dev-msnjuh1p` |
+| Identity | `custoking-identity-service-dev-msnjko0h` |
+| Operations | `custoking-operations-service-dev-msnjmq7e` |
+| Platform | `custoking-platform-service-dev-msnjqtb0` |
+| School core | `custoking-school-core-service-dev-msnjimwh` |
+
+Platform serves immutable runtime digest
+`sha256:fabbbf5315f5e59a7f0f715731d79aacf8a5a7ab91dfb59863f66dfc01b6fb35` and has
+`REPORTING_PUBSUB_REQUIRE_SHARED_TOKEN=false`. Stage and production retain the safe default `true`;
+neither environment was migrated.
+
+The dev reporting subscription now uses the dedicated identity
+`ims-reporting-push-dev@custoking.iam.gserviceaccount.com`. Its audience exactly matches the private
+platform Cloud Run service URL, the identity has `roles/run.invoker` on that service, and the Pub/Sub
+service agent has `roles/iam.serviceAccountTokenCreator` on that identity. The push target is exactly
+`/api/v1/pubsub/reporting-events` and contains no query string.
+
+A canonical `ims.event-envelope.v1` probe published through the Pub/Sub API was delivered by Google
+to the new platform revision with HTTP 204. Cloud Run request evidence showed the Pub/Sub user agent,
+the expected path, and no query string. IAM propagation produced transient 403 responses before the
+binding became effective. A separate probe issued through the Windows CLI was shell-mangled and
+correctly rejected with HTTP 400; the dev-only subscription cursor was advanced past that synthetic
+message at `2026-08-10T18:16:28.684Z`, after which retry traffic stopped. No business or production
+message was involved.
+
+The post-cutover authenticated gateway regression passed 40/40 checks with zero failures. The
+independent real-environment preflight reported ready with zero blockers. The complete platform
+suite passed 223/223 tests before release, including an explicit Cloud Run-IAM mode test that accepts
+the Pub/Sub request without the legacy shared URL token.
+
 ## Verification Results
 
 ### Local affected suites before release
@@ -136,6 +182,9 @@ The import retry correction increased the complete suite to 483 tests across the
 again with zero failures, errors, or skips. Its PostgreSQL integration test confirms that confirming
 the same preview twice returns the original job/result, creates exactly one student, and leaves the
 batch `DONE` instead of overwriting it as skipped.
+
+The reporting OIDC correction increased the complete platform suite to 223 tests. All 223 passed
+with zero failures, errors, or skips.
 
 ### Cloud Run release verification
 
@@ -362,7 +411,9 @@ The following remain required:
 1. Four-hour soak at the approved 300-VU ceiling and a separate morning burst.
 2. Intentional failure-injection/recovery drill and PITR evidence. The unplanned scheduled shutdown
    proved application reconnection but is not a substitute for a controlled recovery drill.
-3. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
+3. Complete least-privilege runtime identities and the remaining Pub/Sub push migrations. Dev
+   reporting push is now OIDC-only with a dedicated identity; dev notification and both production
+   subscriptions still use the shared runtime identity and legacy query credential.
 4. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
    decision before tens of millions of attendance-detail rows accumulate.
 5. Production database choice and availability decision: two versus four vCPU and zonal cost mode

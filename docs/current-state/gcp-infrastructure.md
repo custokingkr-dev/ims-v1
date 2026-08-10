@@ -1,6 +1,6 @@
 # GCP Infrastructure
 
-Last verified: 2026-08-05 with `gcloud.cmd` against project `custoking`.
+Last verified: 2026-08-10 with `gcloud.cmd` against project `custoking`.
 
 ## Project and Region
 
@@ -40,24 +40,24 @@ Main enabled APIs relevant to this stack:
 
 ## Cloud Run Services
 
-All listed services were Ready on 2026-08-04.
+All listed services were Ready on 2026-08-10.
 
 | Service | URL | Latest ready revision |
 | --- | --- | --- |
-| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-msehsuir` |
-| `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-msehtfvk` |
-| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-msehrkdq` |
-| `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-msehs0ib` |
-| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-msehtf9x` |
-| `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-msehu2a8` |
-| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-msehqdz7` |
-| `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-msehqk4a` |
-| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-msehqyra` |
-| `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-msehr8tn` |
-| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-msehs8gh` |
-| `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-msehsr41` |
-| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-msehpsus` |
-| `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-msehpsbg` |
+| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-msnjst4c` |
+| `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-msg1rcnp` |
+| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-msnjoscg` |
+| `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-msg1hrl6` |
+| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-msnjuh1p` |
+| `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-msgd3rq4` |
+| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-msnjko0h` |
+| `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-msg17seu` |
+| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-msnjmq7e` |
+| `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-msg1cz4c` |
+| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-msnjqtb0` |
+| `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-msgczd9t` |
+| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-msnjimwh` |
+| `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-msgcuzgs` |
 
 ## Cloud Run IAM
 
@@ -71,12 +71,15 @@ Verified service-level invoker bindings:
 - Private Spring services:
   - identity, school-core, operations, billing in both envs allow the Monitoring service agent for authenticated uptime checks.
   - platform-service in both envs allows the Monitoring service agent and the default compute service account.
+  - platform-service dev additionally allows the dedicated reporting push service account.
 
 Platform-service additionally allows:
 
 - `serviceAccount:305630109861-compute@developer.gserviceaccount.com`
+- dev only: `serviceAccount:ims-reporting-push-dev@custoking.iam.gserviceaccount.com`
 
-That binding supports Pub/Sub push with OIDC using the default compute service account.
+The dedicated dev binding supports reporting Pub/Sub push with OIDC. The default compute binding
+remains because notification push and production have not yet been migrated.
 
 ## Runtime Service Account
 
@@ -255,12 +258,14 @@ Subscriptions:
 
 | Subscription | Topic | Push target | OIDC service account | Ack deadline | State |
 | --- | --- | --- | --- | --- | --- |
-| `ims-reporting-service-push-dev` | `ims-reporting-events-v1-dev` | platform-service dev `/api/v1/pubsub/reporting-events` | default compute SA | 30s | ACTIVE |
+| `ims-reporting-service-push-dev` | `ims-reporting-events-v1-dev` | platform-service dev `/api/v1/pubsub/reporting-events` (no query) | `ims-reporting-push-dev` | 30s | ACTIVE |
 | `ims-notification-service-push-dev` | `ims-notifications-events-v1-dev` | platform-service dev `/api/v1/pubsub/notifications` | default compute SA | 30s | ACTIVE |
 | `ims-reporting-service-push-prod` | `ims-reporting-events-v1-prod` | platform-service prod `/api/v1/pubsub/reporting-events` | default compute SA | 30s | ACTIVE |
 | `ims-notification-service-push-prod` | `ims-notifications-events-v1-prod` | platform-service prod `/api/v1/pubsub/notifications` | default compute SA | 30s | ACTIVE |
 
-The literal push endpoint query tokens are not documented. They are secret-bearing URL query parameters.
+The dev reporting endpoint has no query credential and uses an audience equal to the platform Cloud
+Run service URL. The remaining three push endpoints still contain secret-bearing query parameters;
+their literal values are intentionally not documented.
 
 ## Workload Identity Federation
 
