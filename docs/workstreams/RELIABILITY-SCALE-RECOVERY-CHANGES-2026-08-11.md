@@ -175,7 +175,9 @@ Production therefore cannot accidentally lose the legacy guard from this reposit
 - verifies endpoint, audience, service account, and max-delivery-attempt settings after apply.
 
 Dev dry-run passed and correctly reported the source topic present and all notification subscription
-and DLQ resources absent. No live apply occurred.
+and DLQ resources absent. The live dev apply then created the dedicated push identity, query-free
+OIDC subscription, notification DLQ, durable inspection subscription, 10–600 second retry policy,
+and ten-attempt dead-letter policy. Production was not changed.
 
 ### 5.3 Required dev proof after deploy
 
@@ -189,6 +191,14 @@ and DLQ resources absent. No live apply occurred.
 6. Replay only after recording the root cause.
 7. Perform a separate real MSG91 test with approved template/recipient/consent. A logging-provider
    pass is not provider certification.
+
+Dev result on 2026-08-11: items 1–5 passed for the logging provider. The canonical synthetic event
+`dev-notification-smoke-20260811T040001Z-rest` was published twice through the Pub/Sub REST API.
+Cloud Run returned HTTP 204 twice and emitted exactly one `notification.deliver` audit record, which
+proves idempotent handling. The deployed provider is `logging` and `MSG91_DRY_RUN=true`, so no external
+message was sent. A deliberately malformed synthetic event returned HTTP 400 until one message was
+observed on the notification dead-letter inspection subscription; that test message was acknowledged
+after verification. Guarded correction/replay and a consented MSG91 delivery remain open.
 
 ## 6. Reporting Pub/Sub retry and replay
 
@@ -248,6 +258,11 @@ API unless `-Apply -EnableCloudSchedulerApi` are both supplied. Each job uses:
 - POST to the private drain path;
 - 300-second attempt deadline;
 - three Scheduler retries with 10–300 second backoff.
+
+Cloud Scheduler does not offer `asia-south2`. The job control-plane location is therefore the
+supported `asia-south1` location, while all HTTP targets, databases and runtime data remain in
+`asia-south2`. `-SchedulerLocation` is explicit and the apply path verifies it against the live
+Scheduler locations list before creating a job.
 
 Official pricing at the evidence date is US$0.10/job/month with three free jobs per billing account.
 Four jobs therefore add at most one billable job (US$0.10/month) if the account-level free tier is
@@ -415,6 +430,13 @@ state and confirm there is no destructive drift and the effective production not
 is attached. Notification-subscription alerts may be created before the subscription; they will have
 no series until provisioning.
 
+Dev apply result on 2026-08-11: the first full plan was rejected because it proposed deleting five
+pre-existing uptime-check invoker bindings. No destructive plan was applied. A targeted additive plan
+was then machine-checked as `9 add, 0 change, 0 destroy` and applied: one log metric plus eight enabled
+alert policies. Live enumeration reports 107 policies total; all eight expected SQL/Pub/Sub/notification
+policies exist and each references the existing operator notification channel. A synthetic alert
+delivery/clear test is still required before OBS-01 can close.
+
 ## 13. Rollout and rollback order
 
 ### Dev rollout
@@ -475,21 +497,45 @@ no claim is made that every service suite was rerun.
 - Terraform `fmt -check` and `validate`: pass.
 - `git diff --check`: pass at validation time.
 
-## 15. Gates that cannot truthfully be marked complete in this run
+## 15. Live dev execution evidence
 
-1. Deploy the changed services to dev and run full service suites/40-case authenticated regression.
-2. Apply and validate dev notification subscription, both DLQs, retry policies, and replay.
-3. Enable Scheduler API and prove scale-to-zero drains. This is a live project/API/IAM change.
-4. Run the 15-minute burst and four-hour soak with live metrics and short-lived tokens.
-5. Seed 7.3M two-year attendance rows for the 10,000-student school and capture plans.
-6. Execute the controlled dev restart during a disruption window.
-7. Execute the isolated PITR clone/export/invariant drill with recovery approval and temporary cost.
-8. Terraform-plan and apply the new alerts against existing state, then test the operator channel.
-9. Prove a dev traffic rollback and retained backlog.
-10. Provision/migrate production only after every dev gate passes; production reporting still has the
-    legacy query-credential posture and production runtime IAM remains a separate rollout concern.
+- Commit `4d0a56bf6f753a9012e3ead5af761ee6b58d7914` passed CodeQL run
+  `31435682010` for Java and JavaScript/TypeScript.
+- Dev deployment run `31435682086` completed successfully. Release
+  `rel-dev-4d0a56bf6f75-1` built and deployed seven immutable images through seven serial successful
+  Cloud Deploy rollouts; live inspection found all seven latest Ready revisions receiving 100% traffic.
+- The workflow gateway-health smoke passed. Cloud Run Job execution
+  `ims-direct-service-smoke-x6p8j` subsequently completed with one successful task and no failed task.
+- Notification OIDC/DLQ and reporting retry/DLQ applies completed. Both endpoints are query-free,
+  audience-bound, use dedicated service accounts, and have 10–600 second retry plus ten-attempt DLQ
+  policies.
+- Cloud Scheduler is unsupported in Delhi (`asia-south2`). The script was corrected to use Mumbai
+  (`asia-south1`) only for Scheduler control-plane jobs while targeting Delhi services/data. Four
+  jobs were created, manually triggered concurrently, and showed fresh successful last-attempt times
+  with no error status: school-core, operations, billing outbox relay, and platform async drain.
+- After validation, all four jobs were paused and `custoking-db-dev` was stopped with activation
+  policy `NEVER`. This is the intentional low-cost dev resting state; jobs must be resumed only after
+  SQL is started for a bounded test window.
+- Terraform was explicitly reinitialized from an accidentally selected production backend to the
+  dev state before planning. The destructive full plan was rejected; only the verified additive
+  nine-resource dev plan was applied.
 
-## 16. Primary sources
+## 16. Gates that remain open
+
+1. Run the separate 40-case authenticated regression against the deployed dev services.
+2. Prove a queued outbox event drains while user traffic is idle/scaled to zero; exercise guarded
+   correction/replay after a known failure without duplicating a side effect.
+3. Run the 15-minute burst and four-hour soak with live metrics and short-lived tokens.
+4. Seed 7.3M two-year attendance rows for the 10,000-student school and capture query plans.
+5. Execute the controlled dev restart during an approved disruption window.
+6. Execute the isolated PITR clone/export/invariant drill with recovery approval and temporary cost.
+7. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
+   relay-job, trace-export, storage-growth, and cost-forecast alert coverage.
+8. Prove a dev traffic rollback and retained backlog.
+9. Provision/migrate production only after every dev gate passes; production reporting still has the
+   legacy query-credential posture and production runtime IAM remains a separate rollout concern.
+
+## 17. Primary sources
 
 - [Authenticate Pub/Sub push subscriptions](https://docs.cloud.google.com/pubsub/docs/authenticate-push-subscriptions)
 - [Pub/Sub push behavior and acknowledgments](https://docs.cloud.google.com/pubsub/docs/push)

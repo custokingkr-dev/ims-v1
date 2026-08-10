@@ -183,6 +183,8 @@ implemented independently in conflicting files.
   purely background work.
 - **Change:** package relay as a bounded Cloud Run Job or authenticated internal endpoint invoked by
   Cloud Scheduler; use a dedicated invoker/runtime SA; preserve database leasing/idempotency.
+- **Location constraint:** Cloud Scheduler is not available in Delhi (`asia-south2`); use its Mumbai
+  (`asia-south1`) control plane for OIDC HTTP triggers while keeping every runtime/data target in Delhi.
 - **Acceptance:** with user traffic idle and all services at zero, a queued outbox event is published
   within the SLO; concurrent triggers do not duplicate effects; failed leases recover.
 - **Rollback:** disable scheduler; retain current in-service relay until job evidence passes.
@@ -450,18 +452,18 @@ These results validate source implementation; they do not replace the live/time-
 | SEC-03 | Read-only authority audit and migration order documented | Deploy/rollback negative tests pending | Least-privilege cutover pending | Production blocked |
 | SEC-04 | Dev implementation complete | Passed | Pending | Production blocked |
 | SEC-05 | Dev implementation complete | Passed | Pending | Production blocked |
-| SEC-06 | CodeQL/Dependabot/HIGH+ container gates, npm fix and nginx pin complete | Local scans/build passed | Secret rotation and live alert closure pending | Open |
+| SEC-06 | CodeQL/Dependabot/HIGH+ container gates, npm fix and nginx pin complete | Local scans/build plus CodeQL run `31435682010` passed | Secret rotation and live alert closure pending | Open |
 | SEC-07 | Public/private IAM verified; direct-vs-Armor decision documented | n/a | Owner/cost decision pending | Open |
-| ASYNC-01 | OIDC-only ingress + guarded notification provisioning complete | Dry-run passed; deploy/event proof pending | Pending | Production blocked |
-| ASYNC-02 | OIDC scheduler drains + transactional relay retries complete | Dry-run passed; idle proof pending | Pending | Production blocked |
-| ASYNC-03 | Retry state, DLQ provisioning and guarded replay complete | PostgreSQL tests passed; live poison/replay pending | Pending | Open |
+| ASYNC-01 | OIDC-only ingress + guarded notification provisioning complete | OIDC/DLQ applied; duplicate canonical event returned 204 twice and delivered once | Pending | Production blocked |
+| ASYNC-02 | OIDC scheduler drains + transactional relay retries complete | Four jobs applied and successfully triggered; idle queued-event proof pending | Pending | Production blocked |
+| ASYNC-03 | Retry state, DLQ provisioning and guarded replay complete | Live malformed event reached DLQ; guarded correction/replay pending | Pending | Open |
 | PERF-01 | Guarded, pinned-image four-hour harness complete | 4-hour run pending | n/a | Production blocked |
 | PERF-02 | 15-minute morning-burst profile complete | Live run pending | n/a | Open |
 | PERF-03 | Read-only long-history plan capture and certification threshold complete | 7.3M-row history/run pending | n/a | Production blocked |
 | REL-01 | Guarded restart drill and RTO evidence tool complete | Disruption-window run pending | n/a | Open |
 | REL-02 | PITR helper records RPO/RTO and cleanup evidence | Isolated restore run pending | n/a | Production blocked |
 | DB-01 | Cost/threshold/connection-budget tooling complete | 300-VU baseline passed; soak/recovery pending | Shape/HA decision pending | Production blocked |
-| OBS-01 | Existing 99 policies reconciled; missing SQL/Pub/Sub alert IaC validates | Terraform plan/apply/notification test pending | Pending | Production blocked |
+| OBS-01 | Existing 99 policies reconciled; missing SQL/Pub/Sub alert IaC validates | Additive plan applied; eight policies enabled with operator channel; alert delivery test pending | Pending | Production blocked |
 | COST-01 | Live budget reconciled; detailed cost and messaging estimator complete | Approval/automation pending | Pending | Production blocked |
 | COST-02 | Usage-ledger design and bounded dimensions documented | Implementation/reconciliation pending | Pending | Open |
 | DATA-01 | Retention/offboarding gaps and exact procedures documented | Synthetic erase/export pending | Legal owner approval pending | School launch blocked |
@@ -469,3 +471,36 @@ These results validate source implementation; they do not replace the live/time-
 | ONB-02 | Admission-control/noisy-tenant design documented | Concurrent import test pending | n/a | Open |
 | NOTIFY-01 | PII-safe dry-run logging and configurable economics tool complete | Real consented provider test pending | Provider/legal approval pending | Messaging blocked |
 | PILOT-01 | Per-school checklist and rollout waves documented | n/a | Named canary/full-day evidence pending | Production blocked |
+
+## 12. Dev Deployment and Validation Evidence
+
+Dev execution completed on 2026-08-11 without modifying production:
+
+- commit `4d0a56bf6f753a9012e3ead5af761ee6b58d7914` passed CodeQL run
+  `31435682010` for Java and JavaScript/TypeScript;
+- dev deployment run `31435682086` and Cloud Deploy release
+  `rel-dev-4d0a56bf6f75-1` succeeded for all seven services;
+- live inspection confirmed seven immutable image digests, seven Ready revisions, and 100% traffic on
+  each new revision;
+- the deployment gateway-health smoke passed, and direct-service smoke execution
+  `ims-direct-service-smoke-x6p8j` completed with one successful task and no failed task;
+- notification and reporting OIDC/DLQ topology was applied with dedicated identities, exact audiences,
+  query-free URLs, 10–600 second retry, and ten delivery attempts;
+- synthetic notification event `dev-notification-smoke-20260811T040001Z-rest` returned HTTP 204 twice
+  but produced one delivery record, proving idempotency. Dev used the logging provider with MSG91 dry
+  run enabled, so no external message was sent;
+- a malformed synthetic event exercised the notification DLQ and the resulting test message was
+  acknowledged after inspection; correction/replay remains an explicit gate;
+- Cloud Scheduler required `asia-south1` because the service is unavailable in `asia-south2`. Four
+  authenticated jobs targeted the Delhi Cloud Run services, were triggered successfully, and were
+  paused after the test;
+- the first full observability plan proposed five unrelated uptime-IAM deletions and was rejected.
+  A machine-checked `9 add, 0 change, 0 destroy` plan was applied instead. Live Monitoring now has
+  107 policies total; the eight expected new policies are enabled and each has one operator channel;
+- the low-cost resting state was restored: all four jobs are `PAUSED`, and `custoking-db-dev` is
+  `STOPPED` with activation policy `NEVER`.
+
+The production decision remains **NO-GO** until the ledger's production blockers are closed. The
+highest-value remaining evidence is the four-hour soak, long-history plans, restart/PITR drills,
+synthetic alert delivery, 40-case deployed regression, production IAM/WIF/branch controls, and a
+named canary school with business/legal approvals.

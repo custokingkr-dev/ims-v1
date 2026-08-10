@@ -1,6 +1,7 @@
 param(
   [string]$ProjectId = "custoking",
   [string]$Region = "asia-south2",
+  [string]$SchedulerLocation = "asia-south1",
   [ValidateSet("dev", "prod")]
   [string]$Environment = "dev",
   [string]$Schedule = "* * * * *",
@@ -63,6 +64,8 @@ foreach ($target in $targets) {
 [ordered]@{
   environment = $Environment
   cloudSchedulerApiEnabled = $apiEnabled
+  schedulerLocation = $SchedulerLocation
+  cloudRunRegion = $Region
   schedule = $Schedule
   timeZone = "Etc/UTC"
   invokerServiceAccount = $serviceAccount
@@ -82,6 +85,12 @@ if (-not $apiEnabled) {
   Invoke-Gcloud services enable cloudscheduler.googleapis.com "--project=$ProjectId"
 }
 
+$supportedLocations = @((Invoke-Gcloud scheduler locations list `
+  "--project=$ProjectId" --format="value(locationId)") | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($SchedulerLocation -notin $supportedLocations) {
+  throw "Cloud Scheduler location '$SchedulerLocation' is not supported. Supported locations: $($supportedLocations -join ', ')."
+}
+
 $serviceAccountExists = Test-GcloudResource @(
   "iam", "service-accounts", "describe", $serviceAccount, "--project=$ProjectId"
 )
@@ -96,11 +105,11 @@ foreach ($target in $resolved) {
     "--member=serviceAccount:$serviceAccount" --role=roles/run.invoker --quiet
 
   $jobExists = Test-GcloudResource @(
-    "scheduler", "jobs", "describe", $target.job, "--project=$ProjectId", "--location=$Region"
+    "scheduler", "jobs", "describe", $target.job, "--project=$ProjectId", "--location=$SchedulerLocation"
   )
   $verb = if ($jobExists) { "update" } else { "create" }
   Invoke-Gcloud scheduler jobs $verb http $target.job `
-    "--project=$ProjectId" "--location=$Region" `
+    "--project=$ProjectId" "--location=$SchedulerLocation" `
     "--schedule=$Schedule" --time-zone=Etc/UTC `
     "--uri=$($target.uri)" --http-method=POST `
     "--oidc-service-account-email=$serviceAccount" `
@@ -112,7 +121,7 @@ foreach ($target in $resolved) {
 
 foreach ($target in $resolved) {
   $job = ((Invoke-Gcloud scheduler jobs describe $target.job `
-    "--project=$ProjectId" "--location=$Region" --format=json) -join "`n") | ConvertFrom-Json
+    "--project=$ProjectId" "--location=$SchedulerLocation" --format=json) -join "`n") | ConvertFrom-Json
   if ([string]$job.httpTarget.oidcToken.serviceAccountEmail -ne $serviceAccount) {
     throw "Scheduler job $($target.job) does not use the dedicated service account."
   }
