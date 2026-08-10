@@ -3,10 +3,10 @@ param(
     [string]$Region = "asia-south2",
     [ValidateSet("dev", "prod")]
     [string]$Environment = "dev",
-    [string]$GatewayBaseUrl = "https://custoking-api-gateway-xkv7oenbna-em.a.run.app",
-    [string]$HostAddress = "10.116.0.3",
+    [string]$GatewayBaseUrl,
+    [string]$HostAddress,
     [int]$Port = 5432,
-    [string]$Database = "custoking_ims_v1",
+    [string]$Database,
     [string]$DbUser = "appuser",
     [string]$PasswordSecret = "db-password",
     [string]$CloudBuildId,
@@ -22,6 +22,32 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($Database)) {
+    $Database = "custoking_$Environment"
+}
+if ([string]::IsNullOrWhiteSpace($HostAddress)) {
+    $instanceName = "custoking-db-$Environment"
+    $instance = ((& $Gcloud sql instances describe $instanceName `
+        --project=$Project `
+        --format=json) -join "`n") | ConvertFrom-Json
+    $privateIp = @($instance.ipAddresses | Where-Object { $_.type -eq "PRIVATE" }) |
+        Select-Object -First 1
+    $HostAddress = [string]$privateIp.ipAddress
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($HostAddress)) {
+        throw "Could not resolve the private address for Cloud SQL instance $instanceName."
+    }
+}
+if ([string]::IsNullOrWhiteSpace($GatewayBaseUrl)) {
+    $gatewayServiceName = "custoking-api-gateway-$Environment"
+    $GatewayBaseUrl = ((& $Gcloud run services describe $gatewayServiceName `
+        --project=$Project `
+        --region=$Region `
+        --format="value(status.url)") -join "").Trim()
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($GatewayBaseUrl)) {
+        throw "Could not resolve the Cloud Run URL for $gatewayServiceName."
+    }
+}
 
 $smokePassword = "password"
 $bcryptPasswordHash = '$2a$10$J7RjqxrkPBk31.tolxpMkO0LHevKKGCNi6AsSPAsGeHtnyvHfmXlG'
@@ -81,7 +107,7 @@ function Invoke-CloudSqlJob {
 
     $executionMarker = $Marker + "-" + ((New-Guid).ToString("n").Substring(0, 8))
     $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Sql))
-    $script = "printf '%s' '$encodedSql' | base64 -d > /tmp/smoke.sql && psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/smoke.sql | sed 's/^/$executionMarker|/'"
+    $script = "set -euo pipefail; printf '%s' '$encodedSql' | base64 -d > /tmp/smoke.sql; psql -q -t -A -v ON_ERROR_STOP=1 -h $HostAddress -p $Port -U $DbUser -d $Database -f /tmp/smoke.sql | sed 's/^/$executionMarker|/'"
     Ensure-CloudSqlJob
 
     Write-Host "Executing $NamePrefix through reusable Cloud Run job $script:CloudSqlJobName"

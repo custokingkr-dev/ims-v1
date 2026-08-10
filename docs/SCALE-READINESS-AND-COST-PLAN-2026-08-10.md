@@ -393,6 +393,8 @@ High:
 7. Scheduled Trivy scanning now exits non-zero on policy violations.
 8. Reproducible capacity/cost estimator added.
 9. A read-oriented k6 school-day workload and fixture template added.
+10. Attendance register writes now use set validation, a multi-row upsert, a filtered aggregate and
+    one final event; a 120-student PostgreSQL integration test covers the batched path.
 
 These changes are repository changes only. They are not deployed to production by this review.
 
@@ -422,7 +424,8 @@ Evidence: seed manifest, row counts, query-plan bundle, baseline database metric
 
 ### Day 3 - Write-path batching
 
-- Replace per-student attendance validation/upserts with set-based validation and JDBC batches.
+- Completed in dev: replace per-student attendance validation/upserts with set-based validation and
+  one multi-row upsert.
 - Batch student review campaign items.
 - Make student imports resumable asynchronous jobs with 250-500-row transactions.
 - Add idempotency/retry tests for each path.

@@ -34,7 +34,7 @@ Deployed revisions:
 | --- | --- | ---: |
 | API gateway | `custoking-api-gateway-dev-00143-br2` | 100% |
 | Identity | `custoking-identity-service-dev-00146-dg2` | 100% |
-| School core | `custoking-school-core-service-dev-00175-x6l` | 100% |
+| School core | `custoking-school-core-service-dev-00176-wvv` | 100% |
 | Platform | `custoking-platform-service-dev-00144-k5x` | 100% |
 | Billing | `custoking-billing-service-dev-00144-vkq` | 100% |
 
@@ -53,6 +53,16 @@ This workflow completed successfully as a no-deployment change. It adds ephemera
 credentials to the k6 harness and supplies the required attendance date without changing a
 deployed service image.
 
+Attendance batching release commit: `90956df835e83f79a8d0db03f8b0559990e36332`
+
+Release workflow:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31388190321
+
+This workflow detected, built and deployed only school core. Revision
+`custoking-school-core-service-dev-00176-wvv` serves 100% of dev traffic using immutable digest
+`sha256:25e3838867879784052eff4c5eb3597ac5a2e9dd14b3cd2c9e54d36c4ce72548`. The release, gateway
+health smoke, runtime-image check and dev-approved digest publication all passed.
+
 ## Verification Results
 
 ### Local affected suites before release
@@ -68,6 +78,10 @@ deployed service image.
 
 Platform used a clean build and successfully applied all 26 reporting migrations to a new
 PostgreSQL 16 test schema.
+
+The attendance batching follow-up ran the complete school-core suite: 480 tests passed, with zero
+failures, errors or skips. This includes a 120-student register round trip and a duplicate-student
+request test that proves validation occurs before any attendance mutation.
 
 ### Cloud Run release verification
 
@@ -99,6 +113,12 @@ Final live dev result:
 - temporary smoke users and student: retired successfully by
   `ims-gateway-smoke-sql-dev-sf5lh`.
 
+After the attendance release, the authenticated smoke and preflight were repeated against the
+environment-specific gateway URL. The result again passed 40/40 checks with zero failures and zero
+preflight blockers. The wrapper now resolves the current Cloud SQL private IP, database name and
+Cloud Run gateway URL from the requested environment. Its SQL job uses shell `pipefail`, preventing
+a failed `psql` pipeline from being reported as a successful job.
+
 The missing legacy compatibility artifact remains a warning only for the environment-suffixed
 deployment path.
 
@@ -125,6 +145,25 @@ Twenty authenticated requests were made to each path:
 
 This confirms the database-side student pagination path operates correctly in the deployed dev
 revision. It does not substitute for a 10,000-student school dataset.
+
+### Attendance write batching
+
+The deployed repository now executes a section register as a fixed set of database operations
+instead of two statements per submitted student:
+
+1. validate all submitted students in one set query;
+2. upsert the daily row and obtain its id in one statement;
+3. upsert all student attendance rows in one multi-value statement;
+4. calculate all four status totals in one filtered aggregate query;
+5. update the final daily totals and emit one outbox event.
+
+For a 40-student class, the core save path falls from approximately 90 database statements to five,
+excluding the unchanged response-read queries. Invalid and duplicate rows are rejected before the
+first write. PostgreSQL integration coverage passed with 120 rows in a single request.
+
+This validates batching correctness and deployment. A controlled concurrent attendance write-load
+run remains a fleet-scale gate and must use an isolated synthetic tenant so it cannot alter normal
+dev school attendance.
 
 ### k6 dev read workload
 
@@ -183,7 +222,8 @@ The following remain required:
 
 1. Synthetic 10,000-student single-school and 300,000-student fleet dataset.
 2. Temporary dedicated Cloud SQL test shape (`db-custom-2-7680` minimum).
-3. Attendance write batching and write-load scenario.
+3. Controlled attendance write-load scenario against an isolated synthetic tenant (batching is
+   implemented and deployed).
 4. Asynchronous/resumable student imports and batch review campaign creation.
 5. Four-hour soak, 100/300/500-user stages, failure injection and recovery drill.
 6. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
