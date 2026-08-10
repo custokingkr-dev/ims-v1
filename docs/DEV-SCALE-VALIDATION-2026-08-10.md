@@ -149,6 +149,9 @@ independent real-environment preflight reported ready with zero blockers. The co
 suite passed 223/223 tests before release, including an explicit Cloud Run-IAM mode test that accepts
 the Pub/Sub request without the legacy shared URL token.
 
+After release, OIDC delivery, authenticated smoke, and preflight validation completed, the cost
+control helper returned `custoking-db-dev` to `STOPPED` with activation policy `NEVER`.
+
 ## Verification Results
 
 ### Local affected suites before release
