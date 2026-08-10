@@ -1,5 +1,11 @@
 # GCP Cost Optimization Plan - Production School Onboarding
 
+> **Scale-target override (2026-08-10):** This document describes the low-traffic baseline that
+> existed before the 100-150 school / 200,000-300,000 student target was defined. For that target,
+> [SCALE-READINESS-AND-COST-PLAN-2026-08-10.md](SCALE-READINESS-AND-COST-PLAN-2026-08-10.md)
+> supersedes every recommendation below to retain production on `db-g1-small`. The shared-core
+> instance remains the observed current state, not the production target.
+
 Last updated: 2026-08-05
 Project inspected: `custoking`  
 Region inspected: `asia-south2`  

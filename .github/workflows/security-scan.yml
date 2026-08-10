@@ -41,7 +41,7 @@ jobs:
           image-ref: security/${{ matrix.image }}:${{ github.sha }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "0"
+          exit-code: "1"
           format: sarif
           output: trivy-${{ matrix.name }}.sarif
       - uses: github/codeql-action/upload-sarif@v4

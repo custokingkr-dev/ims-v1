@@ -88,22 +88,18 @@ public class StudentReadRepository {
                                                  String feeStatus, String search, int page, int size, boolean deleted) {
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 500));
-        List<Map<String, Object>> all = workspaceStudentRows(schoolId, className, sectionName, feeStatus, search, deleted);
-        List<Map<String, Object>> items = all.stream()
-                .skip((long) safePage * safeSize)
-                .limit(safeSize)
-                .toList();
-        long filteredSections = all.stream()
-                .map(row -> str(row.get("className"), "") + "-" + str(row.get("sectionName"), ""))
-                .distinct()
-                .count();
+        WorkspaceStudentStats stats = workspaceStudentStats(
+                schoolId, className, sectionName, feeStatus, search, deleted);
+        List<Map<String, Object>> items = workspaceStudentRowsPage(
+                schoolId, className, sectionName, feeStatus, search, deleted,
+                safeSize, (long) safePage * safeSize);
         return row("items", items,
                 "page", safePage,
                 "size", safeSize,
-                "totalItems", all.size(),
-                "totalPages", (int) Math.ceil(all.size() / (double) safeSize),
-                "filteredCount", all.size(),
-                "filteredSections", filteredSections,
+                "totalItems", stats.total(),
+                "totalPages", (int) Math.ceil(stats.total() / (double) safeSize),
+                "filteredCount", stats.total(),
+                "filteredSections", stats.sections(),
                 "deleted", deleted,
                 "search", str(search, "").trim(),
                 "filters", row("classes", classesForSchool(schoolId),
@@ -122,7 +118,13 @@ public class StudentReadRepository {
     }
 
     public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
-                                                          String feeStatus, String search, boolean deleted) {
+                                                           String feeStatus, String search, boolean deleted) {
+        return workspaceStudentRowsPage(schoolId, className, sectionName, feeStatus, search, deleted, null, 0);
+    }
+
+    private List<Map<String, Object>> workspaceStudentRowsPage(
+            Long schoolId, String className, String sectionName, String feeStatus,
+            String search, boolean deleted, Integer limit, long offset) {
         String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
@@ -190,12 +192,14 @@ public class StudentReadRepository {
                     """);
         }
         sql.append(" ORDER BY lower(s.full_name), s.id");
+        if (limit != null) sql.append(" LIMIT :limit OFFSET :offset");
 
         var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId);
         if (!blankOrAll(className)) spec = spec.param("className", className);
         if (!blankOrAll(sectionName)) spec = spec.param("sectionName", sectionName);
         if (!blankOrAll(feeStatus)) spec = spec.param("feeStatus", feeStatus);
         if (!searchTerm.isBlank()) spec = spec.param("search", "%" + searchTerm + "%");
+        if (limit != null) spec = spec.param("limit", limit).param("offset", Math.max(0, offset));
         return spec.query((rs, rowNum) -> {
             String fullName = str(rs.getString("full_name"), "Student");
             String classLabel = str(rs.getString("class_name"), "");
@@ -221,6 +225,58 @@ public class StudentReadRepository {
                     "deletedReason", rs.getString("deleted_reason"),
                     "attendancePercent", attendance == null ? 0 : round(attendance));
         }).list();
+    }
+
+    private WorkspaceStudentStats workspaceStudentStats(
+            Long schoolId, String className, String sectionName, String feeStatus,
+            String search, boolean deleted) {
+        String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
+        StringBuilder sql = new StringBuilder("""
+                SELECT COUNT(*) AS total,
+                       COUNT(DISTINCT (s.class_id, s.section_id)) AS sections
+                FROM student.students s
+                JOIN tenant_school.school_classes sc ON sc.id = s.class_id
+                JOIN tenant_school.school_sections ss ON ss.id = s.section_id
+                WHERE
+                """)
+                .append(deleted ? " s.deleted_at IS NOT NULL" : " s.deleted_at IS NULL")
+                .append(" AND s.school_id = :schoolId");
+        if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
+        if (!blankOrAll(sectionName)) sql.append(" AND lower(ss.name) = lower(:sectionName)");
+        if (!blankOrAll(feeStatus)) sql.append(" AND lower(s.fee_status) = lower(:feeStatus)");
+        if (!searchTerm.isBlank()) {
+            sql.append("""
+                     AND (
+                       lower(s.full_name) LIKE :search
+                       OR lower(s.admission_no) LIKE :search
+                       OR lower(COALESCE(s.roll_no, '')) LIKE :search
+                       OR lower(COALESCE(s.board_reg_no, '')) LIKE :search
+                       OR lower(COALESCE(s.father_name, '')) LIKE :search
+                       OR lower(COALESCE(s.father_contact, '')) LIKE :search
+                       OR lower(COALESCE(s.mother_name, '')) LIKE :search
+                       OR lower(COALESCE(s.phone, '')) LIKE :search
+                       OR lower(COALESCE(s.address, '')) LIKE :search
+                       OR lower(COALESCE(s.house_number, '')) LIKE :search
+                       OR lower(COALESCE(s.street, '')) LIKE :search
+                       OR lower(COALESCE(s.locality, '')) LIKE :search
+                       OR lower(COALESCE(s.city, '')) LIKE :search
+                       OR lower(COALESCE(s.state, '')) LIKE :search
+                       OR lower(COALESCE(s.pin_code, '')) LIKE :search
+                       OR lower(sc.name) LIKE :search
+                       OR lower(ss.name) LIKE :search
+                     )
+                    """);
+        }
+        var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId);
+        if (!blankOrAll(className)) spec = spec.param("className", className);
+        if (!blankOrAll(sectionName)) spec = spec.param("sectionName", sectionName);
+        if (!blankOrAll(feeStatus)) spec = spec.param("feeStatus", feeStatus);
+        if (!searchTerm.isBlank()) spec = spec.param("search", "%" + searchTerm + "%");
+        return spec.query((rs, rowNum) -> new WorkspaceStudentStats(
+                rs.getLong("total"), rs.getLong("sections"))).single();
+    }
+
+    private record WorkspaceStudentStats(long total, long sections) {
     }
 
     public Map<String, Object> workspaceStudentDetail(Long id) {

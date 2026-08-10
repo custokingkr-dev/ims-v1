@@ -29,15 +29,31 @@ public class ReportingEventInboxRepository {
                 .isPresent();
     }
 
+    /**
+     * Atomically leases a projection batch. The status transition prevents two Cloud Run
+     * instances from projecting the same event concurrently; an expired lease is reclaimable
+     * after five minutes so an instance termination cannot strand work forever.
+     */
+    @Transactional
     public List<ReportingEventInboxProjectionRow> findReceivedForProjection(int batchSize) {
         return jdbc.sql("""
-                        SELECT event_id, event_type, aggregate_type, aggregate_id,
-                               school_id, actor_user_id, occurred_at, received_at, payload,
-                               trace_parent, trace_state
-                        FROM reporting.reporting_event_inbox
-                        WHERE status = 'RECEIVED'
-                        ORDER BY received_at ASC
-                        LIMIT :batchSize
+                        WITH candidates AS (
+                            SELECT event_id
+                            FROM reporting.reporting_event_inbox
+                            WHERE status = 'RECEIVED'
+                               OR (status = 'FAILED' AND next_attempt_at <= now())
+                               OR (status = 'PROCESSING' AND claimed_at < now() - interval '5 minutes')
+                            ORDER BY received_at ASC
+                            LIMIT :batchSize
+                            FOR UPDATE SKIP LOCKED
+                        )
+                        UPDATE reporting.reporting_event_inbox inbox
+                        SET status = 'PROCESSING', claimed_at = now()
+                        FROM candidates
+                        WHERE inbox.event_id = candidates.event_id
+                        RETURNING inbox.event_id, inbox.event_type, inbox.aggregate_type, inbox.aggregate_id,
+                                  inbox.school_id, inbox.actor_user_id, inbox.occurred_at, inbox.received_at,
+                                  inbox.payload, inbox.trace_parent, inbox.trace_state
                         """)
                 .param("batchSize", Math.max(1, Math.min(batchSize, 500)))
                 .query((rs, rowNum) -> new ReportingEventInboxProjectionRow(
@@ -90,7 +106,8 @@ public class ReportingEventInboxRepository {
     public void markProcessed(String eventId) {
         jdbc.sql("""
                         UPDATE reporting.reporting_event_inbox
-                        SET status = 'PROCESSED', processed_at = :processedAt, last_error = NULL
+                        SET status = 'PROCESSED', processed_at = :processedAt, last_error = NULL,
+                            claimed_at = NULL, next_attempt_at = NULL
                         WHERE event_id = :eventId
                         """)
                 .param("eventId", eventId)
@@ -102,7 +119,17 @@ public class ReportingEventInboxRepository {
     public void markFailed(String eventId, String message) {
         jdbc.sql("""
                         UPDATE reporting.reporting_event_inbox
-                        SET status = 'FAILED', last_error = :lastError
+                        SET attempt_count = attempt_count + 1,
+                            status = CASE WHEN attempt_count + 1 >= 5 THEN 'DEAD_LETTER' ELSE 'FAILED' END,
+                            last_error = :lastError,
+                            claimed_at = NULL,
+                            next_attempt_at = CASE
+                                WHEN attempt_count + 1 >= 5 THEN NULL
+                                WHEN attempt_count = 0 THEN now() + interval '5 seconds'
+                                WHEN attempt_count = 1 THEN now() + interval '30 seconds'
+                                WHEN attempt_count = 2 THEN now() + interval '2 minutes'
+                                ELSE now() + interval '10 minutes'
+                            END
                         WHERE event_id = :eventId
                         """)
                 .param("eventId", eventId)

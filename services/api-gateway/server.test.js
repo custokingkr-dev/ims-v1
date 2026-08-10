@@ -576,6 +576,17 @@ test('authenticate falls back to introspection for a valid un-enriched token', a
   assert.equal(principal.userId, 5);
 });
 
+test('authenticate rejects a refresh token without introspection', async () => {
+  let calls = 0;
+  const introspectStub = async () => { calls += 1; return { userId: 5 }; };
+  const refresh = signHS512({ sub: 'a@b.com', role: 'ADMIN', type: 'refresh', exp: NOW + 900 }, JWT_SECRET);
+  const principal = await authenticate(reqWithToken(refresh), 'req-refresh', {
+    localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+  });
+  assert.equal(calls, 0);
+  assert.equal(principal, null);
+});
+
 test('authenticate returns null (no introspection) for a bad-signature token', async () => {
   let calls = 0;
   const introspectStub = async () => { calls += 1; return { userId: 1 }; };

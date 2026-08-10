@@ -70,6 +70,7 @@ public class OutboxRelay {
                         WHERE published_at IS NULL
                         ORDER BY created_at
                         LIMIT :batchSize
+                        FOR UPDATE SKIP LOCKED
                         """.formatted(outboxTable))
                 .param("batchSize", batchSize)
                 .query(OutboxRow.class)

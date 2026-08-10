@@ -1,0 +1,580 @@
+# Scale Readiness, GCP Cost Model, and One-Week Production Plan
+
+Last verified: 2026-08-10
+Repository: `custokingkr-dev/ims-v1`
+GCP project inspected: `custoking`
+Region: `asia-south2` (Delhi)
+Target fleet: 100-150 schools, 200,000-300,000 active student records
+Largest supported school target: 10,000 students
+
+## 1. Decision
+
+The service and tenancy architecture can support the target fleet without introducing Kubernetes,
+Redis, a database per school, or another application rewrite. The current production configuration
+cannot safely be assumed to support it.
+
+The following must be true before a large onboarding wave:
+
+1. Production Cloud SQL moves off `db-g1-small`. Google classifies this shared-core shape as a
+   low-cost test/development instance and excludes it from the Cloud SQL SLA.
+2. The 10,000-student and 300,000-student load profiles pass in dev/stage using production-like
+   data, queries and connection limits.
+3. Attendance growth receives a partition/retention decision before tens of millions of rows are
+   accumulated.
+4. Student directory pagination remains database-side. This review implements that correction.
+5. Attendance and import write paths are batched before mass onboarding.
+6. Background projections run through request-driven jobs or push handlers, not only in-process
+   timers on scale-to-zero instances.
+7. The critical authentication, IAM and deployment-governance findings are closed.
+
+The recommended low-cost starting point is a dedicated 2-vCPU/7.5-GiB zonal PostgreSQL instance
+for the first production load gate. It is a performance starting point, not an availability SLA.
+Use regional HA if the business requires a Cloud SQL SLA or cannot accept a zonal database outage.
+
+## 2. What Was Examined
+
+- React/Vite frontend and workspace modules.
+- Node API gateway authentication, proxying, rate limits, CORS and request limits.
+- Five Spring Boot services and all PostgreSQL/Flyway migrations.
+- Tenant context, PostgreSQL RLS, runtime/migration database roles and service boundaries.
+- Student, attendance, fee, import, photo, reporting, notification and billing paths.
+- Transactional outbox, Pub/Sub delivery and reporting projection behavior.
+- Cloud Run manifests, Skaffold, Cloud Deploy, GitHub Actions and Terraform.
+- Live Cloud Run, Cloud SQL, Pub/Sub, Secret Manager, IAM, WIF, buckets, monitoring, backups,
+  budgets and billing export.
+- Current official Google Cloud pricing and the billing-account pricing export.
+- Full application test suites and production frontend build.
+
+No live infrastructure or production data was mutated during the review.
+
+## 3. Workload Assumptions
+
+The user supplied two distinct constraints. They are modeled independently:
+
+- A single large school may contain 10,000 students.
+- The whole initial fleet contains 200,000-300,000 students across 100-150 schools.
+
+This means the average school is approximately 2,000 students while the platform must avoid
+algorithms that fail on a 10,000-student outlier.
+
+Planning assumptions used by `scripts/estimate-scale-cost.ps1`:
+
+| Variable | 100-school model | 150-school model |
+| --- | ---: | ---: |
+| Schools | 100 | 150 |
+| Students | 200,000 | 300,000 |
+| School days/year | 220 | 220 |
+| Staff users/school | 25 | 25 |
+| API actions/staff/day | 40 | 40 |
+| Business days/month | 22 | 22 |
+| Cloud Run container requests/browser action | 2.2 | 2.2 |
+| Average billable duration/request | 300 ms | 300 ms |
+| Detailed attendance retention | 3 years | 3 years |
+
+These are planning assumptions, not measured customer behavior. The model intentionally does not
+hide uncertainty behind a single invoice number.
+
+## 4. Capacity Model
+
+### 4.1 Student master data
+
+Three hundred thousand student master records are not large for PostgreSQL. Even allowing roughly
+4 KiB per student for the main row, related lifecycle data and indexes, this is around 1.1 GiB.
+
+The design is favorable because:
+
+- tenant-leading indexes exist on the student and related domain tables;
+- PostgreSQL RLS is enforced with a connection-scoped tenant identifier;
+- runtime connections use a non-owner role;
+- list APIs are school-scoped;
+- class and section IDs further narrow common operational queries.
+
+The risk is query shape, not master-row count. Before this implementation the student directory
+read every matching student, built Java maps for all of them and only then performed page slicing.
+A 10,000-student school therefore incurred a 10,000-row database read for every 50-row page. It
+also ran two lateral review-state lookups per student. This is now database-paginated with a
+separate aggregate count query.
+
+### 4.2 Attendance history
+
+Attendance is the dominant relational growth stream:
+
+| Fleet | Detail rows/day | Detail rows/220-day year |
+| --- | ---: | ---: |
+| 200,000 students | 200,000 | 44,000,000 |
+| 300,000 students | 300,000 | 66,000,000 |
+
+Using a 550-byte planning allowance per logical attendance record, including heap, several indexes
+and ordinary bloat:
+
+| Fleet | Estimated attendance storage/year | Three-year modeled used data, including core data and 30% headroom |
+| --- | ---: | ---: |
+| 200,000 | 22.5 GiB | 88.9 GiB |
+| 300,000 | 33.8 GiB | 133.3 GiB |
+
+Actual storage must be measured with `pg_total_relation_size`; this is a sizing estimate.
+
+The attendance indexes cover the important tenant/date, section/date and student/date access
+patterns. The table is not partitioned. PostgreSQL can operate at 66 million rows, but vacuum,
+index maintenance, backup/restore time and historical reports will become progressively more
+expensive. Introduce time partitioning before the table becomes operationally difficult, not on
+the first day merely for fashion.
+
+Recommended boundary:
+
+- retain the current table while it is below 10-20 million rows and measured latency is healthy;
+- prepare monthly or academic-year range partitioning before 25 million rows;
+- archive expired detail according to the product/legal retention policy;
+- keep summarized facts for long-range dashboards.
+
+### 4.3 Morning attendance peak
+
+At 300,000 students and an average 40 students/section, the fleet has about 7,500 sections. If all
+sections submit attendance over two hours, the average is only about one section submission per
+second. A five-times burst is approximately five submissions per second.
+
+The current implementation performs per-student validation and upsert statements in a Java loop.
+A 40-student section can therefore create more than 80 database statements plus summary counts.
+At a five-request/second burst this can become several hundred SQL statements/second.
+
+This is likely to saturate `db-g1-small` and the current total school-core connection capacity well
+before Cloud Run reaches concurrency 80. Replace the loop with set-based validation and JDBC batch
+upserts. The transaction must remain section-atomic and idempotent.
+
+### 4.4 Imports and onboarding
+
+Current limits:
+
+- student import: 500 rows/batch;
+- managed photo mapping: 1,000 rows/batch;
+- workbook parsing: 10 MiB;
+- source image: 20 MiB;
+- ordinary photo upload: 5 MiB, normalized before permanent storage.
+
+A 10,000-student school requires 20 student-import batches and ten photo-mapping batches. This is
+technically possible but operationally poor. Confirmation currently performs row-by-row inserts,
+enrollment writes and outbox events inside a request transaction even though the API exposes a job
+identifier.
+
+Required improvement:
+
+- upload once to Cloud Storage;
+- validate asynchronously;
+- process 250-500 rows per transaction;
+- report durable progress and row-level errors;
+- make confirmation resumable and idempotent;
+- cap simultaneous import jobs per school and across the fleet.
+
+### 4.5 Fees and payments
+
+Fee assignments and payments are tenant-indexed and much smaller than attendance. A pessimistic
+three million payment rows/year is ordinary PostgreSQL scale. Correctness, reconciliation,
+idempotency and immutable financial audit records are more important than raw capacity here.
+
+### 4.6 Photos
+
+Current normalized photos average roughly 40-50 KiB in the inspected bucket. At 300,000 students,
+permanent photos are therefore approximately 12-15 GiB. Even a 100-KiB average is only 30 GiB.
+Storage is inexpensive; repeated downloads and import staging are the larger risks.
+
+Keep normalized current photos in Standard storage, delete temporary sources through lifecycle
+rules, use long private cache headers/signed delivery, and generate a small list thumbnail if list
+views begin transferring full portraits.
+
+## 5. Code Readiness Matrix
+
+| Path | Current assessment | Target-fleet result |
+| --- | --- | --- |
+| Tenant isolation/RLS | Strong and integration-tested | Suitable |
+| Student master storage | Correct shared-schema model | Suitable |
+| Student list pagination | Previously paginated in Java | Corrected in this change |
+| Student search | Tenant-scoped `%LIKE%` across many fields | Acceptable at 10k/school; measure before adding costly indexes |
+| Attendance storage | Correct indexes, no partitions | Suitable initially; must partition/retain before large history |
+| Attendance submission | Row-by-row validation/upsert | Must batch before fleet onboarding |
+| Student import | 500 rows, synchronous row loop | Must become resumable async for 10k schools |
+| Review campaign creation | Loads selected students and inserts one row at a time | Batch before mass campaigns |
+| Reporting projections | Idempotent projections but formerly permanent failure/no lease | Retry, lease and dead-letter added here |
+| Billing outbox | At-least-once but formerly no concurrent claim | `SKIP LOCKED` added here |
+| Cloud Run background timers | Stop at zero instances/CPU throttling | Replace with request-triggered work or jobs |
+| Frontend student paging | Uses 50-row server pages | Suitable |
+| Frontend bundle | Workspace and spreadsheet chunks exceed 900 KiB | Functional; split for latency/mobile use |
+| Database connection pools | Five connections/Java instance | Cost-aware; recalculate with every max-scale increase |
+| Load testing | No fleet-scale test existed | Read workload added; write/data tests remain a week-one gate |
+
+## 6. Cloud SQL Recommendation
+
+### Current state
+
+Production is PostgreSQL 16 on `db-g1-small`: one shared vCPU and 1.7 GB RAM, zonal, 10-GB SSD,
+private IP, automatic storage growth, backups and PITR.
+
+Google's current documentation says `db-f1-micro` and `db-g1-small` are designed for low-cost test
+and development and should not be used for production. Shared-core and single-zone instances are
+excluded from the Cloud SQL SLA.
+
+### Cost-minimized performance path
+
+1. Load-test on `db-custom-2-7680` (2 vCPU, 7.5 GiB) with 100 GiB SSD.
+2. Keep it zonal only if the business explicitly accepts no Cloud SQL SLA and restore/failover
+   downtime in exchange for lower cost.
+3. Use `db-custom-4-15360` planning capacity for 300,000 students if the 2-vCPU gate fails or CPU,
+   memory, lock waits or p95 latency cross thresholds.
+4. Enable Query Insights during the onboarding/load-test window and set a maintenance window.
+5. Enforce encrypted database connections.
+6. Recalculate pools before increasing Cloud Run max instances.
+
+### Availability path
+
+Use a regional HA dedicated instance when school operations require an SLA. HA approximately
+doubles database compute and storage charges but provides synchronous regional standby/failover.
+Backups alone do not provide comparable recovery time.
+
+### Connection budget
+
+Current production theoretical application pool ceiling:
+
+```text
+5 Java services * 2 max instances * 5 Hikari connections = 50 connections
+Cloud SQL max_connections = 200
+```
+
+Cloud Run concurrency 80 does not create 80 database connections. It can create request queues
+behind a five-connection pool. For database-heavy Spring services, start load testing with Cloud
+Run concurrency 16-32 rather than assuming 80 is efficient. Maintain at least 30% database
+connection headroom for migrations, administration, jobs and failover behavior.
+
+## 7. Cloud Run Recommendation
+
+Keep request-based billing and minimum instances zero by default. This is the correct cost posture.
+
+Change the current fleet-wide assumptions as follows:
+
+| Service | Current max | Initial scale-test max | Notes |
+| --- | ---: | ---: | --- |
+| Frontend | 2 | 3-5 | Mostly static/cacheable |
+| Gateway | 3 | 5-10 | Node async I/O; distributed rate limiting still needed |
+| Identity | 2 | 3 | Login bursts, otherwise low traffic |
+| School-core | 2 | 5 | Main capacity service; database pool limits first |
+| Operations | 2 | 3 | Lower traffic |
+| Platform | 2 | 3-5 | Pub/Sub projections and dashboards |
+| Billing | 2 | 2 | Low frequency |
+
+These are maximums, not reserved instances, so they do not create idle cost. They can increase
+database connections and burst spend, so deploy them only with explicit pool math and budgets.
+
+If cold starts violate school-hour latency, schedule a single minimum gateway or school-core
+instance only during operating hours. Do not warm every Java service continuously.
+
+## 8. Cost Model
+
+### Pricing basis
+
+The billing-account pricing export on 2026-08-10 reports the following Delhi list prices:
+
+- dedicated zonal PostgreSQL vCPU: INR 4.744054/vCPU-hour;
+- dedicated zonal PostgreSQL RAM: INR 0.8034285/GiB-hour;
+- zonal PostgreSQL SSD: INR 19.511835/GiB-month;
+- regional database compute/storage: approximately twice zonal;
+- Cloud Run request-billed CPU: USD 0.000024/vCPU-second;
+- Cloud Run request-billed memory: USD 0.0000025/GiB-second;
+- Cloud Run requests: USD 0.40/million;
+- Pub/Sub: first 10 GiB/month free, then USD 40/TiB.
+
+### Live baseline
+
+For August 1-10, gross spend was approximately INR 2,794 and promotional credits reduced net cost
+to zero. Cloud Run and Cloud SQL represented about 85% of gross cost. A naive full-month extension
+is approximately INR 8,700, but development/deployment activity is not uniform.
+
+### Fleet projections
+
+| Scenario | Database plan | Cloud Run planning | Total zonal/month | Regional HA/month |
+| --- | --- | ---: | ---: | ---: |
+| 100 schools / 200k students | 2 vCPU, 7.5 GiB, 100 GiB | ~INR 5,290 | INR 18,321-28,626 | INR 28,942-45,221 |
+| 150 schools / 300k students | 4 vCPU, 15 GiB, 150 GiB | ~INR 7,935 | INR 30,971-48,392 | INR 51,432-80,363 |
+
+The midpoint modeled totals are INR 22,901 and INR 38,714 zonal, and INR 36,177 and INR 64,291
+regional HA.
+
+Approximate platform infrastructure cost is therefore:
+
+- 100-school zonal: INR 183-286/school/month;
+- 150-school zonal: INR 206-323/school/month;
+- 100-school HA: INR 289-452/school/month;
+- 150-school HA: INR 343-536/school/month.
+
+Excluded from these figures:
+
+- SMS/WhatsApp/email provider charges;
+- GST/taxes and support plans;
+- engineering/support staff;
+- domains and other SaaS subscriptions;
+- extraordinary exports or internet egress;
+- promotional credits and negotiated discounts.
+
+Messaging can exceed GCP cost. For example, notifying 5% absentees across 300,000 students for 22
+days means 330,000 outbound messages/month. Provider pricing and consent/retry behavior must be a
+separate commercial model.
+
+### Reproduce the estimate
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/estimate-scale-cost.ps1 `
+  -SchoolCount 100 -StudentCount 200000
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/estimate-scale-cost.ps1 `
+  -SchoolCount 150 -StudentCount 300000
+```
+
+Re-query current prices before making a commercial commitment.
+
+## 9. Cost Controls That Preserve Performance
+
+Do:
+
+- keep Cloud Run min instances at zero unless an SLO proves otherwise;
+- use higher maximum scale, because it is not an idle reservation;
+- batch SQL to reduce Cloud Run active time and Cloud SQL CPU together;
+- keep all runtime data paths in Delhi to avoid regional transfer;
+- schedule dev SQL and stop unnecessary dev activity outside working hours;
+- delete old build images and deploy/source artifacts;
+- retain logs selectively and sample traces;
+- cache static frontend assets aggressively;
+- record requests, stored bytes, messages and heavy jobs by school;
+- buy a Cloud SQL CUD only after 30-60 days at the final dedicated shape.
+
+Do not:
+
+- stay on a shared-core production database merely to save fixed spend;
+- enable one minimum instance on all seven services;
+- add GKE, Redis, Kafka, a PgBouncer VM or database-per-school at this scale without evidence;
+- put every student photo or report in the relational database;
+- add broad indexes before checking query plans and write amplification;
+- treat a budget alert as a hard spending cap.
+
+## 10. Security and Reliability Preconditions
+
+The earlier infrastructure audit remains part of scale readiness. More customers increase the
+impact of each control failure.
+
+Critical:
+
+1. Refresh tokens were accepted through the access-token introspection path. This repository change
+   now rejects them in both gateway and identity; deployment remains required.
+2. All 14 Cloud Run services use one overprivileged default compute service account. Create a
+   service/environment identity matrix with per-secret and per-resource permissions.
+3. Pub/Sub push authentication tokens exist in subscription query strings. Move to verified OIDC
+   identity/audience, then rotate the static secrets.
+4. The public repository has no protected branches/rulesets while a repo-wide WIF trust can assume
+   a broad deployment account. Restrict branches, workflow claims and service accounts.
+
+High:
+
+- background workers can stop when services scale to zero;
+- production SQL is zonal/shared-core and the recovery drill has never run;
+- dev and prod share one project, runtime identity and VPC boundary;
+- Cloud Run services use direct `run.app` exposure without a load balancer/WAF;
+- 44 secrets have no rotation schedule;
+- CI previously allowed its summary to pass after dependency jobs failed;
+- the scheduled container scan previously used `exit-code: 0`;
+- notification delivery remains logging/dry-run only;
+- frontend dependencies and container findings require remediation.
+
+## 11. Changes Implemented in This Review
+
+1. Refresh bearer-token confusion fixed at the gateway and identity introspection layers.
+2. Regression tests added for refresh-token rejection.
+3. Student workspace pagination moved from full-result Java slicing to SQL `LIMIT/OFFSET` plus
+   database counts.
+4. Reporting events now use atomic leases, retry backoff, five-attempt dead-lettering and abandoned
+   lease recovery.
+5. Billing outbox selection now uses `FOR UPDATE SKIP LOCKED`.
+6. PR CI summary now fails when a required dependency fails or is cancelled.
+7. Scheduled Trivy scanning now exits non-zero on policy violations.
+8. Reproducible capacity/cost estimator added.
+9. A read-oriented k6 school-day workload and fixture template added.
+
+These changes are repository changes only. They are not deployed to production by this review.
+
+## 12. One-Week Implementation and Rollout Plan
+
+### Day 1 - Security and release gates
+
+- Review and merge refresh-token boundary fix.
+- Add branch protection/rulesets and required checks.
+- Restrict GitHub WIF to approved branch, workflow and environment claims.
+- Pin third-party actions by commit SHA.
+- Make Trivy policy explicit: block new critical/high findings; track an approved baseline for
+  existing findings rather than permanently disabling enforcement.
+
+Evidence: gateway/identity tests, protected-branch screenshot/export, WIF policy export.
+
+### Day 2 - Production-like data and query baseline
+
+- Seed dev/stage with 150 tenant schools, 300,000 students, realistic classes/sections and at least
+  one academic year of attendance distribution.
+- Anonymize or synthesize data; do not clone production PII casually.
+- Capture `EXPLAIN (ANALYZE, BUFFERS)` for student list/search, attendance save/report, fee summary,
+  dashboard and reporting projection queries.
+- Enable Query Insights for the test window.
+
+Evidence: seed manifest, row counts, query-plan bundle, baseline database metrics.
+
+### Day 3 - Write-path batching
+
+- Replace per-student attendance validation/upserts with set-based validation and JDBC batches.
+- Batch student review campaign items.
+- Make student imports resumable asynchronous jobs with 250-500-row transactions.
+- Add idempotency/retry tests for each path.
+
+Evidence: statement count before/after, transaction tests, failed-job replay test.
+
+### Day 4 - Async delivery and runtime identities
+
+- Deploy reporting retry/lease migration in dev.
+- Move outbox relay triggering to Cloud Scheduler + Cloud Run Jobs or another request-driven relay.
+- Keep Pub/Sub push for projection wake-up.
+- Remove tokens from subscription query strings and rotate them.
+- Create least-privilege runtime identities per service/environment.
+
+Evidence: zero stale outbox age under idle APIs, dead-letter replay, IAM policy diff, rotated secrets.
+
+### Day 5 - Load, soak and failure tests
+
+- Run k6 at 100, then 300, then 500 virtual staff users.
+- Add a controlled attendance write scenario against dev only.
+- Run a four-hour soak and a morning five-times burst.
+- Terminate a projector instance while work is leased and prove recovery.
+- Exercise Cloud SQL restart and connection backoff.
+
+Initial gates:
+
+- HTTP error rate below 1%;
+- read p95 below 800 ms and p99 below 2 s;
+- attendance save p95 below 1.5 s;
+- no database CPU above 80% for 15 sustained minutes;
+- no memory exhaustion or swap pressure;
+- connection usage below 70% of configured max;
+- outbox oldest pending below five minutes;
+- Pub/Sub oldest unacked below two minutes;
+- no cross-tenant result under concurrent mixed-school traffic.
+
+### Day 6 - Database sizing and recovery
+
+- Select 2-vCPU or 4-vCPU dedicated SQL based on Day 5 evidence.
+- Provision 100-150 GiB initial storage with auto-growth and alerts.
+- Decide zonal cost mode versus regional HA in writing.
+- Enforce encrypted connections and set maintenance window.
+- Run the first PITR recovery drill and record RTO/RPO.
+- Finalize the attendance partition migration design; do not perform a risky online rewrite without
+  rehearsal and rollback.
+
+Evidence: signed sizing decision, recovery artifact, restored row checks, measured RTO/RPO.
+
+### Day 7 - Canary and onboarding gate
+
+- Deploy through dev and production canary stages.
+- Watch latency, 5xx, CPU, memory, connections, slow queries, outbox age and Pub/Sub backlog.
+- Onboard a small school cohort first, not all 100 schools at once.
+- Hold at 5-10 schools for one school-day peak, then 25, 50, 100 and 150 only when gates remain
+  green.
+
+Rollback triggers:
+
+- tenant isolation failure;
+- error rate above 2% for five minutes;
+- p95 above two seconds for 15 minutes on core operations;
+- database CPU above 90% for 15 minutes;
+- connection exhaustion;
+- unprocessed events older than 15 minutes;
+- unexplained cost-rate increase above twice the modeled daily range.
+
+## 13. Running the Load Test
+
+The test must target dev/stage, never production writes.
+
+1. Copy `load-tests/fixtures.example.json` to ignored `load-tests/fixtures.json`.
+2. Add short-lived dev access tokens for representative schools.
+3. Install k6 in the controlled test environment.
+4. Run:
+
+```powershell
+$env:BASE_URL = 'https://DEV_GATEWAY_URL'
+$env:K6_FIXTURES_FILE = './load-tests/fixtures.json'
+$env:PEAK_VUS = '100'
+k6 run load-tests/school-day-read.js
+```
+
+Run 100, 300 and 500 VUs and preserve the JSON summary with Cloud Monitoring screenshots. The
+read test alone is not the production gate; attendance writes and import jobs need separate safe
+dev scenarios after batching is implemented.
+
+## 14. Operational Thresholds
+
+| Signal | Warning | Scale/fix action |
+| --- | --- | --- |
+| Cloud SQL CPU | p95 > 65% for a week | Optimize top queries; then add vCPU |
+| Cloud SQL memory | sustained pressure/cache churn | Increase RAM/dedicated shape |
+| Connections | > 70% | reduce pool/max scale or introduce a proven pooler design |
+| Attendance table | 10-20M rows | finalize/test partition design |
+| Attendance table | 25M rows | execute partition/retention plan before further onboarding |
+| Storage free | < 25% | increase alert/provisioning headroom |
+| School-core p95 | > 800 ms | inspect SQL and pool queue before adding instances |
+| 5xx rate | > 1% | stop onboarding and diagnose |
+| Outbox oldest pending | > 5 min | relay incident |
+| Pub/Sub oldest unacked | > 2 min | consumer/projector incident |
+| Dead-letter event | any | page owner and replay after correction |
+| Monthly gross forecast | > 125% model | cost incident/query regression review |
+
+## 15. Go/No-Go Checklist
+
+- [ ] Dedicated production Cloud SQL chosen from measured load results.
+- [ ] Zonal-versus-HA risk accepted by business owner.
+- [ ] 300,000-student seed and 10,000-student tenant tests pass.
+- [ ] Attendance batch path passes burst and idempotency tests.
+- [ ] Imports are resumable or an explicit operational batching process is accepted.
+- [ ] Student list/search meets p95/p99 targets.
+- [ ] Reporting retries, dead-letter and replay are verified.
+- [ ] Background relay operates while user-facing services are idle.
+- [ ] Per-service runtime IAM is deployed.
+- [ ] Pub/Sub query credentials are removed and rotated.
+- [ ] Branch protection, required CI and restricted WIF are active.
+- [ ] PITR recovery drill passes with recorded RTO/RPO.
+- [ ] Cost budget is raised from INR 5,000 to the selected fleet envelope.
+- [ ] Per-school usage/cost telemetry exists.
+- [ ] Notification-provider unit economics and consent controls are approved.
+- [ ] Canary cohort completes a real school-day peak before the next wave.
+
+## 16. Sources
+
+Primary Google documentation:
+
+- Cloud SQL machine series and shared-core specifications:
+  https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview
+- Cloud SQL instance guidance and shared-core production warning:
+  https://docs.cloud.google.com/sql/docs/postgres/instance-settings
+- Cloud SQL SLA exclusions:
+  https://cloud.google.com/sql/sla
+- Cloud SQL pricing:
+  https://cloud.google.com/sql/pricing
+- Cloud SQL PostgreSQL best practices:
+  https://docs.cloud.google.com/sql/docs/postgres/best-practices
+- Cloud Run pricing and request-based billing:
+  https://cloud.google.com/run/pricing
+- Cloud Run concurrency guidance:
+  https://docs.cloud.google.com/run/docs/about-concurrency
+- Java on Cloud Run:
+  https://docs.cloud.google.com/run/docs/tips/java
+- Pub/Sub pricing:
+  https://cloud.google.com/pubsub/pricing
+- Cloud Storage pricing:
+  https://cloud.google.com/storage/pricing
+
+Repository companions:
+
+- `docs/GCP-COST-OPTIMIZATION-PLAN-2026-08.md`
+- `docs/current-state/project-architecture.md`
+- `docs/current-state/gcp-infrastructure.md`
+- `docs/current-state/gaps-and-drift.md`
+- `scripts/estimate-scale-cost.ps1`
+- `load-tests/school-day-read.js`

@@ -8,6 +8,7 @@ import com.custoking.ims.identityservice.persistence.AuthSessionRepository;
 import com.custoking.ims.identityservice.persistence.RbacLookupRepository;
 import com.custoking.ims.identityservice.persistence.RbacReadRepository;
 import com.custoking.ims.identityservice.security.JwtService;
+import io.jsonwebtoken.Claims;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -141,6 +142,19 @@ class IdentityAuthServiceRotationTest {
         verify(authAudit, never()).recordRefreshTokenReuse(any(), anyString(), anyString());
 
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    void introspect_refreshToken_isAlwaysInactive() {
+        Claims claims = mock(Claims.class);
+        when(claims.get("type", String.class)).thenReturn("refresh");
+        when(jwtService.claims(RAW_TOKEN)).thenReturn(claims);
+
+        IdentityAuthService.IntrospectionResponse response = service.introspect(RAW_TOKEN);
+
+        assertThat(response.active()).isFalse();
+        assertThat(response.principal()).isNull();
+        verify(users, never()).findByEmailIgnoreCase(anyString());
     }
 
     @Test

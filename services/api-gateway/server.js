@@ -375,6 +375,9 @@ async function authenticate(req, requestId, opts = {}) {
   if (localVerify && secret) {
     const claims = verifyJwtLocally(match[1], secret, now);
     if (!claims) return null; // bad signature / expired / wrong alg → 401, no fallback
+    // A refresh token is validly signed but is never a bearer credential. Do not send it to
+    // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
+    if (claims.type === 'refresh') return null;
     const principal = principalFromClaims(claims);
     if (principal) return principal; // enriched token → no network call
     return introspectFn(req, requestId); // valid but un-enriched → fall back

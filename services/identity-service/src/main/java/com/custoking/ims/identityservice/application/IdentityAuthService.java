@@ -119,6 +119,12 @@ public class IdentityAuthService {
     public IntrospectionResponse introspect(String token) {
         try {
             Claims claims = jwtService.claims(token);
+            // Refresh tokens deliberately share the JWT signing key, but they are not bearer
+            // credentials. Reject them before resolving a user so the gateway's legacy-token
+            // introspection fallback cannot turn a stolen refresh token into an access token.
+            if ("refresh".equals(claims.get("type", String.class))) {
+                return IntrospectionResponse.inactive();
+            }
             String email = claims.getSubject();
             if (!jwtService.isTokenValid(token, email)) {
                 return IntrospectionResponse.inactive();

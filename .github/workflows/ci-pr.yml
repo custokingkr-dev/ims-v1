@@ -119,3 +119,20 @@ jobs:
             echo "- Docker builds: ${{ needs.docker-build.result }}"
             echo "- Secret scan: ${{ needs.secret-scan.result }}"
           } >> "$GITHUB_STEP_SUMMARY"
+      - name: Enforce required job results
+        shell: bash
+        run: |
+          failed=0
+          for result in \
+            "${{ needs.detect.result }}" \
+            "${{ needs.service-test.result }}" \
+            "${{ needs.docker-build.result }}" \
+            "${{ needs.secret-scan.result }}"; do
+            if [[ "$result" != "success" && "$result" != "skipped" ]]; then
+              failed=1
+            fi
+          done
+          if [[ "$failed" -ne 0 ]]; then
+            echo "One or more required CI jobs failed or were cancelled." >&2
+            exit 1
+          fi
