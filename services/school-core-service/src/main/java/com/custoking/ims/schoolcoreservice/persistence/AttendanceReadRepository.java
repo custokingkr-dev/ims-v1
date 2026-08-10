@@ -14,6 +14,7 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -718,56 +719,35 @@ public class AttendanceReadRepository {
         }
         List<Map<String, Object>> records = records(request.get("records"));
         int total = (int) countStudents(sectionId);
-        int subPresent = (int) records.stream().filter(r -> "PRESENT".equals(str(r.get("status"), ""))).count();
-        int subLate = (int) records.stream().filter(r -> "LATE".equals(str(r.get("status"), ""))).count();
-        int subLeave = (int) records.stream().filter(r -> "LEAVE".equals(str(r.get("status"), ""))).count();
-        int subAbsent = (int) records.stream().filter(r -> "ABSENT".equals(str(r.get("status"), ""))).count();
-        String dailyId = upsertDaily(date, classId, sectionId, academicYearId, total,
-                subPresent, subAbsent, subLate, subLeave, actorId, false, sectionSchoolId);
-        OffsetDateTime now = OffsetDateTime.now();
+        List<AttendanceInput> inputs = new ArrayList<>(records.size());
+        Set<Long> studentIds = new HashSet<>();
         for (Map<String, Object> record : records) {
             Long studentId = longNum(record.get("studentId"), 0);
             String status = requireText(record.get("status"), "Status is required");
             if (!ALLOWED_STATUSES.contains(status)) {
                 throw new IllegalArgumentException("Invalid attendance status");
             }
-            ensureStudentInSection(studentId, sectionSchoolId, classId, sectionId);
-            jdbc.sql("""
-                    INSERT INTO %s(id, attendance_daily_id, student_id, school_id, attendance_date,
-                                   academic_year_id, class_id, section_id, status, remarks,
-                                   recorded_by, recorded_at, updated_by, updated_at)
-                    VALUES (:id, :dailyId, :studentId, :schoolId, :date, :academicYearId, :classId, :sectionId,
-                            :status, :remarks, :actorId, :recordedAt, :actorId, :updatedAt)
-                    ON CONFLICT (student_id, attendance_date, academic_year_id) DO UPDATE SET
-                        attendance_daily_id = EXCLUDED.attendance_daily_id,
-                        school_id = EXCLUDED.school_id,
-                        class_id = EXCLUDED.class_id,
-                        section_id = EXCLUDED.section_id,
-                        status = EXCLUDED.status,
-                        remarks = EXCLUDED.remarks,
-                        updated_by = EXCLUDED.updated_by,
-                        updated_at = EXCLUDED.updated_at
-                    """.formatted(recordsTable))
-                    .param("id", UUID.randomUUID().toString())
-                    .param("dailyId", dailyId)
-                    .param("studentId", studentId)
-                    .param("schoolId", sectionSchoolId)
-                    .param("date", date)
-                    .param("academicYearId", academicYearId)
-                    .param("classId", classId)
-                    .param("sectionId", sectionId)
-                    .param("status", status)
-                    .param("remarks", str(record.get("remarks"), ""))
-                    .param("actorId", actorId)
-                    .param("recordedAt", now)
-                    .param("updatedAt", now)
-                    .update();
+            if (studentId <= 0 || !studentIds.add(studentId)) {
+                throw new IllegalArgumentException(studentId <= 0
+                        ? "Student not found in section"
+                        : "Duplicate student attendance record");
+            }
+            inputs.add(new AttendanceInput(
+                    UUID.randomUUID().toString(), studentId, status, str(record.get("remarks"), "")));
         }
-        int present = countStatus(date, sectionId, academicYearId, "PRESENT");
-        int late = countStatus(date, sectionId, academicYearId, "LATE");
-        int leave = countStatus(date, sectionId, academicYearId, "LEAVE");
-        int absent = countStatus(date, sectionId, academicYearId, "ABSENT");
-        upsertDaily(date, classId, sectionId, academicYearId, total, present, absent, late, leave,
+        validateStudentsInSection(studentIds, sectionSchoolId, classId, sectionId);
+        int subPresent = (int) inputs.stream().filter(r -> "PRESENT".equals(r.status())).count();
+        int subLate = (int) inputs.stream().filter(r -> "LATE".equals(r.status())).count();
+        int subLeave = (int) inputs.stream().filter(r -> "LEAVE".equals(r.status())).count();
+        int subAbsent = (int) inputs.stream().filter(r -> "ABSENT".equals(r.status())).count();
+        String dailyId = upsertDaily(date, classId, sectionId, academicYearId, total,
+                subPresent, subAbsent, subLate, subLeave, actorId, false, sectionSchoolId, false);
+        OffsetDateTime now = OffsetDateTime.now();
+        upsertAttendanceRecords(inputs, dailyId, sectionSchoolId, date, academicYearId,
+                classId, sectionId, actorId, now);
+        AttendanceCounts counts = attendanceCounts(date, sectionId, academicYearId);
+        upsertDaily(date, classId, sectionId, academicYearId, total,
+                counts.present(), counts.absent(), counts.late(), counts.leave(),
                 actorId, false, sectionSchoolId);
         return sectionRegister(date, classId, sectionId, sectionSchoolId);
     }
@@ -951,10 +931,15 @@ public class AttendanceReadRepository {
     private String upsertDaily(LocalDate date, String classId, String sectionId, String academicYearId,
                                int total, int present, int absent, int late, int leave,
                                Long actorId, boolean locked, Long schoolId) {
+        return upsertDaily(date, classId, sectionId, academicYearId, total, present, absent, late,
+                leave, actorId, locked, schoolId, true);
+    }
+
+    private String upsertDaily(LocalDate date, String classId, String sectionId, String academicYearId,
+                               int total, int present, int absent, int late, int leave,
+                               Long actorId, boolean locked, Long schoolId, boolean emitEvent) {
         OffsetDateTime now = OffsetDateTime.now();
-        Map<String, Object> existing = dailyRecord(date, sectionId, academicYearId);
-        String id = existing == null ? UUID.randomUUID().toString() : String.valueOf(existing.get("id"));
-        jdbc.sql("""
+        String upsertedId = jdbc.sql("""
                 INSERT INTO %s(id, attendance_date, total_enrolled, present_count, absent_count,
                                late_count, leave_count, recorded_by, recorded_at, updated_by, updated_at,
                                locked, school_class_id, section_id, academic_year_id, school_id)
@@ -969,8 +954,9 @@ public class AttendanceReadRepository {
                     updated_by = EXCLUDED.updated_by,
                     updated_at = EXCLUDED.updated_at,
                     locked = EXCLUDED.locked
+                RETURNING id
                 """.formatted(dailyTable))
-                .param("id", id)
+                .param("id", UUID.randomUUID().toString())
                 .param("date", date)
                 .param("total", total)
                 .param("present", present)
@@ -985,19 +971,112 @@ public class AttendanceReadRepository {
                 .param("sectionId", sectionId)
                 .param("academicYearId", academicYearId)
                 .param("schoolId", schoolId)
-                .update();
-        String upsertedId = jdbc.sql("""
-                SELECT id FROM %s
-                WHERE attendance_date = :date AND section_id = :sectionId AND academic_year_id = :academicYearId
-                """.formatted(dailyTable))
+                .query(String.class)
+                .single();
+        if (emitEvent) {
+            emitDailyUpsertedEvent(upsertedId, schoolId, date, classId, sectionId, academicYearId,
+                    present, absent, late, leave, total);
+        }
+        return upsertedId;
+    }
+
+    private void validateStudentsInSection(Set<Long> studentIds, Long schoolId, String classId, String sectionId) {
+        if (studentIds.isEmpty()) return;
+        long matched = jdbc.sql("""
+                        SELECT COUNT(*)
+                        FROM student.students
+                        WHERE id IN (:studentIds) AND school_id = :schoolId AND class_id = :classId
+                          AND section_id = :sectionId AND deleted_at IS NULL
+                        """)
+                .param("studentIds", studentIds)
+                .param("schoolId", schoolId)
+                .param("classId", classId)
+                .param("sectionId", sectionId)
+                .query(Long.class)
+                .single();
+        if (matched != studentIds.size()) {
+            throw new IllegalArgumentException("Student not found in section");
+        }
+    }
+
+    private void upsertAttendanceRecords(
+            List<AttendanceInput> inputs,
+            String dailyId,
+            Long schoolId,
+            LocalDate date,
+            String academicYearId,
+            String classId,
+            String sectionId,
+            Long actorId,
+            OffsetDateTime now) {
+        if (inputs.isEmpty()) return;
+        StringBuilder sql = new StringBuilder("""
+                INSERT INTO %s(id, attendance_daily_id, student_id, school_id, attendance_date,
+                               academic_year_id, class_id, section_id, status, remarks,
+                               recorded_by, recorded_at, updated_by, updated_at)
+                VALUES
+                """.formatted(recordsTable));
+        for (int i = 0; i < inputs.size(); i++) {
+            if (i > 0) sql.append(",");
+            sql.append("(:id").append(i).append(", :dailyId, :studentId").append(i)
+                    .append(", :schoolId, :date, :academicYearId, :classId, :sectionId, :status")
+                    .append(i).append(", :remarks").append(i)
+                    .append(", :actorId, :recordedAt, :actorId, :updatedAt)");
+        }
+        sql.append("""
+                ON CONFLICT (student_id, attendance_date, academic_year_id) DO UPDATE SET
+                    attendance_daily_id = EXCLUDED.attendance_daily_id,
+                    school_id = EXCLUDED.school_id,
+                    class_id = EXCLUDED.class_id,
+                    section_id = EXCLUDED.section_id,
+                    status = EXCLUDED.status,
+                    remarks = EXCLUDED.remarks,
+                    updated_by = EXCLUDED.updated_by,
+                    updated_at = EXCLUDED.updated_at
+                """);
+        var spec = jdbc.sql(sql.toString())
+                .param("dailyId", dailyId)
+                .param("schoolId", schoolId)
+                .param("date", date)
+                .param("academicYearId", academicYearId)
+                .param("classId", classId)
+                .param("sectionId", sectionId)
+                .param("actorId", actorId)
+                .param("recordedAt", now)
+                .param("updatedAt", now);
+        for (int i = 0; i < inputs.size(); i++) {
+            AttendanceInput input = inputs.get(i);
+            spec = spec.param("id" + i, input.id())
+                    .param("studentId" + i, input.studentId())
+                    .param("status" + i, input.status())
+                    .param("remarks" + i, input.remarks());
+        }
+        spec.update();
+    }
+
+    private AttendanceCounts attendanceCounts(LocalDate date, String sectionId, String academicYearId) {
+        return jdbc.sql("""
+                        SELECT COUNT(*) FILTER (WHERE status = 'PRESENT') AS present,
+                               COUNT(*) FILTER (WHERE status = 'ABSENT') AS absent,
+                               COUNT(*) FILTER (WHERE status = 'LATE') AS late,
+                               COUNT(*) FILTER (WHERE status = 'LEAVE') AS leave
+                        FROM %s
+                        WHERE attendance_date = :date AND section_id = :sectionId
+                          AND academic_year_id = :academicYearId
+                        """.formatted(recordsTable))
                 .param("date", date)
                 .param("sectionId", sectionId)
                 .param("academicYearId", academicYearId)
-                .query(String.class)
+                .query((rs, rowNum) -> new AttendanceCounts(
+                        rs.getInt("present"), rs.getInt("absent"),
+                        rs.getInt("late"), rs.getInt("leave")))
                 .single();
-        emitDailyUpsertedEvent(upsertedId, schoolId, date, classId, sectionId, academicYearId,
-                present, absent, late, leave, total);
-        return upsertedId;
+    }
+
+    private record AttendanceInput(String id, Long studentId, String status, String remarks) {
+    }
+
+    private record AttendanceCounts(int present, int absent, int late, int leave) {
     }
 
     /**

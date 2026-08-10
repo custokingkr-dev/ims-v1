@@ -15,6 +15,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -179,5 +180,77 @@ class AttendanceLateLeaveRoundTripTest {
                 "records", List.of(Map.of("studentId", 1, "status", "HALF_DAY", "remarks", "")))))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid attendance status");
+    }
+
+    @Test
+    void saveLargeRegister_bulkUpsertsAllRowsAndAccurateSummary() throws Exception {
+        String academicYearId = AcademicCalendar.currentAcademicYearId(JdbcClient.create(ds), 1L);
+        try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+            for (int i = 5; i <= 120; i++) {
+                st.execute("INSERT INTO student.students" +
+                        "(id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
+                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','" +
+                        academicYearId + "')");
+            }
+        }
+        List<Map<String, Object>> records = new ArrayList<>();
+        String[] statuses = {"PRESENT", "ABSENT", "LATE", "LEAVE"};
+        for (int i = 1; i <= 120; i++) {
+            records.add(Map.of("studentId", i, "status", statuses[(i - 1) % statuses.length], "remarks", ""));
+        }
+
+        repo.saveSectionRegister(Map.of(
+                "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
+                "records", records));
+
+        Map<String, Object> daily = JdbcClient.create(ds).sql("""
+                        SELECT total_enrolled, present_count, absent_count, late_count, leave_count
+                        FROM attendance.attendance_daily
+                        WHERE section_id = 's1' AND attendance_date = :date
+                          AND academic_year_id = :academicYearId
+                        """)
+                .param("date", DAY)
+                .param("academicYearId", academicYearId)
+                .query((rs, rowNum) -> Map.<String, Object>of(
+                        "total", rs.getInt("total_enrolled"),
+                        "present", rs.getInt("present_count"),
+                        "absent", rs.getInt("absent_count"),
+                        "late", rs.getInt("late_count"),
+                        "leave", rs.getInt("leave_count")))
+                .single();
+        Integer storedRows = JdbcClient.create(ds).sql("""
+                        SELECT COUNT(*) FROM attendance.attendance_student_records
+                        WHERE section_id = 's1' AND attendance_date = :date
+                          AND academic_year_id = :academicYearId
+                        """)
+                .param("date", DAY)
+                .param("academicYearId", academicYearId)
+                .query(Integer.class)
+                .single();
+
+        assertThat(storedRows).isEqualTo(120);
+        assertThat(daily).containsEntry("total", 120)
+                .containsEntry("present", 30)
+                .containsEntry("absent", 30)
+                .containsEntry("late", 30)
+                .containsEntry("leave", 30);
+    }
+
+    @Test
+    void duplicateStudent_isRejectedBeforeAnyAttendanceMutation() {
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> repo.saveSectionRegister(Map.of(
+                        "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
+                        "records", List.of(
+                                Map.of("studentId", 1, "status", "PRESENT", "remarks", ""),
+                                Map.of("studentId", 1, "status", "ABSENT", "remarks", "")))))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Duplicate student attendance record");
+
+        Integer dailyRows = JdbcClient.create(ds).sql(
+                        "SELECT COUNT(*) FROM attendance.attendance_daily WHERE attendance_date = :date")
+                .param("date", DAY)
+                .query(Integer.class)
+                .single();
+        assertThat(dailyRows).isZero();
     }
 }
