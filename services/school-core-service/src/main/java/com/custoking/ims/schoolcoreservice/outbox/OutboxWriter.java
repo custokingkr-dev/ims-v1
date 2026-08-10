@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.slf4j.MDC;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,6 +51,54 @@ public class OutboxWriter {
                 .param("traceParent", traceParent)
                 .param("traceState", null)
                 .update();
+    }
+
+    public void appendAll(List<Event> events) {
+        if (events == null || events.isEmpty()) {
+            return;
+        }
+        for (int start = 0; start < events.size(); start += 500) {
+            appendChunk(events.subList(start, Math.min(start + 500, events.size())));
+        }
+    }
+
+    private void appendChunk(List<Event> events) {
+        StringBuilder sql = new StringBuilder("INSERT INTO ")
+                .append(outboxTable)
+                .append(" (event_key, event_type, aggregate_type, aggregate_id, school_id, payload, trace_parent, trace_state) VALUES ");
+        for (int i = 0; i < events.size(); i++) {
+            if (i > 0) sql.append(",");
+            sql.append("(:eventKey").append(i)
+                    .append(", :eventType").append(i)
+                    .append(", :aggregateType").append(i)
+                    .append(", :aggregateId").append(i)
+                    .append(", :schoolId").append(i)
+                    .append(", :payload").append(i).append("::jsonb, :traceParent, :traceState)");
+        }
+        String traceParent = currentTraceParent();
+        var spec = jdbc.sql(sql.toString())
+                .param("traceParent", traceParent)
+                .param("traceState", null);
+        for (int i = 0; i < events.size(); i++) {
+            Event event = events.get(i);
+            spec = spec.param("eventKey" + i, event.eventKey())
+                    .param("eventType" + i, event.eventType())
+                    .param("aggregateType" + i, event.aggregateType())
+                    .param("aggregateId" + i, event.aggregateId())
+                    .param("schoolId" + i, event.schoolId())
+                    .param("payload" + i, objectMapper.writeValueAsString(
+                            event.payload() == null ? Map.of() : event.payload()));
+        }
+        spec.update();
+    }
+
+    public record Event(
+            String eventType,
+            String eventKey,
+            String aggregateType,
+            String aggregateId,
+            Long schoolId,
+            Map<String, Object> payload) {
     }
 
     static String currentTraceParent() {

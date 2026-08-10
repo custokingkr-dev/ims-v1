@@ -2364,38 +2364,41 @@ public class StudentReadRepository {
     private void insertReviewItems(String campaignId, Long schoolId, List<String> classIds, List<String> sectionIds,
                                    Long assignedToUserId) {
         StringBuilder sql = new StringBuilder("""
-                SELECT id, full_name
-                FROM student.students
-                WHERE school_id = :schoolId AND deleted_at IS NULL
+                INSERT INTO student.student_review_items
+                    (id, campaign_id, student_id, school_id, assigned_to_user_id, status,
+                     current_full_name, created_at, updated_at)
+                SELECT gen_random_uuid()::text, :campaignId, s.id, :schoolId, :assignedToUserId,
+                       'PENDING', s.full_name, now(), now()
+                FROM student.students s
+                WHERE s.school_id = :schoolId AND s.deleted_at IS NULL
                 """);
-        if (!classIds.isEmpty()) sql.append(" AND class_id IN (:classIds)");
-        if (!sectionIds.isEmpty()) sql.append(" AND section_id IN (:sectionIds)");
-        sql.append(" ORDER BY full_name");
-        var spec = jdbc.sql(sql.toString()).param("schoolId", schoolId);
+        if (!classIds.isEmpty()) sql.append(" AND s.class_id IN (:classIds)");
+        if (!sectionIds.isEmpty()) sql.append(" AND s.section_id IN (:sectionIds)");
+        sql.append("""
+                ON CONFLICT (campaign_id, student_id) DO NOTHING
+                RETURNING id, campaign_id, school_id, status
+                """);
+        var spec = jdbc.sql(sql.toString())
+                .param("campaignId", campaignId)
+                .param("schoolId", schoolId)
+                .param("assignedToUserId", assignedToUserId);
         if (!classIds.isEmpty()) spec = spec.param("classIds", classIds);
         if (!sectionIds.isEmpty()) spec = spec.param("sectionIds", sectionIds);
-        List<Map<String, Object>> students = spec.query((rs, rowNum) ->
-                row("id", rs.getLong("id"), "fullName", rs.getString("full_name"))).list();
-        for (Map<String, Object> student : students) {
-            String itemId = UUID.randomUUID().toString();
-            jdbc.sql("""
-                            INSERT INTO student.student_review_items
-                                (id, campaign_id, student_id, school_id, assigned_to_user_id, status,
-                                 current_full_name, created_at, updated_at)
-                            VALUES
-                                (:id, :campaignId, :studentId, :schoolId, :assignedToUserId, 'PENDING',
-                                 :currentFullName, now(), now())
-                            ON CONFLICT (campaign_id, student_id) DO NOTHING
-                            """)
-                    .param("id", itemId)
-                    .param("campaignId", campaignId)
-                    .param("studentId", student.get("id"))
-                    .param("schoolId", schoolId)
-                    .param("assignedToUserId", assignedToUserId)
-                    .param("currentFullName", student.get("fullName"))
-                    .update();
-            emitReviewItemUpserted(itemId);
-        }
+        List<OutboxWriter.Event> events = spec.query((rs, rowNum) -> {
+            String itemId = rs.getString("id");
+            String returnedCampaignId = rs.getString("campaign_id");
+            Long returnedSchoolId = rs.getLong("school_id");
+            String status = rs.getString("status");
+            return new OutboxWriter.Event(
+                    "student-review-item.upserted.v1",
+                    "StudentReviewItemUpserted:" + itemId,
+                    "StudentReviewItem",
+                    itemId,
+                    returnedSchoolId,
+                    row("id", itemId, "schoolId", returnedSchoolId,
+                            "campaignId", returnedCampaignId, "status", status));
+        }).list();
+        outbox.appendAll(events);
     }
 
     private String insertSingleReviewItem(String campaignId, Long studentId, Long schoolId) {

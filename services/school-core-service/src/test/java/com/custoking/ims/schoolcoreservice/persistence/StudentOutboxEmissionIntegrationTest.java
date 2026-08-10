@@ -154,6 +154,65 @@ class StudentOutboxEmissionIntegrationTest {
     }
 
     @Test
+    void reviewCampaignBulkCreatesItemsAndChunkedOutboxEvents() throws Exception {
+        long schoolId = seedSchool(3, 2);
+        Map<String, Object> placement = jdbc.sql("""
+                        SELECT school_class_id, id
+                        FROM tenant_school.school_sections
+                        WHERE school_id = :schoolId
+                        ORDER BY id
+                        LIMIT 1
+                        """)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> Map.<String, Object>of(
+                        "classId", rs.getString("school_class_id"),
+                        "sectionId", rs.getString("id")))
+                .single();
+        jdbc.sql("""
+                        INSERT INTO student.students(
+                            admission_no, roll_no, full_name, school_id, class_id, section_id,
+                            academic_year_id, created_at, updated_at)
+                        SELECT 'BULK-' || n, n::text, 'Bulk Student ' || n, :schoolId,
+                               :classId, :sectionId, 'ay1', now(), now()
+                        FROM generate_series(1, 520) AS n
+                        """)
+                .param("schoolId", schoolId)
+                .param("classId", placement.get("classId"))
+                .param("sectionId", placement.get("sectionId"))
+                .update();
+
+        Map<String, Object> status = studentRepo.initiateProfileVerification(Map.of(
+                "schoolId", schoolId,
+                "actorId", 42L,
+                "dueDate", "2026-12-31"));
+
+        assertThat(status).containsEntry("totalStudents", 520L)
+                .containsEntry("pending", 520L);
+        assertThat(jdbc.sql("SELECT count(*) FROM student.student_review_items WHERE school_id = :schoolId")
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .single()).isEqualTo(520L);
+        assertThat(jdbc.sql("""
+                        SELECT count(*)
+                        FROM tenant_school.outbox_events
+                        WHERE school_id = :schoolId
+                          AND event_type = 'student-review-item.upserted.v1'
+                        """)
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .single()).isEqualTo(520L);
+        assertThat(jdbc.sql("""
+                        SELECT count(DISTINCT aggregate_id)
+                        FROM tenant_school.outbox_events
+                        WHERE school_id = :schoolId
+                          AND event_type = 'student-review-item.upserted.v1'
+                        """)
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .single()).isEqualTo(520L);
+    }
+
+    @Test
     void profileEditInvalidatesOnlyTheActiveProfileVerification() throws Exception {
         long schoolId = seedSchool(3, 2);
         Map<String, Object> created = studentRepo.createStudent(Map.of(
