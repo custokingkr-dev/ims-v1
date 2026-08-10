@@ -775,6 +775,13 @@ try {
         $script:importedStudentId = [long](Get-Value ($insertedStudents | Select-Object -First 1) "studentId" 0)
         $script:state.importedStudentId = $importedStudentId
         Assert-E2E "bulk import returned student id" ($importedStudentId -gt 0) "studentId=$importedStudentId"
+        $confirmRetry = Invoke-Api "student bulk import confirmation retry" "POST" "/api/v1/students/import/confirm" $admin.token "school-admin" @{
+            fileToken = $fileToken
+            schoolId = $schoolId
+        }
+        Assert-E2E "bulk import retry keeps job id" ([string](Get-Value $confirmRetry.json "jobId") -eq $jobId) "jobId=$(Get-Value $confirmRetry.json "jobId")"
+        Assert-E2E "bulk import retry keeps result" ([int](Get-Value $confirmRetry.json "inserted" 0) -eq 1 -and [int](Get-Value $confirmRetry.json "skipped" -1) -eq 0) "inserted=$(Get-Value $confirmRetry.json "inserted") skipped=$(Get-Value $confirmRetry.json "skipped")"
+        Assert-DbCount "bulk import retry creates one student" "SELECT COUNT(*) FROM student.students WHERE school_id = $schoolId AND admission_no = $(Sql-Quote "IMP-$script:runId");" 1
         Assert-OutboxEvent "tenant_school" "student.upserted.v1" $importedStudentId "imported student outbox"
         Assert-DbCount "bulk import original file metadata persisted" "SELECT COUNT(*) FROM student.import_batches WHERE school_id = $schoolId AND original_file_name = $(Sql-Quote "logical-e2e-students-$script:runId.csv") AND original_file_sha256 IS NOT NULL AND original_file_size > 0;" 1
 
