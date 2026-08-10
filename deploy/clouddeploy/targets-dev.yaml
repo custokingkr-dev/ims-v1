@@ -8,7 +8,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-identity-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -43,7 +43,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-school-core-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -78,7 +78,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-operations-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -113,7 +113,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-platform-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -151,7 +151,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-billing-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -186,7 +186,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-api-gateway-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -221,7 +221,7 @@ deployParameters:
   env: dev
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-frontend-dev@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
