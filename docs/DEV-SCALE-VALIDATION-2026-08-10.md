@@ -34,7 +34,7 @@ Deployed revisions:
 | --- | --- | ---: |
 | API gateway | `custoking-api-gateway-dev-00143-br2` | 100% |
 | Identity | `custoking-identity-service-dev-00146-dg2` | 100% |
-| School core | `custoking-school-core-service-dev-00176-wvv` | 100% |
+| School core | `custoking-school-core-service-dev-00177-k8q` | 100% |
 | Platform | `custoking-platform-service-dev-00144-k5x` | 100% |
 | Billing | `custoking-billing-service-dev-00144-vkq` | 100% |
 
@@ -63,6 +63,16 @@ This workflow detected, built and deployed only school core. Revision
 `sha256:25e3838867879784052eff4c5eb3597ac5a2e9dd14b3cd2c9e54d36c4ce72548`. The release, gateway
 health smoke, runtime-image check and dev-approved digest publication all passed.
 
+Review campaign batching release commit: `275c6d3187f7541c3bbdd5c4221e8a666b7f4258`
+
+Release workflow:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31391901898
+
+This second school-core-only release deployed revision
+`custoking-school-core-service-dev-00177-k8q` at 100% traffic using immutable digest
+`sha256:33274218f8674b0e11b685104ae914505ebe64052ffb0595a30c4d8f19cb1fcc`. Image, runtime,
+gateway health, release evidence, and dev-approved digest checks passed.
+
 ## Verification Results
 
 ### Local affected suites before release
@@ -82,6 +92,10 @@ PostgreSQL 16 test schema.
 The attendance batching follow-up ran the complete school-core suite: 480 tests passed, with zero
 failures, errors or skips. This includes a 120-student register round trip and a duplicate-student
 request test that proves validation occurs before any attendance mutation.
+
+After review campaign batching, the complete school-core suite increased to 481 tests and again
+passed with zero failures, errors, or skips. A 520-student test crosses the 500-event chunk boundary
+and verifies one distinct review item and outbox event per student.
 
 ### Cloud Run release verification
 
@@ -172,6 +186,14 @@ database occupied 121 MB, and cleanup completed in 5.49 seconds with zero reserv
 The dev-only Cloud Run runner status check also passed and confirmed the live dev fixture is empty.
 These results validate fixture generation and recovery only; the cloud load stages remain pending.
 
+### Student review campaign batching
+
+Campaign initiation previously selected all students and then performed an item insert, item
+reread, and outbox insert for each student. For 10,000 students that was approximately 20,001
+database statements. The deployed path now uses one `INSERT ... SELECT ... RETURNING` for all review
+items, then writes projection events in 500-row chunks. The same 10,000-student case is approximately
+21 statements while retaining per-student event identity and transaction atomicity.
+
 ### k6 dev read workload
 
 The first run correctly exposed that the new harness omitted the required `date` query parameter
@@ -232,7 +254,7 @@ The following remain required:
 2. Temporary dedicated Cloud SQL test shape (`db-custom-2-7680` minimum).
 3. Controlled attendance write-load scenario against an isolated synthetic tenant (batching is
    implemented and deployed).
-4. Asynchronous/resumable student imports and batch review campaign creation.
+4. Asynchronous/resumable student imports (review campaign creation is now batched and deployed).
 5. Four-hour soak, 100/300/500-user stages, failure injection and recovery drill.
 6. Least-privilege runtime identities and OIDC Pub/Sub push authentication.
 7. Production availability decision: zonal cost mode versus regional HA.

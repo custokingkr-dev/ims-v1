@@ -397,6 +397,8 @@ High:
     one final event; a 120-student PostgreSQL integration test covers the batched path.
 11. A dev-only synthetic fleet runner and guarded k6 attendance writer now cover the 10,000-student
     school and 300,000-student fleet shapes without production PII.
+12. Student review campaigns now use one set-based item insert and 500-row outbox chunks; a
+    520-student integration test verifies chunk-boundary correctness.
 
 These changes are repository changes only. They are not deployed to production by this review.
 
@@ -428,7 +430,7 @@ Evidence: seed manifest, row counts, query-plan bundle, baseline database metric
 
 - Completed in dev: replace per-student attendance validation/upserts with set-based validation and
   one multi-row upsert.
-- Batch student review campaign items.
+- Completed in dev: batch student review campaign items and their projection outbox events.
 - Make student imports resumable asynchronous jobs with 250-500-row transactions.
 - Add idempotency/retry tests for each path.
 
