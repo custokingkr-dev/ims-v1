@@ -395,6 +395,8 @@ High:
 9. A read-oriented k6 school-day workload and fixture template added.
 10. Attendance register writes now use set validation, a multi-row upsert, a filtered aggregate and
     one final event; a 120-student PostgreSQL integration test covers the batched path.
+11. A dev-only synthetic fleet runner and guarded k6 attendance writer now cover the 10,000-student
+    school and 300,000-student fleet shapes without production PII.
 
 These changes are repository changes only. They are not deployed to production by this review.
 

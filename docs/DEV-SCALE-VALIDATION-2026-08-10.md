@@ -165,6 +165,13 @@ This validates batching correctness and deployment. A controlled concurrent atte
 run remains a fleet-scale gate and must use an isolated synthetic tenant so it cannot alter normal
 dev school attendance.
 
+The isolated test tooling is now implemented. Against a disposable PostgreSQL 16 database with the
+real tenant-school, student, attendance, and reporting migrations, it generated exactly 100 schools,
+300,000 students, a largest school of 10,000 students, and 7,576 sections in 13.51 seconds. The local
+database occupied 121 MB, and cleanup completed in 5.49 seconds with zero reserved rows remaining.
+The dev-only Cloud Run runner status check also passed and confirmed the live dev fixture is empty.
+These results validate fixture generation and recovery only; the cloud load stages remain pending.
+
 ### k6 dev read workload
 
 The first run correctly exposed that the new harness omitted the required `date` query parameter
@@ -220,7 +227,8 @@ It is not yet the final fleet-scale certification.
 
 The following remain required:
 
-1. Synthetic 10,000-student single-school and 300,000-student fleet dataset.
+1. Run the implemented synthetic 10,000/300,000-student fixture in a temporarily right-sized dev
+   database (local generation and cleanup are validated).
 2. Temporary dedicated Cloud SQL test shape (`db-custom-2-7680` minimum).
 3. Controlled attendance write-load scenario against an isolated synthetic tenant (batching is
    implemented and deployed).
