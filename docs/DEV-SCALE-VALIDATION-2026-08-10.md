@@ -89,6 +89,20 @@ minimum instances remained zero. School-core uses a 20-connection pool, giving a
 school-core ceiling of 80 connections (`4 * 20`) against `max_connections=200`. These maximums do
 not reserve idle Cloud Run instances.
 
+Import retry release commit: `fbee75f5bccdf538fc6b18e4e03f0651147c4849`
+
+Release workflow:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31412715647
+
+The school-core release job successfully built and deployed only school core, verified the runtime
+digest and 100% traffic, passed gateway health, and published the dev-approved image. Revision
+`custoking-school-core-service-dev-00181-svt` serves immutable digest
+`sha256:bdfccecf1726d346936ab1e6da2eab277cd49222bbd8f3ebde2fa4dff0c165a2`. The workflow-level
+conclusion was subsequently marked cancelled when the later test-only commit superseded it in the
+deployment concurrency group; every release-job step had already completed successfully. The
+superseding no-deployment workflow passed:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31412915663
+
 ## Verification Results
 
 ### Local affected suites before release
@@ -328,6 +342,15 @@ confirmations serialize on the batch row. An uncommitted failure rolls the batch
 the same file token can then be retried. This is the selected low-cost explicit batching process,
 not an unattended 10,000-row asynchronous import. If schools require a single-file/background SLA,
 Cloud Tasks or a request-driven Cloud Run Job remains a later, measured enhancement.
+
+Post-deployment authenticated verification passed 40/40 checks with zero failures against the dev
+gateway. The independent real-environment preflight reported ready with zero blockers. Its final
+Cloud Run SQL execution completed successfully and retired the temporary smoke users/student.
+
+The dev database start operation used by this release took 9 minutes 19 seconds. The release helper
+correctly waited for the exact operation instead of trusting the earlier transient `RUNNABLE` state.
+Its default timeout is now 20 minutes so normal Google control-plane variance does not fail a healthy
+release immediately before completion.
 
 ## Incomplete Gates
 

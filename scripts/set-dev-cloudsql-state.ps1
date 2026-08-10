@@ -5,7 +5,7 @@ param(
   [ValidateSet("start", "stop", "status")]
   [string]$State,
   [switch]$Wait,
-  [int]$TimeoutSeconds = 600
+  [int]$TimeoutSeconds = 1200
 )
 
 $ErrorActionPreference = "Stop"
@@ -72,7 +72,13 @@ if (-not [string]::IsNullOrWhiteSpace($operationName)) {
     $operationJson = & $GcloudCommand sql operations describe $operationName `
       "--project=$ProjectId" `
       --format=json
-    if ($LASTEXITCODE -ne 0) { throw "Could not read Cloud SQL operation '$operationName'." }
+    if ($LASTEXITCODE -ne 0) {
+      if ((Get-Date) -ge $deadline) {
+        throw "Could not read Cloud SQL operation '$operationName' before timeout."
+      }
+      Start-Sleep -Seconds 5
+      continue
+    }
     $operation = ($operationJson -join "`n") | ConvertFrom-Json
     if ([string]$operation.status -eq "DONE") {
       if ($null -ne $operation.PSObject.Properties["error"]) {
