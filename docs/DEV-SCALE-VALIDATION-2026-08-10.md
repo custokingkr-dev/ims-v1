@@ -152,6 +152,45 @@ the Pub/Sub request without the legacy shared URL token.
 After release, OIDC delivery, authenticated smoke, and preflight validation completed, the cost
 control helper returned `custoking-db-dev` to `STOPPED` with activation policy `NEVER`.
 
+### Per-service runtime IAM release
+
+Runtime identity release commit: `9b6529693137c097e5069f8f521ec330bc099cdb`
+
+Release workflow:
+https://github.com/custokingkr-dev/ims-v1/actions/runs/31420908961
+
+The workflow passed all seven builds, the exact Cloud SQL start operation, target rendering, seven
+serial Cloud Deploy rollouts, runtime/image verification, gateway health, and dev-approved digest
+publication. Cloud SQL operation `f9b735e5-8d32-4920-9bc3-47f200000049` completed without error in
+9 minutes 28 seconds.
+
+All dev services are Ready at 100% traffic with a dedicated runtime identity:
+
+| Service | Revision | Runtime identity |
+| --- | --- | --- |
+| API gateway | `custoking-api-gateway-dev-msnlxox9` | `ims-api-gateway-dev` |
+| Billing | `custoking-billing-service-dev-msnltq4a` | `ims-billing-dev` |
+| Frontend | `custoking-frontend-dev-msnlzoas` | `ims-frontend-dev` |
+| Identity | `custoking-identity-service-dev-msnlprct` | `ims-identity-dev` |
+| Operations | `custoking-operations-service-dev-msnlrqsq` | `ims-operations-dev` |
+| Platform | `custoking-platform-service-dev-msnlvpk9` | `ims-platform-dev` |
+| School core | `custoking-school-core-service-dev-msnlnfnf` | `ims-school-core-dev` |
+
+The effective-policy audit found zero missing bindings across seven accounts, 44 per-secret access
+assignments, 12 minimal telemetry/service-usage project-role assignments, nine service-scoped
+Cloud Run invoker edges, three topic-publisher assignments, one student-photo bucket assignment,
+and one school-core self-signing assignment. Frontend has no project-level role. No runtime identity
+has Artifact Registry writer, Cloud Build builder, Cloud Run admin, or project-wide Secret Manager
+access.
+
+The post-cutover authenticated suite passed 40/40 with zero failures and the real-environment
+preflight returned ready with zero blockers. This exercised gateway calls to all five private
+backends, identity and operations dependency paths, database-secret access, and student-photo
+upload. Logs after cutover contained zero `PERMISSION_DENIED` entries. A fresh canonical reporting
+event was acknowledged with HTTP 204 by `custoking-platform-service-dev-msnlvpk9`; the request path
+had no query string. Production services continue to use the default compute runtime identity and
+were not changed.
+
 ## Verification Results
 
 ### Local affected suites before release
@@ -414,9 +453,10 @@ The following remain required:
 1. Four-hour soak at the approved 300-VU ceiling and a separate morning burst.
 2. Intentional failure-injection/recovery drill and PITR evidence. The unplanned scheduled shutdown
    proved application reconnection but is not a substitute for a controlled recovery drill.
-3. Complete least-privilege runtime identities and the remaining Pub/Sub push migrations. Dev
-   reporting push is now OIDC-only with a dedicated identity; dev notification and both production
-   subscriptions still use the shared runtime identity and legacy query credential.
+3. Promote the verified per-service runtime identities to production and complete the remaining
+   Pub/Sub push migrations. Dev reporting push is OIDC-only with a dedicated identity; dev
+   notification and both production subscriptions still use the shared push identity and legacy
+   query credential.
 4. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
    decision before tens of millions of attendance-detail rows accumulate.
 5. Production database choice and availability decision: two versus four vCPU and zonal cost mode

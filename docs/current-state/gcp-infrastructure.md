@@ -44,19 +44,19 @@ All listed services were Ready on 2026-08-10.
 
 | Service | URL | Latest ready revision |
 | --- | --- | --- |
-| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-msnjst4c` |
+| `custoking-api-gateway-dev` | `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-dev-msnlxox9` |
 | `custoking-api-gateway-prod` | `https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app` | `custoking-api-gateway-prod-msg1rcnp` |
-| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-msnjoscg` |
+| `custoking-billing-service-dev` | `https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-dev-msnltq4a` |
 | `custoking-billing-service-prod` | `https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-billing-service-prod-msg1hrl6` |
-| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-msnjuh1p` |
+| `custoking-frontend-dev` | `https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app` | `custoking-frontend-dev-msnlzoas` |
 | `custoking-frontend-prod` | `https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app` | `custoking-frontend-prod-msgd3rq4` |
-| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-msnjko0h` |
+| `custoking-identity-service-dev` | `https://custoking-identity-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-dev-msnlprct` |
 | `custoking-identity-service-prod` | `https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-identity-service-prod-msg17seu` |
-| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-msnjmq7e` |
+| `custoking-operations-service-dev` | `https://custoking-operations-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-dev-msnlrqsq` |
 | `custoking-operations-service-prod` | `https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-operations-service-prod-msg1cz4c` |
-| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-msnjqtb0` |
+| `custoking-platform-service-dev` | `https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-dev-msnlvpk9` |
 | `custoking-platform-service-prod` | `https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-platform-service-prod-msgczd9t` |
-| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-msnjimwh` |
+| `custoking-school-core-service-dev` | `https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-dev-msnlnfnf` |
 | `custoking-school-core-service-prod` | `https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app` | `custoking-school-core-service-prod-msgcuzgs` |
 
 ## Cloud Run IAM
@@ -83,13 +83,30 @@ remains because notification push and production have not yet been migrated.
 
 ## Runtime Service Account
 
-All Cloud Run services currently run as:
+Dev uses a dedicated identity per Cloud Run service:
+
+| Service | Dev runtime identity | Resource-specific access |
+| --- | --- | --- |
+| Identity | `ims-identity-dev` | 5 secrets; telemetry; invoke school core |
+| School core | `ims-school-core-dev` | 10 secrets; telemetry; reporting publish; photo objects; self-signing |
+| Operations | `ims-operations-dev` | 5 secrets; telemetry; reporting publish; invoke school core |
+| Platform | `ims-platform-dev` | 8 secrets; telemetry; invoke school core and operations |
+| Billing | `ims-billing-dev` | 3 secrets; telemetry; reporting publish |
+| API gateway | `ims-api-gateway-dev` | 13 secrets; Cloud Trace; invoke five private backends |
+| Frontend | `ims-frontend-dev` | no project-level role |
+
+Production Cloud Run services still run as:
 
 ```text
 305630109861-compute@developer.gserviceaccount.com
 ```
 
-Project-level IAM bindings verified for the default compute service account:
+The dev effective-policy audit verified 44 secret assignments, 12 project-role assignments, three
+topic publishers, nine Cloud Run invoker edges, one bucket role and one self-signing role with zero
+missing bindings. Dev runtime identities do not have broad build, deploy, or project-wide secret
+roles.
+
+Project-level IAM bindings still present on the production/default compute service account:
 
 - `roles/artifactregistry.writer`
 - `roles/cloudbuild.builds.builder`

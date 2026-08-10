@@ -470,6 +470,8 @@ Evidence: statement count before/after, transaction tests, failed-job replay tes
 - Remove query credentials from dev notification and both production subscriptions, then rotate the
   static secrets after consumer compatibility is verified.
 - Create least-privilege runtime identities per service/environment.
+- Completed in dev: seven dedicated runtime identities with per-secret, per-topic, per-bucket and
+  service-scoped invoker bindings; production cutover remains gated.
 
 Evidence: zero stale outbox age under idle APIs, dead-letter replay, IAM policy diff, rotated secrets.
 
@@ -570,7 +572,8 @@ dev scenarios after batching is implemented.
 - [ ] Student list/search meets p95/p99 targets.
 - [ ] Reporting retries, dead-letter and replay are verified.
 - [ ] Background relay operates while user-facing services are idle.
-- [ ] Per-service runtime IAM is deployed.
+- [x] Per-service runtime IAM is deployed and regression-tested in dev.
+- [ ] Per-service runtime IAM is deployed and canary-tested in production.
 - [x] Dev reporting Pub/Sub query credential is removed and dedicated OIDC delivery is verified.
 - [ ] Dev notification and both production Pub/Sub query credentials are removed and rotated.
 - [ ] Branch protection, required CI and restricted WIF are active.

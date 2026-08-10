@@ -239,6 +239,15 @@ Dev reporting push was reverified on 2026-08-10 after its OIDC cutover:
 - Dev notification and both production subscriptions remain on the default compute push identity
   and still require their own cutover.
 
+Dev runtime IAM was reverified later on 2026-08-10:
+
+- All seven services are Ready at 100% traffic with their expected dedicated runtime account.
+- Effective IAM comparison found zero missing bindings across 44 secret grants, 12 project-role
+  grants, 9 Cloud Run invoker edges, 3 Pub/Sub publishers, the photo bucket, and self-signing.
+- Authenticated gateway smoke passed 40/40 and preflight had zero blockers.
+- No post-cutover `PERMISSION_DENIED` log was found.
+- A new reporting probe reached the dedicated platform revision through OIDC and returned HTTP 204.
+
 Not freshly verified in the latest check:
 
 - A new prod write-path event through producer -> Pub/Sub -> reporting/notification consumer.

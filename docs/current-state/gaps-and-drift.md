@@ -276,10 +276,11 @@ Required follow-up:
 
 ### GCP Service Account Strategy Is Broad
 
-All Cloud Run services currently use the default compute service account.
+All seven dev Cloud Run services now use dedicated per-service identities. The seven production
+services still use the default compute service account.
 
-The dev reporting Pub/Sub push caller is now a separate dedicated service account. This narrows the
-push authentication boundary but does not change any Cloud Run runtime identity.
+The dev reporting Pub/Sub push caller is also a separate dedicated service account, distinct from
+the platform runtime identity.
 
 Impact:
 
@@ -288,9 +289,9 @@ Impact:
 
 Required follow-up:
 
-- Create and deploy per-service, per-environment runtime service accounts before broad production
-  onboarding; use an explicit secret/topic/bucket permission matrix.
-- Split Secret Manager and Pub/Sub permissions by service.
+- Promote the verified dev identity matrix to production through a guarded canary.
+- Remove the broad legacy default-compute permissions after production and the remaining Pub/Sub
+  subscriptions no longer depend on that account.
 
 ### Dev and Prod Share One Project
 
