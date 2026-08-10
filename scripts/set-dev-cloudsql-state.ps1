@@ -34,7 +34,11 @@ if ($State -eq "status") {
 $activationPolicy = if ($State -eq "start") { "ALWAYS" } else { "NEVER" }
 $current = Get-InstanceStatus
 $activationMatches = $current.ActivationPolicy -eq $activationPolicy
-$runtimeMatches = $State -eq "stop" -or $current.State -eq "RUNNABLE"
+$runtimeMatches = if ($State -eq "start") {
+  $current.State -eq "RUNNABLE"
+} else {
+  $current.State -eq "STOPPED"
+}
 $operationName = $null
 
 if ($activationMatches -and $runtimeMatches) {
@@ -87,7 +91,11 @@ if (-not [string]::IsNullOrWhiteSpace($operationName)) {
 do {
   $current = Get-InstanceStatus
   $activationMatches = $current.ActivationPolicy -eq $activationPolicy
-  $runtimeMatches = $State -eq "stop" -or $current.State -eq "RUNNABLE"
+  $runtimeMatches = if ($State -eq "start") {
+    $current.State -eq "RUNNABLE"
+  } else {
+    $current.State -eq "STOPPED"
+  }
   if ($activationMatches -and $runtimeMatches) {
     Write-Host "Cloud SQL instance $InstanceName is $($current.State) with activation policy $($current.ActivationPolicy)."
     exit 0
