@@ -506,6 +506,10 @@ no claim is made that every service suite was rerun.
   Cloud Deploy rollouts; live inspection found all seven latest Ready revisions receiving 100% traffic.
 - The workflow gateway-health smoke passed. Cloud Run Job execution
   `ims-direct-service-smoke-x6p8j` subsequently completed with one successful task and no failed task.
+- The guarded authenticated regression then provisioned temporary dev smoke identities/data, passed
+  40/40 gateway checks with zero failures, ran the photo-upload path, and retired its temporary users
+  and student in `finally`. The independent real-environment preflight returned `Ready=true` with
+  zero blockers; the missing legacy-compatibility artifact was an expected warning for env-suffixed CD.
 - Notification OIDC/DLQ and reporting retry/DLQ applies completed. Both endpoints are query-free,
   audience-bound, use dedicated service accounts, and have 10–600 second retry plus ten-attempt DLQ
   policies.
@@ -522,17 +526,16 @@ no claim is made that every service suite was rerun.
 
 ## 16. Gates that remain open
 
-1. Run the separate 40-case authenticated regression against the deployed dev services.
-2. Prove a queued outbox event drains while user traffic is idle/scaled to zero; exercise guarded
+1. Prove a queued outbox event drains while user traffic is idle/scaled to zero; exercise guarded
    correction/replay after a known failure without duplicating a side effect.
-3. Run the 15-minute burst and four-hour soak with live metrics and short-lived tokens.
-4. Seed 7.3M two-year attendance rows for the 10,000-student school and capture query plans.
-5. Execute the controlled dev restart during an approved disruption window.
-6. Execute the isolated PITR clone/export/invariant drill with recovery approval and temporary cost.
-7. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
+2. Run the 15-minute burst and four-hour soak with live metrics and short-lived tokens.
+3. Seed 7.3M two-year attendance rows for the 10,000-student school and capture query plans.
+4. Execute the controlled dev restart during an approved disruption window.
+5. Execute the isolated PITR clone/export/invariant drill with recovery approval and temporary cost.
+6. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
    relay-job, trace-export, storage-growth, and cost-forecast alert coverage.
-8. Prove a dev traffic rollback and retained backlog.
-9. Provision/migrate production only after every dev gate passes; production reporting still has the
+7. Prove a dev traffic rollback and retained backlog.
+8. Provision/migrate production only after every dev gate passes; production reporting still has the
    legacy query-credential posture and production runtime IAM remains a separate rollout concern.
 
 ## 17. Primary sources

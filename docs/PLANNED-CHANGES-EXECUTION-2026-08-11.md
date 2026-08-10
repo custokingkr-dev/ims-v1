@@ -484,6 +484,9 @@ Dev execution completed on 2026-08-11 without modifying production:
   each new revision;
 - the deployment gateway-health smoke passed, and direct-service smoke execution
   `ims-direct-service-smoke-x6p8j` completed with one successful task and no failed task;
+- the guarded deployed regression passed 40/40 authenticated checks with zero failures, including
+  photo upload and routes across every private backend. The real-environment preflight returned
+  `Ready=true` with zero blockers, and its temporary smoke users/student were retired;
 - notification and reporting OIDC/DLQ topology was applied with dedicated identities, exact audiences,
   query-free URLs, 10–600 second retry, and ten delivery attempts;
 - synthetic notification event `dev-notification-smoke-20260811T040001Z-rest` returned HTTP 204 twice
@@ -502,5 +505,5 @@ Dev execution completed on 2026-08-11 without modifying production:
 
 The production decision remains **NO-GO** until the ledger's production blockers are closed. The
 highest-value remaining evidence is the four-hour soak, long-history plans, restart/PITR drills,
-synthetic alert delivery, 40-case deployed regression, production IAM/WIF/branch controls, and a
+synthetic alert delivery, production IAM/WIF/branch controls, and a
 named canary school with business/legal approvals.
