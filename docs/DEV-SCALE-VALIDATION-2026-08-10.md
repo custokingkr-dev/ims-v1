@@ -453,10 +453,11 @@ The following remain required:
 1. Four-hour soak at the approved 300-VU ceiling and a separate morning burst.
 2. Intentional failure-injection/recovery drill and PITR evidence. The unplanned scheduled shutdown
    proved application reconnection but is not a substitute for a controlled recovery drill.
-3. Promote the verified per-service runtime identities to production and complete the remaining
-   Pub/Sub push migrations. Dev reporting push is OIDC-only with a dedicated identity; dev
-   notification and both production subscriptions still use the shared push identity and legacy
-   query credential.
+3. Promote the verified per-service runtime identities to production and migrate the existing
+   production reporting subscription. Dev reporting push is OIDC-only with a dedicated identity;
+   production reporting still uses the shared identity and legacy query credential. Notification
+   topics exist in both environments but have no live subscription, so that topology must be
+   explicitly provisioned and tested or documented as intentionally unused.
 4. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
    decision before tens of millions of attendance-detail rows accumulate.
 5. Production database choice and availability decision: two versus four vCPU and zonal cost mode

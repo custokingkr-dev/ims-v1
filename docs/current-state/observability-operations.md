@@ -218,11 +218,11 @@ Recent error checks at that time:
 
 ## Async Observability Verification
 
-Verified on 2026-07-09:
+Originally verified on 2026-07-09:
 
 - Dev/prod topics exist.
-- Dev/prod push subscriptions are ACTIVE.
-- Push subscriptions use OIDC service account auth.
+- Dev/prod reporting push subscriptions are ACTIVE.
+- Reporting push subscriptions use OIDC service account auth.
 - Platform-service has required invoker binding for default compute service account.
 - Real `PubSubDomainEventPublisher` startup logs were found for dev/prod billing, operations, and school-core.
 - Prod DB audit showed outbox and inbox backlog/open/error counts at 0.
@@ -236,8 +236,9 @@ Dev reporting push was reverified on 2026-08-10 after its OIDC cutover:
   acknowledged with HTTP 204.
 - The post-cutover authenticated gateway suite passed 40/40 and environment preflight had zero
   blockers.
-- Dev notification and both production subscriptions remain on the default compute push identity
-  and still require their own cutover.
+- Production reporting remains on the default compute push identity and requires its own cutover.
+- The 2026-08-10 live inventory found no notification subscription in either environment; the
+  notification topics and consumer code therefore do not constitute a working delivery path.
 
 Dev runtime IAM was reverified later on 2026-08-10:
 

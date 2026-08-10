@@ -276,13 +276,12 @@ Subscriptions:
 | Subscription | Topic | Push target | OIDC service account | Ack deadline | State |
 | --- | --- | --- | --- | --- | --- |
 | `ims-reporting-service-push-dev` | `ims-reporting-events-v1-dev` | platform-service dev `/api/v1/pubsub/reporting-events` (no query) | `ims-reporting-push-dev` | 30s | ACTIVE |
-| `ims-notification-service-push-dev` | `ims-notifications-events-v1-dev` | platform-service dev `/api/v1/pubsub/notifications` | default compute SA | 30s | ACTIVE |
 | `ims-reporting-service-push-prod` | `ims-reporting-events-v1-prod` | platform-service prod `/api/v1/pubsub/reporting-events` | default compute SA | 30s | ACTIVE |
-| `ims-notification-service-push-prod` | `ims-notifications-events-v1-prod` | platform-service prod `/api/v1/pubsub/notifications` | default compute SA | 30s | ACTIVE |
 
 The dev reporting endpoint has no query credential and uses an audience equal to the platform Cloud
-Run service URL. The remaining three push endpoints still contain secret-bearing query parameters;
-their literal values are intentionally not documented.
+Run service URL. The production reporting endpoint still contains a secret-bearing query parameter;
+its literal value is intentionally not documented. The two notification topics currently have no
+subscription, even though platform contains notification push-consumer code.
 
 ## Workload Identity Federation
 

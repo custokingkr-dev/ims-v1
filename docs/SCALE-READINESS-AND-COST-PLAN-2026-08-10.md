@@ -370,8 +370,10 @@ Critical:
 2. All 14 Cloud Run services use one overprivileged default compute service account. Create a
    service/environment identity matrix with per-secret and per-resource permissions.
 3. Dev reporting push moved to a dedicated OIDC identity/audience and no longer has a query
-   credential. Dev notification and both production push subscriptions still require migration;
-   rotate the static secrets only after every remaining consumer is cut over.
+   credential. The existing production reporting subscription still requires migration. Live
+   inventory found no notification subscription in either environment despite notification topics
+   and consumer code; provision and test that path or explicitly retire it. Rotate static secrets
+   only after every existing consumer is cut over.
 4. The public repository has no protected branches/rulesets while a repo-wide WIF trust can assume
    a broad deployment account. Restrict branches, workflow claims and service accounts.
 
@@ -467,8 +469,9 @@ Evidence: statement count before/after, transaction tests, failed-job replay tes
 - Keep Pub/Sub push for projection wake-up.
 - Completed for dev reporting push: remove the query credential, use a dedicated OIDC identity and
   exact Cloud Run audience, and prove one canonical event is acknowledged with HTTP 204.
-- Remove query credentials from dev notification and both production subscriptions, then rotate the
-  static secrets after consumer compatibility is verified.
+- Remove the production reporting query credential after consumer compatibility is verified.
+- Decide the notification-event topology: create OIDC subscriptions in dev/prod and prove delivery,
+  or retire the unused topics/consumer configuration.
 - Create least-privilege runtime identities per service/environment.
 - Completed in dev: seven dedicated runtime identities with per-secret, per-topic, per-bucket and
   service-scoped invoker bindings; production cutover remains gated.
@@ -575,7 +578,9 @@ dev scenarios after batching is implemented.
 - [x] Per-service runtime IAM is deployed and regression-tested in dev.
 - [ ] Per-service runtime IAM is deployed and canary-tested in production.
 - [x] Dev reporting Pub/Sub query credential is removed and dedicated OIDC delivery is verified.
-- [ ] Dev notification and both production Pub/Sub query credentials are removed and rotated.
+- [ ] Production reporting Pub/Sub query credential is removed and rotated.
+- [ ] Notification topics have a deliberately provisioned/tested subscriber or are intentionally
+  retired; neither environment currently has a notification subscription.
 - [ ] Branch protection, required CI and restricted WIF are active.
 - [ ] PITR recovery drill passes with recorded RTO/RPO.
 - [ ] Cost budget is raised from INR 5,000 to the selected fleet envelope.
