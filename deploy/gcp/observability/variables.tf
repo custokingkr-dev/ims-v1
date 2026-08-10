@@ -164,6 +164,48 @@ variable "notification_inbox_dead_letter_threshold" {
   default     = 0
 }
 
+variable "cloud_sql_instance_name" {
+  description = "Cloud SQL instance monitored for saturation; empty derives custoking-db-<env>."
+  type        = string
+  default     = ""
+}
+
+variable "cloud_sql_cpu_threshold" {
+  description = "Cloud SQL CPU utilization ratio that opens an incident."
+  type        = number
+  default     = 0.8
+}
+
+variable "cloud_sql_memory_threshold" {
+  description = "Cloud SQL memory utilization ratio that opens an incident."
+  type        = number
+  default     = 0.85
+}
+
+variable "cloud_sql_connection_threshold" {
+  description = "PostgreSQL backend count that opens an incident; 140 is 70% of max_connections=200."
+  type        = number
+  default     = 140
+}
+
+variable "pubsub_subscription_ids" {
+  description = "Subscription IDs monitored for backlog; empty derives reporting and notification push IDs."
+  type        = list(string)
+  default     = []
+}
+
+variable "pubsub_backlog_message_threshold" {
+  description = "Unacknowledged Pub/Sub messages that open a backlog incident."
+  type        = number
+  default     = 100
+}
+
+variable "pubsub_oldest_unacked_age_threshold_seconds" {
+  description = "Oldest unacknowledged Pub/Sub message age that opens an incident."
+  type        = number
+  default     = 300
+}
+
 variable "async_count_metric_buckets" {
   description = "Explicit bucket bounds for count-like log-based distribution metrics."
   type        = list(number)

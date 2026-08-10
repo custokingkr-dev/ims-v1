@@ -29,13 +29,22 @@ public class PubSubPushController {
     private final NotificationInboxProcessor inboxProcessor;
     private final ObjectMapper objectMapper;
     private final String pushToken;
+    private final boolean requireSharedToken;
     private final TraceContextBridge traceContextBridge;
 
     public PubSubPushController(NotificationInboxRepository inboxRepository,
                                 NotificationInboxProcessor inboxProcessor,
                                 ObjectMapper objectMapper,
                                 String pushToken) {
-        this(inboxRepository, inboxProcessor, objectMapper, pushToken, TraceContextBridge.noop());
+        this(inboxRepository, inboxProcessor, objectMapper, pushToken, true, TraceContextBridge.noop());
+    }
+
+    public PubSubPushController(NotificationInboxRepository inboxRepository,
+                                NotificationInboxProcessor inboxProcessor,
+                                ObjectMapper objectMapper,
+                                String pushToken,
+                                boolean requireSharedToken) {
+        this(inboxRepository, inboxProcessor, objectMapper, pushToken, requireSharedToken, TraceContextBridge.noop());
     }
 
     @Autowired
@@ -43,11 +52,13 @@ public class PubSubPushController {
                                 NotificationInboxProcessor inboxProcessor,
                                 ObjectMapper objectMapper,
                                 @Value("${notification.pubsub.push-token:}") String pushToken,
+                                @Value("${notification.pubsub.require-shared-token:true}") boolean requireSharedToken,
                                 TraceContextBridge traceContextBridge) {
         this.inboxRepository = inboxRepository;
         this.inboxProcessor = inboxProcessor;
         this.objectMapper = objectMapper;
         this.pushToken = pushToken;
+        this.requireSharedToken = requireSharedToken;
         this.traceContextBridge = traceContextBridge;
     }
 
@@ -113,6 +124,12 @@ public class PubSubPushController {
     private void requireValidToken(String token, String requiredScope) {
         if (requiredScope == null || requiredScope.isBlank()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope" );
+        }
+        // Cloud Run verifies the OIDC bearer token before the request reaches this controller.
+        // Disable the legacy shared token only where the service is private and the dedicated
+        // Pub/Sub push service account is the sole notification invoker.
+        if (!requireSharedToken) {
+            return;
         }
         if (pushToken == null || pushToken.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing Pub/Sub push token configuration");

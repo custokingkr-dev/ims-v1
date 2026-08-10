@@ -129,6 +129,7 @@ deployParameters:
   msg91_dry_run: "true"
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "true"
+  notification_pubsub_require_shared_token: "true"
   photo_import_drive_root_folder_id: ""
   frontend_url: https://custoking-frontend-stage-l7mhms5c2a-em.a.run.app
   gateway_url: https://custoking-api-gateway-stage-l7mhms5c2a-em.a.run.app

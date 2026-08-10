@@ -35,13 +35,22 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: false
-      - name: Trivy SARIF
+      - name: Trivy HIGH/CRITICAL gate
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: security/${{ matrix.image }}:${{ github.sha }}
           severity: HIGH,CRITICAL
-          ignore-unfixed: true
+          ignore-unfixed: false
           exit-code: "1"
+          format: table
+      - name: Trivy SARIF
+        uses: aquasecurity/trivy-action@v0.36.0
+        if: always()
+        with:
+          image-ref: security/${{ matrix.image }}:${{ github.sha }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
           format: sarif
           output: trivy-${{ matrix.name }}.sarif
       - uses: github/codeql-action/upload-sarif@v4

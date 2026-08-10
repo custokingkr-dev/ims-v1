@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("Status", "Diagnostics", "Seed", "Cleanup")]
+    [ValidateSet("Status", "Diagnostics", "QueryPlans", "Seed", "Cleanup")]
     [string]$Action = "Status",
     [ValidateSet("dev")]
     [string]$Environment = "dev",
@@ -133,6 +133,11 @@ FROM (
 ) wait_rows;
 "@
         $psqlVariables = ""
+    }
+    "QueryPlans" {
+        $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\capture-long-history-query-plans.sql"
+        $sql = Get-Content $sqlPath -Raw
+        $psqlVariables = "-v base_school_id=$BaseSchoolId -v academic_year_id=$AcademicYearId"
     }
     default {
         $sql = @"

@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.outbox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -34,20 +35,33 @@ public class OutboxRelay {
     private final DomainEventPublisher publisher;
     private final String outboxTable;
     private final int batchSize;
+    private final int maxAttempts;
 
     public OutboxRelay(
             JdbcClient jdbc,
             DomainEventPublisher publisher,
+            String schema,
+            int batchSize) {
+        this(jdbc, publisher, schema, batchSize, 10);
+    }
+
+    @Autowired
+    public OutboxRelay(
+            JdbcClient jdbc,
+            DomainEventPublisher publisher,
             @Value("${school-core.db.schema:tenant_school}") String schema,
-            @Value("${school-core.outbox.relay.batch-size:100}") int batchSize) {
+            @Value("${school-core.outbox.relay.batch-size:100}") int batchSize,
+            @Value("${school-core.outbox.relay.max-attempts:10}") int maxAttempts) {
         this.jdbc = jdbc;
         this.publisher = publisher;
         this.outboxTable = qualifiedTable(schema);
         this.batchSize = batchSize;
+        this.maxAttempts = Math.max(1, maxAttempts);
     }
 
     @Scheduled(fixedDelayString = "${school-core.outbox.relay.fixed-delay-ms:10000}",
             initialDelayString = "${school-core.outbox.relay.initial-delay-ms:0}")
+    @Transactional
     public void runScheduled() {
         int published = publishBatch();
         if (published > 0) {
@@ -70,6 +84,8 @@ public class OutboxRelay {
                                school_id, occurred_at, payload::text AS payload, trace_parent, trace_state
                         FROM %s
                         WHERE published_at IS NULL
+                          AND dead_lettered_at IS NULL
+                          AND (next_attempt_at IS NULL OR next_attempt_at <= now())
                         ORDER BY id
                         LIMIT :batchSize
                         FOR UPDATE SKIP LOCKED
@@ -78,14 +94,42 @@ public class OutboxRelay {
                 .query(OutboxRow.class)
                 .list();
 
+        int published = 0;
         for (OutboxRow row : rows) {
-            publisher.publish(toEnvelope(row));
-            jdbc.sql("UPDATE %s SET published_at = now(), attempts = attempts + 1 WHERE id = :id::bigint"
-                            .formatted(outboxTable))
-                    .param("id", row.id())
-                    .update();
+            try {
+                publisher.publish(toEnvelope(row));
+                jdbc.sql("""
+                                UPDATE %s SET published_at = now(), attempts = attempts + 1,
+                                    last_error = NULL, next_attempt_at = NULL
+                                WHERE id = :id::bigint
+                                """.formatted(outboxTable))
+                        .param("id", row.id())
+                        .update();
+                published++;
+            } catch (RuntimeException ex) {
+                recordFailure(row.id(), ex.getMessage());
+                log.warn("Outbox relay publish failed eventId={} error={}", row.id(), ex.getMessage());
+            }
         }
-        return rows.size();
+        return published;
+    }
+
+    private void recordFailure(String id, String error) {
+        jdbc.sql("""
+                        UPDATE %s
+                        SET attempts = attempts + 1,
+                            last_error = left(:error, 1000),
+                            dead_lettered_at = CASE WHEN attempts + 1 >= :maxAttempts THEN now() ELSE NULL END,
+                            next_attempt_at = CASE
+                                WHEN attempts + 1 >= :maxAttempts THEN NULL
+                                ELSE now() + make_interval(secs => LEAST(3600, 10 * (1 << LEAST(attempts, 8))))
+                            END
+                        WHERE id = :id::bigint
+                        """.formatted(outboxTable))
+                .param("id", id)
+                .param("error", error == null ? "publish failed" : error)
+                .param("maxAttempts", maxAttempts)
+                .update();
     }
 
     private EventEnvelope toEnvelope(OutboxRow row) {

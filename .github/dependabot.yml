@@ -22,3 +22,34 @@ updates:
     groups:
       runtime-base-images:
         patterns: ["*"]
+
+  - package-ecosystem: npm
+    directories:
+      - /frontend
+      - /services/api-gateway
+    schedule:
+      interval: weekly
+    groups:
+      npm-runtime:
+        dependency-type: production
+        patterns: ["*"]
+      npm-development:
+        dependency-type: development
+        patterns: ["*"]
+
+  - package-ecosystem: maven
+    directories:
+      - /services/billing-service
+      - /services/identity-service
+      - /services/operations-service
+      - /services/platform-service
+      - /services/school-core-service
+    schedule:
+      interval: weekly
+    groups:
+      maven-runtime:
+        dependency-type: production
+        patterns: ["*"]
+      maven-development:
+        dependency-type: development
+        patterns: ["*"]

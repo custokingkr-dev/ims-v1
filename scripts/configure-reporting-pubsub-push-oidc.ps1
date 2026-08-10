@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 $GcloudCommand = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
 
-if ($Environment -eq "prod" -and -not $AllowProduction) {
+if ($Apply -and $Environment -eq "prod" -and -not $AllowProduction) {
   throw "Production Pub/Sub migration requires -AllowProduction."
 }
 
@@ -45,6 +45,7 @@ $summary = [ordered]@{
   currentHasQueryString = -not [string]::IsNullOrWhiteSpace($currentUri.Query)
   currentOidcServiceAccount = [string]$current.pushConfig.oidcToken.serviceAccountEmail
   applyRequested = [bool]$Apply
+  productionAuthorized = [bool]$AllowProduction
 }
 
 if (-not $Apply) {

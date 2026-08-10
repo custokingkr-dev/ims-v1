@@ -185,6 +185,33 @@ type SkippedImportRow = {
   message?: string;
 };
 
+function csvCell(value: unknown): string {
+  const text = String(value ?? '');
+  // Spreadsheet programs can execute formula-like CSV cells. Import content is school supplied,
+  // so force dangerous leading characters to remain literal text before applying normal CSV escaping.
+  const safeText = /^[=+\-@\t\r\n]/.test(text) ? `'${text}` : text;
+  return /[",\r\n]/.test(safeText) ? `"${safeText.replace(/"/g, '""')}"` : safeText;
+}
+
+/** Build an Excel-friendly reconciliation export without losing commas, quotes, or line breaks. */
+export function buildSkippedRowsCsv(rows: SkippedImportRow[]): string {
+  const columns: Array<[string, (row: SkippedImportRow) => unknown]> = [
+    ['Row', (row) => row.rowNumber],
+    ['Name', (row) => row.name],
+    ['AdmissionNo', (row) => row.admissionNo],
+    ['Class', (row) => row.className],
+    ['Section', (row) => row.sectionName],
+    ['Phone', (row) => row.phone],
+    ['Status', (row) => row.status || 'Skipped'],
+    ['Issue', (row) => row.reason || row.message || 'Import row failed'],
+  ];
+  const lines = [
+    columns.map(([header]) => csvCell(header)).join(','),
+    ...rows.map((row) => columns.map(([, read]) => csvCell(read(row))).join(',')),
+  ];
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
+}
+
 // Phase B: after students are inserted, attach each staged photo to its new student record.
 // Photo failures are recorded as skips — never thrown — so a bad photo never fails the data import.
 export async function attachPhotos(
@@ -425,6 +452,22 @@ export function BulkImportPanel({
     }
   };
 
+  const downloadSkippedRows = () => {
+    const rows = bulkImportProgress?.skippedRows || [];
+    if (rows.length === 0) return;
+    const blob = new Blob([buildSkippedRowsCsv(rows)], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    try {
+      const link = document.createElement('a');
+      const suffix = String(bulkImportPreview?.batchId || 'latest').replace(/[^A-Za-z0-9._-]/g, '_');
+      link.href = url;
+      link.download = `student-import-skipped-${suffix}.csv`;
+      link.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+
   return (
     <ModuleShell
       title="Bulk import"
@@ -587,8 +630,11 @@ export function BulkImportPanel({
           <div className="ck-card-h">
             <div>
               <div className="ck-card-t">Skipped rows</div>
-              <div className="ts">Review these rows in the uploaded file and correct the listed issue.</div>
+              <div className="ts">Review these rows in the uploaded file and correct the listed issue. The export contains student data; store it securely and delete it after reconciliation.</div>
             </div>
+            <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" onClick={downloadSkippedRows}>
+              <FileDown size={15} aria-hidden="true" />Export skipped rows
+            </button>
           </div>
           <div className="ck-table-wrap">
             <table className="ck-table">

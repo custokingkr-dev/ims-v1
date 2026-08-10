@@ -41,6 +41,35 @@ class PubSubPushControllerTest {
     }
 
     @Test
+    void oidcOnlyMode_acceptsRequestWithoutLegacySharedToken() throws Exception {
+        NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
+        NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
+        PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "", false);
+        when(inbox.findById("event-1")).thenReturn(Optional.empty());
+
+        controller.receiveNotificationRequest(null, null, envelopeWithTrace());
+
+        ArgumentCaptor<NotificationInboxEvent> captor = ArgumentCaptor.forClass(NotificationInboxEvent.class);
+        verify(inbox).save(captor.capture());
+        verify(processor).process(captor.getValue());
+    }
+
+    @Test
+    void legacyMode_rejectsMissingSharedToken() throws Exception {
+        NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
+        NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
+        PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "push-token");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                controller.receiveNotificationRequest(null, null, envelopeWithTrace()))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error)
+                        .getStatusCode().value()).isEqualTo(401));
+
+        verify(inbox, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void terminalDeadLetterAcknowledgesWithoutAnotherProviderAttempt() throws Exception {
         NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
         NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);

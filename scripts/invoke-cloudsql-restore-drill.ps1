@@ -24,6 +24,7 @@ $cloneServiceAccount = $null
 $drillSucceeded = $false
 $cleanupErrors = [System.Collections.Generic.List[string]]::new()
 $startedAt = [datetime]::UtcNow
+$restoreReadyAt = $null
 
 function Invoke-Gcloud([string[]]$Arguments) {
   & $gcloud @Arguments
@@ -80,6 +81,7 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Could not describe restored instance $target." }
   $restored = $targetJson | ConvertFrom-Json
   if ($restored.state -ne "RUNNABLE") { throw "Restored instance is not RUNNABLE: $($restored.state)" }
+  $restoreReadyAt = [datetime]::UtcNow
   if ($restored.region -ne $Region) { throw "Restored instance is outside ${Region}: $($restored.region)" }
   $cloneServiceAccount = "$($restored.serviceAccountEmailAddress)".Trim()
   if ([string]::IsNullOrWhiteSpace($cloneServiceAccount)) {
@@ -129,6 +131,9 @@ try {
     validationExportBytes = [int64]$stat.size
     startedAtUtc = $startedAt.ToString("o")
     validatedAtUtc = [datetime]::UtcNow.ToString("o")
+    recoveryPointAgeSeconds = [math]::Round(($startedAt - $PointInTimeUtc.ToUniversalTime()).TotalSeconds, 2)
+    restoreInstanceReadySeconds = [math]::Round(($restoreReadyAt - $startedAt).TotalSeconds, 2)
+    validationRtoSeconds = [math]::Round(([datetime]::UtcNow - $startedAt).TotalSeconds, 2)
     status = "PASSED"
   } | ConvertTo-Json -Depth 5 | Set-Content -Path $evidencePath
   Write-Host "Restore validation passed; evidence: $evidencePath"

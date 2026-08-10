@@ -75,6 +75,8 @@ spec:
               value: custoking # from-param: ${project_id}
             - name: REPORTING_PUBSUB_REQUIRE_SHARED_TOKEN
               value: "true" # from-param: ${reporting_pubsub_require_shared_token}
+            - name: NOTIFICATION_PUBSUB_REQUIRE_SHARED_TOKEN
+              value: "true" # from-param: ${notification_pubsub_require_shared_token}
             - name: OTEL_SERVICE_NAME
               value: platform-service
             - name: OTEL_TRACES_EXPORTER

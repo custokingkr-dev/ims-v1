@@ -72,6 +72,7 @@ reporting:
 notification:
   pubsub:
     push-token: ${NOTIFICATION_PUBSUB_PUSH_TOKEN:}
+    require-shared-token: ${NOTIFICATION_PUBSUB_REQUIRE_SHARED_TOKEN:true}
   status:
     token: ${NOTIFICATION_STATUS_TOKEN:}
   delivery:

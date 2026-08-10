@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 $GcloudCommand = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
 
-if ($Environment -eq "prod" -and -not $AllowProduction) {
+if ($Apply -and $Environment -eq "prod" -and -not $AllowProduction) {
   throw "Production runtime IAM changes require -AllowProduction."
 }
 

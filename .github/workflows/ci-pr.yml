@@ -58,7 +58,7 @@ jobs:
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
         run: |
-          npm audit --audit-level=critical
+          npm audit --audit-level=high
           npm test
           npm run build
 
@@ -85,12 +85,12 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: false
-      - name: Trivy critical gate
+      - name: Trivy HIGH/CRITICAL gate
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.IMAGE_REF }}
-          severity: CRITICAL
-          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
           exit-code: "1"
           format: table
 

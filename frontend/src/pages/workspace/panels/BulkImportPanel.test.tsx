@@ -2,7 +2,7 @@ import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as XLSX from 'xlsx';
 import { afterEach, describe, it, expect, vi } from 'vitest';
-import { BulkImportPanel, extractXlsxPhotos, attachPhotos, normalizeImportCellValue } from './BulkImportPanel';
+import { BulkImportPanel, extractXlsxPhotos, attachPhotos, buildSkippedRowsCsv, normalizeImportCellValue } from './BulkImportPanel';
 import api from '../../../services/api';
 
 vi.mock('../../../services/api');
@@ -83,6 +83,41 @@ describe('BulkImportPanel Excel format', () => {
     vi.spyOn(date, 'toISOString').mockReturnValue('2022-05-31T18:30:00.000Z');
 
     expect(normalizeImportCellValue(date)).toBe('2022-06-01');
+  });
+
+  it('creates a UTF-8 CSV reconciliation export with escaped row failures', () => {
+    const csv = buildSkippedRowsCsv([{
+      rowNumber: 17,
+      name: 'Asha "Anu", Rao',
+      admissionNo: 'ADM-17',
+      className: '4',
+      sectionName: 'B',
+      phone: '919999999999',
+      status: 'Skipped',
+      reason: 'Duplicate admission number\nUse the existing record',
+    }]);
+
+    expect(csv.startsWith('\uFEFFRow,Name,AdmissionNo')).toBe(true);
+    expect(csv).toContain('"Asha ""Anu"", Rao"');
+    expect(csv).toContain('"Duplicate admission number\nUse the existing record"');
+  });
+
+  it('neutralizes spreadsheet formulas and command-style skipped-row values', () => {
+    const csv = buildSkippedRowsCsv([{
+      rowNumber: 18,
+      name: '=HYPERLINK("https://malicious.example","open")',
+      admissionNo: '+cmd|\t/c calc',
+      className: '@SUM(1+1)',
+      sectionName: '-2+3',
+      status: 'Skipped',
+      reason: '\t=1+1',
+    }]);
+
+    expect(csv).toContain('"\'=HYPERLINK(""https://malicious.example"",""open"")"');
+    expect(csv).toContain("'+cmd|\t/c calc");
+    expect(csv).toContain("'@SUM(1+1)");
+    expect(csv).toContain("'-2+3");
+    expect(csv).toContain("'\t=1+1");
   });
 
   it('extracts an embedded image and maps it to the row anchored in the Photo column', async () => {
@@ -180,6 +215,7 @@ describe('BulkImportPanel Excel format', () => {
     await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
 
     await screen.findByText('Skipped rows');
+    expect(screen.getByRole('button', { name: /export skipped rows/i })).toBeInTheDocument();
     expect(screen.getAllByText('Maryam Awad Balhabak').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('2166').length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText('Duplicate admission number')).toBeInTheDocument();

@@ -32,9 +32,9 @@ public class NotificationInboxRetryService {
     }
 
     @Scheduled(fixedDelayString = "${notification.inbox.retry.fixed-delay-ms:30000}")
-    public void retryFailedEvents() {
+    public int retryFailedEvents() {
         if (!enabled) {
-            return;
+            return 0;
         }
 
         List<NotificationInboxEvent> failedEvents = inboxRepository.findRetryable(
@@ -43,6 +43,7 @@ public class NotificationInboxRetryService {
         for (NotificationInboxEvent event : failedEvents) {
             retry(event);
         }
+        return failedEvents.size();
     }
 
     private void retry(NotificationInboxEvent event) {

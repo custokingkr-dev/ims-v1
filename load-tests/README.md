@@ -53,6 +53,16 @@ The seed distributes students into sections of at most 40 across 12 synthetic cl
 `Diagnostics` is read-only and captures active PostgreSQL query shapes, wait events, blockers and
 transaction ages for contention analysis.
 
+`QueryPlans` executes read-only `EXPLAIN (ANALYZE, BUFFERS, WAL, FORMAT JSON)` probes against the
+300,000-student fixture and records whether enough multi-year attendance rows exist to call the
+history result certified. A plan captured without at least 7,300,000 rows across at least 700 days
+for the synthetic 10,000-student school is diagnostic evidence only, never long-history certification:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-fixture.ps1 `
+  -Action QueryPlans -OutputJson artifacts\scale-query-plans.json
+```
+
 ## Attendance write workload
 
 Use short-lived dev access tokens with `attendance:read` and `attendance:manage`. The workload
@@ -75,7 +85,8 @@ docker run --rm `
   -e PEAK_VUS=100 -e RAMP_UP=2m -e HOLD=10m -e RAMP_DOWN=2m `
   -v "${PWD}\load-tests:/scripts:ro" `
   -v "${PWD}\artifacts:/results" `
-  grafana/k6:latest run --summary-export=/results/attendance-summary.json `
+  grafana/k6:2.0.0@sha256:a33a0cfdc4d2483d6b7a3a22e726a499ff2831a671a49239104cd34a9937523c `
+  run --summary-export=/results/attendance-summary.json `
   /scripts/school-day-attendance-write.js
 Remove-Item Env:K6_ACCESS_TOKENS
 ```

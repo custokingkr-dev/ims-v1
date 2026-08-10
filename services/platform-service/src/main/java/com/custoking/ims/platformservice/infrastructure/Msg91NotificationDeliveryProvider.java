@@ -200,7 +200,12 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
 
     private void send(Channel channel, NotificationDeliveryRequest request, Object body) {
         if (properties.isDryRun()) {
-            log.info("msg91.dry-run eventId={} channel={} body={}", request.eventId(), channel.name(), body);
+            // Delivery payloads can contain a guardian's phone/email, a student's name, an OTP,
+            // or fee/attendance details. They must not be copied into Cloud Logging merely because
+            // the provider is in dry-run mode. Payload construction above still validates the
+            // configured sender/template contract; this audit line records only non-PII routing
+            // metadata.
+            log.info("msg91.dry-run eventId={} channel={}", request.eventId(), channel.name());
             return;
         }
         if (properties.getAuthKey().isBlank()) {

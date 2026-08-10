@@ -7,6 +7,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -20,6 +21,7 @@ import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -92,6 +94,7 @@ class OutboxRelayIntegrationTest {
 
     @Autowired OutboxRelay relay;
     @Autowired CapturingDomainEventPublisher capturingPublisher;
+    @Autowired JdbcClient jdbc;
 
     private String rowIdA;
     private String rowIdB;
@@ -99,6 +102,10 @@ class OutboxRelayIntegrationTest {
     @BeforeEach
     void seedUnpublishedRows() throws Exception {
         capturingPublisher.published.clear();
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
+             java.sql.Statement statement = c.createStatement()) {
+            statement.execute("DELETE FROM billing.outbox_events");
+        }
         rowIdA = insertOutboxEvent("InvoiceUpserted:A-" + System.nanoTime(), 11L);
         rowIdB = insertOutboxEvent("InvoiceUpserted:B-" + System.nanoTime(), 22L);
     }
@@ -136,6 +143,15 @@ class OutboxRelayIntegrationTest {
 
         assertThat(secondRun).isEqualTo(0);
         assertThat(capturingPublisher.published).isEmpty();
+    }
+
+    @Test
+    void healthSnapshot_readsRetryStateFromMigratedSchema() {
+        Map<String, Object> state = new OutboxAsyncHealthReporter(jdbc, "billing").snapshot();
+
+        assertThat(state.get("pendingCount")).isEqualTo(2L);
+        assertThat(state.get("deadLetterCount")).isEqualTo(0L);
+        assertThat((Long) state.get("oldestPendingAgeSeconds")).isGreaterThanOrEqualTo(0L);
     }
 
     private String insertOutboxEvent(String aggregateId, long schoolId) throws Exception {

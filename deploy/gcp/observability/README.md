@@ -7,7 +7,8 @@ environment in project `custoking`:
 - Optional uptime checks against `/actuator/health` or `/gateway-health`;
   private services use Cloud Run revision targets with Monitoring service-agent
   OIDC.
-- Alert policies for 5xx rate, p95 latency, max-instance saturation, uptime, async health, and SLO burn rate.
+- Alert policies for 5xx rate, p95 latency, max-instance saturation, uptime, async health, SLO burn rate,
+  Cloud SQL CPU/memory/connections, and Pub/Sub backlog age/count.
 - Managed operator email channels, attached to every alert policy.
 - An optional project-wide `asia-south2` compliance log bucket and sink with 180-day retention.
 - Log-based distribution metrics for outbox and notification inbox health.

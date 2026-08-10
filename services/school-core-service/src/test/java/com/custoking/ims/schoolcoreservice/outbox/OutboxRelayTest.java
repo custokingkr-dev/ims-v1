@@ -16,6 +16,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -126,6 +127,31 @@ class OutboxRelayTest {
 
         assertThat(secondRun).isEqualTo(0);
         assertThat(capturingPublisher.published).isEmpty();
+    }
+
+    @Test
+    void publishFailure_isDurablyDeadLetteredAtConfiguredLimit() throws Exception {
+        long id = insertOutboxEvent("SchoolUpserted:failure-" + System.nanoTime(), "School", 55L);
+        DomainEventPublisher failing = envelope -> { throw new IllegalStateException("publisher unavailable"); };
+        OutboxRelay oneAttemptRelay = new OutboxRelay(jdbc, failing, "tenant_school", 100, 1);
+
+        assertThat(oneAttemptRelay.publishBatch()).isZero();
+
+        assertThat(jdbc.sql("SELECT attempts FROM tenant_school.outbox_events WHERE id = :id")
+                .param("id", id).query(Integer.class).single()).isEqualTo(1);
+        assertThat(jdbc.sql("SELECT dead_lettered_at IS NOT NULL FROM tenant_school.outbox_events WHERE id = :id")
+                .param("id", id).query(Boolean.class).single()).isTrue();
+    }
+
+    @Test
+    void healthSnapshot_readsRetryStateFromMigratedSchema() throws Exception {
+        insertOutboxEvent("SchoolUpserted:health-" + System.nanoTime(), "School", 66L);
+
+        Map<String, Object> state = new OutboxAsyncHealthReporter(jdbc, "tenant_school").snapshot();
+
+        assertThat(state.get("pendingCount")).isEqualTo(1L);
+        assertThat(state.get("deadLetterCount")).isEqualTo(0L);
+        assertThat((Long) state.get("oldestPendingAgeSeconds")).isGreaterThanOrEqualTo(0L);
     }
 
     private long insertOutboxEvent(String aggregateId, String aggregateType, long schoolId) throws Exception {
