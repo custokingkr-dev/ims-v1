@@ -281,6 +281,7 @@ class SchoolStructureIntegrationTest {
                         WHERE schemaname = 'student'
                           AND indexname IN (
                               'idx_student_students_active_school_name',
+                              'idx_student_students_active_school_section',
                               'idx_student_review_items_school_student_latest'
                           )
                         """)
@@ -292,9 +293,12 @@ class SchoolStructureIntegrationTest {
 
         assertThat(indexes).containsKeys(
                 "idx_student_students_active_school_name",
+                "idx_student_students_active_school_section",
                 "idx_student_review_items_school_student_latest");
         assertThat(indexes.get("idx_student_students_active_school_name"))
                 .contains("school_id", "lower((full_name)::text)", "deleted_at is null");
+        assertThat(indexes.get("idx_student_students_active_school_section"))
+                .contains("school_id", "section_id", "deleted_at is null");
         assertThat(indexes.get("idx_student_review_items_school_student_latest"))
                 .contains("school_id", "student_id", "updated_at desc", "include (campaign_id, status)");
     }
