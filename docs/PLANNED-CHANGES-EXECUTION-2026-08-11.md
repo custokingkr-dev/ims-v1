@@ -46,11 +46,28 @@ retained later in this ledger as historical execution context.
   also passed;
 - the final scanned school image is
   `sha256:cb0002b3a5809617af537a50da6f5f467335623810205b722a04f187ec147401`.
-  Final dev revision `custoking-school-core-service-dev-00194-qvm` serves 100% with min instances 0,
+  Post-V17 revision `custoking-school-core-service-dev-00194-qvm` served 100% with min instances 0,
   max 4, concurrency 80 and startup CPU boost disabled;
 - the protected target-reconciliation workflow remains fail-closed because its execution identity
   is not live and the workflow is absent from the default branch. No Cloud Deploy target or
   production resource was mutated to bypass that control.
+
+### Final security remediation and dev rollout
+
+- commit `2eec4690` replaces three overlapping bearer regexes with linear parsing, locks gateway proxy
+  targets to validated configured origins, rasterizes uploaded-photo previews before rendering, and returns
+  photo-import CSV results as UTF-8 attachment bytes with `nosniff`. Regression totals are gateway 61/61,
+  frontend 147/147 plus production build, and school-core 508/508;
+- CodeQL run `31509672266` passed both languages and GitHub's ref-scoped dev API reports zero open CodeQL
+  alerts. Stable-category container run `31509695990` passed all seven images and closed 30 legacy HIGH
+  alerts without dismissal. Dev now has 239 Trivy alerts: 209 MEDIUM, 30 LOW, zero HIGH/CRITICAL;
+- dev CD run `31509672530` passed three changed-image exact-digest HIGH/CRITICAL and SARIF gates, deployed,
+  verified each service, passed gateway health, retained release evidence and recorded production-digest
+  approval metadata. School-core `00195-74k`, frontend `00297-tf4` and gateway `00150-7lb` serve 100% on
+  immutable digests;
+- the default `main` branch still has 296 Trivy alerts, including 51 HIGH and zero CRITICAL. Production
+  promotion remains blocked until the reviewed remediation is promoted in the approved window and a fresh
+  main scan proves closure. No finding was administratively dismissed.
 
 ### Query and representative-load result
 
@@ -109,7 +126,8 @@ three observed 5xx at the 8-vCPU comparison, and rerun without weakening thresho
   backups off and PITR off;
 - all four async relay Scheduler jobs in `asia-south1` are `PAUSED`;
 - school-core temporary min-instance/concurrency and relay-delay overrides were removed; normal dev
-  configuration is restored with startup boost off.
+  configuration is restored with startup boost off. The final post-security-rollout read-only snapshot is
+  retained at `artifacts/load-certification/final-dev-cost-state-post-security-20260811161144.json`.
 
 ### Work that cannot be truthfully completed without new authority or external decisions
 
@@ -118,7 +136,9 @@ three observed 5xx at the 8-vCPU comparison, and rerun without weakening thresho
    Cloud Deploy targets through Terraform;
 3. production owner deploys dedicated runtime identities, removes and rotates the legacy production
    reporting push credential, and executes exact-digest/canary deployment in the approved window;
-4. security owners dispose the six remaining runtime CodeQL alerts and assign rotation/incident owners;
+4. production/repository owners promote the reviewed security fixes to `main` in the approved window, rerun
+   CodeQL and stable-category Trivy, close the current 51 HIGH default-branch backlog by evidence, and assign
+   rotation/incident plus MEDIUM/LOW backlog owners;
 5. production database size, zonal versus regional HA, SLO/RTO/RPO and budget envelope are approved using
    an arrival-rate capacity rerun rather than the failed closed-loop MixedMorning result;
 6. legal/product owners approve retention, consent, export and offboarding; provider owners approve MSG91
@@ -152,6 +172,7 @@ Verified on 2026-08-10/11 against repository and live project `custoking`:
 | Logging retention | `_Default` 7 days; locked `_Required` 400 days; regional `custoking-compliance-india` 180 days and not locked |
 | Cloud Run public IAM | Only frontend and API gateway are public in dev/prod; the five Java backend services are private |
 | GitHub governance | No repository rulesets; classic protection absent/inaccessible for both `main` and `dev` |
+| GitHub scanning | Dev commit `2eec4690`: CodeQL 0 open; Trivy 239 total, 0 CRITICAL/HIGH, 209 MEDIUM, 30 LOW. Default `main`: Trivy 296 total, 0 CRITICAL, 51 HIGH, 223 MEDIUM, 20 LOW, 2 unknown |
 | WIF provider | Active; condition restricts repository only, not branch/workflow/environment |
 
 The corrected 4h10/300-VU attendance soak and burst are strong application baselines. They do not
@@ -599,9 +620,9 @@ Stop or roll back the canary on any of the following:
 ## 11. Completion Ledger
 
 Repository integration evidence on 2026-08-11: the full service catalog completed successfully.
-Surefire reports contain 1,030 regular Java tests (zero failures/errors/skips), and the separate
-opt-in 10,000-student certification adds 4 passing tests, for 1,034 distinct Java tests. API gateway
-has 58 passing tests and frontend has 146 passing tests. The production frontend build, Terraform formatting and
+Surefire reports contain 1,032 regular Java tests (zero failures/errors/skips), and the separate
+opt-in 10,000-student certification adds 4 passing tests, for 1,036 distinct Java tests. API gateway
+has 61 passing tests and frontend has 147 passing tests. The production frontend build, Terraform formatting and
 validation, governance audit, all new PowerShell parser checks, and all guarded dev dry-runs passed.
 Frontend React Router was also upgraded to 7.18.2 after its v7 prerequisites were verified: 146 tests,
 both Vite builds, and the frontend/gateway npm audits pass with zero reported vulnerabilities. These
@@ -614,7 +635,7 @@ results validate source implementation; they do not replace the live/time-bound 
 | SEC-03 | Read-only authority audit and migration order documented | Deploy/rollback negative tests pending | Least-privilege cutover pending | Production blocked |
 | SEC-04 | Dev implementation complete | Passed | Pending | Production blocked |
 | SEC-05 | Dev implementation complete | Passed | Pending | Production blocked |
-| SEC-06 | Dependency remediations, immutable Action pins and a pre-deploy exact-pushed-digest Trivy gate are implemented; 25 test-only CodeQL SQL constructions are parameterized; 44-secret proposal reconciles with no payload access | Seven-image base release and final school-only digest scans passed with 0 HIGH/CRITICAL; CodeQL runs `31494646797` and `31499281591` passed. Six runtime alerts still require owner disposition | Six alert dispositions, admin settings and named rotation owners pending | Production blocked |
+| SEC-06 | Dependency remediations, immutable Action pins, stable SARIF categories and pre-deploy exact-pushed-digest Trivy gates are implemented; all 31 historical/current CodeQL locations have code fixes/tests; 44-secret proposal reconciles with no payload access | CodeQL `31509672266` and seven-image Trivy `31509695990` passed; dev API now reports CodeQL 0 and Trivy 0 HIGH/CRITICAL (209 MEDIUM/30 LOW remain). Three-service release `31509672530` passed exact-digest scans/deploy verification | Promote to `main`, prove its 51 HIGH backlog closes, apply admin settings and assign rotation/backlog owners | Dev passed; production blocked |
 | SEC-07 | Public/private IAM verified; direct-vs-Armor decision documented | n/a | Owner/cost decision pending | Open |
 | SEC-08 | All runtime/Flyway URLs and checked-in psql constructors require TLS; guarded PII-free application-session capture and fail-closed audit added | `ENCRYPTED_ONLY`; 5/5 services and 6/6 jobs require TLS; fresh sample 16/16 encrypted, 0 plaintext; audit compliant; post-change smoke 40/40; 24-hour observation pending | Production client-first rollout, enforcement and fresh proof pending | Dev enforced; production blocked |
 | ASYNC-01 | OIDC-only ingress + guarded notification provisioning complete | OIDC/DLQ applied; duplicate canonical event returned 204 twice and delivered once | Pending | Production blocked |
@@ -742,10 +763,10 @@ Dev execution completed on 2026-08-11 without modifying production:
   20,000 milli-vCPU and quota increase is currently ineligible (`NOT_ENOUGH_USAGE_HISTORY`). Live
   plans show student-list page/stats execution at 92.417/76.044 ms versus 7.978/0.074 ms for the two
   attendance summaries. Source now adds the exact directory/review indexes, removes unnecessary
-  stats joins, and parameterizes startup boost so only school-core keeps it in dev while production
-  keeps it for all services. Redeploy and a fresh cold-ramp MixedMorning rerun remain required. All
-  four Scheduler jobs remain `PAUSED`; final fixture cleanup and database downsize/stop remain
-  mandatory acceptance steps;
+  stats joins and parameterizes startup boost. This was the state before the final corrections: subsequent
+  commits disabled boost for school-core in dev, deployed V17, and retained both failed 4/8-vCPU reruns. All
+  four Scheduler jobs are `PAUSED`; final fixture cleanup reached stable zero and Cloud SQL was restored to
+  stopped `db-f1-micro`;
 - remediation commit `6d9da9b2debbcec23582bc914442da15760771c4` reached `dev` by
   fast-forward. Push run `31494302407` correctly created no release because the same commit also
   changes deployment-control configuration. The protected reconciliation workflow cannot yet be
@@ -771,5 +792,6 @@ The production decision remains **NO-GO** until the ledger's production blockers
 10,000-row onboarding, distinct-instance admission and final cleanup are now complete. The
 highest-value remaining technical evidence is a successful arrival-rate mixed-school workload after
 approved query telemetry/optimization. External gates are operator mailbox receipt, production
-IAM/WIF/branch controls, production Cloud SQL transport enforcement/session proof, security-owner alert
-dispositions, the database/HA/budget decision, provider/legal approval and a named canary school.
+IAM/WIF/branch controls, production Cloud SQL transport enforcement/session proof, promotion plus fresh
+scanning of `main` (currently 51 HIGH Trivy), MEDIUM/LOW backlog ownership, the database/HA/budget decision,
+provider/legal approval and a named canary school.

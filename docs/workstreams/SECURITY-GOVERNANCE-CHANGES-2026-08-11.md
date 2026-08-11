@@ -7,15 +7,15 @@ Repository: `custokingkr-dev/ims-v1`
 
 ## Safety and Evidence Boundary
 
-This workstream used read-only GitHub and Google Cloud inspection except for dispatching the
-non-deploying GitHub `Security / Container scan` workflow run `31443426825`. It did not change
-production, deploy a revision, change a GitHub setting, change IAM, create a service account,
-rotate a secret, or alter traffic. Secret payloads were never read by the repository audit tool and
-no secret value is recorded here. A Dependabot-enable request was attempted but GitHub rejected it
+This workstream used read-only GitHub and Google Cloud inspection, guarded GitHub security workflows,
+and the approved dev-only release path. Final commit `2eec4690` deployed school-core, frontend and gateway
+to dev through run `31509672530`; production, GitHub settings, IAM, service accounts and secrets were not
+mutated. Secret payloads were never read by the repository audit tool and no secret value is recorded here.
+A Dependabot-enable request was attempted but GitHub rejected it
 with `404` because the active principal is not an administrator; no setting changed.
 
-The detailed machine-readable audit is generated locally at
-`artifacts/security-governance-readiness-2026-08-11.json`. The artifact is intentionally ignored by
+The final detailed machine-readable audit is generated locally at
+`artifacts/security-governance/readiness-final-20260811.json`. The artifact is intentionally ignored by
 Git. Run the same redacted audit with:
 
 ```powershell
@@ -47,24 +47,21 @@ gates remain:
    restriction.
 7. `main` has no visible classic branch protection or ruleset.
 8. `dev` has no visible classic branch protection or ruleset.
-9. GitHub has 51 open HIGH container findings (zero CRITICAL) across 296 open Trivy alerts.
+9. The default `main` branch has 51 open HIGH container findings (zero CRITICAL) across 296 Trivy alerts;
+   `dev` is separately clean at HIGH/CRITICAL after the completed remediation and scan.
 10. Production Cloud SQL still allows unencrypted connections; the five database-backed production
     services do not explicitly require TLS, one production SQL smoke job explicitly disables it,
     and fresh production database-side session evidence is absent. Dev has passed the separate
     application-client transport gate documented in section 4.5, but its 24-hour observation is
     still open and it does not close the production gate.
 
-The CodeQL workflow is now active on GitHub. In run
-[`31440523027`](https://github.com/custokingkr-dev/ims-v1/actions/runs/31440523027), both
-`analyze (java-kotlin)` (completed 2026-08-10 23:01:57Z) and
-`analyze (javascript-typescript)` (completed 2026-08-10 23:00:15Z) passed on the current `dev` head.
-The readable code-scanning inventory contains only Trivy alerts. This is evidence of no current
-readable CodeQL alert, not a claim about security features hidden from the operator token.
-
-Source-side preparation and local verification of the frontend plus five remediated Java images
-are complete. A fresh GitHub scan of the integration head must still confirm the Java remediations
-after they are pushed. The remaining control-plane changes deliberately require explicit
-authorization.
+The CodeQL workflow is active and final run
+[`31509672266`](https://github.com/custokingkr-dev/ims-v1/actions/runs/31509672266) passed Java/Kotlin and
+JavaScript/TypeScript on dev commit `2eec4690`. GitHub's ref-scoped alert API reports zero open CodeQL
+alerts on `refs/heads/dev`. Stable-category container run
+[`31509695990`](https://github.com/custokingkr-dev/ims-v1/actions/runs/31509695990) passed all seven images;
+the dev inventory is 239 Trivy alerts, all MEDIUM/LOW (209/30) and zero HIGH/CRITICAL. This branch-specific
+result does not clear the stale default-branch inventory or its production promotion gate.
 
 ## 1. Runtime and Deployment IAM
 
@@ -815,15 +812,15 @@ then destroy old versions only after the overlap window and evidence review.
 
 ## 6. Dependency, Container, and Source Scanning
 
-### 6.1 Verified live state before remediation
+### 6.1 Verified live state before remediation (default-branch historical snapshot)
 
 - weekly Trivy workflow latest run: successful;
-- open Trivy alerts: 296 total, 51 HIGH, 223 MEDIUM, 20 LOW, 2 without normalized severity, zero
-  CRITICAL;
+- default-branch open Trivy alerts: 296 total, 51 HIGH, 223 MEDIUM, 20 LOW, 2 without normalized
+  severity, zero CRITICAL;
 - 69 alerts were created by the latest 2026-08-09 scan, including fixable HIGH packages in the old
   frontend `nginx:1.27-alpine` runtime;
 - Dependabot covered only GitHub Actions and Docker images;
-- no CodeQL workflow existed;
+- no CodeQL workflow existed at that snapshot;
 - Artifact Analysis container/on-demand scanning APIs were not enabled;
 - Dependabot alerts are disabled and require a repository administrator to enable;
 - secret-scanning status and alert inventory remain unverified because the API returns `404` to the
@@ -872,17 +869,21 @@ Local verification of the rebuilt final frontend image with the same Trivy major
 `trivy-action@v0.36.0` reported zero HIGH/CRITICAL OS or library vulnerabilities. The frontend was
 then upgraded from React Router 6.30.4 to the fixed 7.18.2 release after confirming that its v7
 future flags and Node/React versions met the documented migration prerequisites. The obsolete v6
-future prop was removed. All 146 tests and both Vite builds pass, and frontend plus gateway npm
+future prop was removed. All 147 tests and both Vite builds pass, and frontend plus gateway npm
 audits now report zero vulnerabilities. See the official
 [React Router v7 migration/changelog](https://reactrouter.com/home/changelog).
 
 During the integrated audit, the first parallel Windows run timed out once in the existing
-Excel-image test at its five-second limit. That same test passed in 472 ms when isolated and all 146
+Excel-image test at its five-second limit. That same test passed in 472 ms when isolated and all 147
 tests passed together on immediate rerun. This is recorded as CI flake risk, not hidden as a router
 failure; the fresh Linux PR run remains authoritative.
 
-The new workflow must run on GitHub before old SARIF alerts can be reconciled. Do not dismiss old
-alerts in bulk without proving they are absent from the current digest.
+The old SARIF streams were reconciled without dismissal. The missing stable `category: ${{ matrix.name }}`
+was restored, and run `31509695990` uploaded all seven current dev images into the original per-service
+streams. Every job passed; GitHub closed the 30 legacy HIGH alerts from commit `7e379992`. The final dev
+inventory is zero HIGH/CRITICAL, while 209 MEDIUM and 30 LOW Trivy findings remain visible for normal
+versioned remediation. Release run `31509672530` separately scanned the three changed immutable digests and
+passed every HIGH/CRITICAL and SARIF evidence gate before deployment.
 
 ### 6.3 Optional Artifact Analysis cost
 
@@ -935,17 +936,17 @@ one reviewed change.
 Remaining supply-chain gates are:
 
 - keep CodeQL green and remediate any future HIGH/CRITICAL source finding;
-- obtain named security-owner dispositions for the six runtime CodeQL alerts. Their current
-  evidence-backed false-positive rationales are analysis evidence only and do not constitute an
-  accepted disposition;
-- reconcile the 51 existing HIGH GitHub alerts against current image digests;
+- promote the reviewed dependency/runtime remediations to `main` only in the approved production window,
+  run the stable-category scan there and prove its current 51 HIGH/zero CRITICAL backlog is closed rather
+  than administratively dismissing it;
+- triage the 209 MEDIUM and 30 LOW dev Trivy findings with versioned owner/expiry records;
 - have a repository administrator enable Dependabot alerts/security updates and verify secret
   scanning; enable push protection only after the current integration push so it cannot strand the
   worktree on an unreviewed false positive;
 - add an exception file with owner, expiry, and rationale if a vulnerability truly cannot be fixed;
-- run the updated release workflow on a non-production dev change and retain the exact-digest table,
-  SARIF, and JSON evidence; source now blocks both dev deployment and production promotion when any
-  selected digest has a HIGH/CRITICAL finding or its required scan evidence is absent.
+- retain the completed dev release evidence and repeat the same exact-digest table/SARIF/JSON gate for
+  production; source blocks deployment/promotion when any selected digest has a HIGH/CRITICAL finding or
+  required scan evidence is absent.
 
 ### 6.5 MixedMorning runtime failure reconciliation and security disposition
 
@@ -1022,11 +1023,11 @@ The security disposition is therefore precise:
   capacity-design gap, but naming a defective query requires Query Insights or sanitized execution
   plans rather than inference from HTTP status alone.
 
-This runtime reconciliation does not close the source-scanning governance gate. All 31 current
-HIGH/CRITICAL CodeQL alerts were traced: 25 test-only SQL-construction findings are remediated
-pending rescan, while the six runtime findings retain evidence-backed false-positive rationales but
-still require explicit named-owner dispositions. Production remains blocked on those six
-dispositions and the other security, capacity, and operational gates documented here.
+This runtime reconciliation did not itself close source scanning. The later remediations did: 25
+test-only SQL constructions were parameterized, and all six runtime findings received narrow code fixes
+with regression tests. CodeQL run `31509672266` passed and the dev alert API now reports zero CodeQL alerts.
+Production remains blocked by the stale `main` Trivy HIGH backlog and the other security, capacity and
+operational gates documented here.
 
 ## 7. Public Ingress, Load Balancer, and WAF
 
@@ -1156,8 +1157,8 @@ MixedMorning sanitized HTTP reconciliation: PASS; all 227 observed 4xx, one obse
   string was emitted
 MixedMorning security classification: PASS; no 401/403, identity/platform error, token refresh or
   gateway application-rate-limit failure was evidenced
-Runtime CodeQL dispositions: OPEN; six evidence-backed false-positive rationales still require
-  explicit named-owner acceptance
+Runtime CodeQL remediation: PASS; six narrow fixes and regression tests, CodeQL run `31509672266`
+  successful, ref-scoped dev API reports zero open CodeQL alerts
 Governance configurator dry-run: PASS; no external mutation
 WIF claim policy matrix: PASS; 3 allow and 6 deny cases
 WIF service-account scope matrix: PASS; 4 allowed exact identities and 8 cross-branch/main-only denials
@@ -1202,10 +1203,11 @@ Recovery dev read-only dry-run: BLOCKED safely before clone/export because live 
   disabled and PITR is not enabled; no recovery resources created
 Production runtime IAM dry-run: PASS; 0 missing prerequisites; no mutation
 Production reporting OIDC dry-run: PASS; legacy query/default identity detected; no mutation
-Live redacted readiness audit: PASS as evidence collector; 9 blockers reported
+Live redacted readiness audit `readiness-final-20260811.json`: PASS as evidence collector; 9 scripted
+  blockers reported, plus the separately documented production SQL transport gate = 10 executive gates
 Frontend Docker production build: PASS
 Trivy 0.70.0 HIGH/CRITICAL scan of rebuilt final frontend image: PASS, 0 findings
-Frontend npm audit --audit-level=moderate: PASS, 0 findings; React Router 7.18.2
+Frontend suite/build: PASS, 147/147 tests; npm audit --audit-level=moderate PASS, 0 findings; React Router 7.18.2
 API gateway npm audit --audit-level=high: PASS, 0 findings
 GitHub Security / Container scan run 31443426825: correctly FAILED on 10 HIGH finding occurrences
   representing 4 distinct JAR CVEs across 5 Java image jobs; frontend and gateway passed; no
@@ -1214,6 +1216,11 @@ Five remediated Java Maven service suites under JDK 25 after integration: PASS; 
   failures, 0 errors, 0 skipped (identity 117, school-core 500, operations 124, platform 228,
   billing 54)
 Five rebuilt Java images, Trivy 0.70.0 HIGH/CRITICAL OS/JAR/Go scan: PASS, 0 findings
+Final CodeQL run 31509672266: PASS, Java/Kotlin and JavaScript/TypeScript; dev open CodeQL = 0
+Stable-category container run 31509695990: PASS, 7/7 images; dev Trivy = 239 total,
+  0 CRITICAL, 0 HIGH, 209 MEDIUM, 30 LOW
+Three-service dev release 31509672530: PASS; exact-digest HIGH/CRITICAL and SARIF evidence,
+  Cloud Run verification, gateway health and retained release evidence
 ```
 
 ## 10. External Approval Checklist
@@ -1237,7 +1244,8 @@ The following cannot be completed safely by a source-only change:
 - secret owners define per-secret consumers, rotation SLAs, and provider/database procedures;
 - product/security owner decides whether the approximately USD 28.25/month WAF/load-balancer
   baseline is justified and supplies DNS/domain control;
-- security owner reviews current CodeQL/Trivy/Dependabot/secret-scanning alerts and owns exceptions.
+- security owner reviews the remaining MEDIUM/LOW dev Trivy backlog, the stale `main` HIGH backlog,
+  Dependabot/secret-scanning availability and any approved exceptions; dev CodeQL is currently zero.
 
 Until these gates are completed and evidenced, broad default-compute roles and the old production
 reporting path must remain in place, production Cloud SQL transport must not be represented as

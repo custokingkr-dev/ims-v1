@@ -860,8 +860,8 @@ domain service executed the scalar health query against its migrated schema and 
 dead-letter, and oldest-age values. The focused evidence table aggregates the latest selected suites;
 no claim is made that every service suite was rerun.
 
-The later integrated repository validation reported 1,016 regular Java tests with zero failures and
-four fresh opt-in integration tests with zero failures. Frontend validation reported 146 passing tests,
+The final integrated repository validation reported 1,032 regular Java tests with zero failures and
+four opt-in integration tests with zero failures. Frontend validation reported 147 passing tests,
 both builds passing, React Router 7.18.2, and zero npm-audit findings. Those wider counts belong to the
 coordinated root validation; the 32-case table above is this workstream's focused subset.
 

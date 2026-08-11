@@ -25,7 +25,8 @@ The remaining dev-only work was executed on 2026-08-11 without production mutati
   30 rows; the stabilized third pass removed zero. Reserved-range status and all dev Pub/Sub backlogs are
   zero;
 - Cloud SQL is `STOPPED` on `db-f1-micro`, activation policy `NEVER`; all four relay schedulers are
-  `PAUSED`; temporary relay/min/concurrency overrides were removed;
+  `PAUSED`; temporary relay/min/concurrency overrides were removed. The post-security-rollout state is
+  retained in `artifacts/load-certification/final-dev-cost-state-post-security-20260811161144.json`;
 - V17 improved student stats/daily plans to 2.118/3.258 ms, but identical MixedMorning comparisons failed
   the sustained CPU gate on 4 vCPU and 8 vCPU. The 8-vCPU run improved p95/p99 to 453.03/936.02 ms but
   reached 99.45% CPU and had three failed checks. Vertical scale is not an approved cost answer.

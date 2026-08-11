@@ -607,6 +607,10 @@ dev scenarios after batching is implemented.
 - [x] Dev notification topic has a deliberately provisioned/tested OIDC subscriber and DLQ; production
   notification provisioning and consented provider acceptance remain gated.
 - [ ] Branch protection, required CI and restricted WIF are active.
+- [x] Dev CodeQL and HIGH/CRITICAL container gates pass: CodeQL open 0; Trivy HIGH/CRITICAL 0 after
+  stable-category run `31509695990` (209 MEDIUM/30 LOW remain for owned remediation).
+- [ ] Promote the reviewed security fixes to `main` in the approved window and prove its current
+  51 HIGH/zero CRITICAL Trivy backlog closes without administrative dismissal.
 - [x] Dev PITR recovery drill passes with recorded RTO/RPO and clone/object/IAM cleanup; production remains gated.
 - [ ] Cost budget is raised from INR 5,000 to the selected fleet envelope.
 - [ ] Bounded per-school import usage exists, but complete API/attendance/storage/provider cost attribution does not.
@@ -614,8 +618,10 @@ dev scenarios after batching is implemented.
 - [ ] Canary cohort completes a real school-day peak before the next wave.
 
 Production remains a no-go while any mandatory item above is open. The passing four-hour 300-VU soak does
-not replace the failed mixed-read gate, controlled recovery/PITR, runtime IAM/OIDC, the production
-database/HA decision, business approval or staged canary evidence. Final dev fixture cleanup is complete.
+not replace the failed mixed-read gate, controlled recovery/PITR, runtime IAM/OIDC, production branch/security
+scan, the production database/HA decision, business approval or staged canary evidence. Final dev fixture
+cleanup is complete. The authoritative external-gate list is the final section of
+`docs/PLANNED-CHANGES-EXECUTION-2026-08-11.md`.
 
 ## 16. Sources
 

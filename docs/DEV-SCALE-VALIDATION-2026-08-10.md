@@ -477,8 +477,13 @@ release immediately before completion.
 - Dev Cloud SQL now enforces `ENCRYPTED_ONLY`; fresh evidence records 16/16 application clients encrypted,
   zero unencrypted, and a 40/40 post-enforcement gateway smoke.
 - School-only release run `31499281847` passed exact-digest Trivy HIGH/CRITICAL and SARIF gates, deployment
-  verification and gateway health; CodeQL run `31499281591` passed. Final school revision
-  `custoking-school-core-service-dev-00194-qvm` serves 100% with min 0/max 4/concurrency 80/startup boost off.
+  verification and gateway health; CodeQL run `31499281591` passed. That intermediate school revision was
+  `00194-qvm` with min 0/max 4/concurrency 80/startup boost off.
+- Final security commit `2eec4690` passed CodeQL `31509672266` and seven-image stable-category Trivy run
+  `31509695990`. The dev alert API reports CodeQL 0 and Trivy 0 HIGH/CRITICAL; 209 MEDIUM/30 LOW Trivy alerts
+  remain. CD run `31509672530` passed changed-digest scans, deployed and verified school-core `00195-74k`,
+  frontend `00297-tf4` and gateway `00150-7lb`, and passed gateway health. Default `main` still has 51 HIGH
+  Trivy alerts, so this dev result is not production approval.
 - V17 plan evidence at 10,500 rows is 1.728/2.118/3.258/0.101 ms for page/stats/daily/report. The identical
   MixedMorning reruns are retained as failures: 4 vCPU stopped at 100% CPU (26,696 requests, 2,018 failed
   checks, p95/p99 8,866.86/59,997.91 ms); 8 vCPU stopped at 99.45% CPU (90,314 requests, three failed
@@ -491,7 +496,8 @@ release immediately before completion.
 - Corrected final cleanup removed 100 schools, 311,001 students, 300,000 attendance rows and 24 import
   batches. A second pass removed 30 late reporting projections; the stabilized third pass removed zero and
   reported no residue. Final range status and all four dev Pub/Sub backlogs are zero. SQL is stopped on
-  `db-f1-micro`; all four Scheduler jobs are paused.
+  `db-f1-micro`; all four Scheduler jobs are paused. The final post-rollout control-plane snapshot is
+  `artifacts/load-certification/final-dev-cost-state-post-security-20260811161144.json`.
 
 ## Incomplete Gates
 
@@ -516,10 +522,13 @@ The following remain required:
 5. Production database choice and availability decision: 2 vCPU is rejected for the target, while
    4-vCPU/7.5 GiB is the cheapest measured full-soak planning default. This does not constitute production
    purchase, HA/SLA or business approval; zonal cost mode versus regional HA remains open.
+6. Complete the authoritative security/governance, production IAM/WIF/branch, SQL transport,
+   legal/provider, operator-mailbox and named-canary gates in
+   `docs/PLANNED-CHANGES-EXECUTION-2026-08-11.md`; this abbreviated scale list is not the full promotion ledger.
 
 ## Production Gate
 
-Do not begin production deployment before 23:00 IST on 2026-08-10.
+Do not begin production deployment before the explicitly approved 23:00 IST window.
 
 Passing the time restriction alone is insufficient. Production remains a no-go until the incomplete
 gates above are closed and explicitly reviewed.

@@ -63,7 +63,8 @@ The successful pass removed 100 schools, all 311,001 students, 24 import batches
 counts. A second pass removed 30 delayed reporting projections; after delivery stabilization the third pass
 deleted zero and reported no unhandled residue. Final status is zero schools/students/sections/attendance;
 all four dev Pub/Sub subscriptions report zero undelivered messages. Cloud SQL is stopped on `db-f1-micro`
-and all four async relay Scheduler jobs are paused.
+and all four async relay Scheduler jobs are paused; the post-security-rollout state is retained in
+`artifacts/load-certification/final-dev-cost-state-post-security-20260811161144.json`.
 
 ### Capacity boundary relevant to onboarding waves
 
