@@ -608,11 +608,14 @@ dev scenarios after batching is implemented.
   notification provisioning and consented provider acceptance remain gated.
 - [ ] Branch protection, required CI and restricted WIF are active.
 - [x] Dev CodeQL and HIGH/CRITICAL container gates pass: CodeQL open 0; Trivy HIGH/CRITICAL 0 after
-  stable-category run `31509695990` (209 MEDIUM/30 LOW remain for owned remediation).
+  exact-head stable-category run `31517658827` (209 MEDIUM/30 LOW remain for owned remediation).
 - [ ] Promote the reviewed security fixes to `main` in the approved window and prove its current
   51 HIGH/zero CRITICAL Trivy backlog closes without administrative dismissal.
 - [x] Dev PITR recovery drill passes with recorded RTO/RPO and clone/object/IAM cleanup; production remains gated.
-- [ ] Cost budget is raised from INR 5,000 to the selected fleet envelope.
+- [x] The INR 5,000 crossing is resource-attributed, active dev cost is contained, and new full load runs
+  fail closed on gross-spend headroom; see `docs/GCP-BUDGET-INCIDENT-2026-08-11.md`.
+- [ ] Spending owner approves the production fleet envelope and corresponding alert/notification amounts;
+  do not raise the budget merely to clear the current warning.
 - [ ] Bounded per-school import usage exists, but complete API/attendance/storage/provider cost attribution does not.
 - [ ] Notification-provider unit economics and consent controls are approved.
 - [ ] Canary cohort completes a real school-day peak before the next wave.

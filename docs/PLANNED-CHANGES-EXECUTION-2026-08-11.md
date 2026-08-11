@@ -69,6 +69,28 @@ retained later in this ledger as historical execution context.
   promotion remains blocked until the reviewed remediation is promoted in the approved window and a fresh
   main scan proves closure. No finding was administratively dismissed.
 
+### Budget incident and cost containment
+
+- the live alert-only budget reached INR 5,016.73 of INR 5,000 gross; the standard billing export later
+  reported INR 5,042.06 through usage ending 2026-08-11 12:00 UTC. Promotional credits reduce the current
+  payable subtotal to zero but are intentionally excluded from the guardrail;
+- detailed export attribution identified INR 1,504.42 of August dev Cloud Run cost, INR 1,026.94 of
+  production Cloud SQL baseline, INR 1,005.38 of production Cloud Run, INR 412.78 of dev Cloud SQL and
+  INR 306.96 of one-time Cloud Build. August 11 alone included INR 352.32 for 32.96 GB of dev gateway
+  internet egress plus the request/CPU cost of the retained multi-million-request scale work;
+- there is no active runaway: dev SQL is stopped, four relay schedulers are paused, every service has zero
+  minimum instances, no load generator is running, Artifact Registry cleanup is active, and all 44 secrets
+  have exactly one enabled version;
+- commit `c88f7f5c` adds a fail-closed gross-spend preflight to the load wrapper. Current export plus a
+  profile estimate must remain within 80% of the live budget unless a spending owner explicitly authorizes
+  `-AllowBudgetOverrun`; the decision is retained in evidence;
+- exact-head Trivy run `31517658827` passed all seven HIGH/CRITICAL and SARIF jobs without GCP deployment.
+  CodeQL `31517643430` passed both languages, while CD `31517643733` correctly selected `no-deployment`.
+  Dev remains at CodeQL zero and Trivy 0 HIGH/CRITICAL (209 MEDIUM/30 LOW); `main` remains 51 HIGH.
+
+Full timestamped attribution and the decision boundary are in
+`docs/GCP-BUDGET-INCIDENT-2026-08-11.md`.
+
 ### Query and representative-load result
 
 For synthetic school `900000000` at 10,500 rows, the retained plan artifact
@@ -635,7 +657,7 @@ results validate source implementation; they do not replace the live/time-bound 
 | SEC-03 | Read-only authority audit and migration order documented | Deploy/rollback negative tests pending | Least-privilege cutover pending | Production blocked |
 | SEC-04 | Dev implementation complete | Passed | Pending | Production blocked |
 | SEC-05 | Dev implementation complete | Passed | Pending | Production blocked |
-| SEC-06 | Dependency remediations, immutable Action pins, stable SARIF categories and pre-deploy exact-pushed-digest Trivy gates are implemented; all 31 historical/current CodeQL locations have code fixes/tests; 44-secret proposal reconciles with no payload access | CodeQL `31509672266` and seven-image Trivy `31509695990` passed; dev API now reports CodeQL 0 and Trivy 0 HIGH/CRITICAL (209 MEDIUM/30 LOW remain). Three-service release `31509672530` passed exact-digest scans/deploy verification | Promote to `main`, prove its 51 HIGH backlog closes, apply admin settings and assign rotation/backlog owners | Dev passed; production blocked |
+| SEC-06 | Dependency remediations, immutable Action pins, stable SARIF categories and pre-deploy exact-pushed-digest Trivy gates are implemented; all 31 historical/current CodeQL locations have code fixes/tests; 44-secret proposal reconciles with no payload access | Exact-head CodeQL `31517643430` and seven-image Trivy `31517658827` passed; dev API reports CodeQL 0 and Trivy 0 HIGH/CRITICAL (209 MEDIUM/30 LOW remain). Three-service release `31509672530` passed exact-digest scans/deploy verification | Promote to `main`, prove its 51 HIGH backlog closes, apply admin settings and assign rotation/backlog owners | Dev passed; production blocked |
 | SEC-07 | Public/private IAM verified; direct-vs-Armor decision documented | n/a | Owner/cost decision pending | Open |
 | SEC-08 | All runtime/Flyway URLs and checked-in psql constructors require TLS; guarded PII-free application-session capture and fail-closed audit added | `ENCRYPTED_ONLY`; 5/5 services and 6/6 jobs require TLS; fresh sample 16/16 encrypted, 0 plaintext; audit compliant; post-change smoke 40/40; 24-hour observation pending | Production client-first rollout, enforcement and fresh proof pending | Dev enforced; production blocked |
 | ASYNC-01 | OIDC-only ingress + guarded notification provisioning complete | OIDC/DLQ applied; duplicate canonical event returned 204 twice and delivered once | Pending | Production blocked |
@@ -649,7 +671,7 @@ results validate source implementation; they do not replace the live/time-bound 
 | REL-02 | PITR helper records RPO/RTO and cleanup evidence | PITR clone runnable in 539.49s; 65,248,345-byte synthetic export validated at 582.57s; clone/object/IAM cleanup confirmed | n/a | Dev passed; production blocked |
 | DB-01 | Cost/threshold/connection-budget tooling complete | `db-custom-4-7680` remains the cheapest burst/full attendance-soak pass. Neither 4 nor 8 vCPU passed the closed-loop MixedMorning gate; dev is restored to stopped `db-f1-micro` | Production shape/HA, arrival-rate workload and business budget decisions pending | Workload-specific dev pass; production blocked |
 | OBS-01 | SQL/Pub/Sub/Scheduler/trace/storage alert IaC validates | 110 policies live; Scheduler/trace incidents opened and recovered; mailbox receipt pending | Pending | Production blocked |
-| COST-01 | Live budget reconciled; Delhi-SKU platform and messaging models executable | Models rerun; budget automation and owner approval pending | Pending | Production blocked |
+| COST-01 | Live budget, exports and resource attribution reconciled; load certification now fails closed on gross-spend headroom | INR 5,016.73/5,000 live crossing and INR 5,042.06 later export confirmed; no active runaway; dev SQL stopped and schedulers paused; guard negative/override tests passed | Spending owner must approve the production envelope, recipients/automation and any test override; do not raise the budget only to silence the alert | Dev contained; production blocked |
 | COST-02 | PII-free, RLS-covered daily import usage endpoint and closed-cardinality rejection metric implemented | Deployed; `/imports/usage` returned the exact approved fields and reconciled the live 500+500 admission run; telemetry export/alert verification remains | Pending | Partially passed |
 | DATA-01 | Retention/offboarding gaps and exact procedures documented | In-memory checksummed export + school-core erase/control rehearsal passed; full-system workflow absent | Legal owner approval pending | School launch blocked |
 | ONB-01 | Reconciliation CSV + bounded import complete; local exact 10k/20-batch certification passed | Live guarded 20-batch proof inserted/reconciled exactly 10,000 rows in 527.372 s with zero skipped and idempotent final retry; final scoped cleanup is complete | n/a | Dev passed; production/operator UX blocked |
