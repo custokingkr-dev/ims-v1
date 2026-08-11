@@ -648,6 +648,15 @@ Dev execution completed on 2026-08-11 without modifying production:
   keeps it for all services. Redeploy and a fresh cold-ramp MixedMorning rerun remain required. All
   four Scheduler jobs remain `PAUSED`; final fixture cleanup and database downsize/stop remain
   mandatory acceptance steps;
+- remediation commit `6d9da9b2debbcec23582bc914442da15760771c4` reached `dev` by
+  fast-forward. Push run `31494302407` correctly created no release because the same commit also
+  changes deployment-control configuration. The protected reconciliation workflow cannot yet be
+  dispatched because it is new on `dev` and absent from the repository default branch, and its
+  required `clouddeploy-dev-deployer` execution identity is not live. No target was mutated. The
+  application remediation is therefore released from a separate follow-up commit through the
+  existing exact-digest dev path; startup-boost changes are applied and verified directly on dev.
+  Target/pipeline reconciliation remains fail-closed until the reviewed CI/CD identity bootstrap is
+  approved and imported into managed Terraform state;
 - a fresh GitHub API check confirmed immutable repository ID `1207086249`, owner ID `274906704`,
   current-account push access but no maintain/admin access, zero rulesets, and no classic protection
   on `dev` or `main`. Source now pins all 52 external action uses to verified terminal commit SHAs,
