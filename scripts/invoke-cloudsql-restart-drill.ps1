@@ -64,7 +64,9 @@ $healthEvidence = [System.Collections.Generic.List[object]]::new()
 while ($pending.Count -gt 0 -and [datetime]::UtcNow -lt $deadline) {
   foreach ($service in @($pending | ForEach-Object { $_ })) {
     try {
-      $identityToken = ((Invoke-Gcloud auth print-identity-token "--audiences=$($service.url)") -join "").Trim()
+      # User ADC cannot mint an audience-overridden token (that flag is service-account-only).
+      # Cloud Run accepts the Google-signed user identity token for an IAM-authorized operator.
+      $identityToken = ((Invoke-Gcloud auth print-identity-token) -join "").Trim()
       $response = Invoke-WebRequest -Uri "$($service.url)/actuator/health" `
         -Headers @{ Authorization = "Bearer $identityToken" } -TimeoutSec 20 -UseBasicParsing
       if ($response.StatusCode -eq 200) {

@@ -171,6 +171,23 @@ class AttendanceLateLeaveRoundTripTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void dailySummary_usesSchoolScopedEnrollmentCountsAndOmitsEmptySections() throws Exception {
+        try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+            st.execute("INSERT INTO tenant_school.school_sections" +
+                    "(id, name, teacher_name, active, school_class_id, school_id) " +
+                    "VALUES ('s-empty','B','Ms Empty',true,'c1',1)");
+        }
+
+        Map<String, Object> summary = repo.dailySummary(DAY, 1L);
+        List<Map<String, Object>> sections = (List<Map<String, Object>>) summary.get("sections");
+
+        assertThat(sections).extracting(section -> section.get("sectionId"))
+                .containsExactly("s1");
+        assertThat(sections.getFirst()).containsEntry("totalStudents", 4L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void exceptions_returnsAbsentLateAndLeaveWhileAbsenteesStayBackwardCompatible() {
         repo.saveSectionRegister(Map.of(
                 "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,

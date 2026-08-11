@@ -37,6 +37,7 @@ DELETE FROM identity.auth_sessions WHERE user_id IN (SELECT id FROM scale_user_i
 DELETE FROM identity.user_role_assignments WHERE user_id IN (SELECT id FROM scale_user_ids);
 DELETE FROM identity.app_users WHERE id IN (SELECT id FROM scale_user_ids);
 
+DELETE FROM reporting.reporting_event_inbox WHERE school_id IN (SELECT id FROM scale_school_ids);
 DELETE FROM reporting.fact_attendance_daily WHERE school_id IN (SELECT id FROM scale_school_ids);
 DELETE FROM attendance.attendance_student_records WHERE school_id IN (SELECT id FROM scale_school_ids);
 DELETE FROM attendance.attendance_daily WHERE school_id IN (SELECT id FROM scale_school_ids);

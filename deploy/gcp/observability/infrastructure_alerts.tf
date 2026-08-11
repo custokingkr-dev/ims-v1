@@ -47,12 +47,13 @@ resource "google_monitoring_alert_policy" "cloud_sql_memory" {
   severity              = "WARNING"
 
   conditions {
-    display_name = "Cloud SQL memory above ${var.cloud_sql_memory_threshold * 100}%"
+    display_name = "Cloud SQL memory usage above ${var.cloud_sql_memory_threshold}%"
     condition_threshold {
       filter = join(" AND ", [
         "resource.type=\"cloudsql_database\"",
         "resource.labels.database_id=\"${local.cloud_sql_database_id}\"",
-        "metric.type=\"cloudsql.googleapis.com/database/memory/utilization\"",
+        "metric.type=\"cloudsql.googleapis.com/database/memory/components\"",
+        "metric.labels.component=\"Usage\"",
       ])
       comparison      = "COMPARISON_GT"
       threshold_value = var.cloud_sql_memory_threshold
@@ -65,7 +66,7 @@ resource "google_monitoring_alert_policy" "cloud_sql_memory" {
     }
   }
   documentation {
-    content   = "Cloud SQL memory pressure is sustained. Inspect working-set growth, temporary files, and query plans."
+    content   = "Cloud SQL process memory usage (excluding cache and free memory) is sustained above the configured percentage. Inspect working-set growth, temporary files, query plans, and OOM logs before resizing."
     mime_type = "text/markdown"
   }
   alert_strategy { auto_close = "3600s" }

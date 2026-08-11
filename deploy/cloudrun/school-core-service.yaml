@@ -50,7 +50,7 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: prod
             - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
+              value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
             - name: SPRING_DATASOURCE_USERNAME
               value: app_rt
             # Four peak instances x 20 connections = 80, leaving at least 120 of the
@@ -58,7 +58,7 @@ spec:
             - name: DB_POOL_MAX
               value: "20"
             - name: FLYWAY_URL
-              value: jdbc:postgresql://placeholder:5432/app # from-param: jdbc:postgresql://${db_host}/${db_name}
+              value: jdbc:postgresql://placeholder:5432/app?sslmode=require # from-param: jdbc:postgresql://${db_host}/${db_name}?sslmode=require
             - name: FLYWAY_USERNAME
               value: appuser
             - name: SCHOOL_CORE_MERGED

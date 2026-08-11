@@ -11,6 +11,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.security.MessageDigest;
@@ -911,6 +912,12 @@ public class StudentReadRepository {
         if ("DONE".equalsIgnoreCase(batch.status())) {
             return completedImportResult(batch, schoolId);
         }
+
+        // Bound this synchronous, connection-holding operation across every service
+        // replica: one confirmation per school and two confirmations fleet-wide.
+        // Same-token retries still serialize on the batch row above and completed
+        // retries return before consuming an admission slot.
+        StudentImportAdmissionGuard.acquire(jdbc, schoolId);
 
         String batchId = batch.id();
         String jobId = batch.jobId() == null || batch.jobId().isBlank()
@@ -2013,6 +2020,47 @@ public class StudentReadRepository {
                 .list();
     }
 
+    /**
+     * Returns bounded, PII-free operational usage facts derived from the durable import ledger.
+     * These counts support noisy-tenant analysis and cost allocation; they are not an exact GCP bill.
+     */
+    public List<ImportUsageDailyRow> importUsageDaily(Long schoolId, int days, int limit) {
+        int boundedDays = Math.max(1, Math.min(days, 90));
+        int boundedLimit = Math.max(1, Math.min(limit, 20_000));
+        OffsetDateTime cutoff = LocalDate.now(ZoneOffset.UTC)
+                .minusDays(boundedDays - 1L)
+                .atStartOfDay()
+                .atOffset(ZoneOffset.UTC);
+        StringBuilder sql = new StringBuilder("""
+                        SELECT school_id,
+                               (created_at AT TIME ZONE 'UTC')::date AS usage_date,
+                               count(*) AS previewed_batches,
+                               count(*) FILTER (WHERE status = 'DONE') AS completed_batches,
+                               count(*) FILTER (WHERE status IS DISTINCT FROM 'DONE') AS unfinished_batches,
+                               coalesce(sum(total_rows), 0) AS attempted_rows,
+                               coalesce(sum(inserted) FILTER (WHERE status = 'DONE'), 0) AS inserted_rows,
+                               coalesce(sum(skipped) FILTER (WHERE status = 'DONE'), 0) AS skipped_rows,
+                               coalesce(sum(original_file_size), 0) AS source_bytes
+                        FROM student.import_batches
+                        WHERE created_at >= :cutoff
+                        """);
+        if (schoolId != null) {
+            sql.append(" AND school_id = :schoolId\n");
+        }
+        sql.append("""
+                        GROUP BY school_id, (created_at AT TIME ZONE 'UTC')::date
+                        ORDER BY usage_date DESC, school_id
+                        LIMIT :limit
+                        """);
+        var spec = jdbc.sql(sql.toString())
+                .param("cutoff", cutoff)
+                .param("limit", boundedLimit);
+        if (schoolId != null) {
+            spec = spec.param("schoolId", schoolId);
+        }
+        return spec.query(ImportUsageDailyRow.class).list();
+    }
+
     public List<ImportRow> importRows(Long schoolId, String batchId, String status, int limit) {
         StringBuilder sql = new StringBuilder("""
                 SELECT r.id, r.row_no, r.name, r.class_name, r.section_name, r.admission_no, r.phone,
@@ -2248,6 +2296,17 @@ public class StudentReadRepository {
             String skippedJson,
             OffsetDateTime createdAt,
             OffsetDateTime completedAt) {}
+
+    public record ImportUsageDailyRow(
+            Long schoolId,
+            LocalDate usageDate,
+            Long previewedBatches,
+            Long completedBatches,
+            Long unfinishedBatches,
+            Long attemptedRows,
+            Long insertedRows,
+            Long skippedRows,
+            Long sourceBytes) {}
 
     public record ImportRow(
             String id,

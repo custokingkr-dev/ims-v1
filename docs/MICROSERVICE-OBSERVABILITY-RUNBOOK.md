@@ -229,6 +229,24 @@ over both `60m` and `5m` for three minutes. Sustained burn is `6x` over both
 threat from a transient or historical spike. Email is sent when an incident
 opens; use Cloud Monitoring incidents to confirm recovery.
 
+Infrastructure and delivery signals are also managed by this Terraform root:
+
+- Cloud SQL CPU, PostgreSQL connections, and database-process memory Usage;
+- Pub/Sub unacknowledged-message count and oldest-unacked age;
+- authenticated async-relay Scheduler `AttemptFinished` failures;
+- explicit OTLP/span export failure logs; and
+- Cloud Storage total bytes sustained above the configured daily guardrail.
+
+For Cloud SQL memory, use the `Usage` component of
+`cloudsql.googleapis.com/database/memory/components` and express the threshold as
+a percentage (90 by default). Do not substitute `database/memory/utilization` on
+shared-core tiers: server byte usage can equal quota continuously even when the
+component view shows low process use and substantial free/cache memory.
+
+The storage threshold is an early-warning capacity guardrail, not an approved
+retention schedule or billing cap. Review object count, tenant/prefix growth,
+soft-deleted and noncurrent bytes, and lifecycle coverage before raising it.
+
 ## Async Health
 
 Outbox-owning services:
@@ -260,6 +278,11 @@ Async triage order:
 3. Inspect Pub/Sub publish/ack errors.
 4. Inspect platform-service Pub/Sub push receive logs.
 5. Confirm platform projection spans join the original trace.
+6. For Scheduler incidents, inspect the exact job's `AttemptFinished` log,
+   HTTP status, OIDC audience/invoker binding, target readiness, and SQL state.
+7. For trace-export incidents, inspect exporter IAM, endpoint reachability,
+   quota-project headers, and exporter errors; request success does not prove
+   trace delivery.
 
 ## Uptime Checks
 

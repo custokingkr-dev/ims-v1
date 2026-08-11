@@ -80,13 +80,13 @@ public class OutboxRelay {
     @Transactional
     public int publishBatch() {
         List<OutboxRow> rows = jdbc.sql("""
-                        SELECT id::text AS id, event_key, event_type, aggregate_type, aggregate_id,
-                               school_id, occurred_at, payload::text AS payload, trace_parent, trace_state
-                        FROM %s
-                        WHERE published_at IS NULL
-                          AND dead_lettered_at IS NULL
-                          AND (next_attempt_at IS NULL OR next_attempt_at <= now())
-                        ORDER BY id
+                        SELECT o.id::text AS id, o.event_key, o.event_type, o.aggregate_type, o.aggregate_id,
+                               o.school_id, o.occurred_at, o.payload::text AS payload, o.trace_parent, o.trace_state
+                        FROM %s o
+                        WHERE o.published_at IS NULL
+                          AND o.dead_lettered_at IS NULL
+                          AND (o.next_attempt_at IS NULL OR o.next_attempt_at <= now())
+                        ORDER BY o.id
                         LIMIT :batchSize
                         FOR UPDATE SKIP LOCKED
                         """.formatted(outboxTable))

@@ -3,8 +3,12 @@
 Date: 2026-08-11
 Scope: 100-150 schools, 200,000-300,000 total student records, and a maximum expected school size of
 10,000 students.
-Status: repository and live GCP read-only audit complete; three safe repository changes implemented;
-production mutations, destructive retention decisions, provider activation, and legal decisions remain gated.
+Status: repository and live GCP read-only audit complete; bounded import admission, reconciliation/privacy
+hardening, cost tools and local certification evidence implemented; dev deployment, production mutations,
+destructive retention decisions, provider activation, and legal decisions remain gated.
+
+Detailed measured results, corrected Delhi rate evidence and the completion ledger are in
+[ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md](./ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md).
 
 This workstream does not claim that every school has 10,000 students. One hundred schools at that size
 would be 1,000,000 students, which conflicts with the stated 200,000-300,000 fleet total. Capacity tests
@@ -27,8 +31,9 @@ The most serious non-performance blockers are:
 
 1. notification delivery does not enforce the student's/guardian's consent or notification preference;
 2. permanent photo/student/school offboarding and data-export policies do not exist;
-3. per-school usage and cost attribution does not exist;
-4. concurrent imports are bounded per file token, not per school or fleet;
+3. only bounded import usage attribution exists; cross-service cost attribution and invoice reconciliation do not;
+4. database-backed per-school/two-fleet import admission is locally tested but not yet deployed or
+   multi-replica certified in dev; active previews and stale-preview expiry are still unbounded;
 5. provider templates, DLT/consent classification, live MSG91 receipts, and commercial pricing are not approved;
 6. the INR 5,000 budget is an alert, not a spending cap, and is below the production planning envelope;
 7. SQL connection, Pub/Sub, job, and budget-specific alert coverage remains incomplete even though the
@@ -49,8 +54,9 @@ changing IAM, changing a budget, deploying, or running production writes.
   on retry. `StudentImportPhotoIntegrationTest.confirmImport_retryReturnsOriginalResultWithoutDuplicatingOrCorruptingBatch`
   covers the repeat-confirm case.
 - Admission number is unique per school in PostgreSQL. Two different batches that race for the same
-  admission number cannot both create a student; one row is recorded as skipped. There is no
-  school-scoped advisory lock or global import concurrency limiter.
+  admission number cannot both create a student; one row is recorded as skipped. Confirmation now also
+  uses transaction-scoped PostgreSQL advisory locks for one active confirmation per school and two
+  confirmations fleet-wide. Its evidence is local-only until deployed and exercised across dev replicas.
 - Confirmation sets `RUNNING`/20%, then loops through as many as 500 rows and commits `DONE`/100% in the
   same transaction. The returned job id does not make this background work.
 - Batch and row evidence can be read using `GET /api/v1/students/imports/batches` and
@@ -145,12 +151,86 @@ powershell -ExecutionPolicy Bypass -File scripts/estimate-onboarding-notificatio
 
 The tool does not guess how many messages the product will send.
 
+### IMPL-04 — Database-backed import admission
+
+`StudentImportAdmissionGuard` uses PostgreSQL transaction-scoped advisory locks to allow one active
+confirmation per school and two active confirmations fleet-wide. It returns `429` with `Retry-After: 5`
+when the school or fleet is busy. Locks release automatically on commit, rollback or connection loss; no
+unbounded in-memory queue or new always-on service was added.
+
+The guard is acquired after the batch row lock and completed-result replay, so same-token retries remain
+durable and completed retries consume no admission slot. Local Testcontainers tests cover noisy-school
+rejection, use of the second slot by another school, third-school rejection and rollback release. Dev
+deployment, two-replica evidence, preview expiry, monitoring and retry UX remain open.
+
+### IMPL-05 — Tenant isolation and scale certification harness
+
+The opt-in `StudentOnboardingScaleCertificationIntegrationTest` exercises twenty real 500-row
+preview/confirm transactions, exact reconciliation, completed and simultaneous same-token retries, two
+concurrent schools, cross-school token/job denial and a synthetic school-core erase rehearsal. A separate
+RLS test covers import batches/rows across one reused physical connection, missing tenant context and
+cross-tenant update/delete attempts.
+
+The authoritative local 10,000-student run completed in 210,762 ms at a derived 47.45 students/second,
+with a 12,866 ms batch p95. This is local PostgreSQL evidence—not a Cloud SQL/Cloud Run SLO or a substitute
+for the persistent school-level onboarding session.
+
+### IMPL-06 — Corrected, overrideable platform cost model
+
+`scripts/estimate-scale-cost.ps1` now exposes Cloud SQL, Delhi Cloud Run Tier 2, Delhi Standard Storage,
+exchange-rate, workload, photo and planning-floor inputs. It reports zonal/HA totals, ranges, per-school,
+per-student and allocated 10,000-student-school values. The 2026-08-11 defaults use the checked billing
+pricing export, including Cloud Run CPU USD 0.0000336/vCPU-second, memory USD 0.0000035/GiB-second and
+Delhi Standard Storage USD 0.023/GiB-month. The SQL default is now the cheapest tested candidate that
+passed the target burst, `db-custom-4-7680`; custom vCPU/RAM inputs remain overrideable and are validated
+against Google's Enterprise custom-shape constraints. The output separately labels the rejected 300-VU
+two-vCPU shape, its limited 200-VU comparison, incremental zonal/HA compute and savings versus the earlier
+untested 4-vCPU/15-GiB assumption. These remain dated planning inputs, not a quote.
+
+The decisive reliability artifact is `morningburst-20260811015047`: the 4-vCPU/7.5-GiB database completed
+the full 17m30s 300-VU profile with k6 exit 0/no abort, maximum CPU 58.29%, memory 48.4233%, connections 99,
+276,923 requests and 0.013722% failures (38 HTTP 429 responses, no 5xx). Attendance-write p95/p99 were
+115.817/262.703 ms. This establishes the cheapest measured passing short-burst candidate, not a soak or
+production SLO.
+
+The separate `morningburst-20260811010210` 200-VU comparison on 2 vCPU/7.5 GiB stayed below resource
+guards (maximum CPU 58%, memory 48.087%, connections 92) with two failures among 185,060 requests, but its
+older wrapper recorded a null k6 exit code. It remains a lower-concurrency cost option only; it does not
+override the same shape's 300-VU CPU failure, and VUs are not student totals.
+
+### IMPL-07 — Bounded import usage attribution and admission telemetry
+
+`GET /api/v1/students/imports/usage` derives daily facts from the durable import ledger: opaque school id,
+UTC day, previewed/completed/unfinished batches, attempted/inserted/skipped rows and original source bytes.
+The lookback is clamped to 90 days and output to 20,000 rows. Runtime RLS still limits a caller that requests
+fleet scope, and the response contains no token, filename, student, phone or row payload.
+
+Direct and persistence-wrapped admission rejections now increment
+`ims.student.import.admission.rejections`, tagged only by the closed reason code. Existing HTTP telemetry
+covers successful confirmations. School ids are deliberately absent from custom metric dimensions; daily
+ledger aggregation provides tenant attribution without high-cardinality Monitoring series. This completes
+import attribution only—not the still-planned API/attendance/storage/provider ledger or exact tenant billing.
+
+### IMPL-08 — Guarded dev admission verifier
+
+`scripts/verify-dev-import-admission.ps1` is plan-only by default. Remote execution requires an HTTPS host
+with a distinct dev label, exact expected-host match, explicit remote-write acknowledgement, a dedicated
+synthetic school, two distinct 500-valid-row preview tokens and a short-lived school-admin token supplied
+through an environment variable. It performs a read-only ledger preflight, starts both confirmations before
+awaiting either, and accepts exactly one 2xx plus one `school_import_active` 429 with `Retry-After: 5`.
+
+The artifact contains no tokens or student rows. Execution intentionally commits one synthetic batch, so
+cleanup approval and reconciliation remain prerequisites. The harness was parser/guard tested locally; it
+was not run against dev because the required actor, fresh tokens and cleanup authorization were not supplied.
+
 ## Planned Changes
 
 Each item states the evidence needed to close it. “Implemented” means merged, deployed to dev, and tested
 unless the item explicitly says documentation-only. Local source changes alone are not completion.
+Lettered subsections decompose one master-ledger item; they do not create new master IDs. The completion
+ledger at the end of the certification report is the authoritative master-ID reconciliation.
 
-### ONB-01 — School-level onboarding session (**production blocker**)
+### ONB-01a — School-level onboarding session (**production blocker**)
 
 **Change:** add a school-scoped onboarding session that owns the expected batch count, source file names
 and hashes, operator, start/end times, import batch ids, student counts, duplicate/skipped counts, photo
@@ -171,7 +251,7 @@ unfinished session is visible after browser restart.
 **Dependencies/blockers:** product must define who can close/reopen, whether repeat file hashes are allowed,
 and the evidence retention duration.
 
-### ONB-02 — Honest progress and optional background execution
+### ONB-01b — Honest progress and optional background execution
 
 **Change:** first rename current status as synchronous batch confirmation and show an indeterminate
 “confirming batch” state. Add true background work only if the pilot proves the request exceeds the gateway
@@ -191,7 +271,12 @@ scale-to-zero. Do not enable Cloud Scheduler just to simulate a worker.
 **Dependencies/blockers:** pilot timing evidence and a product SLA. It is premature to add queueing only
 because 10,000 is a large number.
 
-### ONB-03 — Import admission control and noisy-tenant protection (**production blocker**)
+### ONB-02 — Import admission control and noisy-tenant protection (**production blocker**)
+
+**Local status:** the confirmation guard, direct/wrapped deterministic `429` contract, bounded-reason
+rejection counter and guarded dev verifier are implemented and locally tested. The remaining blocker is dev
+deployment and multi-replica/Cloud SQL evidence, plus preview expiry, route-level budgets, operator retry
+UX, metric-export verification and an approved dashboard/alert.
 
 **Change:** enforce at most one active confirmation per school and begin with at most two active imports
 fleet-wide. Return `409`/`429` plus `Retry-After`; never queue unbounded work in application memory. Keep
@@ -210,7 +295,7 @@ locks/leases are insufficient.
 **Dependencies/blockers:** choose route weights, retry UX, and the allowed number of simultaneous onboarding
 schools from a dev test, not intuition.
 
-### ONB-04 — Resumable photo reconciliation
+### ONB-01c — Resumable photo reconciliation
 
 **Change:** require an effective `STUDENT_PHOTO` processing decision before upload; persist the planned
 photo source, checksum, final object key, result, reason, and retry count. Resume attachments by import
@@ -228,7 +313,7 @@ student, source, consent/other lawful basis, and session.
 **Dependencies/blockers:** legal/product decision on lawful basis, evidence and permanent-photo retention;
 Google Drive ownership/offboarding rules.
 
-### DATA-01 — Retention schedule and enforcement (**production blocker**)
+### DATA-01a — Retention schedule and enforcement (**production blocker**)
 
 **Change:** approve a data-class schedule for students, guardians, consent events, attendance, fees,
 imports, original source files, current/old photos, notifications, audit events, app logs, compliance logs,
@@ -245,7 +330,7 @@ retention increase it. No blanket permanent-photo lifecycle is safe without poli
 **Dependencies/blockers:** this is a legal/business decision. Engineering cannot infer a retention period
 for minors' personal data.
 
-### DATA-02 — School offboarding and data-subject operations (**production blocker**)
+### DATA-01b — School offboarding and data-subject operations (**production blocker**)
 
 **Change:** implement a two-person, resumable state machine:
 
@@ -268,7 +353,7 @@ TTL plus soft-delete implications. Do not retain exports indefinitely.
 **Dependencies/blockers:** contract termination terms, controller/processor roles, legal-hold rules,
 export format, custodian, and backup-erasure policy.
 
-### DATA-03 — DPDP readiness for children and consent
+### DATA-01c — DPDP readiness for children and consent
 
 The DPDP Act's main processing obligations, including children's-data provisions, are scheduled under the
 official 13 November 2025 commencement notification for eighteen months after Gazette publication. That
@@ -288,7 +373,13 @@ security/privacy complete a tabletop exercise before the effective date.
 
 **Dependencies/blockers:** qualified legal/privacy owner and policy decisions.
 
-### COST-01 — Per-school usage ledger and allocation (**production blocker for commercial margin reporting**)
+### COST-02 — Per-school usage ledger and allocation (**production blocker for commercial margin reporting**)
+
+**Partial local status:** a tenant-safe daily import aggregation now exposes batch state, attempted/
+inserted/skipped rows and source bytes for at most 90 days/20,000 result rows. It derives idempotently from
+the durable import ledger and avoids school-id metric tags. API duration, attendance, object/photo and
+provider facts, allocation versioning and invoice reconciliation remain open; the endpoint is not an exact
+bill or a substitute for finance-approved allocation.
 
 **Change:** write append-only, idempotent daily usage facts keyed by school and source event/request:
 
@@ -313,7 +404,7 @@ high-cardinality metric series per school in Cloud Monitoring.
 **Dependencies/blockers:** finance chooses allocation drivers and margin policy; billing export latency
 means the report is not real time.
 
-### COST-02 — Budget and forecast guardrails
+### COST-01 — Budget and forecast guardrails
 
 **Change:** retain the gross-cost budget, correct the runbook to its live 50/80/100 plus forecast-100
 thresholds or intentionally change both, verify recipient delivery, and add a forecast policy at the
@@ -333,7 +424,7 @@ amount changes alerts, not actual spend.
 
 **Dependencies/blockers:** approve the real monthly envelope after production DB/HA decision and provider volume model.
 
-### COST-03 — Storage, logs, traces, backup and build retention
+### COST-01a — Storage, logs, traces, backup and build retention
 
 **Change:** keep `_Default` at 7 days and the temporary photo lifecycle; sample traces at the lowest rate
 that preserves incident diagnosis; expire release/build artifacts according to rollback policy; review
@@ -376,7 +467,7 @@ instances and DB connections; quota alert/playbook exists; required requests are
 **Dependencies/blockers:** current effective quota values and usage history; do not copy generic defaults
 from documentation into the project ledger.
 
-### MSG-01 — Consent-aware notification gateway (**production blocker**)
+### NOTIFY-01a — Consent-aware notification gateway (**production blocker**)
 
 **Change:** before provider submission, resolve school, recipient, channel, purpose/category, active guardian
 relationship, `receives_notifications`, effective consent/other approved basis, opt-out/suppression, template,
@@ -398,7 +489,7 @@ creating stale-consent sends.
 **Dependencies/blockers:** privacy/legal decision, TRAI/DLT registration, Meta/MSG91 approval, and product
 classification for every template.
 
-### MSG-02 — Provider economics, reconciliation and live pilot
+### NOTIFY-01b — Provider economics, reconciliation and live pilot
 
 The checked public MSG91 snapshot lists INR 500/month per WhatsApp number after the initial two-month
 discount and India per-message figures of INR 0.115 utility, INR 0.115 authentication, and INR 0.8631
@@ -446,7 +537,7 @@ Use waves, not a single release:
 
 | Wave | Schools | Required entry evidence | Required exit evidence |
 | --- | ---: | --- | --- |
-| Dev rehearsal | 2 synthetic, one at 10,000 | ONB-01/03 instrumentation; no production data | 20-batch reconciliation, retry/disconnect, concurrent-school and photo-resume evidence |
+| Dev rehearsal | 2 synthetic, one at 10,000 | ONB-01/ONB-02 instrumentation; no production data | 20-batch reconciliation, retry/disconnect, concurrent-school and photo-resume evidence |
 | Internal/pilot | 2-3 | all production blockers closed; signed data/provider decisions | 5 school days, zero Sev-1/2, all batches/provider costs reconciled |
 | Wave 1 | +5 | SLO/cost headroom and pilot sign-off | 5 school days plus one morning peak |
 | Wave 2 | +10 | no unresolved cross-tenant/data issue | 10 school days, forecast within approval |
@@ -493,6 +584,17 @@ Before go-live:
 
 Primary sources checked on 2026-08-11:
 
+- [PostgreSQL explicit/advisory locking](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS),
+  [Spring `@Transactional`](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html),
+  and [Spring transaction-bound JDBC connections](https://docs.spring.io/spring-framework/reference/data-access/jdbc/connections.html)
+  — transaction lock lifetime, runtime-exception rollback and connection reuse semantics used by import admission.
+- [Cloud Run concurrency](https://docs.cloud.google.com/run/docs/about-concurrency) — multiple requests can
+  share instances and revisions autoscale, so a local/single-instance result is not multi-replica evidence.
+- [Cloud SQL PostgreSQL machine-series constraints](https://docs.cloud.google.com/sql/docs/postgres/machine-series-overview)
+  — Enterprise custom vCPU/memory bounds used to validate the 4-vCPU/7.5-GiB candidate.
+- [Cloud Run pricing](https://cloud.google.com/run/pricing) and
+  [Cloud Storage pricing](https://cloud.google.com/storage/pricing) — regional billing tiers, storage,
+  operations, network and soft-delete cost boundaries; billing-account SKU exports govern the modeled rates.
 - [Google Cloud Billing budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets) — alerts-only
   budgets do not automatically cap usage/spend.
 - [Google Cloud Billing export to BigQuery](https://docs.cloud.google.com/billing/docs/how-to/export-data-bigquery)
@@ -526,7 +628,32 @@ Completed locally without deployment or live mutation:
 - `npm.cmd run build:test` in `frontend`: TypeScript and Vite test-mode build passed; existing large-chunk warnings remain.
 - `mvnw.cmd -f services/platform-service/pom.xml -Dtest=Msg91NotificationDeliveryProviderTest test`
   with JDK 25: 7 tests passed and the dry-run log contained event id/channel only.
-- PowerShell parser accepted `scripts/estimate-onboarding-notification-cost.ps1`; a 150-school,
-  300,000-student, two-utility-message scenario executed successfully.
+- Admission/API focused run: 4 tests passed in 14.97 seconds.
+- Import/RLS/admission/regression focused run: 30 tests passed in 39.216 seconds.
+- Post-audit admission/usage/RLS/import regression run: 47 tests passed with zero failures, errors or
+  skips; Maven total was 30.279 seconds and wall-clock time was 32.6 seconds.
+- Complete default school-core suite on JDK 25: 501 tests passed with zero failures, errors or skips;
+  Maven reported `BUILD SUCCESS` in 2:37. A scheduled outbox task attempted one connection only after its
+  Testcontainers database shut down, leaving a test-harness lifecycle warning but no test failure.
+- `scripts/verify-dev-import-admission.ps1` parsed and its plan-only mode completed without a network
+  request. Negative gates rejected a production-looking host, remote dev without explicit write opt-in,
+  URI user-info, localhost execution without the required token, and an already-existing evidence path
+  before any request was sent; the existing file remained byte-for-byte unchanged.
+- Opt-in onboarding certification: 4 tests passed; 240.0-second test-class time and 4:15 Maven total.
+  The 10,000-student/20-batch path completed in 210,762 ms at a derived 47.45 students/second; local batch
+  p95 was 12,866 ms. Same-token concurrency produced one job and zero duplicates; two 500-row schools
+  completed concurrently in 5,072 ms.
+- The synthetic in-memory export produced 20 rows and SHA-256
+  `5ca4daff439ae942e8cbbb86123e3c1a49edd54ee75ad506bb4ba3ba95c62c9a`; the exercised school-core target
+  counts reached zero and the control tenant was unchanged. This is not full production erasure evidence.
+- PowerShell parsed and executed both cost tools. With the measured passing `db-custom-4-7680` planning
+  default, platform outputs are INR 31,881 zonal / INR 52,084 HA for 100 schools and 200,000 students, and
+  INR 37,396 zonal / INR 58,575 HA for 150 schools and 300,000 students. Relative to the rejected
+  `db-custom-2-7680` compute, the increment is INR 6,926.32/month zonally or INR 13,852.64/month in the HA
+  model. The separate two-vCPU override remained available and odd-vCPU/invalid-memory shapes were rejected.
+  These are modeled—not invoiced—and exclude messaging, tax, support and other documented categories.
 
-No production or dev deployment is part of this workstream. No live GCP resource was modified.
+See [ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md](./ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md)
+for commands, exact reconciliation, erasure boundaries, scenario parameters and remaining gates.
+
+No production or dev deployment was performed by this workstream. No live GCP resource was modified.

@@ -1,6 +1,7 @@
 param(
   [ValidateRange(1, 1000)] [int] $SchoolCount = 100,
   [ValidateRange(1, 10000000)] [int] $StudentCount = 200000,
+  [ValidateRange(1, 100000)] [int] $LargeSchoolStudents = 10000,
   [ValidateRange(0, 100)] [decimal] $UtilityMessagesPerStudentMonth = 0,
   [ValidateRange(0, 100)] [decimal] $AuthenticationMessagesPerStudentMonth = 0,
   [ValidateRange(0, 100)] [decimal] $MarketingMessagesPerStudentMonth = 0,
@@ -15,6 +16,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($LargeSchoolStudents -gt $StudentCount) {
+  throw 'LargeSchoolStudents cannot exceed StudentCount.'
+}
 
 # MSG91 public India rate snapshot checked 2026-08-11. Parameter defaults are for planning,
 # not a contractual quote. Override every rate after the provider invoice/rate card is approved.
@@ -34,11 +39,18 @@ $total = $subtotal + $tax
 
 $schoolOwnedNumberSteadyState = ([decimal]$SchoolCount * $whatsappNumberMonthlyInr) +
   $utilityCost + $authenticationCost + $marketingCost + $smsCost
+$variableMessagingCost = $utilityCost + $authenticationCost + $marketingCost + $smsCost
+$sharedLargeSchoolCost = ($numberSubscription / $SchoolCount) +
+  (($variableMessagingCost / $StudentCount) * $LargeSchoolStudents)
+$ownedAverageSchoolCost = $WhatsappNumberMonthlyInr + ($variableMessagingCost / $SchoolCount)
+$ownedLargeSchoolCost = $WhatsappNumberMonthlyInr +
+  (($variableMessagingCost / $StudentCount) * $LargeSchoolStudents)
 
 [pscustomobject]@{
   RateSnapshotDate = '2026-08-11'
   Schools = $SchoolCount
   Students = $StudentCount
+  LargeSchoolStudents = $LargeSchoolStudents
   WhatsappNumbers = $WhatsappNumberCount
   UtilityMessages = [long][Math]::Ceiling($utilityMessages)
   AuthenticationMessages = [long][Math]::Ceiling($authenticationMessages)
@@ -54,7 +66,10 @@ $schoolOwnedNumberSteadyState = ([decimal]$SchoolCount * $whatsappNumberMonthlyI
   EstimatedMonthlyInr = [Math]::Round($total, 2)
   PerStudentMonthlyInr = [Math]::Round(($total / [decimal]$StudentCount), 4)
   SharedSenderPerSchoolMonthlyInr = [Math]::Round(($total / [decimal]$SchoolCount), 2)
-  SchoolOwnedNumberSteadyStateInr = [Math]::Round($schoolOwnedNumberSteadyState * (1 + $TaxPercent / 100), 2)
+  SharedSenderLargeSchoolMonthlyInr = [Math]::Round($sharedLargeSchoolCost * (1 + $TaxPercent / 100), 2)
+  SchoolOwnedNumberAverageSchoolMonthlyInr = [Math]::Round($ownedAverageSchoolCost * (1 + $TaxPercent / 100), 2)
+  SchoolOwnedNumberLargeSchoolMonthlyInr = [Math]::Round($ownedLargeSchoolCost * (1 + $TaxPercent / 100), 2)
+  SchoolOwnedNumberFleetMonthlyInr = [Math]::Round($schoolOwnedNumberSteadyState * (1 + $TaxPercent / 100), 2)
   Assumptions = 'Steady-state rate card; excludes first-two-month number discounts, negotiated rates, retries, free service windows, wallet rules, GST unless TaxPercent is supplied, and email/support products.'
-  Source = 'https://msg91.com/help/whatsapp/whatsapp-pricing- and https://msg91.com/in/pricing/sms'
+  Source = 'https://msg91.com/in/pricing/whatsapp and https://msg91.com/help/whatsapp/whatsapp-subscription and https://msg91.com/in/pricing/sms'
 } | Format-List

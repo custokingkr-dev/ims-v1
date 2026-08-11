@@ -1,6 +1,8 @@
 \set ON_ERROR_STOP on
 
-BEGIN READ ONLY;
+-- EXPLAIN ANALYZE executes only SELECT statements against application tables. The transaction is
+-- read-write solely because PostgreSQL forbids the temporary result tables below in READ ONLY mode.
+BEGIN;
 SET LOCAL app.bypass_rls = 'on';
 SET LOCAL statement_timeout = '60s';
 

@@ -8,7 +8,8 @@ environment in project `custoking`:
   private services use Cloud Run revision targets with Monitoring service-agent
   OIDC.
 - Alert policies for 5xx rate, p95 latency, max-instance saturation, uptime, async health, SLO burn rate,
-  Cloud SQL CPU/memory/connections, and Pub/Sub backlog age/count.
+  Cloud SQL CPU/memory/connections, Pub/Sub backlog age/count, authenticated Scheduler failures,
+  trace-export failures, and sustained Cloud Storage growth.
 - Managed operator email channels, attached to every alert policy.
 - An optional project-wide `asia-south2` compliance log bucket and sink with 180-day retention.
 - Log-based distribution metrics for outbox and notification inbox health.
@@ -113,6 +114,15 @@ terraform -chdir=deploy/gcp/observability plan `
 Only the production state may manage the single project-wide compliance bucket.
 Existing externally managed channels can still be supplied through
 `notification_channel_ids`.
+
+The Cloud SQL memory policy intentionally uses the `Usage` component of
+`cloudsql.googleapis.com/database/memory/components`, expressed as a percentage,
+instead of `database/memory/utilization`. On a shared-core instance, the latter
+can stay at 100% when server RAM usage equals the quota even though process usage
+is low and most memory is free or cache. The default threshold is 90%, matching
+Google Cloud's OOM-risk guidance. Storage growth defaults to 100 GiB sustained
+for a full day; override `storage_total_bytes_threshold` from the approved
+retention and commercial limit rather than treating that default as a budget cap.
 
 ## Planning Without Cloud Run Discovery
 

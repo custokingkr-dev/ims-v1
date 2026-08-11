@@ -34,7 +34,7 @@ try {
     & $Gcloud run jobs create $job `
         --project=$Project --region=$Region `
         --image=postgres:16-alpine --command=sh "--args=$jobArgs" `
-        --set-env-vars=PGSSLMODE=disable `
+        --set-env-vars=PGSSLMODE=require `
         --set-secrets="PGPASSWORD=${ConnectPasswordSecret}:latest,APP_RT_PASSWORD=${AppRtPasswordSecret}:latest" `
         --network=$Network --subnet=$Subnet --vpc-egress=private-ranges-only `
         --max-retries=0 --tasks=1 | Write-Output

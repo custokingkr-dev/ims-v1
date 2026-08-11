@@ -118,7 +118,7 @@ try {
         --image=postgres:16-alpine `
         --command=sh `
         "--args=$jobArgs" `
-        --set-env-vars=PGSSLMODE=disable `
+        --set-env-vars=PGSSLMODE=require `
         --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
         --network=$Network `
         --subnet=$Subnet `

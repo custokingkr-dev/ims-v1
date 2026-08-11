@@ -164,6 +164,23 @@ variable "notification_inbox_dead_letter_threshold" {
   default     = 0
 }
 
+variable "storage_bucket_ids" {
+  description = "Bucket IDs monitored for sustained storage growth; empty monitors the environment student-photo bucket."
+  type        = list(string)
+  default     = []
+}
+
+variable "storage_total_bytes_threshold" {
+  description = "Sustained total-byte threshold per monitored bucket. Override from measured retention and commercial limits."
+  type        = number
+  default     = 107374182400
+
+  validation {
+    condition     = var.storage_total_bytes_threshold > 0
+    error_message = "storage_total_bytes_threshold must be greater than zero."
+  }
+}
+
 variable "cloud_sql_instance_name" {
   description = "Cloud SQL instance monitored for saturation; empty derives custoking-db-<env>."
   type        = string
@@ -177,9 +194,14 @@ variable "cloud_sql_cpu_threshold" {
 }
 
 variable "cloud_sql_memory_threshold" {
-  description = "Cloud SQL memory utilization ratio that opens an incident."
+  description = "Cloud SQL database/memory/components Usage percentage that opens an incident."
   type        = number
-  default     = 0.85
+  default     = 90
+
+  validation {
+    condition     = var.cloud_sql_memory_threshold > 0 && var.cloud_sql_memory_threshold <= 100
+    error_message = "cloud_sql_memory_threshold must be a percentage greater than 0 and no more than 100."
+  }
 }
 
 variable "cloud_sql_connection_threshold" {

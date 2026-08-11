@@ -18,10 +18,19 @@
     <properties>
         <java.version>25</java.version>
         <google-cloud-libraries-bom.version>26.66.0</google-cloud-libraries-bom.version>
+        <grpc.version>1.75.0</grpc.version>
+        <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>

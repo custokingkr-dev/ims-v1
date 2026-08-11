@@ -8,6 +8,8 @@ const accessTokens = (__ENV.K6_ACCESS_TOKENS || __ENV.K6_ACCESS_TOKEN || '')
   .split(',')
   .map((value) => value.trim())
   .filter(Boolean);
+const loginEmail = (__ENV.K6_LOGIN_EMAIL || '').trim();
+const loginPassword = __ENV.K6_LOGIN_PASSWORD || '';
 const baseSchoolId = Number(__ENV.SCALE_BASE_SCHOOL_ID || 900000000);
 const schoolCount = Number(__ENV.SCALE_SCHOOL_COUNT || 100);
 const totalStudents = Number(__ENV.SCALE_TOTAL_STUDENTS || 300000);
@@ -15,6 +17,10 @@ const largeSchoolStudents = Number(__ENV.SCALE_LARGE_SCHOOL_STUDENTS || 10000);
 const attendanceDate = __ENV.ATTENDANCE_DATE || new Date().toISOString().slice(0, 10);
 const iterationSleepSeconds = Number(__ENV.ITERATION_SLEEP_SECONDS || 2);
 const peakVus = Number(__ENV.PEAK_VUS || 100);
+const tokenRefreshMillis = Number(__ENV.K6_TOKEN_REFRESH_MILLIS || 12 * 60 * 1000);
+
+let vuAccessToken = '';
+let vuAccessTokenRefreshAt = 0;
 
 const responsesByClass = {
   success: new Counter('attendance_http_2xx'),
@@ -28,7 +34,9 @@ const responsesByClass = {
 };
 
 if (!baseUrl) throw new Error('BASE_URL is required');
-if (accessTokens.length === 0) throw new Error('K6_ACCESS_TOKEN or K6_ACCESS_TOKENS is required');
+if (accessTokens.length === 0 && (!loginEmail || !loginPassword)) {
+  throw new Error('K6_ACCESS_TOKEN(S) or K6_LOGIN_EMAIL/K6_LOGIN_PASSWORD is required');
+}
 if (__ENV.ALLOW_SCALE_WRITES !== '1') throw new Error('ALLOW_SCALE_WRITES=1 is required');
 if (!baseUrl.includes('-dev-') && !baseUrl.includes('localhost')) {
   throw new Error('Attendance write load is restricted to dev or localhost');
@@ -87,8 +95,37 @@ export const options = {
   },
 };
 
+function tokenForVu() {
+  if (accessTokens.length > 0) {
+    return accessTokens[(__VU - 1) % accessTokens.length];
+  }
+  if (!vuAccessToken || Date.now() >= vuAccessTokenRefreshAt) {
+    const response = http.post(`${baseUrl}/api/v1/auth/login`, JSON.stringify({
+      email: loginEmail,
+      password: loginPassword,
+    }), {
+      headers: { 'Content-Type': 'application/json' },
+      tags: { flow: 'synthetic-login', name: 'synthetic-login' },
+    });
+    recordStatus('login', response.status);
+    const loginOk = check(response, {
+      'synthetic login succeeds': (r) => r.status === 200,
+    });
+    if (!loginOk) {
+      fail(`Synthetic login failed with HTTP ${response.status}`);
+    }
+    const payload = response.json();
+    if (!payload.accessToken) {
+      fail('Synthetic login response did not contain accessToken');
+    }
+    vuAccessToken = payload.accessToken;
+    vuAccessTokenRefreshAt = Date.now() + tokenRefreshMillis;
+  }
+  return vuAccessToken;
+}
+
 function headersForVu() {
-  const token = accessTokens[(__VU - 1) % accessTokens.length];
+  const token = tokenForVu();
   return {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',

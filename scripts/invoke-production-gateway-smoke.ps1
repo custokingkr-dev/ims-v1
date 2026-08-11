@@ -69,30 +69,54 @@ function Ensure-CloudSqlJob {
     }
 
     $describeExitCode = 1
+    $describeOutput = @()
     $previousErrorActionPreference = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
     try {
-        & $Gcloud run jobs describe $script:CloudSqlJobName `
+        $describeOutput = @(& $Gcloud run jobs describe $script:CloudSqlJobName `
             --project=$Project `
-            --region=$Region *> $null
+            --region=$Region `
+            --format=json 2> $null)
         $describeExitCode = $LASTEXITCODE
     } finally {
         $ErrorActionPreference = $previousErrorActionPreference
     }
 
-    if ($describeExitCode -ne 0) {
+    if ($describeExitCode -eq 0) {
+        $existingJob = ($describeOutput -join "`n") | ConvertFrom-Json
+        $container = $existingJob.spec.template.spec.template.spec.containers[0]
+        if ($null -eq $container) {
+            $container = $existingJob.spec.template.template.containers[0]
+        }
+        $currentSslMode = [string](@($container.env | Where-Object {
+                    $_.name -eq "PGSSLMODE"
+                } | Select-Object -First 1)[0].value)
+        if ($currentSslMode.ToLowerInvariant() -ne "require") {
+            Write-Host "Reconciling PGSSLMODE=require on existing Cloud Run job $script:CloudSqlJobName"
+            & $Gcloud run jobs update $script:CloudSqlJobName `
+                --project=$Project `
+                --region=$Region `
+                --update-env-vars=PGSSLMODE=require | Write-Output
+            if ($LASTEXITCODE -ne 0) {
+                throw "Could not require encrypted PostgreSQL transport on Cloud Run job $script:CloudSqlJobName."
+            }
+        }
+    } else {
         & $Gcloud run jobs create $script:CloudSqlJobName `
             --project=$Project `
             --region=$Region `
             --image=postgres:16-alpine `
             --command=sh `
-            --set-env-vars=PGSSLMODE=disable `
+            --set-env-vars=PGSSLMODE=require `
             --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
             --network=$Network `
             --subnet=$Subnet `
             --vpc-egress=private-ranges-only `
             --max-retries=0 `
             --tasks=1 | Write-Output
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not create Cloud Run job $script:CloudSqlJobName."
+        }
     }
 
     $script:CloudSqlJobEnsured = $true

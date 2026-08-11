@@ -231,6 +231,41 @@ class StudentValidationTest {
         assertEquals(4L, captured.get("schoolId"));
     }
 
+    @Test
+    void confirmImport_wrappedAdmissionRejectionReturnsRetryable429() throws Exception {
+        when(repo.confirmImport(anyMap())).thenThrow(
+                new org.springframework.dao.InvalidDataAccessApiUsageException("repository wrapper",
+                        new com.custoking.ims.schoolcoreservice.persistence.ImportAdmissionException(
+                                "school_import_active", "Another student import is already running for this school", 5)));
+
+        mvc.perform(post("/api/v1/students/imports/confirm")
+                        .header("X-Student-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"fileToken\":\"tok-abc-123\",\"schoolId\":4}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string("Retry-After", "5"))
+                .andExpect(jsonPath("$.code").value("school_import_active"))
+                .andExpect(jsonPath("$.retryAfterSeconds").value(5));
+    }
+
+    @Test
+    void importUsage_superadminRequestsBoundedPiiFreeAggregation() throws Exception {
+        when(repo.importUsageDaily(null, 30, 5000)).thenReturn(List.of(
+                new StudentReadRepository.ImportUsageDailyRow(
+                        4L, java.time.LocalDate.of(2026, 8, 11),
+                        2L, 1L, 1L, 750L, 500L, 5L, 2048L)));
+
+        mvc.perform(get("/api/v1/students/imports/usage")
+                        .header("X-Student-Service-Token", VALID_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].schoolId").value(4))
+                .andExpect(jsonPath("$[0].attemptedRows").value(750))
+                .andExpect(jsonPath("$[0].sourceBytes").value(2048))
+                .andExpect(jsonPath("$[0].fileToken").doesNotExist());
+
+        verify(repo).importUsageDaily(null, 30, 5000);
+    }
+
     // --- POST /reviews/id-card/initiate ---
 
     @Test

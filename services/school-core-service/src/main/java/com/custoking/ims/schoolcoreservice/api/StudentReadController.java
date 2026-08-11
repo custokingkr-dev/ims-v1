@@ -650,6 +650,18 @@ public class StudentReadController {
         return students.importRows(scope, batchId, status, limit);
     }
 
+    @GetMapping("/imports/usage")
+    public Object importUsage(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestParam(defaultValue = "30") int days,
+            @RequestParam(defaultValue = "5000") int limit) {
+        requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:import");
+        Long scope = TenantContext.get().isSuperAdmin() ? null : TenantContext.get().schoolId();
+        requireStudentModule(scope);
+        return students.importUsageDaily(scope, days, limit);
+    }
+
     @GetMapping("/review-campaigns")
     public Object reviewCampaigns(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,

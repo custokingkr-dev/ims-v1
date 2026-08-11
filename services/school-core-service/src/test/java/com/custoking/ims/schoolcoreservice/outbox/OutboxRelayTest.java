@@ -130,6 +130,18 @@ class OutboxRelayTest {
     }
 
     @Test
+    void publishBatch_ordersByNumericDatabaseId_notTextProjectionAlias() throws Exception {
+        insertOutboxEventWithId(10L, "SchoolUpserted:numeric-10", 10L);
+        insertOutboxEventWithId(2L, "SchoolUpserted:numeric-2", 2L);
+        OutboxRelay oneRowRelay = new OutboxRelay(jdbc, capturingPublisher, "tenant_school", 1);
+
+        assertThat(oneRowRelay.publishBatch()).isEqualTo(1);
+        assertThat(capturingPublisher.published)
+                .extracting(EventEnvelope::eventId)
+                .containsExactly("school-core:2");
+    }
+
+    @Test
     void publishFailure_isDurablyDeadLetteredAtConfiguredLimit() throws Exception {
         long id = insertOutboxEvent("SchoolUpserted:failure-" + System.nanoTime(), "School", 55L);
         DomainEventPublisher failing = envelope -> { throw new IllegalStateException("publisher unavailable"); };
@@ -172,6 +184,20 @@ class OutboxRelayTest {
                 return rs.getLong(1);
             }
         }
+    }
+
+    private void insertOutboxEventWithId(long id, String aggregateId, long schoolId) {
+        jdbc.sql("""
+                        INSERT INTO tenant_school.outbox_events
+                            (id, event_key, event_type, aggregate_type, aggregate_id, school_id, payload)
+                        VALUES (:id, :aggregateId, 'school.upserted.v1', 'School', :aggregateId,
+                                :schoolId, CAST(:payload AS jsonb))
+                        """)
+                .param("id", id)
+                .param("aggregateId", aggregateId)
+                .param("schoolId", schoolId)
+                .param("payload", "{\"id\":\"" + aggregateId + "\"}")
+                .update();
     }
 
     private Timestamp publishedAt(long id) {

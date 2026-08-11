@@ -14,27 +14,37 @@ Evidence was taken from:
 - focused Java/Testcontainers tests and local Terraform/PowerShell validation;
 - current primary Google Cloud documentation.
 
-No GCP resource was created, updated, deleted, deployed, restarted, or restored in this workstream.
-All scripts that can mutate GCP default to dry-run and use explicit apply/production/disruption gates.
+The workstream performed bounded **dev-only** live mutations after explicit authorization: dev Cloud
+SQL start/resize/restart, synthetic fixture writes, Pub/Sub/Scheduler certification, one disposable
+history clone, and one disposable PITR clone/export. Every temporary clone/object/IAM grant created by
+the completed drills was removed and independently rechecked. Production was never invoked. Scripts
+continue to default to dry-run and retain explicit apply/production/disruption/cost gates.
 
 ## 2. Executive result
 
-The repository now contains the missing implementation paths, but the live certification remains
-deliberately incomplete.
+The repository implementation and most live dev functional/recovery gates are complete, but the two
+authoritative 300-VU capacity gates **failed**. The four-hour write soak stopped at 2h28m when the
+Cloud SQL CPU guard saw three consecutive samples above 80%. The subsequent mixed school-morning
+read run completed but failed latency and status gates. Diagnosis found two source-proven query
+defects: an attendance daily-summary N+1 query and an outbox relay ordering alias that forced a
+1.38-million-row scan/sort for every 100-row claim. Both are corrected and covered by focused tests,
+but are not yet deployed. Production deployment remains blocked until the fixes are deployed in dev,
+the exact synthetic backlog is removed under the documented safety preconditions, and both
+authoritative profiles pass on a clean `db-custom-4-7680` rerun.
 
 | Capability | Repository state | Live state | Gate |
 | --- | --- | --- | --- |
-| Notification push consumer | OIDC-only mode implemented and tested | No notification subscription | Deploy platform revision, then provision dev |
-| Notification topology | Dry-run-first OIDC/DLQ provisioning script | Topics exist; subscriptions absent | Dev change approval |
-| Reporting Pub/Sub resilience | Retry/DLQ provisioning and replay tooling | OIDC dev push exists; no DLQ/retry policy | Dev change approval |
-| Scale-to-zero outbox/projections | Request-driven drain endpoints plus Scheduler provisioning | Scheduler API disabled; zero Scheduler jobs | Enable API and create four dev jobs |
-| Outbox publisher failures | Bounded retry, backoff, terminal state, structured health | New migrations/code not deployed | Dev deploy and failure injection |
-| Four-hour soak | Guarded 300-VU harness implemented | Not executed | Four-hour dev window and short-lived tokens |
-| Morning burst | Guarded 300-VU burst profile implemented | Not executed | Approved dev window |
-| Long-history plans | Read-only capture and evidence threshold implemented | Not executed; dev SQL stopped | 7.3M-row/two-year fixture required |
-| Connection budget | Automated audit passes | Live peaks still require soak evidence | Dev 160/200 configured ceiling; prod 80/200 |
-| Controlled restart | Guarded dev drill and RTO evidence implemented | Not executed | Disruption approval |
-| PITR | Existing isolated-clone drill enhanced with measured RPO/RTO fields | Production policy enabled; drill not executed here | Recovery operator, time, and temporary-instance cost |
+| Notification topology | OIDC/DLQ tooling deployed in dev | Valid/idempotent and poison-to-DLQ probes passed with logging provider | Real consented MSG91 acceptance remains |
+| Reporting Pub/Sub resilience | Retry/DLQ and guarded replay implemented | Valid direct-DLQ replay was processed once; inspection queues returned empty after cleanup | Operational cause review remains mandatory before replay |
+| Scale-to-zero outbox/projections | Request-driven drains and four OIDC Scheduler jobs deployed | Authoritative cold-instance marker drained exactly once; jobs returned to `PAUSED` | Resume only for bounded test/approved operation |
+| Outbox publisher failures | Bounded retry/backoff/terminal state and health reporting deployed | Focused tests pass; normal-path outbox-to-inbox proof passed | Live repeated publisher-failure injection remains |
+| Four-hour soak | Guarded 300-VU harness and evidence capture complete | **Failed** at 2h28m on three SQL CPU samples: 82.15%, 81.37%, 82.26%; application gates were still passing | Deploy fixes, clean only exact synthetic backlog, rerun full 4h10 profile |
+| Morning burst | 200-VU cost gate and 300-VU sizing gate executed | 2-vCPU failed at 300 VUs; 4-vCPU passed full profile | Preserve exact measured tier; workload distribution remains an assumption |
+| Mixed school-morning reads | Six authoritative GET flows, per-VU login refresh, per-flow latency/status gates | **Failed**: 13.0426% HTTP failures, overall p95 55.015 s, p99 59.998 s | Deploy N+1/relay fixes and rerun on a clean backlog |
+| Long-history plans | 7.3M-row seed and plans captured on disposable clone | `historyCertified=true`; clone deleted | Distributed all-school history/partition decision remains |
+| Connection budget | Automated audit passes | Peak observed backend count was 109, below the 140 stop guard | Dev 160/200 configured ceiling; prod 80/200 |
+| Controlled restart | Guarded dev drill implemented | Passed; all five services healthy by 63.52 s | Repeat after material pool/network changes |
+| PITR | Fail-closed dev/prod helper with confirmed cleanup evidence | Dev restore/export passed; source backup/PITR settings restored disabled | Production drill remains protected and schema-only |
 | SLO/alerts | Cloud SQL and Pub/Sub backlog alert definitions added | 99 existing policies and one enabled operator channel; new definitions not applied | Terraform plan/reconciliation/apply |
 
 Nothing in this document authorizes production rollout. Repository completion is not operational
@@ -44,23 +54,20 @@ certification.
 
 ### 3.1 Pub/Sub
 
-The project contains exactly these four application topics:
+The project contains the reporting and notification dev/prod topics plus their dev dead-letter topics.
+Dev has both OIDC push subscriptions, explicit 10â€“600 second retry, ten-attempt dead-letter policy,
+and durable inspection subscriptions. Production was not changed by this workstream.
+
+The application source topics are:
 
 - `ims-reporting-events-v1-dev`
 - `ims-reporting-events-v1-prod`
 - `ims-notifications-events-v1-dev`
 - `ims-notifications-events-v1-prod`
 
-Only two subscriptions exist:
-
-- `ims-reporting-service-push-dev`
-- `ims-reporting-service-push-prod`
-
-There is no dev or production notification subscription. The dev reporting subscription uses the
-dedicated reporting push service account and a query-free OIDC endpoint. Production still uses the
-legacy identity/query-credential posture and must be migrated separately. Neither reporting
-subscription had an attached dead-letter policy or explicit exponential retry policy at inspection
-time.
+The dev reporting and notification subscriptions use dedicated identities and query-free OIDC
+endpoints. Production reporting still uses its earlier posture and production notification remains
+outside this dev rollout.
 
 The codebase contains a notification receiver but the current-state event inventory did not verify a
 business producer publishing notification requests. Therefore the topology decision is:
@@ -77,17 +84,27 @@ application already exercises the topic in normal business flows.
 
 ### 3.2 Cloud Run and async execution
 
-All 14 dev/prod Cloud Run services had `minScale=0` and request-based CPU throttling enabled. This is
+All 14 dev/prod Cloud Run services have `minScale=0` and request-based CPU throttling enabled. This is
 the correct low-idle-cost posture for request-serving services, but an in-container `@Scheduled`
 thread cannot provide a durable wake-up guarantee when the service is at zero. Google documents that
 background work needs allocated CPU/minimum instances, while Scheduler can invoke an authenticated
 Cloud Run service on demand. The chosen design keeps `minScale=0` and uses OIDC Scheduler requests.
 
-Cloud Scheduler API was disabled and no Scheduler jobs existed. No API was enabled during this work.
+Four dev jobs now exist in `asia-south1` because Scheduler is unavailable in Delhi. Their request
+targets remain in `asia-south2`. Every job is `PAUSED` outside bounded proof; the final controlled
+run returned all four to `PAUSED` immediately after invocation.
 
 ### 3.3 Cloud SQL
 
-Read-only inspection found:
+The original dev resting state was `STOPPED`, `db-f1-micro`, activation `NEVER`, 10 GiB PD-SSD,
+automated backups disabled, and PITR disabled. Certification moved it through `db-custom-2-7680` and
+`db-custom-4-7680`. During the failed soak the source disk automatically grew from 10 to 15 GiB;
+Cloud SQL cannot shrink that disk in place. At the final reliability handoff the intended retained
+state is `db-custom-4-7680`, `RUNNABLE`, activation `ALWAYS`, 15 GiB, backup/PITR disabled so the root
+workstream can deploy and rerun without another restart. Final cost cleanup must explicitly restore
+the cheaper tier and stop posture; production was not changed.
+
+Initial read-only inspection found:
 
 | Instance | State | Tier | Availability | Activation |
 | --- | --- | --- | --- | --- |
@@ -219,6 +236,15 @@ Pulling in dry-run temporarily leases messages, so operators must still coordina
 script intentionally does not provide an automatic replay loop: poison messages must not be cycled
 without diagnosis.
 
+Live dev proof used a unique valid canonical envelope published directly to the reporting DLQ.
+Dry-run pulled one message and acknowledged none. Apply republished one payload to
+`ims-reporting-events-v1-dev` and acknowledged it only after publish success. The push endpoint
+returned HTTP 204 at `2026-08-11T00:43:06.760243Z`; database evidence showed one reporting inbox
+row, `processed=1`, `failed=0`. This proves the replay mechanism, not automatic dead-letter routing.
+A first shell-quoted probe encoded invalid JSON, was allowed to reach the DLQ, matched by its unique
+marker, and was acknowledged **without replay** during cleanup. Both inspection subscriptions were
+empty before testing and the reporting inspection subscription was returned empty afterward.
+
 The reporting processor already leases rows with `FOR UPDATE SKIP LOCKED`, reclaims stale five-minute
 processing leases, retries failed rows with increasing delays, and dead-letters at five processing
 failures. New focused tests prove a projector exception calls `markFailed` and a reclaimed successful
@@ -269,6 +295,22 @@ Four jobs therefore add at most one billable job (US$0.10/month) if the account-
 otherwise unused. Invocation/Cloud Run/SQL usage remains usage-billed. This is materially cheaper
 than four always-warm instances.
 
+The authoritative proof used marker `scheduler-zero-drain-20260811t0028z`. Cloud Monitoring first
+reported `active=0` and `idle=0` for all four services. A database-only seed then showed one pending
+row per domain with `published=0`, `attempts=0`, and no inbox rows. Each job was resumed, manually
+invoked once, and paused in a `finally` block. Request evidence was:
+
+| Target | Result | Latency |
+| --- | --- | ---: |
+| School outbox relay | HTTP 200 at `00:31:07.705997Z`; cold instance log present | 20.203 s |
+| Operations outbox relay | HTTP 200 at `00:31:20.011838Z` | 10.170 s |
+| Billing outbox relay | HTTP 200 at `00:31:31.315129Z` | 10.449 s |
+| Platform async drain | HTTP 200 at `00:31:42.634875Z` | 0.042 s |
+
+Terminal state was exact: every outbox row had `published=1`, `attempts=1`, `deadLettered=0`; the
+reporting inbox had three rows, all `PROCESSED`, zero failed. The earlier diagnostic marker is not
+Scheduler proof because in-process schedules drained it before every service reached zero.
+
 ### 7.4 Outbox correctness hardening
 
 The previous scheduled method called a transactional batch method from the same object. That path
@@ -295,10 +337,12 @@ Structured outbox health reporters now emit the exact fields expected by existin
 - `health.outbox.oldestPendingAgeSeconds`
 
 This fixes the prior mismatch where Terraform expected those log fields but domain services did not
-emit them. Health collection uses independent scalar subqueries backed by partial indexes; it does
-not aggregate-scan the indefinitely growing published history every minute. Relay indexes match the
-actual ordering (`id` for school/operations and `created_at,id` for billing), while a separate
-`occurred_at` partial index supports oldest-pending lookup.
+emit them. Health collection does not scan published history, but its exact pending count must still
+walk the partial pending index. The failed soak demonstrated that this is material when a synthetic
+test creates more than one million pending rows; the clean rerun must determine whether it remains
+material after the relay claim fix. Relay indexes match the intended ordering (`id` for
+school/operations and `created_at,id` for billing), while a separate `occurred_at` partial index
+supports oldest-pending lookup.
 
 The additive Flyway migrations create indexes with ordinary `CREATE INDEX`. PostgreSQL permits reads
 but blocks concurrent writes while each index is built. Existing unpublished indexes are retained
@@ -311,6 +355,35 @@ Rollback compatibility is favorable: the migrations are additive, older code ign
 and the old unpublished-row query still finds retry/dead-letter rows. During rollback, pause Scheduler
 jobs and change push subscriptions to pull before reverting traffic if duplicate side effects are a
 concern. Do not delete inbox/outbox/DLQ rows.
+
+### 7.5 Load-discovered backlog and relay correction
+
+The write soak repeatedly updated each synthetic section throughout the four-hour profile. This is a
+deliberate sustained-write stress model, not a realistic claim that each section is registered again
+every few seconds in a normal school day. It appended 1,604,148
+`attendance-daily.upserted.v1` events. At `2026-08-11T05:34Z`, the tenant-school outbox contained
+1,604,452 total rows: 190,779 published, 1,413,673 pending, zero dead-lettered. Every pending row was
+an attendance event for one of the 100 verified `SCALE-%` schools. The relay advanced only 9,700 rows
+in 25 minutes (6.47/s), which would have required approximately 60.7 hours to drain that snapshot.
+
+The deployed claim selected `id::text AS id` and then used unqualified `ORDER BY id`. PostgreSQL
+resolved the order expression to the text projection alias, not the numeric table column. Live
+`EXPLAIN` therefore showed a sequential scan and sort over approximately 1.38 million eligible rows
+before `LIMIT 100`, with estimated startup cost 214,629.32. The correction aliases the table and uses
+`ORDER BY o.id`. Against the same live backlog, the planner selected `idx_ts_outbox_ready`, startup
+cost 0.43 and `Limit` total cost 16.68. The identical numeric-ID defect was corrected in the
+operations relay. Billing orders by `created_at` and did not have this alias collision. Evidence is
+`artifacts/load-certification/outbox-relay-qualified-plan-202608110550.json`.
+
+The cleanup action is intentionally narrower than fleet cleanup. `ScaleBacklogCleanup` verifies the
+expected count of `SCALE-%` schools, rejects any non-scale school in the reserved range, captures
+inside/outside counts, and deletes only scale-scoped rows from
+`tenant_school.outbox_events` and `reporting.reporting_event_inbox`. It never deletes schools,
+students, attendance source rows, or reporting facts. Disposable PostgreSQL 16 validation proved
+both the successful scoped delete and transactional rollback when a non-scale reserved ID exists.
+It must not run until all four Scheduler jobs are paused, reporting Pub/Sub undelivered messages are
+zero, relevant Cloud Run services are idle, the source changes are reviewed, and the root operator
+approves the exact execution.
 
 ## 8. Connection budget
 
@@ -327,36 +400,79 @@ Current calculated ceilings:
 
 The dev value is a configuration ceiling, not observed concurrent use. It leaves exactly the 40
 reserved connections; increasing any dev max instance or pool without changing another value must
-fail review. The 300-VU test previously observed 68 backends, which is below the 140 stop guardrail.
+fail review. The full 300-VU/4-vCPU burst observed 99 backends, below the 140 stop guard. The
+2-vCPU rejection observed 94; connections were not the limiting resource.
 
 ## 9. Load certification harness
 
-`scripts/invoke-dev-load-certification.ps1` has two profiles:
+`scripts/invoke-dev-load-certification.ps1` has three profiles:
 
 | Profile | VUs | Ramp | Hold | Purpose |
 | --- | ---: | --- | --- | --- |
 | `Soak` | 300 | 5m up/down | 4h | sustained approved ceiling |
 | `MorningBurst` | 300 | 30s up, 2m down | 15m | synchronized morning arrival |
+| `MixedMorning` | 300 | 1m up/down | 15m | distributed read-heavy school morning |
 
 Safety controls:
 
 - dev/localhost URLs only;
 - explicit `-AllowScaleWrites`;
-- short-lived tokens only from `K6_ACCESS_TOKENS`, never written to evidence;
+- fixed short-lived tokens or per-VU synthetic login credentials, never written to evidence; each VU
+  refreshes login before the 15-minute application-token expiry during a long soak;
 - refuses values above the currently approved 300-VU boundary;
 - requires dev SQL `RUNNABLE`;
-- polls authoritative Cloud Monitoring CPU and PostgreSQL backend metrics every minute;
-- stops after three consecutive CPU samples at/above 80% or connection samples at/above 140;
+- polls authoritative Cloud Monitoring CPU, PostgreSQL backends, and
+  `database/memory/components{component="Usage"}` every minute;
+- stops after three **distinct metric timestamps** at/above CPU 80%, Usage memory 90%, or 140
+  backends;
+- refreshes Monitoring credentials and retries one 401 once; three consecutive collection failures
+  still fail closed;
+- retains a Windows process handle, records a numeric k6 exit code, and fails closed if unavailable;
 - retains k6 summary/stdout/stderr and a secret-free guardrail evidence JSON.
 
-This workstream did not wait four hours or start the stopped dev database. The harness is ready, but
-both profiles remain unpassed until their evidence files exist and the async backlog/tenant checks
-also pass.
+Measured results:
+
+| Shape/profile | Result | CPU | Usage memory | Backends | HTTP/errors | Attendance write p95/p99 |
+| --- | --- | ---: | ---: | ---: | --- | ---: |
+| `db-custom-2-7680`, 300 VU | **Stopped/fail** after three CPU breaches | 83.52% | 48.638% | 94 | 120,816 / 0 before stop | 445.45 / 840.14 ms |
+| `db-custom-2-7680`, 200 VU | App thresholds pass; exit-code capture limitation | 58.0% | 48.087% | 92 | 185,060 / 2 EOF | 126.73 / 186.29 ms (p99 from stdout) |
+| `db-custom-4-7680`, 300 VU first attempt | Inconclusive; stopped on Monitoring 401 | 48.62% | 46.917% | 85 | partial only | not a capacity pass |
+| `db-custom-4-7680`, 300 VU full rerun | **Pass**, k6 exit 0 | 58.29% | 48.423% | 99 | 276,923 / 38 (0.013722%, all 429, no 5xx) | 115.817 / 262.703 ms |
+| `db-custom-4-7680`, 300 VU 4h soak | **Stopped/fail** at 2h28m on three CPU breaches | 82.26% | 48.089% | 94 | 2,405,050 / 121 (0.005031%, all 429, no 5xx) | 350.45 / 626.16 ms |
+
+VU-to-population mapping is a planning assumption, not evidence of real school-day concurrency.
+Production sizing must use observed per-school arrival curves. Delhi list prices captured on the
+evidence date were US$0.0496/vCPU-hour and US$0.0084/GiB-hour: 2 vCPU/7.5 GiB is approximately
+US$0.1622/hour, while 4 vCPU/7.5 GiB is US$0.2614/hour (US$190.82 at 730 hours), before
+storage/network/backup. Four vCPU passed the short burst but failed the pre-fix sustained CPU gate;
+it is not yet a certified production shape. The next supported custom-core step, 6 vCPU/7.5 GiB, is
+approximately US$0.3606/hour (US$263.24 at 730 hours), an additional US$72.42/month. Cost discipline
+requires rerunning the source fixes on 4 vCPU first; scale to 6 vCPU only if the clean, fixed run still
+proves a CPU bottleneck.
+
+The mixed profile uses the deployed GET contracts for student pagination, command-center,
+daily attendance summary, fee structure, fee defaulters, and attendance summary reporting. Three of
+300 VUs map to each reserved school; each VU rotates one flow per iteration, logs in independently,
+and refreshes before token expiry. Each flow must satisfy p95 below 800 ms and p99 below 2,000 ms,
+must produce 2xx samples, and has explicit zero-4xx/zero-5xx counters. A live one-user preflight
+proved all six routes return HTTP 200. Its two cold student-list samples had p95 1.18 s, so that
+14-second smoke was intentionally not called a latency pass and the master read gate was not
+weakened. The full 15-minute run failed: 34,395 requests included 4,486 failures (13.0426%), with
+794 HTTP 4xx and 2,433 HTTP 5xx plus client/network timeouts. Overall p95/p99 were
+55.015/59.998 seconds. Student list, daily attendance, fee structure and attendance report all had
+p95 above 52 seconds; dashboard and fee-defaulter p95 passed but their p99 exceeded six seconds.
+Cloud Run logs tied the 5xx responses to the four failing data-heavy flows. Source review then found
+`dailySummary` executing one student-count query per section (250 extra queries for the 10,000-student
+school). It now obtains school-scoped enrollment counts in one grouped join; a focused PostgreSQL 16
+round-trip suite passes 8/8, including an empty-section boundary case. This fix is not certified until
+deployed and the same 300-VU profile passes.
 
 ## 10. Long-history query plans
 
-The scale-fixture tool now supports `-Action QueryPlans`. It executes a read-only transaction with a
-60-second statement timeout and captures JSON `EXPLAIN (ANALYZE, BUFFERS, WAL)` for:
+The scale-fixture tool now supports `LongHistorySeed` and `QueryPlans`. Plan capture executes only
+SELECT statements against application tables with a 60-second timeout; its transaction is
+technically read-write solely because PostgreSQL requires that mode for session-local temporary
+result tables. It captures JSON `EXPLAIN (ANALYZE, BUFFERS, WAL)` for:
 
 - school-scoped student directory pagination;
 - school-scoped student search;
@@ -377,8 +493,25 @@ Required acceptance evidence per plan:
 - sort method/memory;
 - p95/p99 API latency from the matching workload.
 
-The query-plan action was not executed because dev SQL was stopped and the required long-history
-fixture was not present.
+The history seed ran on disposable clone `custoking-dev-history-cert-08110056`, never on the source.
+It created exactly 7,300,000 detailed attendance rows over 730 days for school `900000000`, plus
+182,500 daily and 182,500 reporting fact rows. Database size was 5,442,034,711 bytes. Total fixture
+attendance was 7,590,000 because other synthetic schools already had current-day attendance. The
+clone auto-grew from 10 to 15 GiB and was deleted at `2026-08-11T01:27:20Z`; the source remained
+10 GiB.
+
+`historyCertified=true`. Exact plans:
+
+- attendance detail used `idx_attendance_student_records_school_date`, returned 500 rows, and
+  completed in 0.272 ms;
+- the reporting aggregate chose a parallel sequential scan over approximately 190,553 synthetic fact
+  rows and completed in 71.244 ms; the existing school/date index was not selected;
+- student page used `students_pkey` and completed in 4.163 ms;
+- student search used the school-id index then filtered 10,000 school rows in 21.728 ms.
+
+Do not claim every plan avoids sequential scans. A new index is not justified solely by the 71 ms
+synthetic plan. Production-like multi-school distribution, growth, partitioning, and matching API
+latency under concurrent historical reporting remain gates.
 
 ## 11. Recovery drills
 
@@ -392,27 +525,44 @@ token until all five recover. Evidence contains SQL command time and per-service
 The script does not call a write API after recovery. The authenticated 40-case smoke should still be
 run separately to prove transactional writes and tenant isolation.
 
+Live dev result: **passed**. The restart command completed in 19.71 seconds. Authenticated health
+returned HTTP 200 for school-core at 44.18 s, operations at 46.49 s, platform at 48.73 s, billing at
+51.23 s, and identity at 63.48 s; all five were recovered by 63.52 s. Evidence:
+`artifacts/recovery/cloudsql-restart-dev-20260811004522.json`.
+
 ### 11.2 PITR
 
-The existing production restore workflow already creates an isolated PITR clone, checks region/state
-and database presence, exports the restored database for non-empty validation, and removes temporary
-access, export, and instance. Evidence now adds:
+The restore helper defaults to dev. Production requires all of: `Environment=prod`, the exact source
+`custoking-db-prod`, and `-AllowProductionRecoveryDrill`; production validation uses Cloud SQL Admin
+REST with `sqlExportOptions.schemaOnly=true` so the drill never copies production rows/PII into the
+bucket. Dev apply requires `-AllowDevRecoveryCost`. The helper checks region/state and database
+presence, verifies a non-empty export, and confirms removal of the object, temporary bucket IAM, and
+clone before evidence can become `PASSED`. It does **not** validate row counts or checksums.
+
+Evidence records:
 
 - recovery-point age seconds;
 - clone-ready seconds;
 - validation RTO seconds.
 
-This was not executed. It requires the recovery operator, validation bucket, production-environment
-approval, enough time for a Cloud SQL clone/export, and approval for temporary Cloud SQL/storage
-cost. A successful export validates restore readability, not application semantic correctness; a
-future approved drill should add invariant counts/hashes and a temporary application connection.
+The dev drill temporarily enabled automated backup/PITR, verified on-demand backup
+`1786414443751`, and queried the official recovery window: earliest
+`2026-08-11T02:13:29.515Z`, latest `02:14:38.758307933Z`. Restore point `02:14:20Z` was inside the
+window. The clone became RUNNABLE in 539.49 s; a 65,248,345-byte full **synthetic** export completed
+validation at 582.57 s. `dataRowsValidated=false`. Final evidence was written only after clone,
+object, and temporary IAM absence were independently confirmed; all cleanup flags are true. The two
+certification-created backups were deleted and the source returned to backup disabled/PITR false,
+10 GiB. Evidence: `artifacts/recovery/custoking-dev-restore-drill-20260811021651.json`.
+
+This validates source readability and cleanup, not application semantic correctness. A future
+approved drill should add non-PII invariant hashes/counts and a temporary application connection.
 
 ## 12. Alert coverage added
 
 Terraform now defines:
 
 - Cloud SQL CPU >80% for five minutes;
-- Cloud SQL memory >85% for ten minutes;
+- Cloud SQL `Usage` memory component >90% for ten minutes;
 - PostgreSQL connections >140 for five minutes;
 - reporting and notification subscription backlog >100 for five minutes;
 - oldest unacknowledged message >300 seconds for five minutes.
@@ -420,7 +570,7 @@ Terraform now defines:
 These use official GA metrics:
 
 - `cloudsql.googleapis.com/database/cpu/utilization`
-- `cloudsql.googleapis.com/database/memory/utilization`
+- `cloudsql.googleapis.com/database/memory/components` filtered to `component="Usage"`
 - `cloudsql.googleapis.com/database/postgresql/num_backends`
 - `pubsub.googleapis.com/subscription/num_undelivered_messages`
 - `pubsub.googleapis.com/subscription/oldest_unacked_message_age`
@@ -433,7 +583,8 @@ no series until provisioning.
 Dev apply result on 2026-08-11: the first full plan was rejected because it proposed deleting five
 pre-existing uptime-check invoker bindings. No destructive plan was applied. A targeted additive plan
 was then machine-checked as `9 add, 0 change, 0 destroy` and applied: one log metric plus eight enabled
-alert policies. Live enumeration reports 107 policies total; all eight expected SQL/Pub/Sub/notification
+alert policies. Subsequent operational alert additions bring live enumeration to 110 policies; the
+expected SQL/Pub/Sub/notification
 policies exist and each references the existing operator notification channel. A synthetic alert
 delivery/clear test is still required before OBS-01 can close.
 
@@ -487,12 +638,25 @@ domain service executed the scalar health query against its migrated schema and 
 dead-letter, and oldest-age values. The focused evidence table aggregates the latest selected suites;
 no claim is made that every service suite was rerun.
 
+The later integrated repository validation reported 1,016 regular Java tests with zero failures and
+four fresh opt-in integration tests with zero failures. Frontend validation reported 146 passing tests,
+both builds passing, React Router 7.18.2, and zero npm-audit findings. Those wider counts belong to the
+coordinated root validation; the 32-case table above is this workstream's focused subset.
+
+Post-load diagnosis added three PostgreSQL 16 focused results: attendance daily-summary round-trip
+8/8, school-core outbox relay 5/5, and operations outbox relay 5/5. The two relay suites include a
+numeric-ID ordering regression (`2` must be claimed before `10`) that fails if `ORDER BY` resolves to
+the projected text alias.
+
 ### Scripts and infrastructure
 
-- Nine changed/new PowerShell files parsed with zero syntax errors.
-- Notification topology dev dry-run: source topic present; subscription/DLQ absent; zero mutation.
-- Reporting resilience dev dry-run: existing subscription present; DLQ absent; zero mutation.
-- Scheduler dev dry-run: API disabled; four exact OIDC jobs resolved; zero mutation.
+- Changed/new reliability PowerShell files parsed with zero syntax errors; the pinned k6 script
+  inspection also completed after providing its required safe environment variables.
+- Exact backlog cleanup passed a disposable PostgreSQL 16 scope test and its non-scale reserved-ID
+  rejection test; the rejected transaction preserved both scale and non-scale rows.
+- Notification and reporting topology are deployed in dev with exact OIDC/retry/DLQ settings;
+  production was not mutated.
+- Four exact Scheduler jobs are deployed and returned to `PAUSED` after the cold-instance proof.
 - Connection audit: dev `160/200` and prod `80/200`, both pass a 40-connection reserve.
 - Terraform `fmt -check` and `validate`: pass.
 - `git diff --check`: pass at validation time.
@@ -513,28 +677,49 @@ no claim is made that every service suite was rerun.
 - Notification OIDC/DLQ and reporting retry/DLQ applies completed. Both endpoints are query-free,
   audience-bound, use dedicated service accounts, and have 10–600 second retry plus ten-attempt DLQ
   policies.
-- Cloud Scheduler is unsupported in Delhi (`asia-south2`). The script was corrected to use Mumbai
-  (`asia-south1`) only for Scheduler control-plane jobs while targeting Delhi services/data. Four
-  jobs were created, manually triggered concurrently, and showed fresh successful last-attempt times
-  with no error status: school-core, operations, billing outbox relay, and platform async drain.
-- After validation, all four jobs were paused and `custoking-db-dev` was stopped with activation
-  policy `NEVER`. This is the intentional low-cost dev resting state; jobs must be resumed only after
-  SQL is started for a bounded test window.
+- Cloud Scheduler is unsupported in Delhi (`asia-south2`), so only the Scheduler control plane is in
+  Mumbai (`asia-south1`). Four jobs exist and are `PAUSED`. The authoritative cold-instance marker
+  proved all three producer events published once and all three reporting inbox rows processed.
+- Reporting DLQ replay proved dry-run/no-ack and apply/republish-before-ack. The valid event processed
+  once; the invalid diagnostic was acknowledged without replay after exact-marker verification.
+- The 300,000-student fixture contains 100 schools, a 10,000-student largest school, and 7,576
+  sections. Initial seed completed in 76.52 seconds. The 7.3M/two-year extension was isolated on a
+  clone to avoid permanent source storage growth; that clone was deleted. The later write soak,
+  independently, caused the source disk to auto-grow to 15 GiB.
+- Controlled SQL restart passed with 63.52-second application RTO. The PITR clone became RUNNABLE in
+  539.49 seconds and validation completed in 582.57 seconds; final cleanup was confirmed.
+- The 2-vCPU/7.5-GiB shape failed the 300-VU CPU guard. Four vCPU/7.5 GiB passed the full short burst,
+  but the four-hour soak failed the sustained CPU guard after 2h28m and the subsequent mixed profile
+  failed latency/status gates. Exact evidence files are
+  `artifacts/load-certification/soak-20260811023532-evidence.json` and
+  `artifacts/load-certification/mixedmorning-20260811051124-evidence.json`.
+- Automated backup/PITR were returned to the original disabled state. Both certification-created
+  backups, the PITR clone, validation object, temporary IAM, history clone, and malformed DLQ probe
+  are absent. The 300,000-student fixture and `db-custom-4-7680` `RUNNABLE/ALWAYS` state are
+  intentionally preserved for root's deployed fix verification and authoritative reruns. The exact
+  synthetic outbox/inbox backlog and async/DLQ markers remain pending the guarded cleanup sequence;
+  no fleet/student cleanup has run. Root owns that execution, final fleet cleanup, resize to
+  `db-f1-micro`, and return to activation `NEVER`/`STOPPED`.
 - Terraform was explicitly reinitialized from an accidentally selected production backend to the
   dev state before planning. The destructive full plan was rejected; only the verified additive
   nine-resource dev plan was applied.
 
 ## 16. Gates that remain open
 
-1. Prove a queued outbox event drains while user traffic is idle/scaled to zero; exercise guarded
-   correction/replay after a known failure without duplicating a side effect.
-2. Run the 15-minute burst and four-hour soak with live metrics and short-lived tokens.
-3. Seed 7.3M two-year attendance rows for the 10,000-student school and capture query plans.
-4. Execute the controlled dev restart during an approved disruption window.
-5. Execute the isolated PITR clone/export/invariant drill with recovery approval and temporary cost.
-6. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
+1. Deploy the attendance daily-summary N+1 fix and numeric outbox-order fixes to dev; prove the live
+   school-core relay plan remains an index scan.
+2. With all Scheduler jobs paused, reporting Pub/Sub backlog at zero and relevant services idle,
+   execute the reviewed exact scale-backlog and marker cleanup. Preserve all 100 schools, 300,000
+   students, attendance source rows and reporting facts for the rerun.
+3. Rerun the full 4h10 300-VU soak and then the exact 300-VU mixed profile on clean
+   `db-custom-4-7680`. Both k6 thresholds and infrastructure guards must pass. If fixed 4 vCPU still
+   breaches CPU, test the least-next 6-vCPU shape rather than pre-allocating it continuously.
+4. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
    relay-job, trace-export, storage-growth, and cost-forecast alert coverage.
-7. Prove a dev traffic rollback and retained backlog.
+5. Prove a dev traffic rollback and retained backlog in the separate release-control workstream.
+6. Run a production-like all-school/multi-year reporting distribution test before selecting a new
+   index or partitioning scheme; the 71.244 ms synthetic parallel sequential scan is not enough.
+7. Replace planning VU-to-student mapping with observed school-day arrival/concurrency data.
 8. Provision/migrate production only after every dev gate passes; production reporting still has the
    legacy query-credential posture and production runtime IAM remains a separate rollout concern.
 

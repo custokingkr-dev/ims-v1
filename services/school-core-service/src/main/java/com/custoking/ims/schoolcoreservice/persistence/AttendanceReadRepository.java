@@ -90,13 +90,20 @@ public class AttendanceReadRepository {
         List<Map<String, Object>> sections = jdbc.sql("""
                 SELECT ss.id, ss.name, ss.teacher_name, ss.school_class_id, sc.name AS class_name,
                        ad.total_enrolled, ad.present_count, ad.absent_count,
-                       ad.late_count, ad.leave_count, ad.recorded_at, ad.updated_at, ad.locked
+                       ad.late_count, ad.leave_count, ad.recorded_at, ad.updated_at, ad.locked,
+                       COALESCE(enrolled.total_students, 0) AS total_students
                 FROM tenant_school.school_sections ss
                 JOIN tenant_school.school_classes sc ON sc.id = ss.school_class_id
                 LEFT JOIN %s ad
                        ON ad.section_id = ss.id
                       AND ad.attendance_date = :date
                       AND ad.academic_year_id = :academicYearId
+                LEFT JOIN (
+                    SELECT section_id, count(*) AS total_students
+                    FROM student.students
+                    WHERE school_id = :schoolId AND deleted_at IS NULL
+                    GROUP BY section_id
+                ) enrolled ON enrolled.section_id = ss.id
                 WHERE ss.school_id = :schoolId
                 ORDER BY sc.sort_order, ss.name
                 """.formatted(dailyTable))
@@ -109,7 +116,7 @@ public class AttendanceReadRepository {
                     Integer absentCount = rs.getObject("absent_count", Integer.class);
                     Integer lateCount = rs.getObject("late_count", Integer.class);
                     Integer leaveCount = rs.getObject("leave_count", Integer.class);
-                    long totalStudents = countStudents(rs.getString("id"));
+                    long totalStudents = rs.getLong("total_students");
                     boolean emptySection = totalStudents == 0;
                     boolean sectionLocked = emptySection || Boolean.TRUE.equals(rs.getObject("locked", Boolean.class));
                     String status = emptySection
