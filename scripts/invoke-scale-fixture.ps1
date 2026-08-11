@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("Status", "Diagnostics", "QueryPlans", "MixedQueryPlans", "AsyncSeed", "AsyncStatus", "AsyncCleanup", "ScaleBacklogCleanup", "Seed", "LongHistorySeed", "Cleanup")]
+    [ValidateSet("Status", "Diagnostics", "StatementStats", "QueryPlans", "MixedQueryPlans", "AsyncSeed", "AsyncStatus", "AsyncCleanup", "ScaleBacklogCleanup", "Seed", "LongHistorySeed", "Cleanup")]
     [string]$Action = "Status",
     [ValidateSet("dev")]
     [string]$Environment = "dev",
@@ -332,6 +332,50 @@ SELECT 'IMS_SCALE_OUTBOX_RELAY_PLAN|' || plan::text FROM ims_outbox_relay_plan;
         $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\capture-long-history-query-plans.sql"
         $sql = Get-Content $sqlPath -Raw
         $psqlVariables = "-v base_school_id=$BaseSchoolId -v academic_year_id=$AcademicYearId"
+    }
+    "StatementStats" {
+        $sql = @"
+CREATE TEMP TABLE ims_statement_stats(payload jsonb);
+DO `$`$
+BEGIN
+    IF to_regclass('pg_stat_statements') IS NULL THEN
+        INSERT INTO ims_statement_stats(payload)
+        VALUES (jsonb_build_object(
+            'available', false,
+            'reason', 'pg_stat_statements view is not installed in this database'));
+    ELSE
+        EXECUTE `$stats`$
+            INSERT INTO ims_statement_stats(payload)
+            SELECT jsonb_build_object(
+                'available', true,
+                'statsReset', (SELECT stats_reset FROM pg_stat_statements_info),
+                'statements', COALESCE(jsonb_agg(to_jsonb(r) ORDER BY r.total_exec_time_ms DESC), '[]'::jsonb))
+            FROM (
+                SELECT queryid,
+                       calls,
+                       round(total_exec_time::numeric, 3) AS total_exec_time_ms,
+                       round(mean_exec_time::numeric, 3) AS mean_exec_time_ms,
+                       rows,
+                       shared_blks_hit,
+                       shared_blks_read,
+                       temp_blks_read,
+                       temp_blks_written,
+                       left(regexp_replace(query, '[[:space:]]+', ' ', 'g'), 500) AS normalized_query
+                FROM pg_stat_statements
+                WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())
+                  AND userid <> (SELECT usesysid FROM pg_user WHERE usename = 'cloudsqladmin')
+                  AND query NOT LIKE '%%IMS_STATEMENT_STATS%%'
+                ORDER BY total_exec_time DESC
+                LIMIT 100
+            ) r
+        `$stats`$;
+    END IF;
+END `$`$;
+
+SELECT 'IMS_STATEMENT_STATS|' || payload::text
+FROM ims_statement_stats;
+"@
+        $psqlVariables = ""
     }
     "MixedQueryPlans" {
         $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\capture-mixed-morning-query-plans.sql"

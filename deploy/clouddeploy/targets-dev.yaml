@@ -57,7 +57,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
-  startup_cpu_boost: "true"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only

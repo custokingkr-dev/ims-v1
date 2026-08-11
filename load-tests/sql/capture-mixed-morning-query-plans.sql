@@ -28,10 +28,8 @@ BEGIN
     FOR plan_row IN EXECUTE format($plan$
         EXPLAIN (ANALYZE, BUFFERS, WAL, FORMAT JSON)
         SELECT COUNT(*) AS total,
-               COUNT(DISTINCT (s.class_id, s.section_id)) AS sections
+               COUNT(DISTINCT s.section_id) AS sections
         FROM student.students s
-        JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-        JOIN tenant_school.school_sections ss ON ss.id = s.section_id
         WHERE s.deleted_at IS NULL
           AND s.school_id = %s
     $plan$, v_school_id) LOOP
