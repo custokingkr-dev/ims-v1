@@ -57,3 +57,4 @@ jobs:
         if: always()
         with:
           sarif_file: trivy-${{ matrix.name }}.sarif
+          category: ${{ matrix.name }}

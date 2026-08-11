@@ -187,8 +187,8 @@ unbounded in-memory queue or new always-on service was added.
 The guard is acquired after the batch row lock and completed-result replay, so same-token retries remain
 durable and completed retries consume no admission slot. Local Testcontainers tests cover noisy-school
 rejection, use of the second slot by another school, third-school rejection and rollback release. Dev
-deployment and the same-school live contract are complete; distinct-instance evidence, preview expiry,
-monitoring, fixture cleanup and retry UX remain open.
+deployment, the same-school contract and the distinct-instance proof are complete. Final fixture cleanup also
+passed; preview expiry, telemetry export/alert verification and retry UX remain open.
 
 ### IMPL-05 — Tenant isolation and scale certification harness
 
@@ -260,10 +260,10 @@ covers successful confirmations. School ids are deliberately absent from custom 
 ledger aggregation provides tenant attribution without high-cardinality Monitoring series. This completes
 import attribution only—not the still-planned API/attendance/storage/provider ledger or exact tenant billing.
 
-The endpoint and commit `467cd4f8`'s fleet-query null-parameter correction are deployed on school-core
-revision `custoking-school-core-service-dev-00186-5pz`. The 40-route post-roll-forward and 40-route post-TLS
-gateway suites passed, but neither suite directly calls `/imports/usage`; a retained direct endpoint and
-metric-export artifact remains required before COST-02 is called dev-certified.
+The endpoint and commit `467cd4f8`'s fleet-query null-parameter correction were deployed. The guarded live
+10,000-student artifact directly reconciled `/imports/usage` to 20 previews, 20 completions, zero unfinished,
+10,000 attempted and 10,000 inserted rows with zero skipped/source bytes. The separate low-cardinality metric
+export and alert verification remain required before COST-02 is fully dev-certified.
 
 ### IMPL-08 — Guarded dev admission verifier
 
@@ -273,17 +273,19 @@ synthetic school, two distinct 500-valid-row preview tokens and a short-lived sc
 through an environment variable. It performs a read-only ledger preflight, starts both confirmations before
 awaiting either, and accepts exactly one 2xx plus one `school_import_active` 429 with `Retry-After: 5`.
 
-The artifact contains no tokens or student rows. Execution intentionally commits one synthetic batch, so
-cleanup approval and reconciliation remain prerequisites. The harness was parser/guard tested locally and
-then executed through the real dev gateway. Artifact
+The artifact contains no tokens or student rows. The harness was parser/guard tested locally and then
+executed through the real dev gateway. Artifact
 `artifacts/onboarding-certification/import-admission-live-20260811072816471.json` passed in 16.32 seconds:
 one confirmation returned HTTP 200 with 500 inserted/zero skipped, and one returned HTTP 429
 `school_import_active` with header/body retry values of five seconds. It contains no token or student PII and
-sets `cleanupRequired=true`. Because it does not record instance identity, it is not multi-instance evidence.
+sets `cleanupRequired=true`. A later proof,
+`artifacts/onboarding-certification/import-distinct-instances-20260811144241083.json`, reached two distinct
+hashed Cloud Run instances and passed the same 200/429 contract. Both cleanup obligations were subsequently
+fulfilled by the guarded final cleanup and stable-zero passes.
 
 ### IMPL-09 — Guarded full 10,000-student gateway verifier
 
-`scripts/verify-dev-onboarding-10000.ps1` is plan-only by default and has not been live-run. Remote writes
+`scripts/verify-dev-onboarding-10000.ps1` is plan-only by default and its guarded live dev run passed. Remote writes
 require `-Execute`, `-AllowRemoteDevWrites`, HTTPS, a distinct dev DNS label, exact expected-host equality
 and a reserved school id of at least `900000000`. It accepts authentication only from named environment
 variables containing either a short-lived token or a complete login email/password pair, never both. No
@@ -294,10 +296,9 @@ Before any preview or import write, the verifier reads the target school's class
 requires all `Scale Class 1..12` and `Scale 0001..0250` names and rejects a duplicated required section name.
 An incompatible target fails with the explicit fixture-preflight error before any import write. Successful
 evidence contains only aggregate preflight counts/timing and records `writesPerformed=false` for that phase.
-For the current 100-school fixture, full-10k verification must use school `900000000`, the only seeded school
-with all 250 sections. School `900000001` has 2,930 students and only `Scale 0001..0074`, so it is incompatible
-with the full-10k generator and is rejected before writes. It remains suitable for a separate 500+500 proof,
-which requires only `Scale 0001..0013`.
+For the executed 100-school fixture, full-10k verification used school `900000000`, the only seeded school
+with all 250 sections. The guarded run passed in 527.372 seconds with exact ledger and usage reconciliation,
+then the fixture was removed to stable zero. A future rerun must reseed the reserved dataset first.
 
 The fixed workload is 20 sequential JSON previews and confirmations with exactly 500 unique synthetic rows
 per batch, using existing SCALE fixture class/section names. Each preview must be 500 valid/zero errors/zero
@@ -306,11 +307,13 @@ retry and must preserve its batch/job result. The verifier then matches all 20 g
 and requires exact `/imports/usage` deltas of 20 previews/completions and 10,000 attempted/inserted rows, with
 zero unfinished, skipped or source bytes.
 
-Evidence is created only after every assertion passes, using atomic create-new/no-overwrite semantics. It
-contains only aggregate timings, counts, the reserved school id and explicit limitations, and always records
-`cleanupRequired=true`. The verifier intentionally performs no cleanup and does not claim photo, empty-school,
-parallel-school, distinct-instance, capacity or production certification. The narrow
-`scripts/audit-dev-onboarding-verifier.ps1` parser/source/plan audit and four pre-network negative gates pass.
+Evidence is created only after every assertion passes, using atomic create-new/no-overwrite semantics. The
+live artifact `artifacts/onboarding-certification/onboarding-10000-20260811142953183.json` contains only
+aggregate timings, counts, the reserved school id and explicit limitations, and records
+`cleanupRequired=true`. The verifier intentionally performed no cleanup; the obligation was fulfilled later
+by `final-cleanup-202608111453.json`, the idempotent projection pass and the stable-zero pass. This evidence
+does not claim photo, empty-school, parallel-school, disconnect/retry, capacity or production certification.
+The narrow parser/source/plan audit and four pre-network negative gates also pass.
 
 ## Planned Changes
 

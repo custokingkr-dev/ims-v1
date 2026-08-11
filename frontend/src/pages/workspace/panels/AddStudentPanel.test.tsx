@@ -8,6 +8,8 @@ vi.mock('../../../services/api');
 describe('AddStudentPanel class/section dropdowns', () => {
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   beforeEach(() => {
@@ -64,5 +66,33 @@ describe('AddStudentPanel class/section dropdowns', () => {
       expect(api.get).toHaveBeenCalledWith('/classes', { params: { schoolId: 7 } }));
     await waitFor(() =>
       expect(api.get).toHaveBeenCalledWith('/classes/c1/sections', { params: { schoolId: 7, active: true } }));
+  });
+
+  it('decodes an uploaded photo to a raster canvas without assigning an object URL to an image', async () => {
+    const drawImage = vi.fn();
+    const bitmap = { width: 640, height: 480, close: vi.fn() } as unknown as ImageBitmap;
+    const context = {
+      fillStyle: '',
+      fillRect: vi.fn(),
+      drawImage,
+    } as unknown as CanvasRenderingContext2D;
+    const decode = vi.fn().mockResolvedValue(bitmap);
+    vi.stubGlobal('createImageBitmap', decode);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context);
+
+    const { container, unmount } = render(<AddStudentPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
+    const file = new File(['raster-payload'], 'student.png', { type: 'image/png' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const preview = await screen.findByRole('img', { name: 'Student preview' });
+    expect(preview.tagName).toBe('CANVAS');
+    expect(container.querySelector('img[alt="Student preview"]')).toBeNull();
+    expect(decode).toHaveBeenCalledWith(file);
+    await waitFor(() => expect(drawImage).toHaveBeenCalledWith(bitmap, expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)));
+
+    unmount();
+    expect(bitmap.close).toHaveBeenCalledTimes(1);
   });
 });

@@ -121,7 +121,8 @@ token or student value. It does not contain an instance identifier, so it is not
 
 The successful request added 500 students and the rejected batch remained previewed. The artifact explicitly
 sets `cleanupRequired=true`; pre-soak status subsequently measured 300,501 students across the reserved
-100-school fixture. Reconciliation and final fixture cleanup therefore remain mandatory.
+100-school fixture. That obligation was later fulfilled after the full 10,000-row and distinct-instance
+proofs: guarded cleanup reached stable zero and the final status artifact records no scoped fixture data.
 
 After the application roll-forward, dev Cloud SQL was moved to `ENCRYPTED_ONLY`. Artifact
 `cloudsql-transport-dev-enforced-20260811T074206452Z.json` records 16/16 application clients encrypted and
@@ -457,20 +458,19 @@ Remove-Item Env:\IMS_DEV_IMPORT_GUARD_SECOND_TOKEN
 ```
 
 Execution intentionally commits one synthetic batch (normally 500 students); the rejected batch remains
-previewed. The operator must reconcile the successful batch and clean up the dedicated synthetic fixture
-using the approved dev cleanup process. The guarded live execution described above passed through the dev
-gateway; its successful batch and rejected preview still require reconciliation/cleanup. Parser/plan-only
-checks passed without network access; negative checks rejected a production-looking host, missing remote
-write opt-in, URI user-info, a missing actor token and an existing evidence path before network access. The
-existing evidence file's SHA-256 remained unchanged. Cloud Run's official
-[concurrency documentation](https://docs.cloud.google.com/run/docs/about-concurrency) confirms multiple
-requests and instances can execute concurrently. Because the live artifact does not record instance
-identity, it is not the required multi-replica evidence.
+previewed. The original gateway artifact passed and was later superseded by
+`artifacts/onboarding-certification/import-distinct-instances-20260811144241083.json`: two requests reached
+two distinct, hashed Cloud Run instance ids on the same revision, one inserted exactly 500 rows with HTTP
+200 and the other returned deterministic `school_import_active` HTTP 429 with `Retry-After: 5`. Parser and
+plan-only checks also passed without network access; negative checks rejected a production-looking host,
+missing remote-write opt-in, URI user-info, a missing actor token and an existing evidence path before
+network access. The successful batch, rejected preview and all reserved-scale data were subsequently removed
+by the guarded cleanup; the stable-zero and post-cleanup status artifacts confirm no scoped fixture remains.
 
 ## Guarded Full 10,000-Student Dev Verification Path
 
-`scripts/verify-dev-onboarding-10000.ps1` is implemented but has **not** been live-run. Without `-Execute`
-it prints `PLAN_ONLY_NO_NETWORK` and exits before reading credentials, creating a file or making a request.
+`scripts/verify-dev-onboarding-10000.ps1` is implemented and its guarded live dev run passed. Without
+`-Execute` it prints `PLAN_ONLY_NO_NETWORK` and exits before reading credentials, creating a file or making a request.
 Remote execution additionally requires HTTPS, a host with a distinct `dev` label, exact
 `-ExpectedDevHost` equality, `-AllowRemoteDevWrites`, and a reserved synthetic school id at or above
 `900000000`. Authentication is accepted only from a named environment variable containing a short-lived
@@ -482,29 +482,30 @@ Before any preview or import write, the verifier now reads the target school's c
 It requires all generated fixture names, `Scale Class 1..12` and `Scale 0001..0250`, and rejects a duplicated
 required section name. Failure raises the explicit fail-before-write error and records no import mutation;
 successful evidence includes aggregate fixture-preflight counts/timing with `writesPerformed=false`. In the
-current 100-school fixture, full-10k verification must use school `900000000`, the only seeded school with all
-250 sections. School `900000001` has 2,930 students and only `Scale 0001..0074`, so the preflight rejects it
-for this full-10k workload before any import write. It remains sufficient for a separate 500+500 admission
-proof, whose generated rows require only `Scale 0001..0013`.
+executed 100-school fixture, full-10k verification used school `900000000`, the only seeded school with all
+250 sections. School `900000001` had 2,930 students and only `Scale 0001..0074`, so the preflight would reject
+it for this full-10k workload before any import write. That fixture has now been removed; any rerun must first
+reseed the reserved dataset through the guarded fixture path.
 
-When explicitly authorized, the verifier will create exactly 20 sequential JSON preview/confirm batches of
+The authorized verifier created exactly 20 sequential JSON preview/confirm batches of
 500 unique synthetic rows using the existing `Scale Class 1..12` and `Scale 0001..0250` fixture names. Every
-preview must report 500 valid, zero error and zero warning rows. Every confirmation must report 500 inserted,
-zero skipped and `done=true`. Batch 20 is confirmed a second time and must return the same completed batch/job
+preview reported 500 valid, zero error and zero warning rows. Every confirmation reported 500 inserted,
+zero skipped and `done=true`. Batch 20 was confirmed a second time and returned the same completed batch/job
 result and 500 stored mappings without inserting a duplicate.
 
-Final reconciliation requires all 20 generated tokens to appear exactly once as `DONE` in the bounded batch
-ledger and requires exact two-day `/imports/usage` deltas: 20 previewed, 20 completed, zero unfinished,
-10,000 attempted, 10,000 inserted, zero skipped and zero JSON-source bytes. Only then is a PII/token-free
-aggregate timing artifact created with atomic no-overwrite semantics and `cleanupRequired=true`. The evidence
-explicitly states that this is sequential, single-school JSON-import proof: it does not cover photos,
-empty-school setup, concurrent schools, distinct instances, soak/capacity, privacy/provider policy or
-production. It performs no cleanup.
+Artifact `artifacts/onboarding-certification/onboarding-10000-20260811142953183.json` records the completed
+reconciliation: all 20 generated tokens appeared exactly once as `DONE`; `/imports/usage` deltas were exactly
+20 previewed, 20 completed, zero unfinished, 10,000 attempted, 10,000 inserted, zero skipped and zero
+JSON-source bytes; and the idempotent final retry preserved the 500-row result. The workload completed in
+527.372 seconds. The PII/token-free artifact was created atomically with `cleanupRequired=true`; that cleanup
+obligation was subsequently fulfilled. This remains sequential, single-school JSON-import proof and does
+not cover photos, empty-school setup, disconnect recovery, production capacity, privacy/provider policy or
+production.
 
 `scripts/audit-dev-onboarding-verifier.ps1` provides local parser/source checks, proves plan-only output and
 exercises production-host, reserved-school, missing-remote-opt-in and expected-host-mismatch rejection before
-any network path. These checks pass locally. Live execution still requires an approved window, a still-valid
-actor, exact fixture ownership and an approved reconciliation/cleanup procedure.
+any network path. These checks and the guarded live execution passed. A future rerun still requires an
+approved window, a still-valid actor, exact fixture ownership, reseeding and approved cleanup.
 
 ## Completion Ledger
 
@@ -520,10 +521,9 @@ actor, exact fixture ownership and an approved reconciliation/cleanup procedure.
 
 ## Remaining Production Blockers
 
-1. Run the full 10,000-student fixture through the real gateway and school-core service against compatible
-   synthetic school `900000000`, with at least two identified service instances, Cloud SQL telemetry,
-   disconnect/retry timing and no production data. The new fixture preflight must pass before any write. The
-   live 500+500 contention probe closes deployment/basic contract evidence only.
+1. Add and exercise disconnect/retry recovery plus operator acceptance for the 20-batch onboarding flow. The
+   full 10,000-student gateway proof and separate two-instance 500+500 contention proof passed; neither proves
+   browser/session resumption after an interrupted school onboarding.
 2. Add the persistent school-level onboarding session/ledger and resumable photo attachment; the current
    proof is 20 independent imports and browser-staged photos are not resumable.
 3. Build the approved export/offboarding state machine across all services and external/object systems,
@@ -536,14 +536,14 @@ actor, exact fixture ownership and an approved reconciliation/cleanup procedure.
    reconcile the versioned allocation. Current average/large-school figures remain modeled allocations,
    not billable attribution or margin evidence.
 7. Retain 4-vCPU/7.5-GiB as the cheapest measured full-soak planning default, but analyze and remediate the
-   failed MixedMorning rerun before claiming representative mixed-read capacity. Complete the final scoped
-   SCALE fixture/backlog cleanup and explicitly downsize or stop dev Cloud SQL afterward. Dev restart/PITR
-   passed, but production sizing approval and zonal-versus-HA recovery objectives remain unapproved; a
-   request-path soak pass does not validate failover.
+   failed MixedMorning reruns before claiming representative mixed-read capacity. Final scoped cleanup passed
+   to stable zero and dev Cloud SQL is stopped on `db-f1-micro`; production sizing approval and
+   zonal-versus-HA recovery objectives remain unapproved, and a request-path soak pass does not validate failover.
 8. Verify the new low-cardinality admission-rejection metric reaches dev telemetry and add the approved
    dashboard/alert; complete monitoring for database connections/CPU/storage, jobs/Pub/Sub, onboarding
    reconciliation, provider results and gross-cost forecast, with named operational owners.
 9. Rehearse rollback, backup restore, school support and incident/privacy escalation, then roll out in waves.
 
-Until these gates close, the defensible posture is a small, supervised pilot—not a commitment that 100-150
-schools can onboard concurrently or that the current structure is production-certified at 300,000 records.
+Until these gates close, even a production pilot remains blocked. The completed synthetic dev evidence is not
+a commitment that 100-150 schools can onboard concurrently or that the current structure is
+production-certified at 300,000 records.

@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -36,6 +37,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/student-photo-imports")
 public class StudentPhotoImportController {
+    private static final String X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options";
     private final PhotoImportService service;
     private final String studentToken;
 
@@ -157,15 +159,18 @@ public class StudentPhotoImportController {
     }
 
     @GetMapping("/{id}/result")
-    public ResponseEntity<String> result(
+    public ResponseEntity<byte[]> result(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable UUID id) {
         requireToken(token, "student:read");
+        byte[] csv = service.resultCsv(id).getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=student-photo-import-" + id + ".csv")
+                .header(X_CONTENT_TYPE_OPTIONS, "nosniff")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
-                .body(service.resultCsv(id));
+                .contentLength(csv.length)
+                .body(csv);
     }
 
     @ExceptionHandler(DrivePhotoImportException.class)

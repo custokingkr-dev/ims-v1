@@ -482,7 +482,8 @@ Require-Text $ContainerWorkflow @(
   "Trivy HIGH/CRITICAL gate",
   "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
   "ignore-unfixed: false",
-  'exit-code: "1"'
+  'exit-code: "1"',
+  'category: ${{ matrix.name }}'
 )
 
 $approvedActionPins = @{

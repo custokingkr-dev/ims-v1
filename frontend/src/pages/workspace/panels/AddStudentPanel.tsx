@@ -37,7 +37,7 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   const [studentForm, setStudentForm] = useState<StudentProfileFormState>(emptyStudentProfileForm());
   const [saving, setSaving] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreviewUrl, setPhotoPreviewUrl] = useState('');
+  const [photoBitmap, setPhotoBitmap] = useState<ImageBitmap | null>(null);
   const [photoError, setPhotoError] = useState('');
   const [photoFeedback, setPhotoFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoDragActive, setPhotoDragActive] = useState(false);
@@ -45,6 +45,9 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   const [photoOffsetX, setPhotoOffsetX] = useState(0);
   const [photoOffsetY, setPhotoOffsetY] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const photoPreviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const photoBitmapRef = useRef<ImageBitmap | null>(null);
+  const photoSelectionRef = useRef(0);
   const [classes, setClasses] = useState<StudentClassOption[]>([]);
   const [sections, setSections] = useState<StudentSectionOption[]>([]);
   const [activeSection, setActiveSection] = useState('student-form-details');
@@ -90,6 +93,32 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     });
   }, [sections]);
 
+  useEffect(() => {
+    const canvas = photoPreviewCanvasRef.current;
+    if (!canvas || !photoBitmap) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    const baseScale = Math.max(canvas.width / photoBitmap.width, canvas.height / photoBitmap.height);
+    const drawWidth = photoBitmap.width * baseScale;
+    const drawHeight = photoBitmap.height * baseScale;
+    context.drawImage(
+      photoBitmap,
+      (canvas.width - drawWidth) / 2,
+      (canvas.height - drawHeight) / 2,
+      drawWidth,
+      drawHeight,
+    );
+  }, [photoBitmap]);
+
+  useEffect(() => () => {
+    photoSelectionRef.current += 1;
+    photoBitmapRef.current?.close();
+    photoBitmapRef.current = null;
+  }, []);
+
   const updateStudentForm = (patch: Partial<StudentProfileFormState>) => {
     setStudentForm((prev) => ({ ...prev, ...patch }));
   };
@@ -99,9 +128,11 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   };
 
   const resetPhotoState = () => {
+    photoSelectionRef.current += 1;
+    photoBitmapRef.current?.close();
+    photoBitmapRef.current = null;
+    setPhotoBitmap(null);
     setPhotoFile(null);
-    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
-    setPhotoPreviewUrl('');
     setPhotoError('');
     setPhotoDragActive(false);
     setPhotoZoom(1);
@@ -121,20 +152,35 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     if (error) throw new Error(error);
   };
 
-  const selectPhoto = (file: File) => {
+  const selectPhoto = async (file: File) => {
+    const selection = photoSelectionRef.current + 1;
+    photoSelectionRef.current = selection;
     try {
       validateImageFile(file);
-      if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+      const decoded = await createImageBitmap(file);
+      if (selection !== photoSelectionRef.current) {
+        decoded.close();
+        return;
+      }
+      if (decoded.width < 1 || decoded.height < 1) {
+        decoded.close();
+        throw new Error('The selected photo could not be decoded.');
+      }
+      photoBitmapRef.current?.close();
+      photoBitmapRef.current = decoded;
+      setPhotoBitmap(decoded);
       setPhotoFile(file);
-      setPhotoPreviewUrl(URL.createObjectURL(file));
       setPhotoError('');
       setPhotoFeedback(null);
       setPhotoZoom(1);
       setPhotoOffsetX(0);
       setPhotoOffsetY(0);
     } catch (err: unknown) {
+      if (selection !== photoSelectionRef.current) return;
+      photoBitmapRef.current?.close();
+      photoBitmapRef.current = null;
+      setPhotoBitmap(null);
       setPhotoFile(null);
-      setPhotoPreviewUrl('');
       setPhotoError(err instanceof Error ? err.message : 'Invalid photo file.');
     }
   };
@@ -143,14 +189,11 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     event.preventDefault();
     setPhotoDragActive(false);
     const file = event.dataTransfer.files?.[0];
-    if (file) selectPhoto(file);
+    if (file) void selectPhoto(file);
   };
 
   const createCroppedImageBlob = async (): Promise<Blob | null> => {
-    if (!photoPreviewUrl || !photoFile) return null;
-    const image = new Image();
-    image.src = photoPreviewUrl;
-    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = reject; });
+    if (!photoBitmap || !photoFile) return null;
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
@@ -158,11 +201,11 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     if (!context) throw new Error('Could not prepare the photo for upload.');
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const baseScale = Math.max(canvas.width / image.width, canvas.height / image.height);
+    const baseScale = Math.max(canvas.width / photoBitmap.width, canvas.height / photoBitmap.height);
     const finalScale = baseScale * photoZoom;
-    const drawWidth = image.width * finalScale;
-    const drawHeight = image.height * finalScale;
-    context.drawImage(image, (canvas.width - drawWidth) / 2 + photoOffsetX, (canvas.height - drawHeight) / 2 + photoOffsetY, drawWidth, drawHeight);
+    const drawWidth = photoBitmap.width * finalScale;
+    const drawHeight = photoBitmap.height * finalScale;
+    context.drawImage(photoBitmap, (canvas.width - drawWidth) / 2 + photoOffsetX, (canvas.height - drawHeight) / 2 + photoOffsetY, drawWidth, drawHeight);
     const mimeType = photoFile.type === 'image/png' ? 'image/png' : photoFile.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
     const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, mimeType, 0.92));
     if (!blob) throw new Error('Could not generate cropped photo.');
@@ -291,8 +334,8 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
                 <h3>Student profile photo</h3>
                 <p>Upload a clear face photo. JPG, PNG, or WEBP up to {STUDENT_PHOTO_MAX_LABEL}.</p>
               </div>
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) selectPhoto(file); }} />
-              <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoPreviewUrl ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void selectPhoto(file); }} />
+              <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoBitmap ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
                 <div className="ck-photo-drop-icon"><ImagePlus size={24} aria-hidden="true" /></div>
                 <div className="ck-photo-drop-title">Drop the student photo here</div>
                 <div className="ck-photo-drop-sub">The photo can be cropped before it is saved.</div>
@@ -302,11 +345,11 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
                 </div>
               </div>
               {photoError ? <div className="ck-photo-error">{photoError}</div> : null}
-              {photoPreviewUrl ? (
+              {photoBitmap ? (
                 <div className="ck-photo-editor">
                   <div>
                     <div className="ck-photo-frame">
-                      <img src={photoPreviewUrl} alt="Student preview" className="ck-photo-preview-image" style={{ transform: `translate(${photoOffsetX}px, ${photoOffsetY}px) scale(${photoZoom})` }} />
+                      <canvas ref={photoPreviewCanvasRef} width="512" height="512" role="img" aria-label="Student preview" className="ck-photo-preview-image" style={{ transform: `translate(${photoOffsetX}px, ${photoOffsetY}px) scale(${photoZoom})` }} />
                     </div>
                     <div className="ck-photo-help">Photo preview</div>
                   </div>

@@ -41,6 +41,8 @@ const {
   isOriginAllowed,
   applyCors,
   clientIp,
+  parseBearerToken,
+  buildUpstreamTarget,
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
@@ -365,8 +367,46 @@ test('bodyTooLarge honours the configured content-length limit', () => {
   assert.equal(bodyTooLarge({ headers: {} }), false);
 });
 
-test('rate-limit key prefers bearer token, falls back to forwarded client IP', () => {
+test('bearer parsing is strict and deterministic for untrusted authorization headers', () => {
+  assert.equal(parseBearerToken('Bearer abc.def-_~+/='), 'abc.def-_~+/=');
+  assert.equal(parseBearerToken('bearer token'), 'token');
+  assert.equal(parseBearerToken('Bearer'), null);
+  assert.equal(parseBearerToken('Bearer  token'), 'token');
+  assert.equal(parseBearerToken('Bearer\ttoken'), null);
+  assert.equal(parseBearerToken(`Bearer ${' '.repeat(100_000)}`), null);
+  assert.equal(parseBearerToken(undefined), null);
+});
+
+test('proxy targets retain the configured upstream origin and canonicalize untrusted path/query data', () => {
+  const upstream = new URL('https://school-core.example.test');
+  const target = buildUpstreamTarget(
+    upstream,
+    '/api/v1/approvals/catalog:CK%201',
+    '?schoolId=7&next=https%3A%2F%2Fevil.example%2Finternal',
+  );
+
+  assert.equal(target.origin, upstream.origin);
+  assert.equal(target.pathname, '/api/v1/approvals/catalog%3ACK%201');
+  assert.equal(target.searchParams.get('schoolId'), '7');
+  assert.equal(target.searchParams.get('next'), 'https://evil.example/internal');
+
+  const networkPath = buildUpstreamTarget(upstream, '//metadata.google.internal/computeMetadata/v1');
+  assert.equal(networkPath.origin, upstream.origin);
+  assert.equal(networkPath.pathname, '//metadata.google.internal/computeMetadata/v1');
+});
+
+test('proxy targets reject encoded traversal and path-separator segments', () => {
+  const upstream = new URL('https://school-core.example.test');
+
+  assert.throws(() => buildUpstreamTarget(upstream, '/api/%2e%2e/admin'), /forbidden segment/);
+  assert.throws(() => buildUpstreamTarget(upstream, '/api/%2Fadmin'), /forbidden segment/);
+  assert.throws(() => buildUpstreamTarget(upstream, '/api/%ZZ'), /invalid percent encoding/);
+  assert.throws(() => buildUpstreamTarget(upstream, 'api/v1/students'), /must be absolute/);
+});
+
+test('rate-limit key prefers a valid bearer token, falls back to forwarded client IP', () => {
   assert.equal(rateLimitKey({ headers: { authorization: 'Bearer abc.def' }, socket: {} }), 'tok:abc.def');
+  assert.equal(rateLimitKey({ headers: { authorization: 'Bearer  abc.def', 'x-forwarded-for': '10.0.0.6' }, socket: {} }), 'tok:abc.def');
   assert.equal(rateLimitKey({ headers: { 'x-forwarded-for': '10.0.0.5, 10.0.0.1' }, socket: {} }), 'ip:10.0.0.5');
   assert.equal(clientIp({ headers: {}, socket: { remoteAddress: '10.0.0.9' } }), '10.0.0.9');
 });

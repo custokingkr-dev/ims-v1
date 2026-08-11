@@ -63,6 +63,60 @@ function Invoke-GhApiJson {
   return Invoke-NativeJson -Command $GhCommand -Arguments $arguments -AllowFailure:$AllowFailure
 }
 
+function Expand-PagedResults {
+  param([object]$Pages)
+
+  $items = New-Object System.Collections.Generic.List[object]
+  foreach ($page in @($Pages)) {
+    foreach ($item in @($page)) {
+      $items.Add($item) | Out-Null
+    }
+  }
+  return $items
+}
+
+function Get-CodeScanningSummary {
+  param(
+    [Parameter(Mandatory = $true)][string]$Ref,
+    [Parameter(Mandatory = $true)][object[]]$Alerts
+  )
+
+  $severityCounts = [ordered]@{
+    total = $Alerts.Count
+    critical = @($Alerts | Where-Object { $_.rule.security_severity_level -eq "critical" }).Count
+    high = @($Alerts | Where-Object { $_.rule.security_severity_level -eq "high" }).Count
+    medium = @($Alerts | Where-Object { $_.rule.security_severity_level -eq "medium" }).Count
+    low = @($Alerts | Where-Object { $_.rule.security_severity_level -eq "low" }).Count
+    unknown = @($Alerts | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.rule.security_severity_level) }).Count
+  }
+
+  $toolCategories = @($Alerts |
+    Group-Object {
+      "{0}|{1}|{2}" -f $_.tool.name, $_.most_recent_instance.category, $_.most_recent_instance.commit_sha
+    } |
+    Sort-Object Name |
+    ForEach-Object {
+      $sample = $_.Group[0]
+      [ordered]@{
+        tool = [string]$sample.tool.name
+        category = [string]$sample.most_recent_instance.category
+        commitSha = [string]$sample.most_recent_instance.commit_sha
+        total = $_.Count
+        critical = @($_.Group | Where-Object { $_.rule.security_severity_level -eq "critical" }).Count
+        high = @($_.Group | Where-Object { $_.rule.security_severity_level -eq "high" }).Count
+        medium = @($_.Group | Where-Object { $_.rule.security_severity_level -eq "medium" }).Count
+        low = @($_.Group | Where-Object { $_.rule.security_severity_level -eq "low" }).Count
+        unknown = @($_.Group | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.rule.security_severity_level) }).Count
+      }
+    })
+
+  return [ordered]@{
+    ref = $Ref
+    counts = $severityCounts
+    toolCategories = $toolCategories
+  }
+}
+
 function Get-ProjectRolesForMember {
   param([object]$Policy, [string]$Member)
   return @($Policy.bindings |
@@ -181,22 +235,17 @@ $prodBranchPolicies = Invoke-GhApiJson -Endpoint `
 $devBranchPolicies = Invoke-GhApiJson -Endpoint `
   "repos/$Repository/environments/dev/deployment-branch-policies" -AllowFailure
 
-$codeAlertPages = Invoke-GhApiJson -Endpoint `
-  "repos/$Repository/code-scanning/alerts?state=open&per_page=100" -Paginate -AllowFailure
-$codeAlerts = New-Object System.Collections.Generic.List[object]
-foreach ($page in @($codeAlertPages)) {
-  foreach ($alert in @($page)) {
-    $codeAlerts.Add($alert) | Out-Null
-  }
-}
-$codeAlertCounts = [ordered]@{
-  total = $codeAlerts.Count
-  critical = @($codeAlerts | Where-Object { $_.rule.security_severity_level -eq "critical" }).Count
-  high = @($codeAlerts | Where-Object { $_.rule.security_severity_level -eq "high" }).Count
-  medium = @($codeAlerts | Where-Object { $_.rule.security_severity_level -eq "medium" }).Count
-  low = @($codeAlerts | Where-Object { $_.rule.security_severity_level -eq "low" }).Count
-  unknown = @($codeAlerts | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.rule.security_severity_level) }).Count
-}
+$defaultRef = "refs/heads/$([string]$repo.default_branch)"
+$devRef = "refs/heads/dev"
+$defaultRefEncoded = [uri]::EscapeDataString($defaultRef)
+$devRefEncoded = [uri]::EscapeDataString($devRef)
+$defaultCodeAlerts = @(Expand-PagedResults (Invoke-GhApiJson -Endpoint `
+      "repos/$Repository/code-scanning/alerts?state=open&ref=$defaultRefEncoded&per_page=100" -Paginate -AllowFailure))
+$devCodeAlerts = @(Expand-PagedResults (Invoke-GhApiJson -Endpoint `
+      "repos/$Repository/code-scanning/alerts?state=open&ref=$devRefEncoded&per_page=100" -Paginate -AllowFailure))
+$defaultCodeScanning = Get-CodeScanningSummary -Ref $defaultRef -Alerts $defaultCodeAlerts
+$devCodeScanning = Get-CodeScanningSummary -Ref $devRef -Alerts $devCodeAlerts
+$codeAlertCounts = $defaultCodeScanning.counts
 
 $dependabotAccess = Invoke-GhApiJson -Endpoint `
   "repos/$Repository/dependabot/alerts?state=open&per_page=1" -AllowFailure
@@ -228,8 +277,11 @@ if ($wifCondition -notmatch "repository_id" -or $wifCondition -notmatch "workflo
 }
 if ($null -eq $mainProtection -and $rulesets.Count -eq 0) { $blockers.Add("main has no visible branch protection or ruleset") | Out-Null }
 if ($null -eq $devProtection -and $rulesets.Count -eq 0) { $blockers.Add("dev has no visible branch protection or ruleset") | Out-Null }
-if ([int]$codeAlertCounts.critical -gt 0 -or [int]$codeAlertCounts.high -gt 0) {
-  $blockers.Add("GitHub code scanning has open HIGH or CRITICAL alerts") | Out-Null
+if ([int]$defaultCodeScanning.counts.critical -gt 0 -or [int]$defaultCodeScanning.counts.high -gt 0) {
+  $blockers.Add("GitHub code scanning has open HIGH or CRITICAL alerts on $defaultRef") | Out-Null
+}
+if ([int]$devCodeScanning.counts.critical -gt 0 -or [int]$devCodeScanning.counts.high -gt 0) {
+  $blockers.Add("GitHub code scanning has open HIGH or CRITICAL alerts on $devRef") | Out-Null
 }
 
 $result = [ordered]@{
@@ -247,6 +299,10 @@ $result = [ordered]@{
     prodDeploymentBranches = @($prodBranchPolicies.branch_policies | ForEach-Object { [string]$_.name })
     devDeploymentBranches = @($devBranchPolicies.branch_policies | ForEach-Object { [string]$_.name })
     codeScanningOpen = $codeAlertCounts
+    codeScanningOpenByRef = [ordered]@{
+      default = $defaultCodeScanning
+      dev = $devCodeScanning
+    }
     dependabotAlertsApiReadable = $null -ne $dependabotAccess
     secretScanningAlertsApiReadable = $null -ne $secretScanningAccess
   }

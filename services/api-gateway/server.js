@@ -368,12 +368,11 @@ async function authenticate(req, requestId, opts = {}) {
   const introspectFn = opts.introspect !== undefined ? opts.introspect : introspect;
   const now = opts.now !== undefined ? opts.now : Math.floor(Date.now() / 1000);
 
-  const auth = req.headers.authorization || '';
-  const match = /^Bearer\s+(.+)$/i.exec(auth);
-  if (!match) return null;
+  const token = parseBearerToken(req.headers.authorization);
+  if (!token) return null;
 
   if (localVerify && secret) {
-    const claims = verifyJwtLocally(match[1], secret, now);
+    const claims = verifyJwtLocally(token, secret, now);
     if (!claims) return null; // bad signature / expired / wrong alg → 401, no fallback
     // A refresh token is validly signed but is never a bearer credential. Do not send it to
     // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
@@ -390,9 +389,8 @@ async function authenticate(req, requestId, opts = {}) {
 }
 
 async function introspect(req, requestId) {
-  const auth = req.headers.authorization || '';
-  const match = /^Bearer\s+(.+)$/i.exec(auth);
-  if (!match) return null;
+  const token = parseBearerToken(req.headers.authorization);
+  if (!token) return null;
 
   const target = new URL('/api/v1/auth/introspect', upstreams.identity);
   const headers = {
@@ -405,7 +403,7 @@ async function introspect(req, requestId) {
   const response = await fetch(target, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ token: match[1] }),
+    body: JSON.stringify({ token }),
   });
   if (!response.ok) return null;
   const payload = await response.json();
@@ -413,13 +411,13 @@ async function introspect(req, requestId) {
 }
 
 async function proxyFrontend(req, res, parsed, requestId) {
-  await proxyToUrl(req, res, new URL(`${parsed.pathname}${parsed.search}`, upstreams.frontend), requestId, null, null);
+  const target = buildUpstreamTarget(upstreams.frontend, parsed.pathname, parsed.search);
+  await proxyToUrl(req, res, target, requestId, null, null);
 }
 
 async function proxy(req, res, matched, parsed, requestId, principal) {
   const upstream = upstreams[matched.service];
-  const targetPath = `${matched.rewrite(parsed.pathname)}${parsed.search}`;
-  const target = new URL(targetPath, upstream);
+  const target = buildUpstreamTarget(upstream, matched.rewrite(parsed.pathname), parsed.search);
   await proxyToUrl(req, res, target, requestId, matched.service, principal);
 }
 
@@ -590,9 +588,8 @@ function clientIp(req) {
 }
 
 function rateLimitKey(req) {
-  const auth = req.headers.authorization || '';
-  const match = /^Bearer\s+(.+)$/i.exec(auth);
-  if (match) return `tok:${match[1]}`;
+  const token = parseBearerToken(req.headers.authorization);
+  if (token) return `tok:${token}`;
   return `ip:${clientIp(req)}`;
 }
 
@@ -712,8 +709,63 @@ function isValidTraceContext(spanContext) {
     && !/^0+$/.test(spanContext.spanId);
 }
 
+function parseBearerToken(value) {
+  if (typeof value !== 'string' || value.length < 8) return null;
+  if (value.slice(0, 6).toLowerCase() !== 'bearer' || value.charCodeAt(6) !== 0x20) return null;
+
+  let tokenStart = 7;
+  while (tokenStart < value.length && value.charCodeAt(tokenStart) === 0x20) tokenStart += 1;
+  const token = value.slice(tokenStart);
+  if (!token) return null;
+  for (let index = 0; index < token.length; index += 1) {
+    const code = token.charCodeAt(index);
+    if (code <= 0x20 || code >= 0x7f) return null;
+  }
+  return token;
+}
+
+function buildUpstreamTarget(upstream, pathname, search = '') {
+  if (!(upstream instanceof URL)) throw new TypeError('Configured upstream must be a URL');
+  if (typeof pathname !== 'string' || !pathname.startsWith('/')) {
+    throw new TypeError('Proxy path must be absolute');
+  }
+
+  const encodedSegments = pathname.split('/').map((segment) => {
+    let decoded;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      throw new TypeError('Proxy path contains invalid percent encoding');
+    }
+    if (decoded === '.' || decoded === '..' || decoded.includes('/') || decoded.includes('\\')) {
+      throw new TypeError('Proxy path contains a forbidden segment');
+    }
+    return encodeURIComponent(decoded);
+  });
+
+  const encodedQuery = [];
+  for (const [key, value] of new URLSearchParams(search)) {
+    encodedQuery.push(`${encodeURIComponent(key)}=${encodeURIComponent(value)}`);
+  }
+
+  const target = new URL(upstream.origin);
+  target.pathname = encodedSegments.join('/');
+  target.search = encodedQuery.length ? `?${encodedQuery.join('&')}` : '';
+  if (target.origin !== upstream.origin) throw new TypeError('Proxy target escaped its configured upstream');
+  return target;
+}
+
 function envUrl(name, fallback) {
-  return new URL(process.env[name] || fallback);
+  const configured = new URL(process.env[name] || fallback);
+  if (!['http:', 'https:'].includes(configured.protocol)
+      || configured.username
+      || configured.password
+      || configured.pathname !== '/'
+      || configured.search
+      || configured.hash) {
+    throw new Error(`${name} must be an HTTP(S) origin without credentials, path, query, or fragment`);
+  }
+  return new URL(configured.origin);
 }
 
 function requiredEnv(name) {
@@ -743,6 +795,8 @@ module.exports = {
   isOriginAllowed,
   applyCors,
   clientIp,
+  parseBearerToken,
+  buildUpstreamTarget,
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
