@@ -4,13 +4,35 @@ Date: 2026-08-11
 Scope: 100-150 schools, 200,000-300,000 total student records, and a maximum expected school size of
 10,000 students.
 Status: repository and live GCP audit complete; bounded import admission, reconciliation/privacy hardening,
-cost tools and local certification evidence implemented. Admission/usage changes and the fleet-query fix are
-deployed to dev, and a guarded same-school contention probe passed. Full 10,000-student/multi-instance
-certification, production mutations, destructive retention decisions, provider activation and legal decisions
-remain gated.
+cost tools and local certification evidence implemented. Live dev 20x500/10,000-row reconciliation,
+two-distinct-instance admission, final zero-residue cleanup, Pub/Sub drain and SQL downsize/stop passed.
+Production mutations, mixed-read capacity, destructive retention decisions, provider activation and legal
+decisions remain gated.
 
 Detailed measured results, corrected Delhi rate evidence and the completion ledger are in
 [ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md](./ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md).
+
+## Final Dev Execution Reconciliation
+
+The remaining dev-only work was executed on 2026-08-11 without production mutation:
+
+- exact 20x500 onboarding inserted 10,000/10,000, skipped zero, reconciled 20 DONE ledgers and exact
+  usage deltas, and replayed the completed final batch without duplication in 527.372 seconds;
+- temporary min-2/concurrency-1 school revision forced two simultaneous confirmations onto two distinct
+  hashed instances: one inserted 500 and one returned the intended 429/Retry-After contract;
+- cleanup was extended to billing/firefighting outboxes after the dynamic residue guard found two rows in
+  each. The corrected PostgreSQL 16 test and live pass succeeded. A delayed-projection second pass removed
+  30 rows; the stabilized third pass removed zero. Reserved-range status and all dev Pub/Sub backlogs are
+  zero;
+- Cloud SQL is `STOPPED` on `db-f1-micro`, activation policy `NEVER`; all four relay schedulers are
+  `PAUSED`; temporary relay/min/concurrency overrides were removed;
+- V17 improved student stats/daily plans to 2.118/3.258 ms, but identical MixedMorning comparisons failed
+  the sustained CPU gate on 4 vCPU and 8 vCPU. The 8-vCPU run improved p95/p99 to 453.03/936.02 ms but
+  reached 99.45% CPU and had three failed checks. Vertical scale is not an approved cost answer.
+
+The cost decision is therefore workload-specific: 4 vCPU remains the cheapest measured full
+attendance-write-soak pass, while production mixed-read sizing is unresolved. Define a bounded school-day
+arrival rate, enable approved query telemetry, optimize from evidence and rerun before committing spend.
 
 This workstream does not claim that every school has 10,000 students. One hundred schools at that size
 would be 1,000,000 students, which conflicts with the stated 200,000-300,000 fleet total. Capacity tests
@@ -34,9 +56,8 @@ The most serious non-performance blockers are:
 1. notification delivery does not enforce the student's/guardian's consent or notification preference;
 2. permanent photo/student/school offboarding and data-export policies do not exist;
 3. only bounded import usage attribution exists; cross-service cost attribution and invoice reconciliation do not;
-4. database-backed per-school/two-fleet import admission is deployed and passed a live 500+500 same-school
-   contention probe, but it is not yet distinct-instance certified; active previews and stale-preview expiry
-   are still unbounded, and the live fixture still requires reconciliation/cleanup;
+4. database-backed per-school/two-fleet import admission is deployed and passed a live 500+500 proof on two
+   distinct hashed Cloud Run instances; active previews and stale-preview expiry remain unbounded;
 5. provider templates, DLT/consent classification, live MSG91 receipts, and commercial pricing are not approved;
 6. the INR 5,000 budget is an alert, not a spending cap, and is below the production planning envelope;
 7. SQL connection, Pub/Sub, job, and budget-specific alert coverage remains incomplete even though the
@@ -181,8 +202,8 @@ The exact opt-in post-V16 PostgreSQL 16 run passed all 4 tests in 201.5 seconds 
 Maven total. The 10,000-student path completed in 177,998 ms at a derived 56.18 students/second, with an
 8,894.35 ms mean batch time, 10,191 ms p95, 10,225 ms slowest batch and 35,314,711-byte database after the
 fixture. This supersedes the older local timing baseline. It is still local PostgreSQL evidence—not a Cloud
-SQL/Cloud Run SLO or a substitute for the persistent school-level onboarding session. The live guarded
-10,000-student gateway proof remains pending.
+SQL/Cloud Run SLO or a substitute for the persistent school-level onboarding session. The later live guarded
+10,000-student gateway proof passed in 527.372 seconds with exact ledger/usage reconciliation.
 
 ### IMPL-06 — Corrected, overrideable platform cost model
 
@@ -223,8 +244,8 @@ the guard aborted with k6 exit 105 after three consecutive Cloud SQL CPU samples
 Before abort it completed 28,317 requests; 275 failed (0.971148%), including 227 4xx responses and one 5xx
 response, while overall p95/p99 reached 8.217/20.247 seconds. Maximum memory was 47.0998% and connections 85.
 This does not revoke the complete attendance-write soak pass; it leaves the representative mixed-read
-capacity gate failed and production sizing unapproved. The guarded live 10,000-student gateway run remains
-pending. Final scoped SCALE fixture/backlog cleanup and explicit Cloud SQL downsize/stop also remain pending.
+capacity gate failed and production sizing unapproved. The guarded live 10,000-student and distinct-instance
+runs later passed; final scoped cleanup and Cloud SQL downsize/stop also completed.
 
 ### IMPL-07 — Bounded import usage attribution and admission telemetry
 
@@ -708,15 +729,14 @@ Initial workstream validation completed locally without deployment or live mutat
   request. Negative gates rejected a production-looking host, remote dev without explicit write opt-in,
   URI user-info, localhost execution without the required token, and an already-existing evidence path
   before any request was sent; the existing file remained byte-for-byte unchanged.
-- `scripts/verify-dev-onboarding-10000.ps1` and its narrow audit parsed successfully. Plan-only mode completed
-  without a request, source/evidence guards passed, and production-host, out-of-range-school,
-  missing-remote-write-opt-in and expected-host-mismatch cases failed before a network path. The full
-  verifier was not live-run.
+- `scripts/verify-dev-onboarding-10000.ps1` and its narrow audit parsed successfully. Guard tests failed
+  unsafe hosts/schools/options before a network path; the subsequent live run passed 20 batches and exactly
+  10,000 inserted rows with immutable PII/token-free evidence.
 - Post-V16 opt-in onboarding certification against PostgreSQL 16: 4/4 tests passed; 201.5-second test-class
   time and 3:26 Maven total. The 10,000-student/20-batch path completed in 177,998 ms at a derived 56.18
   students/second; mean/p95/slowest batch times were 8,894.35/10,191/10,225 ms and the database was
-  35,314,711 bytes after the fixture. This supersedes the older local timing baseline; the live guarded
-  10,000-student gateway proof remains pending.
+  35,314,711 bytes after the fixture. This supersedes the older local timing baseline; later live evidence
+  passed the guarded 10,000-student gateway path in 527.372 seconds.
 - Same-token concurrency reported `attempts=2`, `students=100`, `duration=998 ms`, `sameJob=true` and
   `duplicates=0`. Two concurrent 500-row schools completed in 4,894 ms. The exercised school-core erase
   target counts all reached zero and the control tenant was preserved. This is not full production erasure
@@ -733,17 +753,17 @@ Subsequent coordinated dev-only validation:
 - Release `rel-dev-d51750493546-1` deployed the admission/usage implementation. Commit `467cd4f8`'s
   fleet-query fix was rolled forward on school-core revision `00186-5pz`; the post-roll-forward gateway
   suite passed 40/40.
-- The guarded live admission probe passed with one 500-row success and one deterministic same-school 429.
-  The retained artifact is PII-free but flags cleanup as required and does not prove distinct instances.
+- The guarded admission proof passed with one 500-row success and one deterministic same-school 429 on two
+  distinct hashed Cloud Run instances. The retained artifact is PII-free and final cleanup is complete.
 - Dev Cloud SQL now enforces `ENCRYPTED_ONLY`. Fresh session evidence records 16/16 application clients
   encrypted and zero unencrypted, and the post-enforcement gateway suite passed 40/40.
 - The exact SCALE-only outbox/inbox cleanup removed 1,604,136/238,063 rows while preserving outside scope;
   a second pass deleted zero rows. The corrective 4h10m/300-VU soak then passed on `db-custom-4-7680` with
   k6 exit 0, all thresholds passing, 54.22% maximum SQL CPU, 46.8998% memory and 81 connections. The later
   `mixedmorning-20260811121235-evidence.json` rerun failed on the CPU guard with k6 exit 105; it does not
-  invalidate the complete attendance-write soak pass, but mixed-read capacity remains uncertified. The
-  100-school fixture remains for the still-pending live full-10k gateway verification and final scoped
-  fixture/backlog cleanup; explicit Cloud SQL downsize/stop is also pending.
+  invalidate the complete attendance-write soak pass, but mixed-read capacity remains uncertified. Later
+  4/8-vCPU reruns also failed the sustained CPU gate. Live full-10k and distinct-instance proofs passed;
+  final stable-zero cleanup and Cloud SQL downsize/stop are complete.
 
 See [ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md](./ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md)
 for commands, exact reconciliation, erasure boundaries, scenario parameters and remaining gates.

@@ -13,16 +13,34 @@ END $$;
 
 DROP SCHEMA IF EXISTS reporting CASCADE;
 DROP SCHEMA IF EXISTS attendance CASCADE;
+DROP SCHEMA IF EXISTS billing CASCADE;
+DROP SCHEMA IF EXISTS firefighting CASCADE;
 DROP SCHEMA IF EXISTS student CASCADE;
 DROP SCHEMA IF EXISTS tenant_school CASCADE;
 DROP SCHEMA IF EXISTS identity CASCADE;
 DROP SCHEMA IF EXISTS cleanup_test CASCADE;
 CREATE SCHEMA reporting;
 CREATE SCHEMA attendance;
+CREATE SCHEMA billing;
+CREATE SCHEMA firefighting;
 CREATE SCHEMA student;
 CREATE SCHEMA tenant_school;
 CREATE SCHEMA identity;
 CREATE SCHEMA cleanup_test;
+
+CREATE TABLE billing.outbox_events (
+    id text PRIMARY KEY,
+    school_id bigint NOT NULL
+);
+CREATE TABLE firefighting.outbox_events (
+    id text PRIMARY KEY,
+    school_id bigint NOT NULL
+);
+
+INSERT INTO billing.outbox_events(id, school_id) VALUES
+    ('scale-billing-outbox', 900000000), ('outside-billing-outbox', 800000000);
+INSERT INTO firefighting.outbox_events(id, school_id) VALUES
+    ('scale-firefighting-outbox', 900000000), ('outside-firefighting-outbox', 800000000);
 
 CREATE TABLE tenant_school.schools (
     id bigint PRIMARY KEY,
@@ -344,6 +362,8 @@ BEGIN
        OR EXISTS (SELECT 1 FROM reporting.dim_school WHERE id >= 900000000 AND id < 900000002)
        OR EXISTS (SELECT 1 FROM student.import_batches WHERE id LIKE 'scale-%')
        OR EXISTS (SELECT 1 FROM student.import_rows WHERE id LIKE 'scale-%')
+       OR EXISTS (SELECT 1 FROM billing.outbox_events WHERE school_id = 900000000)
+       OR EXISTS (SELECT 1 FROM firefighting.outbox_events WHERE school_id = 900000000)
        OR EXISTS (SELECT 1 FROM tenant_school.school_classes WHERE id LIKE 'scale-c-%') THEN
         RAISE EXCEPTION 'first cleanup pass left target residue';
     END IF;
@@ -351,6 +371,8 @@ BEGIN
     IF (SELECT count(*) FROM student.import_rows WHERE batch_id = 'outside-done') <> 7
        OR (SELECT count(*) FROM student.students WHERE school_id = 800000000) <> 1
        OR (SELECT count(*) FROM reporting.dim_student WHERE school_id = 800000000) <> 1
+       OR (SELECT count(*) FROM billing.outbox_events WHERE school_id = 800000000) <> 1
+       OR (SELECT count(*) FROM firefighting.outbox_events WHERE school_id = 800000000) <> 1
        OR (SELECT count(*) FROM tenant_school.schools WHERE id = 800000000) <> 1
        OR (SELECT count(*) FROM identity.app_users WHERE id = 2) <> 1 THEN
         RAISE EXCEPTION 'first cleanup pass changed outside-scope sentinels';
@@ -365,6 +387,8 @@ BEGIN
     IF (SELECT count(*) FROM student.import_rows WHERE batch_id = 'outside-done') <> 7
        OR (SELECT count(*) FROM student.students WHERE school_id = 800000000) <> 1
        OR (SELECT count(*) FROM reporting.dim_student WHERE school_id = 800000000) <> 1
+       OR (SELECT count(*) FROM billing.outbox_events WHERE school_id = 800000000) <> 1
+       OR (SELECT count(*) FROM firefighting.outbox_events WHERE school_id = 800000000) <> 1
        OR (SELECT count(*) FROM tenant_school.schools WHERE id = 800000000) <> 1
        OR (SELECT count(*) FROM identity.app_users WHERE id = 2) <> 1 THEN
         RAISE EXCEPTION 'idempotent cleanup pass changed outside-scope sentinels';

@@ -7,13 +7,14 @@ Region: `asia-south2` (Delhi)
 Target fleet: 100-150 schools, 200,000-300,000 active student records
 Largest supported school target: 10,000 students
 
-> **Status update (2026-08-11):** This document preserves the August 10 implementation and test history,
-> but its original 2-vCPU capacity conclusion and cost table are superseded by guarded August 11 evidence.
-> `db-custom-2-7680` failed the target 300-VU CPU guard. `db-custom-4-7680` passed the short burst, then the
-> first full soak and MixedMorning runs failed. After the measured fixes and exact two-pass backlog cleanup,
-> the corrective `soak-20260811074848-evidence.json` run passed the complete 4h10m/300-VU profile with k6
-> exit 0 and all thresholds passing. MixedMorning, live 10,000-student gateway verification, final scoped
-> fixture/backlog cleanup and Cloud SQL downsize/stop remain pending. Current detailed evidence is in
+> **Final status update (2026-08-11):** This document preserves the August 10 implementation and test history,
+> but its original 2-vCPU conclusion is superseded. `db-custom-4-7680` passed the burst and complete
+> 4h10m/300-VU attendance-write soak. After V16/V17 plan improvements, the unchanged closed-loop
+> MixedMorning gate still failed on 4 vCPU (100% CPU) and 8 vCPU (99.45% CPU); 8 vCPU improved aggregate
+> p95/p99 to 453.03/936.02 ms but did not pass CPU/error gates. Live 20x500 onboarding inserted/reconciled
+> exactly 10,000 rows, two-instance admission passed, stabilized cleanup reached zero, Pub/Sub backlog is
+> zero, and dev SQL is stopped on `db-f1-micro`. There is no successful MixedMorning production-sizing
+> result; use an approved arrival-rate workload before selecting production capacity. Detailed evidence is in
 > `docs/workstreams/RELIABILITY-SCALE-RECOVERY-CHANGES-2026-08-11.md` and
 > `docs/workstreams/ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md`.
 
@@ -210,7 +211,7 @@ views begin transferring full portraits.
 | Frontend student paging | Uses 50-row server pages | Suitable |
 | Frontend bundle | Workspace and spreadsheet chunks exceed 900 KiB | Functional; split for latency/mobile use |
 | Database connection pools | School-core dev uses 20 per instance | Four-instance test ceiling is 80/200 connections |
-| Load testing | Exact 300k fixture and guarded write/read workloads | 2 vCPU failed the guarded target; 4 vCPU passed the burst and corrective 4h10m/300-VU soak; the corrected MixedMorning run failed on database CPU and Cloud Run regional allocation quota, with plan-backed remediation awaiting redeploy/retest |
+| Load testing | Exact 300k fixture and guarded write/read workloads | 4 vCPU passed burst and corrective 4h10m attendance soak; V17 plans improved, but unchanged MixedMorning failed CPU gates on both 4 and 8 vCPU. Live 10k onboarding and two-instance admission passed; final cleanup is zero |
 
 ## 6. Cloud SQL Recommendation
 
@@ -277,7 +278,7 @@ Change the current fleet-wide assumptions as follows:
 | Frontend | 2 | 3-5 | Mostly static/cacheable |
 | Gateway | 3 | 4 measured | Node async I/O; distributed rate limiting still needed |
 | Identity | 2 | 3 | Login bursts, otherwise low traffic |
-| School-core | 2 | 4 measured | 20-connection pool; 2-vCPU target rejected, 4-vCPU full-soak planning default; MixedMorning still open |
+| School-core | 2 | 4 measured | 20-connection pool; 4-vCPU attendance-soak planning default only. MixedMorning failed 4 and 8 vCPU and requires an arrival-rate rerun before production sizing |
 | Operations | 2 | 3 | Lower traffic |
 | Platform | 2 | 3-5 | Pub/Sub projections and dashboards |
 | Billing | 2 | 2 | Low frequency |
@@ -592,9 +593,9 @@ dev scenarios after batching is implemented.
 - [ ] Dedicated production Cloud SQL chosen from measured load results.
 - [ ] Zonal-versus-HA risk accepted by business owner.
 - [x] 300,000-student seed and 10,000-student tenant tests pass in dev.
-- [ ] Attendance batch path passes the corrected full soak and MixedMorning rerun; the bounded burst and
-  corrective full soak now pass, while the earlier failed soak remains historical evidence and MixedMorning
-  is still pending.
+- [ ] Attendance batch path passes the corrected full soak, but mixed-read production capacity remains
+  blocked: unchanged 4-vCPU and 8-vCPU MixedMorning runs both failed the sustained CPU gate. Define and pass
+  the approved arrival-rate workload; do not mark the closed-loop comparison passed.
 - [x] Imports use an explicit 500-row operational batching process with retry-safe confirmation.
 - [ ] Student list/search meets p95/p99 targets.
 - [x] Dev reporting retries, dead-letter and guarded replay are verified; production remains gated.
@@ -613,8 +614,8 @@ dev scenarios after batching is implemented.
 - [ ] Canary cohort completes a real school-day peak before the next wave.
 
 Production remains a no-go while any mandatory item above is open. The passing four-hour 300-VU soak does
-not replace MixedMorning, controlled recovery/PITR, runtime IAM/OIDC, the production database/HA decision,
-business approval, final fixture cleanup or staged canary evidence.
+not replace the failed mixed-read gate, controlled recovery/PITR, runtime IAM/OIDC, the production
+database/HA decision, business approval or staged canary evidence. Final dev fixture cleanup is complete.
 
 ## 16. Sources
 

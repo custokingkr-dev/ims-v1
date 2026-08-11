@@ -118,6 +118,8 @@ CREATE TEMP TABLE scale_cleanup_relations (
 ) ON COMMIT DROP;
 
 INSERT INTO scale_cleanup_relations(delete_order, schema_name, relation_name, scope_predicate) VALUES
+    (1,   'billing', 'outbox_events',                   't.school_id IN (SELECT id FROM pg_temp.scale_school_ids)'),
+    (2,   'firefighting', 'outbox_events',              't.school_id IN (SELECT id FROM pg_temp.scale_school_ids)'),
     (10,  'reporting', 'reporting_event_inbox',       't.school_id IN (SELECT id FROM pg_temp.scale_school_ids)'),
     (20,  'reporting', 'event_student_contributions', 't.school_id IN (SELECT id FROM pg_temp.scale_school_ids)'),
     (30,  'reporting', 'academic_events',              't.school_id IN (SELECT id FROM pg_temp.scale_school_ids)'),

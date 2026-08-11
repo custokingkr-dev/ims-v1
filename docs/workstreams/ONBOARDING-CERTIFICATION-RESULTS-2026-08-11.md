@@ -5,14 +5,74 @@ Scope: 100-150 schools, 200,000-300,000 total student records, with at least one
 Environment: onboarding evidence used local JDK 25, Testcontainers PostgreSQL 16 and Docker Desktop;
 the sizing section also cites synthetic dev Cloud Run/Cloud SQL artifacts and the live guarded admission
 probe described below; no production data was used.
-Decision: the bounded 500-row import path has credible local evidence for a supervised 10,000-student
-onboarding, and live dev Cloud SQL admission contention passed for two simultaneous 500-row confirmations.
-The system is not yet certified for production rollout: full 10,000-row gateway timing, distinct-instance
-evidence, cleanup, privacy/offboarding, provider and operational gates remain open.
+Decision: the bounded 500-row import path now has local and live dev evidence for a supervised
+10,000-student onboarding. The real gateway completed 20x500 batches with exact 10,000-row reconciliation,
+and database-backed admission passed across two distinct Cloud Run instances. Final synthetic cleanup and
+cost restoration are complete. The system is not yet certified for production rollout because mixed-read
+capacity, privacy/offboarding, provider, production IAM/database and operational acceptance gates remain open.
 
 This report separates measured evidence from planning assumptions. Local timings are not Cloud Run or
 Cloud SQL SLOs. Cost outputs are models, not measurements, invoices, quotes or commitments. Privacy and
 telecom notes are engineering gates, not legal advice.
+
+## Final Live Dev Certification
+
+### Full bounded onboarding
+
+Artifact `artifacts/onboarding-certification/onboarding-10000-20260811142953183.json` is an immutable,
+PII/token-free pass:
+
+| Measure | Result |
+| --- | ---: |
+| batches / rows per batch | 20 / 500 |
+| attempted / inserted / skipped | 10,000 / 10,000 / 0 |
+| DONE ledger rows matched exactly once | 20 |
+| usage preview/completion delta | 20 / 20 |
+| usage unfinished delta | 0 |
+| completed final-token retry | same batch/job, 500 inserted, 0 skipped |
+| workload / total duration | 526,694 / 527,372 ms |
+
+Preflight matched all required 12 SCALE classes and 250 sections before the first write. This proves the
+bounded JSON preview/confirm path, not photo upload, empty-school creation, unattended import or a production
+SLO.
+
+### Distinct-instance admission
+
+`scripts/verify-dev-import-distinct-instances.ps1` verified exact dev host, revision, min-instance,
+concurrency and boost settings before writes. On temporary revision `custoking-school-core-service-dev-00191-f8s`,
+two simultaneous fresh 500-row confirmations produced:
+
+- one HTTP 200 with 500 inserted in a 19.5999-second request;
+- one HTTP 429 `school_import_active` with `Retry-After: 5` in 0.1097 seconds; and
+- two distinct SHA-256-hashed Cloud Run `instanceId` values on the same revision.
+
+Artifact `artifacts/onboarding-certification/import-distinct-instances-20260811144241083.json` passed in
+19,638 ms and contains no credential, preview token or student PII. Normal min 0/max 4/concurrency 80 was
+restored immediately afterward.
+
+### Reconciliation and cleanup
+
+Pre-cleanup status was exactly 100 schools, 311,001 students and 300,000 attendance records. The total is
+300,501 retained fixture students + 10,000 bounded-onboarding students + one successful 500-row admission
+batch. Failed cleanup attempts were transactionally rolled back: the first found live relay locks; the
+second found missing billing/firefighting outbox coverage. The cleanup SQL and PostgreSQL 16 test were
+corrected before retry.
+
+The successful pass removed 100 schools, all 311,001 students, 24 import batches (22 DONE, 2 PREVIEWED),
+300,000 attendance rows and all discovered scale-scoped relations while preserving recorded outside-scope
+counts. A second pass removed 30 delayed reporting projections; after delivery stabilization the third pass
+deleted zero and reported no unhandled residue. Final status is zero schools/students/sections/attendance;
+all four dev Pub/Sub subscriptions report zero undelivered messages. Cloud SQL is stopped on `db-f1-micro`
+and all four async relay Scheduler jobs are paused.
+
+### Capacity boundary relevant to onboarding waves
+
+V17 reduced the unfiltered student-stats plan from 30.498 to 2.118 ms and daily summary from 7.657 to
+3.258 ms. Nevertheless, the unchanged 300-VU closed-loop MixedMorning workload failed the sustained CPU
+guard on both 4 and 8 vCPU. The 8-vCPU comparison reached 90,314 requests with only three failed checks and
+453.03/936.02 ms aggregate p95/p99, but CPU reached 99.45%; it is therefore a failure, not justification
+for buying a larger database. Production wave sizing remains blocked on an approved arrival-rate model,
+query telemetry and a successful rerun.
 
 ## What Changed In The Repository
 
@@ -290,9 +350,8 @@ k6 exit 105 after three consecutive Cloud SQL CPU samples of 82.46%, 100% and 10
 28,317 requests; 275 failed (0.971148%), including 227 4xx responses and one 5xx response, while overall
 p95/p99 reached 8.217/20.247 seconds. Maximum memory was 47.0998% and connections 85. This result does not
 revoke the complete attendance-write soak pass, but it leaves the representative mixed-read capacity gate
-failed and production sizing unapproved. The live guarded 10,000-student gateway verification remains
-pending. The retained SCALE fixture and generated test backlog still require final scoped cleanup, followed
-by explicit Cloud SQL downsize/stop; no such cleanup or infrastructure mutation is claimed here.
+failed and production sizing unapproved. Subsequent live 10,000-student and distinct-instance proofs passed,
+and final cleanup/downsize/stop completed; those onboarding passes do not close the mixed-read gate.
 
 At the checked Delhi list inputs of USD 0.0496/vCPU-hour and USD 0.0084/GiB-hour, `db-custom-4-7680`
 compute is USD 0.2614/hour, approximately USD 190.82 or INR 18,251.41 for 730 hours. The rejected two-vCPU
@@ -451,11 +510,11 @@ actor, exact fixture ownership and an approved reconciliation/cleanup procedure.
 
 | Master ID | Repository/local status | Code-feasible work still open | External/live gate that cannot be fabricated |
 | --- | --- | --- | --- |
-| COST-01 | Delhi-SKU platform and explicit messaging models are executable; 4-vCPU/7.5-GiB is the cheapest measured full 300-VU-soak pass and planning default; dev restart/PITR passed; the MixedMorning rerun failed on the CPU guard | analyze and remediate the failed MixedMorning profile, complete final scoped fixture/backlog cleanup and Cloud SQL downsize/stop, and add budget automation after its destination is approved | spending owner approves envelope/recipients/escalation, production database and zonal-versus-HA decision, and live budget notification/forecast incident evidence |
+| COST-01 | Delhi-SKU platform and messaging models are executable; 4-vCPU/7.5-GiB is the cheapest measured attendance-soak pass; dev restart/PITR and final downsize/stop passed. MixedMorning failed CPU on both 4 and 8 vCPU | define/pass an approved arrival-rate mixed workload and add budget automation after its destination is approved | spending owner approves envelope/recipients/escalation, production database and zonal-versus-HA decision, and live budget notification/forecast incident evidence |
 | COST-02 | bounded 90-day PII-free import usage aggregation and tenant-scoped API implemented; RLS/local reconciliation passed | extend the same bounded approach to API duration, attendance, storage and provider facts; version allocation/reconciliation | finance approves allocation drivers/tolerance; real provider invoice and billing-export reconciliation |
 | DATA-01 | sensitive dry-run logging removed; skipped CSV hardened; 20-row checksummed in-memory export and school-core erase/control rehearsal passed | implement the resumable cross-service/object/provider inventory and positive fixtures for every data class after policy schema is approved | privacy/legal approves notices, lawful basis/guardian consent, retention, legal hold, backup/log lag, export custody and erasure proof |
-| ONB-01 | bounded CSV reconciliation and exact local 10k/20-batch certification passed; guarded full-10k gateway verifier, fail-before-write 12-class/250-section preflight and local source/plan audit implemented but not live-run | execute and reconcile the guarded dev proof against compatible school `900000000`, then add persistent cross-batch onboarding session, browser-resumable photo phase and signed closeout | approved dev actor/window/cleanup, distinct-instance evidence, disconnect/retry and school-operator acceptance |
-| ONB-02 | one-per-school/two-fleet PostgreSQL guard, wrapped/direct 429 contract, low-cardinality rejection metric and guarded dev verifier implemented; local concurrency/RLS and a live 500+500 same-school contention probe passed | active-preview expiry, retry UX/dashboard, cleanup/reconciliation, metric-export verification and continuous negative checks | prove distinct-instance dev behavior with Cloud SQL telemetry and retain a revision/instance-linked evidence bundle |
+| ONB-01 | bounded CSV/local certification and guarded live 10k/20-batch gateway proof passed with exact usage/ledger reconciliation; final cleanup passed | add persistent cross-batch onboarding session, browser-resumable photo phase and signed closeout | disconnect/retry and school-operator acceptance |
+| ONB-02 | one-per-school/two-fleet PostgreSQL guard and deterministic 429 contract passed across two distinct hashed Cloud Run instances; final cleanup passed | active-preview expiry, retry UX/dashboard, metric-export verification and continuous negative checks | production/canary validation |
 | NOTIFY-01 | PII-safe dry-run and overrideable public-rate scenario tool passed | consent/suppression/template enforcement, signed callbacks and provider reconciliation remain | legal category/basis, TRAI/DLT, Meta/MSG91 sender/templates/rate card, consented test recipient and invoice approval |
 | PILOT-01 | per-school checklist, waves and stop conditions documented | evidence bundle automation can follow only after upstream gates have stable artifacts | named canary school, contacts/support window, full school-day observation and business/privacy go/no-go |
 

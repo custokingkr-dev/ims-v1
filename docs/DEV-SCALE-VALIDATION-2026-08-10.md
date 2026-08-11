@@ -10,12 +10,14 @@ Gateway: `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app`
 Production was not modified. The production release remains restricted to `main`, dev-approved
 content-addressed images, and the Cloud Deploy canary path.
 
-> **Status update (2026-08-11):** This document preserves the August 10 release and load-test record, but
-> its original 2-vCPU capacity conclusion is superseded. A guarded August 11 target run rejected 2 vCPU at
-> 83.52% CPU. Four vCPU/7.5 GiB passed the short burst, then the first full soak and MixedMorning profiles
-> failed. After the measured fixes and exact two-pass backlog cleanup, the corrective 4h10m/300-VU soak
-> passed with k6 exit 0 and all thresholds passing. MixedMorning, live 10,000-student gateway verification,
-> final scoped fixture/backlog cleanup and Cloud SQL downsize/stop remain pending.
+> **Final status update (2026-08-11):** This document preserves the August 10 release and load-test record,
+> but its original 2-vCPU conclusion is superseded. Four vCPU/7.5 GiB passed the burst and corrective
+> 4h10m/300-VU attendance-write soak. Deployed V16/V17 query fixes reduced student stats from 30.498 to
+> 2.118 ms and daily summary from 7.657 to 3.258 ms, but the unchanged closed-loop MixedMorning gate still
+> failed on both 4 vCPU (100% CPU) and 8 vCPU (99.45% CPU). Live guarded 20x500 onboarding inserted and
+> reconciled exactly 10,000 students in 527.372 seconds; a two-instance 500+500 admission proof passed.
+> Final three-pass cleanup reached stable zero, Pub/Sub backlog is zero, and dev Cloud SQL is restored to
+> `db-f1-micro`, `STOPPED`, activation policy `NEVER`. Production was not modified and remains NO-GO.
 
 ## Release
 
@@ -363,9 +365,9 @@ Result artifact:
 
 ### Cloud SQL during the corrected test window
 
-Dev shape during this August 10 corrected-test window: `db-f1-micro`. The current temporary certification
-shape is `db-custom-4-7680` with a 15-GiB disk; it is retained for pending MixedMorning evidence and final
-scoped cleanup. Explicit Cloud SQL downsize/stop remains pending.
+Dev shape during this August 10 corrected-test window: `db-f1-micro`. Later certification temporarily used
+4- and 8-vCPU custom shapes. Final 2026-08-11 state is restored to `db-f1-micro`, 15 GiB, `STOPPED`,
+activation policy `NEVER`; final scoped cleanup is complete.
 
 | Metric | Average | Maximum |
 | --- | ---: | ---: |
@@ -466,15 +468,30 @@ release immediately before completion.
 - The corrective `soak-20260811074848-evidence.json` run passed the complete 4h10m/300-VU profile: k6 exit
   0/no abort, all thresholds passing, 2,088,063 completed/zero interrupted iterations, 4,178,728 requests at
   278.570/second, four failures/429s, overall p95/p99 108.536/238.370 ms, attendance-write p95/p99
-  74.591/116.766 ms, and maximum SQL CPU/memory/connections 54.22%/46.8998%/81. The fleet fixture remains
-  for the failed MixedMorning run. Exact plans and Cloud Run logs led to directory-index/stats and
-  dev startup-boost remediations; their redeploy/retest, final scoped fixture cleanup and Cloud SQL
-  downsize/stop are pending.
-- A live same-school import probe returned exactly one 500-row success and one deterministic 429. Its
-  retained artifact does not identify distinct instances and flags reconciliation/cleanup as required.
+  74.591/116.766 ms, and maximum SQL CPU/memory/connections 54.22%/46.8998%/81. Exact plans and Cloud Run
+  logs led to directory-index/stats and startup-boost remediations; later 4/8-vCPU MixedMorning comparisons
+  still failed CPU gates. Final fixture cleanup and Cloud SQL downsize/stop are complete.
+- The original same-instance admission probe was superseded by a two-distinct-instance proof: exactly one
+  500-row success and one deterministic 429, followed by complete reconciliation/cleanup.
 - Dev notification OIDC/DLQ, idle async drains, controlled restart and PITR recovery have dev pass evidence.
 - Dev Cloud SQL now enforces `ENCRYPTED_ONLY`; fresh evidence records 16/16 application clients encrypted,
   zero unencrypted, and a 40/40 post-enforcement gateway smoke.
+- School-only release run `31499281847` passed exact-digest Trivy HIGH/CRITICAL and SARIF gates, deployment
+  verification and gateway health; CodeQL run `31499281591` passed. Final school revision
+  `custoking-school-core-service-dev-00194-qvm` serves 100% with min 0/max 4/concurrency 80/startup boost off.
+- V17 plan evidence at 10,500 rows is 1.728/2.118/3.258/0.101 ms for page/stats/daily/report. The identical
+  MixedMorning reruns are retained as failures: 4 vCPU stopped at 100% CPU (26,696 requests, 2,018 failed
+  checks, p95/p99 8,866.86/59,997.91 ms); 8 vCPU stopped at 99.45% CPU (90,314 requests, three failed
+  checks, p95/p99 453.03/936.02 ms). Query Insights and `pg_stat_statements` were unavailable, so there is
+  no claimed top-query attribution.
+- `onboarding-10000-20260811142953183.json` passed exact 20-batch/10,000-row ledger and usage reconciliation
+  in 527.372 seconds. `import-distinct-instances-20260811144241083.json` passed one 500-row 200 plus one
+  deterministic 429 on two different hashed instances in 19.638 seconds. Neither artifact contains tokens
+  or student PII.
+- Corrected final cleanup removed 100 schools, 311,001 students, 300,000 attendance rows and 24 import
+  batches. A second pass removed 30 late reporting projections; the stabilized third pass removed zero and
+  reported no residue. Final range status and all four dev Pub/Sub backlogs are zero. SQL is stopped on
+  `db-f1-micro`; all four Scheduler jobs are paused.
 
 ## Incomplete Gates
 
@@ -484,9 +501,10 @@ conclusion. It is not final production certification.
 
 The following remain required:
 
-1. Rerun the identical MixedMorning profile. The morning burst and corrective four-hour 300-VU soak are
-   complete on 4 vCPU/7.5 GiB; 2 vCPU remains rejected for the target. Complete final scoped fixture/backlog
-   cleanup and explicitly downsize or stop dev Cloud SQL after the retained evidence no longer needs it.
+1. Replace the fixed-VU saturation comparison with an owner-approved school-day arrival-rate envelope,
+   enable approved query telemetry, remove the remaining 8-vCPU 5xx responses and obtain a successful
+   mixed-read run. The unchanged 4/8-vCPU MixedMorning comparisons are both failures; cleanup/downsize/stop
+   are complete.
 2. Preserve the completed dev restart/PITR evidence and repeat after material pool/network changes;
    production recovery and zonal-versus-HA objectives remain gated.
 3. Promote the verified per-service runtime identities to production and migrate the existing

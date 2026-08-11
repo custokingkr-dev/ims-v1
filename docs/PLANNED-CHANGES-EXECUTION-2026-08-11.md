@@ -27,20 +27,118 @@ owner accepts the residual risk in writing.
 7. Cost estimates are planning values, not invoices. Re-query current pricing before commercial
    commitments.
 
+## 2A. Final Single-Run Execution Update — 2026-08-11
+
+The remaining safely executable dev work was completed in one coordinated run. Production was not
+mutated and remains **NO-GO**. This section supersedes older "pending dev run/cleanup" statements
+retained later in this ledger as historical execution context.
+
+### Released and verified changes
+
+- commits `ecbf0740`, `cc6a2305` and `a86ce699` disable dev startup CPU boost, correct the
+  MixedMorning plan query, add a guarded `pg_stat_statements` availability probe, add the partial
+  `(school_id, section_id) WHERE deleted_at IS NULL` student index, and assert that migration in the
+  integration suite;
+- the clean school-core suite passed 506/506 tests across 76 suites, with zero failures, errors or
+  skips;
+- scoped dev run `31499281847` built only school-core, passed exact-digest Trivy HIGH/CRITICAL and
+  SARIF scans, deployed, verified the service and passed gateway health. CodeQL run `31499281591`
+  also passed;
+- the final scanned school image is
+  `sha256:cb0002b3a5809617af537a50da6f5f467335623810205b722a04f187ec147401`.
+  Final dev revision `custoking-school-core-service-dev-00194-qvm` serves 100% with min instances 0,
+  max 4, concurrency 80 and startup CPU boost disabled;
+- the protected target-reconciliation workflow remains fail-closed because its execution identity
+  is not live and the workflow is absent from the default branch. No Cloud Deploy target or
+  production resource was mutated to bypass that control.
+
+### Query and representative-load result
+
+For synthetic school `900000000` at 10,500 rows, the retained plan artifact
+`mixed-query-plans-20260811140914.json` reports:
+
+| Flow | Before V17 | After V17 |
+| --- | ---: | ---: |
+| student list page | 1.500 ms | 1.728 ms |
+| unfiltered student stats | 30.498 ms | 2.118 ms |
+| daily attendance summary | 7.657 ms | 3.258 ms |
+| attendance report summary | 0.082 ms | 0.101 ms |
+
+`pg_stat_statements` is not installed and Cloud SQL Query Insights is disabled, so no top-query
+attribution is claimed. The exact unchanged 300-VU MixedMorning profile produced these terminal
+results:
+
+| SQL shape | HTTP requests before guard stop | Failed checks | p95 / p99 | Max CPU / memory / connections | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `db-custom-4-7680` | 26,696 | 2,018 | 8,866.86 / 59,997.91 ms | 100% / 43.7781% / 49 | failed after CPU 83.53%, 99.99%, 100% |
+| `db-custom-8-15360` | 90,314 | 3 | 453.03 / 936.02 ms | 99.45% / 38.996% / 38 | failed after CPU 95.73%, 95.76%, 99.45% |
+
+The 8-vCPU run met the aggregate latency thresholds before the safety stop, but it is still a failed
+capacity result because CPU and error gates are mandatory. Fixed VUs form a closed workload: faster
+responses caused more iterations, so vertical scaling alone did not bound demand. The cheapest
+measured full **attendance-write soak** pass remains `db-custom-4-7680`; there is no successful
+MixedMorning production-sizing result. Do not purchase 8 vCPU based on this run. Before production
+sizing, define a school-day arrival-rate envelope, enable approved query telemetry, remove the remaining
+three observed 5xx at the 8-vCPU comparison, and rerun without weakening thresholds.
+
+### Onboarding, multi-instance admission and cleanup
+
+- `onboarding-10000-20260811142953183.json` passed through the real dev gateway: 20 sequential
+  500-row previews/confirms, exactly 10,000 attempted and inserted, zero skipped, 20 DONE ledger rows,
+  exact usage deltas, and a final completed-token retry that preserved the same batch/job result.
+  Workload/total time was 526,694/527,372 ms. The immutable artifact contains no token or student PII;
+- `verify-dev-import-distinct-instances.ps1` created two fresh 500-row previews and, on temporary
+  min-2/concurrency-1 revision `00191-f8s`, observed one HTTP 200 inserting 500 and one HTTP 429
+  `school_import_active` with `Retry-After: 5`. Cloud Run request logs showed two distinct SHA-256-hashed
+  instance IDs on that same revision. Artifact
+  `import-distinct-instances-20260811144241083.json` passed in 19,638 ms and contains no credentials,
+  tokens or student PII;
+- the guarded cleanup initially exposed two real safety conditions: active outbox publisher locks, then
+  missing `billing.outbox_events` and `firefighting.outbox_events` coverage. No failed transaction
+  committed. The cleanup relation list and PostgreSQL 16 test were corrected; the disposable test passed
+  first removal, outside-scope preservation, idempotency and both rollback guards;
+- the successful live pass removed 100 schools, 311,001 students, 300,000 attendance rows, 24 import
+  batches (22 DONE, 2 PREVIEWED) and all enumerated scale rows. A second pass removed 30 late reporting
+  projections; the stabilized third pass deleted zero rows and reported no unhandled residue. Final
+  status is zero schools/students/sections/attendance in the reserved range and all four dev Pub/Sub
+  subscriptions reported zero undelivered messages.
+
+### Final cost-controlled dev state
+
+- Cloud SQL is `STOPPED`, tier `db-f1-micro`, 15 GiB, activation policy `NEVER`, encrypted-only,
+  backups off and PITR off;
+- all four async relay Scheduler jobs in `asia-south1` are `PAUSED`;
+- school-core temporary min-instance/concurrency and relay-delay overrides were removed; normal dev
+  configuration is restored with startup boost off.
+
+### Work that cannot be truthfully completed without new authority or external decisions
+
+1. repository administrator applies and negatively tests `main`/`dev` protection and required checks;
+2. cloud/IAM owner bootstraps the reviewed deployment WIF/service accounts and imports/reconciles the
+   Cloud Deploy targets through Terraform;
+3. production owner deploys dedicated runtime identities, removes and rotates the legacy production
+   reporting push credential, and executes exact-digest/canary deployment in the approved window;
+4. security owners dispose the six remaining runtime CodeQL alerts and assign rotation/incident owners;
+5. production database size, zonal versus regional HA, SLO/RTO/RPO and budget envelope are approved using
+   an arrival-rate capacity rerun rather than the failed closed-loop MixedMorning result;
+6. legal/product owners approve retention, consent, export and offboarding; provider owners approve MSG91
+   templates/commercials and retain a consented receipt; an operator confirms mailbox alert delivery; and
+7. a named canary school completes staged and full-school-day acceptance before broader waves.
+
 ## 3. Confirmed Starting State
 
 Verified on 2026-08-10/11 against repository and live project `custoking`:
 
 | Area | Confirmed state |
 | --- | --- |
-| Scale fixture | Base fixture: 100 schools, 300,000 students, largest school 10,000 students; 501 additional disposable import-certification students are present until final cleanup |
+| Scale fixture | Final guarded cleanup complete: reserved range contains zero schools, students, sections and attendance records; Pub/Sub backlog is zero |
 | Sustained write test | 300 VUs for 9 minutes; 117,838 requests; 0.01% errors; 122.91 ms p95; 235.06 ms p99 |
 | 500-VU boundary | Stopped by safety guard after database CPU reached approximately 88% |
 | Dev runtime IAM | Seven dedicated service identities; 40/40 authenticated checks passed |
 | Dev reporting push | Dedicated OIDC identity; no query credential; canonical event returned HTTP 204 |
 | Live subscriptions | Reporting push exists in dev and production; dev also has the dedicated notification OIDC push subscription and DLQ |
 | Notification topology | Dev OIDC/DLQ delivery and duplicate idempotency passed; production notification subscription remains absent |
-| Dev cost state | Temporary certification shape `db-custom-4-7680`, 15 GiB SSD, `RUNNABLE`, `ALWAYS`; final cleanup must restore `db-f1-micro`, `STOPPED`, `NEVER` |
+| Dev cost state | Restored to `db-f1-micro`, 15 GiB, `STOPPED`, activation policy `NEVER`; all four relay schedulers are `PAUSED` |
 | Production database | `db-g1-small`, Enterprise, zonal, running; PITR enabled; 14 backups; 7 transaction-log days; deletion protection enabled |
 | Database transport | Dev is `ENCRYPTED_ONLY`; all five database-backed services and all six discovered dev SQL jobs require TLS; current-database application evidence is 16/16 encrypted and 0 plaintext. Production remains permissive with its client/server cutover pending |
 | Production runtime IAM | Seven services still use the broad default compute identity |
@@ -516,7 +614,7 @@ results validate source implementation; they do not replace the live/time-bound 
 | SEC-03 | Read-only authority audit and migration order documented | Deploy/rollback negative tests pending | Least-privilege cutover pending | Production blocked |
 | SEC-04 | Dev implementation complete | Passed | Pending | Production blocked |
 | SEC-05 | Dev implementation complete | Passed | Pending | Production blocked |
-| SEC-06 | Dependency remediations, immutable Action pins and a pre-deploy exact-pushed-digest Trivy gate are implemented; 25 test-only CodeQL SQL constructions are parameterized; 44-secret proposal reconciles with no payload access | Base-release seven-image scan reported 0 HIGH/CRITICAL, but the later deployed school digest is not yet exact-digest scanned. All 31 current HIGH/CRITICAL CodeQL alerts were individually traced: 25 test-only cases are remediated pending rescan; six runtime alerts have evidence-backed false-positive rationales but no owner disposition | Merge/run exact-digest gate and final-SHA scans, six alert dispositions, admin settings and named rotation owners pending | Production blocked |
+| SEC-06 | Dependency remediations, immutable Action pins and a pre-deploy exact-pushed-digest Trivy gate are implemented; 25 test-only CodeQL SQL constructions are parameterized; 44-secret proposal reconciles with no payload access | Seven-image base release and final school-only digest scans passed with 0 HIGH/CRITICAL; CodeQL runs `31494646797` and `31499281591` passed. Six runtime alerts still require owner disposition | Six alert dispositions, admin settings and named rotation owners pending | Production blocked |
 | SEC-07 | Public/private IAM verified; direct-vs-Armor decision documented | n/a | Owner/cost decision pending | Open |
 | SEC-08 | All runtime/Flyway URLs and checked-in psql constructors require TLS; guarded PII-free application-session capture and fail-closed audit added | `ENCRYPTED_ONLY`; 5/5 services and 6/6 jobs require TLS; fresh sample 16/16 encrypted, 0 plaintext; audit compliant; post-change smoke 40/40; 24-hour observation pending | Production client-first rollout, enforcement and fresh proof pending | Dev enforced; production blocked |
 | ASYNC-01 | OIDC-only ingress + guarded notification provisioning complete | OIDC/DLQ applied; duplicate canonical event returned 204 twice and delivered once | Pending | Production blocked |
@@ -525,16 +623,16 @@ results validate source implementation; they do not replace the live/time-bound 
 | PERF-01 | Guarded, pinned-image four-hour harness complete | Corrective 4h10, 300-VU rerun passed on fixed 4-vCPU: 4,178,728 requests, four deliberate 429s, zero 5xx, p95/p99 108.54/238.37 ms, CPU 54.22%, memory 46.90%, 81 connections, exit 0 and no abort | n/a | Dev passed |
 | PERF-02 | 15-minute morning-burst profile complete | 4-vCPU/7.5-GiB full 300-VU burst passed; 2-vCPU shape rejected after repeated 83.52% CPU samples | n/a | Dev passed |
 | PERF-03 | Read-only long-history plan capture and certification threshold complete | 7.59M-row isolated clone passed bounded tenant/date and student plans; aggregate used a parallel sequential scan and still needs production-like distributed-history validation | n/a | Partially passed; production blocked |
-| PERF-04 | Mixed read profile, exact SQL-plan capture, directory indexes and quota-safe dev startup configuration implemented | First corrected-profile run failed closed after 6m13s: 28,317 requests, 275 failures, p95/p99 8.217/20.247s and Cloud SQL CPU 82.46%/100%/100%. Exact logs attribute all failures to filled Cloud Run capacity plus the 20-vCPU regional allocation quota; plans isolate the student directory at 92.417 ms page + 76.044 ms stats. V16/order and stats fixes plus dev-only non-school startup-boost disablement await redeploy/retest | Production quota/capacity and successful dev rerun pending | Dev failed; remediation ready |
+| PERF-04 | Mixed read profile, exact SQL-plan capture, V16/V17 indexes and quota-safe dev startup configuration implemented and deployed | Plan stats improved 30.498→2.118 ms and daily summary 7.657→3.258 ms. Exact unchanged reruns still failed the CPU gate: 4 vCPU reached 100%; 8 vCPU reached 99.45% despite 453.03/936.02 ms p95/p99. Query telemetry is unavailable, so no unsupported attribution is made | Define arrival-rate business envelope, enable approved query telemetry, remove remaining errors and obtain a successful production-like rerun | Dev failed; production blocked |
 | REL-01 | Guarded restart drill and RTO evidence tool complete | Restart command completed in 19.71s; all five Java services returned 200 within 63.52s without revision restart | n/a | Dev passed |
 | REL-02 | PITR helper records RPO/RTO and cleanup evidence | PITR clone runnable in 539.49s; 65,248,345-byte synthetic export validated at 582.57s; clone/object/IAM cleanup confirmed | n/a | Dev passed; production blocked |
-| DB-01 | Cost/threshold/connection-budget tooling complete | `db-custom-4-7680` is the cheapest measured burst and full-soak pass for the 300-VU planning workload | Production shape/HA and business budget decisions pending | Dev capacity passed; production blocked |
+| DB-01 | Cost/threshold/connection-budget tooling complete | `db-custom-4-7680` remains the cheapest burst/full attendance-soak pass. Neither 4 nor 8 vCPU passed the closed-loop MixedMorning gate; dev is restored to stopped `db-f1-micro` | Production shape/HA, arrival-rate workload and business budget decisions pending | Workload-specific dev pass; production blocked |
 | OBS-01 | SQL/Pub/Sub/Scheduler/trace/storage alert IaC validates | 110 policies live; Scheduler/trace incidents opened and recovered; mailbox receipt pending | Pending | Production blocked |
 | COST-01 | Live budget reconciled; Delhi-SKU platform and messaging models executable | Models rerun; budget automation and owner approval pending | Pending | Production blocked |
 | COST-02 | PII-free, RLS-covered daily import usage endpoint and closed-cardinality rejection metric implemented | Deployed; `/imports/usage` returned the exact approved fields and reconciled the live 500+500 admission run; telemetry export/alert verification remains | Pending | Partially passed |
 | DATA-01 | Retention/offboarding gaps and exact procedures documented | In-memory checksummed export + school-core erase/control rehearsal passed; full-system workflow absent | Legal owner approval pending | School launch blocked |
-| ONB-01 | Reconciliation CSV + bounded import complete; local exact 10k/20-batch certification passed | Live 500-row gateway insert passed; guarded 20-batch/10k verifier now fails before writes unless all 12 classes/250 sections exist. School 900000000 is compatible; full live run and reconciliation remain pending | n/a | Production blocked |
-| ONB-02 | PostgreSQL one-per-school/two-fleet admission + HTTP 429 implemented | Deployed same-school contention returned exactly one 200 and one deterministic 429; logs prove both hit the same instance, so distinct-instance/fleet proof remains open | n/a | Production blocked |
+| ONB-01 | Reconciliation CSV + bounded import complete; local exact 10k/20-batch certification passed | Live guarded 20-batch proof inserted/reconciled exactly 10,000 rows in 527.372 s with zero skipped and idempotent final retry; final scoped cleanup is complete | n/a | Dev passed; production/operator UX blocked |
+| ONB-02 | PostgreSQL one-per-school/two-fleet admission + HTTP 429 implemented | Distinct-instance proof passed on two hashed Cloud Run instances: one 500-row 200 and one deterministic 429/Retry-After 5; cleanup is complete | n/a | Dev passed; preview-expiry/production validation blocked |
 | NOTIFY-01 | PII-safe dry-run logging and configurable economics tool complete | Real consented provider test pending | Provider/legal approval pending | Messaging blocked |
 | PILOT-01 | Per-school checklist and rollout waves documented | n/a | Named canary/full-day evidence pending | Production blocked |
 
@@ -669,8 +767,9 @@ Dev execution completed on 2026-08-11 without modifying production:
   zero plaintext. The fail-closed audit is compliant and the post-enforcement authenticated smoke
   passed 40/40. A 24-hour dev observation and the entire production client-first cutover remain open;
 
-The production decision remains **NO-GO** until the ledger's production blockers are closed. The
-highest-value remaining evidence is a successful post-remediation MixedMorning rerun, live 10,000-row
-onboarding plus distinct-instance admission proof, operator mailbox receipt, production IAM/WIF/branch
-controls, production Cloud SQL transport enforcement/session proof, and a named canary school with
-business/legal approvals.
+The production decision remains **NO-GO** until the ledger's production blockers are closed. Live
+10,000-row onboarding, distinct-instance admission and final cleanup are now complete. The
+highest-value remaining technical evidence is a successful arrival-rate mixed-school workload after
+approved query telemetry/optimization. External gates are operator mailbox receipt, production
+IAM/WIF/branch controls, production Cloud SQL transport enforcement/session proof, security-owner alert
+dispositions, the database/HA/budget decision, provider/legal approval and a named canary school.
