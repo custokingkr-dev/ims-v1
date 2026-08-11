@@ -49,7 +49,8 @@ provider, and canary-school decisions in section 10.
 | CodeQL after OIDC configuration commit | `4482ff2a588c` | `31525782165` | passed |
 | Dedicated configuration WIF canary | `4482ff2a588c` | `31527513872` | passed without a rollout |
 | Dedicated release WIF authentication canary | `4482ff2a588c` | `31527680027` | force-cancelled before Cloud Deploy; see section 10 |
-| Final stable-category container scan | `4482ff2a588c` | `31529062330` | running when this record was created; final result must be appended |
+| Initial post-release stable-category container scan | `4482ff2a588c` | `31529062330` | seven jobs passed; identified superseded category streams |
+| Final container scan and guarded legacy-category cleanup | `0be79e0bda36` | `31529782575` | seven gates and cleanup passed; 0 CRITICAL/HIGH open |
 
 The main production release is available at
 https://github.com/custokingkr-dev/ims-v1/actions/runs/31521611035. It scanned all seven exact digests,
@@ -172,7 +173,13 @@ The following checks passed after the final service and SQL changes:
 - no Cloud Run HTTP 5xx was present in the post-deployment 30-minute log query;
 - reporting subscription backlog was zero;
 - SQL transport audit was compliant before and after enforcement;
-- CodeQL passed on the application and final OIDC configuration commits.
+- CodeQL passed on the application and final OIDC configuration commits;
+- final Trivy run `31529782575` passed all seven HIGH/CRITICAL gates and uploaded seven stable-category
+  SARIF analyses. Its guarded cleanup verified all seven analyses at the current commit before deleting the
+  six superseded auto-generated analysis categories. This was analysis-history cleanup, not alert dismissal.
+
+After cleanup, the open `main` Trivy inventory is 269 findings: 0 CRITICAL, 0 HIGH, 239 MEDIUM, 30 LOW,
+and 0 unknown. MEDIUM/LOW findings remain visible for ownership and remediation.
 
 Two non-request errors were observed: OTLP span-export timeouts from platform and billing. They did not
 produce HTTP 5xx or fail health checks, but telemetry egress/export must be repaired and monitored because
@@ -253,7 +260,7 @@ normal releases to service.
 | Capacity at 100-150 schools | 10k-student import and attendance soak passed in dev, but the closed-loop MixedMorning run reached 99.45% CPU even on 8 vCPU | Define a school-day arrival-rate workload, resolve remaining 5xx/query telemetry, pass it, then choose production DB and autoscaling limits |
 | Production database HA | `db-g1-small`, zonal, PITR/backups enabled | Spending/production owners approve size, regional HA, RTO, RPO, and cost envelope before broad rollout |
 | Branch protection | GitHub rulesets/classic protection are absent; current operator lacks repository admin | Repository admin must require reviews/checks and negatively test direct/force pushes on `main` and `dev` |
-| Container alert closure | Final scan run `31529062330` is pending; do not infer closure from dev | Require zero open HIGH/CRITICAL on `main`; assign MEDIUM/LOW ownership without dismissing findings |
+| Container alert closure | Final run `31529782575` passed all seven gates; `main` has 0 CRITICAL/HIGH, 239 MEDIUM and 30 LOW after six superseded analysis streams were deleted without dismissing findings | Assign owners and remediation windows for the visible MEDIUM/LOW backlog; keep scheduled scanning enabled |
 | Production job identities | `ims-app-rt-prod` and `ims-gateway-smoke-sql-prod` still use the default Compute identity; a legacy platform invoker binding remains | Create job-specific identities, observe one school day, then remove the legacy binding and broad default-compute roles |
 | Reporting delivery | OIDC configuration and zero backlog verified; no event arrived during observation | Observe a consented event, HTTP acknowledgement, projection, and empty backlog |
 | Notification/MSG91 | Production notification subscription absent; provider remains logging/dry-run | Approve sender/template/commercials/consent and run a bounded real-recipient canary |
