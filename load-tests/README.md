@@ -59,8 +59,11 @@ those verified ids. It records before/deleted/after and outside-scope counts in 
 does not delete schools, students, attendance rows, or reporting facts. Before using it, keep all
 Scheduler jobs paused, verify the reporting Pub/Sub subscription has no undelivered messages, and
 verify the relevant Cloud Run services are idle. The SQL also takes short
-`SHARE ROW EXCLUSIVE` locks on the outbox and reporting-inbox tables because both application relays
-are `@Scheduled` inside their services; pausing Cloud Scheduler alone does not stop those writers.
+`EXCLUSIVE` locks on the outbox and reporting-inbox tables because both application relays are
+`@Scheduled` inside their services; pausing Cloud Scheduler alone does not stop those writers. The
+locks use a 30-second timeout and still permit ordinary read-only queries. The weaker
+`SHARE ROW EXCLUSIVE` mode is unsafe here because it can deadlock with the relay's
+`SELECT ... FOR UPDATE` followed by `UPDATE` sequence.
 After the first successful pass, wait for reporting Pub/Sub to return to zero and run the same
 guarded action a second time. The second pass removes any reporting insert whose Pub/Sub delivery
 was already in flight when the first transaction acquired its locks and must finish at zero scope.

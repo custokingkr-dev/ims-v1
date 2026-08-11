@@ -8,9 +8,13 @@ SELECT pg_advisory_xact_lock(hashtext('ims-scale-fixture'));
 -- Cloud Scheduler does not quiesce them. Serialize this guarded dev cleanup
 -- against outbox updates and reporting-inbox inserts so the before/delete/after
 -- assertions share an exclusive writer envelope. Read-only queries remain
--- available while this short transaction runs.
-LOCK TABLE tenant_school.outbox_events IN SHARE ROW EXCLUSIVE MODE;
-LOCK TABLE reporting.reporting_event_inbox IN SHARE ROW EXCLUSIVE MODE;
+-- available while this short transaction runs. EXCLUSIVE is required: the
+-- relay first takes a ROW SHARE lock for SELECT ... FOR UPDATE and then a ROW
+-- EXCLUSIVE lock for UPDATE; SHARE ROW EXCLUSIVE would allow the first lock
+-- and can deadlock when the cleanup DELETE waits on the same tuple.
+SET LOCAL lock_timeout = '30s';
+LOCK TABLE tenant_school.outbox_events IN EXCLUSIVE MODE;
+LOCK TABLE reporting.reporting_event_inbox IN EXCLUSIVE MODE;
 
 CREATE TEMP TABLE scale_config AS
 SELECT :base_school_id::bigint AS base_school_id,

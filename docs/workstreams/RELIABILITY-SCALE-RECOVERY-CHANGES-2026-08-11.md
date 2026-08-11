@@ -387,9 +387,13 @@ approves the exact execution. The first live attempt on 2026-08-11 failed closed
 and `scale backlog remained after cleanup`; its transaction rolled back and the 100-school,
 300,000-student fixture remained intact. Inspection proved why the precondition was insufficient:
 the relays are `@Scheduled` inside the JVM services, so pausing Cloud Scheduler does not serialize
-their writes. The corrected cleanup takes short `SHARE ROW EXCLUSIVE` locks on the outbox and inbox
-tables before counting. A second guarded pass after Pub/Sub returns to zero is mandatory to remove
-any reporting delivery already in flight when the first transaction acquired its locks.
+their writes. A subsequent disposable PostgreSQL 16 concurrency test proved that the initially used
+`SHARE ROW EXCLUSIVE` mode can deadlock with the relay's `SELECT ... FOR UPDATE` followed by
+`UPDATE`. Before any further use, source was corrected to the minimal `EXCLUSIVE` mode in a fixed
+outbox-then-inbox order with a 30-second lock timeout. That mode blocked both tested writers, kept
+ordinary reads available, deleted scale scope to zero, preserved outside scope, and rolled back a
+non-scale guard failure. A second guarded pass after Pub/Sub returns to zero remains mandatory to
+remove any reporting delivery already in flight when the first transaction acquired its locks.
 
 ## 8. Connection budget
 
