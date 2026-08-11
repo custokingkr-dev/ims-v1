@@ -128,16 +128,54 @@ function Get-JobVpcAccess($Job) {
   if ($null -eq $vpcAccess) {
     $vpcAccess = $Job.spec.template.template.vpcAccess
   }
-  return $vpcAccess
+  if ($null -ne $vpcAccess) {
+    return $vpcAccess
+  }
+
+  # Cloud Run v1/gcloud job descriptors expose direct-VPC configuration as
+  # template annotations rather than the v2 vpcAccess object. Parse that
+  # normalized shape without accepting an unnetworked executor.
+  $annotations = $Job.spec.template.metadata.annotations
+  if ($null -eq $annotations) {
+    $annotations = $Job.spec.template.spec.template.metadata.annotations
+  }
+  if ($null -eq $annotations) {
+    return $null
+  }
+  $networkInterfacesJson = [string]$annotations.'run.googleapis.com/network-interfaces'
+  $egress = [string]$annotations.'run.googleapis.com/vpc-access-egress'
+  if ([string]::IsNullOrWhiteSpace($networkInterfacesJson)) {
+    return $null
+  }
+  try {
+    $networkInterfaces = @($networkInterfacesJson | ConvertFrom-Json)
+  } catch {
+    throw "Evidence executor direct-VPC annotation is not valid JSON."
+  }
+  return [pscustomobject]@{
+    networkInterfaces = $networkInterfaces
+    connector = $null
+    egress = $egress
+  }
 }
 
 function Assert-ReviewedJobContract($Job) {
   $container = Get-JobContainer $Job
   $vpcAccess = Get-JobVpcAccess $Job
-  $hasNetworkInterface = @($vpcAccess.networkInterfaces).Count -gt 0
+  $networkInterfaces = @($vpcAccess.networkInterfaces)
+  $validNetworkInterfaces = @($networkInterfaces | Where-Object {
+      -not [string]::IsNullOrWhiteSpace([string]$_.network) -and
+      -not [string]::IsNullOrWhiteSpace([string]$_.subnetwork)
+    })
+  $hasNetworkInterface = $networkInterfaces.Count -gt 0 -and
+    $validNetworkInterfaces.Count -eq $networkInterfaces.Count
   $hasConnector = -not [string]::IsNullOrWhiteSpace([string]$vpcAccess.connector)
   if ($null -eq $vpcAccess -or (-not $hasNetworkInterface -and -not $hasConnector)) {
     throw "Evidence executor must already have private VPC access; this helper will not create or replace networking."
+  }
+  $normalizedEgress = ([string]$vpcAccess.egress).ToLowerInvariant().Replace("_", "-")
+  if ($normalizedEgress -cne "private-ranges-only") {
+    throw "Evidence executor must retain reviewed private-ranges-only VPC egress."
   }
   if ([string]$container.image -notmatch '(?i)(?:^|/)postgres(?::|@)') {
     throw "Evidence executor must use the reviewed PostgreSQL client image."
