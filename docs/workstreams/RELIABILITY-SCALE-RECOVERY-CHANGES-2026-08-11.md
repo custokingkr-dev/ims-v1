@@ -383,7 +383,13 @@ students, attendance source rows, or reporting facts. Disposable PostgreSQL 16 v
 both the successful scoped delete and transactional rollback when a non-scale reserved ID exists.
 It must not run until all four Scheduler jobs are paused, reporting Pub/Sub undelivered messages are
 zero, relevant Cloud Run services are idle, the source changes are reviewed, and the root operator
-approves the exact execution.
+approves the exact execution. The first live attempt on 2026-08-11 failed closed with exit code 3
+and `scale backlog remained after cleanup`; its transaction rolled back and the 100-school,
+300,000-student fixture remained intact. Inspection proved why the precondition was insufficient:
+the relays are `@Scheduled` inside the JVM services, so pausing Cloud Scheduler does not serialize
+their writes. The corrected cleanup takes short `SHARE ROW EXCLUSIVE` locks on the outbox and inbox
+tables before counting. A second guarded pass after Pub/Sub returns to zero is mandatory to remove
+any reporting delivery already in flight when the first transaction acquired its locks.
 
 ## 8. Connection budget
 

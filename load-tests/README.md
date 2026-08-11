@@ -58,7 +58,12 @@ non-scale school in the reserved range, then removes only reporting-inbox and sc
 those verified ids. It records before/deleted/after and outside-scope counts in PII-free evidence; it
 does not delete schools, students, attendance rows, or reporting facts. Before using it, keep all
 Scheduler jobs paused, verify the reporting Pub/Sub subscription has no undelivered messages, and
-verify the relevant Cloud Run services are idle so a concurrent push/relay cannot recreate rows.
+verify the relevant Cloud Run services are idle. The SQL also takes short
+`SHARE ROW EXCLUSIVE` locks on the outbox and reporting-inbox tables because both application relays
+are `@Scheduled` inside their services; pausing Cloud Scheduler alone does not stop those writers.
+After the first successful pass, wait for reporting Pub/Sub to return to zero and run the same
+guarded action a second time. The second pass removes any reporting insert whose Pub/Sub delivery
+was already in flight when the first transaction acquired its locks and must finish at zero scope.
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-scale-fixture.ps1 `

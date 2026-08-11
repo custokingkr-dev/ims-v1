@@ -4,6 +4,14 @@ BEGIN;
 SET LOCAL app.bypass_rls = 'on';
 SELECT pg_advisory_xact_lock(hashtext('ims-scale-fixture'));
 
+-- The application relays are @Scheduled inside the Cloud Run services; pausing
+-- Cloud Scheduler does not quiesce them. Serialize this guarded dev cleanup
+-- against outbox updates and reporting-inbox inserts so the before/delete/after
+-- assertions share an exclusive writer envelope. Read-only queries remain
+-- available while this short transaction runs.
+LOCK TABLE tenant_school.outbox_events IN SHARE ROW EXCLUSIVE MODE;
+LOCK TABLE reporting.reporting_event_inbox IN SHARE ROW EXCLUSIVE MODE;
+
 CREATE TEMP TABLE scale_config AS
 SELECT :base_school_id::bigint AS base_school_id,
        :school_count::integer AS expected_school_count;
