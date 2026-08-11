@@ -2006,16 +2006,24 @@ public class StudentReadRepository {
     }
 
     public List<ImportBatchRow> importBatches(Long schoolId, int limit) {
-        return jdbc.sql("""
+        StringBuilder sql = new StringBuilder("""
                 SELECT id, file_token, job_id, total_rows, valid_count, error_count,
                        warning_count, status, pct, inserted, skipped, skipped_json,
                        created_at, completed_at
                 FROM student.import_batches
-                WHERE (:schoolId IS NULL OR school_id = :schoolId)
+                """);
+        if (schoolId != null) {
+            sql.append("WHERE school_id = :schoolId\n");
+        }
+        sql.append("""
                 ORDER BY created_at DESC NULLS LAST
                 LIMIT :limit
-                """).param("schoolId", schoolId)
-                .param("limit", Math.max(1, Math.min(limit, 500)))
+                """);
+        var spec = jdbc.sql(sql.toString());
+        if (schoolId != null) {
+            spec = spec.param("schoolId", schoolId);
+        }
+        return spec.param("limit", Math.max(1, Math.min(limit, 500)))
                 .query(ImportBatchRow.class)
                 .list();
     }

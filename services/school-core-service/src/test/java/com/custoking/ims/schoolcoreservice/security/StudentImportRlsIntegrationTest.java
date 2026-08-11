@@ -148,6 +148,15 @@ class StudentImportRlsIntegrationTest {
         assertThat(imports.importUsageDaily(null, 30, 100)).isEmpty();
     }
 
+    @Test
+    void superadminCanListFleetImportBatchesWithoutAnUntypedNullParameter() {
+        TenantContext.set(new TenantContext(99L, "super@invalid.local", "SUPERADMIN", null, null));
+
+        assertThat(imports.importBatches(null, 500))
+                .extracting(StudentReadRepository.ImportBatchRow::fileToken)
+                .containsExactlyInAnyOrder("token-a", "token-b");
+    }
+
     private long count(String table) throws Exception {
         try (Connection connection = appRuntime.getConnection();
              Statement statement = connection.createStatement();
