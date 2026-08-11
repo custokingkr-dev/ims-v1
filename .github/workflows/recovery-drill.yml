@@ -23,14 +23,14 @@ jobs:
       RECOVERY_OPERATOR_SERVICE_ACCOUNT: ${{ vars.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
       PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ env.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
 
       - name: Verify required configuration
         shell: pwsh
@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload non-sensitive drill evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: production-recovery-drill-${{ github.run_id }}
           path: artifacts/recovery/*.json

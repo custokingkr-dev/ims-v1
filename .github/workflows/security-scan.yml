@@ -24,10 +24,10 @@ jobs:
           - { name: frontend, context: frontend, image: custoking-frontend }
           - { name: api-gateway, context: services/api-gateway, image: custoking-api-gateway }
     steps:
-      - uses: actions/checkout@v7
-      - uses: docker/setup-buildx-action@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
       - name: Build local image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: ${{ matrix.context }}
           load: true
@@ -36,7 +36,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: false
       - name: Trivy HIGH/CRITICAL gate
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: security/${{ matrix.image }}:${{ github.sha }}
           severity: HIGH,CRITICAL
@@ -44,7 +44,7 @@ jobs:
           exit-code: "1"
           format: table
       - name: Trivy SARIF
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         if: always()
         with:
           image-ref: security/${{ matrix.image }}:${{ github.sha }}
@@ -53,7 +53,7 @@ jobs:
           exit-code: "0"
           format: sarif
           output: trivy-${{ matrix.name }}.sarif
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@5595ccaf912efad79be6eef63a5619ff05969be3 # v4
         if: always()
         with:
           sarif_file: trivy-${{ matrix.name }}.sarif
