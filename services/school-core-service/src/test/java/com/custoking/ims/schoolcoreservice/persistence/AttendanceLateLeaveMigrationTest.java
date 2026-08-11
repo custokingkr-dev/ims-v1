@@ -6,6 +6,7 @@ import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -60,11 +61,18 @@ class AttendanceLateLeaveMigrationTest {
         try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
              Statement st = c.createStatement()) {
             seedDaily(st);
-            for (String status : new String[] {"PRESENT", "ABSENT", "LATE", "LEAVE"}) {
-                st.execute("INSERT INTO attendance.attendance_student_records " +
-                        "(id, attendance_daily_id, student_id, school_id, attendance_date, " +
-                        " academic_year_id, class_id, section_id, status) VALUES " +
-                        "('r-" + status + "','d-late'," + status.hashCode() + ",10,'2024-02-01','y1','c1','s1','" + status + "')");
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO attendance.attendance_student_records
+                        (id, attendance_daily_id, student_id, school_id, attendance_date,
+                         academic_year_id, class_id, section_id, status)
+                    VALUES (?, 'd-late', ?, 10, '2024-02-01', 'y1', 'c1', 's1', ?)
+                    """)) {
+                for (String status : new String[] {"PRESENT", "ABSENT", "LATE", "LEAVE"}) {
+                    ps.setString(1, "r-" + status);
+                    ps.setLong(2, status.hashCode());
+                    ps.setString(3, status);
+                    ps.executeUpdate();
+                }
             }
             try (ResultSet rs = st.executeQuery(
                     "SELECT count(*) FROM attendance.attendance_student_records WHERE attendance_daily_id = 'd-late'")) {

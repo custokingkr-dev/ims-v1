@@ -8,6 +8,7 @@ import org.testcontainers.DockerClientFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -52,11 +53,19 @@ class ReportingCommandCenterRlsIntegrationTest {
             // Seed: school 10 (A) x2, school 20 (B) x1 — as owner (bypasses RLS).
             // command_center_actions NOT NULL columns: id, school_id, module, urgency, title
             // (status, confidence, created_at, updated_at have defaults)
-            st.execute("INSERT INTO reporting.command_center_actions " +
-                    "(id, school_id, module, urgency, title) VALUES " +
-                    "('" + UUID.randomUUID() + "', 10, 'finance', 'HIGH', 'Fee defaulter alert A1')," +
-                    "('" + UUID.randomUUID() + "', 10, 'attendance', 'MEDIUM', 'Low attendance A2')," +
-                    "('" + UUID.randomUUID() + "', 20, 'finance', 'HIGH', 'Fee defaulter alert B1')");
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO reporting.command_center_actions
+                        (id, school_id, module, urgency, title)
+                    VALUES
+                        (?, 10, 'finance', 'HIGH', 'Fee defaulter alert A1'),
+                        (?, 10, 'attendance', 'MEDIUM', 'Low attendance A2'),
+                        (?, 20, 'finance', 'HIGH', 'Fee defaulter alert B1')
+                    """)) {
+                ps.setObject(1, UUID.randomUUID());
+                ps.setObject(2, UUID.randomUUID());
+                ps.setObject(3, UUID.randomUUID());
+                ps.executeUpdate();
+            }
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -112,11 +121,14 @@ class ReportingCommandCenterRlsIntegrationTest {
     @Test
     void withCheck_blocksCrossTenantInsert() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
-        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
-            SQLException ex = assertThrows(SQLException.class, () -> st.execute(
-                    "INSERT INTO reporting.command_center_actions " +
-                    "(id, school_id, module, urgency, title) " +
-                    "VALUES ('" + UUID.randomUUID() + "', 20, 'finance', 'HIGH', 'Mallory action')"));
+        try (Connection c = appRt.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO reporting.command_center_actions
+                         (id, school_id, module, urgency, title)
+                     VALUES (?, 20, 'finance', 'HIGH', 'Mallory action')
+                     """)) {
+            ps.setObject(1, UUID.randomUUID());
+            SQLException ex = assertThrows(SQLException.class, ps::executeUpdate);
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
         }
     }

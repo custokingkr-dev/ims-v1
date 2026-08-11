@@ -127,14 +127,12 @@ try {
         $buildStatus = $build.status
         Add-Check "deployment cloud build" ($buildStatus -eq "SUCCESS") "id=$buildId status=$buildStatus"
     } else {
-        $builds = @(Invoke-GcloudJson builds list "--project=$ProjectId" "--limit=1" "--sort-by=~createTime" "--format=json")
-        $latestBuild = @($builds | Select-Object -First 1)
-        $latestBuildId = if ($latestBuild) { $latestBuild.id } else { "" }
-        $latestBuildStatus = if ($latestBuild) { $latestBuild.status } else { "" }
-        Add-Check "latest cloud build" ($latestBuildStatus -eq "SUCCESS") "id=$latestBuildId status=$latestBuildStatus"
+        # An unrelated latest build can belong to another environment, component, or commit.
+        # Keep the absence visible without presenting it as deployment provenance.
+        Add-Check "deployment cloud build identity" $false "CloudBuildId was not supplied; no build provenance claimed" "warning"
     }
 } catch {
-    $name = if ([string]::IsNullOrWhiteSpace($CloudBuildId)) { "latest cloud build" } else { "deployment cloud build" }
+    $name = if ([string]::IsNullOrWhiteSpace($CloudBuildId)) { "deployment cloud build identity" } else { "deployment cloud build" }
     Add-Check $name $false $_.Exception.Message
 }
 

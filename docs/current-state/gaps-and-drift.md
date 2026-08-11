@@ -34,8 +34,9 @@ in safe mode while bounded retry/dead-letter handling remains active.
 Impact:
 
 - Pub/Sub notification ingress and notification DB flows may work, but actual MSG91 delivery is not proven enabled.
-- Notification topics exist, but the 2026-08-10 live inventory found no notification subscription
-  in either environment; notification Pub/Sub ingress is therefore not currently wired.
+- Dev notification Pub/Sub ingress is now wired through a dedicated OIDC push subscription with retry/DLQ;
+  canonical duplicate delivery and poison-to-DLQ probes passed using the logging/dry-run provider. Production
+  still has no notification subscription, and real consented MSG91 delivery remains unproven.
 - Current prod config is explicitly dry-run/logging.
 
 Required follow-up:

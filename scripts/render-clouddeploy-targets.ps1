@@ -1,6 +1,8 @@
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("dev", "stage", "prod")]
+  # Stage is intentionally unavailable until stage target manifests, runtime identities, and a
+  # protected GitHub Environment are implemented as one reviewed contract.
+  [ValidateSet("dev", "prod")]
   [string]$Environment,
 
   [string]$TemplatePath,
@@ -38,6 +40,27 @@ $replacements = @{
 $text = Get-Content -Raw -Path $TemplatePath
 foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
+}
+
+$targetCount = ([regex]::Matches($text, '(?m)^kind:\s*Target\s*$')).Count
+if ($targetCount -ne 7) {
+  throw "Cloud Deploy $Environment target template must contain exactly seven service targets; found $targetCount."
+}
+
+$expectedExecutionAccount = "clouddeploy-$Environment-deployer@custoking.iam.gserviceaccount.com"
+$executionAccountCount = ([regex]::Matches(
+    $text,
+    "(?m)^\s*serviceAccount:\s*$([regex]::Escape($expectedExecutionAccount))\s*$"
+  )).Count
+if ($executionAccountCount -ne $targetCount) {
+  throw "Every Cloud Deploy $Environment target must use $expectedExecutionAccount for RENDER and DEPLOY."
+}
+
+$runtimeAccounts = @([regex]::Matches($text, '(?m)^\s*runtime_service_account:\s*(\S+)\s*$') |
+  ForEach-Object { $_.Groups[1].Value })
+if ($runtimeAccounts.Count -ne $targetCount -or
+    @($runtimeAccounts | Where-Object { $_ -notmatch "-$Environment@custoking\.iam\.gserviceaccount\.com$" }).Count -gt 0) {
+  throw "Every Cloud Deploy $Environment target must use its environment-specific dedicated runtime identity."
 }
 
 $unresolved = [regex]::Matches($text, "__[A-Z0-9_]+__") | ForEach-Object { $_.Value } | Sort-Object -Unique

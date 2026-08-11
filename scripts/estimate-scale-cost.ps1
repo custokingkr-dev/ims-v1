@@ -64,8 +64,8 @@ $projectedUsedGib = (($attendanceGibPerYear * $AttendanceRetentionYears) + $core
 $provisionedStorageGib = [Math]::Ceiling([Math]::Max(100, $projectedUsedGib) / 25.0) * 25
 
 if ($SqlVcpu -eq 4 -and $sqlMemoryMib -eq 7680) {
-    $sqlShapeEvidence = 'Cheapest measured passing target shape: full 300-VU/17m30s dev burst passed; soak/recovery still pending.'
-    $capacityEvidenceScope = 'The measured burst used the 100-school/300k-row synthetic fixture and informs only the stated 100-150-school/200k-300k planning range. VUs are not student records; this is not a four-hour soak, recovery test or production SLO.'
+    $sqlShapeEvidence = 'Cheapest measured full-soak pass and planning default: the corrective 4h10m/300-VU dev profile passed; MixedMorning and live 10k remain pending.'
+    $capacityEvidenceScope = 'The measured soak used the 100-school/300k-row synthetic fixture and informs only the stated 100-150-school/200k-300k planning range. VUs are not student records; this is not production purchase, HA/SLA, failover, live-10k or business approval.'
 } elseif ($SqlVcpu -eq 2 -and $sqlMemoryMib -eq 7680) {
     $sqlShapeEvidence = 'Low-end comparison only: separate 200-VU proxy stayed within DB guards, with 2 HTTP failures and null exit capture; the same shape failed the 300-VU CPU guard.'
     $capacityEvidenceScope = 'Synthetic lower-concurrency comparison only: VUs are not student records. This shape is rejected for the 300-VU target and is not a production SLO.'

@@ -51,6 +51,13 @@ jobs:
     environment: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Enforce rollback branch boundary
+        shell: pwsh
+        run: |
+          $expectedRef = if ('${{ inputs.environment }}' -eq 'prod') { 'refs/heads/main' } else { 'refs/heads/dev' }
+          if ('${{ github.ref }}' -ne $expectedRef) {
+            throw "Rollback environment '${{ inputs.environment }}' is restricted to $expectedRef; current ref is '${{ github.ref }}'."
+          }
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}

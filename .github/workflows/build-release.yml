@@ -20,11 +20,6 @@ on:
         required: false
         default: false
         type: boolean
-      apply_deployment_config:
-        description: Reapply Cloud Deploy targets, pipelines, and Cloud Run manifests.
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   actions: read
@@ -100,12 +95,12 @@ jobs:
       base_ref: ${{ needs.resolve-target.outputs.base_ref }}
       head_ref: ${{ needs.resolve-target.outputs.commit_sha }}
       checkout_ref: ${{ needs.resolve-target.outputs.commit_sha }}
-      force_all: ${{ inputs.force_full_deploy || inputs.apply_deployment_config || (github.event_name == 'workflow_dispatch' && inputs.commit_sha != '') }}
+      force_all: ${{ inputs.force_full_deploy || (github.event_name == 'workflow_dispatch' && inputs.commit_sha != '') }}
       target_environment: ${{ needs.resolve-target.outputs.target_env }}
 
   build-images:
     needs: [resolve-target, detect]
-    if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.has_service_changes == 'true' }}
+    if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -241,7 +236,7 @@ jobs:
 
   release:
     needs: [resolve-target, detect, build-images]
-    if: ${{ always() && needs.detect.outputs.has_service_changes == 'true' && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
+    if: ${{ always() && needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     environment: ${{ needs.resolve-target.outputs.target_env }}
     env:
@@ -290,6 +285,7 @@ jobs:
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
       - name: Resolve immutable release images
+        id: images
         shell: pwsh
         env:
           AFFECTED_MATRIX_JSON: ${{ needs.detect.outputs.docker_matrix }}
@@ -340,6 +336,20 @@ jobs:
               $runtimeDigest = [string]$runtimeDescriptor.digest
             }
 
+            $immutableRef = "$registry/$($entry.image)@$digest"
+            $scanKey = switch ([string]$entry.name) {
+              "identity-service" { "identity" }
+              "school-core-service" { "school_core" }
+              "operations-service" { "operations" }
+              "platform-service" { "platform" }
+              "billing-service" { "billing" }
+              "frontend" { "frontend" }
+              "api-gateway" { "api_gateway" }
+              default { throw "Unsupported release image '$($entry.name)' cannot be mapped to a scan gate." }
+            }
+            "${scanKey}_ref=$immutableRef" >> $env:GITHUB_OUTPUT
+            "${scanKey}_digest_key=$($digest.Replace(':', '-'))" >> $env:GITHUB_OUTPUT
+
             $services += [ordered]@{
               service = [string]$entry.name
               image = [string]$entry.image
@@ -348,7 +358,7 @@ jobs:
               sourceTag = [string]$metadata.sourceTag
               resolvedTag = $resolvedTag
               digest = $digest
-              immutableRef = "$registry/$($entry.image)@$digest"
+              immutableRef = $immutableRef
               runtimeDigest = $runtimeDigest
               runtimeRef = "$registry/$($entry.image)@$runtimeDigest"
             }
@@ -363,30 +373,279 @@ jobs:
             services = $services
           } | ConvertTo-Json -Depth 10 | Set-Content release-evidence/images.json
 
-      - name: Apply changed deployment configuration
-        if: ${{ needs.detect.outputs.deployment_config_changed == 'true' || inputs.apply_deployment_config == true }}
+          New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (identity-service)
+        id: trivy_gate_identity
+        if: ${{ always() && steps.images.outputs.identity_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.identity_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/identity-service-${{ steps.images.outputs.identity_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (identity-service)
+        id: trivy_sarif_identity
+        if: ${{ always() && steps.images.outputs.identity_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.identity_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/identity-service-${{ steps.images.outputs.identity_digest_key }}.sarif
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (school-core-service)
+        id: trivy_gate_school_core
+        if: ${{ always() && steps.images.outputs.school_core_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.school_core_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/school-core-service-${{ steps.images.outputs.school_core_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (school-core-service)
+        id: trivy_sarif_school_core
+        if: ${{ always() && steps.images.outputs.school_core_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.school_core_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/school-core-service-${{ steps.images.outputs.school_core_digest_key }}.sarif
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (operations-service)
+        id: trivy_gate_operations
+        if: ${{ always() && steps.images.outputs.operations_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.operations_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/operations-service-${{ steps.images.outputs.operations_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (operations-service)
+        id: trivy_sarif_operations
+        if: ${{ always() && steps.images.outputs.operations_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.operations_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/operations-service-${{ steps.images.outputs.operations_digest_key }}.sarif
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (platform-service)
+        id: trivy_gate_platform
+        if: ${{ always() && steps.images.outputs.platform_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.platform_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/platform-service-${{ steps.images.outputs.platform_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (platform-service)
+        id: trivy_sarif_platform
+        if: ${{ always() && steps.images.outputs.platform_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.platform_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/platform-service-${{ steps.images.outputs.platform_digest_key }}.sarif
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (billing-service)
+        id: trivy_gate_billing
+        if: ${{ always() && steps.images.outputs.billing_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.billing_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/billing-service-${{ steps.images.outputs.billing_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (billing-service)
+        id: trivy_sarif_billing
+        if: ${{ always() && steps.images.outputs.billing_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.billing_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/billing-service-${{ steps.images.outputs.billing_digest_key }}.sarif
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (frontend)
+        id: trivy_gate_frontend
+        if: ${{ always() && steps.images.outputs.frontend_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.frontend_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/frontend-${{ steps.images.outputs.frontend_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (frontend)
+        id: trivy_sarif_frontend
+        if: ${{ always() && steps.images.outputs.frontend_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.frontend_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/frontend-${{ steps.images.outputs.frontend_digest_key }}.sarif
+
+      - name: Trivy exact-digest HIGH/CRITICAL gate (api-gateway)
+        id: trivy_gate_api_gateway
+        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.api_gateway_ref }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "1"
+          format: table
+          output: release-evidence/trivy/api-gateway-${{ steps.images.outputs.api_gateway_digest_key }}.table.txt
+
+      - name: Trivy exact-digest SARIF evidence (api-gateway)
+        id: trivy_sarif_api_gateway
+        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' }}
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.images.outputs.api_gateway_ref }}
+          severity: LOW,MEDIUM,HIGH,CRITICAL
+          ignore-unfixed: false
+          exit-code: "0"
+          format: sarif
+          output: release-evidence/trivy/api-gateway-${{ steps.images.outputs.api_gateway_digest_key }}.sarif
+
+      - name: Enforce exact-digest Trivy gates and evidence
+        if: always()
+        shell: pwsh
         env:
-          DEV_DB_HOST: ${{ vars.DEV_DB_HOST || vars.DB_HOST }}
-          DEV_DB_NAME: ${{ vars.DEV_DB_NAME || vars.DB_NAME }}
-          DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
-          PROD_DB_HOST: ${{ vars.PROD_DB_HOST || vars.DB_HOST }}
-          PROD_DB_NAME: ${{ vars.PROD_DB_NAME || vars.DB_NAME }}
-          PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+          IDENTITY_REF: ${{ steps.images.outputs.identity_ref }}
+          IDENTITY_DIGEST_KEY: ${{ steps.images.outputs.identity_digest_key }}
+          IDENTITY_GATE: ${{ steps.trivy_gate_identity.outcome }}
+          IDENTITY_SARIF: ${{ steps.trivy_sarif_identity.outcome }}
+          SCHOOL_CORE_REF: ${{ steps.images.outputs.school_core_ref }}
+          SCHOOL_CORE_DIGEST_KEY: ${{ steps.images.outputs.school_core_digest_key }}
+          SCHOOL_CORE_GATE: ${{ steps.trivy_gate_school_core.outcome }}
+          SCHOOL_CORE_SARIF: ${{ steps.trivy_sarif_school_core.outcome }}
+          OPERATIONS_REF: ${{ steps.images.outputs.operations_ref }}
+          OPERATIONS_DIGEST_KEY: ${{ steps.images.outputs.operations_digest_key }}
+          OPERATIONS_GATE: ${{ steps.trivy_gate_operations.outcome }}
+          OPERATIONS_SARIF: ${{ steps.trivy_sarif_operations.outcome }}
+          PLATFORM_REF: ${{ steps.images.outputs.platform_ref }}
+          PLATFORM_DIGEST_KEY: ${{ steps.images.outputs.platform_digest_key }}
+          PLATFORM_GATE: ${{ steps.trivy_gate_platform.outcome }}
+          PLATFORM_SARIF: ${{ steps.trivy_sarif_platform.outcome }}
+          BILLING_REF: ${{ steps.images.outputs.billing_ref }}
+          BILLING_DIGEST_KEY: ${{ steps.images.outputs.billing_digest_key }}
+          BILLING_GATE: ${{ steps.trivy_gate_billing.outcome }}
+          BILLING_SARIF: ${{ steps.trivy_sarif_billing.outcome }}
+          FRONTEND_REF: ${{ steps.images.outputs.frontend_ref }}
+          FRONTEND_DIGEST_KEY: ${{ steps.images.outputs.frontend_digest_key }}
+          FRONTEND_GATE: ${{ steps.trivy_gate_frontend.outcome }}
+          FRONTEND_SARIF: ${{ steps.trivy_sarif_frontend.outcome }}
+          API_GATEWAY_REF: ${{ steps.images.outputs.api_gateway_ref }}
+          API_GATEWAY_DIGEST_KEY: ${{ steps.images.outputs.api_gateway_digest_key }}
+          API_GATEWAY_GATE: ${{ steps.trivy_gate_api_gateway.outcome }}
+          API_GATEWAY_SARIF: ${{ steps.trivy_sarif_api_gateway.outcome }}
         run: |
-          pwsh -NoProfile -File scripts/render-clouddeploy-targets.ps1 \
-            -Environment "${{ needs.resolve-target.outputs.target_env }}" \
-            -OutputPath "artifacts/clouddeploy/targets-${{ needs.resolve-target.outputs.target_env }}.rendered.yaml"
-          gcloud deploy apply \
-            --file "artifacts/clouddeploy/targets-${{ needs.resolve-target.outputs.target_env }}.rendered.yaml" \
-            --project "${GCP_PROJECT_ID}" \
-            --region "${GCP_REGION}"
-          gcloud deploy apply \
-            --file deploy/clouddeploy/delivery-pipelines.yaml \
-            --project "${GCP_PROJECT_ID}" \
-            --region "${GCP_REGION}"
+          $ErrorActionPreference = "Stop"
+          New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
+          $checks = @(
+            [pscustomobject]@{ service = "identity-service"; image = $env:IDENTITY_REF; digestKey = $env:IDENTITY_DIGEST_KEY; gate = $env:IDENTITY_GATE; sarif = $env:IDENTITY_SARIF },
+            [pscustomobject]@{ service = "school-core-service"; image = $env:SCHOOL_CORE_REF; digestKey = $env:SCHOOL_CORE_DIGEST_KEY; gate = $env:SCHOOL_CORE_GATE; sarif = $env:SCHOOL_CORE_SARIF },
+            [pscustomobject]@{ service = "operations-service"; image = $env:OPERATIONS_REF; digestKey = $env:OPERATIONS_DIGEST_KEY; gate = $env:OPERATIONS_GATE; sarif = $env:OPERATIONS_SARIF },
+            [pscustomobject]@{ service = "platform-service"; image = $env:PLATFORM_REF; digestKey = $env:PLATFORM_DIGEST_KEY; gate = $env:PLATFORM_GATE; sarif = $env:PLATFORM_SARIF },
+            [pscustomobject]@{ service = "billing-service"; image = $env:BILLING_REF; digestKey = $env:BILLING_DIGEST_KEY; gate = $env:BILLING_GATE; sarif = $env:BILLING_SARIF },
+            [pscustomobject]@{ service = "frontend"; image = $env:FRONTEND_REF; digestKey = $env:FRONTEND_DIGEST_KEY; gate = $env:FRONTEND_GATE; sarif = $env:FRONTEND_SARIF },
+            [pscustomobject]@{ service = "api-gateway"; image = $env:API_GATEWAY_REF; digestKey = $env:API_GATEWAY_DIGEST_KEY; gate = $env:API_GATEWAY_GATE; sarif = $env:API_GATEWAY_SARIF }
+          )
+          $results = @()
+          $failures = @()
+          foreach ($check in $checks) {
+            if ([string]::IsNullOrWhiteSpace([string]$check.image)) {
+              continue
+            }
+            $tablePath = "release-evidence/trivy/$($check.service)-$($check.digestKey).table.txt"
+            $sarifPath = "release-evidence/trivy/$($check.service)-$($check.digestKey).sarif"
+            $immutable = [string]$check.image -match "@sha256:[0-9a-f]{64}$"
+            $tablePresent = (Test-Path -LiteralPath $tablePath -PathType Leaf) -and
+              (Get-Item -LiteralPath $tablePath).Length -gt 0
+            $sarifPresent = (Test-Path -LiteralPath $sarifPath -PathType Leaf) -and
+              (Get-Item -LiteralPath $sarifPath).Length -gt 0
+            $passed = $immutable -and $check.gate -eq "success" -and $check.sarif -eq "success" -and
+              $tablePresent -and $sarifPresent
+            $results += [ordered]@{
+              service = $check.service
+              immutableImage = $check.image
+              digestKey = $check.digestKey
+              highCriticalGate = $check.gate
+              sarifScan = $check.sarif
+              tableEvidence = $tablePath
+              sarifEvidence = $sarifPath
+              passed = $passed
+            }
+            if (-not $passed) {
+              $failures += $check.service
+            }
+          }
+          [ordered]@{
+            commit = "${{ needs.resolve-target.outputs.commit_sha }}"
+            environment = "${{ needs.resolve-target.outputs.target_env }}"
+            scanner = "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25"
+            scannedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+            services = $results
+          } | ConvertTo-Json -Depth 10 | Set-Content release-evidence/trivy/exact-digest-scan.json
+          if ($failures.Count -gt 0) {
+            throw "Exact-digest Trivy gate or evidence generation failed for: $($failures -join ', '). Deployment is blocked."
+          }
+          if ($results.Count -eq 0) {
+            throw "No immutable release image was scanned. Deployment is blocked."
+          }
 
       - name: Fast dev deployment
-        if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.deployment_config_changed != 'true' && inputs.apply_deployment_config != true }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.deployment_config_changed != 'true' }}
         shell: pwsh
         run: |
           ./scripts/invoke-direct-cloudrun-release.ps1 `
@@ -397,7 +656,7 @@ jobs:
             -OutputPath release-evidence/deployment.json
 
       - name: Create and serially promote Cloud Deploy releases
-        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.apply_deployment_config == true }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
         shell: pwsh
         run: |
           $arguments = @{
@@ -416,7 +675,7 @@ jobs:
           ./scripts/invoke-clouddeploy-release.ps1 @arguments
 
       - name: Confirm Cloud Deploy rollouts
-        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' || inputs.apply_deployment_config == true }}
+        if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
         shell: pwsh
         run: |
           $arguments = @{
@@ -521,8 +780,23 @@ jobs:
 
   no-deployment:
     needs: [resolve-target, detect]
-    if: ${{ needs.detect.outputs.has_service_changes != 'true' }}
+    if: ${{ needs.detect.outputs.has_service_changes != 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Explain no-op
-        run: echo "No deployable service or deployment configuration changed; deployment skipped." >> "$GITHUB_STEP_SUMMARY"
+        run: echo "No deployable service changed; deployment skipped." >> "$GITHUB_STEP_SUMMARY"
+
+  configuration-reconciliation-required:
+    needs: [resolve-target, detect]
+    if: ${{ needs.detect.outputs.deployment_reconciliation_required == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block automatic release for control-plane configuration
+        run: |
+          {
+            echo "## Manual deployment reconciliation required"
+            echo ""
+            echo "This change modifies Cloud Deploy targets, pipelines, or their renderer."
+            echo "No image was built and no release was created."
+            echo "Run the protected Ops / Reconcile deployment configuration workflow first, then release services in separate service-specific commits."
+          } >> "$GITHUB_STEP_SUMMARY"

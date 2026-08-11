@@ -16,6 +16,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -30,6 +31,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -51,6 +57,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -65,6 +72,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -86,6 +98,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -100,6 +113,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -121,6 +139,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -139,6 +158,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -160,6 +184,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -174,6 +199,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -195,6 +225,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -209,6 +240,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -230,6 +266,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "4"
   frontend_max_instances: "2"
+  startup_cpu_boost: "false"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -244,5 +281,10 @@ deployParameters:
   platform_url: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-dev-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2

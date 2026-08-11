@@ -16,7 +16,7 @@ spec:
         autoscaling.knative.dev/minScale: "0" # from-param: ${domain_min_instances}
         autoscaling.knative.dev/maxScale: "4" # from-param: ${domain_max_instances}
         run.googleapis.com/cpu-throttling: "true"
-        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/startup-cpu-boost: "true" # from-param: ${startup_cpu_boost}
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only # from-param: ${vpc_egress}
     spec:

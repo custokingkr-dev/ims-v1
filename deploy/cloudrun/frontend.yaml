@@ -16,7 +16,7 @@ spec:
         autoscaling.knative.dev/minScale: "0"
         autoscaling.knative.dev/maxScale: "2" # from-param: ${frontend_max_instances}
         run.googleapis.com/cpu-throttling: "true"
-        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/startup-cpu-boost: "false" # from-param: ${startup_cpu_boost}
     spec:
       serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
       containerConcurrency: 80

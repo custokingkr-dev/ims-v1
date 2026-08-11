@@ -11,6 +11,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.Map;
 
@@ -64,12 +65,28 @@ class FeeOutboxEmissionIntegrationTest {
             st.execute("DELETE FROM tenant_school.outbox_events");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.academic_years");
-            st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES ('"
-                    + academicYear.id() + "', '" + academicYear.label() + "', true)");
-            st.execute("INSERT INTO student.students (id, admission_no, full_name, school_id, class_id, section_id, academic_year_id) " +
-                    "VALUES (1, 'A-1', 'Test Student', 10, 'c1', 's1', '" + academicYear.id() + "')");
-            st.execute("INSERT INTO fee.fee_bands(id, name, class_from, class_to, discount, active_schedules_csv, academic_year_id, school_id) " +
-                    "VALUES ('band-1', 'Band 1', 1, 5, 0.0, 'Annual,Monthly', '" + academicYear.id() + "', 10)");
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO tenant_school.academic_years (id, label, active) VALUES (?, ?, true)")) {
+                ps.setString(1, academicYear.id());
+                ps.setString(2, academicYear.label());
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id, academic_year_id)
+                    VALUES (1, 'A-1', 'Test Student', 10, 'c1', 's1', ?)
+                    """)) {
+                ps.setString(1, academicYear.id());
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO fee.fee_bands
+                        (id, name, class_from, class_to, discount, active_schedules_csv, academic_year_id, school_id)
+                    VALUES ('band-1', 'Band 1', 1, 5, 0.0, 'Annual,Monthly', ?, 10)
+                    """)) {
+                ps.setString(1, academicYear.id());
+                ps.executeUpdate();
+            }
             st.execute("INSERT INTO fee.fee_items(id, name, frequency, amount, optional, band_id, school_id) VALUES " +
                     "('item-1', 'Tuition', 'Annual', 500000, false, 'band-1', 10), " +
                     "('item-2', 'Transport', 'Annual', 100000, true, 'band-1', 10)");

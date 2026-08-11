@@ -33,6 +33,8 @@ on:
         value: ${{ jobs.detect.outputs.changed_files }}
       deployment_config_changed:
         value: ${{ jobs.detect.outputs.deployment_config_changed }}
+      deployment_reconciliation_required:
+        value: ${{ jobs.detect.outputs.deployment_reconciliation_required }}
 
 permissions:
   contents: read
@@ -46,6 +48,7 @@ jobs:
       docker_matrix: ${{ steps.detect.outputs.docker_matrix }}
       changed_files: ${{ steps.detect.outputs.changed_files }}
       deployment_config_changed: ${{ steps.detect.outputs.deployment_config_changed }}
+      deployment_reconciliation_required: ${{ steps.detect.outputs.deployment_reconciliation_required }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -82,5 +85,14 @@ jobs:
           "docker_matrix=$($result.docker_matrix | ConvertTo-Json -Depth 20 -Compress)" >> $env:GITHUB_OUTPUT
           "changed_files=$($result.changed_files | ConvertTo-Json -Compress)" >> $env:GITHUB_OUTPUT
           "deployment_config_changed=$($result.deployment_config_changed.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "deployment_reconciliation_required=$($result.deployment_reconciliation_required.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
           "### Changed files" >> $env:GITHUB_STEP_SUMMARY
           $result.changed_files | ForEach-Object { "- $_" >> $env:GITHUB_STEP_SUMMARY }
+          "" >> $env:GITHUB_STEP_SUMMARY
+          "### Deployment decision" >> $env:GITHUB_STEP_SUMMARY
+          "- affected services: $(@($result.service_matrix.include).Count)" >> $env:GITHUB_STEP_SUMMARY
+          "- deployment configuration changed: $($result.deployment_config_changed.ToString().ToLowerInvariant())" >> $env:GITHUB_STEP_SUMMARY
+          "- manual configuration reconciliation required: $($result.deployment_reconciliation_required.ToString().ToLowerInvariant())" >> $env:GITHUB_STEP_SUMMARY
+          if ($result.deployment_reconciliation_required) {
+            "- automatic image build/release: blocked; run Ops / Reconcile deployment configuration" >> $env:GITHUB_STEP_SUMMARY
+          }

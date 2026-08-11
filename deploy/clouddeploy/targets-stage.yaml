@@ -16,6 +16,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -51,6 +52,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -86,6 +88,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -121,6 +124,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -160,6 +164,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -195,6 +200,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -230,6 +236,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "2"
   frontend_max_instances: "1"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only

@@ -1,5 +1,5 @@
 param(
-    [ValidateSet("Status", "Diagnostics", "QueryPlans", "AsyncSeed", "AsyncStatus", "AsyncCleanup", "ScaleBacklogCleanup", "Seed", "LongHistorySeed", "Cleanup")]
+    [ValidateSet("Status", "Diagnostics", "QueryPlans", "MixedQueryPlans", "AsyncSeed", "AsyncStatus", "AsyncCleanup", "ScaleBacklogCleanup", "Seed", "LongHistorySeed", "Cleanup")]
     [string]$Action = "Status",
     [ValidateSet("dev")]
     [string]$Environment = "dev",
@@ -125,7 +125,7 @@ switch ($Action) {
     "Cleanup" {
         $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\cleanup-scale-fleet.sql"
         $sql = Get-Content $sqlPath -Raw
-        $psqlVariables = "-v base_school_id=$BaseSchoolId"
+        $psqlVariables = "-v base_school_id=$BaseSchoolId -v school_count=$SchoolCount"
     }
     "LongHistorySeed" {
         $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\seed-long-history-attendance.sql"
@@ -330,6 +330,11 @@ SELECT 'IMS_SCALE_OUTBOX_RELAY_PLAN|' || plan::text FROM ims_outbox_relay_plan;
     }
     "QueryPlans" {
         $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\capture-long-history-query-plans.sql"
+        $sql = Get-Content $sqlPath -Raw
+        $psqlVariables = "-v base_school_id=$BaseSchoolId -v academic_year_id=$AcademicYearId"
+    }
+    "MixedQueryPlans" {
+        $sqlPath = Join-Path $PSScriptRoot "..\load-tests\sql\capture-mixed-morning-query-plans.sql"
         $sql = Get-Content $sqlPath -Raw
         $psqlVariables = "-v base_school_id=$BaseSchoolId -v academic_year_id=$AcademicYearId"
     }

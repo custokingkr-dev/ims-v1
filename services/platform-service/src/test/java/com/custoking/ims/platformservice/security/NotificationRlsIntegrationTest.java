@@ -12,6 +12,7 @@ import org.testcontainers.DockerClientFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -102,13 +103,28 @@ class NotificationRlsIntegrationTest {
     @AfterEach
     void clearCtx() { TenantContext.clear(); }
 
-    private long count(String table, String idPrefix) throws SQLException {
+    private enum TenantTable {
+        BROADCASTS,
+        LOGS,
+        WHATSAPP_ONBOARDING_SESSIONS
+    }
+
+    private long count(TenantTable table, String idPrefix) throws SQLException {
+        String sql = switch (table) {
+            case BROADCASTS ->
+                    "SELECT count(*) FROM notification.notification_broadcasts WHERE id::text LIKE ?";
+            case LOGS ->
+                    "SELECT count(*) FROM notification.notification_logs WHERE id::text LIKE ?";
+            case WHATSAPP_ONBOARDING_SESSIONS ->
+                    "SELECT count(*) FROM notification.whatsapp_onboarding_sessions WHERE id::text LIKE ?";
+        };
         try (Connection c = appRt.getConnection();
-             Statement st = c.createStatement();
-             ResultSet rs = st.executeQuery(
-                     "SELECT count(*) FROM notification." + table + " WHERE id::text LIKE '" + idPrefix + "%'")) {
-            rs.next();
-            return rs.getLong(1);
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setString(1, idPrefix + "%");
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                return rs.getLong(1);
+            }
         }
     }
 
@@ -126,49 +142,49 @@ class NotificationRlsIntegrationTest {
     @Test
     void notificationBroadcasts_schoolA_seesOnlyItsRows() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
-        assertEquals(2, count("notification_broadcasts", "b0000000"));
+        assertEquals(2, count(TenantTable.BROADCASTS, "b0000000"));
     }
 
     @Test
     void notificationBroadcasts_schoolB_seesOnlyItsRows() throws Exception {
         TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
-        assertEquals(1, count("notification_broadcasts", "b0000000"));
+        assertEquals(1, count(TenantTable.BROADCASTS, "b0000000"));
     }
 
     @Test
     void notificationBroadcasts_superadmin_seesAll() throws Exception {
         TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
-        assertEquals(3, count("notification_broadcasts", "b0000000"));
+        assertEquals(3, count(TenantTable.BROADCASTS, "b0000000"));
     }
 
     @Test
     void notificationBroadcasts_noContext_seesNothing() throws Exception {
         TenantContext.clear();
-        assertEquals(0, count("notification_broadcasts", "b0000000"));
+        assertEquals(0, count(TenantTable.BROADCASTS, "b0000000"));
     }
 
     @Test
     void notificationLogs_isolation() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
-        assertEquals(2, count("notification_logs", "log-"));
+        assertEquals(2, count(TenantTable.LOGS, "log-"));
         TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
-        assertEquals(1, count("notification_logs", "log-"));
+        assertEquals(1, count(TenantTable.LOGS, "log-"));
         TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
-        assertEquals(3, count("notification_logs", "log-"));
+        assertEquals(3, count(TenantTable.LOGS, "log-"));
         TenantContext.clear();
-        assertEquals(0, count("notification_logs", "log-"));
+        assertEquals(0, count(TenantTable.LOGS, "log-"));
     }
 
     @Test
     void whatsappOnboardingSessions_isolation() throws Exception {
         TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
-        assertEquals(2, count("whatsapp_onboarding_sessions", "d0000000"));
+        assertEquals(2, count(TenantTable.WHATSAPP_ONBOARDING_SESSIONS, "d0000000"));
         TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
-        assertEquals(1, count("whatsapp_onboarding_sessions", "d0000000"));
+        assertEquals(1, count(TenantTable.WHATSAPP_ONBOARDING_SESSIONS, "d0000000"));
         TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
-        assertEquals(3, count("whatsapp_onboarding_sessions", "d0000000"));
+        assertEquals(3, count(TenantTable.WHATSAPP_ONBOARDING_SESSIONS, "d0000000"));
         TenantContext.clear();
-        assertEquals(0, count("whatsapp_onboarding_sessions", "d0000000"));
+        assertEquals(0, count(TenantTable.WHATSAPP_ONBOARDING_SESSIONS, "d0000000"));
     }
 
     // --- (2) WITH CHECK blocks cross-tenant raw insert on the standard-policy tables ---

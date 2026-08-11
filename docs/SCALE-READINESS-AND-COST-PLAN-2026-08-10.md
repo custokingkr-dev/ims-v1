@@ -1,11 +1,21 @@
 # Scale Readiness, GCP Cost Model, and One-Week Production Plan
 
-Last verified: 2026-08-10
+Original evidence date: 2026-08-10; capacity/cost status reconciled 2026-08-11
 Repository: `custokingkr-dev/ims-v1`
 GCP project inspected: `custoking`
 Region: `asia-south2` (Delhi)
 Target fleet: 100-150 schools, 200,000-300,000 active student records
 Largest supported school target: 10,000 students
+
+> **Status update (2026-08-11):** This document preserves the August 10 implementation and test history,
+> but its original 2-vCPU capacity conclusion and cost table are superseded by guarded August 11 evidence.
+> `db-custom-2-7680` failed the target 300-VU CPU guard. `db-custom-4-7680` passed the short burst, then the
+> first full soak and MixedMorning runs failed. After the measured fixes and exact two-pass backlog cleanup,
+> the corrective `soak-20260811074848-evidence.json` run passed the complete 4h10m/300-VU profile with k6
+> exit 0 and all thresholds passing. MixedMorning, live 10,000-student gateway verification, final scoped
+> fixture/backlog cleanup and Cloud SQL downsize/stop remain pending. Current detailed evidence is in
+> `docs/workstreams/RELIABILITY-SCALE-RECOVERY-CHANGES-2026-08-11.md` and
+> `docs/workstreams/ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md`.
 
 ## 1. Decision
 
@@ -27,8 +37,9 @@ The following must be true before a large onboarding wave:
    timers on scale-to-zero instances.
 7. The critical authentication, IAM and deployment-governance findings are closed.
 
-The recommended low-cost starting point is a dedicated 2-vCPU/7.5-GiB zonal PostgreSQL instance
-for the first production load gate. It is a performance starting point, not an availability SLA.
+The current low-cost planning default is a dedicated 4-vCPU/7.5-GiB zonal PostgreSQL instance because
+the 2-vCPU shape failed the target guard and 4 vCPU/7.5 GiB is the cheapest measured full 300-VU-soak pass.
+This is test-backed capacity planning, not production purchase, availability/SLA or business approval.
 Use regional HA if the business requires a Cloud SQL SLA or cannot accept a zonal database outage.
 
 ## 2. What Was Examined
@@ -190,7 +201,7 @@ views begin transferring full portraits.
 | Student list pagination | Previously paginated in Java | Corrected in this change |
 | Student search | Tenant-scoped `%LIKE%` across many fields | Acceptable at 10k/school; measure before adding costly indexes |
 | Attendance storage | Correct indexes, no partitions | Suitable initially; must partition/retain before large history |
-| Attendance submission | Set validation and multi-row upsert | Deployed and passed 300-VU write stage |
+| Attendance submission | Set validation and multi-row upsert | Deployed; historical 300-VU stage passed, later guarded capacity gates remain open |
 | Student import | 500-row explicit batches, retry-safe confirmation | Cost-minimized onboarding path; 20 batches for 10k students |
 | Review campaign creation | Set insert plus 500-row event chunks | Deployed; 10k-school path is about 21 statements |
 | Reporting projections | Idempotent projections but formerly permanent failure/no lease | Retry, lease and dead-letter added here |
@@ -199,7 +210,7 @@ views begin transferring full portraits.
 | Frontend student paging | Uses 50-row server pages | Suitable |
 | Frontend bundle | Workspace and spreadsheet chunks exceed 900 KiB | Functional; split for latency/mobile use |
 | Database connection pools | School-core dev uses 20 per instance | Four-instance test ceiling is 80/200 connections |
-| Load testing | Exact 300k fixture and write workload | 300 VUs pass; 500 VUs stops at database CPU gate |
+| Load testing | Exact 300k fixture and guarded write/read workloads | 2 vCPU failed the guarded target; 4 vCPU passed the burst and corrective 4h10m/300-VU soak; the corrected MixedMorning run failed on database CPU and Cloud Run regional allocation quota, with plan-backed remediation awaiting redeploy/retest |
 
 ## 6. Cloud SQL Recommendation
 
@@ -214,20 +225,26 @@ excluded from the Cloud SQL SLA.
 
 ### Cost-minimized performance path
 
-1. Load-test on `db-custom-2-7680` (2 vCPU, 7.5 GiB) with 100 GiB SSD.
+1. Retain `db-custom-2-7680` only as the rejected 300-VU/lower-concurrency comparison.
 2. Keep it zonal only if the business explicitly accepts no Cloud SQL SLA and restore/failover
    downtime in exchange for lower cost.
-3. Use `db-custom-4-15360` planning capacity for 300,000 students if the 2-vCPU gate fails or CPU,
-   memory, lock waits or p95 latency cross thresholds.
+3. Retain `db-custom-4-7680` as the least-cost measured shape that passed the full target soak; test a higher
+   supported shape only if a remaining representative workload, such as MixedMorning, proves saturation.
 4. Enable Query Insights during the onboarding/load-test window and set a maintenance window.
 5. Enforce encrypted database connections.
 6. Recalculate pools before increasing Cloud Run max instances.
 
-Measured dev evidence now supports `db-custom-2-7680` for the tested 300-VU attendance-write
-profile: clean sustained peak CPU 57.4%, memory 50.6%, and 67 application backends. The 500-VU stage
-crossed 80% CPU for consecutive samples while memory and connections remained healthy, establishing
-CPU as the first scale-up trigger. This is evidence for a two-vCPU starting shape with onboarding
-limits, not permission to run production on the current shared-core instance.
+The August 10 run measured 57.4% CPU, 50.6% memory and 67 application backends on a clean 300-VU
+attendance-write profile. A stricter August 11 morning-burst run on the same 2-vCPU/7.5-GiB shape later
+failed after three CPU guard samples reached 83.52%; the historical pass therefore does not certify that
+shape for the target. Four vCPU/7.5 GiB passed the full short burst at 58.29% maximum CPU, then failed the
+first full soak at 2h28m on sustained CPU. After the measured fixes and exact cleanup, the corrective run
+completed the full 4h10m/300-VU profile with k6 exit 0, all thresholds passing, 4,178,728 requests, overall
+p95/p99 of 108.536/238.370 ms, attendance-write p95/p99 of 74.591/116.766 ms, and maximum Cloud SQL CPU/
+memory/connections of 54.22%/46.8998%/81. MixedMorning remains a separate failed workload gate:
+the first corrected run stopped after CPU samples of 82.46%, 100% and 100%, and exact logs also
+proved the project exhausted its 20-vCPU regional Cloud Run allocation during cold scale. Directory
+indexes, a cheaper stats query and dev-only startup-boost mitigation must be redeployed and retested.
 
 ### Availability path
 
@@ -260,7 +277,7 @@ Change the current fleet-wide assumptions as follows:
 | Frontend | 2 | 3-5 | Mostly static/cacheable |
 | Gateway | 3 | 4 measured | Node async I/O; distributed rate limiting still needed |
 | Identity | 2 | 3 | Login bursts, otherwise low traffic |
-| School-core | 2 | 4 measured | 20-connection pool; 300 VUs pass on two-vCPU SQL |
+| School-core | 2 | 4 measured | 20-connection pool; 2-vCPU target rejected, 4-vCPU full-soak planning default; MixedMorning still open |
 | Operations | 2 | 3 | Lower traffic |
 | Platform | 2 | 3-5 | Pub/Sub projections and dashboards |
 | Billing | 2 | 2 | Low frequency |
@@ -281,8 +298,8 @@ The billing-account pricing export on 2026-08-10 reports the following Delhi lis
 - dedicated zonal PostgreSQL RAM: INR 0.8034285/GiB-hour;
 - zonal PostgreSQL SSD: INR 19.511835/GiB-month;
 - regional database compute/storage: approximately twice zonal;
-- Cloud Run request-billed CPU: USD 0.000024/vCPU-second;
-- Cloud Run request-billed memory: USD 0.0000025/GiB-second;
+- Cloud Run request-billed CPU: USD 0.0000336/vCPU-second (Delhi Tier 2 input checked 2026-08-11);
+- Cloud Run request-billed memory: USD 0.0000035/GiB-second (Delhi Tier 2 input checked 2026-08-11);
 - Cloud Run requests: USD 0.40/million;
 - Pub/Sub: first 10 GiB/month free, then USD 40/TiB.
 
@@ -296,18 +313,20 @@ is approximately INR 8,700, but development/deployment activity is not uniform.
 
 | Scenario | Database plan | Cloud Run planning | Total zonal/month | Regional HA/month |
 | --- | --- | ---: | ---: | ---: |
-| 100 schools / 200k students | 2 vCPU, 7.5 GiB, 100 GiB | ~INR 5,290 | INR 18,321-28,626 | INR 28,942-45,221 |
-| 150 schools / 300k students | 4 vCPU, 15 GiB, 150 GiB | ~INR 7,935 | INR 30,971-48,392 | INR 51,432-80,363 |
+| 100 schools / 200k students | 4 vCPU, 7.5 GiB, 100 GiB | ~INR 7,302 | INR 25,505-39,852 (midpoint INR 31,881) | INR 41,667-65,105 (midpoint INR 52,084) |
+| 150 schools / 300k students | 4 vCPU, 7.5 GiB, 150 GiB | ~INR 10,954 | INR 29,917-46,745 (midpoint INR 37,396) | INR 46,860-73,218 (midpoint INR 58,575) |
 
-The midpoint modeled totals are INR 22,901 and INR 38,714 zonal, and INR 36,177 and INR 64,291
-regional HA.
+The current midpoint modeled totals are INR 31,881 and INR 37,396 zonal, and INR 52,084 and INR 58,575
+regional HA. They use the 4-vCPU/7.5-GiB full-soak-backed planning default. The soak pass does not choose a
+production database, approve the modeled spend, or decide zonal versus HA; MixedMorning and the remaining
+production-readiness gates still apply.
 
 Approximate platform infrastructure cost is therefore:
 
-- 100-school zonal: INR 183-286/school/month;
-- 150-school zonal: INR 206-323/school/month;
-- 100-school HA: INR 289-452/school/month;
-- 150-school HA: INR 343-536/school/month.
+- 100-school zonal: INR 255-399/school/month;
+- 150-school zonal: INR 199-312/school/month;
+- 100-school HA: INR 417-651/school/month;
+- 150-school HA: INR 312-488/school/month.
 
 Excluded from these figures:
 
@@ -365,14 +384,14 @@ impact of each control failure.
 
 Critical:
 
-1. Refresh tokens were accepted through the access-token introspection path. This repository change
-   now rejects them in both gateway and identity; deployment remains required.
-2. All 14 Cloud Run services use one overprivileged default compute service account. Create a
-   service/environment identity matrix with per-secret and per-resource permissions.
+1. Refresh tokens were accepted through the access-token introspection path. Source now rejects them in both
+   gateway and identity; dev validation passed and production governance remains gated.
+2. Dev now uses dedicated runtime identities and passed its permission regression. Production least-privilege
+   cutover remains gated.
 3. Dev reporting push moved to a dedicated OIDC identity/audience and no longer has a query
-   credential. The existing production reporting subscription still requires migration. Live
-   inventory found no notification subscription in either environment despite notification topics
-   and consumer code; provision and test that path or explicitly retire it. Rotate static secrets
+   credential. The existing production reporting subscription still requires migration. Dev notification
+   now has a dedicated OIDC subscription, retry/DLQ and passing synthetic probes; production
+   still requires a deliberate topology/provider decision. Rotate static secrets
    only after every existing consumer is cut over.
 4. The public repository has no protected branches/rulesets while a repo-wide WIF trust can assume
    a broad deployment account. Restrict branches, workflow claims and service accounts.
@@ -410,10 +429,12 @@ High:
     520-student integration test verifies chunk-boundary correctness.
 13. Live dev generated exactly 100 schools, 300,000 students, a 10,000-student largest school and
     7,576 sections in 74.76 seconds; cleanup and an independent zero-residue status check passed.
-14. The sustained 300-VU write stage passed at 217.60 requests/second with 0.01% errors, write p95
-    122.91 ms, write p99 235.06 ms, 57.4% peak database CPU and 67/200 application backends.
+14. The August 10 sustained 300-VU write stage passed at 217.60 requests/second with 0.01% errors, write
+    p95 122.91 ms, write p99 235.06 ms, 57.4% peak database CPU and 67/200 application backends. Later
+    guarded evidence supersedes this as a sizing conclusion: 2 vCPU failed the target morning-burst guard.
 15. The 500-VU stage was conservatively stopped after consecutive 87.9% and 87.6% database CPU samples. The
-    two-vCPU approved envelope is therefore capped below 500 concurrent attendance writers.
+    historical two-vCPU envelope was therefore capped below 500 concurrent attendance writers; it is now
+    rejected for the target 300-VU certification profile.
 16. A read-path academic-year rewrite that serialized attendance transactions was removed and is
     protected by a PostgreSQL `xmin` no-rewrite regression test.
 17. Dev max instances are four for gateway and school-core with minimum instances zero; the latter
@@ -500,7 +521,8 @@ Initial gates:
 
 ### Day 6 - Database sizing and recovery
 
-- Select 2-vCPU or 4-vCPU dedicated SQL based on Day 5 evidence.
+- Treat 2 vCPU as rejected for the target and retain the measured 4-vCPU/7.5-GiB full-soak pass as the
+  planning default; size higher only if remaining representative evidence requires it.
 - Provision 100-150 GiB initial storage with auto-growth and alerts.
 - Decide zonal cost mode versus regional HA in writing.
 - Enforce encrypted connections and set maintenance window.
@@ -570,27 +592,29 @@ dev scenarios after batching is implemented.
 - [ ] Dedicated production Cloud SQL chosen from measured load results.
 - [ ] Zonal-versus-HA risk accepted by business owner.
 - [x] 300,000-student seed and 10,000-student tenant tests pass in dev.
-- [x] Attendance batch path passes burst, sustained 300-VU, duplicate and transaction tests in dev.
+- [ ] Attendance batch path passes the corrected full soak and MixedMorning rerun; the bounded burst and
+  corrective full soak now pass, while the earlier failed soak remains historical evidence and MixedMorning
+  is still pending.
 - [x] Imports use an explicit 500-row operational batching process with retry-safe confirmation.
 - [ ] Student list/search meets p95/p99 targets.
-- [ ] Reporting retries, dead-letter and replay are verified.
-- [ ] Background relay operates while user-facing services are idle.
+- [x] Dev reporting retries, dead-letter and guarded replay are verified; production remains gated.
+- [x] Dev background relay operates while user-facing services are idle; Scheduler jobs returned to `PAUSED`.
 - [x] Per-service runtime IAM is deployed and regression-tested in dev.
 - [ ] Per-service runtime IAM is deployed and canary-tested in production.
 - [x] Dev reporting Pub/Sub query credential is removed and dedicated OIDC delivery is verified.
 - [ ] Production reporting Pub/Sub query credential is removed and rotated.
-- [ ] Notification topics have a deliberately provisioned/tested subscriber or are intentionally
-  retired; neither environment currently has a notification subscription.
+- [x] Dev notification topic has a deliberately provisioned/tested OIDC subscriber and DLQ; production
+  notification provisioning and consented provider acceptance remain gated.
 - [ ] Branch protection, required CI and restricted WIF are active.
-- [ ] PITR recovery drill passes with recorded RTO/RPO.
+- [x] Dev PITR recovery drill passes with recorded RTO/RPO and clone/object/IAM cleanup; production remains gated.
 - [ ] Cost budget is raised from INR 5,000 to the selected fleet envelope.
-- [ ] Per-school usage/cost telemetry exists.
+- [ ] Bounded per-school import usage exists, but complete API/attendance/storage/provider cost attribution does not.
 - [ ] Notification-provider unit economics and consent controls are approved.
 - [ ] Canary cohort completes a real school-day peak before the next wave.
 
-Production remains a no-go while any mandatory item above is open. In particular, the passing
-300-VU stage does not replace the four-hour soak, controlled recovery/PITR,
-runtime IAM/OIDC, production database/HA decision, or staged canary evidence.
+Production remains a no-go while any mandatory item above is open. The passing four-hour 300-VU soak does
+not replace MixedMorning, controlled recovery/PITR, runtime IAM/OIDC, the production database/HA decision,
+business approval, final fixture cleanup or staged canary evidence.
 
 ## 16. Sources
 

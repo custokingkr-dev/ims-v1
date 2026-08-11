@@ -1,0 +1,92 @@
+name: Ops / Reconcile deployment configuration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Dev runs only from dev; prod runs only from main.
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deployment-config-${{ inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+  GCP_REGION: ${{ vars.GCP_REGION || 'asia-south2' }}
+  WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    env:
+      DEPLOYMENT_CONFIG_SERVICE_ACCOUNT: ${{ vars.DEPLOYMENT_CONFIG_SERVICE_ACCOUNT }}
+      DEV_DB_HOST: ${{ vars.DEV_DB_HOST || vars.DB_HOST }}
+      DEV_DB_NAME: ${{ vars.DEV_DB_NAME || vars.DB_NAME }}
+      DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+      PROD_DB_HOST: ${{ vars.PROD_DB_HOST || vars.DB_HOST }}
+      PROD_DB_NAME: ${{ vars.PROD_DB_NAME || vars.DB_NAME }}
+      PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Enforce configuration branch boundary
+        shell: pwsh
+        run: |
+          $expectedRef = if ('${{ inputs.environment }}' -eq 'prod') { 'refs/heads/main' } else { 'refs/heads/dev' }
+          if ('${{ github.ref }}' -ne $expectedRef) {
+            throw "Configuration environment '${{ inputs.environment }}' is restricted to $expectedRef; current ref is '${{ github.ref }}'."
+          }
+          if ([string]::IsNullOrWhiteSpace($env:DEPLOYMENT_CONFIG_SERVICE_ACCOUNT)) {
+            throw "DEPLOYMENT_CONFIG_SERVICE_ACCOUNT is not configured for '${{ inputs.environment }}'."
+          }
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYMENT_CONFIG_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+
+      - name: Render and apply targets and pipelines only
+        shell: pwsh
+        run: |
+          $environment = '${{ inputs.environment }}'
+          $renderedTargets = "artifacts/clouddeploy/targets-$environment.rendered.yaml"
+          $renderedPipelines = "artifacts/clouddeploy/delivery-pipelines-$environment.rendered.yaml"
+          ./scripts/render-clouddeploy-targets.ps1 `
+            -Environment $environment `
+            -OutputPath $renderedTargets
+          ./scripts/render-clouddeploy-pipelines.ps1 `
+            -Environment $environment `
+            -OutputPath $renderedPipelines
+          gcloud deploy apply `
+            --file $renderedTargets `
+            --project "$env:GCP_PROJECT_ID" `
+            --region "$env:GCP_REGION"
+          if ($LASTEXITCODE -ne 0) { throw "Target reconciliation failed." }
+          gcloud deploy apply `
+            --file $renderedPipelines `
+            --project "$env:GCP_PROJECT_ID" `
+            --region "$env:GCP_REGION"
+          if ($LASTEXITCODE -ne 0) { throw "Delivery-pipeline reconciliation failed." }
+
+      - name: Record configuration-only result
+        shell: bash
+        run: |
+          {
+            echo "## Deployment configuration reconciled"
+            echo ""
+            echo "- environment: ${{ inputs.environment }}"
+            echo "- commit: ${{ github.sha }}"
+            echo "- releases created: 0"
+            echo "- rollouts created: 0"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -13,6 +13,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
@@ -74,9 +75,13 @@ class TimetableRepositoryIntegrationTest {
 
     private long seedSchool() throws Exception {
         String shortCode = "S" + UUID.randomUUID().toString().substring(0, 8);
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.schools (name, short_code, active, created_at) " +
-                    "VALUES ('Demo School', '" + shortCode + "', true, now())");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO tenant_school.schools (name, short_code, active, created_at)
+                     VALUES ('Demo School', ?, true, now())
+                     """)) {
+            ps.setString(1, shortCode);
+            ps.executeUpdate();
         }
         return jdbc.sql("SELECT id FROM tenant_school.schools WHERE short_code = :c")
                 .param("c", shortCode).query(Long.class).single();
@@ -85,36 +90,65 @@ class TimetableRepositoryIntegrationTest {
     private String seedClass(long schoolId, String name) throws Exception {
         String classId = "cls-" + name + "-" + UUID.randomUUID();
         String sectionId = "sec-" + name + "-" + UUID.randomUUID();
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES " +
-                    "('" + classId + "', '" + name + "', 1)");
-            st.execute("INSERT INTO tenant_school.school_sections (id, name, active, school_class_id, school_id) VALUES " +
-                    "('" + sectionId + "', 'A', true, '" + classId + "', " + schoolId + ")");
+        try (Connection c = dataSource.getConnection()) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO tenant_school.school_classes (id, name, sort_order) VALUES (?, ?, 1)")) {
+                ps.setString(1, classId);
+                ps.setString(2, name);
+                ps.executeUpdate();
+            }
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO tenant_school.school_sections
+                        (id, name, active, school_class_id, school_id)
+                    VALUES (?, 'A', true, ?, ?)
+                    """)) {
+                ps.setString(1, sectionId);
+                ps.setString(2, classId);
+                ps.setLong(3, schoolId);
+                ps.executeUpdate();
+            }
         }
         return classId;
     }
 
     private String seedYear(long schoolId, String id, boolean active) throws Exception {
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.academic_years (id, label, active) VALUES (" +
-                    "'" + id + "', '" + id + "', " + active + ")");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement(
+                     "INSERT INTO tenant_school.academic_years (id, label, active) VALUES (?, ?, ?)")) {
+            ps.setString(1, id);
+            ps.setString(2, id);
+            ps.setBoolean(3, active);
+            ps.executeUpdate();
         }
         return id;
     }
 
     private String seedSection(long schoolId, String classId, String name) throws Exception {
         String sectionId = "sec-" + name;
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.school_sections (id, name, active, school_class_id, school_id) VALUES " +
-                    "('" + sectionId + "', '" + name + "', true, '" + classId + "', " + schoolId + ")");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO tenant_school.school_sections
+                         (id, name, active, school_class_id, school_id)
+                     VALUES (?, ?, true, ?, ?)
+                     """)) {
+            ps.setString(1, sectionId);
+            ps.setString(2, name);
+            ps.setString(3, classId);
+            ps.setLong(4, schoolId);
+            ps.executeUpdate();
         }
         return sectionId;
     }
 
     private long seedStaff(long schoolId, String name) throws Exception {
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.staff_members (name, designation, monthly_salary, school_id) VALUES " +
-                    "('" + name + "', 'Teacher', 0, " + schoolId + ")");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO tenant_school.staff_members (name, designation, monthly_salary, school_id)
+                     VALUES (?, 'Teacher', 0, ?)
+                     """)) {
+            ps.setString(1, name);
+            ps.setLong(2, schoolId);
+            ps.executeUpdate();
         }
         return jdbc.sql("SELECT id FROM tenant_school.staff_members WHERE school_id = :s AND name = :n ORDER BY id DESC LIMIT 1")
                 .param("s", schoolId).param("n", name).query(Long.class).single();
@@ -126,11 +160,20 @@ class TimetableRepositoryIntegrationTest {
             String sectionId,
             String classId,
             String yearId) throws Exception {
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO student.students " +
-                    "(id, admission_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES (" +
-                    id + ", 'ADM-" + id + "', 'Student " + id + "', " + schoolId + ", '" +
-                    classId + "', '" + sectionId + "', '" + yearId + "')");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO student.students
+                         (id, admission_no, full_name, school_id, class_id, section_id, academic_year_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                     """)) {
+            ps.setLong(1, id);
+            ps.setString(2, "ADM-" + id);
+            ps.setString(3, "Student " + id);
+            ps.setLong(4, schoolId);
+            ps.setString(5, classId);
+            ps.setString(6, sectionId);
+            ps.setString(7, yearId);
+            ps.executeUpdate();
         }
     }
 
@@ -260,10 +303,18 @@ class TimetableRepositoryIntegrationTest {
     }
 
     private void insertEntryDirect(long schoolId, String year, String sectionId, long periodId, String subject) throws Exception {
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO tenant_school.school_timetable_entries " +
-                    "(school_id, academic_year_id, section_id, day_name, bell_period_id, subject_name) VALUES (" +
-                    schoolId + ", '" + year + "', '" + sectionId + "', 'Mon', " + periodId + ", '" + subject + "')");
+        try (Connection c = dataSource.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO tenant_school.school_timetable_entries
+                         (school_id, academic_year_id, section_id, day_name, bell_period_id, subject_name)
+                     VALUES (?, ?, ?, 'Mon', ?, ?)
+                     """)) {
+            ps.setLong(1, schoolId);
+            ps.setString(2, year);
+            ps.setString(3, sectionId);
+            ps.setLong(4, periodId);
+            ps.setString(5, subject);
+            ps.executeUpdate();
         }
     }
 

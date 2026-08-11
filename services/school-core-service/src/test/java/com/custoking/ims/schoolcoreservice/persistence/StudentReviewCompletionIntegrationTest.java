@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
@@ -73,19 +74,45 @@ class StudentReviewCompletionIntegrationTest {
     /** Seeds a student, a campaign, and N items with the given per-item statuses; returns campaignId. */
     private String seedCampaign(long schoolId, String status, String reviewType, String... itemStatuses) throws Exception {
         String campaignId = java.util.UUID.randomUUID().toString();
-        try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("INSERT INTO student.student_review_campaigns (id, school_id, review_type, title, status, initiated_at, created_at, updated_at) VALUES ('"
-                    + campaignId + "'," + schoolId + ",'" + reviewType + "','T','" + status + "', now(), now(), now())");
+        try (Connection c = dataSource.getConnection()) {
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO student.student_review_campaigns
+                        (id, school_id, review_type, title, status, initiated_at, created_at, updated_at)
+                    VALUES (?, ?, ?, 'T', ?, now(), now(), now())
+                    """)) {
+                ps.setString(1, campaignId);
+                ps.setLong(2, schoolId);
+                ps.setString(3, reviewType);
+                ps.setString(4, status);
+                ps.executeUpdate();
+            }
             int n = 0;
             for (String s : itemStatuses) {
                 String admissionNo = "A" + campaignId.substring(0, 8) + n;
-                st.execute("INSERT INTO student.students (admission_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES ('"
-                        + admissionNo + "','Test'," + schoolId + ",'class-1','section-1','ay-1')");
+                try (PreparedStatement ps = c.prepareStatement("""
+                        INSERT INTO student.students
+                            (admission_no, full_name, school_id, class_id, section_id, academic_year_id)
+                        VALUES (?, 'Test', ?, 'class-1', 'section-1', 'ay-1')
+                        """)) {
+                    ps.setString(1, admissionNo);
+                    ps.setLong(2, schoolId);
+                    ps.executeUpdate();
+                }
                 long studentId = jdbc.sql("SELECT id FROM student.students WHERE admission_no= :admissionNo")
                         .param("admissionNo", admissionNo).query(Long.class).single();
                 String itemId = java.util.UUID.randomUUID().toString();
-                st.execute("INSERT INTO student.student_review_items (id, campaign_id, student_id, school_id, status) VALUES ('"
-                        + itemId + "','" + campaignId + "'," + studentId + "," + schoolId + ",'" + s + "')");
+                try (PreparedStatement ps = c.prepareStatement("""
+                        INSERT INTO student.student_review_items
+                            (id, campaign_id, student_id, school_id, status)
+                        VALUES (?, ?, ?, ?, ?)
+                        """)) {
+                    ps.setString(1, itemId);
+                    ps.setString(2, campaignId);
+                    ps.setLong(3, studentId);
+                    ps.setLong(4, schoolId);
+                    ps.setString(5, s);
+                    ps.executeUpdate();
+                }
                 n++;
             }
         }

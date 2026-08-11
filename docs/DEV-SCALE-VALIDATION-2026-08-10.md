@@ -10,6 +10,13 @@ Gateway: `https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app`
 Production was not modified. The production release remains restricted to `main`, dev-approved
 content-addressed images, and the Cloud Deploy canary path.
 
+> **Status update (2026-08-11):** This document preserves the August 10 release and load-test record, but
+> its original 2-vCPU capacity conclusion is superseded. A guarded August 11 target run rejected 2 vCPU at
+> 83.52% CPU. Four vCPU/7.5 GiB passed the short burst, then the first full soak and MixedMorning profiles
+> failed. After the measured fixes and exact two-pass backlog cleanup, the corrective 4h10m/300-VU soak
+> passed with k6 exit 0 and all thresholds passing. MixedMorning, live 10,000-student gateway verification,
+> final scoped fixture/backlog cleanup and Cloud SQL downsize/stop remain pending.
+
 ## Release
 
 Application release commit: `9782a1130564eabfc00591deb16ea1981b895a52`
@@ -356,7 +363,9 @@ Result artifact:
 
 ### Cloud SQL during the corrected test window
 
-Current dev shape: `db-f1-micro`.
+Dev shape during this August 10 corrected-test window: `db-f1-micro`. The current temporary certification
+shape is `db-custom-4-7680` with a 15-GiB disk; it is retained for pending MixedMorning evidence and final
+scoped cleanup. Explicit Cloud SQL downsize/stop remains pending.
 
 | Metric | Average | Maximum |
 | --- | ---: | ---: |
@@ -364,10 +373,10 @@ Current dev shape: `db-f1-micro`.
 | PostgreSQL backends | 1.77 | 6 |
 | Reported memory utilization | 100% | 100% |
 
-The low CPU and request latency are encouraging for the small current dataset. Memory saturation
-and the shared-core shape mean this environment must not be used to certify the 200,000-300,000
-student target. Production-like scale testing requires a temporary dedicated 2-vCPU database and
-synthetic data volume.
+The low CPU and request latency were encouraging for the small dataset. Memory saturation and the
+shared-core shape meant that window could not certify the 200,000-300,000-student target. Subsequent guarded
+evidence rejected 2 vCPU at the target; 4 vCPU/7.5 GiB later passed the full corrective soak and is the
+cheapest measured planning default, not a production/HA/business approval.
 
 ### Full-volume attendance write stages
 
@@ -395,8 +404,9 @@ At 500 VUs, Cloud SQL CPU rose from 78.8% to 87.9% and 87.6% in consecutive one-
 The run was deliberately terminated by a conservative safety guard before the longer 15-minute
 production-sizing threshold could be exercised. Memory remained approximately 52% and
 application backends 68/200, so CPU—not memory or connection exhaustion—was the first database
-constraint. This proves the tested two-vCPU shape supports the clean 300-VU profile with headroom,
-but 500 concurrent attendance writers are outside its approved envelope.
+constraint. This proved that the August 10 clean profile passed on two vCPU, but later guarded evidence
+supersedes it as a sizing conclusion: the same shape failed the target 300-VU morning-burst CPU guard.
+It is not an approved production capacity envelope.
 
 The first attempted sustained 300-VU run is excluded from capacity results. The scheduled
 `Ops / GCP cost controls` workflow started at `2026-08-10T15:30:45Z` and stopped Cloud SQL during the
@@ -443,25 +453,51 @@ correctly waited for the exact operation instead of trusting the earlier transie
 Its default timeout is now 20 minutes so normal Google control-plane variance does not fail a healthy
 release immediately before completion.
 
+## Subsequent Dev Evidence - 2026-08-11
+
+- Release `rel-dev-d51750493546-1` deployed the attendance-summary N+1 correction, numeric relay ordering,
+  database-backed import admission and bounded import usage. Commit `467cd4f8`'s fleet-query fix was rolled
+  forward on school-core revision `custoking-school-core-service-dev-00186-5pz`; the gateway regression
+  passed 40/40.
+- The first 4-vCPU/7.5-GiB full soak failed after 2h28m on three consecutive SQL CPU samples above 80%.
+  The subsequent 300-VU MixedMorning profile also failed. These remain failure evidence, not capacity passes.
+- Guarded cleanup removed exactly 1,604,136 SCALE outbox and 238,063 SCALE inbox rows while preserving
+  outside scope. A second pass removed zero rows.
+- The corrective `soak-20260811074848-evidence.json` run passed the complete 4h10m/300-VU profile: k6 exit
+  0/no abort, all thresholds passing, 2,088,063 completed/zero interrupted iterations, 4,178,728 requests at
+  278.570/second, four failures/429s, overall p95/p99 108.536/238.370 ms, attendance-write p95/p99
+  74.591/116.766 ms, and maximum SQL CPU/memory/connections 54.22%/46.8998%/81. The fleet fixture remains
+  for the failed MixedMorning run. Exact plans and Cloud Run logs led to directory-index/stats and
+  dev startup-boost remediations; their redeploy/retest, final scoped fixture cleanup and Cloud SQL
+  downsize/stop are pending.
+- A live same-school import probe returned exactly one 500-row success and one deterministic 429. Its
+  retained artifact does not identify distinct instances and flags reconciliation/cleanup as required.
+- Dev notification OIDC/DLQ, idle async drains, controlled restart and PITR recovery have dev pass evidence.
+- Dev Cloud SQL now enforces `ENCRYPTED_ONLY`; fresh evidence records 16/16 application clients encrypted,
+  zero unencrypted, and a 40/40 post-enforcement gateway smoke.
+
 ## Incomplete Gates
 
-This dev release is validated for functional deployment, the exact 300,000-student fleet shape,
-and a controlled 300-VU attendance-write stage. It is not yet the final production certification.
+The August 10 dev release was validated for functional deployment, the exact 300,000-student fleet shape,
+and its controlled 300-VU attendance-write stage. Later guarded evidence supersedes that stage as a capacity
+conclusion. It is not final production certification.
 
 The following remain required:
 
-1. Four-hour soak at the approved 300-VU ceiling and a separate morning burst.
-2. Intentional failure-injection/recovery drill and PITR evidence. The unplanned scheduled shutdown
-   proved application reconnection but is not a substitute for a controlled recovery drill.
+1. Rerun the identical MixedMorning profile. The morning burst and corrective four-hour 300-VU soak are
+   complete on 4 vCPU/7.5 GiB; 2 vCPU remains rejected for the target. Complete final scoped fixture/backlog
+   cleanup and explicitly downsize or stop dev Cloud SQL after the retained evidence no longer needs it.
+2. Preserve the completed dev restart/PITR evidence and repeat after material pool/network changes;
+   production recovery and zonal-versus-HA objectives remain gated.
 3. Promote the verified per-service runtime identities to production and migrate the existing
    production reporting subscription. Dev reporting push is OIDC-only with a dedicated identity;
-   production reporting still uses the shared identity and legacy query credential. Notification
-   topics exist in both environments but have no live subscription, so that topology must be
-   explicitly provisioned and tested or documented as intentionally unused.
+   production reporting still uses the shared identity and legacy query credential. Dev notification
+   OIDC/DLQ is provisioned and tested; production notification provisioning/provider acceptance remains gated.
 4. Query-plan evidence for the long-history attendance/reporting shape and the partition/retention
    decision before tens of millions of attendance-detail rows accumulate.
-5. Production database choice and availability decision: two versus four vCPU and zonal cost mode
-   versus regional HA.
+5. Production database choice and availability decision: 2 vCPU is rejected for the target, while
+   4-vCPU/7.5 GiB is the cheapest measured full-soak planning default. This does not constitute production
+   purchase, HA/SLA or business approval; zonal cost mode versus regional HA remains open.
 
 ## Production Gate
 

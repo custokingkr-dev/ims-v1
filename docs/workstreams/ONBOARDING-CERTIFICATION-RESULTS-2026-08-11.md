@@ -3,10 +3,12 @@
 Date: 2026-08-11
 Scope: 100-150 schools, 200,000-300,000 total student records, with at least one 10,000-student school.
 Environment: onboarding evidence used local JDK 25, Testcontainers PostgreSQL 16 and Docker Desktop;
-the sizing section also cites the reliability workstream's synthetic dev load artifacts; no production data.
+the sizing section also cites synthetic dev Cloud Run/Cloud SQL artifacts and the live guarded admission
+probe described below; no production data was used.
 Decision: the bounded 500-row import path has credible local evidence for a supervised 10,000-student
-onboarding, but the system is not yet certified for production rollout. Dev multi-replica, real Cloud SQL,
-privacy/offboarding, provider, recovery and operational gates remain open.
+onboarding, and live dev Cloud SQL admission contention passed for two simultaneous 500-row confirmations.
+The system is not yet certified for production rollout: full 10,000-row gateway timing, distinct-instance
+evidence, cleanup, privacy/offboarding, provider and operational gates remain open.
 
 This report separates measured evidence from planning assumptions. Local timings are not Cloud Run or
 Cloud SQL SLOs. Cost outputs are models, not measurements, invoices, quotes or commitments. Privacy and
@@ -32,8 +34,9 @@ Admission failures are returned as HTTP `429 Too Many Requests` with `Retry-Afte
 contention from `import_capacity_busy` fleet contention.
 
 This is effective across Java threads, connection pools and service replicas that use the same PostgreSQL
-database. It is not yet dev-certified across two Cloud Run revisions/instances and it does not limit active
-preview batches or expire abandoned previews.
+database. A live same-school dev probe now proves the database-backed contention contract through the real
+gateway, but the evidence does not identify two distinct Cloud Run instances. The implementation also does
+not limit active preview batches or expire abandoned previews.
 
 The production-path re-audit confirmed the lock is acquired inside the repository's externally invoked
 Spring `@Transactional` method. Spring binds the JDBC connection to the transaction and rolls back on the
@@ -43,6 +46,27 @@ persistence translation cannot silently turn a deliberate rejection into HTTP 50
 rejections increment `ims.student.import.admission.rejections` with only the closed `reason` dimension
 (`school_import_active` or `import_capacity_busy`); school id, token, message and student data are never
 metric tags.
+
+### Deployed dev admission evidence
+
+Release `rel-dev-d51750493546-1` deployed the admission guard and import-usage endpoint to dev. The later
+fleet import-ledger null-parameter correction in commit `467cd4f8` was rolled forward on school-core revision
+`custoking-school-core-service-dev-00186-5pz`; the post-roll-forward gateway regression passed 40/40.
+
+Artifact `artifacts/onboarding-certification/import-admission-live-20260811072816471.json` records two
+simultaneous 500-row confirmations for synthetic school `900000000`. Exactly one request returned HTTP 200
+with 500 inserted and zero skipped, while the other returned HTTP 429 with `school_import_active` and both
+header/body retry values equal to five seconds. The 16.32-second, PII-free artifact passed and contains no
+token or student value. It does not contain an instance identifier, so it is not two-instance evidence.
+
+The successful request added 500 students and the rejected batch remained previewed. The artifact explicitly
+sets `cleanupRequired=true`; pre-soak status subsequently measured 300,501 students across the reserved
+100-school fixture. Reconciliation and final fixture cleanup therefore remain mandatory.
+
+After the application roll-forward, dev Cloud SQL was moved to `ENCRYPTED_ONLY`. Artifact
+`cloudsql-transport-dev-enforced-20260811T074206452Z.json` records 16/16 application clients encrypted and
+zero unencrypted; the post-enforcement gateway suite passed 40/40. This is dev transport evidence only and
+does not alter the production rollout gate.
 
 [Spring transaction documentation](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 documents proxy interception, `PROPAGATION_REQUIRED` and runtime-exception rollback. Its
@@ -84,33 +108,28 @@ Command:
   '-Donboarding.scale.certification=true' test
 ```
 
-Result: 4 tests passed. Test class time was 240.0 seconds; Maven total was 4:15. The authoritative enriched
-run executed the production repository path as 20 sequential preview/confirm transactions of 500 rows.
+Result: the exact opt-in post-V16 run against PostgreSQL 16 passed all 4 tests. Test class time was 201.5
+seconds; Maven total was 3:26. It executed the production repository path as 20 sequential preview/confirm
+transactions of 500 rows.
 
 | Measurement | Result |
 | --- | ---: |
 | Students | 10,000 |
 | Batches | 20 |
-| End-to-end test duration | 210,762 ms |
-| Derived throughput | 47.45 students/second |
-| Mean preview-plus-confirm batch | 10,533.45 ms |
-| p95 preview-plus-confirm batch | 12,866 ms |
-| Slowest preview-plus-confirm batch | 15,079 ms |
-| PostgreSQL database size after fixture | 34,225,175 bytes |
+| End-to-end test duration | 177,998 ms |
+| Derived throughput | 56.18 students/second |
+| Mean preview-plus-confirm batch | 8,894.35 ms |
+| p95 preview-plus-confirm batch | 10,191 ms |
+| Slowest preview-plus-confirm batch | 10,225 ms |
+| PostgreSQL database size after fixture | 35,314,711 bytes |
 
-The duration includes the completed-token retry and final reconciliation queries. The throughput is a
-derived local measurement, not a production capacity promise. An earlier corrected run also passed in
-172,037 ms, showing material workstation/container variance; the slower enriched run above is retained as
-the reporting baseline.
+The duration includes the completed-token retry and final reconciliation queries. This post-V16 result
+supersedes the older local timing baseline in this report. The throughput remains a derived workstation/
+Testcontainers measurement, not a production capacity promise or a Cloud Run/Cloud SQL SLO.
 
-A final integrated-code repeat also passed all four tests on 2026-08-11: 181,986 ms for the 10,000-row
-path (54.95 students/second), 9,094.70 ms mean batch time, 10,085 ms p95, and 10,144 ms slowest batch.
-The same-token case completed in 1,105 ms with one job and no duplicates; two concurrent 500-row schools
-completed in 4,726 ms. Its in-memory export digest was
-`32240920c8e43c06756af2a0b797e831658a58db05b6890ad01b7da997a57bf3`; the digest changes between runs
-because the synthetic document embeds the newly allocated school id. Target counts again reached zero and
-the control counts remained unchanged. This repeat confirms the implementation but does not replace the
-slower baseline or convert local timing into a Cloud Run/Cloud SQL SLO.
+The same-token case reported `attempts=2`, `students=100`, `duration=998 ms`, `sameJob=true` and
+`duplicates=0`. Two concurrent 500-row schools completed in 4,894 ms. The school-core erase rehearsal again
+reduced every target count to zero while preserving the control tenant.
 
 Exact reconciliation after retry proved:
 
@@ -127,8 +146,8 @@ session, signed school-level closeout, resumable browser workflow or unattended 
 
 | Scenario | Local result | What it proves |
 | --- | --- | --- |
-| Two simultaneous confirmations of one 100-row token | 1,163 ms; same job id; 100 students; zero duplicates | durable idempotent replay after row-lock serialization |
-| Two schools confirming 500 rows each | 5,072 ms; both reconcile exactly | two-school concurrency on local PostgreSQL |
+| Two simultaneous confirmations of one 100-row token | `attempts=2`; `students=100`; `duration=998 ms`; `sameJob=true`; `duplicates=0` | durable idempotent replay after row-lock serialization |
+| Two schools confirming 500 rows each | 4,894 ms; both reconcile exactly | two-school concurrency on local PostgreSQL |
 | Noisy same school while one transaction holds admission | rejected; another school admitted | per-school lock does not consume the remaining fleet slot |
 | Third school while two fleet slots are held | rejected with `import_capacity_busy` | two-slot global bound |
 | Admission-holder rollback | later acquisition succeeds | transaction-scoped locks do not leave a stale lease |
@@ -240,8 +259,8 @@ profile: 30-second ramp, 15-minute 300-VU hold and two-minute ramp-down. Artifac
 `morningburst-20260811015047` records k6 exit 0 with no abort, maximum CPU 58.29%, memory usage 48.4233%
 and 99 connections. It completed 276,923 HTTP requests at 263.353/second. There were 38 HTTP 429 responses
 (0.013722%) and no 5xx response; overall p95/p99 were 110.543/262.731 ms and attendance-write p95/p99 were
-115.817/262.703 ms. This is the cheapest tested shape that passed the target burst, not a four-hour soak,
-recovery/failover test or production SLO.
+115.817/262.703 ms. At that point this established only the cheapest tested burst pass; the later full-soak
+result below supersedes that narrower sizing status. Neither result is a recovery/failover test or production SLO.
 
 For lower concurrency only, artifact `morningburst-20260811010210` kept `db-custom-2-7680` within the
 database guards during a separate 200-VU/15-minute proxy: maximum CPU 58%, memory 48.087%, connections 92,
@@ -249,6 +268,31 @@ database guards during a separate 200-VU/15-minute proxy: maximum CPU 58%, memor
 did not capture the numeric k6 exit code (`null`), so it is retained as a low-end comparison rather than an
 exit-certified result. VUs describe synthetic concurrent workers, not student records; neither 200 nor 300
 VUs should be equated to the 200,000/300,000 database row totals.
+
+The first full 300-VU write soak on `db-custom-4-7680` did not pass. Artifact
+`soak-20260811023532-evidence.json` stopped after 2h28m when three consecutive CPU samples reached
+82.1477%, 81.3688% and 82.2645%. Before the stop it recorded 2,405,050 requests, 121 deliberate 429s,
+zero 5xx, and attendance-write p95/p99 of 350.45/626.16 ms. The immediately following MixedMorning run
+also failed, with 13.0426% HTTP failures and overall p95/p99 of 55.015/59.998 seconds. The measured N+1
+and relay-order fixes are deployed. Guarded cleanup removed 1,604,136 SCALE outbox and 238,063 SCALE inbox
+rows while preserving outside scope, and a second pass removed zero rows.
+
+The corrective run then passed the complete 4h10m 300-VU profile. Artifact
+`soak-20260811074848-evidence.json` records k6 exit 0, no abort, 2,088,063 completed and zero interrupted
+iterations, and all configured thresholds passing. It completed 4,178,728 requests at 278.570 requests/
+second with four HTTP failures/429s (0.0000957%) and no attendance-write server-error check failure.
+Overall p95/p99 were 108.536/238.370 ms; attendance-write p95/p99 were 74.591/116.766 ms. Maximum Cloud
+SQL CPU was 54.22%, memory usage 46.8998% and connections 81, all below the guarded stop thresholds.
+This makes `db-custom-4-7680` the cheapest measured shape to pass the full target soak and the planning
+default. It does not approve a production purchase, regional HA/SLA posture, or business rollout. The
+rerun artifact `mixedmorning-20260811121235-evidence.json` subsequently **failed**: the guard aborted with
+k6 exit 105 after three consecutive Cloud SQL CPU samples of 82.46%, 100% and 100%. Before abort it completed
+28,317 requests; 275 failed (0.971148%), including 227 4xx responses and one 5xx response, while overall
+p95/p99 reached 8.217/20.247 seconds. Maximum memory was 47.0998% and connections 85. This result does not
+revoke the complete attendance-write soak pass, but it leaves the representative mixed-read capacity gate
+failed and production sizing unapproved. The live guarded 10,000-student gateway verification remains
+pending. The retained SCALE fixture and generated test backlog still require final scoped cleanup, followed
+by explicit Cloud SQL downsize/stop; no such cleanup or infrastructure mutation is claimed here.
 
 At the checked Delhi list inputs of USD 0.0496/vCPU-hour and USD 0.0084/GiB-hour, `db-custom-4-7680`
 compute is USD 0.2614/hour, approximately USD 190.82 or INR 18,251.41 for 730 hours. The rejected two-vCPU
@@ -278,11 +322,14 @@ the earlier untested 4-vCPU/15-GiB assumption, it saves INR 4,398.77 zonally or 
 | Regional-HA allocated 10k school | INR 747.99 | INR 617.65 |
 
 The model intentionally excludes SMS/WhatsApp, tax, support labor, domains, photo operations and egress,
-extraordinary network egress, free tiers and credits. `db-custom-4-7680` is now the evidence-backed planning
-default for the tested target burst, but it is not a certified purchase recommendation until soak,
-recovery and production-readiness gates pass. `db-custom-2-7680` remains an explicit lower-concurrency
-comparison only. The zonal versus HA choice is a recovery/SLA business decision and must not be made from
-cost alone.
+extraordinary network egress, free tiers and credits. `db-custom-4-7680` is now the cheapest measured full
+300-VU-soak pass and the evidence-backed planning default. It is not a production purchase recommendation,
+HA/SLA decision or business approval; the MixedMorning rerun failed and the remaining production-readiness
+gates are open.
+The dev restart and PITR exercises passed; production
+availability and zonal-versus-HA recovery objectives are still business gates. `db-custom-2-7680` remains
+an explicit lower-concurrency comparison only. The zonal versus HA choice is a recovery/SLA business
+decision and must not be made from cost alone.
 
 ### Explicit WhatsApp scenario
 
@@ -332,8 +379,7 @@ with `school_import_active`, `Retry-After: 5`, and body `retryAfterSeconds: 5`. 
 contains only host, synthetic school id, timings, status/code/retry values and aggregate inserted/skipped
 counts; it never records access tokens, file tokens or response student rows.
 
-Example after the new revision is deployed and the prerequisites have been created by an authorized dev
-operator:
+Reproduction example after an authorized dev operator creates fresh prerequisites:
 
 ```powershell
 $env:IMS_DEV_IMPORT_GUARD_TOKEN = '<short-lived school-admin token>'
@@ -353,31 +399,72 @@ Remove-Item Env:\IMS_DEV_IMPORT_GUARD_SECOND_TOKEN
 
 Execution intentionally commits one synthetic batch (normally 500 students); the rejected batch remains
 previewed. The operator must reconcile the successful batch and clean up the dedicated synthetic fixture
-using the approved dev cleanup process. This workstream prepared and locally guard-tested the harness but
-did not run it against dev, because no short-lived actor, two fresh preview tokens or cleanup approval was
-provided. Parser/plan-only checks passed without network access; negative checks rejected a production-
-looking host, missing remote write opt-in, URI user-info, a missing actor token and an existing evidence
-path before network access. The existing evidence file's SHA-256 remained unchanged. Cloud Run's official
+using the approved dev cleanup process. The guarded live execution described above passed through the dev
+gateway; its successful batch and rejected preview still require reconciliation/cleanup. Parser/plan-only
+checks passed without network access; negative checks rejected a production-looking host, missing remote
+write opt-in, URI user-info, a missing actor token and an existing evidence path before network access. The
+existing evidence file's SHA-256 remained unchanged. Cloud Run's official
 [concurrency documentation](https://docs.cloud.google.com/run/docs/about-concurrency) confirms multiple
-requests and instances can execute concurrently; a single-instance/local result is therefore not the
-required multi-replica evidence.
+requests and instances can execute concurrently. Because the live artifact does not record instance
+identity, it is not the required multi-replica evidence.
+
+## Guarded Full 10,000-Student Dev Verification Path
+
+`scripts/verify-dev-onboarding-10000.ps1` is implemented but has **not** been live-run. Without `-Execute`
+it prints `PLAN_ONLY_NO_NETWORK` and exits before reading credentials, creating a file or making a request.
+Remote execution additionally requires HTTPS, a host with a distinct `dev` label, exact
+`-ExpectedDevHost` equality, `-AllowRemoteDevWrites`, and a reserved synthetic school id at or above
+`900000000`. Authentication is accepted only from a named environment variable containing a short-lived
+token, or from named login email/password environment variables; token, credentials, file tokens, batch ids,
+job ids and individual row values are excluded from evidence. A non-secret synthetic run label is retained
+solely to make later reconciliation and cleanup exact.
+
+Before any preview or import write, the verifier now reads the target school's classes and active sections.
+It requires all generated fixture names, `Scale Class 1..12` and `Scale 0001..0250`, and rejects a duplicated
+required section name. Failure raises the explicit fail-before-write error and records no import mutation;
+successful evidence includes aggregate fixture-preflight counts/timing with `writesPerformed=false`. In the
+current 100-school fixture, full-10k verification must use school `900000000`, the only seeded school with all
+250 sections. School `900000001` has 2,930 students and only `Scale 0001..0074`, so the preflight rejects it
+for this full-10k workload before any import write. It remains sufficient for a separate 500+500 admission
+proof, whose generated rows require only `Scale 0001..0013`.
+
+When explicitly authorized, the verifier will create exactly 20 sequential JSON preview/confirm batches of
+500 unique synthetic rows using the existing `Scale Class 1..12` and `Scale 0001..0250` fixture names. Every
+preview must report 500 valid, zero error and zero warning rows. Every confirmation must report 500 inserted,
+zero skipped and `done=true`. Batch 20 is confirmed a second time and must return the same completed batch/job
+result and 500 stored mappings without inserting a duplicate.
+
+Final reconciliation requires all 20 generated tokens to appear exactly once as `DONE` in the bounded batch
+ledger and requires exact two-day `/imports/usage` deltas: 20 previewed, 20 completed, zero unfinished,
+10,000 attempted, 10,000 inserted, zero skipped and zero JSON-source bytes. Only then is a PII/token-free
+aggregate timing artifact created with atomic no-overwrite semantics and `cleanupRequired=true`. The evidence
+explicitly states that this is sequential, single-school JSON-import proof: it does not cover photos,
+empty-school setup, concurrent schools, distinct instances, soak/capacity, privacy/provider policy or
+production. It performs no cleanup.
+
+`scripts/audit-dev-onboarding-verifier.ps1` provides local parser/source checks, proves plan-only output and
+exercises production-host, reserved-school, missing-remote-opt-in and expected-host-mismatch rejection before
+any network path. These checks pass locally. Live execution still requires an approved window, a still-valid
+actor, exact fixture ownership and an approved reconciliation/cleanup procedure.
 
 ## Completion Ledger
 
 | Master ID | Repository/local status | Code-feasible work still open | External/live gate that cannot be fabricated |
 | --- | --- | --- | --- |
-| COST-01 | Delhi-SKU platform and explicit messaging models are executable; the cheapest measured passing 4-vCPU/7.5-GiB candidate passed the target burst and the model records its incremental cost; budget remains correctly described as alert-only | complete four-hour soak/recovery evidence and add budget automation after its destination is approved | spending owner approves envelope/recipients/escalation, zonal-versus-HA decision and live budget notification/forecast incident evidence |
+| COST-01 | Delhi-SKU platform and explicit messaging models are executable; 4-vCPU/7.5-GiB is the cheapest measured full 300-VU-soak pass and planning default; dev restart/PITR passed; the MixedMorning rerun failed on the CPU guard | analyze and remediate the failed MixedMorning profile, complete final scoped fixture/backlog cleanup and Cloud SQL downsize/stop, and add budget automation after its destination is approved | spending owner approves envelope/recipients/escalation, production database and zonal-versus-HA decision, and live budget notification/forecast incident evidence |
 | COST-02 | bounded 90-day PII-free import usage aggregation and tenant-scoped API implemented; RLS/local reconciliation passed | extend the same bounded approach to API duration, attendance, storage and provider facts; version allocation/reconciliation | finance approves allocation drivers/tolerance; real provider invoice and billing-export reconciliation |
 | DATA-01 | sensitive dry-run logging removed; skipped CSV hardened; 20-row checksummed in-memory export and school-core erase/control rehearsal passed | implement the resumable cross-service/object/provider inventory and positive fixtures for every data class after policy schema is approved | privacy/legal approves notices, lawful basis/guardian consent, retention, legal hold, backup/log lag, export custody and erasure proof |
-| ONB-01 | bounded CSV reconciliation and exact local 10k/20-batch certification passed | persistent cross-batch onboarding session, browser-resumable photo phase and signed closeout remain | dev gateway/Cloud SQL timing, disconnect/retry and school-operator acceptance |
-| ONB-02 | one-per-school/two-fleet PostgreSQL guard, wrapped/direct 429 contract, low-cardinality rejection metric and guarded dev verifier implemented; local concurrency/RLS passed | active-preview expiry, retry UX/dashboard and continuous negative checks | deploy new revision; provide fresh synthetic tokens/actor/cleanup approval; prove two-instance dev behavior with Cloud SQL telemetry |
+| ONB-01 | bounded CSV reconciliation and exact local 10k/20-batch certification passed; guarded full-10k gateway verifier, fail-before-write 12-class/250-section preflight and local source/plan audit implemented but not live-run | execute and reconcile the guarded dev proof against compatible school `900000000`, then add persistent cross-batch onboarding session, browser-resumable photo phase and signed closeout | approved dev actor/window/cleanup, distinct-instance evidence, disconnect/retry and school-operator acceptance |
+| ONB-02 | one-per-school/two-fleet PostgreSQL guard, wrapped/direct 429 contract, low-cardinality rejection metric and guarded dev verifier implemented; local concurrency/RLS and a live 500+500 same-school contention probe passed | active-preview expiry, retry UX/dashboard, cleanup/reconciliation, metric-export verification and continuous negative checks | prove distinct-instance dev behavior with Cloud SQL telemetry and retain a revision/instance-linked evidence bundle |
 | NOTIFY-01 | PII-safe dry-run and overrideable public-rate scenario tool passed | consent/suppression/template enforcement, signed callbacks and provider reconciliation remain | legal category/basis, TRAI/DLT, Meta/MSG91 sender/templates/rate card, consented test recipient and invoice approval |
 | PILOT-01 | per-school checklist, waves and stop conditions documented | evidence bundle automation can follow only after upstream gates have stable artifacts | named canary school, contacts/support window, full school-day observation and business/privacy go/no-go |
 
 ## Remaining Production Blockers
 
-1. Deploy the admission change to dev and run the 10,000-student fixture through the real gateway and
-   school-core service with at least two service instances, Cloud SQL telemetry and no production data.
+1. Run the full 10,000-student fixture through the real gateway and school-core service against compatible
+   synthetic school `900000000`, with at least two identified service instances, Cloud SQL telemetry,
+   disconnect/retry timing and no production data. The new fixture preflight must pass before any write. The
+   live 500+500 contention probe closes deployment/basic contract evidence only.
 2. Add the persistent school-level onboarding session/ledger and resumable photo attachment; the current
    proof is 20 independent imports and browser-staged photos are not resumable.
 3. Build the approved export/offboarding state machine across all services and external/object systems,
@@ -389,8 +476,11 @@ required multi-replica evidence.
 6. Extend the bounded import attribution to API duration, attendance, storage and provider facts, then
    reconcile the versioned allocation. Current average/large-school figures remain modeled allocations,
    not billable attribution or margin evidence.
-7. Complete the four-hour soak and recovery evidence for the 4-vCPU/7.5-GiB planning candidate, then
-   approve zonal-versus-HA recovery objectives; the passing short dev burst does not validate failover.
+7. Retain 4-vCPU/7.5-GiB as the cheapest measured full-soak planning default, but analyze and remediate the
+   failed MixedMorning rerun before claiming representative mixed-read capacity. Complete the final scoped
+   SCALE fixture/backlog cleanup and explicitly downsize or stop dev Cloud SQL afterward. Dev restart/PITR
+   passed, but production sizing approval and zonal-versus-HA recovery objectives remain unapproved; a
+   request-path soak pass does not validate failover.
 8. Verify the new low-cardinality admission-rejection metric reaches dev telemetry and add the approved
    dashboard/alert; complete monitoring for database connections/CPU/storage, jobs/Pub/Sub, onboarding
    reconciliation, provider results and gross-cost forecast, with named operational owners.

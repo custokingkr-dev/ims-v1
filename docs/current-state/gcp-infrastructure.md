@@ -162,7 +162,7 @@ Outbox publishers are configured in both envs:
 
 | Instance | Database version | Region | State | Tier | Private IP |
 | --- | --- | --- | --- | --- | --- |
-| `custoking-db-dev` | `POSTGRES_16` | `asia-south2` | `RUNNABLE` | `db-f1-micro` | `10.92.0.4` |
+| `custoking-db-dev` | `POSTGRES_16` | `asia-south2` | `RUNNABLE` | `db-custom-4-7680` | `10.92.0.4` |
 | `custoking-db-prod` | `POSTGRES_16` | `asia-south2` | `RUNNABLE` | `db-g1-small` | `10.92.0.5` |
 
 Databases:
@@ -175,6 +175,12 @@ Users present on both instances:
 - `app_rt`
 - `appuser`
 - `postgres`
+
+Dev is temporarily retained at 4 vCPU/7.5 GiB with a 15-GiB disk and activation policy `ALWAYS` for the
+active corrective capacity rerun. This is not an approved permanent cost posture. After evidence capture,
+the operator must remove the synthetic fixture and explicitly downsize/stop it. Dev now enforces Cloud SQL
+`ENCRYPTED_ONLY`; fresh `pg_stat_ssl` evidence recorded 16/16 application clients encrypted and zero
+unencrypted, followed by a 40/40 gateway smoke.
 
 Production recovery controls were applied and verified on 2026-08-05:
 
@@ -277,11 +283,14 @@ Subscriptions:
 | --- | --- | --- | --- | --- | --- |
 | `ims-reporting-service-push-dev` | `ims-reporting-events-v1-dev` | platform-service dev `/api/v1/pubsub/reporting-events` (no query) | `ims-reporting-push-dev` | 30s | ACTIVE |
 | `ims-reporting-service-push-prod` | `ims-reporting-events-v1-prod` | platform-service prod `/api/v1/pubsub/reporting-events` | default compute SA | 30s | ACTIVE |
+| `ims-notification-service-push-dev` | `ims-notifications-events-v1-dev` | platform-service dev `/api/v1/pubsub/notifications` (no query) | `ims-notification-push-dev` | 30s | ACTIVE |
 
-The dev reporting endpoint has no query credential and uses an audience equal to the platform Cloud
-Run service URL. The production reporting endpoint still contains a secret-bearing query parameter;
-its literal value is intentionally not documented. The two notification topics currently have no
-subscription, even though platform contains notification push-consumer code.
+The dev reporting and notification endpoints have no query credential and use audiences equal to the
+platform Cloud Run service URL. Both dev subscriptions use 10-600 second retry, ten delivery attempts and
+dedicated dead-letter topics; guarded notification idempotency/DLQ probes passed with the logging provider,
+so no external message was sent. The production reporting endpoint still contains a secret-bearing query
+parameter; its literal value is intentionally not documented. The production notification topic still has
+no subscription.
 
 ## Workload Identity Federation
 

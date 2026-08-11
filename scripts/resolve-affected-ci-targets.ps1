@@ -3,7 +3,8 @@ param(
   [string]$HeadRef = "HEAD",
   [ValidateSet("", "dev", "prod")]
   [string]$Environment = "",
-  [switch]$ForceAll
+  [switch]$ForceAll,
+  [string[]]$ChangedFilesOverride
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,9 +41,14 @@ if (-not $BaseRef) {
   $BaseRef = "HEAD~1"
 }
 
-$changedFiles = @(git diff --name-only $BaseRef $HeadRef | ForEach-Object { $_ -replace "\\", "/" })
-if ($LASTEXITCODE -ne 0) {
-  throw "Could not resolve changed files between '$BaseRef' and '$HeadRef'."
+$changedFiles = if ($null -ne $ChangedFilesOverride) {
+  @($ChangedFilesOverride | ForEach-Object { $_ -replace "\\", "/" })
+} else {
+  $resolved = @(git diff --name-only $BaseRef $HeadRef | ForEach-Object { $_ -replace "\\", "/" })
+  if ($LASTEXITCODE -ne 0) {
+    throw "Could not resolve changed files between '$BaseRef' and '$HeadRef'."
+  }
+  $resolved
 }
 
 $allServiceTriggers = @(
@@ -59,13 +65,11 @@ $scriptTriggers = @(
   "scripts/resolve-image-source-id.ps1",
   "scripts/invoke-direct-cloudrun-release.ps1",
   "scripts/verify-cloudrun-release.ps1",
-  "scripts/render-clouddeploy-targets.ps1",
   "scripts/smoke-gateway-routes.ps1",
   "scripts/smoke-microservice-features.ps1"
 )
 
 $globalDeployTriggers = @(
-  "deploy/clouddeploy/delivery-pipelines.yaml",
   "deploy/skaffold.yaml",
   ".github/workflows/_build-image.yml",
   ".github/workflows/_detect-changes.yml",
@@ -76,6 +80,7 @@ $globalDeployTriggers = @(
 
 $allAffected = $ForceAll.IsPresent
 $deploymentConfigChanged = $false
+$deploymentReconciliationRequired = $false
 foreach ($file in $changedFiles) {
   if ($allServiceTriggers -contains $file) {
     $allAffected = $true
@@ -94,12 +99,18 @@ foreach ($file in $changedFiles) {
     $file -eq "deploy/clouddeploy/targets-$Environment.yaml"
   }
   if ($targetConfigMatches) {
-    $allAffected = $true
+    $deploymentReconciliationRequired = $true
+  }
+  if ($file -eq "deploy/clouddeploy/delivery-pipelines.yaml" -or
+      $file -eq "scripts/render-clouddeploy-targets.ps1" -or
+      $file -eq "scripts/render-clouddeploy-pipelines.ps1") {
+    $deploymentReconciliationRequired = $true
   }
   if ($file.StartsWith("deploy/cloudrun/") -or
       $file -eq "deploy/clouddeploy/delivery-pipelines.yaml" -or
       $file -eq "deploy/skaffold.yaml" -or
       $file -eq "scripts/render-clouddeploy-targets.ps1" -or
+      $file -eq "scripts/render-clouddeploy-pipelines.ps1" -or
       $targetConfigMatches) {
     $deploymentConfigChanged = $true
   }
@@ -140,6 +151,7 @@ $dockerMatrix = @{
   changed_files = $changedFiles
   has_service_changes = ($unique.Count -gt 0)
   deployment_config_changed = $deploymentConfigChanged
+  deployment_reconciliation_required = $deploymentReconciliationRequired
   service_matrix = $serviceMatrix
   docker_matrix = $dockerMatrix
 } | ConvertTo-Json -Depth 10 -Compress

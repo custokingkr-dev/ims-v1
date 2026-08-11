@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
@@ -63,8 +64,12 @@ class FeeBandSchoolScopeRepoTest {
             st.execute("GRANT USAGE ON SCHEMA tenant_school TO app_rt");
             st.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA tenant_school TO app_rt");
 
-            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('"
-                    + academicYear.id() + "', '" + academicYear.label() + "', true)");
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO tenant_school.academic_years(id, label, active) VALUES (?, ?, true)")) {
+                ps.setString(1, academicYear.id());
+                ps.setString(2, academicYear.label());
+                ps.executeUpdate();
+            }
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -168,15 +173,20 @@ class FeeBandSchoolScopeRepoTest {
 
         // Seed a same-school fee assignment against this band as owner (bypasses RLS on write,
         // but the assignment is still tagged school_id=10 so app_rt/school-10 context can see it).
-        try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
-             Statement st = c.createStatement()) {
+        try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner")) {
             String academicYearId = AcademicCalendar.currentAcademicYear(
                     AcademicCalendar.DEFAULT_ACADEMIC_YEAR_START_MONTH).id();
-            st.execute("INSERT INTO fee.fee_assignments" +
-                    "(id, band_discount, manual_discount, surcharge, net_payable, paid_amount, " +
-                    " student_id, band_id, academic_year_id, version, school_id) VALUES " +
-                    "('" + UUID.randomUUID() + "', 0.0, 0.0, 0.0, 5000, 0, 1, '" + bandId + "', '"
-                            + academicYearId + "', 0, 10)");
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO fee.fee_assignments
+                        (id, band_discount, manual_discount, surcharge, net_payable, paid_amount,
+                         student_id, band_id, academic_year_id, version, school_id)
+                    VALUES (?, 0.0, 0.0, 0.0, 5000, 0, 1, ?, ?, 0, 10)
+                    """)) {
+                ps.setObject(1, UUID.randomUUID());
+                ps.setString(2, bandId);
+                ps.setString(3, academicYearId);
+                ps.executeUpdate();
+            }
         }
 
         assertThatThrownBy(() -> repo.deleteBand(bandId))

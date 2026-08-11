@@ -22,15 +22,22 @@ continue to default to dry-run and retain explicit apply/production/disruption/c
 
 ## 2. Executive result
 
-The repository implementation and most live dev functional/recovery gates are complete, but the two
-authoritative 300-VU capacity gates **failed**. The four-hour write soak stopped at 2h28m when the
-Cloud SQL CPU guard saw three consecutive samples above 80%. The subsequent mixed school-morning
-read run completed but failed latency and status gates. Diagnosis found two source-proven query
-defects: an attendance daily-summary N+1 query and an outbox relay ordering alias that forced a
-1.38-million-row scan/sort for every 100-row claim. Both are corrected and covered by focused tests,
-but are not yet deployed. Production deployment remains blocked until the fixes are deployed in dev,
-the exact synthetic backlog is removed under the documented safety preconditions, and both
-authoritative profiles pass on a clean `db-custom-4-7680` rerun.
+The repository implementation and most live dev functional/recovery gates are complete. The prior
+authoritative runs remain failed evidence: the four-hour write soak stopped at 2h28m when the Cloud
+SQL CPU guard saw three consecutive samples above 80%, and the subsequent mixed school-morning read
+run failed latency and status gates. Diagnosis found two source-proven query defects: an attendance
+daily-summary N+1 query and an outbox relay ordering alias that forced a 1.38-million-row scan/sort for
+every 100-row claim. Both fixes were deployed to dev in release `rel-dev-d51750493546-1`, the exact
+synthetic soak backlog was removed with two guarded passes, and the corrected 300-VU 4h10 soak
+**passed** with k6 exit 0 and no guardrail abort. The corrected `MixedMorning` attempt
+`20260811121235` then ran from a verified zero scale-backlog state and **failed**: Cloud SQL CPU
+reached 100%, the three-sample CPU guard aborted the run after 6m13s, the outer k6 request failure
+ratio was 0.971148%, and the four school-core flows breached their latency gates. Exact live plans
+isolated two remaining student-directory costs, while Cloud Run request logs independently proved a
+regional CPU-allocation quota failure during cold scale. The student stats/index fix and a dev-only
+startup-boost mitigation are implemented in the repository but are not deployed or retested.
+Production remains **NO-GO** until the same authoritative read profile passes on the retained
+`db-custom-4-7680` dev shape after those changes deploy.
 
 | Capability | Repository state | Live state | Gate |
 | --- | --- | --- | --- |
@@ -38,9 +45,10 @@ authoritative profiles pass on a clean `db-custom-4-7680` rerun.
 | Reporting Pub/Sub resilience | Retry/DLQ and guarded replay implemented | Valid direct-DLQ replay was processed once; inspection queues returned empty after cleanup | Operational cause review remains mandatory before replay |
 | Scale-to-zero outbox/projections | Request-driven drains and four OIDC Scheduler jobs deployed | Authoritative cold-instance marker drained exactly once; jobs returned to `PAUSED` | Resume only for bounded test/approved operation |
 | Outbox publisher failures | Bounded retry/backoff/terminal state and health reporting deployed | Focused tests pass; normal-path outbox-to-inbox proof passed | Live repeated publisher-failure injection remains |
-| Four-hour soak | Guarded 300-VU harness and evidence capture complete | **Failed** at 2h28m on three SQL CPU samples: 82.15%, 81.37%, 82.26%; application gates were still passing | Deploy fixes, clean only exact synthetic backlog, rerun full 4h10 profile |
+| Import admission/fleet proof | Per-school import admission and import/fleet fixes deployed in `rel-dev-d51750493546-1` | Two simultaneous 500-row batches produced exactly one HTTP 200 (`inserted=500`) and one HTTP 429 `school_import_active`, with matching `Retry-After: 5`; retained fleet is 100 schools and 300,501 students | Preserve the imported rows for the `MixedMorning` remediation retest; final fleet cleanup remains an operator action |
+| Four-hour soak | Guarded 300-VU harness and evidence capture complete | **Pass**: 4,178,728 requests, four deliberate 429s, zero 5xx, 0.0000957% failure, overall p95/p99 108.5355/238.3703 ms; CPU 54.22%, memory 46.8998%, 81 connections | Retain evidence; no move to 6 vCPU is justified by this write soak |
 | Morning burst | 200-VU cost gate and 300-VU sizing gate executed | 2-vCPU failed at 300 VUs; 4-vCPU passed full profile | Preserve exact measured tier; workload distribution remains an assumption |
-| Mixed school-morning reads | Six authoritative GET flows, per-VU login refresh, per-flow latency/status gates | **Failed**: 13.0426% HTTP failures, overall p95 55.015 s, p99 59.998 s | Deploy N+1/relay fixes and rerun on a clean backlog |
+| Mixed school-morning reads | Six authoritative GET flows, per-VU login refresh, per-flow latency/status gates | Corrected attempt `20260811121235` **failed** after 6m13s: 28,317 requests, 275 failures (0.971148%), overall p95/p99 8.217/20.247 s, CPU 100%, memory 47.0998%, 85 connections; source and dev CPU-boost mitigations are implemented but not deployed | Deploy to dev, prove migrations/config, run cold preflight, then repeat the exact 30s-up/15m-hold/2m-down profile; production remains NO-GO |
 | Long-history plans | 7.3M-row seed and plans captured on disposable clone | `historyCertified=true`; clone deleted | Distributed all-school history/partition decision remains |
 | Connection budget | Automated audit passes | Peak observed backend count was 109, below the 140 stop guard | Dev 160/200 configured ceiling; prod 80/200 |
 | Controlled restart | Guarded dev drill implemented | Passed; all five services healthy by 63.52 s | Repeat after material pool/network changes |
@@ -93,6 +101,26 @@ Cloud Run service on demand. The chosen design keeps `minScale=0` and uses OIDC 
 Four dev jobs now exist in `asia-south1` because Scheduler is unavailable in Delhi. Their request
 targets remain in `asia-south2`. Every job is `PAUSED` outside bounded proof; the final controlled
 run returned all four to `PAUSED` immediately after invocation.
+
+Read-only Cloud Quotas inspection after the failed corrected `MixedMorning` attempt returned
+`run.googleapis.com/cpu_allocation=20000` milli-vCPU for `asia-south2`, a one-minute refresh interval,
+and quota-increase eligibility `NOT_ENOUGH_USAGE_HISTORY`. The configured dev fleet has an 18-vCPU
+nominal maximum, but every live revision used startup CPU boost. Google documents that a 0-1-vCPU
+instance receives 2 vCPU during startup and for ten seconds afterward. The four services on the mixed
+path can therefore request 24 boosted vCPU while cold-scaling against a 20-vCPU regional ceiling,
+even though their nominal combined maximum is 12 vCPU.
+
+The reproducible read-only command is
+`gcloud beta quotas info describe CpuAllocPerProjectRegion --service=run.googleapis.com --project=custoking --format=json`;
+the authoritative fields are `metric`, the `asia-south2` entry under `dimensionsInfos`,
+`refreshInterval`, and `quotaIncreaseEligibility.ineligibilityReason`.
+
+The repository mitigation parameterizes startup boost per delivery target. Dev keeps it enabled only
+for school-core and sets it to `false` for API gateway, identity, platform, operations, billing, and
+frontend; the mixed path then has a modeled startup maximum of 16 vCPU, before unrelated background
+services. This keeps `minScale=0` and avoids a standing-instance cost, but it trades lower allocation
+pressure for slower cold starts and is not certified until deployed and measured. Stage/prod remain
+unchanged at `true`; production was not mutated and remains NO-GO.
 
 ### 3.3 Cloud SQL
 
@@ -384,16 +412,129 @@ both the successful scoped delete and transactional rollback when a non-scale re
 It must not run until all four Scheduler jobs are paused, reporting Pub/Sub undelivered messages are
 zero, relevant Cloud Run services are idle, the source changes are reviewed, and the root operator
 approves the exact execution. The first live attempt on 2026-08-11 failed closed with exit code 3
-and `scale backlog remained after cleanup`; its transaction rolled back and the 100-school,
-300,000-student fixture remained intact. Inspection proved why the precondition was insufficient:
-the relays are `@Scheduled` inside the JVM services, so pausing Cloud Scheduler does not serialize
-their writes. A subsequent disposable PostgreSQL 16 concurrency test proved that the initially used
-`SHARE ROW EXCLUSIVE` mode can deadlock with the relay's `SELECT ... FOR UPDATE` followed by
-`UPDATE`. Before any further use, source was corrected to the minimal `EXCLUSIVE` mode in a fixed
-outbox-then-inbox order with a 30-second lock timeout. That mode blocked both tested writers, kept
-ordinary reads available, deleted scale scope to zero, preserved outside scope, and rolled back a
-non-scale guard failure. A second guarded pass after Pub/Sub returns to zero remains mandatory to
-remove any reporting delivery already in flight when the first transaction acquired its locks.
+and `scale backlog remained after cleanup`; its transaction rolled back. Inspection proved why the
+precondition was insufficient: the relays are `@Scheduled` inside the JVM services, so pausing Cloud
+Scheduler does not serialize their writes. A subsequent disposable PostgreSQL 16 concurrency test
+proved that the initially used `SHARE ROW EXCLUSIVE` mode can deadlock with the relay's
+`SELECT ... FOR UPDATE` followed by `UPDATE`. The operator-side script was corrected to use
+`EXCLUSIVE` locks in fixed outbox-then-inbox order with `SET LOCAL lock_timeout = '30s'`. That mode
+blocks the tested writers while keeping ordinary reads available.
+
+The corrected live cleanup then completed exactly as designed. Pass 1 saw 100 scale schools,
+1,604,136 scale-scoped outbox rows and 238,063 scale-scoped inbox rows; it deleted those exact counts
+in 76.05 seconds and verified both scope counts at zero. The 316 outbox and 352 inbox rows outside
+scope were unchanged, and no school, student, attendance source row, or reporting fact was deleted.
+Pass 2 took 60.95 seconds, started and ended at zero scale-scoped rows, deleted zero rows, and again
+left the 316/352 outside-scope counts unchanged. Evidence is
+`artifacts/load-certification/scale-backlog-cleanup-pass1-20260811T065409Z.json` and
+`artifacts/load-certification/scale-backlog-cleanup-pass2-20260811T065807Z.json`.
+
+Later post-deploy import certification intentionally created 500 new student events inside the same
+scale scope. The pre-soak diagnostic therefore shows 500 scale outbox rows and 500 scale inbox rows;
+all outbox rows are published, all inbox rows are `PROCESSED`, and both pending and dead-letter counts
+are zero. Across the complete outbox table it saw 816 rows, all 816 published and none pending. With
+no eligible pending row and only 816 total rows, PostgreSQL reasonably chose a sequential scan plus
+`Sort Key: o.id` for the corrected relay query (scan estimated cost 93.24; sort startup/total
+96.56/96.81; limit total 97.81). This small, clean-table plan is not a regression from the corrected
+backlog plan: against the earlier 1.38-million-row pending set, `ORDER BY o.id` selected
+`idx_ts_outbox_ready` with startup cost 0.43 and limit total cost 16.68. Evidence is
+`artifacts/load-certification/pre-soak-diagnostics-20260811T074630Z.json`.
+
+The corrected soak finished at `2026-08-11T11:59:27.9089861Z`. The immediate post-soak diagnostic
+at `2026-08-11T12:00:44.551119Z` recorded 2,085,193 total school-core outbox rows: 293,305 published,
+1,791,888 pending, and zero dead-lettered. Exact scale scope was 2,084,877 outbox rows with all
+1,791,888 pending rows in scope. The scale reporting inbox contained 293,054 rows: 223,287
+`RECEIVED` and 69,767 `PROCESSED`; it had 13,877 attendance facts. Two school-core publisher
+transactions were still `idle in transaction` on their outbox updates, so services were not yet idle.
+Evidence is `artifacts/load-certification/post-soak-diagnostics-20260811T120024Z.json`.
+
+The post-soak cleanup subsequently completed after reporting and the relevant relays became idle.
+Pass 1, generated at `2026-08-11T12:10:52.7883905Z`, deleted exactly 2,084,877 scale outbox rows and
+296,889 scale inbox rows and verified both scope counts at zero. Pass 2, generated at
+`2026-08-11T12:12:01.7702839Z`, started and ended with both scope counts at zero and deleted zero.
+Both passes preserved the 316 outbox and 352 inbox rows outside scope and reported
+`schoolsStudentsAttendanceFactsDeleted=false`. Evidence is
+`artifacts/load-certification/post-soak-cleanup-pass1-20260811120946.json` and
+`artifacts/load-certification/post-soak-cleanup-pass2-20260811121101.json`.
+
+`MixedMorning` started at `2026-08-11T12:12:35.8827409Z`, 34.11 seconds after pass 2 was generated.
+The failed read attempt therefore did **not** begin with a scale outbox/inbox backlog. The earlier
+post-soak backlog is operational residue that was quiesced and removed, not an explanation for the
+corrected read attempt and not evidence that the numeric relay-ordering regression returned.
+
+### 7.6 Final fleet cleanup plan and implemented safety contract
+
+The final `Cleanup` action was previously unsafe for the current dev state. It deleted
+`student.students` without first deleting `student.import_rows`/`student.import_batches`, and it did
+not delete `reporting.dim_student`. The live import-admission artifact
+`artifacts/onboarding-certification/import-admission-live-20260811072816471.json` explicitly records
+`cleanupRequired=true`; it proves that two 500-row submissions produced one successful import and one
+admission rejection, but it intentionally contains no batch IDs or student PII. Final cleanup must
+therefore discover and count database residue rather than infer live batch/status counts from the
+PII-free artifact.
+
+`load-tests/sql/cleanup-scale-fleet.sql` now implements this final cleanup contract:
+
+- It requires both `base_school_id` and `school_count`, generates only that exact configured ID set,
+  and rejects any non-`SCALE-%` school in the reserved 10,000-ID range or any verified scale school
+  outside the configured fleet. The verified school count must be either the full configured count
+  on a first pass or zero on an idempotent pass; a partial fleet fails for investigation.
+- It snapshots scale import-batch IDs before deleting parents. The snapshot includes school-scoped
+  batches and nullable legacy batches referenced by scale students, so after-counts cannot be hidden
+  by deleting the parent first.
+- It deletes `student.import_rows` before `student.import_batches` and covers the complete current
+  onboarding graph: consent/guardian links, review and promotion children, enrollments, photo-import
+  children/batches/folders, guardians, students, and CSV import batches.
+- It deletes every current reporting relation with a scale-school key: inbox, academic-event child
+  and parent, command-center rows, `dim_school`, `dim_section`, `dim_student`, billing/fee/payment,
+  attendance, catalog, firefighting, and student-review projections.
+- It retains the attendance/tenant/identity cleanup, adds newly migrated timetable/staff/school
+  children, and removes reserved `scale-c-%` classes only when no section still references them.
+- It acquires the fixed outbox-then-inbox `EXCLUSIVE` writer envelope with a 30-second lock timeout,
+  preventing an in-process relay/projector race while counts and deletes share one transaction.
+- For every handled relation it emits scope and outside-scope counts for `before`, `deleted`, and
+  `after`. It requires `before.scope = deleted`, `after.scope = 0`, and unchanged outside counts.
+- After explicit deletes it discovers every accessible base table with a `school_id` column. If any
+  configured scale ID remains in a current or future table, the action raises an exception and rolls
+  back the transaction. Required relations are resolved before deletion, so schema drift fails closed
+  instead of silently skipping a table.
+- The success line is machine-readable `IMS_SCALE_CLEANUP|{...}` JSON. It includes verified schools,
+  import-batch count/status distribution, all per-table counts, an empty unhandled-residue object,
+  and the configured fleet parameters.
+
+The operator wrapper now passes `-SchoolCount` to `Cleanup`. The repeatable PostgreSQL 16 validation
+command is:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\test-scale-fleet-cleanup.ps1
+```
+
+The test creates and removes only a uniquely named disposable `postgres:16-alpine` container. Its
+fixture models two scale schools, one outside school, one `DONE` 500-row import, one `PREVIEWED`
+500-row import, 500 `dim_student` projections, current FK-linked onboarding rows, current reporting
+projections, and outside-scope sentinels in every handled relation.
+
+| Case | PostgreSQL 16 result |
+| --- | --- |
+| First pass | Deleted 1,000/1,000 import rows, two/two import batches and 500/500 `dim_student` rows; every handled scale count reached zero |
+| Outside scope | Every per-table outside count was unchanged; seven outside import rows and the outside school/student/projection/user sentinels remained |
+| Second pass | Succeeded with zero deletes in every relation |
+| Unhandled future table | Failed with exit code 3 and named the table; the previously deleted school and `dim_school` row were restored by rollback |
+| Reserved non-scale ID | Failed with exit code 3 before deletion; protected and outside rows remained |
+
+This is implemented and locally validated, but it has **not** been invoked in dev. Running final fleet
+cleanup before the `MixedMorning` remediation retest would invalidate the retained scale evidence.
+The final live sequence after a passing retest is:
+
+1. Confirm all load generators have stopped, all four Scheduler jobs are `PAUSED`, relevant Cloud Run
+   services are idle, and reporting Pub/Sub undelivered count is zero.
+2. Record `Status` and database diagnostics, then run `Cleanup -SchoolCount 100 -AllowScaleWrites`.
+3. Require one valid `IMS_SCALE_CLEANUP` JSON marker, zero scope in every `after` object, unchanged
+   outside counts, and an empty unhandled-residue object. Retain the marker as evidence.
+4. Recheck Pub/Sub/in-process relay state; if any delivery could have been in flight, repeat the exact
+   cleanup. The second pass must report zero deletes everywhere.
+5. Only after cleanup evidence passes, perform the separately owned cost-down resize and stop action.
 
 ## 8. Connection budget
 
@@ -421,7 +562,7 @@ fail review. The full 300-VU/4-vCPU burst observed 99 backends, below the 140 st
 | --- | ---: | --- | --- | --- |
 | `Soak` | 300 | 5m up/down | 4h | sustained approved ceiling |
 | `MorningBurst` | 300 | 30s up, 2m down | 15m | synchronized morning arrival |
-| `MixedMorning` | 300 | 1m up/down | 15m | distributed read-heavy school morning |
+| `MixedMorning` | 300 | 30s up, 2m down | 15m | distributed read-heavy school morning |
 
 Safety controls:
 
@@ -449,16 +590,28 @@ Measured results:
 | `db-custom-4-7680`, 300 VU first attempt | Inconclusive; stopped on Monitoring 401 | 48.62% | 46.917% | 85 | partial only | not a capacity pass |
 | `db-custom-4-7680`, 300 VU full rerun | **Pass**, k6 exit 0 | 58.29% | 48.423% | 99 | 276,923 / 38 (0.013722%, all 429, no 5xx) | 115.817 / 262.703 ms |
 | `db-custom-4-7680`, 300 VU 4h soak | **Stopped/fail** at 2h28m on three CPU breaches | 82.26% | 48.089% | 94 | 2,405,050 / 121 (0.005031%, all 429, no 5xx) | 350.45 / 626.16 ms |
+| `db-custom-4-7680`, corrected 300 VU 4h soak | **Pass**, k6 exit 0, no abort | 54.22% | 46.8998% | 81 | 4,178,728 / 4 (0.0000957%, deliberate 429, zero 5xx) | 74.5907 / 116.7656 ms |
+| `db-custom-4-7680`, corrected `MixedMorning` attempt `20260811121235` | **Stopped/fail** after 6m13s on three CPU breaches; k6 exit 105 | 100% | 47.0998% | 85 | 28,317 / 275 (0.971148%: 227 4xx + one 5xx + 47 timeouts) | N/A; overall read p95/p99 8,217.02 / 20,246.95 ms |
+
+The corrected soak ran from `2026-08-11T07:48:48.6607548Z` to
+`2026-08-11T11:59:27.9089861Z`. All 4,178,728 HTTP requests were either 2xx (4,178,724) or one of
+four deliberate 429 responses; the HTTP failure ratio was 0.0000957%. Overall p95/p99 were
+108.5355/238.3703 ms. Checks passed 6,263,101 of 6,263,105, with four failed checks. The guard
+observed maximum CPU 54.22%, Usage memory 46.8998%, and 81 connections, all below stop thresholds.
+Evidence is
+`artifacts/load-certification/soak-20260811074848-evidence.json` and
+`artifacts/load-certification/soak-20260811074848-k6-summary.json`.
 
 VU-to-population mapping is a planning assumption, not evidence of real school-day concurrency.
 Production sizing must use observed per-school arrival curves. Delhi list prices captured on the
 evidence date were US$0.0496/vCPU-hour and US$0.0084/GiB-hour: 2 vCPU/7.5 GiB is approximately
 US$0.1622/hour, while 4 vCPU/7.5 GiB is US$0.2614/hour (US$190.82 at 730 hours), before
-storage/network/backup. Four vCPU passed the short burst but failed the pre-fix sustained CPU gate;
-it is not yet a certified production shape. The next supported custom-core step, 6 vCPU/7.5 GiB, is
+storage/network/backup. Four vCPU passed the short burst and the corrected sustained write soak, but
+production sizing still requires a passing read-heavy `MixedMorning` gate and observed school-day
+concurrency. The next supported custom-core step, 6 vCPU/7.5 GiB, is
 approximately US$0.3606/hour (US$263.24 at 730 hours), an additional US$72.42/month. Cost discipline
-requires rerunning the source fixes on 4 vCPU first; scale to 6 vCPU only if the clean, fixed run still
-proves a CPU bottleneck.
+therefore keeps 4 vCPU for the remediation retest; scale to 6 vCPU only if that evidence proves a CPU
+bottleneck.
 
 The mixed profile uses the deployed GET contracts for student pagination, command-center,
 daily attendance summary, fee structure, fee defaulters, and attendance summary reporting. Three of
@@ -467,15 +620,74 @@ and refreshes before token expiry. Each flow must satisfy p95 below 800 ms and p
 must produce 2xx samples, and has explicit zero-4xx/zero-5xx counters. A live one-user preflight
 proved all six routes return HTTP 200. Its two cold student-list samples had p95 1.18 s, so that
 14-second smoke was intentionally not called a latency pass and the master read gate was not
-weakened. The full 15-minute run failed: 34,395 requests included 4,486 failures (13.0426%), with
-794 HTTP 4xx and 2,433 HTTP 5xx plus client/network timeouts. Overall p95/p99 were
+weakened. The historical pre-fix 15-minute run failed: 34,395 requests included 4,486 failures
+(13.0426%), with 794 HTTP 4xx and 2,433 HTTP 5xx plus client/network timeouts. Overall p95/p99 were
 55.015/59.998 seconds. Student list, daily attendance, fee structure and attendance report all had
 p95 above 52 seconds; dashboard and fee-defaulter p95 passed but their p99 exceeded six seconds.
 Cloud Run logs tied the 5xx responses to the four failing data-heavy flows. Source review then found
 `dailySummary` executing one student-count query per section (250 extra queries for the 10,000-student
 school). It now obtains school-scoped enrollment counts in one grouped join; a focused PostgreSQL 16
-round-trip suite passes 8/8, including an empty-section boundary case. This fix is not certified until
-deployed and the same 300-VU profile passes.
+round-trip suite passes 8/8, including an empty-section boundary case. The fix is deployed in dev and
+the 40/40 gateway regression passed.
+
+The exact guarded post-soak cleanup then completed twice as described in section 7.5, and the
+corrected attempt started from zero scale-scoped outbox/inbox rows. Attempt `20260811121235` ran from
+`2026-08-11T12:12:35.8827409Z` to `2026-08-11T12:18:49.0997981Z`. The harness stopped k6 with exit
+105 after Cloud SQL CPU samples reached 82.46%, 100%, and 100%; maximum Usage memory was 47.0998%
+and maximum connections were 85. It completed 28,317 outer requests, of which 275 failed
+(0.971148%). Overall p95/p99 were 8,217.016/20,246.945 ms. Per-flow p95/p99 were:
+
+| Flow | p95 | p99 | Result |
+| --- | ---: | ---: | --- |
+| Student list | 10,837.542 ms | 18,404.033 ms | Fail |
+| Attendance daily summary | 6,618.475 ms | 20,429.830 ms | Fail |
+| Fee structure | 6,425.467 ms | 16,254.414 ms | Fail |
+| Attendance report summary | 6,415.630 ms | 18,478.981 ms | Fail |
+| Dashboard command center | 192.787 ms | 297.847 ms | Pass latency |
+| Fee defaulters | 168.897 ms | 268.035 ms | Pass latency |
+
+The two latency passes terminate in platform-service, while all four latency failures terminate in
+school-core. Together with the fast isolated daily/report plans, that service boundary shows
+school-core queue/CPU amplification under concurrency; it does not make the fee or attendance SQL
+intrinsically six-second queries.
+
+The outer k6 error accounting reconciles exactly: 227 HTTP 4xx responses, one HTTP 5xx response, and
+47 request timeouts equal all 275 failed requests. The stderr independently records 39 synthetic
+login HTTP 429 failures during ramp-up; those are included in the 227 outer 4xx responses. The
+summary does not identify the status code of the remaining 188 4xx responses, so no stronger status
+claim is made. The 47 timeout lines occur only on the four school-core routes. The only outer 5xx was
+an attendance-report request.
+
+School-core Cloud Run request logs expose a separate inner-hop failure boundary: at
+`2026-08-11T12:13:10Z` one request failed because the project had recently exceeded
+`run.googleapis.com/cpu_allocation`, followed by 21 `no available instance` aborts from
+`12:13:15Z` through `12:13:20Z` across the four school-core flows. Those 22 internal request-log
+events are not added to the 275 outer k6 failures because API-gateway forwarding/retry behavior makes
+them a different observation layer. The exact outer reconciliation above remains authoritative.
+
+Post-failure read-only plans against school `900000000` then separated intrinsic database cost from
+queue amplification. The student page took 92.417 ms and read 10,517 rows before returning 50; its
+case-insensitive name sort took 70.832 ms and the complete plan used 519 shared-buffer hits and nine
+reads. The student stats query took 76.044 ms over 10,500 joined rows; its DISTINCT pair sort reached
+72.055 ms. The already corrected daily summary took 7.978 ms and attendance report took 0.074 ms.
+Both review lateral lookups executed only for the 50 returned students, so the proposed intermediate
+CTE rewrite was rejected as unsupported. Exact evidence is
+`artifacts/load-certification/mixed-query-plans-20260811123120.json`.
+
+The bounded repository fix is therefore:
+
+- student migration `V16__student_directory_read_indexes.sql` adds the partial ordering index
+  `(school_id, lower(full_name), id) INCLUDE (class_id, section_id) WHERE deleted_at IS NULL` and a
+  matching `(school_id, student_id, updated_at DESC, created_at DESC, id DESC)` review lookup index;
+- unfiltered and fee-only workspace stats count directly from `student.students` and use
+  `COUNT(DISTINCT section_id)`; class, section, and search-filtered paths retain the structure joins;
+- PostgreSQL 16 focused validation passed 18/18 fresh cases with zero failures/errors/skips,
+  including migration-definition and unfiltered/filtered-count assertions.
+
+Neither V16/stats nor the dev startup-boost mitigation in section 3.2 is deployed. The next result
+must therefore be a fresh dev deployment, migration/config inspection, cold-route preflight, and the
+same exact 300-VU profile. The passing 4h10 soak remains authoritative for its write workload; this
+failed read attempt does not overwrite that PASS. Production remains NO-GO.
 
 ## 10. Long-history query plans
 
@@ -664,6 +876,10 @@ the projected text alias.
   inspection also completed after providing its required safe environment variables.
 - Exact backlog cleanup passed a disposable PostgreSQL 16 scope test and its non-scale reserved-ID
   rejection test; the rejected transaction preserved both scale and non-scale rows.
+- Final fleet cleanup passed its disposable PostgreSQL 16 first-pass/idempotent suite: 1,000 modeled
+  import rows, two import batches (`DONE`/`PREVIEWED`), and 500 `dim_student` rows were removed while
+  outside-scope sentinels were preserved. An injected unhandled `school_id` table and a reserved
+  non-scale school each failed closed and proved full transaction rollback.
 - Notification and reporting topology are deployed in dev with exact OIDC/retry/DLQ settings;
   production was not mutated.
 - Four exact Scheduler jobs are deployed and returned to `PAUSED` after the cold-instance proof.
@@ -678,6 +894,17 @@ the projected text alias.
 - Dev deployment run `31435682086` completed successfully. Release
   `rel-dev-4d0a56bf6f75-1` built and deployed seven immutable images through seven serial successful
   Cloud Deploy rollouts; live inspection found all seven latest Ready revisions receiving 100% traffic.
+- The subsequent reliability/import roll-forward deployed commit `d5175049` as release
+  `rel-dev-d51750493546-1`. Relevant dev application services were Ready at 100% traffic; school-core
+  was revision `custoking-school-core-service-dev-00186-5pz`. The API gateway was unaffected and
+  retained its prior release. Production was not changed. Post-deploy gateway regression evidence
+  `artifacts/rollforward-dev-20260811T073416Z-gateway-smoke.json` passed 40/40 with zero failures.
+- Live import-admission evidence
+  `artifacts/onboarding-certification/import-admission-live-20260811072816471.json` ran two simultaneous
+  500-row batches for school `900000000`: exactly one returned HTTP 200 with 500 inserted and zero
+  skipped, while the other returned HTTP 429 `school_import_active`; header and body both specified a
+  five-second retry. The PII-free proof passed in 16.32 seconds and its 500 inserted students are
+  intentionally retained in the active scale fleet.
 - The workflow gateway-health smoke passed. Cloud Run Job execution
   `ims-direct-service-smoke-x6p8j` subsequently completed with one successful task and no failed task.
 - The guarded authenticated regression then provisioned temporary dev smoke identities/data, passed
@@ -692,45 +919,84 @@ the projected text alias.
   proved all three producer events published once and all three reporting inbox rows processed.
 - Reporting DLQ replay proved dry-run/no-ack and apply/republish-before-ack. The valid event processed
   once; the invalid diagnostic was acknowledged without replay after exact-marker verification.
-- The 300,000-student fixture contains 100 schools, a 10,000-student largest school, and 7,576
+- The original 300,000-student fixture contains 100 schools, a 10,000-student largest school, and 7,576
   sections. Initial seed completed in 76.52 seconds. The 7.3M/two-year extension was isolated on a
   clone to avoid permanent source storage growth; that clone was deleted. The later write soak,
   independently, caused the source disk to auto-grow to 15 GiB.
 - Controlled SQL restart passed with 63.52-second application RTO. The PITR clone became RUNNABLE in
   539.49 seconds and validation completed in 582.57 seconds; final cleanup was confirmed.
 - The 2-vCPU/7.5-GiB shape failed the 300-VU CPU guard. Four vCPU/7.5 GiB passed the full short burst,
-  but the four-hour soak failed the sustained CPU guard after 2h28m and the subsequent mixed profile
-  failed latency/status gates. Exact evidence files are
+  but the historical pre-fix four-hour soak failed the sustained CPU guard after 2h28m and the
+  subsequent mixed profile failed latency/status gates. Exact evidence files are
   `artifacts/load-certification/soak-20260811023532-evidence.json` and
   `artifacts/load-certification/mixedmorning-20260811051124-evidence.json`.
+- The corrected two-pass guarded cleanup removed the prior synthetic soak backlog while preserving
+  the fleet and all outside-scope rows. Pass 1 deleted exactly 1,604,136 scale outbox and 238,063 scale
+  inbox rows; pass 2 verified zero remaining and deleted zero. Outside-scope counts stayed at 316
+  outbox and 352 inbox rows in both passes.
+- Pre-soak status evidence `artifacts/load-certification/pre-soak-status-20260811T074630Z.json`
+  recorded 100 schools, 300,501 students, 7,576 sections, and 300,000 attendance records. Companion
+  diagnostics found no database activity/waits, 816/816 total outbox rows published, zero pending or
+  dead-lettered outbox rows, and all 500 post-import scale inbox rows `PROCESSED`.
+- The corrected 4h10 300-VU soak **passed** with k6 exit 0 and no abort: 4,178,728 requests, four
+  deliberate 429s, zero 5xx, overall p95/p99 108.5355/238.3703 ms, attendance-write p95/p99
+  74.5907/116.7656 ms, CPU 54.22%, memory 46.8998%, and 81 peak connections. Checks were
+  6,263,101/6,263,105. Exact evidence is
+  `artifacts/load-certification/soak-20260811074848-evidence.json` and
+  `artifacts/load-certification/soak-20260811074848-k6-summary.json`.
+- Immediate post-soak diagnostics recorded 1,791,888 scale outbox rows pending and zero dead-lettered;
+  the scale inbox had 223,287 `RECEIVED` and 69,767 `PROCESSED` rows. Two publisher transactions were
+  still present in `idle in transaction` state. After quiescence, exact cleanup pass 1 deleted
+  2,084,877 scale outbox and 296,889 scale inbox rows; pass 2 verified zero/zero and deleted zero.
+  Both preserved 316/352 outside-scope rows. Evidence is
+  `artifacts/load-certification/post-soak-diagnostics-20260811T120024Z.json`,
+  `artifacts/load-certification/post-soak-cleanup-pass1-20260811120946.json`, and
+  `artifacts/load-certification/post-soak-cleanup-pass2-20260811121101.json`.
+- Corrected `MixedMorning` attempt `20260811121235` began 34.11 seconds after cleanup pass 2 and
+  **failed** after 6m13s: k6 exit 105, 28,317 requests, 275 failures (227 4xx + one 5xx + 47
+  timeouts), overall p95/p99 8.217/20.247 seconds, CPU 100%, memory 47.0998%, and 85 connections.
+  Cloud Run separately recorded one regional CPU-allocation quota rejection and 21 no-instance
+  aborts. Exact evidence is `artifacts/load-certification/mixedmorning-20260811121235-evidence.json`,
+  its matching k6 summary/stdout/stderr, and
+  `artifacts/load-certification/mixed-query-plans-20260811123120.json`.
+- Read-only quota inspection found a 20,000-milli-vCPU `asia-south2` ceiling with
+  `NOT_ENOUGH_USAGE_HISTORY` quota-increase eligibility. V16/student stats and a dev-only
+  startup-boost mitigation are implemented and locally validated but not deployed or retested.
 - Automated backup/PITR were returned to the original disabled state. Both certification-created
   backups, the PITR clone, validation object, temporary IAM, history clone, and malformed DLQ probe
-  are absent. The 300,000-student fixture and `db-custom-4-7680` `RUNNABLE/ALWAYS` state are
-  intentionally preserved for root's deployed fix verification and authoritative reruns. The exact
-  synthetic outbox/inbox backlog and async/DLQ markers remain pending the guarded cleanup sequence;
-  no fleet/student cleanup has run. Root owns that execution, final fleet cleanup, resize to
-  `db-f1-micro`, and return to activation `NEVER`/`STOPPED`.
+  are absent. The 300,501-student current fleet and `db-custom-4-7680` `RUNNABLE/ALWAYS` state are
+  intentionally preserved for the `MixedMorning` remediation retest. The soak outbox/inbox backlog
+  cleanup is complete; any separate async/DLQ marker cleanup and final fleet/student cleanup remain
+  operator actions. Root owns those actions, resize to `db-f1-micro`, and return to activation
+  `NEVER`/`STOPPED` after certification.
 - Terraform was explicitly reinitialized from an accidentally selected production backend to the
   dev state before planning. The destructive full plan was rejected; only the verified additive
   nine-resource dev plan was applied.
 
 ## 16. Gates that remain open
 
-1. Deploy the attendance daily-summary N+1 fix and numeric outbox-order fixes to dev; prove the live
-   school-core relay plan remains an index scan.
-2. With all Scheduler jobs paused, reporting Pub/Sub backlog at zero and relevant services idle,
-   execute the reviewed exact scale-backlog and marker cleanup. Preserve all 100 schools, 300,000
-   students, attendance source rows and reporting facts for the rerun.
-3. Rerun the full 4h10 300-VU soak and then the exact 300-VU mixed profile on clean
-   `db-custom-4-7680`. Both k6 thresholds and infrastructure guards must pass. If fixed 4 vCPU still
-   breaches CPU, test the least-next 6-vCPU shape rather than pre-allocating it continuously.
-4. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
+1. Deploy the bounded dev remediation: student V16, the unfiltered stats query, and target-specific
+   startup CPU boost (`true` only for school-core in dev). Verify the applied Flyway version, exact
+   indexes, Ready revisions, traffic, and live annotations before load. Production must not change.
+2. Correct the synthetic-login admission defect or provision a test identity distribution that does
+   not send all 300 VUs through one credential's limiter. Run a cold-route preflight and reconcile
+   Cloud Run CPU-allocation/no-instance logs before starting the master profile.
+3. Repeat the exact 300-VU `MixedMorning` profile: 30s ramp up, 15m hold, 2m ramp down. Both its k6
+   thresholds and infrastructure guards must pass. Capture post-change student stats/page plans and
+   prove the ordering index is selected. If fixed 4 vCPU still breaches CPU after application and
+   quota-pressure fixes, test the least-next 6-vCPU shape rather than pre-allocating it continuously.
+4. Review and, if still present, remove only the separately identified async/DLQ diagnostic markers;
+   the exact two-pass scale backlog cleanup is complete. Preserve all 100 schools, the current
+   300,501 students, attendance source rows, and reporting facts until the remediation retest
+   finishes. After its evidence is complete, execute final fleet cleanup with the
+   section 7.6 preconditions and require its two-pass machine-readable evidence before cost-down.
+5. Trigger and clear a synthetic alert through the operator channel; add/test the still-missing
    relay-job, trace-export, storage-growth, and cost-forecast alert coverage.
-5. Prove a dev traffic rollback and retained backlog in the separate release-control workstream.
-6. Run a production-like all-school/multi-year reporting distribution test before selecting a new
+6. Prove a dev traffic rollback and retained backlog in the separate release-control workstream.
+7. Run a production-like all-school/multi-year reporting distribution test before selecting a new
    index or partitioning scheme; the 71.244 ms synthetic parallel sequential scan is not enough.
-7. Replace planning VU-to-student mapping with observed school-day arrival/concurrency data.
-8. Provision/migrate production only after every dev gate passes; production reporting still has the
+8. Replace planning VU-to-student mapping with observed school-day arrival/concurrency data.
+9. Provision/migrate production only after every dev gate passes; production reporting still has the
    legacy query-credential posture and production runtime IAM remains a separate rollout concern.
 
 ## 17. Primary sources
@@ -745,6 +1011,8 @@ the projected text alias.
 - [Cloud Scheduler pricing](https://cloud.google.com/scheduler/pricing)
 - [Cloud Run autoscaling and background work](https://docs.cloud.google.com/run/docs/about-instance-autoscaling)
 - [Cloud Run billing/CPU settings](https://docs.cloud.google.com/run/docs/configuring/billing-settings)
+- [Cloud Run CPU limits and startup CPU boost](https://docs.cloud.google.com/run/docs/configuring/services/cpu)
+- [View and manage quotas](https://docs.cloud.google.com/docs/quotas/view-manage)
 - [Cloud SQL PostgreSQL PITR](https://docs.cloud.google.com/sql/docs/postgres/backup-recovery/pitr)
 - [Cloud SQL restart command](https://docs.cloud.google.com/sdk/gcloud/reference/sql/instances/restart)
 - [Official Cloud SQL and Pub/Sub metric descriptors](https://docs.cloud.google.com/monitoring/api/metrics_gcp_c)

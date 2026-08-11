@@ -272,4 +272,56 @@ class SchoolStructureIntegrationTest {
         Map<String, Object> classFilters = (Map<String, Object>) classWorkspace.get("filters");
         assertThat((java.util.List<String>) classFilters.get("sections")).containsExactly("A", "B");
     }
+
+    @Test
+    void studentDirectoryMigration_addsIndexesForActiveOrderingAndReviewLookup() {
+        Map<String, String> indexes = jdbc.sql("""
+                        SELECT indexname, indexdef
+                        FROM pg_indexes
+                        WHERE schemaname = 'student'
+                          AND indexname IN (
+                              'idx_student_students_active_school_name',
+                              'idx_student_review_items_school_student_latest'
+                          )
+                        """)
+                .query((rs, rowNum) -> Map.entry(
+                        rs.getString("indexname"), rs.getString("indexdef").toLowerCase()))
+                .list()
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+        assertThat(indexes).containsKeys(
+                "idx_student_students_active_school_name",
+                "idx_student_review_items_school_student_latest");
+        assertThat(indexes.get("idx_student_students_active_school_name"))
+                .contains("school_id", "lower((full_name)::text)", "deleted_at is null");
+        assertThat(indexes.get("idx_student_review_items_school_student_latest"))
+                .contains("school_id", "student_id", "updated_at desc", "include (campaign_id, status)");
+    }
+
+    @Test
+    void workspaceStudentStats_countRowsAndGloballyUniqueSectionsWithoutFilters() throws Exception {
+        long schoolId = seedSchool(2, 2);
+        seedStudent(schoolId, "pre-primary", schoolId + "-pre-primary-A");
+        seedStudent(schoolId, "pre-primary", schoolId + "-pre-primary-A");
+        seedStudent(schoolId, "lkg", schoolId + "-lkg-B");
+        var studentRepo = new StudentReadRepository(
+                jdbc, org.mockito.Mockito.mock(
+                        com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
+                new OutboxWriter(jdbc, new tools.jackson.databind.ObjectMapper(), "tenant_school"));
+
+        Map<String, Object> unfiltered =
+                studentRepo.workspaceStudents(schoolId, null, null, null, 0, 50);
+        Map<String, Object> classFiltered =
+                studentRepo.workspaceStudents(
+                        schoolId, "Nursery / Pre-Nursery / Playgroup", null, null, 0, 50);
+
+        assertThat(unfiltered)
+                .containsEntry("totalItems", 3L)
+                .containsEntry("filteredCount", 3L)
+                .containsEntry("filteredSections", 2L);
+        assertThat(classFiltered)
+                .containsEntry("totalItems", 2L)
+                .containsEntry("filteredSections", 1L);
+    }
 }

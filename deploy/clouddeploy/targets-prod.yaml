@@ -8,7 +8,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-identity-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -16,6 +16,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -30,6 +31,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -43,7 +49,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-school-core-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -51,6 +57,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -65,6 +72,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -78,7 +90,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-operations-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -86,6 +98,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -100,6 +113,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -113,7 +131,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-platform-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -121,6 +139,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -139,6 +158,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -152,7 +176,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-billing-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -160,6 +184,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -174,6 +199,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -187,7 +217,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-api-gateway-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -195,6 +225,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -209,6 +240,11 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2
 ---
@@ -222,7 +258,7 @@ deployParameters:
   env: prod
   project_id: custoking
   region: asia-south2
-  runtime_service_account: 305630109861-compute@developer.gserviceaccount.com
+  runtime_service_account: ims-frontend-prod@custoking.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -230,6 +266,7 @@ deployParameters:
   gateway_min_instances: "0"
   gateway_max_instances: "3"
   frontend_max_instances: "2"
+  startup_cpu_boost: "true"
   vpc_network: default
   vpc_subnet: default
   vpc_egress: private-ranges-only
@@ -244,5 +281,10 @@ deployParameters:
   platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
   billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
 requireApproval: false
+executionConfigs:
+  - usages:
+      - RENDER
+      - DEPLOY
+    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 run:
   location: projects/custoking/locations/asia-south2

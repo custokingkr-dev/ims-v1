@@ -48,9 +48,11 @@ jobs:
           ./scripts/invoke-cloudsql-restore-drill.ps1 `
             -ProjectId custoking `
             -Region asia-south2 `
+            -Environment prod `
             -SourceInstance custoking-db-prod `
             -Database $env:PROD_DB_NAME `
-            -Apply
+            -Apply `
+            -AllowProductionRecoveryDrill
 
       - name: Upload non-sensitive drill evidence
         if: always()

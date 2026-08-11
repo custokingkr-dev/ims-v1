@@ -81,7 +81,7 @@ if (-not (Test-Path -LiteralPath $queryPath)) {
   throw "Missing reviewed transport evidence query: $queryPath"
 }
 $query = (Get-Content -Raw -LiteralPath $queryPath) -replace "`r`n", "`n"
-$expectedQuerySha256 = "96a5dc9ace56e61257096ae24fdd8124dc7bc30a33caab00f9aa78a3c97ef8c4"
+$expectedQuerySha256 = "fd7da354158e77e775113d696f747e657356ac78976adaef07d3c31ec1ed526f"
 $sha256 = [System.Security.Cryptography.SHA256]::Create()
 try {
   $queryBytes = [System.Text.Encoding]::UTF8.GetBytes($query)

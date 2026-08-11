@@ -11,6 +11,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.util.List;
 
@@ -51,12 +52,19 @@ class PrePrimaryClassCatalogMigrationTest {
                 schoolId = jdbc.sql("SELECT id FROM tenant_school.schools WHERE short_code = 'DEMO'")
                         .query(Long.class)
                         .single();
-                for (int classNo = 1; classNo <= 5; classNo++) {
-                    for (String section : List.of("A", "B")) {
-                        st.execute("INSERT INTO tenant_school.school_sections " +
-                                "(id, school_id, school_class_id, name, teacher_name, active) VALUES " +
-                                "('" + schoolId + "-" + classNo + "-" + section + "', " + schoolId +
-                                ", '" + classNo + "', '" + section + "', '', true)");
+                try (PreparedStatement ps = c.prepareStatement("""
+                        INSERT INTO tenant_school.school_sections
+                            (id, school_id, school_class_id, name, teacher_name, active)
+                        VALUES (?, ?, ?, ?, '', true)
+                        """)) {
+                    for (int classNo = 1; classNo <= 5; classNo++) {
+                        for (String section : List.of("A", "B")) {
+                            ps.setString(1, schoolId + "-" + classNo + "-" + section);
+                            ps.setLong(2, schoolId);
+                            ps.setString(3, Integer.toString(classNo));
+                            ps.setString(4, section);
+                            ps.executeUpdate();
+                        }
                     }
                 }
             }

@@ -13,6 +13,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -66,19 +67,31 @@ class AttendanceLateLeaveRoundTripTest {
             st.execute("DELETE FROM tenant_school.schools");
             st.execute("DELETE FROM tenant_school.academic_years");
 
-            st.execute("INSERT INTO tenant_school.academic_years(id, label, active) VALUES ('"
-                    + academicYear.id() + "','" + academicYear.label() + "',true)");
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO tenant_school.academic_years(id, label, active) VALUES (?, ?, true)")) {
+                ps.setString(1, academicYear.id());
+                ps.setString(2, academicYear.label());
+                ps.executeUpdate();
+            }
             st.execute("INSERT INTO tenant_school.schools(id, name, short_code, active, created_at) " +
                     "VALUES (1,'Test School','TST',true, now())");
             st.execute("INSERT INTO tenant_school.school_classes(id, name, sort_order) VALUES ('c1','Class 1',1)");
             st.execute("INSERT INTO tenant_school.school_sections(id, name, teacher_name, active, school_class_id, school_id) " +
                     "VALUES ('s1','A','Ms Rao',true,'c1',1)");
             // 4 students in c1/s1 — one for each status.
-            for (int i = 1; i <= 4; i++) {
-                st.execute("INSERT INTO student.students" +
-                        "(id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
-                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','"
-                                + academicYear.id() + "')");
+            try (PreparedStatement ps = c.prepareStatement("""
+                    INSERT INTO student.students
+                        (id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id)
+                    VALUES (?, ?, ?, ?, 1, 'c1', 's1', ?)
+                    """)) {
+                for (int i = 1; i <= 4; i++) {
+                    ps.setLong(1, i);
+                    ps.setString(2, "ADM" + i);
+                    ps.setString(3, Integer.toString(i));
+                    ps.setString(4, "Student " + i);
+                    ps.setString(5, academicYear.id());
+                    ps.executeUpdate();
+                }
             }
         }
     }
@@ -230,12 +243,19 @@ class AttendanceLateLeaveRoundTripTest {
     @Test
     void saveLargeRegister_bulkUpsertsAllRowsAndAccurateSummary() throws Exception {
         String academicYearId = AcademicCalendar.currentAcademicYearId(JdbcClient.create(ds), 1L);
-        try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+        try (Connection c = ds.getConnection();
+             PreparedStatement ps = c.prepareStatement("""
+                     INSERT INTO student.students
+                         (id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id)
+                     VALUES (?, ?, ?, ?, 1, 'c1', 's1', ?)
+                     """)) {
             for (int i = 5; i <= 120; i++) {
-                st.execute("INSERT INTO student.students" +
-                        "(id, admission_no, roll_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
-                        "(" + i + ",'ADM" + i + "','" + i + "','Student " + i + "',1,'c1','s1','" +
-                        academicYearId + "')");
+                ps.setLong(1, i);
+                ps.setString(2, "ADM" + i);
+                ps.setString(3, Integer.toString(i));
+                ps.setString(4, "Student " + i);
+                ps.setString(5, academicYearId);
+                ps.executeUpdate();
             }
         }
         List<Map<String, Object>> records = new ArrayList<>();

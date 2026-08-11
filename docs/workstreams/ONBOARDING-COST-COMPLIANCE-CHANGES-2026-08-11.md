@@ -3,9 +3,11 @@
 Date: 2026-08-11
 Scope: 100-150 schools, 200,000-300,000 total student records, and a maximum expected school size of
 10,000 students.
-Status: repository and live GCP read-only audit complete; bounded import admission, reconciliation/privacy
-hardening, cost tools and local certification evidence implemented; dev deployment, production mutations,
-destructive retention decisions, provider activation, and legal decisions remain gated.
+Status: repository and live GCP audit complete; bounded import admission, reconciliation/privacy hardening,
+cost tools and local certification evidence implemented. Admission/usage changes and the fleet-query fix are
+deployed to dev, and a guarded same-school contention probe passed. Full 10,000-student/multi-instance
+certification, production mutations, destructive retention decisions, provider activation and legal decisions
+remain gated.
 
 Detailed measured results, corrected Delhi rate evidence and the completion ledger are in
 [ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md](./ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md).
@@ -32,8 +34,9 @@ The most serious non-performance blockers are:
 1. notification delivery does not enforce the student's/guardian's consent or notification preference;
 2. permanent photo/student/school offboarding and data-export policies do not exist;
 3. only bounded import usage attribution exists; cross-service cost attribution and invoice reconciliation do not;
-4. database-backed per-school/two-fleet import admission is locally tested but not yet deployed or
-   multi-replica certified in dev; active previews and stale-preview expiry are still unbounded;
+4. database-backed per-school/two-fleet import admission is deployed and passed a live 500+500 same-school
+   contention probe, but it is not yet distinct-instance certified; active previews and stale-preview expiry
+   are still unbounded, and the live fixture still requires reconciliation/cleanup;
 5. provider templates, DLT/consent classification, live MSG91 receipts, and commercial pricing are not approved;
 6. the INR 5,000 budget is an alert, not a spending cap, and is below the production planning envelope;
 7. SQL connection, Pub/Sub, job, and budget-specific alert coverage remains incomplete even though the
@@ -41,8 +44,9 @@ The most serious non-performance blockers are:
 
 ## Evidence Boundary
 
-Evidence was taken from the branch and live project `custoking` without starting/stopping resources,
-changing IAM, changing a budget, deploying, or running production writes.
+The initial evidence-boundary audit used the branch and live project `custoking` without starting/stopping
+resources, changing IAM, changing a budget, deploying, or running production writes. Subsequent coordinated
+work deployed only to dev and ran the bounded synthetic probe documented below; production was not invoked.
 
 ### Verified repository behavior
 
@@ -56,7 +60,8 @@ changing IAM, changing a budget, deploying, or running production writes.
 - Admission number is unique per school in PostgreSQL. Two different batches that race for the same
   admission number cannot both create a student; one row is recorded as skipped. Confirmation now also
   uses transaction-scoped PostgreSQL advisory locks for one active confirmation per school and two
-  confirmations fleet-wide. Its evidence is local-only until deployed and exercised across dev replicas.
+  confirmations fleet-wide. It is now deployed and exercised through the dev gateway; the retained evidence
+  does not identify distinct Cloud Run instances, so multi-replica certification remains open.
 - Confirmation sets `RUNNING`/20%, then loops through as many as 500 rows and commits `DONE`/100% in the
   same transaction. The returned job id does not make this background work.
 - Batch and row evidence can be read using `GET /api/v1/students/imports/batches` and
@@ -161,7 +166,8 @@ unbounded in-memory queue or new always-on service was added.
 The guard is acquired after the batch row lock and completed-result replay, so same-token retries remain
 durable and completed retries consume no admission slot. Local Testcontainers tests cover noisy-school
 rejection, use of the second slot by another school, third-school rejection and rollback release. Dev
-deployment, two-replica evidence, preview expiry, monitoring and retry UX remain open.
+deployment and the same-school live contract are complete; distinct-instance evidence, preview expiry,
+monitoring, fixture cleanup and retry UX remain open.
 
 ### IMPL-05 — Tenant isolation and scale certification harness
 
@@ -171,9 +177,12 @@ concurrent schools, cross-school token/job denial and a synthetic school-core er
 RLS test covers import batches/rows across one reused physical connection, missing tenant context and
 cross-tenant update/delete attempts.
 
-The authoritative local 10,000-student run completed in 210,762 ms at a derived 47.45 students/second,
-with a 12,866 ms batch p95. This is local PostgreSQL evidence—not a Cloud SQL/Cloud Run SLO or a substitute
-for the persistent school-level onboarding session.
+The exact opt-in post-V16 PostgreSQL 16 run passed all 4 tests in 201.5 seconds of test-class time and 3:26
+Maven total. The 10,000-student path completed in 177,998 ms at a derived 56.18 students/second, with an
+8,894.35 ms mean batch time, 10,191 ms p95, 10,225 ms slowest batch and 35,314,711-byte database after the
+fixture. This supersedes the older local timing baseline. It is still local PostgreSQL evidence—not a Cloud
+SQL/Cloud Run SLO or a substitute for the persistent school-level onboarding session. The live guarded
+10,000-student gateway proof remains pending.
 
 ### IMPL-06 — Corrected, overrideable platform cost model
 
@@ -181,22 +190,41 @@ for the persistent school-level onboarding session.
 exchange-rate, workload, photo and planning-floor inputs. It reports zonal/HA totals, ranges, per-school,
 per-student and allocated 10,000-student-school values. The 2026-08-11 defaults use the checked billing
 pricing export, including Cloud Run CPU USD 0.0000336/vCPU-second, memory USD 0.0000035/GiB-second and
-Delhi Standard Storage USD 0.023/GiB-month. The SQL default is now the cheapest tested candidate that
-passed the target burst, `db-custom-4-7680`; custom vCPU/RAM inputs remain overrideable and are validated
+Delhi Standard Storage USD 0.023/GiB-month. The SQL default is now the cheapest measured candidate that
+passed the full target 300-VU soak, `db-custom-4-7680`; custom vCPU/RAM inputs remain overrideable and are validated
 against Google's Enterprise custom-shape constraints. The output separately labels the rejected 300-VU
 two-vCPU shape, its limited 200-VU comparison, incremental zonal/HA compute and savings versus the earlier
 untested 4-vCPU/15-GiB assumption. These remain dated planning inputs, not a quote.
 
-The decisive reliability artifact is `morningburst-20260811015047`: the 4-vCPU/7.5-GiB database completed
+The first decisive reliability artifact was `morningburst-20260811015047`: the 4-vCPU/7.5-GiB database completed
 the full 17m30s 300-VU profile with k6 exit 0/no abort, maximum CPU 58.29%, memory 48.4233%, connections 99,
 276,923 requests and 0.013722% failures (38 HTTP 429 responses, no 5xx). Attendance-write p95/p99 were
-115.817/262.703 ms. This establishes the cheapest measured passing short-burst candidate, not a soak or
-production SLO.
+115.817/262.703 ms. This established the short-burst candidate before the later full-soak pass; neither
+artifact is a production SLO or failover test.
 
 The separate `morningburst-20260811010210` 200-VU comparison on 2 vCPU/7.5 GiB stayed below resource
 guards (maximum CPU 58%, memory 48.087%, connections 92) with two failures among 185,060 requests, but its
 older wrapper recorded a null k6 exit code. It remains a lower-concurrency cost option only; it does not
 override the same shape's 300-VU CPU failure, and VUs are not student totals.
+
+The first full 300-VU soak on `db-custom-4-7680` stopped after 2h28m when three consecutive Cloud SQL CPU
+samples reached 82.1477%, 81.3688% and 82.2645%. The subsequent mixed workload also failed with 13.0426%
+HTTP failures and overall p95/p99 of 55.015/59.998 seconds. Source fixes are deployed and the exact synthetic
+backlog was removed with an idempotent second cleanup pass. These failures remain historical evidence.
+
+The corrective artifact `soak-20260811074848-evidence.json` passed the complete 4h10m 300-VU profile with
+k6 exit 0, no abort, all thresholds passing, 2,088,063 completed/zero interrupted iterations, and 4,178,728
+requests at 278.570 requests/second. Four requests returned 429/failed (0.0000957%); no attendance-write
+server-error check failed. Overall p95/p99 were 108.536/238.370 ms and attendance-write p95/p99 were
+74.591/116.766 ms. Maximum Cloud SQL CPU was 54.22%, memory 46.8998% and connections 81. This is the cheapest
+measured full-soak pass and therefore the cost-model planning default, not production purchase, HA/SLA or
+business approval. The rerun artifact `mixedmorning-20260811121235-evidence.json` subsequently **failed**:
+the guard aborted with k6 exit 105 after three consecutive Cloud SQL CPU samples of 82.46%, 100% and 100%.
+Before abort it completed 28,317 requests; 275 failed (0.971148%), including 227 4xx responses and one 5xx
+response, while overall p95/p99 reached 8.217/20.247 seconds. Maximum memory was 47.0998% and connections 85.
+This does not revoke the complete attendance-write soak pass; it leaves the representative mixed-read
+capacity gate failed and production sizing unapproved. The guarded live 10,000-student gateway run remains
+pending. Final scoped SCALE fixture/backlog cleanup and explicit Cloud SQL downsize/stop also remain pending.
 
 ### IMPL-07 — Bounded import usage attribution and admission telemetry
 
@@ -211,6 +239,11 @@ covers successful confirmations. School ids are deliberately absent from custom 
 ledger aggregation provides tenant attribution without high-cardinality Monitoring series. This completes
 import attribution only—not the still-planned API/attendance/storage/provider ledger or exact tenant billing.
 
+The endpoint and commit `467cd4f8`'s fleet-query null-parameter correction are deployed on school-core
+revision `custoking-school-core-service-dev-00186-5pz`. The 40-route post-roll-forward and 40-route post-TLS
+gateway suites passed, but neither suite directly calls `/imports/usage`; a retained direct endpoint and
+metric-export artifact remains required before COST-02 is called dev-certified.
+
 ### IMPL-08 — Guarded dev admission verifier
 
 `scripts/verify-dev-import-admission.ps1` is plan-only by default. Remote execution requires an HTTPS host
@@ -220,8 +253,43 @@ through an environment variable. It performs a read-only ledger preflight, start
 awaiting either, and accepts exactly one 2xx plus one `school_import_active` 429 with `Retry-After: 5`.
 
 The artifact contains no tokens or student rows. Execution intentionally commits one synthetic batch, so
-cleanup approval and reconciliation remain prerequisites. The harness was parser/guard tested locally; it
-was not run against dev because the required actor, fresh tokens and cleanup authorization were not supplied.
+cleanup approval and reconciliation remain prerequisites. The harness was parser/guard tested locally and
+then executed through the real dev gateway. Artifact
+`artifacts/onboarding-certification/import-admission-live-20260811072816471.json` passed in 16.32 seconds:
+one confirmation returned HTTP 200 with 500 inserted/zero skipped, and one returned HTTP 429
+`school_import_active` with header/body retry values of five seconds. It contains no token or student PII and
+sets `cleanupRequired=true`. Because it does not record instance identity, it is not multi-instance evidence.
+
+### IMPL-09 — Guarded full 10,000-student gateway verifier
+
+`scripts/verify-dev-onboarding-10000.ps1` is plan-only by default and has not been live-run. Remote writes
+require `-Execute`, `-AllowRemoteDevWrites`, HTTPS, a distinct dev DNS label, exact expected-host equality
+and a reserved school id of at least `900000000`. It accepts authentication only from named environment
+variables containing either a short-lived token or a complete login email/password pair, never both. No
+credential, token, individual row value or opaque batch/job identifier is written to evidence. A non-secret
+synthetic run label is retained only for exact reconciliation and cleanup scoping.
+
+Before any preview or import write, the verifier reads the target school's classes and active sections. It
+requires all `Scale Class 1..12` and `Scale 0001..0250` names and rejects a duplicated required section name.
+An incompatible target fails with the explicit fixture-preflight error before any import write. Successful
+evidence contains only aggregate preflight counts/timing and records `writesPerformed=false` for that phase.
+For the current 100-school fixture, full-10k verification must use school `900000000`, the only seeded school
+with all 250 sections. School `900000001` has 2,930 students and only `Scale 0001..0074`, so it is incompatible
+with the full-10k generator and is rejected before writes. It remains suitable for a separate 500+500 proof,
+which requires only `Scale 0001..0013`.
+
+The fixed workload is 20 sequential JSON previews and confirmations with exactly 500 unique synthetic rows
+per batch, using existing SCALE fixture class/section names. Each preview must be 500 valid/zero errors/zero
+warnings; each confirmation must be 500 inserted/zero skipped. The final batch receives a completed same-token
+retry and must preserve its batch/job result. The verifier then matches all 20 generated batches as `DONE`
+and requires exact `/imports/usage` deltas of 20 previews/completions and 10,000 attempted/inserted rows, with
+zero unfinished, skipped or source bytes.
+
+Evidence is created only after every assertion passes, using atomic create-new/no-overwrite semantics. It
+contains only aggregate timings, counts, the reserved school id and explicit limitations, and always records
+`cleanupRequired=true`. The verifier intentionally performs no cleanup and does not claim photo, empty-school,
+parallel-school, distinct-instance, capacity or production certification. The narrow
+`scripts/audit-dev-onboarding-verifier.ps1` parser/source/plan audit and four pre-network negative gates pass.
 
 ## Planned Changes
 
@@ -273,10 +341,11 @@ because 10,000 is a large number.
 
 ### ONB-02 — Import admission control and noisy-tenant protection (**production blocker**)
 
-**Local status:** the confirmation guard, direct/wrapped deterministic `429` contract, bounded-reason
-rejection counter and guarded dev verifier are implemented and locally tested. The remaining blocker is dev
-deployment and multi-replica/Cloud SQL evidence, plus preview expiry, route-level budgets, operator retry
-UX, metric-export verification and an approved dashboard/alert.
+**Current status:** the confirmation guard, direct/wrapped deterministic `429` contract, bounded-reason
+rejection counter and guarded dev verifier are implemented, locally tested and deployed to dev. A live
+same-school 500+500 contention probe passed against Cloud SQL. Remaining blockers are distinct-instance
+evidence, live-fixture reconciliation/cleanup, preview expiry, route-level budgets, operator retry UX,
+metric-export verification and an approved dashboard/alert.
 
 **Change:** enforce at most one active confirmation per school and begin with at most two active imports
 fleet-wide. Return `409`/`429` plus `Retry-After`; never queue unbounded work in application memory. Keep
@@ -622,7 +691,7 @@ This is engineering planning, not legal advice or a provider quote.
 
 ## Validation Evidence
 
-Completed locally without deployment or live mutation:
+Initial workstream validation completed locally without deployment or live mutation:
 
 - `npm.cmd test` in `frontend`: 28 files, 145 tests passed.
 - `npm.cmd run build:test` in `frontend`: TypeScript and Vite test-mode build passed; existing large-chunk warnings remain.
@@ -639,13 +708,19 @@ Completed locally without deployment or live mutation:
   request. Negative gates rejected a production-looking host, remote dev without explicit write opt-in,
   URI user-info, localhost execution without the required token, and an already-existing evidence path
   before any request was sent; the existing file remained byte-for-byte unchanged.
-- Opt-in onboarding certification: 4 tests passed; 240.0-second test-class time and 4:15 Maven total.
-  The 10,000-student/20-batch path completed in 210,762 ms at a derived 47.45 students/second; local batch
-  p95 was 12,866 ms. Same-token concurrency produced one job and zero duplicates; two 500-row schools
-  completed concurrently in 5,072 ms.
-- The synthetic in-memory export produced 20 rows and SHA-256
-  `5ca4daff439ae942e8cbbb86123e3c1a49edd54ee75ad506bb4ba3ba95c62c9a`; the exercised school-core target
-  counts reached zero and the control tenant was unchanged. This is not full production erasure evidence.
+- `scripts/verify-dev-onboarding-10000.ps1` and its narrow audit parsed successfully. Plan-only mode completed
+  without a request, source/evidence guards passed, and production-host, out-of-range-school,
+  missing-remote-write-opt-in and expected-host-mismatch cases failed before a network path. The full
+  verifier was not live-run.
+- Post-V16 opt-in onboarding certification against PostgreSQL 16: 4/4 tests passed; 201.5-second test-class
+  time and 3:26 Maven total. The 10,000-student/20-batch path completed in 177,998 ms at a derived 56.18
+  students/second; mean/p95/slowest batch times were 8,894.35/10,191/10,225 ms and the database was
+  35,314,711 bytes after the fixture. This supersedes the older local timing baseline; the live guarded
+  10,000-student gateway proof remains pending.
+- Same-token concurrency reported `attempts=2`, `students=100`, `duration=998 ms`, `sameJob=true` and
+  `duplicates=0`. Two concurrent 500-row schools completed in 4,894 ms. The exercised school-core erase
+  target counts all reached zero and the control tenant was preserved. This is not full production erasure
+  evidence.
 - PowerShell parsed and executed both cost tools. With the measured passing `db-custom-4-7680` planning
   default, platform outputs are INR 31,881 zonal / INR 52,084 HA for 100 schools and 200,000 students, and
   INR 37,396 zonal / INR 58,575 HA for 150 schools and 300,000 students. Relative to the rejected
@@ -653,7 +728,25 @@ Completed locally without deployment or live mutation:
   model. The separate two-vCPU override remained available and odd-vCPU/invalid-memory shapes were rejected.
   These are modeled—not invoiced—and exclude messaging, tax, support and other documented categories.
 
+Subsequent coordinated dev-only validation:
+
+- Release `rel-dev-d51750493546-1` deployed the admission/usage implementation. Commit `467cd4f8`'s
+  fleet-query fix was rolled forward on school-core revision `00186-5pz`; the post-roll-forward gateway
+  suite passed 40/40.
+- The guarded live admission probe passed with one 500-row success and one deterministic same-school 429.
+  The retained artifact is PII-free but flags cleanup as required and does not prove distinct instances.
+- Dev Cloud SQL now enforces `ENCRYPTED_ONLY`. Fresh session evidence records 16/16 application clients
+  encrypted and zero unencrypted, and the post-enforcement gateway suite passed 40/40.
+- The exact SCALE-only outbox/inbox cleanup removed 1,604,136/238,063 rows while preserving outside scope;
+  a second pass deleted zero rows. The corrective 4h10m/300-VU soak then passed on `db-custom-4-7680` with
+  k6 exit 0, all thresholds passing, 54.22% maximum SQL CPU, 46.8998% memory and 81 connections. The later
+  `mixedmorning-20260811121235-evidence.json` rerun failed on the CPU guard with k6 exit 105; it does not
+  invalidate the complete attendance-write soak pass, but mixed-read capacity remains uncertified. The
+  100-school fixture remains for the still-pending live full-10k gateway verification and final scoped
+  fixture/backlog cleanup; explicit Cloud SQL downsize/stop is also pending.
+
 See [ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md](./ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md)
 for commands, exact reconciliation, erasure boundaries, scenario parameters and remaining gates.
 
-No production or dev deployment was performed by this workstream. No live GCP resource was modified.
+The initial workstream itself performed no deployment or live mutation. The subsequent coordinated actions
+above were dev-only; no production resource was modified by this onboarding/cost work.

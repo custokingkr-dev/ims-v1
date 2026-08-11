@@ -237,8 +237,9 @@ Dev reporting push was reverified on 2026-08-10 after its OIDC cutover:
 - The post-cutover authenticated gateway suite passed 40/40 and environment preflight had zero
   blockers.
 - Production reporting remains on the default compute push identity and requires its own cutover.
-- The 2026-08-10 live inventory found no notification subscription in either environment; the
-  notification topics and consumer code therefore do not constitute a working delivery path.
+- Dev now has a dedicated OIDC notification push subscription with retry/DLQ. Canonical duplicate delivery
+  was stored once and a poison event reached the DLQ under the logging/dry-run provider. Production still
+  has no notification subscription, and real consented provider delivery remains gated.
 
 Dev runtime IAM was reverified later on 2026-08-10:
 

@@ -232,14 +232,21 @@ public class StudentReadRepository {
             Long schoolId, String className, String sectionName, String feeStatus,
             String search, boolean deleted) {
         String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
+        boolean needsStructureJoin = !blankOrAll(className)
+                || !blankOrAll(sectionName)
+                || !searchTerm.isBlank();
         StringBuilder sql = new StringBuilder("""
                 SELECT COUNT(*) AS total,
-                       COUNT(DISTINCT (s.class_id, s.section_id)) AS sections
+                       COUNT(DISTINCT s.section_id) AS sections
                 FROM student.students s
-                JOIN tenant_school.school_classes sc ON sc.id = s.class_id
-                JOIN tenant_school.school_sections ss ON ss.id = s.section_id
-                WHERE
-                """)
+                """);
+        if (needsStructureJoin) {
+            sql.append("""
+                    JOIN tenant_school.school_classes sc ON sc.id = s.class_id
+                    JOIN tenant_school.school_sections ss ON ss.id = s.section_id
+                    """);
+        }
+        sql.append(" WHERE")
                 .append(deleted ? " s.deleted_at IS NOT NULL" : " s.deleted_at IS NULL")
                 .append(" AND s.school_id = :schoolId");
         if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
