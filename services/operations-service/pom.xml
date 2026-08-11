@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.7</version>
+        <version>4.1.0</version>
         <relativePath/>
     </parent>
 
@@ -17,8 +17,8 @@
 
     <properties>
         <java.version>25</java.version>
-        <google-cloud-libraries-bom.version>26.66.0</google-cloud-libraries-bom.version>
-        <grpc.version>1.75.0</grpc.version>
+        <google-cloud-libraries-bom.version>26.86.0</google-cloud-libraries-bom.version>
+        <grpc.version>1.83.1</grpc.version>
         <postgresql.version>42.7.12</postgresql.version>
     </properties>
 
@@ -79,7 +79,7 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>8.0</version>
+            <version>9.0</version>
         </dependency>
         <!-- OpenTelemetry tracing: under Spring Boot 4.0, tracing autoconfiguration
              was split out of spring-boot-actuator-autoconfigure into a dedicated
@@ -97,12 +97,12 @@
         <dependency>
             <groupId>io.opentelemetry.contrib</groupId>
             <artifactId>opentelemetry-gcp-auth-extension</artifactId>
-            <version>1.56.0-alpha</version>
+            <version>1.59.0-alpha</version>
         </dependency>
         <dependency>
             <groupId>com.google.auth</groupId>
             <artifactId>google-auth-library-oauth2-http</artifactId>
-            <version>1.37.1</version>
+            <version>1.50.0</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud</groupId>
