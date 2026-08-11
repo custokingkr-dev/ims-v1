@@ -14,19 +14,92 @@ param(
   [int]$ConnectionStopCount = 140,
   [ValidateRange(1, 10)]
   [int]$ConsecutiveMonitoringFailures = 3,
+  [string]$BillingAccount = "018AC9-E669C1-2FC9B8",
+  [string]$BudgetDisplayName = "Custoking Monthly Guardrail",
+  [string]$BillingExportTable = "custoking.billing_export.gcp_billing_export_v1_018AC9_E669C1_2FC9B8",
+  [ValidateRange(0.1, 1.0)]
+  [double]$BudgetHeadroomRatio = 0.80,
+  [ValidateRange(1, 72)]
+  [int]$MaximumBillingDataAgeHours = 24,
+  [ValidateRange(0, 1000000)]
+  [double]$EstimatedRunCostInr = 0,
   [string]$K6Image = "grafana/k6:2.0.0@sha256:a33a0cfdc4d2483d6b7a3a22e726a499ff2831a671a49239104cd34a9937523c",
   [switch]$AllowScaleWrites,
+  [switch]$AllowBudgetOverrun,
   [string]$EvidenceDirectory = "artifacts/load-certification"
 )
 
 $ErrorActionPreference = "Stop"
 $gcloud = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
+$bq = if ($env:OS -eq "Windows_NT") { "bq.cmd" } else { "bq" }
 if (-not $AllowScaleWrites) {
   throw "Load certification updates the reserved synthetic attendance fixture. Pass -AllowScaleWrites."
 }
 if ($BaseUrl -notmatch '-dev-' -and $BaseUrl -notmatch 'localhost') {
   throw "Load certification is restricted to dev or localhost."
 }
+
+$budgetJson = & $gcloud billing budgets list "--billing-account=$BillingAccount" --format=json
+if ($LASTEXITCODE -ne 0) {
+  throw "Could not read the Cloud Billing budget before load certification."
+}
+$budgets = @(($budgetJson | ConvertFrom-Json) | Where-Object { $_.displayName -eq $BudgetDisplayName })
+if ($budgets.Count -ne 1) {
+  throw "Expected one budget named '$BudgetDisplayName', found $($budgets.Count)."
+}
+$budget = $budgets[0]
+$currency = [string]$budget.amount.specifiedAmount.currencyCode
+if ($currency -cne "INR") {
+  throw "Budget '$BudgetDisplayName' must use INR for this guard (current: '$currency')."
+}
+$budgetAmountInr = [double]$budget.amount.specifiedAmount.units +
+  ([double]$budget.amount.specifiedAmount.nanos / 1000000000.0)
+if ($budgetAmountInr -le 0) {
+  throw "Budget '$BudgetDisplayName' has no positive specified amount."
+}
+
+if (-not (Get-Command $bq -ErrorAction SilentlyContinue)) {
+  throw "The bq CLI is required for the gross-spend preflight."
+}
+$invoiceMonth = [datetime]::UtcNow.ToString("yyyyMM")
+$billingSql = "SELECT ROUND(SUM(cost), 2) AS gross_cost_inr, " +
+  "MAX(usage_end_time) AS latest_usage_end, MAX(export_time) AS latest_export " +
+  "FROM ``$BillingExportTable`` WHERE project.id = '$ProjectId' AND invoice.month = '$invoiceMonth'"
+$billingRowsJson = & $bq query --use_legacy_sql=false --format=json $billingSql
+if ($LASTEXITCODE -ne 0) {
+  throw "Could not query the billing export before load certification."
+}
+$billingRows = @($billingRowsJson | ConvertFrom-Json)
+if ($billingRows.Count -ne 1 -or $null -eq $billingRows[0].latest_usage_end) {
+  throw "The billing export did not return a current-month spend row."
+}
+$grossSpendInr = [double]$billingRows[0].gross_cost_inr
+$latestUsageEnd = ([datetime]$billingRows[0].latest_usage_end).ToUniversalTime()
+$billingDataAgeHours = ([datetime]::UtcNow - $latestUsageEnd).TotalHours
+if ($billingDataAgeHours -gt $MaximumBillingDataAgeHours) {
+  throw "Billing data is $([math]::Round($billingDataAgeHours, 1)) hours old; maximum is $MaximumBillingDataAgeHours."
+}
+
+if ($EstimatedRunCostInr -le 0) {
+  $EstimatedRunCostInr = if ($Profile -eq "Soak") { 1200.0 } else { 300.0 }
+}
+$projectedGrossSpendInr = $grossSpendInr + $EstimatedRunCostInr
+$guardrailInr = $budgetAmountInr * $BudgetHeadroomRatio
+$budgetPreflight = [ordered]@{
+  budgetName = $BudgetDisplayName
+  budgetAmountInr = [math]::Round($budgetAmountInr, 2)
+  grossSpendInr = [math]::Round($grossSpendInr, 2)
+  estimatedRunCostInr = [math]::Round($EstimatedRunCostInr, 2)
+  projectedGrossSpendInr = [math]::Round($projectedGrossSpendInr, 2)
+  maximumProjectedSpendInr = [math]::Round($guardrailInr, 2)
+  latestUsageEndUtc = $latestUsageEnd.ToString("o")
+  billingDataAgeHours = [math]::Round($billingDataAgeHours, 2)
+  overrideUsed = [bool]$AllowBudgetOverrun
+}
+if (-not $AllowBudgetOverrun -and $projectedGrossSpendInr -gt $guardrailInr) {
+  throw "Projected gross spend INR $([math]::Round($projectedGrossSpendInr, 2)) exceeds the load-test guard INR $([math]::Round($guardrailInr, 2)). Pass -AllowBudgetOverrun only with explicit spending-owner approval."
+}
+
 if ([string]::IsNullOrWhiteSpace($env:K6_ACCESS_TOKENS) -and
     ([string]::IsNullOrWhiteSpace($env:K6_LOGIN_EMAIL) -or
      [string]::IsNullOrWhiteSpace($env:K6_LOGIN_PASSWORD))) {
@@ -233,6 +306,7 @@ $evidence = [ordered]@{
   peakVus = $PeakVus
   hold = $Hold
   k6Image = $K6Image
+  budgetPreflight = $budgetPreflight
   startedAtUtc = $startedAt.ToString("o")
   completedAtUtc = [datetime]::UtcNow.ToString("o")
   k6ExitCode = $k6ExitCode

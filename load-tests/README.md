@@ -176,7 +176,13 @@ Remove-Item Env:K6_LOGIN_EMAIL, Env:K6_LOGIN_PASSWORD
 ```
 
 `-AllowScaleWrites` is retained as an explicit fixture-use acknowledgement in the common wrapper;
-the mixed profile itself performs only GET requests plus login POSTs. Its 300 VUs model 300 active
+the wrapper also reads the live project-scoped gross-cost budget and standard BigQuery billing export
+before starting Docker. Projected month spend (current export plus INR 1,200 for a soak or INR 300 for
+a burst/mixed run) must remain at or below 80% of the budget by default. Missing or stale billing data
+fails closed. `-AllowBudgetOverrun` is reserved for explicit spending-owner approval and is recorded in
+the evidence JSON; it does not weaken CPU, memory, connection, or correctness thresholds.
+
+The mixed profile itself performs only GET requests plus login POSTs. Its 300 VUs model 300 active
 browser sessions distributed over the 100 schools, not all 300,000 student records or a claim that
 300,000 students are concurrently online.
 

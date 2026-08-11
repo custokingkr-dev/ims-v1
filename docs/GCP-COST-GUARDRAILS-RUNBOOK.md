@@ -4,6 +4,9 @@ Purpose: keep production onboarding cost-controlled without guessing. Use this b
 
 Primary plan: [GCP-COST-OPTIMIZATION-PLAN-2026-08.md](GCP-COST-OPTIMIZATION-PLAN-2026-08.md)
 
+Latest incident and resource-level attribution:
+[GCP-BUDGET-INCIDENT-2026-08-11.md](GCP-BUDGET-INCIDENT-2026-08-11.md).
+
 ## Operating Rules
 
 1. Keep production Cloud Run min instances at `0` unless a measured product issue justifies a targeted change.
@@ -54,7 +57,7 @@ The live project budget is `Custoking Monthly Guardrail`, INR 5,000/month. It mu
 Maintain at least one project budget:
 
 - Scope: project `custoking`.
-- Alert thresholds: 50%, 75%, 90%, 100%.
+- Alert thresholds: current spend 50%, 80%, and 100%; forecasted spend 100%.
 - Add a forecasted-spend alert if available.
 - Notification target: engineering plus the business owner who approves onboarding spend.
 
@@ -67,6 +70,10 @@ bucket, secret-version, and budget controls with:
 powershell -ExecutionPolicy Bypass -File scripts\apply-gcp-cost-controls.ps1
 powershell -ExecutionPolicy Bypass -File scripts\apply-gcp-cost-controls.ps1 -Apply
 ```
+
+The guarded load wrapper queries this budget and the standard billing export before starting k6. It
+reserves headroom by requiring current gross spend plus the profile estimate to remain within 80% of
+the budget. `-AllowBudgetOverrun` requires explicit spending-owner approval and is recorded in evidence.
 
 ## Billing Export
 
