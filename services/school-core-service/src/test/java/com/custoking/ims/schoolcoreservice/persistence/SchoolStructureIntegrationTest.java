@@ -274,7 +274,7 @@ class SchoolStructureIntegrationTest {
     }
 
     @Test
-    void studentDirectoryMigration_addsIndexesForActiveOrderingAndReviewLookup() {
+    void studentDirectoryMigrations_addIndexesForActiveOrderingSectionCountsAndReviewLookup() {
         Map<String, String> indexes = jdbc.sql("""
                         SELECT indexname, indexdef
                         FROM pg_indexes
