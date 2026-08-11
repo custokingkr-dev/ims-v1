@@ -1,0 +1,546 @@
+<title>Custoking IMS — Architecture</title>
+<style>
+  :root{
+    --ground:#EEF2F8; --panel:#FFFFFF; --panel-2:#F6F9FE;
+    --ink:#16202F; --muted:#51617C; --faint:#8494AC;
+    --line:#DCE4F0; --line-strong:#C4D0E2;
+    --sync:#0E8FA6; --sync-glow:rgba(14,143,166,.35); --sync-soft:rgba(14,143,166,.10);
+    --async:#B87708; --async-glow:rgba(184,119,8,.30); --async-soft:rgba(184,119,8,.10);
+    --boundary:#6D5CD6; --boundary-soft:rgba(109,92,214,.10);
+    --ok:#12855F; --crit:#C23A54;
+    --shadow:0 1px 2px rgba(20,32,52,.06), 0 8px 24px rgba(20,32,52,.07);
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+    --mono:"Cascadia Code","Cascadia Mono",ui-monospace,"SF Mono",Consolas,"Liberation Mono",monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ground:#0A0F18; --panel:#121A29; --panel-2:#0E1622;
+      --ink:#E9EEF8; --muted:#8798B4; --faint:#586880;
+      --line:#25324A; --line-strong:#33425F;
+      --sync:#31D0E6; --sync-glow:rgba(49,208,230,.55); --sync-soft:rgba(49,208,230,.12);
+      --async:#F3B23E; --async-glow:rgba(243,178,62,.50); --async-soft:rgba(243,178,62,.12);
+      --boundary:#9B8CFA; --boundary-soft:rgba(155,140,250,.14);
+      --ok:#4BD6A0; --crit:#F26178;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="light"]{
+    --ground:#EEF2F8; --panel:#FFFFFF; --panel-2:#F6F9FE;
+    --ink:#16202F; --muted:#51617C; --faint:#8494AC;
+    --line:#DCE4F0; --line-strong:#C4D0E2;
+    --sync:#0E8FA6; --sync-glow:rgba(14,143,166,.35); --sync-soft:rgba(14,143,166,.10);
+    --async:#B87708; --async-glow:rgba(184,119,8,.30); --async-soft:rgba(184,119,8,.10);
+    --boundary:#6D5CD6; --boundary-soft:rgba(109,92,214,.10);
+    --ok:#12855F; --crit:#C23A54;
+    --shadow:0 1px 2px rgba(20,32,52,.06), 0 8px 24px rgba(20,32,52,.07);
+  }
+  :root[data-theme="dark"]{
+    --ground:#0A0F18; --panel:#121A29; --panel-2:#0E1622;
+    --ink:#E9EEF8; --muted:#8798B4; --faint:#586880;
+    --line:#25324A; --line-strong:#33425F;
+    --sync:#31D0E6; --sync-glow:rgba(49,208,230,.55); --sync-soft:rgba(49,208,230,.12);
+    --async:#F3B23E; --async-glow:rgba(243,178,62,.50); --async-soft:rgba(243,178,62,.12);
+    --boundary:#9B8CFA; --boundary-soft:rgba(155,140,250,.14);
+    --ok:#4BD6A0; --crit:#F26178;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0}
+  .page{
+    background:var(--ground); color:var(--ink); font-family:var(--sans);
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+    padding:clamp(20px,5vw,64px) clamp(16px,4vw,40px) 64px;
+  }
+  .wrap{max-width:1120px;margin:0 auto}
+
+  .eyebrow{
+    font-family:var(--mono); font-size:12px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--sync); margin:0 0 14px; display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--sync);opacity:.7}
+
+  h1{font-size:clamp(34px,6vw,62px); line-height:1.02; margin:0; font-weight:750; letter-spacing:-.02em; text-wrap:balance}
+  h1 .sub{display:block;font-size:clamp(15px,2vw,20px);font-weight:500;color:var(--muted);letter-spacing:0;margin-top:16px;max-width:64ch}
+  h2{font-size:clamp(20px,3vw,27px);font-weight:700;letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance}
+  h2 .n{font-family:var(--mono);font-size:13px;color:var(--sync);font-weight:600;margin-right:10px;letter-spacing:.05em}
+  .lead{color:var(--muted);max-width:70ch;margin:0 0 22px;font-size:15px}
+  code{font-family:var(--mono);font-size:.92em}
+
+  .metastrip{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+  .chip{font-family:var(--mono); font-size:12px; color:var(--muted); background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:6px 12px; white-space:nowrap}
+  .chip b{color:var(--ink);font-weight:600}
+
+  .legend{display:flex;flex-wrap:wrap;gap:22px;margin-top:24px;padding:15px 18px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2)}
+  .legend .li{display:flex;align-items:center;gap:11px;font-size:13.5px;color:var(--muted)}
+  .legend .li b{color:var(--ink);font-weight:600}
+  .track{position:relative;width:52px;height:3px;border-radius:2px;background:var(--line);overflow:hidden;flex:none}
+  .track::after{content:"";position:absolute;top:0;left:-40%;width:40%;height:100%;border-radius:2px;background:var(--c);box-shadow:0 0 10px 1px var(--c);animation:slide 1.8s linear infinite}
+  .track.sync{--c:var(--sync)} .track.async{--c:var(--async)} .track.async::after{animation-delay:.6s}
+  @keyframes slide{from{left:-40%}to{left:120%}}
+
+  section{margin-top:clamp(44px,7vw,80px)}
+  .sec-head{margin-bottom:22px}
+
+  /* ---------- SVG diagrams ---------- */
+  .diagram-wrap{overflow-x:auto;overflow-y:hidden;padding:4px 2px 8px}
+  .diagram{display:block;width:100%;min-width:660px;height:auto}
+  .s-node{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+  .s-core{fill:var(--panel);stroke:var(--sync);stroke-width:2}
+  .s-gate{fill:var(--panel);stroke:var(--boundary);stroke-width:2}
+  .s-soft{fill:var(--panel-2);stroke:var(--line);stroke-width:1.25}
+  .s-role{fill:var(--faint);font-family:var(--mono);font-weight:600;letter-spacing:1.3px}
+  .s-role.b{fill:var(--boundary)}
+  .s-role.ok{fill:var(--ok)}
+  .s-role.au{fill:var(--async)}
+  .s-ink{fill:var(--ink);font-family:var(--sans);font-weight:700}
+  .s-mut{fill:var(--muted);font-family:var(--mono)}
+  .s-cy{fill:var(--sync);font-family:var(--mono)}
+  .s-tagp{fill:var(--async);font-family:var(--mono);font-weight:600;letter-spacing:1px}
+  .s-tagi{fill:var(--boundary);font-family:var(--mono);font-weight:600;letter-spacing:1px}
+  .flow{fill:none;stroke:var(--sync);stroke-width:2;stroke-linecap:round;stroke-dasharray:6 7;animation:dash 1.05s linear infinite;filter:drop-shadow(0 0 2px var(--sync-glow))}
+  .flow.async{stroke:var(--async);filter:drop-shadow(0 0 2px var(--async-glow))}
+  .flow.dim{opacity:.6;stroke-width:1.75}
+  @keyframes dash{to{stroke-dashoffset:-26}}
+  .arrowhead{fill:var(--sync)}
+  .arrowhead.async{fill:var(--async)}
+  .spark{fill:var(--sync);filter:drop-shadow(0 0 5px var(--sync-glow));animation:drop1 2.6s ease-in-out infinite}
+  .spark.b{animation:drop2 2.6s ease-in-out infinite;animation-delay:.5s}
+  @keyframes drop1{0%{transform:translateY(0);opacity:0}12%{opacity:1}80%{opacity:1}100%{transform:translateY(48px);opacity:0}}
+  @keyframes drop2{0%{transform:translateY(0);opacity:0}12%{opacity:1}80%{opacity:1}100%{transform:translateY(48px);opacity:0}}
+
+  /* ---------- service detail cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;transition:transform .18s ease,border-color .18s ease}
+  .card:hover{transform:translateY(-4px);border-color:var(--line-strong)}
+  .card.span2{grid-column:span 2}
+  @media(max-width:560px){.card.span2{grid-column:span 1}}
+  .card .c-name{font-size:16px;font-weight:750;letter-spacing:-.01em}
+  .card .c-pkg{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .card .c-role{font-size:13px;color:var(--muted)}
+  .kv{display:flex;flex-direction:column;gap:7px;font-size:12px}
+  .kv .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .schemas{display:flex;flex-wrap:wrap;gap:5px}
+  .schema{font-family:var(--mono);font-size:11px;color:var(--sync);background:var(--sync-soft);border:1px solid var(--sync-soft);border-radius:6px;padding:2px 8px}
+  .tokens{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.6;word-break:break-word}
+  .badge{align-self:flex-start;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border-radius:999px}
+  .badge.pub,.badge.con{color:var(--async);background:var(--async-soft);border:1px solid var(--async-soft)}
+  .badge.iso{color:var(--boundary);background:var(--boundary-soft);border:1px solid var(--boundary-soft)}
+
+  /* ---------- service-to-service calls caption ---------- */
+  .calls{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-top:8px}
+  .call{display:flex;flex-direction:column;gap:6px;padding:15px 17px;border:1px solid var(--line);border-radius:12px;background:var(--panel);box-shadow:var(--shadow)}
+  .call .pair{font-family:var(--mono);font-size:12.5px;color:var(--sync);font-weight:600}
+  .call p{margin:0;font-size:12.5px;color:var(--muted)}
+  .call.mute .pair{color:var(--faint)}
+
+  /* ---------- event chips + note ---------- */
+  .evgrid{display:flex;flex-wrap:wrap;gap:7px;margin-top:20px}
+  .ev{font-family:var(--mono);font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:4px 9px}
+  .ev .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--async);margin-right:6px;vertical-align:middle}
+  .note{margin-top:20px;display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:12px;border:1px solid var(--async-soft);background:var(--async-soft)}
+  .note .ico{font-family:var(--mono);color:var(--async);font-weight:700;font-size:14px;flex:none;margin-top:1px}
+  .note p{margin:0;font-size:13px;color:var(--ink)}
+  .note code{color:var(--async)}
+
+  /* ---------- delivery / facts ---------- */
+  .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+  .fact h3{margin:0 0 10px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:9px}
+  .fact h3 .p{width:9px;height:9px;border-radius:3px;flex:none}
+  .fact ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+  .fact li{font-size:12.5px;color:var(--muted);display:flex;gap:9px;line-height:1.45}
+  .fact li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--line-strong);margin-top:7px;flex:none}
+  .fact li b{color:var(--ink);font-weight:600}
+  .fact code{color:var(--ink);background:var(--panel-2);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
+  .canary{display:flex;align-items:center;gap:6px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .canary span{padding:2px 8px;border-radius:6px;border:1px solid var(--line);background:var(--panel-2)}
+  .canary span.last{color:var(--ok);border-color:var(--ok)}
+  .arrow{color:var(--faint)}
+
+  /* ---------- modules ---------- */
+  .modblock{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+  .modgroup{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow)}
+  .modgroup .g-name{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--sync);margin-bottom:12px}
+  .mods{display:flex;flex-wrap:wrap;gap:7px}
+  .mod{font-size:12.5px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px 11px}
+
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:11.5px;line-height:1.7}
+  footer b{color:var(--muted)}
+
+  @media (prefers-reduced-motion: reduce){
+    .track::after,.flow,.spark{animation:none}
+    .flow{stroke-dasharray:6 7}
+    .spark{transform:translateY(24px)}
+  }
+</style>
+
+<div class="page">
+<div class="wrap">
+
+  <!-- HERO -->
+  <header class="hero">
+    <p class="eyebrow">System Architecture · Verified from source</p>
+    <h1>Custoking&nbsp;IMS
+      <span class="sub">A multi-tenant school-operations SaaS. One React SPA, one programmable Node gateway, and five Spring Boot domain services on Google Cloud Run — each owning its own Postgres schema, connected by a synchronous request path and an asynchronous event stream.</span>
+    </h1>
+
+    <div class="metastrip">
+      <span class="chip"><b>7</b> Cloud Run services</span>
+      <span class="chip"><b>Spring Boot 4</b> · Java 25</span>
+      <span class="chip"><b>React 18</b> · Vite 6 · TS 5.7</span>
+      <span class="chip"><b>PostgreSQL</b> · schema-per-service</span>
+      <span class="chip">GCP <b>custoking</b> · asia-south2</span>
+      <span class="chip">env <b>-dev</b> / <b>-prod</b></span>
+    </div>
+
+    <div class="legend">
+      <div class="li"><span class="track sync"></span><span><b>Synchronous</b> — request / response over HTTP</span></div>
+      <div class="li"><span class="track async"></span><span><b>Asynchronous</b> — outbox → Pub/Sub → projection</span></div>
+    </div>
+  </header>
+
+  <!-- 01 REQUEST FLOW -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">01</span>Request flow, top to bottom</h2>
+      <p class="lead">Every browser call enters one public gateway. It verifies the JWT, injects a per-service internal token, stamps trusted tenant headers, and proxies to the single service that owns the route — preserving the legacy <code style="color:var(--sync)">/api/v1/**</code> contract end to end.</p>
+    </div>
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 1160 840" role="img" aria-label="Vertical request flow from actors through frontend and gateway to five services and Cloud SQL">
+        <!-- connectors (drawn first, behind nodes) -->
+        <path class="flow" d="M580,102 L580,150"/>
+        <path class="flow" d="M580,226 L580,274"/>
+        <path class="flow" d="M580,366 L580,414"/>
+        <path class="flow" d="M580,366 C580,398 138,398 138,430"/>
+        <path class="flow" d="M580,366 C580,398 359,400 359,430"/>
+        <path class="flow" d="M580,366 C580,398 801,400 801,430"/>
+        <path class="flow" d="M580,366 C580,398 1022,398 1022,430"/>
+        <path class="flow" d="M580,596 L580,690"/>
+        <path class="flow" d="M138,580 C138,650 580,655 580,690"/>
+        <path class="flow" d="M359,580 C359,655 580,660 580,690"/>
+        <path class="flow" d="M801,580 C801,655 580,660 580,690"/>
+        <path class="flow" d="M1022,580 C1022,650 580,655 580,690"/>
+        <circle class="spark" cx="580" cy="102" r="3.5"/>
+        <circle class="spark b" cx="580" cy="226" r="3.5"/>
+
+        <!-- actors -->
+        <rect class="s-node" x="230" y="32" width="700" height="70" rx="14"/>
+        <text class="s-role" x="580" y="60" text-anchor="middle" font-size="10">ACTORS · PERMISSION-CODE RBAC</text>
+        <text class="s-ink" x="580" y="84" text-anchor="middle" font-size="14.5">Superadmin · Zone Admin · School Admin · Operations · Teacher</text>
+
+        <!-- frontend -->
+        <rect class="s-node" x="350" y="150" width="460" height="76" rx="14"/>
+        <text class="s-role ok" x="580" y="176" text-anchor="middle" font-size="10">FRONTEND · CLOUD RUN · PUBLIC</text>
+        <text class="s-ink" x="580" y="198" text-anchor="middle" font-size="15">React SPA — served by nginx</text>
+        <text class="s-mut" x="580" y="216" text-anchor="middle" font-size="10.5">access token in memory · refresh in HttpOnly cookie</text>
+
+        <!-- gateway -->
+        <rect class="s-gate" x="270" y="274" width="620" height="92" rx="14"/>
+        <text class="s-role b" x="580" y="300" text-anchor="middle" font-size="10">API GATEWAY · NODE HTTP PROXY · SECURITY BOUNDARY · PUBLIC</text>
+        <text class="s-ink" x="580" y="324" text-anchor="middle" font-size="16">The only public API entry point</text>
+        <text class="s-mut" x="580" y="346" text-anchor="middle" font-size="10.5">HS512 JWT verify · token inject · header-spoof strip · CORS / HSTS / CSP · rate-limit</text>
+
+        <!-- services -->
+        <rect class="s-node" x="40" y="430" width="196" height="150" rx="13"/>
+        <text class="s-ink" x="138" y="462" text-anchor="middle" font-size="14">identity</text>
+        <text class="s-role" x="138" y="484" text-anchor="middle" font-size="9">OWNS SCHEMA</text>
+        <text class="s-cy" x="138" y="506" text-anchor="middle" font-size="11">identity</text>
+        <text class="s-tagi" x="138" y="562" text-anchor="middle" font-size="9.5">ISOLATED · NO OUTBOX</text>
+
+        <rect class="s-node" x="261" y="430" width="196" height="150" rx="13"/>
+        <text class="s-ink" x="359" y="462" text-anchor="middle" font-size="14">operations</text>
+        <text class="s-role" x="359" y="484" text-anchor="middle" font-size="9">OWNS SCHEMAS</text>
+        <text class="s-cy" x="359" y="506" text-anchor="middle" font-size="11">workflow</text>
+        <text class="s-cy" x="359" y="522" text-anchor="middle" font-size="11">firefighting</text>
+        <text class="s-tagp" x="359" y="562" text-anchor="middle" font-size="9.5">OUTBOX PRODUCER</text>
+
+        <rect class="s-core" x="482" y="414" width="196" height="182" rx="13"/>
+        <text class="s-ink" x="580" y="446" text-anchor="middle" font-size="14.5">school-core</text>
+        <text class="s-role" x="580" y="468" text-anchor="middle" font-size="9">OWNS 5 SCHEMAS</text>
+        <text class="s-cy" x="580" y="490" text-anchor="middle" font-size="11">tenant_school</text>
+        <text class="s-cy" x="580" y="506" text-anchor="middle" font-size="11">student · attendance</text>
+        <text class="s-cy" x="580" y="522" text-anchor="middle" font-size="11">fee · catalog</text>
+        <text class="s-tagp" x="580" y="578" text-anchor="middle" font-size="9.5">OUTBOX PRODUCER</text>
+
+        <rect class="s-node" x="703" y="430" width="196" height="150" rx="13"/>
+        <text class="s-ink" x="801" y="462" text-anchor="middle" font-size="14">platform</text>
+        <text class="s-role" x="801" y="484" text-anchor="middle" font-size="9">OWNS SCHEMAS</text>
+        <text class="s-cy" x="801" y="506" text-anchor="middle" font-size="11">reporting</text>
+        <text class="s-cy" x="801" y="522" text-anchor="middle" font-size="11">notification · audit</text>
+        <text class="s-tagp" x="801" y="562" text-anchor="middle" font-size="9.5">EVENT CONSUMER</text>
+
+        <rect class="s-node" x="924" y="430" width="196" height="150" rx="13"/>
+        <text class="s-ink" x="1022" y="462" text-anchor="middle" font-size="14">billing</text>
+        <text class="s-role" x="1022" y="484" text-anchor="middle" font-size="9">OWNS SCHEMA</text>
+        <text class="s-cy" x="1022" y="506" text-anchor="middle" font-size="11">billing</text>
+        <text class="s-tagp" x="1022" y="562" text-anchor="middle" font-size="9.5">OUTBOX PRODUCER</text>
+
+        <!-- cloud sql -->
+        <rect class="s-node" x="90" y="690" width="980" height="94" rx="14"/>
+        <text class="s-role" x="580" y="718" text-anchor="middle" font-size="10">CLOUD SQL · POSTGRESQL · ONE INSTANCE</text>
+        <text class="s-ink" x="580" y="742" text-anchor="middle" font-size="15">Twelve bounded schemas — each with its own Flyway history</text>
+        <text class="s-mut" x="580" y="763" text-anchor="middle" font-size="10.5">no cross-service FKs · runtime role app_rt · DDL owner appuser · RLS backstop</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 02 SERVICE-TO-SERVICE -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">02</span>How services talk to each other</h2>
+      <p class="lead">Beyond the browser path, a few services make authenticated synchronous calls to peers. They forward the trusted <code>X-Authenticated-*</code> headers, add the peer's token, and (in Cloud Run) mint a Google OIDC token. No service ever reads another's tables.</p>
+    </div>
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 1160 268" style="min-width:660px" role="img" aria-label="Service-to-service call graph among the five services">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+        </defs>
+        <!-- arcs above -->
+        <path class="flow" marker-end="url(#ar)" d="M138,121 C138,50 574,50 574,121"/>
+        <path class="flow" marker-end="url(#ar)" d="M359,121 C359,86 578,86 578,121"/>
+        <path class="flow" marker-end="url(#ar)" d="M801,121 C801,86 586,86 586,121"/>
+        <!-- arc below -->
+        <path class="flow" marker-end="url(#ar)" d="M801,179 C801,248 359,248 359,179"/>
+
+        <!-- nodes -->
+        <rect class="s-node" x="53" y="121" width="170" height="58" rx="12"/>
+        <text class="s-ink" x="138" y="146" text-anchor="middle" font-size="13.5">identity</text>
+        <text class="s-mut" x="138" y="164" text-anchor="middle" font-size="9.5">auth · JWT · RBAC</text>
+
+        <rect class="s-node" x="274" y="121" width="170" height="58" rx="12"/>
+        <text class="s-ink" x="359" y="146" text-anchor="middle" font-size="13.5">operations</text>
+        <text class="s-mut" x="359" y="164" text-anchor="middle" font-size="9.5">workflow · firefighting</text>
+
+        <rect class="s-core" x="495" y="119" width="170" height="62" rx="12"/>
+        <text class="s-ink" x="580" y="146" text-anchor="middle" font-size="13.5">school-core</text>
+        <text class="s-mut" x="580" y="164" text-anchor="middle" font-size="9.5">core domains</text>
+
+        <rect class="s-node" x="716" y="121" width="170" height="58" rx="12"/>
+        <text class="s-ink" x="801" y="146" text-anchor="middle" font-size="13.5">platform</text>
+        <text class="s-mut" x="801" y="164" text-anchor="middle" font-size="9.5">reporting · notify · audit</text>
+
+        <rect class="s-node" x="937" y="121" width="170" height="58" rx="12"/>
+        <text class="s-ink" x="1022" y="146" text-anchor="middle" font-size="13.5">billing</text>
+        <text class="s-mut" x="1022" y="164" text-anchor="middle" font-size="9.5">emits events only</text>
+      </svg>
+    </div>
+
+    <div class="calls">
+      <div class="call"><span class="pair">identity → school-core</span><p>Resolve school &amp; zone names during RBAC provisioning; sync zone-admin assignments.</p></div>
+      <div class="call"><span class="pair">operations → school-core</span><p>Check the school's active module entitlement before serving <code>/ff</code> endpoints — fails closed.</p></div>
+      <div class="call"><span class="pair">platform → school-core</span><p>Write superadmin approve / reject decisions onto supply orders (a projection only reads).</p></div>
+      <div class="call"><span class="pair">platform → operations</span><p>Write approve / reject decisions onto firefighting requests.</p></div>
+    </div>
+  </section>
+
+  <!-- 03 SERVICE DETAIL -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">03</span>The five domain services</h2>
+      <p class="lead">Consolidated from twelve nanoservices down to five (ADR-001). Each is private — reachable only through the gateway or a peer's authenticated call — and fails closed if its internal token header is missing or wrong.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="c-name">identity-service</div>
+        <div class="c-pkg">com.custoking.ims.identityservice</div>
+        <div class="c-role">Login, JWT issue / refresh / introspect, users directory, and RBAC — roles, permissions &amp; scoped assignments.</div>
+        <div class="kv"><span class="k">Owns schema</span><div class="schemas"><span class="schema">identity</span></div></div>
+        <div class="kv"><span class="k">Gateway token</span><div class="tokens">X-Identity-Service-Token</div></div>
+        <div class="badge iso">Single-schema · no RLS · no outbox</div>
+      </div>
+
+      <div class="card span2">
+        <div class="c-name">school-core-service</div>
+        <div class="c-pkg">com.custoking.ims.schoolcoreservice</div>
+        <div class="c-role">The operational core &amp; largest merge — schools, zones, classes / sections, staff, timetable, students (+ guardians, consent, Google-Drive photo import), attendance, fees, and catalog / supply orders.</div>
+        <div class="kv"><span class="k">Owns schemas</span>
+          <div class="schemas"><span class="schema">tenant_school</span><span class="schema">student</span><span class="schema">attendance</span><span class="schema">fee</span><span class="schema">catalog</span></div>
+        </div>
+        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Tenant-School · X-Student · X-Attendance · X-Fee · X-Catalog</div></div>
+        <div class="badge pub">Outbox producer → reporting stream</div>
+      </div>
+
+      <div class="card">
+        <div class="c-name">operations-service</div>
+        <div class="c-pkg">com.custoking.ims.operationsservice</div>
+        <div class="c-role">Generic approval-workflow engine plus firefighting — urgent vendor / quotation procurement with a bursar → principal → Custoking approval chain.</div>
+        <div class="kv"><span class="k">Owns schemas</span><div class="schemas"><span class="schema">workflow</span><span class="schema">firefighting</span></div></div>
+        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Workflow-Service-Token · X-Firefighting-Service-Token</div></div>
+        <div class="badge pub">Outbox producer</div>
+      </div>
+
+      <div class="card">
+        <div class="c-name">platform-service</div>
+        <div class="c-pkg">com.custoking.ims.platformservice</div>
+        <div class="c-role">The event consumer — reporting projections (facts, dimensions &amp; the command-center feed), notifications (MSG91), and audit-event ingest. Receives Pub/Sub pushes.</div>
+        <div class="kv"><span class="k">Owns schemas</span><div class="schemas"><span class="schema">reporting</span><span class="schema">notification</span><span class="schema">audit</span></div></div>
+        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Reporting · X-Notification · X-Audit</div></div>
+        <div class="badge con">Event consumer · projectors</div>
+      </div>
+
+      <div class="card">
+        <div class="c-name">billing-service</div>
+        <div class="c-pkg">com.custoking.ims.billingservice</div>
+        <div class="c-role">Superadmin invoices (Custoking → school) and per-school billing — customers, invoices, line items and payments.</div>
+        <div class="kv"><span class="k">Owns schema</span><div class="schemas"><span class="schema">billing</span></div></div>
+        <div class="kv"><span class="k">Gateway token</span><div class="tokens">X-Billing-Service-Token</div></div>
+        <div class="badge pub">Outbox producer</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 EVENT STREAM -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">04</span>The asynchronous event stream</h2>
+      <p class="lead">Cross-domain read models are built from events, never shared tables. A domain write and its outbox row commit in one transaction; a relay publishes a canonical envelope; platform-service projects it — idempotently, keyed on <code style="color:var(--async)">eventId</code>.</p>
+    </div>
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 1160 380" role="img" aria-label="Asynchronous event flow from three producers through Pub/Sub to platform-service projectors and reporting read models">
+        <defs>
+          <marker id="arg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead async"/></marker>
+        </defs>
+        <!-- connectors -->
+        <path class="flow async" d="M250,96 C312,96 330,212 360,212"/>
+        <path class="flow async" d="M250,212 L360,212"/>
+        <path class="flow async" d="M250,328 C312,328 330,212 360,212"/>
+        <path class="flow async" marker-end="url(#arg)" d="M530,212 L610,212"/>
+        <path class="flow async" marker-end="url(#arg)" d="M860,212 L920,212"/>
+
+        <!-- producers -->
+        <rect class="s-node" x="40" y="64" width="210" height="64" rx="12"/>
+        <text class="s-ink" x="145" y="90" text-anchor="middle" font-size="13">school-core</text>
+        <text class="s-mut" x="145" y="108" text-anchor="middle" font-size="9.5">tenant_school.outbox_events</text>
+
+        <rect class="s-node" x="40" y="180" width="210" height="64" rx="12"/>
+        <text class="s-ink" x="145" y="206" text-anchor="middle" font-size="13">operations</text>
+        <text class="s-mut" x="145" y="224" text-anchor="middle" font-size="9.5">firefighting.outbox_events</text>
+
+        <rect class="s-node" x="40" y="296" width="210" height="64" rx="12"/>
+        <text class="s-ink" x="145" y="322" text-anchor="middle" font-size="13">billing</text>
+        <text class="s-mut" x="145" y="340" text-anchor="middle" font-size="9.5">billing.outbox_events</text>
+
+        <!-- topic -->
+        <rect class="s-soft" x="360" y="167" width="170" height="90" rx="12"/>
+        <text class="s-role au" x="445" y="200" text-anchor="middle" font-size="9.5">PUB/SUB TOPIC</text>
+        <text class="s-ink" x="445" y="222" text-anchor="middle" font-size="11.5">ims-reporting-</text>
+        <text class="s-ink" x="445" y="238" text-anchor="middle" font-size="11.5">events-v1</text>
+
+        <!-- platform-service -->
+        <rect class="s-node" x="610" y="100" width="250" height="224" rx="13"/>
+        <text class="s-role au" x="735" y="122" text-anchor="middle" font-size="10">PLATFORM-SERVICE · CONSUMER</text>
+        <rect class="s-soft" x="626" y="138" width="218" height="48" rx="9"/>
+        <text class="s-ink" x="735" y="167" text-anchor="middle" font-size="11.5">push · /api/v1/pubsub</text>
+        <rect class="s-soft" x="626" y="194" width="218" height="48" rx="9"/>
+        <text class="s-ink" x="735" y="223" text-anchor="middle" font-size="11.5">inbox · idempotent (eventId)</text>
+        <rect class="s-soft" x="626" y="250" width="218" height="48" rx="9"/>
+        <text class="s-ink" x="735" y="279" text-anchor="middle" font-size="11.5">projectors → facts &amp; dims</text>
+
+        <!-- read models -->
+        <rect class="s-node" x="920" y="100" width="210" height="224" rx="13"/>
+        <text class="s-role" x="1025" y="122" text-anchor="middle" font-size="10">REPORTING READ MODELS</text>
+        <text class="s-cy" x="936" y="150" font-size="9.5">dim_school</text>
+        <text class="s-cy" x="936" y="167" font-size="9.5">dim_section</text>
+        <text class="s-cy" x="936" y="184" font-size="9.5">dim_student</text>
+        <text class="s-cy" x="936" y="201" font-size="9.5">fact_attendance_daily</text>
+        <text class="s-cy" x="936" y="218" font-size="9.5">fact_fee_assignment</text>
+        <text class="s-cy" x="936" y="235" font-size="9.5">fact_payment</text>
+        <text class="s-cy" x="936" y="252" font-size="9.5">fact_catalog_order</text>
+        <text class="s-cy" x="936" y="269" font-size="9.5">fact_firefighting_request</text>
+        <text class="s-cy" x="936" y="286" font-size="9.5">billing_invoice_read</text>
+        <text class="s-cy" x="936" y="303" font-size="9.5">command_center_feed</text>
+      </svg>
+    </div>
+
+    <div class="evgrid">
+      <span class="ev"><span class="dot"></span>student.upserted.v1</span>
+      <span class="ev"><span class="dot"></span>attendance-daily.upserted.v1</span>
+      <span class="ev"><span class="dot"></span>fee-assignment.upserted.v1</span>
+      <span class="ev"><span class="dot"></span>payment.recorded.v1</span>
+      <span class="ev"><span class="dot"></span>catalog-order.upserted.v1</span>
+      <span class="ev"><span class="dot"></span>firefighting-request.upserted.v1</span>
+      <span class="ev"><span class="dot"></span>billing.invoice-upserted.v1</span>
+      <span class="ev"><span class="dot"></span>school.upserted.v1</span>
+    </div>
+
+    <div class="note">
+      <span class="ico">!</span>
+      <p>Notification delivery is intentionally in <b>safe mode</b> in production — live config sets <code>NOTIFICATION_DELIVERY_PROVIDER=logging</code> and <code>MSG91_DRY_RUN=true</code>, so real MSG91 sends are not yet enabled. The inbox, retry / back-off and dead-letter flows are live.</p>
+    </div>
+  </section>
+
+  <!-- 05 DELIVERY -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">05</span>Delivery &amp; guardrails</h2>
+      <p class="lead">Deployment is branch-owned. Dev is where images are built and validated; production only ever promotes a digest that already passed in dev.</p>
+    </div>
+    <div class="cols">
+      <div class="fact">
+        <h3><span class="p" style="background:var(--sync)"></span>Branch-owned pipeline</h3>
+        <ul>
+          <li>Push to <b>dev</b> → fast <b>direct Cloud Run</b> deploy of affected services, using content-addressed images.</li>
+          <li>Push to <b>main</b> → <b>Cloud Deploy</b> canary; only <code>dev-approved</code> digests are eligible.</li>
+          <li>No active stage; no <code>cloudbuild.yaml</code> (retired).</li>
+        </ul>
+        <div class="canary" aria-label="canary steps">
+          <span>5%</span><span class="arrow">→</span><span>25%</span><span class="arrow">→</span><span>50%</span><span class="arrow">→</span><span class="last">stable</span>
+        </div>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--boundary)"></span>Gateway enforcement</h3>
+        <ul>
+          <li><b>Local HS512 JWT</b> verify on enriched claims; identity <b>introspection</b> fallback.</li>
+          <li>Per-service token injected; client-spoofable <code>x-authenticated-*</code> headers stripped.</li>
+          <li>Strict CORS allowlist, HSTS / CSP, body-size cap, token-bucket rate-limit.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--ok)"></span>Tenant isolation</h3>
+        <ul>
+          <li>Application-level <b>school_id</b> scoping from scoped role assignments.</li>
+          <li>PostgreSQL <b>RLS backstop</b> via <code>app.current_school_id</code> / <code>app.bypass_rls</code> GUCs.</li>
+          <li>Platform admins bypass filters; <code>RuntimeDbRoleGuard</code> pins the runtime role.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--async)"></span>Release verification</h3>
+        <ul>
+          <li>Exact image-digest &amp; Trivy gates per service.</li>
+          <li>Ready revision at <b>100% traffic</b>; <code>/gateway-health</code> returns UP.</li>
+          <li>Serial prod rollout order to stay within the 20-vCPU quota.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 MODULES -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">06</span>Product modules &amp; entitlements</h2>
+      <p class="lead">Schools subscribe to modules; entitlement gates run before business logic. The superadmin UI groups the entitlement codes into two families — platform capabilities apply everywhere.</p>
+    </div>
+    <div class="modblock">
+      <div class="modgroup">
+        <div class="g-name">SUPPLY_OS</div>
+        <div class="mods"><span class="mod">Supply Catalog &amp; Orders</span><span class="mod">Firefighting / Urgent Procurement</span></div>
+      </div>
+      <div class="modgroup">
+        <div class="g-name">ERP</div>
+        <div class="mods"><span class="mod">Student Lifecycle</span><span class="mod">Fee &amp; Finance</span><span class="mod">Attendance</span><span class="mod">Payments</span><span class="mod">Invoices</span><span class="mod">Reports</span></div>
+      </div>
+      <div class="modgroup">
+        <div class="g-name">Platform</div>
+        <div class="mods"><span class="mod">Identity &amp; RBAC</span><span class="mod">School / Tenant</span><span class="mod">Zone &amp; Geography</span><span class="mod">Workflow Engine</span><span class="mod">Command Center</span><span class="mod">Notifications</span><span class="mod">Audit Trail</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>Sources:</b> service code · services/api-gateway/server.js · docs/current-state/* (verified 2026-08) · EVENT-ENVELOPE-CONTRACT · ADR-001.</div>
+    <div><b>Accuracy notes:</b> the gateway is a plain Node HTTP proxy (older HLD/LLD say "nginx" — that is the frontend). Stack is Spring Boot 4.0.7 / Java 25. Rendered 2026-08-12.</div>
+  </footer>
+
+</div>
+</div>
