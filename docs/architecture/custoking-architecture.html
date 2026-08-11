@@ -79,6 +79,27 @@
   .track.sync{--c:var(--sync)} .track.async{--c:var(--async)} .track.async::after{animation-delay:.6s}
   @keyframes slide{from{left:-40%}to{left:120%}}
 
+  /* reading key + per-diagram legends */
+  .legend2{margin-top:16px;padding:16px 18px;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+  .l2-title{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:13px}
+  .keys{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));gap:11px 20px}
+  .key{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted)}
+  .sw{width:24px;height:16px;border-radius:4px;border:1.5px solid var(--line);background:var(--panel);flex:none}
+  .sw.core{border-color:var(--sync)}
+  .sw.gate{border-color:var(--boundary)}
+  .sw.soft{background:var(--panel-2)}
+  .pill{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;padding:3px 9px;border-radius:999px;flex:none}
+  .pill.pub,.pill.con{color:var(--async);background:var(--async-soft);border:1px solid var(--async-soft)}
+  .pill.iso{color:var(--boundary);background:var(--boundary-soft);border:1px solid var(--boundary-soft)}
+  .cap{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin:10px 2px 0;line-height:1.5}
+  .dkey{display:grid;grid-template-columns:repeat(auto-fit,minmax(216px,1fr));gap:12px;margin-top:16px}
+  .dk{font-size:12px;color:var(--muted);padding-left:12px;border-left:2px solid var(--async);line-height:1.45}
+  .dk b{color:var(--ink);font-weight:600}
+  .dlkey{display:flex;flex-wrap:wrap;gap:16px;margin:2px 0 18px}
+  .dlkey span{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  .dlkey i{width:11px;height:11px;border-radius:3px;flex:none}
+  .mid{dominant-baseline:middle}
+
   section{margin-top:clamp(44px,7vw,80px)}
   .sec-head{margin-bottom:22px}
 
@@ -149,8 +170,8 @@
   .fact h3{margin:0 0 10px;font-size:14px;font-weight:700;display:flex;align-items:center;gap:9px}
   .fact h3 .p{width:9px;height:9px;border-radius:3px;flex:none}
   .fact ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
-  .fact li{font-size:12.5px;color:var(--muted);display:flex;gap:9px;line-height:1.45}
-  .fact li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--line-strong);margin-top:7px;flex:none}
+  .fact li{font-size:12.5px;color:var(--muted);display:grid;grid-template-columns:9px 1fr;column-gap:9px;align-items:start;line-height:1.5}
+  .fact li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--line-strong);margin-top:.55em}
   .fact li b{color:var(--ink);font-weight:600}
   .fact code{color:var(--ink);background:var(--panel-2);padding:1px 5px;border-radius:4px;border:1px solid var(--line)}
   .canary{display:flex;align-items:center;gap:6px;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--muted)}
@@ -199,6 +220,22 @@
       <div class="li"><span class="track async"></span><span><b>Asynchronous</b> — outbox → Pub/Sub → projection</span></div>
     </div>
   </header>
+
+  <!-- READING KEY -->
+  <div class="legend2" aria-label="How to read these diagrams">
+    <div class="l2-title">How to read these diagrams</div>
+    <div class="keys">
+      <div class="key"><span class="sw gate"></span>Public boundary — SPA &amp; gateway</div>
+      <div class="key"><span class="sw core"></span>Core service — school-core</div>
+      <div class="key"><span class="sw"></span>Private domain service</div>
+      <div class="key"><span class="sw soft"></span>Infra step / datastore</div>
+      <div class="key"><span class="track sync"></span>Synchronous request (animated flow)</div>
+      <div class="key"><span class="track async"></span>Asynchronous event (animated flow)</div>
+      <div class="key"><span class="pill pub">producer</span>emits events to the stream</div>
+      <div class="key"><span class="pill con">consumer</span>projects events into read models</div>
+      <div class="key"><span class="pill iso">isolated</span>single schema, no events</div>
+    </div>
+  </div>
 
   <!-- 01 REQUEST FLOW -->
   <section>
@@ -281,8 +318,15 @@
         <text class="s-role" x="580" y="718" text-anchor="middle" font-size="10">CLOUD SQL · POSTGRESQL · ONE INSTANCE</text>
         <text class="s-ink" x="580" y="742" text-anchor="middle" font-size="15">Twelve bounded schemas — each with its own Flyway history</text>
         <text class="s-mut" x="580" y="763" text-anchor="middle" font-size="10.5">no cross-service FKs · runtime role app_rt · DDL owner appuser · RLS backstop</text>
+
+        <!-- step labels -->
+        <text class="s-mut" x="600" y="128" font-size="10">&#9312; sign in</text>
+        <text class="s-mut" x="600" y="252" font-size="10">&#9313; verify JWT</text>
+        <text class="s-mut" x="600" y="393" font-size="10">&#9314; inject token + tenant headers</text>
+        <text class="s-mut" x="600" y="645" font-size="10">&#9315; query as app_rt</text>
       </svg>
     </div>
+    <p class="cap">Cyan lines animate in the direction requests travel — the four steps trace one API call end to end.</p>
   </section>
 
   <!-- 02 SERVICE-TO-SERVICE -->
@@ -325,6 +369,7 @@
         <text class="s-mut" x="1022" y="164" text-anchor="middle" font-size="9.5">emits events only</text>
       </svg>
     </div>
+    <p class="cap">Arrows point from caller to callee. billing makes no synchronous peer calls — it only publishes events.</p>
 
     <div class="calls">
       <div class="call"><span class="pair">identity → school-core</span><p>Resolve school &amp; zone names during RBAC provisioning; sync zone-admin assignments.</p></div>
@@ -397,60 +442,69 @@
       <p class="lead">Cross-domain read models are built from events, never shared tables. A domain write and its outbox row commit in one transaction; a relay publishes a canonical envelope; platform-service projects it — idempotently, keyed on <code style="color:var(--async)">eventId</code>.</p>
     </div>
     <div class="diagram-wrap">
-      <svg class="diagram" viewBox="0 0 1160 380" role="img" aria-label="Asynchronous event flow from three producers through Pub/Sub to platform-service projectors and reporting read models">
+      <svg class="diagram" viewBox="0 0 1160 400" role="img" aria-label="Asynchronous event flow from three producers through Pub/Sub to platform-service projectors and reporting read models">
         <defs>
           <marker id="arg" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead async"/></marker>
         </defs>
         <!-- connectors -->
-        <path class="flow async" d="M250,96 C312,96 330,212 360,212"/>
-        <path class="flow async" d="M250,212 L360,212"/>
-        <path class="flow async" d="M250,328 C312,328 330,212 360,212"/>
-        <path class="flow async" marker-end="url(#arg)" d="M530,212 L610,212"/>
-        <path class="flow async" marker-end="url(#arg)" d="M860,212 L920,212"/>
+        <path class="flow async" d="M245,96 C282,96 288,200 300,200"/>
+        <path class="flow async" d="M245,200 L300,200"/>
+        <path class="flow async" d="M245,304 C282,304 288,200 300,200"/>
+        <path class="flow async" marker-end="url(#arg)" d="M480,200 L540,200"/>
+        <path class="flow async" marker-end="url(#arg)" d="M810,200 L870,200"/>
 
         <!-- producers -->
-        <rect class="s-node" x="40" y="64" width="210" height="64" rx="12"/>
-        <text class="s-ink" x="145" y="90" text-anchor="middle" font-size="13">school-core</text>
-        <text class="s-mut" x="145" y="108" text-anchor="middle" font-size="9.5">tenant_school.outbox_events</text>
+        <rect class="s-node" x="30" y="70" width="215" height="52" rx="12"/>
+        <text class="s-ink mid" x="137" y="88" text-anchor="middle" font-size="12.5">school-core</text>
+        <text class="s-mut mid" x="137" y="106" text-anchor="middle" font-size="9">tenant_school.outbox_events</text>
 
-        <rect class="s-node" x="40" y="180" width="210" height="64" rx="12"/>
-        <text class="s-ink" x="145" y="206" text-anchor="middle" font-size="13">operations</text>
-        <text class="s-mut" x="145" y="224" text-anchor="middle" font-size="9.5">firefighting.outbox_events</text>
+        <rect class="s-node" x="30" y="174" width="215" height="52" rx="12"/>
+        <text class="s-ink mid" x="137" y="192" text-anchor="middle" font-size="12.5">operations</text>
+        <text class="s-mut mid" x="137" y="210" text-anchor="middle" font-size="9">firefighting.outbox_events</text>
 
-        <rect class="s-node" x="40" y="296" width="210" height="64" rx="12"/>
-        <text class="s-ink" x="145" y="322" text-anchor="middle" font-size="13">billing</text>
-        <text class="s-mut" x="145" y="340" text-anchor="middle" font-size="9.5">billing.outbox_events</text>
+        <rect class="s-node" x="30" y="278" width="215" height="52" rx="12"/>
+        <text class="s-ink mid" x="137" y="296" text-anchor="middle" font-size="12.5">billing</text>
+        <text class="s-mut mid" x="137" y="314" text-anchor="middle" font-size="9">billing.outbox_events</text>
+
+        <text class="s-role mid" x="137" y="46" text-anchor="middle" font-size="9">PRODUCERS · OUTBOX</text>
 
         <!-- topic -->
-        <rect class="s-soft" x="360" y="167" width="170" height="90" rx="12"/>
-        <text class="s-role au" x="445" y="200" text-anchor="middle" font-size="9.5">PUB/SUB TOPIC</text>
-        <text class="s-ink" x="445" y="222" text-anchor="middle" font-size="11.5">ims-reporting-</text>
-        <text class="s-ink" x="445" y="238" text-anchor="middle" font-size="11.5">events-v1</text>
+        <rect class="s-soft" x="300" y="156" width="180" height="88" rx="12"/>
+        <text class="s-role au mid" x="390" y="180" text-anchor="middle" font-size="9.5">PUB/SUB TOPIC</text>
+        <text class="s-ink mid" x="390" y="200" text-anchor="middle" font-size="11">ims-reporting-events-v1</text>
+        <text class="s-mut mid" x="390" y="220" text-anchor="middle" font-size="9">at-least-once delivery</text>
 
         <!-- platform-service -->
-        <rect class="s-node" x="610" y="100" width="250" height="224" rx="13"/>
-        <text class="s-role au" x="735" y="122" text-anchor="middle" font-size="10">PLATFORM-SERVICE · CONSUMER</text>
-        <rect class="s-soft" x="626" y="138" width="218" height="48" rx="9"/>
-        <text class="s-ink" x="735" y="167" text-anchor="middle" font-size="11.5">push · /api/v1/pubsub</text>
-        <rect class="s-soft" x="626" y="194" width="218" height="48" rx="9"/>
-        <text class="s-ink" x="735" y="223" text-anchor="middle" font-size="11.5">inbox · idempotent (eventId)</text>
-        <rect class="s-soft" x="626" y="250" width="218" height="48" rx="9"/>
-        <text class="s-ink" x="735" y="279" text-anchor="middle" font-size="11.5">projectors → facts &amp; dims</text>
+        <rect class="s-node" x="540" y="102" width="270" height="196" rx="13"/>
+        <text class="s-role au mid" x="675" y="122" text-anchor="middle" font-size="10">PLATFORM-SERVICE · CONSUMER</text>
+        <rect class="s-soft" x="558" y="138" width="234" height="42" rx="9"/>
+        <text class="s-ink mid" x="675" y="159" text-anchor="middle" font-size="11">push · /api/v1/pubsub</text>
+        <rect class="s-soft" x="558" y="186" width="234" height="42" rx="9"/>
+        <text class="s-ink mid" x="675" y="207" text-anchor="middle" font-size="11">inbox · idempotent by eventId</text>
+        <rect class="s-soft" x="558" y="234" width="234" height="42" rx="9"/>
+        <text class="s-ink mid" x="675" y="255" text-anchor="middle" font-size="11">projectors &#8594; facts &amp; dims</text>
 
         <!-- read models -->
-        <rect class="s-node" x="920" y="100" width="210" height="224" rx="13"/>
-        <text class="s-role" x="1025" y="122" text-anchor="middle" font-size="10">REPORTING READ MODELS</text>
-        <text class="s-cy" x="936" y="150" font-size="9.5">dim_school</text>
-        <text class="s-cy" x="936" y="167" font-size="9.5">dim_section</text>
-        <text class="s-cy" x="936" y="184" font-size="9.5">dim_student</text>
-        <text class="s-cy" x="936" y="201" font-size="9.5">fact_attendance_daily</text>
-        <text class="s-cy" x="936" y="218" font-size="9.5">fact_fee_assignment</text>
-        <text class="s-cy" x="936" y="235" font-size="9.5">fact_payment</text>
-        <text class="s-cy" x="936" y="252" font-size="9.5">fact_catalog_order</text>
-        <text class="s-cy" x="936" y="269" font-size="9.5">fact_firefighting_request</text>
-        <text class="s-cy" x="936" y="286" font-size="9.5">billing_invoice_read</text>
-        <text class="s-cy" x="936" y="303" font-size="9.5">command_center_feed</text>
+        <rect class="s-node" x="870" y="102" width="260" height="196" rx="13"/>
+        <text class="s-role mid" x="1000" y="122" text-anchor="middle" font-size="10">REPORTING READ MODELS</text>
+        <text class="s-cy mid" x="888" y="149" font-size="9.5">dim_school</text>
+        <text class="s-cy mid" x="888" y="164" font-size="9.5">dim_section</text>
+        <text class="s-cy mid" x="888" y="179" font-size="9.5">dim_student</text>
+        <text class="s-cy mid" x="888" y="194" font-size="9.5">fact_attendance_daily</text>
+        <text class="s-cy mid" x="888" y="209" font-size="9.5">fact_fee_assignment</text>
+        <text class="s-cy mid" x="888" y="224" font-size="9.5">fact_payment</text>
+        <text class="s-cy mid" x="888" y="239" font-size="9.5">fact_catalog_order</text>
+        <text class="s-cy mid" x="888" y="254" font-size="9.5">fact_firefighting_request</text>
+        <text class="s-cy mid" x="888" y="269" font-size="9.5">billing_invoice_read</text>
+        <text class="s-cy mid" x="888" y="284" font-size="9.5">command_center_feed</text>
       </svg>
+    </div>
+    <p class="cap">Gold lines animate in the direction events flow, left to right.</p>
+    <div class="dkey">
+      <span class="dk"><b>Producer</b> — appends an outbox row in the same DB transaction as the domain change.</span>
+      <span class="dk"><b>Pub/Sub</b> — transports the canonical envelope, at-least-once.</span>
+      <span class="dk"><b>Consumer</b> — records each eventId once (idempotent), then projects it.</span>
+      <span class="dk"><b>Read model</b> — query-optimized tables the dashboard reads.</span>
     </div>
 
     <div class="evgrid">
@@ -475,6 +529,12 @@
     <div class="sec-head">
       <h2><span class="n">05</span>Delivery &amp; guardrails</h2>
       <p class="lead">Deployment is branch-owned. Dev is where images are built and validated; production only ever promotes a digest that already passed in dev.</p>
+    </div>
+    <div class="dlkey" aria-label="Card colour key">
+      <span><i style="background:var(--sync)"></i>Request path</span>
+      <span><i style="background:var(--boundary)"></i>Security boundary</span>
+      <span><i style="background:var(--ok)"></i>Tenant isolation</span>
+      <span><i style="background:var(--async)"></i>Release &amp; async</span>
     </div>
     <div class="cols">
       <div class="fact">
