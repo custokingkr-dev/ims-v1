@@ -232,7 +232,7 @@ function Remove-EvidenceExecution([string]$ExecutionId) {
     }
     if ($describeExitCode -ne 0) {
       $describeError = $describeOutput -join "`n"
-      if ($describeError -match '(?i)(NOT_FOUND|not found)') {
+      if ($describeError -match '(?i)(NOT_FOUND|not found|cannot find execution)') {
         return
       }
       throw "Could not verify deletion of temporary Cloud Run execution $ExecutionId."
