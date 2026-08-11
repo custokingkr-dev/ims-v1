@@ -58,3 +58,66 @@ jobs:
         with:
           sarif_file: trivy-${{ matrix.name }}.sarif
           category: ${{ matrix.name }}
+
+  cleanup-legacy-analyses:
+    name: Remove superseded Trivy analysis categories
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify current analyses and delete only legacy categories
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          analyses="$(gh api --paginate --slurp \
+            "repos/${GITHUB_REPOSITORY}/code-scanning/analyses?ref=refs/heads/main&tool_name=Trivy&per_page=100")"
+
+          stable_count="$(jq --arg sha "${GITHUB_SHA}" '[
+            .[][]
+            | select(.commit_sha == $sha)
+            | select(
+                .category == "identity-service"
+                or .category == "school-core-service"
+                or .category == "operations-service"
+                or .category == "platform-service"
+                or .category == "billing-service"
+                or .category == "frontend"
+                or .category == "api-gateway"
+              )
+          ] | unique_by(.category) | length' <<<"${analyses}")"
+
+          if [[ "${stable_count}" != "7" ]]; then
+            echo "Expected seven current stable-category analyses at ${GITHUB_SHA}; found ${stable_count}." >&2
+            exit 1
+          fi
+
+          legacy="$(jq '[
+            .[][]
+            | select(.ref == "refs/heads/main")
+            | select(.category | startswith(".github/workflows/security-scan.yml:"))
+          ]' <<<"${analyses}")"
+          legacy_count="$(jq 'length' <<<"${legacy}")"
+          echo "Superseded analysis count: ${legacy_count}"
+
+          while IFS= read -r analysis; do
+            analysis_id="$(jq -r '.id' <<<"${analysis}")"
+            category="$(jq -r '.category' <<<"${analysis}")"
+            deletable="$(jq -r '.deletable' <<<"${analysis}")"
+
+            if [[ ! "${analysis_id}" =~ ^[0-9]+$ || "${deletable}" != "true" ]]; then
+              echo "Refusing unsafe analysis deletion: id=${analysis_id} deletable=${deletable}." >&2
+              exit 1
+            fi
+            if [[ "${category}" != .github/workflows/security-scan.yml:* ]]; then
+              echo "Refusing non-legacy category deletion: ${category}." >&2
+              exit 1
+            fi
+
+            gh api --method DELETE \
+              "repos/${GITHUB_REPOSITORY}/code-scanning/analyses/${analysis_id}?confirm_delete=true" \
+              >/dev/null
+            echo "Deleted superseded Trivy analysis ${analysis_id}."
+          done < <(jq -c '.[]' <<<"${legacy}")

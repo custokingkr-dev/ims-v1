@@ -1,6 +1,16 @@
 # Gaps, Drift, and Missing Verification
 
-Last verified: 2026-08-05.
+Last verified: 2026-08-11.
+
+Production deployment state changed materially on 2026-08-11. The seven services now use dedicated runtime
+identities and immutable-digest Cloud Deploy revisions; reporting push uses a dedicated OIDC identity without
+a query credential; Cloud SQL is private-IP-only and `ENCRYPTED_ONLY`; and production workflow identities are
+split by release, configuration, and rollback duties. Exact live state and rollback evidence are in
+`docs/PRODUCTION-DEPLOYMENT-2026-08-11.md`. Older statements below about default Cloud Run identities,
+permissive production SQL, the reporting query credential, or repository-only WIF conditions are retained as
+historical drift and are superseded by that dated record. Remaining gaps include branch protection, two SQL
+jobs on the default Compute identity, a production reporting delivery observation, production notification
+and real MSG91 validation, database/HA capacity approval, and legal/canary acceptance.
 
 This file intentionally lists unresolved or partially verified items. These are not assumptions.
 
