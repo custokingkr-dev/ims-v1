@@ -109,7 +109,11 @@ try {
         throw "Read-only batch preflight failed with HTTP $([int]$batchResponse.StatusCode)."
     }
     try {
-        $batches = @($batchBody | ConvertFrom-Json)
+        $parsedBatches = $batchBody | ConvertFrom-Json
+        # Windows PowerShell 5 can preserve a top-level JSON array as one
+        # nested Object[] when it is wrapped directly in @(...). Pipe through
+        # ForEach-Object so token matching always receives individual rows.
+        $batches = @($parsedBatches | ForEach-Object { $_ })
     } catch {
         throw "Read-only batch preflight did not return JSON."
     }
