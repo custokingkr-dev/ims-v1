@@ -187,11 +187,27 @@
   .mods{display:flex;flex-wrap:wrap;gap:7px}
   .mod{font-size:12.5px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:5px 11px}
 
+  /* infra table + verified banner + pipeline ticks */
+  .verified{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:10px 0 0}
+  .vdot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px 1px var(--ok);animation:vpulse 2s ease-in-out infinite;flex:none}
+  @keyframes vpulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:var(--shadow)}
+  .itable{border-collapse:collapse;width:100%;min-width:720px;font-size:12.5px}
+  .itable th{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);font-weight:600;white-space:nowrap}
+  .itable td{padding:10px 14px;border-bottom:1px solid var(--line);color:var(--muted);vertical-align:middle;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .itable tr:last-child td{border-bottom:none}
+  .itable td.svc{color:var(--ink);font-weight:600;font-family:var(--mono);font-size:12px}
+  .itable td.mono{font-family:var(--mono);font-size:11.5px}
+  .acc{font-family:var(--mono);font-size:10px;letter-spacing:.03em;padding:3px 9px;border-radius:999px;white-space:nowrap}
+  .acc.pub{color:var(--ok);border:1px solid var(--ok)}
+  .acc.pri{color:var(--boundary);border:1px solid var(--boundary-soft);background:var(--boundary-soft)}
+  .tk{fill:var(--faint)}
+
   footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:11.5px;line-height:1.7}
   footer b{color:var(--muted)}
 
   @media (prefers-reduced-motion: reduce){
-    .track::after,.flow,.spark{animation:none}
+    .track::after,.flow,.spark,.vdot{animation:none}
     .flow{stroke-dasharray:6 7}
     .spark{transform:translateY(24px)}
   }
@@ -525,12 +541,124 @@
     </div>
   </section>
 
-  <!-- 05 DELIVERY -->
+  <!-- 05 CLOUD INFRASTRUCTURE -->
   <section>
     <div class="sec-head">
-      <h2><span class="n">05</span>Delivery &amp; guardrails</h2>
+      <h2><span class="n">05</span>Cloud infrastructure</h2>
+      <p class="lead">Everything runs in one Google Cloud project — <code>custoking</code>, region <code>asia-south2</code> — with dev and prod separated only by a <code>-dev</code> / <code>-prod</code> suffix on every resource.</p>
+      <p class="verified"><span class="vdot"></span>Live inventory read from gcloud on 2026-08-12 — figures below are production.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table class="itable">
+        <thead><tr><th>Cloud Run service</th><th>Access</th><th>Runtime service account</th><th>CPU / Mem</th><th>Scale</th><th>Conc.</th></tr></thead>
+        <tbody>
+          <tr><td class="svc">api-gateway</td><td><span class="acc pub">public</span></td><td class="mono">ims-api-gateway-prod</td><td class="mono">1 / 512Mi</td><td class="mono">0–3</td><td class="mono">80</td></tr>
+          <tr><td class="svc">frontend</td><td><span class="acc pub">public</span></td><td class="mono">ims-frontend-prod</td><td class="mono">1 / 512Mi</td><td class="mono">0–2</td><td class="mono">80</td></tr>
+          <tr><td class="svc">identity-service</td><td><span class="acc pri">private</span></td><td class="mono">ims-identity-prod</td><td class="mono">1 / 768Mi</td><td class="mono">0–2</td><td class="mono">80</td></tr>
+          <tr><td class="svc">school-core-service</td><td><span class="acc pri">private</span></td><td class="mono">ims-school-core-prod</td><td class="mono">1 / 2Gi</td><td class="mono">0–2</td><td class="mono">80</td></tr>
+          <tr><td class="svc">operations-service</td><td><span class="acc pri">private</span></td><td class="mono">ims-operations-prod</td><td class="mono">1 / 768Mi</td><td class="mono">0–2</td><td class="mono">80</td></tr>
+          <tr><td class="svc">platform-service</td><td><span class="acc pri">private</span></td><td class="mono">ims-platform-prod</td><td class="mono">1 / 768Mi</td><td class="mono">0–2</td><td class="mono">80</td></tr>
+          <tr><td class="svc">billing-service</td><td><span class="acc pri">private</span></td><td class="mono">ims-billing-prod</td><td class="mono">1 / 768Mi</td><td class="mono">0–2</td><td class="mono">80</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="cap">Every service has its own runtime SA. Ingress is <code>all</code> on all seven; the five domain services stay private through IAM — <code>run.invoker</code> is granted only to the gateway's SA, so nothing but the gateway can reach them.</p>
+
+    <div class="cols">
+      <div class="fact">
+        <h3><span class="p" style="background:var(--sync)"></span>Compute — Cloud Run</h3>
+        <ul>
+          <li>7 services × 2 envs = <b>14 live services</b>, all in asia-south2.</li>
+          <li><b>Direct VPC egress</b> on network <code>default</code>, <code>private-ranges-only</code> — no Serverless VPC connector.</li>
+          <li>CPU-throttling on; prod adds <b>startup-cpu-boost</b>. Scale-to-zero (min 0).</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--ok)"></span>Database — Cloud SQL</h3>
+        <ul>
+          <li>PostgreSQL 16, zonal, asia-south2, <code>sslmode=require</code>.</li>
+          <li>prod <code>custoking-db-prod</code> — db-g1-small, 10 GB, <b>RUNNABLE</b> (db <code>custoking_prod</code>).</li>
+          <li>dev <code>custoking-db-dev</code> — db-f1-micro, <b>STOPPED</b> off-hours to save cost.</li>
+          <li>Runtime <code>app_rt</code>; Flyway/DDL <code>appuser</code>; pool max 20 / service.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--async)"></span>Messaging — Pub/Sub</h3>
+        <ul>
+          <li>Topics <code>ims-reporting-events-v1</code> &amp; <code>ims-notifications-events-v1</code> (per env).</li>
+          <li>Push subs → platform-service <code>/api/v1/pubsub/*</code> via OIDC, 30 s ack.</li>
+          <li>Dead-letter topics + inspection subs wired in <b>dev</b>; prod currently runs the reporting push only.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--boundary)"></span>Secrets &amp; registry</h3>
+        <ul>
+          <li>Secret Manager (per env): 12 service tokens, <code>jwt-secret</code>, <code>app-rt-password</code>, <code>db-password</code>, <code>msg91-auth-key</code>, Drive-OAuth — injected as <code>secretKeyRef:latest</code>.</li>
+          <li>Artifact Registry Docker repo <code>custoking</code> (~6 GB): delete &gt;7 days, keep last 3 per service.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--sync)"></span>Storage — GCS</h3>
+        <ul>
+          <li><code>custoking-student-photos-{dev,prod}</code> — student photo import.</li>
+          <li><code>custoking-db-snapshots</code> — DB backups with lifecycle rules.</li>
+          <li><code>custoking-github-deploy-source</code>, <code>custoking-terraform-state</code>.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--async)"></span>Observability</h3>
+        <ul>
+          <li>OpenTelemetry OTLP → <code>telemetry.googleapis.com</code> (traces, 5% sample) → Cloud Trace.</li>
+          <li>Structured JSON logs → Cloud Logging + compliance bucket.</li>
+          <li><b>23</b> alert policies · <b>8</b> uptime checks (6 prod + 2 dev).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 DELIVERY -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">06</span>CI/CD &amp; delivery</h2>
       <p class="lead">Deployment is branch-owned. Dev is where images are built and validated; production only ever promotes a digest that already passed in dev.</p>
     </div>
+
+    <div class="diagram-wrap">
+      <svg class="diagram" viewBox="0 0 1160 300" role="img" aria-label="CI/CD pipeline from pull request through dev to prod">
+        <defs>
+          <marker id="arc2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead"/></marker>
+          <marker id="arp2" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrowhead async"/></marker>
+        </defs>
+        <path class="flow" marker-end="url(#arc2)" d="M360,164 L415,164"/>
+        <path class="flow async" marker-end="url(#arp2)" d="M745,164 L800,164"/>
+        <text class="s-mut mid" x="387" y="150" text-anchor="middle" font-size="9">merge</text>
+        <text class="s-mut mid" x="772" y="150" text-anchor="middle" font-size="9">promote</text>
+
+        <rect class="s-node" x="30" y="64" width="330" height="200" rx="13"/>
+        <text class="s-role mid" x="48" y="92" font-size="10">PULL REQUEST · ci-pr.yml</text>
+        <circle class="tk" cx="52" cy="126" r="2.5"/><text class="s-mut mid" x="64" y="126" font-size="10.5">detect affected services</text>
+        <circle class="tk" cx="52" cy="158" r="2.5"/><text class="s-mut mid" x="64" y="158" font-size="10.5">test — Java · gateway · frontend</text>
+        <circle class="tk" cx="52" cy="190" r="2.5"/><text class="s-mut mid" x="64" y="190" font-size="10.5">docker build + Trivy scan</text>
+        <circle class="tk" cx="52" cy="222" r="2.5"/><text class="s-mut mid" x="64" y="222" font-size="10.5">gitleaks secret scan</text>
+
+        <rect class="s-core" x="415" y="64" width="330" height="200" rx="13"/>
+        <text class="s-role mid" x="433" y="92" font-size="10">PUSH dev · build-release.yml</text>
+        <circle class="tk" cx="437" cy="126" r="2.5"/><text class="s-mut mid" x="449" y="126" font-size="10.5">resolve content-addressed image</text>
+        <circle class="tk" cx="437" cy="158" r="2.5"/><text class="s-mut mid" x="449" y="158" font-size="10.5">deploy direct to Cloud Run</text>
+        <circle class="tk" cx="437" cy="190" r="2.5"/><text class="s-mut mid" x="449" y="190" font-size="10.5">verify digest · 100% traffic</text>
+        <circle class="tk" cx="437" cy="222" r="2.5"/><text class="s-cy mid" x="449" y="222" font-size="10.5">tag dev-approved digest</text>
+
+        <rect class="s-gate" x="800" y="64" width="330" height="200" rx="13"/>
+        <text class="s-role b mid" x="818" y="92" font-size="10">PUSH main · Cloud Deploy → prod</text>
+        <circle class="tk" cx="822" cy="126" r="2.5"/><text class="s-mut mid" x="834" y="126" font-size="10.5">require prod GitHub environment</text>
+        <circle class="tk" cx="822" cy="158" r="2.5"/><text class="s-mut mid" x="834" y="158" font-size="10.5">promote the dev-approved digest</text>
+        <circle class="tk" cx="822" cy="190" r="2.5"/><text class="s-mut mid" x="834" y="190" font-size="10.5">canary 5 &#8594; 25 &#8594; 50 &#8594; stable</text>
+        <circle class="tk" cx="822" cy="222" r="2.5"/><text class="s-mut mid" x="834" y="222" font-size="10.5">verify revisions + gateway health</text>
+      </svg>
+    </div>
+    <p class="cap">Dev builds and validates every image; production (gold) only promotes a digest already tagged dev-approved. Cyan = CI / dev, gold = prod promotion.</p>
+
     <div class="dlkey" aria-label="Card colour key">
       <span><i style="background:var(--sync)"></i>Request path</span>
       <span><i style="background:var(--boundary)"></i>Security boundary</span>
@@ -573,13 +701,31 @@
           <li>Serial prod rollout order to stay within the 20-vCPU quota.</li>
         </ul>
       </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--sync)"></span>GitHub Actions workflows</h3>
+        <ul>
+          <li><code>ci-pr.yml</code> — PR tests, image build + Trivy, gitleaks.</li>
+          <li><code>build-release.yml</code> — branch-owned dev &amp; prod releases.</li>
+          <li><code>security-scan.yml</code> (weekly Trivy), <code>codeql-analysis.yml</code>.</li>
+          <li><code>gcp-cost-controls.yml</code> (start/stop dev SQL), <code>recovery-drill.yml</code>, <code>rollback.yml</code>, <code>reconcile-deployment-config.yml</code>.</li>
+        </ul>
+      </div>
+      <div class="fact">
+        <h3><span class="p" style="background:var(--async)"></span>Cloud Deploy</h3>
+        <ul>
+          <li><b>14 delivery pipelines</b> live (7 services × 2 envs).</li>
+          <li>dev = standard rollout; prod = <b>canary 5→25→50</b> with automatic traffic control.</li>
+          <li>prod releases run in serial dependency order; exec SA <code>clouddeploy-prod-deployer</code>.</li>
+          <li>GitHub → GCP auth via <b>Workload Identity Federation</b> — no service-account keys.</li>
+        </ul>
+      </div>
     </div>
   </section>
 
   <!-- 06 MODULES -->
   <section>
     <div class="sec-head">
-      <h2><span class="n">06</span>Product modules &amp; entitlements</h2>
+      <h2><span class="n">07</span>Product modules &amp; entitlements</h2>
       <p class="lead">Schools subscribe to modules; entitlement gates run before business logic. The superadmin UI groups the entitlement codes into two families — platform capabilities apply everywhere.</p>
     </div>
     <div class="modblock">
@@ -600,7 +746,8 @@
 
   <footer>
     <div><b>Sources:</b> service code · services/api-gateway/server.js · docs/current-state/* (verified 2026-08) · EVENT-ENVELOPE-CONTRACT · ADR-001.</div>
-    <div><b>Accuracy notes:</b> the gateway is a plain Node HTTP proxy (older HLD/LLD say "nginx" — that is the frontend). Stack is Spring Boot 4.0.7 / Java 25. Rendered 2026-08-12.</div>
+    <div><b>Live infra:</b> Cloud Run, Cloud SQL, Pub/Sub, Secret Manager, Artifact Registry, IAM &amp; monitoring figures read from gcloud (project custoking) on 2026-08-12.</div>
+    <div><b>Accuracy notes:</b> the gateway is a plain Node HTTP proxy (older HLD/LLD say "nginx" — that is the frontend). Stack is Spring Boot 4.0.7 / Java 25. Domain services are private via IAM (ingress is <code>all</code>, invoker = gateway SA). Rendered 2026-08-12.</div>
   </footer>
 
 </div>
