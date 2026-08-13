@@ -68,6 +68,12 @@ clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 ```
 
+The production release identity also receives bucket-scoped `roles/storage.bucketViewer` and
+`roles/storage.objectCreator` on `clouddeploy_source_bucket`. `gcloud deploy releases create`
+uploads the local Skaffold source before creating the release; `roles/clouddeploy.releaser` alone
+does not authorize that upload. Do not replace these bindings with project-wide Storage Admin or
+object read/delete access.
+
 Do not import these unless a fresh read-only inventory proves one was created outside this module.
 Stage is intentionally not provisioned: there is no stage target manifest, runtime IAM matrix, or
 protected GitHub Environment. Add those three contracts together rather than creating a dormant

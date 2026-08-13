@@ -40,6 +40,12 @@ variable "artifact_registry_repository_id" {
   default     = "custoking"
 }
 
+variable "clouddeploy_source_bucket" {
+  description = "Existing regional Cloud Deploy source-staging bucket used by gcloud to upload release render sources."
+  type        = string
+  default     = "878bf5b2e6304d4fa1252d414e37faf0_clouddeploy"
+}
+
 variable "runtime_service_account_emails" {
   description = "Exact per-environment Cloud Run runtime identities each Cloud Deploy execution account may impersonate."
   type        = map(set(string))

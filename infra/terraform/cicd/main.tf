@@ -218,6 +218,21 @@ resource "google_project_iam_member" "release_prod_roles" {
   member  = "serviceAccount:${google_service_account.github["release_prod"].email}"
 }
 
+# gcloud uploads the local Skaffold/render source before it calls Cloud Deploy. The releaser role
+# does not include Cloud Storage data-plane access, so grant only bucket metadata read and
+# create-only object access on Cloud Deploy's regional staging bucket.
+resource "google_storage_bucket_iam_member" "release_prod_source_bucket_viewer" {
+  bucket = var.clouddeploy_source_bucket
+  role   = "roles/storage.bucketViewer"
+  member = "serviceAccount:${google_service_account.github["release_prod"].email}"
+}
+
+resource "google_storage_bucket_iam_member" "release_prod_source_object_creator" {
+  bucket = var.clouddeploy_source_bucket
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.github["release_prod"].email}"
+}
+
 resource "google_project_iam_member" "rollback_dev_roles" {
   for_each = toset([
     "roles/run.developer",
