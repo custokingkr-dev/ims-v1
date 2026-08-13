@@ -1,5 +1,11 @@
 # Planned Changes and Execution Program — 2026-08-11
 
+> Production update: the reviewed application was promoted on 2026-08-11 and the authorized runtime IAM,
+> Cloud Deploy IAM, reporting OIDC, Cloud SQL encrypted-only transport, and workflow-identity controls were
+> applied. Exact revisions, digests, workflow runs, rollback points, budget state, and residual rollout gates
+> are recorded in `docs/PRODUCTION-DEPLOYMENT-2026-08-11.md`. Historical NO-GO statements below describe the
+> pre-promotion decision point; they do not override the dated production record.
+
 ## 1. Objective
 
 Prepare Custoking IMS for a controlled production rollout supporting 100–150 schools, approximately

@@ -91,7 +91,7 @@ Require-Text $GovernanceConfigurator @(
   "deny-recovery-identity-from-dev",
   "refs/heads/main",
   "refs/heads/dev",
-  'devEnvironmentBranchPolicy = @("main", "dev")',
+  'devEnvironmentBranchPolicy = @("dev")',
   "required_approving_review_count",
   "analyze (java-kotlin)",
   "analyze (javascript-typescript)",

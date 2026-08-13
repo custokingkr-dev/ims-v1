@@ -2,7 +2,8 @@ param(
     [string]$ServicesRoot = "services",
     [string]$GatewayTemplate = "services/api-gateway/server.js",
     [string]$ComposeFile = "docker-compose.yml",
-    [string]$CloudRunDirectory = "deploy/cloudrun"
+    [string]$CloudRunDirectory = "deploy/cloudrun",
+    [string]$AsyncSchedulerScript = "scripts/configure-async-relay-scheduler.ps1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,6 +21,25 @@ $gateway = Read-RequiredFile $GatewayTemplate
 $compose = Read-RequiredFile $ComposeFile
 $cloudRun = (Get-ChildItem -Path $CloudRunDirectory -Filter "*.yaml" -File |
     ForEach-Object { Get-Content -Raw -Path $_.FullName }) -join "`n"
+$asyncScheduler = Read-RequiredFile $AsyncSchedulerScript
+
+# These four request-driven maintenance routes deliberately use Google-signed OIDC at the
+# private Cloud Run IAM boundary instead of an application shared secret. Keep this allowlist
+# exact: one mapped method, one internal path, no gateway route, and matching Scheduler wiring.
+$iamOnlyControllerContracts = @{
+    "services/billing-service/src/main/java/com/custoking/ims/billingservice/api/internal/OutboxRelayTriggerController.java" = @{
+        MethodMapping = '@PostMapping("/relay")'; Route = "/api/v1/internal/outbox/relay"; Service = "billing-service"
+    }
+    "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OutboxRelayTriggerController.java" = @{
+        MethodMapping = '@PostMapping("/relay")'; Route = "/api/v1/internal/outbox/relay"; Service = "operations-service"
+    }
+    "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncWorkTriggerController.java" = @{
+        MethodMapping = '@PostMapping("/drain")'; Route = "/api/v1/internal/async/drain"; Service = "platform-service"
+    }
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/OutboxRelayTriggerController.java" = @{
+        MethodMapping = '@PostMapping("/relay")'; Route = "/api/v1/internal/outbox/relay"; Service = "school-core-service"
+    }
+}
 
 $serviceContracts = @(
     @{ Service = "platform-service"; Header = "X-Notification-Service-Token"; Secret = "notification-status-token"; Env = "NOTIFICATION_SERVICE_TOKEN" },
@@ -55,6 +75,27 @@ $controllerFiles = Get-ChildItem -Path $ServicesRoot -Recurse -Filter "*Controll
 foreach ($file in $controllerFiles) {
     $source = Get-Content -Raw $file.FullName
     $relative = Resolve-Path -Relative $file.FullName
+    $normalizedRelative = (($relative -replace "\\", "/") -replace "^\./", "")
+
+    $iamOnlyContract = $iamOnlyControllerContracts[$normalizedRelative]
+    if ($null -ne $iamOnlyContract) {
+        $mappedMethodCount = [regex]::Matches($source, "@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping)").Count
+        if ($mappedMethodCount -ne 1 -or -not $source.Contains([string]$iamOnlyContract.MethodMapping)) {
+            $violations.Add("IAM-only controller mapping drifted from its single approved method: $relative")
+        }
+        if (-not $source.Contains("Cloud Run IAM")) {
+            $violations.Add("IAM-only controller does not declare its transport authentication boundary: $relative")
+        }
+        if ($gateway.Contains([string]$iamOnlyContract.Route)) {
+            $violations.Add("IAM-only controller route is exposed through the API gateway: $($iamOnlyContract.Route)")
+        }
+        if (-not $asyncScheduler.Contains([string]$iamOnlyContract.Route) -or
+            -not $asyncScheduler.Contains('roles/run.invoker') -or
+            -not $asyncScheduler.Contains('--oidc-service-account-email=')) {
+            $violations.Add("IAM-only controller lacks OIDC Scheduler/run.invoker wiring: $relative")
+        }
+        continue
+    }
 
     if ($source -match "StringUtils\.hasText\((readToken|serviceToken|statusToken|ingestToken|introspectionToken)\)\s*&&\s*!\1\.equals\(token\)") {
         $violations.Add("Controller uses fail-open optional service token check: $relative")
@@ -84,4 +125,4 @@ if ($violations.Count -gt 0) {
     exit 1
 }
 
-Write-Host "Service authorization boundary audit passed: extracted services fail closed on internal tokens."
+Write-Host "Service authorization boundary audit passed: token-scoped routes fail closed and allowlisted scheduler routes require private Cloud Run OIDC wiring."

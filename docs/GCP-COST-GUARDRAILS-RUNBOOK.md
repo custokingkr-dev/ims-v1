@@ -154,6 +154,14 @@ The `Ops / GCP cost controls` workflow starts dev Cloud SQL at 08:00 IST on week
 at 20:00 IST daily. A dev deployment starts the database and waits until it is runnable before
 deployment verification. GitHub schedule execution can be delayed by platform load.
 
+The scheduled workflow runs from the repository default branch and intentionally does not target the
+branch-gated `dev` GitHub Environment. It reads only the repository-level
+`DEV_GCP_PROJECT_ID`, `DEV_CLOUDSQL_INSTANCE`, `DEV_COST_WORKLOAD_IDENTITY_PROVIDER`, and
+`DEV_COST_CONTROLLER_SERVICE_ACCOUNT` controls. There are no legacy fallbacks: an absent dev-only
+control fails validation before authentication. The cost-controller service account must be dedicated to this workflow and limited to
+Cloud SQL Editor plus Service Usage Consumer. Never point the cost-controller variable at a release or
+general deployment identity.
+
 Use the guarded helper only for dev:
 
 ```powershell

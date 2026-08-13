@@ -170,6 +170,10 @@ instances exceeded a four-second Telemetry API deadline on their first connectio
 subsequent exports succeeded. Do not enable always-allocated CPU solely for tracing; it adds
 baseline Cloud Run cost.
 
+Treat every current-revision `Failed to export spans` log as a trace-delivery failure. Investigate
+it with the exact-version verifier below; do not accept trace presence from an older revision as
+proof that the active exporter is healthy.
+
 All deployed services must set these resource attributes in addition to `service.name`:
 
 - `gcp.project_id=<project-id>`

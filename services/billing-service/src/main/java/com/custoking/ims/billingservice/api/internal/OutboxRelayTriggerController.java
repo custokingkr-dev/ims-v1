@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/** Request-driven relay trigger for a dedicated OIDC-authenticated Cloud Scheduler identity. */
+/** Request-driven relay trigger protected by Cloud Run IAM for a dedicated OIDC Scheduler identity. */
 @RestController
 @RequestMapping("/api/v1/internal/outbox")
 public class OutboxRelayTriggerController {

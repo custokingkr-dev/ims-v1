@@ -1,6 +1,13 @@
 # Internal Service Authorization Matrix
 
-Extracted services are private runtime boundaries. Cloud Run IAM is the transport boundary in production, and service tokens are the application-level defense-in-depth boundary. Every protected service controller route must declare an internal route scope at the token guard.
+Extracted services are private runtime boundaries. Cloud Run IAM is the transport boundary in production, and service tokens are the application-level defense-in-depth boundary for gateway and peer-service routes. Every protected gateway or peer-service controller route must declare an internal route scope at the token guard.
+
+Four request-driven maintenance endpoints are deliberately IAM-only: the school-core, operations,
+and billing outbox relays plus the platform async drain. They are absent from the API gateway and
+accept only a Google-signed OIDC request from the dedicated Scheduler identity with service-level
+`roles/run.invoker`. The boundary audit allowlists the exact controller, single method, internal
+route, Scheduler OIDC configuration, and absence from the gateway; adding another method fails the
+gate.
 
 ## Scope Rules
 
@@ -43,3 +50,5 @@ The audit fails if a controller:
 - uses a generic `requireToken(token)` or `requireValidToken(token)` guard;
 - permits requests when the configured service token is blank;
 - loses the gateway, compose, or Cloud Run manifest Secret Manager token wiring.
+- changes an IAM-only maintenance mapping, exposes it through the gateway, or loses its OIDC
+  Scheduler/`run.invoker` wiring.

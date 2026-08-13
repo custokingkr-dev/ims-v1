@@ -2,8 +2,8 @@ name: Ops / GCP cost controls
 
 on:
   schedule:
-    - cron: '30 2 * * 1-5'
-    - cron: '30 14 * * *'
+    - cron: "30 2 * * 1-5"
+    - cron: "30 14 * * *"
   workflow_dispatch:
     inputs:
       dev_database_action:
@@ -24,13 +24,33 @@ concurrency:
 jobs:
   dev-database:
     runs-on: ubuntu-latest
-    environment: dev
+    timeout-minutes: 25
     env:
-      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
-      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-      COST_CONTROLLER_SERVICE_ACCOUNT: ${{ vars.COST_CONTROLLER_SERVICE_ACCOUNT || vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
+      # Scheduled workflows always run from the default branch. Keep this operational job outside
+      # the branch-gated deployment Environments and use dedicated repository-level dev controls.
+      GCP_PROJECT_ID: ${{ vars.DEV_GCP_PROJECT_ID }}
+      DEV_DATABASE_INSTANCE: ${{ vars.DEV_CLOUDSQL_INSTANCE }}
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.DEV_COST_WORKLOAD_IDENTITY_PROVIDER }}
+      COST_CONTROLLER_SERVICE_ACCOUNT: ${{ vars.DEV_COST_CONTROLLER_SERVICE_ACCOUNT }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validate dedicated cost-control configuration
+        shell: pwsh
+        run: |
+          $required = @{
+            GCP_PROJECT_ID = $env:GCP_PROJECT_ID
+            DEV_DATABASE_INSTANCE = $env:DEV_DATABASE_INSTANCE
+            WORKLOAD_IDENTITY_PROVIDER = $env:WORKLOAD_IDENTITY_PROVIDER
+            COST_CONTROLLER_SERVICE_ACCOUNT = $env:COST_CONTROLLER_SERVICE_ACCOUNT
+          }
+          $missing = @($required.GetEnumerator() | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Value) } | ForEach-Object Key)
+          if ($missing.Count -gt 0) {
+            throw "Missing repository variable(s): $($missing -join ', ')."
+          }
+          if ($env:DEV_DATABASE_INSTANCE -notmatch '-dev$') {
+            throw "Refusing non-development Cloud SQL instance '$env:DEV_DATABASE_INSTANCE'."
+          }
 
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
@@ -55,6 +75,6 @@ jobs:
         run: |
           ./scripts/set-dev-cloudsql-state.ps1 `
             -ProjectId "$env:GCP_PROJECT_ID" `
-            -InstanceName custoking-db-dev `
+            -InstanceName "$env:DEV_DATABASE_INSTANCE" `
             -State "${{ steps.action.outputs.value }}" `
             -Wait
