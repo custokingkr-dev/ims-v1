@@ -56,6 +56,7 @@ const {
   authenticate,
   proxyToUrl,
 } = require('./server');
+const { configuredResourceAttributes, TRACE_RESOURCE_FILTER } = require('./tracing');
 
 test.after(() => {
   if (server.listening) {
@@ -71,6 +72,24 @@ test('gateway health endpoint returns service status without upstream access', a
 
   assert.equal(response.status, 200);
   assert.deepEqual(payload, { status: 'UP', service: 'custoking-api-gateway' });
+});
+
+test('gateway tracing preserves service, environment, version, and project resource attributes', () => {
+  process.env.OTEL_SERVICE_NAME = 'api-gateway';
+  const attributes = configuredResourceAttributes(
+    'gcp.project_id=custoking,deployment.environment.name=dev,service.version=abc123',
+  );
+
+  assert.deepEqual(attributes, {
+    'gcp.project_id': 'custoking',
+    'deployment.environment.name': 'dev',
+    'service.version': 'abc123',
+    'service.name': 'api-gateway',
+  });
+  assert.equal(TRACE_RESOURCE_FILTER.test('service.name'), true);
+  assert.equal(TRACE_RESOURCE_FILTER.test('service.version'), true);
+  assert.equal(TRACE_RESOURCE_FILTER.test('deployment.environment.name'), true);
+  assert.equal(TRACE_RESOURCE_FILTER.test('host.name'), false);
 });
 
 test('protected API route returns unauthorized before proxying without bearer token', async () => {

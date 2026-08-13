@@ -175,6 +175,12 @@ All deployed services must set these resource attributes in addition to `service
 - `deployment.environment.name=dev|prod`
 - `service.version=<deployed-git-sha>`
 
+The Node gateway explicitly merges these values into the SDK resource before constructing the Google
+Cloud Trace exporter and sets an allowlist `resourceFilter` for `service.name`, `service.version`, and
+`deployment.environment.name`. Do not rely only on process environment discovery: the exporter
+intentionally omits resource attributes that do not map to a monitored resource unless its filter
+selects them.
+
 Cloud Run-generated request spans include `cloud.resource_id`, but in-process Java OTLP spans are
 identified by `service.name` and the resource attributes above. A revision-only Trace query can
 therefore hide healthy Java spans. Verify each service and recent exporter errors with:

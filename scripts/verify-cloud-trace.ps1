@@ -137,7 +137,7 @@ if ($ExporterErrorLookbackMinutes -gt 0) {
     $loggingResponse = Invoke-RestMethod -Method Post `
       -Uri "https://logging.googleapis.com/v2/entries:list" `
       -Headers $headers -ContentType "application/json" -Body $body -TimeoutSec 30
-    $exporterErrors = @($loggingResponse.entries | ForEach-Object {
+    $exporterErrors = @($loggingResponse.entries | Where-Object { $null -ne $_ } | ForEach-Object {
       [ordered]@{
         timestamp = [string]$_.timestamp
         service = [string]$_.resource.labels.service_name
