@@ -9,6 +9,7 @@ import com.custoking.ims.schoolcoreservice.api.dto.PreviewImportRequest;
 import com.custoking.ims.schoolcoreservice.infrastructure.ImageFetchException;
 import com.custoking.ims.schoolcoreservice.infrastructure.ImageUrlFetcher;
 import com.custoking.ims.schoolcoreservice.persistence.CampaignCompletedException;
+import com.custoking.ims.schoolcoreservice.persistence.StudentNotFoundException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
@@ -706,7 +707,7 @@ public class StudentReadController {
     private Long studentSchoolId(Long id) {
         try {
             return students.schoolIdForStudent(id);
-        } catch (IllegalArgumentException ex) {
+        } catch (StudentNotFoundException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "student not found", ex);
         }
     }
@@ -866,6 +867,8 @@ public class StudentReadController {
             return command.run();
         } catch (CampaignCompletedException ex) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
+        } catch (StudentNotFoundException ex) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }

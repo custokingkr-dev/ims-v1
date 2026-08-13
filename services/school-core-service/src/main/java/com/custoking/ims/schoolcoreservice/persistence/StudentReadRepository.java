@@ -680,7 +680,7 @@ public class StudentReadRepository {
                 .param("id", id)
                 .query(Long.class)
                 .optional()
-                .orElseThrow(() -> new IllegalArgumentException("student not found"));
+                .orElseThrow(() -> new StudentNotFoundException("student not found"));
     }
 
     public Optional<StudentPhotoContent> studentPhotoContent(Long id) {
@@ -1048,7 +1048,7 @@ public class StudentReadRepository {
                         "admissionNumber", rs.getString("admission_no"),
                         "photoUrl", rs.getString("photo_url")))
                 .optional()
-                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+                .orElseThrow(() -> new StudentNotFoundException("Student not found"));
         String expectedAdmissionNumber = str(current.get("admissionNumber"), "DELETE").trim();
         confirmationAdmissionNumber = str(confirmationAdmissionNumber, "").trim();
         if (confirmationAdmissionNumber.isBlank()) {
@@ -1107,7 +1107,7 @@ public class StudentReadRepository {
         int deleted = jdbc.sql("DELETE FROM student.students WHERE id = :id AND deleted_at IS NULL")
                 .param("id", id).update();
         if (deleted != 1) {
-            throw new IllegalArgumentException("Student not found");
+            throw new StudentNotFoundException("Student not found");
         }
         for (String guardianId : guardianIds) {
             jdbc.sql("""

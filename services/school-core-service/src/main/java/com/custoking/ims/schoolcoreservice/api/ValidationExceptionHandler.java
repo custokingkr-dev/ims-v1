@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.ImportAdmissionException;
+import com.custoking.ims.schoolcoreservice.persistence.StudentNotFoundException;
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +65,11 @@ public class ValidationExceptionHandler {
         return message(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(StudentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> onStudentNotFound(StudentNotFoundException ex) {
+        return message(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
     @ExceptionHandler(ImportAdmissionException.class)
     public ResponseEntity<Map<String, Object>> onImportAdmission(ImportAdmissionException ex) {
         if (meterRegistry != null) {
@@ -98,6 +104,11 @@ public class ValidationExceptionHandler {
         for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
             if (cause instanceof ImportAdmissionException admission) {
                 return onImportAdmission(admission);
+            }
+        }
+        for (Throwable cause = ex.getCause(); cause != null; cause = cause.getCause()) {
+            if (cause instanceof StudentNotFoundException notFound) {
+                return onStudentNotFound(notFound);
             }
         }
         // Walk the chain (not getMostSpecificCause, which can dig past the wrapped

@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.persistence.ImportAdmissionException;
+import com.custoking.ims.schoolcoreservice.persistence.StudentNotFoundException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.InvalidDataAccessApiUsageException;
@@ -10,6 +11,17 @@ import org.springframework.http.HttpStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ValidationExceptionHandlerImportAdmissionTest {
+
+    @Test
+    void wrappedStudentNotFoundReturns404InsteadOfGeneric400() {
+        var wrapped = new InvalidDataAccessApiUsageException("repository wrapper",
+                new StudentNotFoundException("student not found"));
+
+        var response = new ValidationExceptionHandler().onDataAccessApiUsage(wrapped);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).containsEntry("message", "student not found");
+    }
 
     @Test
     void admissionRejectionReturnsRetryable429Contract() {

@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.api.compat.StudentWorkspaceCompatibilityController;
+import com.custoking.ims.schoolcoreservice.persistence.StudentNotFoundException;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository;
 import com.custoking.ims.schoolcoreservice.persistence.StudentReadRepository.StudentRow;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
@@ -75,7 +76,7 @@ class StudentReadControllerTest {
 
     @Test
     void getReturnsNotFoundForMissingStudent() {
-        when(students.schoolIdForStudent(404L)).thenThrow(new IllegalArgumentException("student not found"));
+        when(students.schoolIdForStudent(404L)).thenThrow(new StudentNotFoundException("student not found"));
         when(students.find(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.get("student-token", 404L))
@@ -85,6 +86,21 @@ class StudentReadControllerTest {
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
                     assertThat(response.getReason()).isEqualTo("student not found");
                 });
+    }
+
+    @Test
+    void workspaceStudentReturnsNotFoundAfterPermanentDelete() {
+        when(students.schoolIdForStudent(404L)).thenThrow(new StudentNotFoundException("student not found"));
+
+        assertThatThrownBy(() -> controller.workspaceStudent("student-token", 404L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException response = (ResponseStatusException) error;
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(response.getReason()).isEqualTo("student not found");
+                });
+
+        verify(students, never()).workspaceStudentDetail(404L);
     }
 
     @Test
