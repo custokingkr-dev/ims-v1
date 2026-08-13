@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -12,6 +13,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.UUID;
 
 @Component
@@ -19,6 +21,11 @@ import java.util.UUID;
 public class RequestCorrelationFilter extends OncePerRequestFilter {
 
     public static final String REQUEST_ID_HEADER = "X-Request-Id";
+    private final BatchSpanProcessor spanProcessor;
+
+    public RequestCorrelationFilter(BatchSpanProcessor spanProcessor) {
+        this.spanProcessor = spanProcessor;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -34,7 +41,11 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            MDC.remove("requestId");
+            try {
+                spanProcessor.forceFlush().join(2, TimeUnit.SECONDS);
+            } finally {
+                MDC.remove("requestId");
+            }
         }
     }
 }

@@ -43,7 +43,12 @@ management:
   opentelemetry:
     tracing:
       export:
+        # Cloud Run uses request-based billing. Task-boundary flushing drains this short batch
+        # before CPU is suspended, without paying for always-allocated CPU between requests.
+        schedule-delay: ${OTEL_BSP_SCHEDULE_DELAY:1h}
         otlp:
+          connect-timeout: ${OTEL_TRACE_CONNECT_TIMEOUT:1s}
+          timeout: ${OTEL_TRACE_EXPORT_TIMEOUT:1s}
           endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}}
   otlp:
     # spring-boot-starter-opentelemetry transitively pulls in
