@@ -41,9 +41,9 @@ variable "artifact_registry_repository_id" {
 }
 
 variable "clouddeploy_source_bucket" {
-  description = "Existing regional Cloud Deploy source-staging bucket used by gcloud to upload release render sources."
+  description = "Existing regional source-staging bucket shared by gcloud Cloud Deploy release uploads. Configure a lifecycle rule to delete transient source archives."
   type        = string
-  default     = "878bf5b2e6304d4fa1252d414e37faf0_clouddeploy"
+  default     = "custoking-github-deploy-source"
 }
 
 variable "runtime_service_account_emails" {

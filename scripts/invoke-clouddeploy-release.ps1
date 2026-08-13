@@ -18,6 +18,8 @@ param(
   [Parameter(Mandatory = $true)]
   [string]$ImagesJson,
 
+  [string]$SourceStagingDir = $env:CLOUD_DEPLOY_SOURCE_STAGING_DIR,
+
   [string]$OutputPath = "release-evidence/deployment.json",
 
   [switch]$WaitForRollout,
@@ -32,6 +34,9 @@ $GcloudCommand = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" 
 
 if (-not (Test-Path -LiteralPath $ImagesJson)) {
   throw "Release image evidence not found: $ImagesJson"
+}
+if ([string]::IsNullOrWhiteSpace($SourceStagingDir) -or $SourceStagingDir -notmatch '^gs://[^/]+(?:/.+)?$') {
+  throw "SourceStagingDir must be an explicit gs:// staging directory; automatic bucket discovery is not allowed."
 }
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
@@ -77,15 +82,23 @@ foreach ($service in $releaseOrder) {
 
   $pipeline = "custoking-$service-$Environment"
   Write-Host "Creating Cloud Deploy release $pipeline/$releaseId."
-  & $GcloudCommand deploy releases create $releaseId `
-    "--project=$ProjectId" `
-    "--region=$Region" `
-    "--delivery-pipeline=$pipeline" `
-    "--to-target=$service-$Environment" `
-    "--skaffold-file=$skaffoldFile" `
-    "--images=$($image.image)=$($image.immutableRef)" `
-    "--deploy-parameters=git_sha=$CommitSha" `
-    --quiet
+  $createArguments = @(
+    "deploy"
+    "releases"
+    "create"
+    $releaseId
+    "--project=$ProjectId"
+    "--region=$Region"
+    "--delivery-pipeline=$pipeline"
+    "--to-target=$service-$Environment"
+    "--skaffold-file=$skaffoldFile"
+    "--images=$($image.image)=$($image.immutableRef)"
+    "--deploy-parameters=git_sha=$CommitSha"
+    "--quiet"
+  )
+  $createArguments += "--gcs-source-staging-dir=$($SourceStagingDir.TrimEnd('/'))/$releaseId/$service"
+
+  & $GcloudCommand @createArguments
   if ($LASTEXITCODE -ne 0) {
     throw "Could not create Cloud Deploy release $pipeline/$releaseId."
   }

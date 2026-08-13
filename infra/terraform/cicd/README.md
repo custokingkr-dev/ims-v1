@@ -68,11 +68,17 @@ clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 ```
 
-The production release identity also receives bucket-scoped `roles/storage.bucketViewer` and
+Both release identities receive bucket-scoped `roles/storage.bucketViewer` and
 `roles/storage.objectCreator` on `clouddeploy_source_bucket`. `gcloud deploy releases create`
 uploads the local Skaffold source before creating the release; `roles/clouddeploy.releaser` alone
-does not authorize that upload. Do not replace these bindings with project-wide Storage Admin or
-object read/delete access.
+does not authorize that upload. Set the environment-scoped GitHub variable
+`CLOUD_DEPLOY_SOURCE_STAGING_DIR` to the `clouddeploy_source_staging_dir` output. Supplying this
+explicit staging directory avoids the project-wide `storage.buckets.list` discovery permission.
+Do not replace these bindings with project-wide Storage Admin or object read/delete access.
+The bucket is an existing prerequisite and should use uniform bucket-level access, public access
+prevention, and a short lifecycle (14 days in the current project) for transient source archives.
+Use one dedicated source bucket in each future GCP project; do not rely on Cloud Deploy's
+per-pipeline auto-generated buckets.
 
 Do not import these unless a fresh read-only inventory proves one was created outside this module.
 Stage is intentionally not provisioned: there is no stage target manifest, runtime IAM matrix, or
@@ -108,6 +114,8 @@ Identity variables are environment-scoped:
 Repository RELEASE_BUILDER_SERVICE_ACCOUNT=<terraform output release_dev_service_account>
 dev Environment RELEASE_BUILDER_SERVICE_ACCOUNT=<terraform output release_dev_service_account>
 prod Environment RELEASE_BUILDER_SERVICE_ACCOUNT=<terraform output release_prod_service_account>
+dev Environment CLOUD_DEPLOY_SOURCE_STAGING_DIR=<terraform output clouddeploy_source_staging_dir>
+prod Environment CLOUD_DEPLOY_SOURCE_STAGING_DIR=<terraform output clouddeploy_source_staging_dir>
 dev Environment ROLLBACK_SERVICE_ACCOUNT=<terraform output rollback_dev_service_account>
 prod Environment ROLLBACK_SERVICE_ACCOUNT=<terraform output rollback_prod_service_account>
 dev Environment DEPLOYMENT_CONFIG_SERVICE_ACCOUNT=<terraform output config_dev_service_account>

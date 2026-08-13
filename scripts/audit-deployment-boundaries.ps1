@@ -89,7 +89,7 @@ foreach ($required in @("--async", "--update-env-vars", "OTEL_RESOURCE_ATTRIBUTE
   }
 }
 
-foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout.ps1")) {
+foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout.ps1", "SourceStagingDir", "--gcs-source-staging-dir", "automatic bucket discovery is not allowed")) {
   if (-not $cloudDeployRelease.Contains($required)) {
     $violations.Add("Cloud Deploy release orchestration is missing serialized rollout control: $required")
   }

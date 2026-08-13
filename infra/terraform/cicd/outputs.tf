@@ -37,3 +37,7 @@ output "recovery_operator_service_account" {
 output "artifact_registry_repository" {
   value = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.custoking.repository_id}"
 }
+
+output "clouddeploy_source_staging_dir" {
+  value = "gs://${var.clouddeploy_source_bucket}/source"
+}
