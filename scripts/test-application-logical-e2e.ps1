@@ -1059,24 +1059,17 @@ try {
         $promotedDetail = Invoke-Api "promoted student detail" "GET" "/api/v1/students/$primaryStudentId/workspace" $admin.token "school-admin"
         Assert-E2E "student promoted class" ([string](Get-Value $promotedDetail.json "classId") -eq $class2) "classId=$(Get-Value $promotedDetail.json "classId")"
 
-        $deleted = Invoke-Api "student delete" "DELETE" "/api/v1/students/$primaryStudentId" $admin.token "school-admin" @{
-            reason = "logical e2e delete after completed year"
-        }
+        $deleteConfirmation = [uri]::EscapeDataString("ADM-$script:runId")
+        $deleted = Invoke-Api -Name "student delete" -Method "DELETE" -Path "/api/v1/students/$primaryStudentId" `
+            -Token $admin.token -Actor "school-admin" -Headers @{ "X-Student-Delete-Confirmation" = $deleteConfirmation }
         Assert-E2E "student delete succeeded" ([bool](Get-Value $deleted.json "deleted" $false)) "deleted=$(Get-Value $deleted.json "deleted")"
-        Assert-E2E "student delete preserved history" ([bool](Get-Value $deleted.json "historyPreserved" $false)) "historyPreserved=$(Get-Value $deleted.json "historyPreserved")"
+        Assert-E2E "student delete is permanent" ([bool](Get-Value $deleted.json "permanent" $false)) "permanent=$(Get-Value $deleted.json "permanent")"
 
-        $history = Invoke-Api "student history read" "GET" "/api/v1/students/$primaryStudentId/history" $admin.token "school-admin"
-        Assert-E2E "history has enrollments" (@(Get-Array (Get-Value $history.json "enrollments")).Count -ge 1) "enrollments"
-        Assert-E2E "history has promotions" (@(Get-Array (Get-Value $history.json "promotions")).Count -ge 1) "promotions"
-        Assert-E2E "history has fee assignments" (@(Get-Array (Get-Value $history.json "feeAssignments")).Count -ge 1) "feeAssignments"
-        $historyPayments = @(Get-Array (Get-Value $history.json "feePayments"))
-        Assert-E2E "history preserves fee payment amount" (@($historyPayments | Where-Object { [long](Get-Value $_ "amountPaise" 0) -eq 50025 }).Count -ge 1) "payments=$($historyPayments.Count)"
-        Assert-E2E "history years available" (@(Get-Array (Get-Value $history.json "historyYears")).Count -ge 1) "historyYears"
-        Invoke-Api "active students excludes deleted" "GET" "/api/v1/students?schoolId=$schoolId&deleted=false&page=0&size=50" $admin.token "school-admin" | Out-Null
-        $deletedList = Invoke-Api "deleted students includes deleted" "GET" "/api/v1/students?schoolId=$schoolId&deleted=true&page=0&size=50" $admin.token "school-admin"
-        $deletedItems = @(Get-Array (Get-Value $deletedList.json "items"))
-        Assert-E2E "deleted student appears in deleted list" (@($deletedItems | Where-Object { [long](Get-Value $_ "id" 0) -eq $primaryStudentId }).Count -eq 1) "deleted list count=$($deletedItems.Count)"
-        Assert-OutboxEvent "tenant_school" "student.upserted.v1" $primaryStudentId "student delete outbox"
+        Invoke-Api "deleted student is gone" "GET" "/api/v1/students/$primaryStudentId/workspace" $admin.token "school-admin" $null @(404) | Out-Null
+        $activeList = Invoke-Api "student list after permanent delete" "GET" "/api/v1/students?schoolId=$schoolId&page=0&size=50" $admin.token "school-admin"
+        $activeItems = @(Get-Array (Get-Value $activeList.json "items"))
+        Assert-E2E "deleted student is absent from list" (@($activeItems | Where-Object { [long](Get-Value $_ "id" 0) -eq $primaryStudentId }).Count -eq 0) "active list count=$($activeItems.Count)"
+        Assert-OutboxEvent "tenant_school" "student.deleted.v1" $primaryStudentId "student delete outbox"
     }
 } finally {
     foreach ($file in $script:tempFiles) {

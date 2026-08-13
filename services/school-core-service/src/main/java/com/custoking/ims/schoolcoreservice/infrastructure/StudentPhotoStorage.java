@@ -405,6 +405,28 @@ public class StudentPhotoStorage {
                 + sanitizeFileName(fileName);
     }
 
+    /**
+     * Permanently removes a student-owned object after its database records commit. External
+     * legacy URLs and non-student object prefixes are deliberately ignored.
+     */
+    public void deleteStoredPhoto(String stored) {
+        if (!StringUtils.hasText(stored)
+                || stored.startsWith("http://")
+                || stored.startsWith("https://")
+                || !stored.startsWith("schools/")
+                || !stored.contains("/students/")
+                || !isEnabled()) {
+            return;
+        }
+        try {
+            storage().delete(bucket, stored);
+        } catch (RuntimeException ex) {
+            // The database deletion is authoritative. A failed object cleanup is observable and
+            // safe to retry, but must not resurrect or partially restore the student record.
+            log.warn("Failed to delete student photo object {}: {}", stored, ex.toString());
+        }
+    }
+
     static String temporaryPhotoImportObjectKey(
             String schoolStorageId,
             String batchId,

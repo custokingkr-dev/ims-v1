@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import java.util.Set;
 
 /**
- * Projects student outbox events ({@code student.upserted.v1}) from school-core into the
+ * Projects student upserts and permanent-deletion tombstones from school-core into the
  * {@code reporting.dim_student} read model, per Reporting Decoupling SP5. Student is a
  * dimension like school/section/academic-year (SP1's {@link ReferenceDimensionProjector}), so
  * this mirrors that projector's shape exactly: not feed-worthy — student upserts must not
@@ -19,6 +19,7 @@ import java.util.Set;
 public class StudentDimensionProjector implements ReportingEventProjector {
 
     private static final String STUDENT_UPSERTED = "student.upserted.v1";
+    private static final String STUDENT_DELETED = "student.deleted.v1";
 
     private final DimensionProjectionRepository dims;
     private final ObjectMapper objectMapper;
@@ -30,7 +31,7 @@ public class StudentDimensionProjector implements ReportingEventProjector {
 
     @Override
     public Set<String> handledEventTypes() {
-        return Set.of(STUDENT_UPSERTED);
+        return Set.of(STUDENT_UPSERTED, STUDENT_DELETED);
     }
 
     @Override
@@ -43,6 +44,10 @@ public class StudentDimensionProjector implements ReportingEventProjector {
         JsonNode payload = PayloadJson.readPayload(objectMapper, event.payload());
         Long id = PayloadJson.longOrNull(payload, "id");
         if (id == null) {
+            return;
+        }
+        if (STUDENT_DELETED.equals(event.eventType())) {
+            dims.deleteStudent(id);
             return;
         }
         Long schoolId = PayloadJson.longOrNull(payload, "schoolId");

@@ -286,7 +286,7 @@ describe('StudentsPanel', () => {
   });
 
   it('requires admission number confirmation before deleting a student', async () => {
-    vi.mocked(api.delete).mockResolvedValue({ data: { deleted: true } });
+    vi.mocked(api.delete).mockResolvedValue({ data: { deleted: true, permanent: true } });
     render(<StudentsPanel setPanel={vi.fn()} onRefresh={vi.fn()} />);
 
     await screen.findByText('Aarav Sharma');
@@ -296,6 +296,7 @@ describe('StudentsPanel', () => {
     const deleteButton = within(dialog).getByRole('button', { name: /delete student/i });
     expect(deleteButton).toBeDisabled();
     expect(api.delete).not.toHaveBeenCalled();
+    expect(within(dialog).getByText(/permanently deletes the student/i)).toBeInTheDocument();
 
     fireEvent.change(within(dialog).getByPlaceholderText('ADM-101'), { target: { value: 'ADM-101' } });
     expect(deleteButton).not.toBeDisabled();
@@ -303,7 +304,7 @@ describe('StudentsPanel', () => {
 
     await waitFor(() => expect(api.delete).toHaveBeenCalledWith(
       '/students/101',
-      { data: { reason: 'Deleted from Students tab', confirmationAdmissionNumber: 'ADM-101' } },
+      { headers: { 'X-Student-Delete-Confirmation': 'ADM-101' } },
     ));
   });
 });

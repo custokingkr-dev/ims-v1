@@ -27,7 +27,6 @@ import {
 } from '../../../api/dashboardCommandCenterApi';
 import type { ReviewItemDetail, StudentVerificationSummaryResponse } from '../../../types/dashboardCommandCenter';
 import {
-  Archive,
   ArrowUpRight,
   BadgeCheck,
   ClipboardCheck,
@@ -92,7 +91,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [studentFilters, setStudentFilters] = useState({ className: 'All', sectionName: 'All', feeStatus: 'All' });
   const [studentSearchInput, setStudentSearchInput] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
-  const [studentListMode, setStudentListMode] = useState<'active' | 'archived'>('active');
   const [studentsPage, setStudentsPage] = useState(0);
   const PAGE_SIZE = 50;
   const [studentsView, setStudentsView] = useState<any>({ items: [], filteredCount: 0, filteredSections: 0, totalPages: 1, filters: { classes: [], sections: [], feeStatuses: ['Paid', 'Overdue', 'Pending', 'Partial'] } });
@@ -134,7 +132,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const [verificationPanelOpen, setVerificationPanelOpen] = useState(false);
   const studentsRequestId = useRef(0);
 
-  const loadStudents = async (filters = studentFilters, page = studentsPage, mode = studentListMode, search = studentSearch) => {
+  const loadStudents = async (filters = studentFilters, page = studentsPage, search = studentSearch) => {
     const requestId = ++studentsRequestId.current;
     try {
       setStudentsLoading(true);
@@ -145,7 +143,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       if (filters.feeStatus !== 'All') params.feeStatus = filters.feeStatus;
       const trimmedSearch = search.trim();
       if (trimmedSearch) params.q = trimmedSearch;
-      if (mode === 'archived') params.deleted = true;
       const res = await api.get('/students', { params: { ...params, ...(schoolScopedParams || {}) } });
       if (requestId !== studentsRequestId.current) return;
       setStudentsView(res.data);
@@ -162,29 +159,23 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const applyFilters = (filters: typeof studentFilters) => {
     setStudentFilters(filters);
     setStudentsPage(0);
-    loadStudents(filters, 0, studentListMode, studentSearch);
+    loadStudents(filters, 0, studentSearch);
   };
 
   const handlePageChange = (page: number) => {
     setStudentsPage(page);
-    loadStudents(studentFilters, page, studentListMode, studentSearch);
-  };
-
-  const switchStudentListMode = (mode: 'active' | 'archived') => {
-    setStudentListMode(mode);
-    setStudentsPage(0);
-    loadStudents(studentFilters, 0, mode, studentSearch);
+    loadStudents(studentFilters, page, studentSearch);
   };
 
   const clearStudentSearch = () => {
     setStudentSearchInput('');
     setStudentSearch('');
     setStudentsPage(0);
-    loadStudents(studentFilters, 0, studentListMode, '');
+    loadStudents(studentFilters, 0, '');
   };
 
   useEffect(() => {
-    loadStudents(studentFilters, 0, studentListMode);
+    loadStudents(studentFilters, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -195,11 +186,11 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     const timer = window.setTimeout(() => {
       setStudentSearch(nextSearch);
       setStudentsPage(0);
-      loadStudents(studentFilters, 0, studentListMode, nextSearch);
+      loadStudents(studentFilters, 0, nextSearch);
     }, 300);
 
     return () => window.clearTimeout(timer);
-  }, [studentSearchInput, studentSearch, studentFilters, studentListMode]);
+  }, [studentSearchInput, studentSearch, studentFilters]);
 
   const enterEditMode = (detail: any) => {
     setModalError(null);
@@ -331,7 +322,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
         profile: kind === 'profile' ? item : current?.profile ?? null,
         photo: kind === 'photo' ? item : current?.photo ?? null,
       }));
-      await loadStudents(studentFilters, studentsPage, studentListMode, studentSearch);
+      await loadStudents(studentFilters, studentsPage, studentSearch);
       onRefresh();
     } catch (err: unknown) {
       setVerificationError((err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -378,7 +369,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
   const handleGuardianProfileChanged = async () => {
     setVerificationSummary(null);
     setVerificationPanelOpen(false);
-    await loadStudents(studentFilters, studentsPage, studentListMode, studentSearch);
+    await loadStudents(studentFilters, studentsPage, studentSearch);
     try {
       const response = await api.get(`/students/${studentDetail?.id}/workspace`);
       setStudentDetail(response.data);
@@ -430,15 +421,14 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
       setDeleteConfirmError(null);
       if (closeModal === false) setStudentsError(null);
       await api.delete(`/students/${student.id}`, {
-        data: {
-          reason: 'Deleted from Students tab',
-          confirmationAdmissionNumber: deleteConfirmText.trim(),
+        headers: {
+          'X-Student-Delete-Confirmation': encodeURIComponent(deleteConfirmText.trim()),
         },
       });
       setDeleteConfirm(null);
       setDeleteConfirmText('');
       if (closeModal !== false) closeStudentModal();
-      await loadStudents(studentFilters, studentsPage, studentListMode);
+      await loadStudents(studentFilters, studentsPage);
       onRefresh();
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not delete student.');
@@ -629,7 +619,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     return 'sr';
   };
 
-  const canVerifyStudentDetails = can('student:update') && !!schoolScopedParams && studentListMode === 'active';
+  const canVerifyStudentDetails = can('student:update') && !!schoolScopedParams;
   const profileVerified = (verificationSummary?.profile?.status ?? studentDetail?.profileVerificationStatus) === 'COMPLETED';
   const photoVerified = (verificationSummary?.photo?.status ?? studentDetail?.photoVerificationStatus) === 'COMPLETED';
   const studentFullyVerified = profileVerified && photoVerified;
@@ -638,7 +628,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
     <>
       <ModuleShell
         title="Students"
-        subtitle={`${studentsView.filteredCount || 0} ${studentSearch ? 'matching ' : ''}${studentListMode === 'archived' ? 'archived' : 'enrolled'} · ${studentsView.filteredSections || 0} sections`}
+        subtitle={`${studentsView.filteredCount || 0} ${studentSearch ? 'matching ' : ''}enrolled · ${studentsView.filteredSections || 0} sections`}
         actions={
           <>
             {can('student:update') && schoolScopedParams ? (
@@ -675,7 +665,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
         <div className="ck-student-kpi-band" aria-label="Student directory summary">
           <div>
-            <span><UsersRound size={15} aria-hidden="true" />{studentListMode === 'archived' ? 'Archived records' : 'Active students'}</span>
+            <span><UsersRound size={15} aria-hidden="true" />Active students</span>
             <strong>{studentsView.filteredCount || 0}</strong>
             <small>{studentsView.filteredSections || 0} sections in this view</small>
           </div>
@@ -690,7 +680,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             <small>Pending, partial, or overdue</small>
           </div>
           <div>
-            <span><Archive size={15} aria-hidden="true" />Records to review</span>
+            <span><ClipboardCheck size={15} aria-hidden="true" />Records to review</span>
             <strong>{missingContactCount}</strong>
             <small>Missing a guardian contact</small>
           </div>
@@ -721,22 +711,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             </div>
           </div>
           <div className="ck-card-inline-filters">
-            <div className="ck-actions-inline" aria-label="Student list mode">
-              <button
-                type="button"
-                className={`ck-btn ck-btn-sm ${studentListMode === 'active' ? 'ck-btn-g' : 'ck-btn-ghost'}`}
-                onClick={() => switchStudentListMode('active')}
-              >
-                Active
-              </button>
-              <button
-                type="button"
-                className={`ck-btn ck-btn-sm ${studentListMode === 'archived' ? 'ck-btn-g' : 'ck-btn-ghost'}`}
-                onClick={() => switchStudentListMode('archived')}
-              >
-                Archived
-              </button>
-            </div>
             <select
               value={studentFilters.className}
               onChange={e => applyFilters({ ...studentFilters, className: e.target.value, sectionName: 'All' })}
@@ -776,7 +750,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
 
         <div className="ck-student-directory-head">
           <div>
-            <strong>{studentListMode === 'archived' ? 'Archived student records' : 'Student directory'}</strong>
+            <strong>Student directory</strong>
             <span>{studentSearch ? `Results for "${studentSearch}"` : 'Current academic year'}</span>
           </div>
           <span className="ck-status sgr">
@@ -818,7 +792,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
             {studentsLoaded && (
               <tbody>
                 {(studentsView.items || []).map((student: any) => {
-                  const archived = Boolean(student.deletedAt);
                   const fullyVerified = student.profileVerificationStatus === 'COMPLETED'
                     && student.photoVerificationStatus === 'COMPLETED';
                   return (
@@ -839,7 +812,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                           <StudentPhotoAvatar photoUrl={student.photoUrl} name={student.fullName} />
                           <div>
                             <div className="ck-table-link ck-table-link-static">{student.fullName}</div>
-                            <div className="ts">{student.classSection} · {student.academicYear}{archived ? ` · Deleted${student.deletedReason ? `: ${student.deletedReason}` : ''}` : ''}</div>
+                            <div className="ts">{student.classSection} · {student.academicYear}</div>
                           </div>
                         </div>
                       </td>
@@ -867,7 +840,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       </td>
                       <td>
                         <div className="ck-actions-inline ck-student-row-actions">
-                          {canVerifyStudentDetails && !archived ? (
+                          {canVerifyStudentDetails ? (
                             <button
                               type="button"
                               className="ck-btn ck-btn-sm ck-btn-ghost ck-icon-label ck-student-verify-row-btn"
@@ -882,7 +855,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                               <BadgeCheck size={14} aria-hidden="true" />{fullyVerified ? 'Verified' : 'Verify details'}
                             </button>
                           ) : null}
-                          {can('student:update') && !archived ? (
+                          {can('student:update') ? (
                             <button
                               className="ck-icon-btn"
                               title="Edit student"
@@ -895,7 +868,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                               <Pencil size={15} aria-hidden="true" />
                             </button>
                           ) : null}
-                          {can('student:delete') && !archived ? (
+                          {can('student:delete') ? (
                             <button
                               type="button"
                               className="ck-icon-btn ck-student-delete-inline"
@@ -929,7 +902,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   ? `No students found for "${studentSearch}"`
                   : studentFilters.className !== 'All' || studentFilters.sectionName !== 'All' || studentFilters.feeStatus !== 'All'
                   ? 'No students match these filters'
-                  : studentListMode === 'archived' ? 'No archived students yet' : 'No students enrolled yet'}
+                  : 'No students enrolled yet'}
               </div>
               <div style={{ fontSize: 13, color: 'var(--ink3)', marginBottom: 14, maxWidth: 320, margin: '0 auto 14px' }}>
                 {studentSearch
@@ -991,12 +964,6 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <div>Showing limited data — full student details could not be loaded.</div>
                     </div>
                   )}
-                  {studentDetail.deletedAt ? (
-                    <div className="ck-alert ck-alert-am">
-                      <span>!</span>
-                      <div>Archived student{studentDetail.deletedReason ? `: ${studentDetail.deletedReason}` : ''}</div>
-                    </div>
-                  ) : null}
                   <div className="ck-student-modal-hero">
                     <StudentPhotoAvatar
                       photoUrl={studentDetail.photoUrl}
@@ -1009,7 +976,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                       <div className="ts">{studentDetail.classSection} · {studentDetail.academicYear}</div>
                     </div>
                   </div>
-                  {canVerifyStudentDetails && !studentDetail.deletedAt ? (
+                  {canVerifyStudentDetails ? (
                     <div className="ck-form-card ck-student-verification-card" style={{ gridColumn: '1 / -1' }}>
                       <div className="ck-form-head ck-card-h-wrap">
                         <span>Verification</span>
@@ -1085,7 +1052,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   </div>
                   <GuardianConsentCard
                     studentId={Number(studentDetail.id)}
-                    canManage={can('student:update') && !studentDetail.deletedAt}
+                    canManage={can('student:update')}
                     onProfileChanged={() => { void handleGuardianProfileChanged(); }}
                   />
                   <div className="ck-form-card">
@@ -1293,7 +1260,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
               <div className="ck-alert ck-alert-am" style={{ marginBottom: 14 }}>
                 <span>!</span>
                 <div>
-                  This archives the student and removes them from active lists. Fee, attendance, import, and lifecycle history remain preserved.
+                  This permanently deletes the student and all linked fee, payment, attendance, import, guardian, consent, verification, promotion, enrollment, notification, reporting, and stored photo records. This cannot be undone.
                 </div>
               </div>
               <div className="ck-form-grid ck-fg-1">
@@ -1303,7 +1270,7 @@ export function StudentsPanel({ setPanel, onRefresh }: Props) {
                   <div className="ts">Admission {deleteConfirm.student.admissionNumber || deleteConfirm.student.admissionNo || '-'}</div>
                 </div>
                 <div className="ck-field">
-                  <label>Type admission number to confirm</label>
+                  <label>Type admission number to permanently delete</label>
                   <input
                     value={deleteConfirmText}
                     onChange={(e) => { setDeleteConfirmText(e.target.value); setDeleteConfirmError(null); }}

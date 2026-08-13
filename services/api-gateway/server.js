@@ -24,7 +24,7 @@ const CORS_ALLOWED_ORIGINS = (process.env.GATEWAY_CORS_ALLOWED_ORIGINS || '')
   .map((value) => value.trim())
   .filter(Boolean);
 const CORS_ALLOW_METHODS = process.env.GATEWAY_CORS_ALLOW_METHODS || 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
-const CORS_ALLOW_HEADERS = process.env.GATEWAY_CORS_ALLOW_HEADERS || 'Authorization,Content-Type,X-Request-ID';
+const CORS_ALLOW_HEADERS = process.env.GATEWAY_CORS_ALLOW_HEADERS || 'Authorization,Content-Type,X-Request-ID,X-Student-Delete-Confirmation';
 const CORS_MAX_AGE = process.env.GATEWAY_CORS_MAX_AGE || '600';
 
 // Security response headers (overridable so deployments can tune the CSP for the SPA).
@@ -809,4 +809,5 @@ module.exports = {
   verifyJwtLocally,
   principalFromClaims,
   authenticate,
+  proxyToUrl,
 };

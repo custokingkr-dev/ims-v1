@@ -22,7 +22,6 @@ import java.util.zip.ZipInputStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
@@ -42,41 +41,41 @@ class StudentReadControllerTest {
 
     @Test
     void listRejectsInvalidTokenBeforeQuerying() {
-        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, null, null, false, 0, 25))
+        assertThatThrownBy(() -> controller.list("wrong-token", 4L, "9", "A", null, null, null, 0, 25))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
 
-        verify(students, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt(), anyBoolean());
+        verify(students, never()).workspaceStudents(anyLong(), any(), any(), any(), anyInt(), anyInt());
     }
 
     @Test
     void listDelegatesFiltersToWorkspaceStudents() {
         TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
         Map<String, Object> workspace = Map.of("items", List.of(), "filteredCount", 42);
-        when(students.workspaceStudents(4L, "9", "A", "Pending", 0, 25, false)).thenReturn(workspace);
+        when(students.workspaceStudents(4L, "9", "A", "Pending", 0, 25)).thenReturn(workspace);
 
-        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", null, null, false, 0, 25);
+        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", null, null, 0, 25);
 
         assertThat(response).isSameAs(workspace);
-        verify(students).workspaceStudents(4L, "9", "A", "Pending", 0, 25, false);
+        verify(students).workspaceStudents(4L, "9", "A", "Pending", 0, 25);
     }
 
     @Test
     void listDelegatesStudentSearchToWorkspaceStudents() {
         TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
         Map<String, Object> workspace = Map.of("items", List.of(), "filteredCount", 1);
-        when(students.workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25, false)).thenReturn(workspace);
+        when(students.workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25)).thenReturn(workspace);
 
-        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", "  Aman 102  ", null, false, 0, 25);
+        Map<String, Object> response = controller.list("student-token", 4L, "9", "A", "Pending", "  Aman 102  ", null, 0, 25);
 
         assertThat(response).isSameAs(workspace);
-        verify(students).workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25, false);
+        verify(students).workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25);
     }
 
     @Test
     void getReturnsNotFoundForMissingStudent() {
-        when(students.schoolIdForStudentIncludingDeleted(404L)).thenThrow(new IllegalArgumentException("student not found"));
+        when(students.schoolIdForStudent(404L)).thenThrow(new IllegalArgumentException("student not found"));
         when(students.find(404L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> controller.get("student-token", 404L))
@@ -91,7 +90,7 @@ class StudentReadControllerTest {
     @Test
     void workspaceStudentMapsValidationFailureToBadRequest() {
         TenantContext.set(new TenantContext(1L, "admin@x", "SUPERADMIN", null, null));
-        when(students.schoolIdForStudentIncludingDeleted(404L)).thenReturn(4L);
+        when(students.schoolIdForStudent(404L)).thenReturn(4L);
         when(students.workspaceStudentDetail(404L)).thenThrow(new IllegalArgumentException("Student not found"));
 
         assertThatThrownBy(() -> controller.workspaceStudent("student-token", 404L))
@@ -107,7 +106,7 @@ class StudentReadControllerTest {
     void studentPhotoContentReturnsPrivateCacheableImage() {
         TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
         byte[] body = "jpeg-data".getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        when(students.schoolIdForStudentIncludingDeleted(42L)).thenReturn(10L);
+        when(students.schoolIdForStudent(42L)).thenReturn(10L);
         when(students.studentPhotoContent(42L))
                 .thenReturn(Optional.of(new StudentReadRepository.StudentPhotoContent(body, "image/jpeg")));
 
@@ -192,51 +191,18 @@ class StudentReadControllerTest {
     }
 
     @Test
-    void historyAllowsSoftDeletedStudentsForPreservedLifecycleLookup() {
+    void historyUsesOnlyActiveStudentScope() {
         TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:read")));
         Map<String, Object> history = Map.of(
                 "student", Map.of("id", 42L),
-                "completedAcademicYears", 1L,
-                "historyPreserved", true);
-        when(students.schoolIdForStudentIncludingDeleted(42L)).thenReturn(10L);
+                "completedAcademicYears", 1L);
+        when(students.schoolIdForStudent(42L)).thenReturn(10L);
         when(students.studentHistory(42L)).thenReturn(history);
 
         Map<String, Object> response = controller.history("student-token", 42L);
 
         assertThat(response).isSameAs(history);
-        verify(students).schoolIdForStudentIncludingDeleted(42L);
-        verify(students, never()).schoolIdForStudent(42L);
-    }
-
-    @Test
-    void restoreRequiresSuperadmin() {
-        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:update")));
-
-        assertThatThrownBy(() -> controller.restore("student-token", 42L, Map.of("reason", "Mistake")))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> {
-                    ResponseStatusException response = (ResponseStatusException) error;
-                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-                    assertThat(response.getReason()).contains("superadmin");
-                });
-
-        verify(students, never()).restoreStudent(anyLong(), any());
-        verify(students, never()).schoolIdForStudentIncludingDeleted(anyLong());
-    }
-
-    @Test
-    void restoreAllowsSuperadminAndIncludesDeletedStudentScope() {
-        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
-        Map<String, Object> restored = Map.of("id", 42L, "restored", true);
-        when(students.schoolIdForStudentIncludingDeleted(42L)).thenReturn(10L);
-        when(students.restoreStudent(42L, Map.of("reason", "Accidental delete"))).thenReturn(restored);
-
-        Map<String, Object> response = controller.restore("student-token", 42L, Map.of("reason", "Accidental delete"));
-
-        assertThat(response).isSameAs(restored);
-        verify(students).schoolIdForStudentIncludingDeleted(42L);
-        verify(students).restoreStudent(42L, Map.of("reason", "Accidental delete"));
-        verify(students, never()).schoolIdForStudent(42L);
+        verify(students).schoolIdForStudent(42L);
     }
 
     @Test

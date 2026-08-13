@@ -242,7 +242,7 @@ class StudentImportPhotoIntegrationTest {
         StudentReadRepository studentRepo = new StudentReadRepository(
                 jdbc, photoStorage, new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school"));
 
-        Map<String, Object> workspace = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, false);
+        Map<String, Object> workspace = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50);
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> items = (List<Map<String, Object>>) workspace.get("items");

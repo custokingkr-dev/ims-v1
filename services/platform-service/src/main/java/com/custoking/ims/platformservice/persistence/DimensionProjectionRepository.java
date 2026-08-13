@@ -145,6 +145,22 @@ public class DimensionProjectionRepository {
                 .update();
     }
 
+    /** Removes all platform-side student projections when school-core emits a deletion tombstone. */
+    @Transactional
+    public void deleteStudent(long id) {
+        ProjectorRls.allow(jdbc);
+        jdbc.sql("DELETE FROM notification.notification_logs WHERE student_id = :id")
+                .param("id", id).update();
+        jdbc.sql("DELETE FROM reporting.event_student_contributions WHERE student_id = :id")
+                .param("id", id).update();
+        jdbc.sql("DELETE FROM reporting.fact_payment WHERE student_id = :id")
+                .param("id", id).update();
+        jdbc.sql("DELETE FROM reporting.fact_fee_assignment WHERE student_id = :id")
+                .param("id", id).update();
+        jdbc.sql("DELETE FROM reporting.dim_student WHERE id = :id")
+                .param("id", id).update();
+    }
+
     @Transactional
     public void upsertAcademicYear(String id, String label, boolean active) {
         jdbc.sql("""

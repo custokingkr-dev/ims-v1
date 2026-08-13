@@ -6,6 +6,8 @@ import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -16,11 +18,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.security.MessageDigest;
 import java.util.HexFormat;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -77,22 +81,17 @@ public class StudentReadRepository {
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
                                                  String feeStatus, int page, int size) {
-        return workspaceStudents(schoolId, className, sectionName, feeStatus, page, size, false);
+        return workspaceStudents(schoolId, className, sectionName, feeStatus, null, page, size);
     }
 
     public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
-                                                 String feeStatus, int page, int size, boolean deleted) {
-        return workspaceStudents(schoolId, className, sectionName, feeStatus, null, page, size, deleted);
-    }
-
-    public Map<String, Object> workspaceStudents(Long schoolId, String className, String sectionName,
-                                                 String feeStatus, String search, int page, int size, boolean deleted) {
+                                                 String feeStatus, String search, int page, int size) {
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, Math.min(size, 500));
         WorkspaceStudentStats stats = workspaceStudentStats(
-                schoolId, className, sectionName, feeStatus, search, deleted);
+                schoolId, className, sectionName, feeStatus, search);
         List<Map<String, Object>> items = workspaceStudentRowsPage(
-                schoolId, className, sectionName, feeStatus, search, deleted,
+                schoolId, className, sectionName, feeStatus, search,
                 safeSize, (long) safePage * safeSize);
         return row("items", items,
                 "page", safePage,
@@ -101,7 +100,6 @@ public class StudentReadRepository {
                 "totalPages", (int) Math.ceil(stats.total() / (double) safeSize),
                 "filteredCount", stats.total(),
                 "filteredSections", stats.sections(),
-                "deleted", deleted,
                 "search", str(search, "").trim(),
                 "filters", row("classes", classesForSchool(schoolId),
                         "sections", sectionNamesForSchool(schoolId, className),
@@ -110,29 +108,18 @@ public class StudentReadRepository {
 
     public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
                                                           String feeStatus) {
-        return workspaceStudentRows(schoolId, className, sectionName, feeStatus, false);
-    }
-
-    public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
-                                                          String feeStatus, boolean deleted) {
-        return workspaceStudentRows(schoolId, className, sectionName, feeStatus, null, deleted);
-    }
-
-    public List<Map<String, Object>> workspaceStudentRows(Long schoolId, String className, String sectionName,
-                                                           String feeStatus, String search, boolean deleted) {
-        return workspaceStudentRowsPage(schoolId, className, sectionName, feeStatus, search, deleted, null, 0);
+        return workspaceStudentRowsPage(schoolId, className, sectionName, feeStatus, null, null, 0);
     }
 
     private List<Map<String, Object>> workspaceStudentRowsPage(
             Long schoolId, String className, String sectionName, String feeStatus,
-            String search, boolean deleted, Integer limit, long offset) {
+            String search, Integer limit, long offset) {
         String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
         StringBuilder sql = new StringBuilder("""
                 SELECT s.id, s.full_name, s.admission_no, s.roll_no, s.board_reg_no, s.dob, s.gender,
                        s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
                        s.photo_url, s.fee_status, s.attendance_percent, s.school_id,
-                       s.deleted_at, s.deleted_reason,
                        sc.id AS class_id, sc.name AS class_name, sc.sort_order,
                        ss.id AS section_id, ss.name AS section_name,
                        ay.label AS academic_year_label,
@@ -162,7 +149,7 @@ public class StudentReadRepository {
                 ) photo_review ON TRUE
                 WHERE
                 """)
-                .append(deleted ? " s.deleted_at IS NOT NULL" : " s.deleted_at IS NULL")
+                .append(" s.deleted_at IS NULL")
                 .append("""
                   AND s.school_id = :schoolId
                 """);
@@ -222,15 +209,13 @@ public class StudentReadRepository {
                     "feeStatus", rs.getString("fee_status"),
                     "profileVerificationStatus", rs.getString("profile_verification_status"),
                     "photoVerificationStatus", rs.getString("photo_verification_status"),
-                    "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class),
-                    "deletedReason", rs.getString("deleted_reason"),
                     "attendancePercent", attendance == null ? 0 : round(attendance));
         }).list();
     }
 
     private WorkspaceStudentStats workspaceStudentStats(
             Long schoolId, String className, String sectionName, String feeStatus,
-            String search, boolean deleted) {
+            String search) {
         String searchTerm = str(search, "").trim().toLowerCase(Locale.ROOT);
         boolean needsStructureJoin = !blankOrAll(className)
                 || !blankOrAll(sectionName)
@@ -247,7 +232,7 @@ public class StudentReadRepository {
                     """);
         }
         sql.append(" WHERE")
-                .append(deleted ? " s.deleted_at IS NOT NULL" : " s.deleted_at IS NULL")
+                .append(" s.deleted_at IS NULL")
                 .append(" AND s.school_id = :schoolId");
         if (!blankOrAll(className)) sql.append(" AND lower(sc.name) = lower(:className)");
         if (!blankOrAll(sectionName)) sql.append(" AND lower(ss.name) = lower(:sectionName)");
@@ -293,7 +278,6 @@ public class StudentReadRepository {
                        s.admission_date, s.father_name, s.father_contact, s.mother_name, s.phone, s.address,
                        s.house_number, s.street, s.locality, s.city, s.state, s.pin_code,
                        s.photo_url, s.fee_status, s.attendance_percent, s.school_id, s.class_id, s.section_id,
-                       s.deleted_at, s.deleted_reason,
                        sc.name AS class_name, ss.name AS section_name, ay.label AS academic_year_label,
                        profile_review.status AS profile_verification_status,
                        photo_review.status AS photo_verification_status
@@ -319,7 +303,7 @@ public class StudentReadRepository {
                     ORDER BY i.updated_at DESC NULLS LAST, i.created_at DESC NULLS LAST, i.id DESC
                     LIMIT 1
                 ) photo_review ON TRUE
-                WHERE s.id = :id
+                WHERE s.id = :id AND s.deleted_at IS NULL
                 """)
                 .param("id", id)
                 .query((rs, rowNum) -> {
@@ -362,8 +346,6 @@ public class StudentReadRepository {
                             "state", rs.getString("state"),
                             "pinCode", rs.getString("pin_code"),
                             "full", rs.getString("address")));
-                    detail.put("deletedAt", rs.getObject("deleted_at", OffsetDateTime.class));
-                    detail.put("deletedReason", rs.getString("deleted_reason"));
                     detail.put("fee", currentFeeForStudent(id));
                     return detail;
                 })
@@ -695,14 +677,6 @@ public class StudentReadRepository {
 
     public Long schoolIdForStudent(Long id) {
         return jdbc.sql("SELECT school_id FROM student.students WHERE id = :id AND deleted_at IS NULL")
-                .param("id", id)
-                .query(Long.class)
-                .optional()
-                .orElseThrow(() -> new IllegalArgumentException("student not found"));
-    }
-
-    public Long schoolIdForStudentIncludingDeleted(Long id) {
-        return jdbc.sql("SELECT school_id FROM student.students WHERE id = :id")
                 .param("id", id)
                 .query(Long.class)
                 .optional()
@@ -1060,159 +1034,157 @@ public class StudentReadRepository {
     }
 
     @Transactional
-    public Map<String, Object> deleteStudent(Long id, Map<String, Object> request) {
+    public Map<String, Object> deleteStudent(Long id, String confirmationAdmissionNumber) {
         Map<String, Object> current = jdbc.sql("""
-                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no, admission_no, deleted_at
+                SELECT id, school_id, admission_no, photo_url
                 FROM student.students
-                WHERE id = :id
+                WHERE id = :id AND deleted_at IS NULL
+                FOR UPDATE
                 """)
                 .param("id", id)
                 .query((rs, n) -> row(
                         "id", rs.getLong("id"),
                         "schoolId", rs.getLong("school_id"),
-                        "academicYearId", rs.getString("academic_year_id"),
-                        "classId", rs.getString("class_id"),
-                        "sectionId", rs.getString("section_id"),
-                        "rollNo", rs.getString("roll_no"),
                         "admissionNumber", rs.getString("admission_no"),
-                        "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class)))
+                        "photoUrl", rs.getString("photo_url")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
-        if (current.get("deletedAt") != null) {
-            throw new IllegalArgumentException("Student is already deleted");
-        }
         String expectedAdmissionNumber = str(current.get("admissionNumber"), "DELETE").trim();
-        String confirmationAdmissionNumber = str(request.get("confirmationAdmissionNumber"), "").trim();
+        confirmationAdmissionNumber = str(confirmationAdmissionNumber, "").trim();
         if (confirmationAdmissionNumber.isBlank()) {
             throw new IllegalArgumentException("Admission number confirmation is required");
         }
         if (!expectedAdmissionNumber.equals(confirmationAdmissionNumber)) {
             throw new IllegalArgumentException("Admission number confirmation does not match");
         }
-        long completedAcademicYears = completedAcademicYearCount(id);
-        boolean historyPreserved = completedAcademicYears > 0;
-        String reason = str(request.get("reason"), "Deleted from Students tab");
-        jdbc.sql("""
-                UPDATE student.students
-                SET deleted_at = now(),
-                    deleted_by = :deletedBy,
-                    deleted_reason = :reason,
-                    updated_at = now(),
-                    version = version + 1
-                WHERE id = :id
-                """)
-                .param("id", id)
-                .param("deletedBy", actorId() == null ? null : String.valueOf(actorId()))
-                .param("reason", reason)
-                .update();
-        closeActiveEnrollment(id, reason);
-        recordEnrollment(id, longValue(current.get("schoolId"), null),
-                str(current.get("academicYearId"), currentAcademicYearId(longValue(current.get("schoolId"), null))),
-                str(current.get("classId"), ""), str(current.get("sectionId"), ""),
-                str(current.get("rollNo"), ""), "DELETED", reason, "STUDENT_DELETE", String.valueOf(id));
-        emitStudentUpserted(id);
-        return row("id", id, "deleted", true, "reason", reason,
-                "completedAcademicYears", completedAcademicYears,
-                "historyPreserved", historyPreserved);
-    }
-
-    @Transactional
-    public Map<String, Object> restoreStudent(Long id, Map<String, Object> request) {
-        Map<String, Object> current = jdbc.sql("""
-                SELECT id, school_id, academic_year_id, class_id, section_id, roll_no, deleted_at
-                FROM student.students
-                WHERE id = :id
-                """)
-                .param("id", id)
-                .query((rs, n) -> row(
-                        "id", rs.getLong("id"),
-                        "schoolId", rs.getLong("school_id"),
-                        "academicYearId", rs.getString("academic_year_id"),
-                        "classId", rs.getString("class_id"),
-                        "sectionId", rs.getString("section_id"),
-                        "rollNo", rs.getString("roll_no"),
-                        "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class)))
-                .optional()
-                .orElseThrow(() -> new IllegalArgumentException("Student not found"));
-        if (current.get("deletedAt") == null) {
-            throw new IllegalArgumentException("Student is not archived");
-        }
-
-        String reason = str(request.get("reason"), "Restored by superadmin");
-        jdbc.sql("""
-                UPDATE student.students
-                SET deleted_at = NULL,
-                    deleted_by = NULL,
-                    deleted_reason = NULL,
-                    updated_at = now(),
-                    version = version + 1
-                WHERE id = :id
-                  AND deleted_at IS NOT NULL
-                """)
-                .param("id", id)
-                .update();
-
-        String restoredEnrollmentId = jdbc.sql("""
-                SELECT id
-                FROM student.student_enrollments
-                WHERE student_id = :id
-                  AND status = 'DELETED'
-                ORDER BY created_at DESC, id DESC
-                LIMIT 1
-                """)
+        Set<String> photoKeys = new LinkedHashSet<>();
+        String currentPhoto = str(current.get("photoUrl"), "").trim();
+        if (!currentPhoto.isBlank()) photoKeys.add(currentPhoto);
+        photoKeys.addAll(jdbc.sql("""
+                        SELECT photo_key
+                        FROM (
+                            SELECT prior_photo_key AS photo_key
+                            FROM student.photo_import_rows WHERE student_id = :id
+                            UNION
+                            SELECT final_photo_key AS photo_key
+                            FROM student.photo_import_rows WHERE student_id = :id
+                        ) photos
+                        WHERE photo_key IS NOT NULL AND photo_key <> ''
+                        """)
                 .param("id", id)
                 .query(String.class)
-                .optional()
-                .orElse(null);
-        if (restoredEnrollmentId != null) {
-            jdbc.sql("""
-                    UPDATE student.student_enrollments
-                    SET status = 'ACTIVE',
-                        effective_to = NULL,
-                        reason = :reason,
-                        updated_at = now()
-                    WHERE id = :enrollmentId
-                    """)
-                    .param("enrollmentId", restoredEnrollmentId)
-                    .param("reason", reason)
-                    .update();
-        } else {
-            Long activeCount = jdbc.sql("""
-                    SELECT count(*)
-                    FROM student.student_enrollments
-                    WHERE student_id = :id
-                      AND status = 'ACTIVE'
-                      AND effective_to IS NULL
-                    """)
-                    .param("id", id)
-                    .query(Long.class)
-                    .single();
-            if (activeCount == null || activeCount == 0) {
-                recordEnrollment(id, longValue(current.get("schoolId"), null),
-                        str(current.get("academicYearId"), currentAcademicYearId(longValue(current.get("schoolId"), null))),
-                        str(current.get("classId"), ""), str(current.get("sectionId"), ""),
-                        str(current.get("rollNo"), ""), "ACTIVE", reason, "STUDENT_RESTORE", String.valueOf(id));
-            }
+                .list());
+        List<String> guardianIds = jdbc.sql("""
+                        SELECT guardian_id FROM student.student_guardians WHERE student_id = :id
+                        """)
+                .param("id", id)
+                .query(String.class)
+                .list();
+        List<String> attendanceDailyIds = jdbc.sql("""
+                        SELECT DISTINCT attendance_daily_id
+                        FROM attendance.attendance_student_records
+                        WHERE student_id = :id
+                        """)
+                .param("id", id)
+                .query(String.class)
+                .list();
+
+        deleteByStudentId("attendance.absentee_notifications", id);
+        deleteByStudentId("attendance.attendance_student_records", id);
+        for (String attendanceDailyId : attendanceDailyIds) {
+            refreshAttendanceDailyCounts(attendanceDailyId);
         }
-        emitStudentUpserted(id);
-        return row("id", id, "restored", true, "reason", reason,
-                "restoredEnrollmentId", restoredEnrollmentId);
+        deleteByStudentId("fee.payment_records", id);
+        deleteByStudentId("fee.fee_assignments", id);
+        deleteByStudentId("student.student_review_items", id);
+        deleteByStudentId("student.photo_import_rows", id);
+        jdbc.sql("DELETE FROM student.import_rows WHERE applied_student_id = :id")
+                .param("id", id).update();
+        deleteByStudentId("student.student_promotion_batch_items", id);
+        deleteByStudentId("student.student_enrollments", id);
+        deleteByStudentId("student.student_consent_events", id);
+        deleteByStudentId("student.student_guardians", id);
+        int deleted = jdbc.sql("DELETE FROM student.students WHERE id = :id AND deleted_at IS NULL")
+                .param("id", id).update();
+        if (deleted != 1) {
+            throw new IllegalArgumentException("Student not found");
+        }
+        for (String guardianId : guardianIds) {
+            jdbc.sql("""
+                            DELETE FROM student.guardians g
+                            WHERE g.id = :guardianId
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM student.student_guardians sg WHERE sg.guardian_id = g.id
+                              )
+                            """)
+                    .param("guardianId", guardianId)
+                    .update();
+        }
+        Long schoolId = longValue(current.get("schoolId"), null);
+        outbox.append("student.deleted.v1", "StudentDeleted:" + id, "Student", String.valueOf(id),
+                schoolId, row("id", id, "schoolId", schoolId));
+        deletePhotosAfterCommit(photoKeys);
+        return row("id", id, "deleted", true, "permanent", true);
+    }
+
+    private void deleteByStudentId(String qualifiedTable, Long studentId) {
+        // All callers pass compile-time constants; never accept a request value as a table name.
+        jdbc.sql("DELETE FROM " + qualifiedTable + " WHERE student_id = :id")
+                .param("id", studentId)
+                .update();
+    }
+
+    private void refreshAttendanceDailyCounts(String attendanceDailyId) {
+        jdbc.sql("""
+                        UPDATE attendance.attendance_daily d
+                        SET total_enrolled = counts.total_enrolled,
+                            present_count = counts.present_count,
+                            absent_count = counts.absent_count,
+                            late_count = counts.late_count,
+                            leave_count = counts.leave_count,
+                            updated_at = now()
+                        FROM (
+                            SELECT count(*)::integer AS total_enrolled,
+                                   count(*) FILTER (WHERE status = 'PRESENT')::integer AS present_count,
+                                   count(*) FILTER (WHERE status = 'ABSENT')::integer AS absent_count,
+                                   count(*) FILTER (WHERE status = 'LATE')::integer AS late_count,
+                                   count(*) FILTER (WHERE status = 'LEAVE')::integer AS leave_count
+                            FROM attendance.attendance_student_records
+                            WHERE attendance_daily_id = :attendanceDailyId
+                        ) counts
+                        WHERE d.id = :attendanceDailyId
+                        """)
+                .param("attendanceDailyId", attendanceDailyId)
+                .update();
+    }
+
+    private void deletePhotosAfterCommit(Set<String> photoKeys) {
+        if (photoKeys.isEmpty()) return;
+        Runnable cleanup = () -> photoKeys.forEach(photoStorage::deleteStoredPhoto);
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cleanup.run();
+                }
+            });
+        } else {
+            cleanup.run();
+        }
     }
 
     public Map<String, Object> studentHistory(Long id) {
         Map<String, Object> student = jdbc.sql("""
-                SELECT id, school_id, admission_no, full_name, deleted_at, deleted_reason
+                SELECT id, school_id, admission_no, full_name
                 FROM student.students
-                WHERE id = :id
+                WHERE id = :id AND deleted_at IS NULL
                 """)
                 .param("id", id)
                 .query((rs, n) -> row(
                         "id", rs.getLong("id"),
                         "schoolId", rs.getLong("school_id"),
                         "admissionNumber", rs.getString("admission_no"),
-                        "fullName", rs.getString("full_name"),
-                        "deletedAt", rs.getObject("deleted_at", OffsetDateTime.class),
-                        "deletedReason", rs.getString("deleted_reason")))
+                        "fullName", rs.getString("full_name")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
         List<Map<String, Object>> enrollments = jdbc.sql("""
@@ -1361,8 +1333,7 @@ public class StudentReadRepository {
         return row("student", student, "enrollments", enrollments, "imports", importRows, "promotions", promotions,
                 "feeAssignments", feeAssignments, "feePayments", feePayments,
                 "historyYears", historyYears(enrollments, promotions, feeAssignments, feePayments),
-                "completedAcademicYears", completedAcademicYears,
-                "historyPreserved", student.get("deletedAt") == null || completedAcademicYears > 0);
+                "completedAcademicYears", completedAcademicYears);
     }
 
     private Map<String, Object> currentFeeForStudent(Long studentId) {

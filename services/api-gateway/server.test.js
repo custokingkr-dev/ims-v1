@@ -3,6 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const http = require('node:http');
+const { Readable } = require('node:stream');
 const { context, trace } = require('@opentelemetry/api');
 
 for (const name of [
@@ -52,6 +54,7 @@ const {
   verifyJwtLocally,
   principalFromClaims,
   authenticate,
+  proxyToUrl,
 } = require('./server');
 
 test.after(() => {
@@ -306,7 +309,8 @@ test('preflight from an allow-listed origin is approved with credentials', async
     method: 'OPTIONS',
     headers: {
       origin: 'https://app.custoking.com',
-      'access-control-request-method': 'GET',
+      'access-control-request-method': 'DELETE',
+      'access-control-request-headers': 'x-student-delete-confirmation',
     },
   });
   await response.text();
@@ -314,6 +318,7 @@ test('preflight from an allow-listed origin is approved with credentials', async
   assert.equal(response.status, 204);
   assert.equal(response.headers.get('access-control-allow-origin'), 'https://app.custoking.com');
   assert.equal(response.headers.get('access-control-allow-credentials'), 'true');
+  assert.match(response.headers.get('access-control-allow-headers') || '', /X-Student-Delete-Confirmation/i);
   assert.notEqual(response.headers.get('access-control-allow-origin'), '*');
 });
 
@@ -375,6 +380,71 @@ test('bearer parsing is strict and deterministic for untrusted authorization hea
   assert.equal(parseBearerToken('Bearer\ttoken'), null);
   assert.equal(parseBearerToken(`Bearer ${' '.repeat(100_000)}`), null);
   assert.equal(parseBearerToken(undefined), null);
+});
+
+test('proxy preserves the permanent-delete confirmation header and authenticated school context', async () => {
+  let received = null;
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = [];
+    for await (const chunk of req) chunks.push(chunk);
+    received = {
+      method: req.method,
+      path: req.url,
+      confirmation: req.headers['x-student-delete-confirmation'],
+      serviceToken: req.headers['x-student-service-token'],
+      schoolId: req.headers['x-authenticated-school-id'],
+      permissions: req.headers['x-authenticated-permissions'],
+      body: Buffer.concat(chunks).toString('utf8'),
+    };
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{"deleted":true}');
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+
+  try {
+    const req = Readable.from([]);
+    req.method = 'DELETE';
+    req.headers = {
+      'x-student-delete-confirmation': 'ADM-42',
+    };
+    req.socket = { remoteAddress: '127.0.0.1' };
+
+    const responseChunks = [];
+    const responseHeaders = {};
+    const res = {
+      statusCode: 0,
+      setHeader(name, value) { responseHeaders[name.toLowerCase()] = value; },
+      write(chunk) { responseChunks.push(Buffer.from(chunk)); },
+      end() {},
+    };
+    const address = upstream.address();
+    const target = new URL(`http://127.0.0.1:${address.port}/api/v1/students/42`);
+
+    await proxyToUrl(req, res, target, 'delete-request', 'student', {
+      userId: 7,
+      email: 'admin@example.test',
+      role: 'ADMIN',
+      branchId: 10,
+      zoneId: null,
+      permissions: ['student:delete'],
+      operatorSchools: [],
+    });
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(responseHeaders['content-type'], 'application/json');
+    assert.deepEqual(JSON.parse(Buffer.concat(responseChunks).toString('utf8')), { deleted: true });
+    assert.deepEqual(received, {
+      method: 'DELETE',
+      path: '/api/v1/students/42',
+      confirmation: 'ADM-42',
+      serviceToken: 'student_service_token-test',
+      schoolId: '10',
+      permissions: 'student:delete',
+      body: '',
+    });
+  } finally {
+    await new Promise((resolve) => upstream.close(resolve));
+  }
 });
 
 test('proxy targets retain the configured upstream origin and canonicalize untrusted path/query data', () => {

@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
+import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -30,13 +31,14 @@ class StudentOutboxEmissionIntegrationTest {
     static JdbcClient jdbc;
     static SchoolStructureReadRepository schoolRepo;
     static StudentReadRepository studentRepo;
+    static StudentPhotoStorage photoStorage;
 
     @BeforeAll
     static void setUp() throws Exception {
         Assumptions.assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker required");
         PG = new PostgreSQLContainer<>("postgres:16").withUsername("owner").withPassword("owner");
         PG.start();
-        for (String schema : new String[] {"tenant_school", "student", "fee"}) {
+        for (String schema : new String[] {"tenant_school", "student", "fee", "attendance"}) {
             Flyway.configure()
                     .dataSource(PG.getJdbcUrl(), "owner", "owner")
                     .schemas(schema)
@@ -49,9 +51,8 @@ class StudentOutboxEmissionIntegrationTest {
         jdbc = JdbcClient.create(dataSource);
         OutboxWriter outbox = new OutboxWriter(jdbc, new ObjectMapper(), "tenant_school");
         schoolRepo = new SchoolStructureReadRepository(jdbc, outbox);
-        studentRepo = new StudentReadRepository(jdbc,
-                org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage.class),
-                outbox);
+        photoStorage = org.mockito.Mockito.mock(StudentPhotoStorage.class);
+        studentRepo = new StudentReadRepository(jdbc, photoStorage, outbox);
     }
 
     @AfterAll
@@ -62,12 +63,27 @@ class StudentOutboxEmissionIntegrationTest {
     @BeforeEach
     void resetData() throws Exception {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
+            org.mockito.Mockito.reset(photoStorage);
+            st.execute("DELETE FROM attendance.absentee_notifications");
+            st.execute("DELETE FROM attendance.attendance_student_records");
+            st.execute("DELETE FROM attendance.attendance_daily");
             st.execute("DELETE FROM fee.payment_records");
             st.execute("DELETE FROM fee.fee_assignments");
             st.execute("DELETE FROM fee.fee_items");
             st.execute("DELETE FROM fee.fee_bands");
             st.execute("DELETE FROM student.student_review_items");
             st.execute("DELETE FROM student.student_review_campaigns");
+            st.execute("DELETE FROM student.photo_import_rows");
+            st.execute("DELETE FROM student.photo_import_column_mappings");
+            st.execute("DELETE FROM student.photo_import_sources");
+            st.execute("DELETE FROM student.photo_import_batches");
+            st.execute("DELETE FROM student.student_consent_events");
+            st.execute("DELETE FROM student.student_guardians");
+            st.execute("DELETE FROM student.guardians");
+            st.execute("DELETE FROM student.student_promotion_batch_items");
+            st.execute("DELETE FROM student.student_promotion_batches");
+            st.execute("DELETE FROM student.import_rows");
+            st.execute("DELETE FROM student.import_batches");
             st.execute("DELETE FROM student.student_enrollments");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.outbox_events");
@@ -281,7 +297,7 @@ class StudentOutboxEmissionIntegrationTest {
                 .param("id", photoItem).query(String.class).single()).isEqualTo("COMPLETED");
 
         Map<String, Object> listRow = ((java.util.List<Map<String, Object>>) studentRepo
-                .workspaceStudents(schoolId, "All", "All", "All", 0, 50, false)
+                .workspaceStudents(schoolId, "All", "All", "All", 0, 50)
                 .get("items")).get(0);
         assertThat(listRow).containsEntry("profileVerificationStatus", "PENDING")
                 .containsEntry("photoVerificationStatus", "COMPLETED");
@@ -312,6 +328,18 @@ class StudentOutboxEmissionIntegrationTest {
             st.execute("INSERT INTO fee.payment_records(id, amount, mode, paid_at, receipt_number, student_id, assignment_id, version, school_id, created_at) " +
                     "VALUES ('payment-fee-history', 125000, 'Cash', now(), 'RCPT-FEE-1', " +
                     id + ", 'assignment-fee-history', 0, " + schoolId + ", now())");
+            st.execute("UPDATE student.students SET photo_url = 'schools/demo/students/" + id + "/photos/photo.jpg' WHERE id = " + id);
+            st.execute("INSERT INTO attendance.attendance_daily(id, attendance_date, total_enrolled, present_count, absent_count, locked, school_class_id, section_id, academic_year_id, school_id) " +
+                    "VALUES ('daily-delete', DATE '2026-08-13', 2, 1, 1, false, 'c1', 's1', 'ay1', " + schoolId + ")");
+            st.execute("INSERT INTO attendance.attendance_student_records(id, attendance_daily_id, student_id, school_id, attendance_date, academic_year_id, class_id, section_id, status) " +
+                    "VALUES ('record-delete', 'daily-delete', " + id + ", " + schoolId + ", DATE '2026-08-13', 'ay1', 'c1', 's1', 'ABSENT'), " +
+                    "('record-keep', 'daily-delete', 999999, " + schoolId + ", DATE '2026-08-13', 'ay1', 'c1', 's1', 'PRESENT')");
+            st.execute("INSERT INTO attendance.absentee_notifications(id, school_id, student_id, class_id, section_id, academic_year_id, attendance_date, parent_contact, message) " +
+                    "VALUES ('notification-delete', " + schoolId + ", " + id + ", 'c1', 's1', 'ay1', DATE '2026-08-13', '9876500000', 'Absent')");
+            st.execute("INSERT INTO student.student_review_campaigns(id, school_id, review_type, title, status) " +
+                    "VALUES ('campaign-delete', " + schoolId + ", 'PROFILE_VERIFICATION', 'Delete test', 'ACTIVE')");
+            st.execute("INSERT INTO student.student_review_items(id, campaign_id, student_id, school_id) " +
+                    "VALUES ('review-delete', 'campaign-delete', " + id + ", " + schoolId + ")");
         }
 
         Map<String, Object> history = studentRepo.studentHistory(id);
@@ -329,9 +357,7 @@ class StudentOutboxEmissionIntegrationTest {
         assertThat(detailFee.get("assigned")).isEqualTo(true);
         assertThat(detailFee.get("dueAmountPaise")).isEqualTo(375000L);
 
-        assertThatThrownBy(() -> studentRepo.deleteStudent(id, Map.of(
-                "reason", "Transferred",
-                "confirmationAdmissionNumber", "WRONG-ADM")))
+        assertThatThrownBy(() -> studentRepo.deleteStudent(id, "WRONG-ADM"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("does not match");
         assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id AND deleted_at IS NULL")
@@ -339,47 +365,49 @@ class StudentOutboxEmissionIntegrationTest {
                 .query(Long.class)
                 .single()).isEqualTo(1L);
 
-        studentRepo.deleteStudent(id, Map.of(
-                "reason", "Transferred",
-                "confirmationAdmissionNumber", "ADM-FEE-1"));
-        Map<String, Object> deletedHistory = studentRepo.studentHistory(id);
-        Map<String, Object> deletedStudent = (Map<String, Object>) deletedHistory.get("student");
-        Map<String, Object> deletedPayment = ((java.util.List<Map<String, Object>>) deletedHistory.get("feePayments")).get(0);
-        Map<String, Object> activeList = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, false);
-        Map<String, Object> archivedList = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, true);
-        Map<String, Object> archivedDetail = studentRepo.workspaceStudentDetail(id);
+        Map<String, Object> deleted = studentRepo.deleteStudent(id, "ADM-FEE-1");
 
-        assertThat(deletedStudent.get("deletedReason")).isEqualTo("Transferred");
-        assertThat(deletedPayment.get("amountPaise")).isEqualTo(125000L);
-        assertThat(deletedPayment.get("receiptNumber")).isEqualTo("RCPT-FEE-1");
-        assertThat((java.util.List<Map<String, Object>>) activeList.get("items")).isEmpty();
-        assertThat((java.util.List<Map<String, Object>>) archivedList.get("items")).hasSize(1);
-        assertThat(archivedDetail.get("deletedReason")).isEqualTo("Transferred");
+        assertThat(deleted).containsEntry("deleted", true).containsEntry("permanent", true);
+        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id")
+                .param("id", id).query(Long.class).single()).isZero();
         assertThat(jdbc.sql("SELECT count(*) FROM fee.fee_assignments WHERE student_id = :id")
                 .param("id", id)
-                .query(Long.class)
-                .single()).isEqualTo(1L);
+                .query(Long.class).single()).isZero();
         assertThat(jdbc.sql("SELECT count(*) FROM fee.payment_records WHERE student_id = :id")
-                .param("id", id)
-                .query(Long.class)
-                .single()).isEqualTo(1L);
-
-        Map<String, Object> restored = studentRepo.restoreStudent(id, Map.of("reason", "Accidental delete"));
-        Map<String, Object> restoredActiveList = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, false);
-        Map<String, Object> restoredArchivedList = studentRepo.workspaceStudents(schoolId, "All", "All", "All", 0, 50, true);
-        Map<String, Object> restoredDetail = studentRepo.workspaceStudentDetail(id);
-
-        assertThat(restored.get("restored")).isEqualTo(true);
-        assertThat((java.util.List<Map<String, Object>>) restoredActiveList.get("items")).hasSize(1);
-        assertThat((java.util.List<Map<String, Object>>) restoredArchivedList.get("items")).isEmpty();
-        assertThat(restoredDetail.get("deletedReason")).isNull();
-        assertThat(jdbc.sql("SELECT count(*) FROM student.student_enrollments WHERE student_id = :id AND status = 'ACTIVE'")
-                .param("id", id)
-                .query(Long.class)
-                .single()).isEqualTo(1L);
-        assertThat(jdbc.sql("SELECT count(*) FROM student.students WHERE id = :id AND deleted_at IS NULL")
-                .param("id", id)
-                .query(Long.class)
-                .single()).isEqualTo(1L);
+                .param("id", id).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM student.student_enrollments WHERE student_id = :id")
+                .param("id", id).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM student.student_review_items WHERE student_id = :id")
+                .param("id", id).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM attendance.attendance_student_records WHERE student_id = :id")
+                .param("id", id).query(Long.class).single()).isZero();
+        assertThat(jdbc.sql("SELECT count(*) FROM attendance.absentee_notifications WHERE student_id = :id")
+                .param("id", id).query(Long.class).single()).isZero();
+        Map<String, Object> daily = jdbc.sql("""
+                        SELECT total_enrolled, present_count, absent_count
+                        FROM attendance.attendance_daily WHERE id = 'daily-delete'
+                        """)
+                .query((rs, n) -> Map.<String, Object>of(
+                        "total", rs.getInt("total_enrolled"),
+                        "present", rs.getInt("present_count"),
+                        "absent", rs.getInt("absent_count")))
+                .single();
+        assertThat(daily).containsEntry("total", 1).containsEntry("present", 1).containsEntry("absent", 0);
+        Map<String, Object> deletionEvent = jdbc.sql("""
+                        SELECT event_type, payload::text AS payload
+                        FROM tenant_school.outbox_events
+                        WHERE aggregate_type = 'Student' AND aggregate_id = :id
+                          AND event_type = 'student.deleted.v1'
+                        """)
+                .param("id", id.toString())
+                .query((rs, n) -> Map.<String, Object>of(
+                        "eventType", rs.getString("event_type"),
+                        "payload", rs.getString("payload")))
+                .single();
+        assertThat(deletionEvent.get("payload").toString())
+                .contains("\"id\"")
+                .doesNotContain("ADM-FEE-1", "Fee Linked");
+        org.mockito.Mockito.verify(photoStorage)
+                .deleteStoredPhoto("schools/demo/students/" + id + "/photos/photo.jpg");
     }
 }

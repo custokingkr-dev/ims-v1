@@ -41,6 +41,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -53,6 +54,7 @@ import java.util.zip.ZipOutputStream;
 @RequestMapping("/api/v1/students")
 public class StudentReadController {
 
+    private static final String DELETE_CONFIRMATION_HEADER = "X-Student-Delete-Confirmation";
     private final StudentReadRepository students;
     private final ImageUrlFetcher fetcher;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -89,7 +91,6 @@ public class StudentReadController {
             @RequestParam(required = false) String feeStatus,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
@@ -98,9 +99,9 @@ public class StudentReadController {
         requireStudentModule(scope);
         String query = searchQuery(q, search);
         if (StringUtils.hasText(query)) {
-            return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size, deleted);
+            return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size);
         }
-        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
+        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
     }
 
     @GetMapping("/{id}")
@@ -109,7 +110,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
-        Long schoolId = studentSchoolId(id, true);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         return students.find(id)
@@ -125,7 +126,6 @@ public class StudentReadController {
             @RequestParam(required = false) String feeStatus,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String search,
-            @RequestParam(defaultValue = "false") boolean deleted,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "500") int size) {
         requireToken(token, "student:read");
@@ -134,9 +134,9 @@ public class StudentReadController {
         requireStudentModule(scope);
         String query = searchQuery(q, search);
         if (StringUtils.hasText(query)) {
-            return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size, deleted);
+            return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size);
         }
-        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size, deleted);
+        return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
     }
 
     private String searchQuery(String q, String search) {
@@ -149,7 +149,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
-        Long schoolId = studentSchoolId(id, true);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         return execute(() -> students.workspaceStudentDetail(id));
@@ -161,7 +161,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
-        Long schoolId = studentSchoolId(id, true);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         return students.studentPhotoContent(id)
@@ -218,7 +218,7 @@ public class StudentReadController {
             @RequestParam("file") MultipartFile file) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:update");
-        Long schoolId = studentSchoolId(id, false);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         byte[] data;
@@ -234,26 +234,14 @@ public class StudentReadController {
     public Map<String, Object> delete(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> body) {
+            @RequestHeader(value = DELETE_CONFIRMATION_HEADER, required = false) String encodedConfirmation) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:delete");
-        Long schoolId = studentSchoolId(id, false);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
-        return execute(() -> students.deleteStudent(id, body == null ? Map.of() : body));
-    }
-
-    @PostMapping("/{id}/restore")
-    public Map<String, Object> restore(
-            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
-            @PathVariable Long id,
-            @RequestBody(required = false) Map<String, Object> body) {
-        requireToken(token, "student:write");
-        TenantScope.requireSuperAdmin();
-        Long schoolId = studentSchoolId(id, true);
-        TenantScope.resolveSchoolId(schoolId);
-        requireStudentModule(schoolId);
-        return execute(() -> students.restoreStudent(id, body == null ? Map.of() : body));
+        String confirmation = decodeDeleteConfirmation(encodedConfirmation);
+        return students.deleteStudent(id, confirmation);
     }
 
     @GetMapping("/{id}/history")
@@ -262,7 +250,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
-        Long schoolId = studentSchoolId(id, true);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         return execute(() -> students.studentHistory(id));
@@ -275,7 +263,7 @@ public class StudentReadController {
             @RequestBody Map<String, Object> body) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:update");
-        Long schoolId = studentSchoolId(id, false);
+        Long schoolId = studentSchoolId(id);
         TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(schoolId);
         String url = body.get("url") == null ? "" : String.valueOf(body.get("url"));
@@ -555,7 +543,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
-        Long schoolId = studentSchoolId(id, false);
+        Long schoolId = studentSchoolId(id);
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
         return execute(() -> students.studentVerificationSummary(id, scope));
@@ -567,7 +555,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:update");
-        Long schoolId = studentSchoolId(id, false);
+        Long schoolId = studentSchoolId(id);
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
         Long actorId = TenantContext.get().userId();
@@ -580,7 +568,7 @@ public class StudentReadController {
             @PathVariable Long id) {
         requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:update");
-        Long schoolId = studentSchoolId(id, false);
+        Long schoolId = studentSchoolId(id);
         Long scope = TenantScope.resolveSchoolId(schoolId);
         requireStudentModule(scope);
         Long actorId = TenantContext.get().userId();
@@ -715,11 +703,22 @@ public class StudentReadController {
         }
     }
 
-    private Long studentSchoolId(Long id, boolean includeDeleted) {
+    private Long studentSchoolId(Long id) {
         try {
-            return includeDeleted ? students.schoolIdForStudentIncludingDeleted(id) : students.schoolIdForStudent(id);
+            return students.schoolIdForStudent(id);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "student not found", ex);
+        }
+    }
+
+    private String decodeDeleteConfirmation(String encodedConfirmation) {
+        if (!StringUtils.hasText(encodedConfirmation)) {
+            throw new IllegalArgumentException("Admission number confirmation is required");
+        }
+        try {
+            return URLDecoder.decode(encodedConfirmation.trim(), StandardCharsets.UTF_8).trim();
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Admission number confirmation is invalid", ex);
         }
     }
 

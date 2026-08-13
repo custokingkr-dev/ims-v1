@@ -59,6 +59,11 @@ class StudentDimensionProjectionIntegrationTest {
                 .schemas("reporting").defaultSchema("reporting")
                 .locations("classpath:db/migration/reporting")
                 .load().migrate();
+        Flyway.configure()
+                .dataSource(PG.getJdbcUrl(), "owner", "owner")
+                .schemas("notification").defaultSchema("notification")
+                .locations("classpath:db/migration/notification")
+                .load().migrate();
 
         HikariDataSource pool = new HikariDataSource();
         pool.setJdbcUrl(PG.getJdbcUrl());
@@ -84,8 +89,9 @@ class StudentDimensionProjectionIntegrationTest {
         processor = new ReportingEventInboxProcessor(inbox, commands, java.util.List.of(
                 new StudentDimensionProjector(dims, objectMapper)), 50);
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
-            st.execute("TRUNCATE reporting.reporting_event_inbox, reporting.command_center_feed, "
-                    + "reporting.dim_student");
+            st.execute("TRUNCATE notification.notification_logs, reporting.event_student_contributions, "
+                    + "reporting.academic_events, reporting.fact_payment, reporting.fact_fee_assignment, "
+                    + "reporting.reporting_event_inbox, reporting.command_center_feed, reporting.dim_student CASCADE");
         }
     }
 
@@ -101,6 +107,26 @@ class StudentDimensionProjectionIntegrationTest {
                 eventId,
                 null,
                 "student.upserted.v1",
+                "v1",
+                "Student",
+                String.valueOf(studentId),
+                schoolId,
+                null,
+                Optional.of(OffsetDateTime.now()),
+                OffsetDateTime.now(),
+                envelope,
+                payload
+        ));
+    }
+
+    private void feedStudentDeletedEvent(String eventId, long studentId, long schoolId) {
+        String payload = "{\"id\":" + studentId + ",\"schoolId\":" + schoolId + "}";
+        String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"student.deleted.v1\","
+                + "\"payload\":" + payload + "}";
+        inbox.record(new ReportingEventInboxRecord(
+                eventId,
+                null,
+                "student.deleted.v1",
                 "v1",
                 "Student",
                 String.valueOf(studentId),
@@ -182,5 +208,43 @@ class StudentDimensionProjectionIntegrationTest {
                         "student dimension events must not create command_center_feed rows");
             }
         }
+    }
+
+    @Test
+    void studentDeletedEventRemovesAllStudentProjections() throws Exception {
+        feedStudentEvent(UUID.randomUUID().toString(), 42L, 7L, "Jane Doe");
+        assertEquals(1, processor.processBatch());
+        jdbcClient.sql("""
+                        INSERT INTO reporting.fact_fee_assignment
+                            (id, student_id, school_id, academic_year_id, net_payable, paid_amount)
+                        VALUES ('assignment-42', 42, 7, 'year-1', 10000, 5000)
+                        """).update();
+        jdbcClient.sql("""
+                        INSERT INTO reporting.fact_payment (id, assignment_id, school_id, student_id, amount)
+                        VALUES ('payment-42', 'assignment-42', 7, 42, 5000)
+                        """).update();
+        jdbcClient.sql("""
+                        INSERT INTO reporting.academic_events (id, school_id, title, event_type)
+                        VALUES ('event-42', 7, 'Trip', 'TRIP')
+                        """).update();
+        jdbcClient.sql("""
+                        INSERT INTO reporting.event_student_contributions
+                            (id, event_id, student_id, school_id)
+                        VALUES ('contribution-42', 'event-42', 42, 7)
+                        """).update();
+        jdbcClient.sql("""
+                        INSERT INTO notification.notification_logs
+                            (id, school_id, student_id, channel, notification_type)
+                        VALUES ('notification-42', 7, 42, 'SMS', 'ATTENDANCE')
+                        """).update();
+
+        feedStudentDeletedEvent(UUID.randomUUID().toString(), 42L, 7L);
+
+        assertEquals(1, processor.processBatch());
+        assertEquals(0L, countStudentRows(42L));
+        assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM reporting.fact_fee_assignment WHERE student_id = 42").query(Long.class).single());
+        assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM reporting.fact_payment WHERE student_id = 42").query(Long.class).single());
+        assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM reporting.event_student_contributions WHERE student_id = 42").query(Long.class).single());
+        assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM notification.notification_logs WHERE student_id = 42").query(Long.class).single());
     }
 }
