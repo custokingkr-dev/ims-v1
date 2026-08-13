@@ -234,7 +234,7 @@ $plan = [ordered]@{
   repositoryId = $repositoryId
   ownerId = $ownerId
   branchProtection = [ordered]@{ branches = @("main", "dev"); requiredStatusChecks = @($RequiredStatusChecks) }
-  devEnvironmentBranchPolicy = @("main", "dev")
+  devEnvironmentBranchPolicy = @("dev")
   workloadIdentity = [ordered]@{
     pool = $WorkloadIdentityPool
     provider = $WorkloadIdentityProvider
@@ -302,18 +302,25 @@ if ($applyEnvironmentPolicyRequested) {
   $existingPolicy = & gh api "repos/$Repository/environments/dev/deployment-branch-policies" 2>$null
   $policyExitCode = $LASTEXITCODE
   $global:LASTEXITCODE = 0
-  $existingBranchNames = @()
+  $existingBranchPolicies = @()
   if ($policyExitCode -eq 0) {
     $policyData = ($existingPolicy -join "`n") | ConvertFrom-Json
-    $existingBranchNames = @($policyData.branch_policies | Where-Object { $_.type -eq "branch" } | ForEach-Object { $_.name })
+    $existingBranchPolicies = @($policyData.branch_policies | Where-Object { $_.type -eq "branch" })
   }
-  foreach ($branch in @("main", "dev")) {
-    if ($existingBranchNames -notcontains $branch) {
-      Invoke-Checked -Command "gh" -Arguments @(
-        "api", "--method", "POST", "repos/$Repository/environments/dev/deployment-branch-policies",
-        "-f", "name=$branch", "-f", "type=branch"
-      )
-    }
+
+  $devBranchPolicy = $existingBranchPolicies | Where-Object { $_.name -eq "dev" } | Select-Object -First 1
+  if (-not $devBranchPolicy) {
+    Invoke-Checked -Command "gh" -Arguments @(
+      "api", "--method", "POST", "repos/$Repository/environments/dev/deployment-branch-policies",
+      "-f", "name=dev", "-f", "type=branch"
+    )
+  }
+
+  foreach ($unexpectedPolicy in @($existingBranchPolicies | Where-Object { $_.name -ne "dev" })) {
+    Invoke-Checked -Command "gh" -Arguments @(
+      "api", "--method", "DELETE",
+      "repos/$Repository/environments/dev/deployment-branch-policies/$($unexpectedPolicy.id)"
+    )
   }
 }
 
