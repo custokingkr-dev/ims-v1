@@ -1,14 +1,14 @@
 'use strict';
 
-const { TraceExporter } = require('@google-cloud/opentelemetry-cloud-trace-exporter');
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-proto');
 const { defaultResource, resourceFromAttributes } = require('@opentelemetry/resources');
 const { NodeSDK } = require('@opentelemetry/sdk-node');
 const { BatchSpanProcessor } = require('@opentelemetry/sdk-trace-base');
+const { GoogleAuth } = require('google-auth-library');
 
 let sdk = null;
 let spanProcessor = null;
-const TRACE_RESOURCE_FILTER = /^(service\.(name|version)|deployment\.environment\.name)$/;
 
 function projectId() {
   return process.env.GCP_PROJECT
@@ -40,6 +40,14 @@ function configuredResourceAttributes(rawAttributes = process.env.OTEL_RESOURCE_
   return attributes;
 }
 
+function tracesEndpoint() {
+  if (process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) {
+    return process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT;
+  }
+  const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'https://telemetry.googleapis.com';
+  return `${endpoint.replace(/\/$/, '')}/v1/traces`;
+}
+
 function startTracing() {
   if (sdk || !tracingEnabled()) {
     return sdk;
@@ -49,18 +57,24 @@ function startTracing() {
     process.env.OTEL_SERVICE_NAME = 'api-gateway';
   }
 
-  const exporterOptions = {
-    ...(projectId() ? { projectId: projectId() } : {}),
-    // The Google exporter intentionally drops non-monitored-resource attributes unless selected.
-    resourceFilter: TRACE_RESOURCE_FILTER,
-  };
-  spanProcessor = new BatchSpanProcessor(new TraceExporter(exporterOptions), {
+  const authenticatedClient = new GoogleAuth({
+    scopes: 'https://www.googleapis.com/auth/cloud-platform',
+  }).getClient();
+  const exporter = new OTLPTraceExporter({
+    url: tracesEndpoint(),
+    async headers() {
+      const rawHeaders = await (await authenticatedClient).getRequestHeaders();
+      return typeof rawHeaders.entries === 'function'
+        ? Object.fromEntries(rawHeaders.entries())
+        : rawHeaders;
+    },
+  });
+  spanProcessor = new BatchSpanProcessor(exporter, {
     exportTimeoutMillis: 4000,
   });
   sdk = new NodeSDK({
-    // TraceExporter enriches spans with the detected Cloud Run resource, but does not preserve
-    // the declarative OTEL resource variables reliably. Merge them explicitly so Trace Explorer
-    // can filter this gateway by service, environment, and deployed version like the Java services.
+    // Preserve the release metadata explicitly so Trace Explorer can filter this gateway by
+    // service, environment, and deployed version like the Java services.
     resource: defaultResource().merge(resourceFromAttributes(configuredResourceAttributes())),
     spanProcessors: [spanProcessor],
     instrumentations: [
@@ -120,5 +134,5 @@ module.exports = {
   tracingEnabled,
   projectId,
   configuredResourceAttributes,
-  TRACE_RESOURCE_FILTER,
+  tracesEndpoint,
 };

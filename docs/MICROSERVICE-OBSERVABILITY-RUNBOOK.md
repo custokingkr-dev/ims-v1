@@ -175,11 +175,12 @@ All deployed services must set these resource attributes in addition to `service
 - `deployment.environment.name=dev|prod`
 - `service.version=<deployed-git-sha>`
 
-The Node gateway explicitly merges these values into the SDK resource before constructing the Google
-Cloud Trace exporter and sets an allowlist `resourceFilter` for `service.name`, `service.version`, and
-`deployment.environment.name`. Do not rely only on process environment discovery: the exporter
-intentionally omits resource attributes that do not map to a monitored resource unless its filter
-selects them.
+The Node gateway explicitly merges these values into the SDK resource and exports OTLP/HTTP protobuf
+to `https://telemetry.googleapis.com/v1/traces`. It uses Application Default Credentials through the
+Google Auth Library to add fresh authorization headers to each export. Do not restore the legacy
+Google Cloud Trace exporter: live Cloud Run calls were rejected as unregistered and its proprietary
+resource transformation dropped the environment/version labels. Google recommends migrating trace
+exporters to the Telemetry (OTLP) API to avoid lossy proprietary transformation.
 
 The gateway creates a lightweight request-boundary span and, only when it is sampled, force-flushes
 the batch processor before completing the HTTP response. This is required with request-based Cloud

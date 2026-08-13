@@ -59,7 +59,7 @@ const {
 const {
   configuredResourceAttributes,
   flushTracing,
-  TRACE_RESOURCE_FILTER,
+  tracesEndpoint,
 } = require('./tracing');
 
 test.after(() => {
@@ -90,10 +90,8 @@ test('gateway tracing preserves service, environment, version, and project resou
     'service.version': 'abc123',
     'service.name': 'api-gateway',
   });
-  assert.equal(TRACE_RESOURCE_FILTER.test('service.name'), true);
-  assert.equal(TRACE_RESOURCE_FILTER.test('service.version'), true);
-  assert.equal(TRACE_RESOURCE_FILTER.test('deployment.environment.name'), true);
-  assert.equal(TRACE_RESOURCE_FILTER.test('host.name'), false);
+  process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT = 'https://telemetry.googleapis.com/v1/traces';
+  assert.equal(tracesEndpoint(), 'https://telemetry.googleapis.com/v1/traces');
 });
 
 test('gateway trace flush is a safe no-op when tracing is disabled', async () => {
