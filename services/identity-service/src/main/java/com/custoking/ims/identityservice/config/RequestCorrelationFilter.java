@@ -42,7 +42,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
         } finally {
             try {
-                spanProcessor.forceFlush().join(5, TimeUnit.SECONDS);
+                spanProcessor.forceFlush().join(7, TimeUnit.SECONDS);
             } finally {
                 MDC.remove("requestId");
             }

@@ -164,10 +164,11 @@ service account `roles/cloudtrace.agent`, `roles/telemetry.tracesWriter`, and
 
 Spring services use boundary-triggered batch flushes because request-based Cloud Run CPU can be
 suspended after an HTTP request or scheduled task. The exporter defaults are a two-second connect
-timeout, four-second request timeout, and five-second force-flush wait. Keep the exporter timeout
-strictly below the flush wait. Do not reduce the exporter to a one-second total deadline: live
-Telemetry API calls exceeded that tail latency and produced intermittent `Failed to export spans`
-errors. Do not enable always-allocated CPU solely for tracing; it adds baseline Cloud Run cost.
+timeout, six-second request timeout, and seven-second force-flush wait. Keep the exporter timeout
+strictly below the flush wait. Do not reduce the exporter below six seconds: live scale-from-zero
+instances exceeded a four-second Telemetry API deadline on their first connection even though
+subsequent exports succeeded. Do not enable always-allocated CPU solely for tracing; it adds
+baseline Cloud Run cost.
 
 All deployed services must set these resource attributes in addition to `service.name`:
 

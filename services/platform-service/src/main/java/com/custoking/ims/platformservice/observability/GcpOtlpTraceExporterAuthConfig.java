@@ -35,7 +35,7 @@ class GcpOtlpTraceExporterAuthConfig {
     /**
      * Cloud Run dev and production use request-based billing, so CPU can be suspended as soon as
      * an HTTP or scheduled task finishes. Flush the batch processor before that execution context
-     * returns instead of leaving the default five-second exporter task stranded without CPU.
+     * returns instead of leaving the exporter task stranded without CPU.
      */
     @Bean
     TaskDecorator otelBatchFlushTaskDecorator(BatchSpanProcessor spanProcessor) {
@@ -57,7 +57,7 @@ class GcpOtlpTraceExporterAuthConfig {
                     runnable.run();
                 }
                 finally {
-                    spanProcessor.forceFlush().join(5, TimeUnit.SECONDS);
+                    spanProcessor.forceFlush().join(7, TimeUnit.SECONDS);
                 }
             };
         }
