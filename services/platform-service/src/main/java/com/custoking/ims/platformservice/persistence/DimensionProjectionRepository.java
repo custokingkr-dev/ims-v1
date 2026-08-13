@@ -5,15 +5,20 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
+
 /**
  * Reference dimension read models projected from tenant_school (school-core) outbox events
  * ({@code school.upserted.v1}, {@code school-section.upserted.v1},
  * {@code academic-year.upserted.v1}), per Reporting Decoupling SP1. Rows are upserted
- * idempotently by {@code id} so replaying the same or a later event never duplicates state;
- * last-writer-wins is acceptable for reference data.
+ * idempotently by {@code id} so replaying the same or a later event never duplicates state.
+ * Student deletion is terminal and guarded by a durable tombstone because the broker can
+ * deliver a preceding upsert after its deletion event.
  */
 @Repository
 public class DimensionProjectionRepository {
+
+    private static final long STUDENT_PROJECTION_LOCK_NAMESPACE = 710_000_000_000_000_000L;
 
     private final JdbcClient jdbc;
 
@@ -108,13 +113,18 @@ public class DimensionProjectionRepository {
                                String classId, String sectionId, String parentContact, String phone,
                                boolean active, java.math.BigDecimal attendancePercent, String fatherName) {
         ProjectorRls.allow(jdbc);
+        lockStudentProjection(id);
         jdbc.sql("""
                         INSERT INTO reporting.dim_student (
                             id, school_id, admission_no, full_name, roll_no, class_id, section_id,
                             parent_contact, phone, active, attendance_percent, father_name, updated_at
-                        ) VALUES (
+                        ) SELECT
                             :id, :schoolId, :admissionNo, :fullName, :rollNo, :classId, :sectionId,
                             :parentContact, :phone, :active, :attendancePercent, :fatherName, now()
+                        WHERE NOT EXISTS (
+                            SELECT 1
+                            FROM reporting.student_projection_tombstones
+                            WHERE student_id = :id
                         )
                         ON CONFLICT (id) DO UPDATE SET
                             school_id = EXCLUDED.school_id,
@@ -145,10 +155,29 @@ public class DimensionProjectionRepository {
                 .update();
     }
 
-    /** Removes all platform-side student projections when school-core emits a deletion tombstone. */
+    /**
+     * Records a durable terminal tombstone and removes all platform-side student projections.
+     * The transaction-scoped advisory lock serializes an out-of-order upsert and delete for the
+     * same student even when separate projector instances process them concurrently.
+     */
     @Transactional
-    public void deleteStudent(long id) {
+    public void deleteStudent(long id, OffsetDateTime eventOccurredAt) {
         ProjectorRls.allow(jdbc);
+        lockStudentProjection(id);
+        jdbc.sql("""
+                        INSERT INTO reporting.student_projection_tombstones
+                            (student_id, deleted_at, recorded_at)
+                        VALUES (:id, :deletedAt, now())
+                        ON CONFLICT (student_id) DO UPDATE SET
+                            deleted_at = GREATEST(
+                                reporting.student_projection_tombstones.deleted_at,
+                                EXCLUDED.deleted_at
+                            ),
+                            recorded_at = now()
+                        """)
+                .param("id", id)
+                .param("deletedAt", eventOccurredAt)
+                .update();
         jdbc.sql("DELETE FROM notification.notification_logs WHERE student_id = :id")
                 .param("id", id).update();
         jdbc.sql("DELETE FROM reporting.event_student_contributions WHERE student_id = :id")
@@ -159,6 +188,13 @@ public class DimensionProjectionRepository {
                 .param("id", id).update();
         jdbc.sql("DELETE FROM reporting.dim_student WHERE id = :id")
                 .param("id", id).update();
+    }
+
+    private void lockStudentProjection(long id) {
+        jdbc.sql("SELECT pg_advisory_xact_lock(:lockKey)")
+                .param("lockKey", STUDENT_PROJECTION_LOCK_NAMESPACE + id)
+                .query((resultSet, rowNumber) -> Boolean.TRUE)
+                .single();
     }
 
     @Transactional

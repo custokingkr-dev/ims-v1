@@ -6,6 +6,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.Set;
 
 /**
@@ -47,7 +48,7 @@ public class StudentDimensionProjector implements ReportingEventProjector {
             return;
         }
         if (STUDENT_DELETED.equals(event.eventType())) {
-            dims.deleteStudent(id);
+            dims.deleteStudent(id, eventTime(event));
             return;
         }
         Long schoolId = PayloadJson.longOrNull(payload, "schoolId");
@@ -63,5 +64,10 @@ public class StudentDimensionProjector implements ReportingEventProjector {
         String fatherName = PayloadJson.textOrNull(payload, "fatherName");
         dims.upsertStudent(id, schoolId, admissionNo, fullName, rollNo, classId, sectionId,
                 parentContact, phone, active, attendancePercent, fatherName);
+    }
+
+    private static OffsetDateTime eventTime(
+            ReportingEventInboxRepository.ReportingEventInboxProjectionRow event) {
+        return event.occurredAt() != null ? event.occurredAt() : event.receivedAt();
     }
 }

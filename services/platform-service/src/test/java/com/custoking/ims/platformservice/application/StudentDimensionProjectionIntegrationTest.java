@@ -91,11 +91,17 @@ class StudentDimensionProjectionIntegrationTest {
         try (Connection c = dataSource.getConnection(); Statement st = c.createStatement()) {
             st.execute("TRUNCATE notification.notification_logs, reporting.event_student_contributions, "
                     + "reporting.academic_events, reporting.fact_payment, reporting.fact_fee_assignment, "
-                    + "reporting.reporting_event_inbox, reporting.command_center_feed, reporting.dim_student CASCADE");
+                    + "reporting.reporting_event_inbox, reporting.command_center_feed, "
+                    + "reporting.student_projection_tombstones, reporting.dim_student CASCADE");
         }
     }
 
     private void feedStudentEvent(String eventId, long studentId, long schoolId, String fullName) {
+        feedStudentEvent(eventId, studentId, schoolId, fullName, OffsetDateTime.now());
+    }
+
+    private void feedStudentEvent(String eventId, long studentId, long schoolId, String fullName,
+                                  OffsetDateTime occurredAt) {
         String payload = "{\"id\":" + studentId + ",\"schoolId\":" + schoolId
                 + ",\"admissionNo\":\"ADM-" + studentId + "\",\"fullName\":\"" + fullName + "\","
                 + "\"rollNo\":\"7\",\"classId\":\"c1\",\"sectionId\":\"s1\","
@@ -112,7 +118,7 @@ class StudentDimensionProjectionIntegrationTest {
                 String.valueOf(studentId),
                 schoolId,
                 null,
-                Optional.of(OffsetDateTime.now()),
+                Optional.of(occurredAt),
                 OffsetDateTime.now(),
                 envelope,
                 payload
@@ -120,6 +126,11 @@ class StudentDimensionProjectionIntegrationTest {
     }
 
     private void feedStudentDeletedEvent(String eventId, long studentId, long schoolId) {
+        feedStudentDeletedEvent(eventId, studentId, schoolId, OffsetDateTime.now());
+    }
+
+    private void feedStudentDeletedEvent(String eventId, long studentId, long schoolId,
+                                         OffsetDateTime occurredAt) {
         String payload = "{\"id\":" + studentId + ",\"schoolId\":" + schoolId + "}";
         String envelope = "{\"eventId\":\"" + eventId + "\",\"eventType\":\"student.deleted.v1\","
                 + "\"payload\":" + payload + "}";
@@ -132,7 +143,7 @@ class StudentDimensionProjectionIntegrationTest {
                 String.valueOf(studentId),
                 schoolId,
                 null,
-                Optional.of(OffsetDateTime.now()),
+                Optional.of(occurredAt),
                 OffsetDateTime.now(),
                 envelope,
                 payload
@@ -246,5 +257,24 @@ class StudentDimensionProjectionIntegrationTest {
         assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM reporting.fact_payment WHERE student_id = 42").query(Long.class).single());
         assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM reporting.event_student_contributions WHERE student_id = 42").query(Long.class).single());
         assertEquals(0L, jdbcClient.sql("SELECT count(*) FROM notification.notification_logs WHERE student_id = 42").query(Long.class).single());
+    }
+
+    @Test
+    void staleUpsertDeliveredAfterDeleteCannotRecreateStudentProjection() throws Exception {
+        OffsetDateTime deletionTime = OffsetDateTime.now();
+        feedStudentDeletedEvent(UUID.randomUUID().toString(), 42L, 7L, deletionTime);
+        assertEquals(1, processor.processBatch());
+
+        feedStudentEvent(UUID.randomUUID().toString(), 42L, 7L, "Late stale create",
+                deletionTime.minusSeconds(1));
+        assertEquals(1, processor.processBatch());
+
+        assertEquals(0L, countStudentRows(42L),
+                "a terminal deletion tombstone must reject an out-of-order upsert");
+        assertEquals(1L, jdbcClient.sql("""
+                        SELECT count(*)
+                        FROM reporting.student_projection_tombstones
+                        WHERE student_id = 42
+                        """).query(Long.class).single());
     }
 }
