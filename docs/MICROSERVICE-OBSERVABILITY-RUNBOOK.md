@@ -181,6 +181,10 @@ Cloud Trace exporter and sets an allowlist `resourceFilter` for `service.name`, 
 intentionally omits resource attributes that do not map to a monitored resource unless its filter
 selects them.
 
+Both deployment paths must update `service.version`: Cloud Deploy renders it from `git_sha`, while
+the fast dev release updates `OTEL_RESOURCE_ATTRIBUTES` atomically with the immutable image. A direct
+image-only deployment leaves stale version metadata and must fail the deployment-boundary audit.
+
 Cloud Run-generated request spans include `cloud.resource_id`, but in-process Java OTLP spans are
 identified by `service.name` and the resource attributes above. A revision-only Trace query can
 therefore hide healthy Java spans. Verify each service and recent exporter errors with:

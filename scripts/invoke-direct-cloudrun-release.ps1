@@ -22,7 +22,12 @@ if (-not (Test-Path -LiteralPath $ImagesJson)) {
   throw "Release image evidence not found: $ImagesJson"
 }
 
-$images = @((Get-Content -Raw -Path $ImagesJson | ConvertFrom-Json).services)
+$imageEvidence = Get-Content -Raw -Path $ImagesJson | ConvertFrom-Json
+$images = @($imageEvidence.services)
+$commitSha = [string]$imageEvidence.commit
+if ($commitSha -notmatch '^[0-9a-f]{40}$') {
+  throw "Release image evidence has an invalid commit SHA."
+}
 $releaseOrder = @(
   "school-core-service",
   "identity-service",
@@ -45,6 +50,12 @@ foreach ($service in $releaseOrder) {
   }
 
   $cloudRunService = "custoking-$service-$Environment"
+  $tracedService = $service -in @("api-gateway", "billing-service", "identity-service", "operations-service", "platform-service", "school-core-service")
+  $expectedResourceAttributes = if ($tracedService) {
+    "gcp.project_id=$ProjectId,deployment.environment.name=$Environment,service.version=$commitSha"
+  } else {
+    ""
+  }
   $expectedRuntimeRef = if ($image.PSObject.Properties.Name -contains "runtimeRef") {
     [string]$image.runtimeRef
   } else {
@@ -58,6 +69,10 @@ foreach ($service in $releaseOrder) {
     throw "Could not describe existing Cloud Run service $cloudRunService."
   }
   $serviceData = $serviceJson | ConvertFrom-Json
+  $currentResourceAttributes = [string](@($serviceData.spec.template.spec.containers[0].env | Where-Object {
+    $_.name -eq "OTEL_RESOURCE_ATTRIBUTES"
+  } | Select-Object -First 1).value)
+  $traceMetadataCurrent = -not $tracedService -or $currentResourceAttributes -eq $expectedResourceAttributes
   $latestReady = [string]$serviceData.status.latestReadyRevisionName
   $latestCreated = [string]$serviceData.status.latestCreatedRevisionName
   $trafficReady = @($serviceData.status.traffic | Where-Object { $_.revisionName -eq $latestReady -and [int]$_.percent -eq 100 }).Count -gt 0
@@ -70,7 +85,7 @@ foreach ($service in $releaseOrder) {
       --format=json
     if ($LASTEXITCODE -eq 0) {
       $revisionData = $revisionJson | ConvertFrom-Json
-      if ([string]$revisionData.status.imageDigest -eq $expectedRuntimeRef) {
+      if ([string]$revisionData.status.imageDigest -eq $expectedRuntimeRef -and $traceMetadataCurrent) {
         Write-Host "$cloudRunService already serves $expectedRuntimeRef; deployment skipped."
         $deployments += [ordered]@{
           service = $service
@@ -86,12 +101,18 @@ foreach ($service in $releaseOrder) {
   }
 
   Write-Host "Deploying $cloudRunService with $($image.immutableRef)."
-  & $GcloudCommand run deploy $cloudRunService `
-    "--image=$($image.immutableRef)" `
-    "--project=$ProjectId" `
-    "--region=$Region" `
-    --async `
-    --quiet
+  $deployArguments = @(
+    "run", "deploy", $cloudRunService,
+    "--image=$($image.immutableRef)",
+    "--project=$ProjectId",
+    "--region=$Region",
+    "--async",
+    "--quiet"
+  )
+  if ($tracedService) {
+    $deployArguments += "--update-env-vars=^@^OTEL_RESOURCE_ATTRIBUTES=$expectedResourceAttributes"
+  }
+  & $GcloudCommand @deployArguments
   if ($LASTEXITCODE -ne 0) {
     throw "Cloud Run deployment failed for $cloudRunService."
   }

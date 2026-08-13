@@ -83,7 +83,7 @@ foreach ($required in @(
   }
 }
 
-foreach ($required in @("--async", 'status = "submitted"', 'status = "already-current"')) {
+foreach ($required in @("--async", "--update-env-vars", "OTEL_RESOURCE_ATTRIBUTES", "service.version=`$commitSha", "traceMetadataCurrent", "currentResourceAttributes", 'status = "submitted"', 'status = "already-current"')) {
   if (-not $directRelease.Contains($required)) {
     $violations.Add("Direct dev release is missing asynchronous deployment control: $required")
   }
