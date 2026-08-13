@@ -66,7 +66,8 @@ foreach ($required in @(
     "defaultResource().merge",
     "resourceFromAttributes",
     "configuredResourceAttributes",
-    "resourceFilter")) {
+    "resourceFilter",
+    "forceFlush")) {
     if (-not $gatewayTracingSource.Contains($required)) {
         $violations.Add("Gateway tracing missing explicit resource preservation: $required")
     }

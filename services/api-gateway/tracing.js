@@ -4,8 +4,10 @@ const { TraceExporter } = require('@google-cloud/opentelemetry-cloud-trace-expor
 const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
 const { defaultResource, resourceFromAttributes } = require('@opentelemetry/resources');
 const { NodeSDK } = require('@opentelemetry/sdk-node');
+const { BatchSpanProcessor } = require('@opentelemetry/sdk-trace-base');
 
 let sdk = null;
+let spanProcessor = null;
 const TRACE_RESOURCE_FILTER = /^(service\.(name|version)|deployment\.environment\.name)$/;
 
 function projectId() {
@@ -52,12 +54,15 @@ function startTracing() {
     // The Google exporter intentionally drops non-monitored-resource attributes unless selected.
     resourceFilter: TRACE_RESOURCE_FILTER,
   };
+  spanProcessor = new BatchSpanProcessor(new TraceExporter(exporterOptions), {
+    exportTimeoutMillis: 4000,
+  });
   sdk = new NodeSDK({
     // TraceExporter enriches spans with the detected Cloud Run resource, but does not preserve
     // the declarative OTEL resource variables reliably. Merge them explicitly so Trace Explorer
     // can filter this gateway by service, environment, and deployed version like the Java services.
     resource: defaultResource().merge(resourceFromAttributes(configuredResourceAttributes())),
-    traceExporter: new TraceExporter(exporterOptions),
+    spanProcessors: [spanProcessor],
     instrumentations: [
       getNodeAutoInstrumentations({
         '@opentelemetry/instrumentation-fs': { enabled: false },
@@ -76,11 +81,20 @@ function startTracing() {
   return sdk;
 }
 
+async function flushTracing() {
+  if (!spanProcessor) return;
+  await spanProcessor.forceFlush();
+}
+
 async function shutdownTracing() {
   if (!sdk) return;
   const activeSdk = sdk;
   sdk = null;
-  await activeSdk.shutdown();
+  try {
+    await activeSdk.shutdown();
+  } finally {
+    spanProcessor = null;
+  }
 }
 
 if (require.main !== module) {
@@ -101,6 +115,7 @@ process.once('SIGTERM', () => {
 
 module.exports = {
   startTracing,
+  flushTracing,
   shutdownTracing,
   tracingEnabled,
   projectId,

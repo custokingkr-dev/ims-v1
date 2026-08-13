@@ -1,10 +1,10 @@
 'use strict';
 
-require('./tracing');
+const { flushTracing } = require('./tracing');
 
 const http = require('http');
 const crypto = require('crypto');
-const { context: otelContext, trace: otelTrace } = require('@opentelemetry/api');
+const { context: otelContext, trace: otelTrace, TraceFlags } = require('@opentelemetry/api');
 const { randomUUID } = crypto;
 
 const PORT = Number(process.env.PORT || 80);
@@ -171,6 +171,38 @@ const server = http.createServer(async (req, res) => {
   let matchedService = null;
   const startedAt = process.hrtime.bigint();
   const traceFields = currentTraceFields(req);
+  const gatewaySpan = otelTrace.getTracer('api-gateway').startSpan(
+    'gateway.request.boundary',
+    {
+      attributes: {
+        'http.request.method': req.method || '',
+      },
+    },
+    otelContext.active(),
+  );
+  const originalEnd = res.end.bind(res);
+  let responseEnded = false;
+  res.end = (...args) => {
+    if (responseEnded) return res;
+    responseEnded = true;
+    gatewaySpan.setAttribute('http.response.status_code', res.statusCode);
+    if (parsed) gatewaySpan.setAttribute('url.path', parsed.pathname);
+    const sampled = (gatewaySpan.spanContext().traceFlags & TraceFlags.SAMPLED) !== 0;
+    gatewaySpan.end();
+    if (!sampled) return originalEnd(...args);
+
+    // Keep the request open until this sampled boundary span is exported. Cloud Run may suspend
+    // request-based CPU as soon as originalEnd() completes, which can strand a normal batch timer.
+    flushTracing()
+      .catch((error) => {
+        logJson('ERROR', 'gateway.tracing.flush_failed', {
+          requestId,
+          error: error && error.message ? error.message : String(error),
+        }, traceFields);
+      })
+      .finally(() => originalEnd(...args));
+    return res;
+  };
   res.on('finish', () => {
     const durationMs = Number(process.hrtime.bigint() - startedAt) / 1_000_000;
     logJson('INFO', 'gateway.request', {

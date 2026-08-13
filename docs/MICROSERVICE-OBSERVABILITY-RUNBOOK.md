@@ -181,6 +181,12 @@ Cloud Trace exporter and sets an allowlist `resourceFilter` for `service.name`, 
 intentionally omits resource attributes that do not map to a monitored resource unless its filter
 selects them.
 
+The gateway creates a lightweight request-boundary span and, only when it is sampled, force-flushes
+the batch processor before completing the HTTP response. This is required with request-based Cloud
+Run CPU: a five-second Node batch timer can otherwise be suspended immediately after the response,
+leaving only the platform request span visible. Unsampled requests have no network wait; sampled
+flushes have a four-second hard timeout and failures are emitted as `gateway.tracing.flush_failed`.
+
 Both deployment paths must update `service.version`: Cloud Deploy renders it from `git_sha`, while
 the fast dev release updates `OTEL_RESOURCE_ATTRIBUTES` atomically with the immutable image. A direct
 image-only deployment leaves stale version metadata and must fail the deployment-boundary audit.

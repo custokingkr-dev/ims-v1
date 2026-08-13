@@ -56,7 +56,11 @@ const {
   authenticate,
   proxyToUrl,
 } = require('./server');
-const { configuredResourceAttributes, TRACE_RESOURCE_FILTER } = require('./tracing');
+const {
+  configuredResourceAttributes,
+  flushTracing,
+  TRACE_RESOURCE_FILTER,
+} = require('./tracing');
 
 test.after(() => {
   if (server.listening) {
@@ -90,6 +94,10 @@ test('gateway tracing preserves service, environment, version, and project resou
   assert.equal(TRACE_RESOURCE_FILTER.test('service.version'), true);
   assert.equal(TRACE_RESOURCE_FILTER.test('deployment.environment.name'), true);
   assert.equal(TRACE_RESOURCE_FILTER.test('host.name'), false);
+});
+
+test('gateway trace flush is a safe no-op when tracing is disabled', async () => {
+  await assert.doesNotReject(flushTracing());
 });
 
 test('protected API route returns unauthorized before proxying without bearer token', async () => {
