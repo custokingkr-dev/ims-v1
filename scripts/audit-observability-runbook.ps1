@@ -1,7 +1,8 @@
 param(
     [string]$RunbookPath = "docs/MICROSERVICE-OBSERVABILITY-RUNBOOK.md",
     [string]$SmokeScript = "scripts/smoke-deployment-readiness.ps1",
-    [string]$GatewayTemplate = "services/api-gateway/nginx.conf.template"
+    [string]$GatewayTemplate = "services/api-gateway/nginx.conf.template",
+    [string]$TraceVerificationScript = "scripts/verify-cloud-trace.ps1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,8 +11,9 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $runbookFile = Join-Path $repoRoot $RunbookPath
 $smokeFile = Join-Path $repoRoot $SmokeScript
 $gatewayFile = Join-Path $repoRoot $GatewayTemplate
+$traceVerificationFile = Join-Path $repoRoot $TraceVerificationScript
 
-foreach ($file in @($runbookFile, $smokeFile, $gatewayFile)) {
+foreach ($file in @($runbookFile, $smokeFile, $gatewayFile, $traceVerificationFile)) {
     if (-not (Test-Path $file)) {
         throw "Required observability file not found: $file"
     }
@@ -20,6 +22,7 @@ foreach ($file in @($runbookFile, $smokeFile, $gatewayFile)) {
 $runbook = Get-Content -Raw -Path $runbookFile
 $smoke = Get-Content -Raw -Path $smokeFile
 $gateway = Get-Content -Raw -Path $gatewayFile
+$traceVerification = Get-Content -Raw -Path $traceVerificationFile
 $violations = New-Object System.Collections.Generic.List[string]
 
 foreach ($required in @(
@@ -43,6 +46,28 @@ foreach ($required in @(
     "Cloud Run revision")) {
     if (-not $runbook.Contains($required)) {
         $violations.Add("Observability runbook missing required item: $required")
+    }
+}
+
+foreach ($required in @(
+    "deployment.environment.name",
+    "service.version",
+    "scripts\verify-cloud-trace.ps1",
+    "Failed to export spans")) {
+    if (-not $runbook.Contains($required)) {
+        $violations.Add("Observability runbook missing trace delivery control: $required")
+    }
+}
+
+foreach ($required in @(
+    "+service.name:",
+    "+deployment.environment.name:",
+    "+service.version:",
+    "latestReadyRevisionName",
+    "exporterErrorCount",
+    "Failed to export spans")) {
+    if (-not $traceVerification.Contains($required)) {
+        $violations.Add("Cloud Trace verification script missing required check: $required")
     }
 }
 

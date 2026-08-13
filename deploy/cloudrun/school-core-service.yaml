@@ -104,7 +104,7 @@ spec:
             - name: OTEL_TRACES_SAMPLER_ARG
               value: "0.05" # from-param: ${otel_sample}
             - name: OTEL_RESOURCE_ATTRIBUTES
-              value: gcp.project_id=custoking # from-param: gcp.project_id=${project_id}
+              value: gcp.project_id=custoking,deployment.environment.name=dev,service.version=unknown # from-param: gcp.project_id=${project_id},deployment.environment.name=${env},service.version=${git_sha}
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:

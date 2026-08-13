@@ -57,7 +57,7 @@ class GcpOtlpTraceExporterAuthConfig {
                     runnable.run();
                 }
                 finally {
-                    spanProcessor.forceFlush().join(2, TimeUnit.SECONDS);
+                    spanProcessor.forceFlush().join(5, TimeUnit.SECONDS);
                 }
             };
         }

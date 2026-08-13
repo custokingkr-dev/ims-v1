@@ -42,8 +42,10 @@ management:
         # Flush at request/scheduled-task boundaries before request-based Cloud Run suspends CPU.
         schedule-delay: ${OTEL_BSP_SCHEDULE_DELAY:1h}
         otlp:
-          connect-timeout: ${OTEL_TRACE_CONNECT_TIMEOUT:1s}
-          timeout: ${OTEL_TRACE_EXPORT_TIMEOUT:1s}
+          # A one-second deadline was shorter than observed Telemetry API tail latency and caused
+          # intermittent exporter timeouts. The boundary flush remains capped at five seconds.
+          connect-timeout: ${OTEL_TRACE_CONNECT_TIMEOUT:2s}
+          timeout: ${OTEL_TRACE_EXPORT_TIMEOUT:4s}
           endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}}
   otlp:
     # spring-boot-starter-opentelemetry transitively pulls in

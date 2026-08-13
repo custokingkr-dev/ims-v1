@@ -44,7 +44,7 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
             try {
                 // This highest-precedence filter wraps Spring's observation filter, so the server
                 // span has ended here. Drain it while request-based Cloud Run CPU is allocated.
-                spanProcessor.forceFlush().join(2, TimeUnit.SECONDS);
+                spanProcessor.forceFlush().join(5, TimeUnit.SECONDS);
             } finally {
                 MDC.remove("requestId");
             }

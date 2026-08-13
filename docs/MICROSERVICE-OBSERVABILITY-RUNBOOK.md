@@ -162,6 +162,32 @@ Terraform grants the runtime
 service account `roles/cloudtrace.agent`, `roles/telemetry.tracesWriter`, and
 `roles/serviceusage.serviceUsageConsumer`.
 
+Spring services use boundary-triggered batch flushes because request-based Cloud Run CPU can be
+suspended after an HTTP request or scheduled task. The exporter defaults are a two-second connect
+timeout, four-second request timeout, and five-second force-flush wait. Keep the exporter timeout
+strictly below the flush wait. Do not reduce the exporter to a one-second total deadline: live
+Telemetry API calls exceeded that tail latency and produced intermittent `Failed to export spans`
+errors. Do not enable always-allocated CPU solely for tracing; it adds baseline Cloud Run cost.
+
+All deployed services must set these resource attributes in addition to `service.name`:
+
+- `gcp.project_id=<project-id>`
+- `deployment.environment.name=dev|prod`
+- `service.version=<deployed-git-sha>`
+
+Cloud Run-generated request spans include `cloud.resource_id`, but in-process Java OTLP spans are
+identified by `service.name` and the resource attributes above. A revision-only Trace query can
+therefore hide healthy Java spans. Verify each service and recent exporter errors with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\verify-cloud-trace.ps1 `
+  -ProjectId custoking -Environment dev -LookbackMinutes 60
+```
+
+The command reads each live Cloud Run revision and its deployed `service.version`, then fails when
+that exact version has no environment-tagged trace in the window or when a current Java revision
+logged a recent span-export error. Errors from superseded revisions do not fail a new deployment.
+
 If final-revision logs show `HTTP status code 403`, `unregistered callers`, or
 missing trace exports, verify the customizer is packaged in the service image,
 the Cloud Run env vars are present, and the Terraform runtime IAM has been
