@@ -202,6 +202,17 @@
   .acc.pub{color:var(--ok);border:1px solid var(--ok)}
   .acc.pri{color:var(--boundary);border:1px solid var(--boundary-soft);background:var(--boundary-soft)}
   .tk{fill:var(--faint)}
+  /* ---------- live GCP state ---------- */
+  .stategrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+  .state{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+  .state .st{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .state h3{margin:0;font-size:14px}
+  .status{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;white-space:nowrap}
+  .status.ok{color:var(--ok);background:rgba(18,133,95,.10)}
+  .status.gap{color:var(--crit);background:rgba(194,58,84,.10)}
+  .status.watch{color:var(--async);background:var(--async-soft)}
+  .state p{margin:0;color:var(--muted);font-size:12.5px;line-height:1.55}
+  .state code{color:var(--ink);overflow-wrap:anywhere}
 
   footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--faint);font-family:var(--mono);font-size:11.5px;line-height:1.7}
   footer b{color:var(--muted)}
@@ -220,14 +231,14 @@
   <header class="hero">
     <p class="eyebrow">System Architecture · Verified from source</p>
     <h1>Custoking&nbsp;IMS
-      <span class="sub">A multi-tenant school-operations SaaS. One React SPA, one programmable Node gateway, and five Spring Boot domain services on Google Cloud Run — each owning its own Postgres schema, connected by a synchronous request path and an asynchronous event stream.</span>
+      <span class="sub">A multi-tenant school-operations SaaS. One React SPA, one programmable Node gateway, and five Spring Boot domain services on Google Cloud Run — owning twelve bounded schemas in one shared Postgres instance, connected by synchronous request paths and asynchronous event delivery.</span>
     </h1>
 
     <div class="metastrip">
-      <span class="chip"><b>7</b> Cloud Run services</span>
+      <span class="chip"><b>7</b> Cloud Run services / environment</span>
       <span class="chip"><b>Spring Boot 4</b> · Java 25</span>
       <span class="chip"><b>React 18</b> · Vite 6 · TS 5.7</span>
-      <span class="chip"><b>PostgreSQL</b> · schema-per-service</span>
+      <span class="chip"><b>PostgreSQL</b> · bounded schemas</span>
       <span class="chip">GCP <b>custoking</b> · asia-south2</span>
       <span class="chip">env <b>-dev</b> / <b>-prod</b></span>
     </div>
@@ -258,7 +269,7 @@
   <section>
     <div class="sec-head">
       <h2><span class="n">01</span>Request flow, top to bottom</h2>
-      <p class="lead">Every browser call enters one public gateway. It verifies the JWT, injects a per-service internal token, stamps trusted tenant headers, and proxies to the single service that owns the route — preserving the legacy <code style="color:var(--sync)">/api/v1/**</code> contract end to end.</p>
+      <p class="lead">Every application API call enters one public gateway. It verifies the JWT, injects a per-service internal token, stamps trusted tenant headers, and proxies to the single service that owns the route — preserving the <code style="color:var(--sync)">/api/v1/**</code> contract end to end.</p>
     </div>
     <div class="diagram-wrap">
       <svg class="diagram" viewBox="0 0 1160 840" role="img" aria-label="Vertical request flow from actors through frontend and gateway to five services and Cloud SQL">
@@ -293,7 +304,7 @@
         <rect class="s-gate" x="270" y="274" width="620" height="92" rx="14"/>
         <text class="s-role b" x="580" y="300" text-anchor="middle" font-size="10">API GATEWAY · NODE HTTP PROXY · SECURITY BOUNDARY · PUBLIC</text>
         <text class="s-ink" x="580" y="324" text-anchor="middle" font-size="16">The only public API entry point</text>
-        <text class="s-mut" x="580" y="346" text-anchor="middle" font-size="10.5">HS512 JWT verify · token inject · header-spoof strip · CORS / HSTS / CSP · rate-limit</text>
+        <text class="s-mut" x="580" y="346" text-anchor="middle" font-size="10.5">HS256 / HS512 JWT verify · token inject · header-spoof strip · CORS / HSTS / CSP · rate-limit</text>
 
         <!-- services -->
         <rect class="s-node" x="40" y="430" width="196" height="150" rx="13"/>
@@ -400,7 +411,7 @@
   <section>
     <div class="sec-head">
       <h2><span class="n">03</span>The five domain services</h2>
-      <p class="lead">Consolidated from twelve nanoservices down to five (ADR-001). Each is private — reachable only through the gateway or a peer's authenticated call — and fails closed if its internal token header is missing or wrong.</p>
+      <p class="lead">Consolidated from twelve nanoservices down to five (ADR-001). Each Spring service is Cloud Run IAM-private. Gateway and peer routes require their configured internal token; Scheduler and Pub/Sub ingress use Google OIDC/IAM and may explicitly disable the shared-token check.</p>
     </div>
     <div class="grid">
       <div class="card">
@@ -419,7 +430,7 @@
         <div class="kv"><span class="k">Owns schemas</span>
           <div class="schemas"><span class="schema">tenant_school</span><span class="schema">student</span><span class="schema">attendance</span><span class="schema">fee</span><span class="schema">catalog</span></div>
         </div>
-        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Tenant-School · X-Student · X-Attendance · X-Fee · X-Catalog</div></div>
+        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Tenant-School-Token · X-Student-Service-Token · X-Attendance-Service-Token · X-Fee-Service-Token · X-Catalog-Service-Token</div></div>
         <div class="badge pub">Outbox producer → reporting stream</div>
       </div>
 
@@ -437,7 +448,7 @@
         <div class="c-pkg">com.custoking.ims.platformservice</div>
         <div class="c-role">The event consumer — reporting projections (facts, dimensions &amp; the command-center feed), notifications (MSG91), and audit-event ingest. Receives Pub/Sub pushes.</div>
         <div class="kv"><span class="k">Owns schemas</span><div class="schemas"><span class="schema">reporting</span><span class="schema">notification</span><span class="schema">audit</span></div></div>
-        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Reporting · X-Notification · X-Audit</div></div>
+        <div class="kv"><span class="k">Gateway tokens</span><div class="tokens">X-Reporting-Service-Token · X-Notification-Service-Token · X-Audit-Service-Token</div></div>
         <div class="badge con">Event consumer · projectors</div>
       </div>
 
@@ -537,7 +548,7 @@
 
     <div class="note">
       <span class="ico">!</span>
-      <p>Notification delivery is intentionally in <b>safe mode</b> in production — live config sets <code>NOTIFICATION_DELIVERY_PROVIDER=logging</code> and <code>MSG91_DRY_RUN=true</code>, so real MSG91 sends are not yet enabled. The inbox, retry / back-off and dead-letter flows are live.</p>
+      <p>Notification delivery is intentionally in <b>safe mode</b> in production — live config sets <code>NOTIFICATION_DELIVERY_PROVIDER=logging</code> and <code>MSG91_DRY_RUN=true</code>. Retry and dead-letter behavior is implemented and dev has an OIDC push subscription plus DLQ; production has no notification subscription or notification DLQ, so real delivery is not yet an active production path.</p>
     </div>
   </section>
 
@@ -680,7 +691,7 @@
       <div class="fact">
         <h3><span class="p" style="background:var(--boundary)"></span>Gateway enforcement</h3>
         <ul>
-          <li><b>Local HS512 JWT</b> verify on enriched claims; identity <b>introspection</b> fallback.</li>
+          <li><b>Local HS256 / HS512 JWT</b> verification on enriched claims; identity <b>introspection</b> fallback.</li>
           <li>Per-service token injected; client-spoofable <code>x-authenticated-*</code> headers stripped.</li>
           <li>Strict CORS allowlist, HSTS / CSP, body-size cap, token-bucket rate-limit.</li>
         </ul>
@@ -744,10 +755,44 @@
     </div>
   </section>
 
+  <!-- 07 LIVE GCP STATE -->
+  <section>
+    <div class="sec-head">
+      <h2><span class="n">07</span>Live GCP runtime and capacity boundary</h2>
+      <p class="lead">This layer is the verified live state, not a target-state promise. The full inventory was queried from project <code>custoking</code> on 2026-08-12 and its cost/observability deltas were rechecked on 2026-08-14.</p>
+    </div>
+    <div class="stategrid">
+      <div class="state">
+        <div class="st"><h3>Cloud Run boundary</h3><span class="status ok">verified</span></div>
+        <p>Fourteen services are Ready. Frontend and gateway are public; five Spring services per environment are IAM-private. Every runtime uses a dedicated service account, concurrency 80 and minimum scale 0. All services currently declare ingress <code>all</code>; privacy is enforced by IAM, not ingress restriction.</p>
+      </div>
+      <div class="state">
+        <div class="st"><h3>Private data path</h3><span class="status ok">verified</span></div>
+        <p>The Java services use Direct VPC egress for private ranges and reach Cloud SQL by private IP. Production is PostgreSQL 16 on zonal <code>db-g1-small</code>, encrypted-only, with backups, PITR, deletion protection and <code>max_connections=200</code>. Dev is stopped on <code>db-f1-micro</code>.</p>
+      </div>
+      <div class="state">
+        <div class="st"><h3>Async execution</h3><span class="status gap">incomplete</span></div>
+        <p>Production reporting has a dedicated OIDC push identity but no Pub/Sub DLQ. Production notification has neither a push subscription nor DLQ. Four dev Scheduler relay jobs exist in <code>asia-south1</code> but are paused; no production relay schedules exist.</p>
+      </div>
+      <div class="state">
+        <div class="st"><h3>Capacity evidence</h3><span class="status watch">conditional</span></div>
+        <p>A 10,000-student import and a corrected 300-VU attendance-write soak passed. A read-heavy MixedMorning test saturated both 4-vCPU and 8-vCPU dev database shapes. Production is therefore suitable for controlled canaries, not yet certified for simultaneous onboarding of 100–150 schools.</p>
+      </div>
+      <div class="state">
+        <div class="st"><h3>Delivery and IAM</h3><span class="status gap">drift</span></div>
+        <p>Production Cloud Deploy targets use <code>clouddeploy-prod-deployer</code>. Live dev targets still use the default Compute identity even though source templates specify a dedicated dev deployer. Ten jobs are visible; eight regular jobs use default Compute and one temporary OTel probe remains a cleanup candidate.</p>
+      </div>
+      <div class="state">
+        <div class="st"><h3>Cost and operations</h3><span class="status watch">watch</span></div>
+        <p>Minimum instances remain zero. Workflow run <code>31795809595</code> stopped dev SQL on 2026-08-14 and direct inspection confirmed activation policy <code>NEVER</code>. The INR 5,000 gross budget was exceeded by deliberate dev tests. Primary alert receipt is proven; backup delivery, production OTel promotion, query telemetry, branch protection and the SQL HA/RTO/RPO decision remain open.</p>
+      </div>
+    </div>
+  </section>
+
   <footer>
-    <div><b>Sources:</b> service code · services/api-gateway/server.js · docs/current-state/* (verified 2026-08) · EVENT-ENVELOPE-CONTRACT · ADR-001.</div>
-    <div><b>Live infra:</b> Cloud Run, Cloud SQL, Pub/Sub, Secret Manager, Artifact Registry, IAM &amp; monitoring figures read from gcloud (project custoking) on 2026-08-12.</div>
-    <div><b>Accuracy notes:</b> the gateway is a plain Node HTTP proxy (older HLD/LLD say "nginx" — that is the frontend). Stack is Spring Boot 4.0.7 / Java 25. Domain services are private via IAM (ingress is <code>all</code>, invoker = gateway SA). Rendered 2026-08-12.</div>
+    <div><b>Sources:</b> service code · services/api-gateway/server.js · deployment manifests and workflows · live gcloud/GitHub inventory · EVENT-ENVELOPE-CONTRACT · ADR-001.</div>
+    <div><b>Live infra:</b> Cloud Run, Cloud SQL, Pub/Sub, Secret Manager, Artifact Registry, IAM &amp; monitoring figures were read from project <code>custoking</code> on 2026-08-12; cost and observability deltas were rechecked on 2026-08-14.</div>
+    <div><b>Accuracy notes:</b> the gateway is a plain Node HTTP proxy (older HLD/LLD say "nginx" — that is the frontend). Stack is Spring Boot 4.0.7 / Java 25. Application claims were reconciled 2026-08-12 with cost and observability deltas on 2026-08-14; no secret values are represented.</div>
   </footer>
 
 </div>

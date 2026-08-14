@@ -61,6 +61,9 @@ load-tests/fixtures.json
 # Uploads (local dev only)
 uploads/
 
+# Local student / photographer exports - personal data, never commit
+outputs/
+
 # Packaging artifacts
 custoking-ims-clean.zip
 

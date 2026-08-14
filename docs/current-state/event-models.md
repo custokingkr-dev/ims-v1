@@ -1,6 +1,17 @@
 # Event Models and Async Architecture
 
-Last verified: 2026-08-05.
+Last reconciled: 2026-08-12 against source and live Pub/Sub inventory.
+
+## 2026-08-12 Live Reconciliation
+
+- Dev reporting uses dedicated OIDC identity `ims-reporting-push-dev` and a DLQ.
+- Production reporting uses dedicated OIDC identity `ims-reporting-push-prod`; it has no Pub/Sub DLQ.
+- Dev notification has a dedicated OIDC push subscription and DLQ.
+- Production has the notification topic but no notification push subscription or DLQ.
+- Platform Pub/Sub receivers can rely on Cloud Run IAM/OIDC with shared-token checks explicitly disabled;
+  therefore the older blanket statement that every push uses a query token is no longer current.
+- All verified business outbox producers publish reporting events. No live production
+  producer-to-notification path has been established.
 
 ## Current Pattern
 
@@ -100,18 +111,19 @@ Platform-service exposes two internal push endpoints:
 - `POST /api/v1/pubsub/reporting-events`
 - `POST /api/v1/pubsub/notifications`
 
-Both subscriptions use Pub/Sub push with OIDC:
+Configured subscriptions use Pub/Sub push with OIDC:
 
-- OIDC service account: default compute service account
-- OIDC audience: platform-service URL for the target env
-- Ack deadline: 30 seconds
+- OIDC service accounts are dedicated per stream/environment where subscriptions exist.
+- OIDC audience is the platform-service URL for the target environment.
+- Ack deadline is 30 seconds.
 
-Both endpoints also require an application token:
+The endpoints support application-token validation when the corresponding shared-token requirement is enabled:
 
 - reporting push uses reporting token, accepted via header or token query parameter.
 - notification push uses notification token, accepted via header or token query parameter.
 
-The live subscriptions use query tokens. Token values are intentionally not documented.
+Current reporting and dev notification subscriptions rely on Cloud Run OIDC/IAM without query-string
+secrets. Token values are intentionally never documented.
 
 ## Reporting Inbox
 
@@ -187,6 +199,7 @@ Source: `outbox.append(...)` calls in producer code.
 | `school-section.upserted.v1` | school-core-service | `SchoolSection` | `SchoolSectionUpserted:<sectionId>` | section id, name, schoolId, classId, className, active, teacherName | `ReferenceDimensionProjector` -> `reporting.dim_section` |
 | `academic-year.upserted.v1` | school-core migrations/backfill verified as event type in projector | not verified from live append call in this pass | not verified | id, label, active expected by projector | `ReferenceDimensionProjector` -> `reporting.dim_academic_year` |
 | `student.upserted.v1` | school-core-service | `Student` | `StudentUpserted:<id>` | student id, schoolId, admissionNo, fullName, rollNo, classId, sectionId, parentContact, phone, active, attendancePercent, fatherName | `StudentDimensionProjector` -> `reporting.dim_student` |
+| `student.deleted.v1` | school-core-service | `Student` | `StudentDeleted:<id>` | student id, schoolId only (no student PII) | `StudentDimensionProjector` permanently removes the student dimension plus fee/payment/event/notification projections |
 | `student-review-item.upserted.v1` | school-core-service | `StudentReviewItem` | `StudentReviewItemUpserted:<itemId>` | item id, schoolId, campaignId, status | `StudentReviewProjector` -> `reporting.fact_student_review_item` |
 | `student-review-campaign.completed.v1` | school-core-service | `StudentReviewCampaign` | `StudentReviewCampaignCompleted:<campaignId>` | campaignId, schoolId, status | `StudentReviewProjector` -> campaign status update |
 | `attendance-daily.upserted.v1` | school-core-service | `AttendanceDaily` | `AttendanceDailyUpserted:<id>` | id, schoolId, date, classId, sectionId, academicYearId, present/absent/late/leave counts, totalEnrolled | `AttendanceFactProjector` -> `reporting.fact_attendance_daily` |

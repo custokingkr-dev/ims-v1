@@ -1,6 +1,6 @@
 # Codebase and Conventions
 
-Last verified: 2026-08-04.
+Last reconciled: 2026-08-12 against the current repository tree.
 CI/CD active-state updated: 2026-08-04.
 
 ## Repository Layout

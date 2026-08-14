@@ -6,11 +6,17 @@ Custoking IMS is a multi-tenant school operations platform. The repository is no
 
 Detailed architecture docs:
 
+- [Verified Architecture Overview](docs/architecture/custoking-architecture.html)
+- [Documentation Index and Source Precedence](docs/DOCUMENTATION-INDEX.md)
+- [Remaining Work and Launch Gates (2026-08-12)](docs/REMAINING-WORK-2026-08-12.md)
+- [GCP Split-Project Migration Runbook (2026-08-16)](docs/GCP-SPLIT-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md)
+- [GCP Migration Data-Integrity Plan (2026-08-16)](docs/GCP-MIGRATION-DATA-INTEGRITY-PLAN-2026-08-16.md)
 - [High-Level Architecture](docs/ARCHITECTURE-HLD.md)
 - [Low-Level Design](docs/ARCHITECTURE-LLD.md)
 - [Event Envelope Contract](docs/EVENT-ENVELOPE-CONTRACT.md)
 - [Local Setup](docs/LOCAL-SETUP.md)
 - [Logical E2E Tests](docs/LOGICAL-E2E-TESTS.md)
+- [Operator Student Details and Photo Export](docs/OPERATOR-STUDENT-EXPORT.md)
 - [GCP Support Files](deploy/gcp/README.md)
 - [MSG91 Production Setup](docs/MSG91-PRODUCTION-SETUP.md)
 
@@ -282,7 +288,9 @@ Production secrets live in GCP Secret Manager with environment suffixes such as 
 - per-service internal tokens such as `catalog-read-token-<env>`, `tenant-school-read-token-<env>`, and `identity-introspection-token-<env>`
 - MSG91 secrets when notification delivery is enabled
 
-Never commit `.env`, production smoke tokens, MSG91 auth keys, or generated evidence artifacts.
+Never commit `.env`, production smoke tokens, MSG91 auth keys, generated evidence artifacts, or local
+student/photographer exports. The repository ignores `outputs/`; store personal-data exports outside the
+repository and remove local copies when their approved operational use ends.
 
 ## Migration Notes
 

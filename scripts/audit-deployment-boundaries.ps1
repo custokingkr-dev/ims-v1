@@ -70,6 +70,8 @@ foreach ($required in @(
   "cache-from: type=gha",
   "cache-to: type=gha",
   "resolve-image-source-id.ps1",
+  "databaseBackedServices",
+  "Skipping development Cloud SQL start: no database-backed service is affected.",
   "dev-approved-",
   "invoke-direct-cloudrun-release.ps1",
   "invoke-clouddeploy-release.ps1",

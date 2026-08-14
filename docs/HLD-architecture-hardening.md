@@ -1,5 +1,10 @@
 # Custoking IMS HLD: Architecture Hardening
 
+> Historical hardening design. Its Cloud Build/monolith deployment sections describe a retired path.
+> Current topology and delivery are documented in [ARCHITECTURE-HLD.md](ARCHITECTURE-HLD.md),
+> [current-state/deployment-cicd.md](current-state/deployment-cicd.md), and
+> [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md).
+
 Date: 2026-06-16
 Branch: architecture-hardening-local-dev
 

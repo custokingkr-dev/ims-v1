@@ -1,5 +1,9 @@
 # Custoking IMS High-Level Architecture
 
+Last reconciled: 2026-08-12. Live-state and launch-gate details are in
+[current-state/README.md](current-state/README.md) and
+[REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md).
+
 ## Purpose
 
 Custoking IMS is a multi-tenant school operations platform. The current architecture is a Cloud Run microservice deployment where the API gateway preserves the existing frontend API while domain services own runtime data.
@@ -9,7 +13,7 @@ Custoking IMS is a multi-tenant school operations platform. The current architec
 ```text
 Browser
   -> custoking-frontend (Cloud Run nginx SPA)
-  -> custoking-api-gateway (nginx route gateway)
+  -> custoking-api-gateway (programmable Node HTTP proxy)
   -> domain services (Cloud Run, private IAM)
   -> Cloud SQL PostgreSQL
   -> notification/audit/reporting service APIs
@@ -42,7 +46,9 @@ Direct runtime reads from retired public domain tables are not allowed.
 - Browser traffic enters through `custoking-api-gateway`.
 - The API gateway routes public `/api/v1/**` compatibility paths to the owning private Cloud Run service and injects service tokens from Secret Manager.
 - Domain services publish events to Pub/Sub using a shared event envelope.
-- Notification and reporting consume event projections asynchronously.
+- Platform reporting consumes domain events asynchronously. Notification ingress is implemented and
+  verified in dev, but production has no notification subscription/DLQ and provider delivery remains
+  logging/dry-run.
 
 ## Security
 

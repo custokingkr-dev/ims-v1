@@ -43,8 +43,9 @@ management:
   opentelemetry:
     tracing:
       export:
-        # Cloud Run uses request-based billing. Task-boundary flushing drains this short batch
-        # before CPU is suspended, without paying for always-allocated CPU between requests.
+        # Cloud Run uses request-based billing. Request-boundary flushing drains queued request
+        # and scheduled spans while CPU is allocated, without paying for CPU between requests.
+        # Never flush from a task decorator: request-based CPU can be suspended mid-export.
         schedule-delay: ${OTEL_BSP_SCHEDULE_DELAY:1h}
         otlp:
           # One second was below observed tail latency; four seconds still failed on a live

@@ -12,4 +12,5 @@ export interface AuthUser {
   zoneName?: string | null;
   roles?: string[];
   permissions?: string[];
+  operatorSchools?: number[];
 }

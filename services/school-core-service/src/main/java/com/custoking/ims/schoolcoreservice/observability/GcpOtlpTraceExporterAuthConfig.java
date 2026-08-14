@@ -3,19 +3,15 @@ package com.custoking.ims.schoolcoreservice.observability;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import io.opentelemetry.exporter.otlp.http.trace.OtlpHttpSpanExporterBuilder;
-import io.opentelemetry.sdk.trace.SpanProcessor;
-import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import org.springframework.boot.micrometer.tracing.opentelemetry.autoconfigure.otlp.OtlpHttpSpanExporterBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.task.TaskDecorator;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Configuration(proxyBeanMethods = false)
 class GcpOtlpTraceExporterAuthConfig {
@@ -30,31 +26,6 @@ class GcpOtlpTraceExporterAuthConfig {
                 builder.setHeaders(headers::get);
             }
         };
-    }
-
-    @Bean
-    TaskDecorator otelBatchFlushTaskDecorator(BatchSpanProcessor spanProcessor) {
-        return new OtlpBatchFlushTaskDecorator(spanProcessor);
-    }
-
-    static final class OtlpBatchFlushTaskDecorator implements TaskDecorator {
-        private final SpanProcessor spanProcessor;
-
-        OtlpBatchFlushTaskDecorator(SpanProcessor spanProcessor) {
-            this.spanProcessor = spanProcessor;
-        }
-
-        @Override
-        public Runnable decorate(Runnable runnable) {
-            return () -> {
-                try {
-                    runnable.run();
-                }
-                finally {
-                    spanProcessor.forceFlush().join(7, TimeUnit.SECONDS);
-                }
-            };
-        }
     }
 
     private static boolean exportsToGoogleTelemetry() {

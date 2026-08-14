@@ -1,6 +1,18 @@
 # Gaps, Drift, and Missing Verification
 
-Last verified: 2026-08-11.
+Last reconciled: 2026-08-12 against current source, GitHub configuration, and live GCP inventory.
+
+**14 August delta:** the dev OpenTelemetry background-flush fix passed deployment and a 13-minute/48-cycle
+live check with zero exporter failures. The primary operator confirmed alert-email receipt. OBS-01 now
+requires production promotion, one full school-day stability evidence, and a tested backup recipient. The
+approved GCP migration target is two new projects; see the authoritative remaining-work register and split-
+project runbook. The destination projects are not yet visible, so migration remains NO-GO.
+
+The authoritative prioritized closure plan is
+[../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md). Production services and production
+reporting have already moved to dedicated identities; older statements below that they still use default
+Compute are superseded. Remaining default-Compute exposure is concentrated in eight Cloud Run jobs, live
+dev Cloud Deploy targets, broad project roles, and a legacy platform invoker binding.
 
 Production deployment state changed materially on 2026-08-11. The seven services now use dedicated runtime
 identities and immutable-digest Cloud Deploy revisions; reporting push uses a dedicated OIDC identity without
@@ -56,7 +68,7 @@ Required follow-up:
 - Change the prod target to `NOTIFICATION_DELIVERY_PROVIDER=msg91` and `MSG91_DRY_RUN=false`.
 - Run a controlled provider smoke with an approved recipient.
 
-### Monitoring Email Receipt Requires Human Verification
+### Monitoring Backup Route and Full Stability Evidence Remain
 
 Production observability Terraform was applied on 2026-08-05. It created email
 channel `11561348974326363261` and attached it to all 41 production alert
@@ -64,13 +76,14 @@ policies. Six production uptime checks are active at a 900-second period.
 
 Impact:
 
-- Alert routing is configured, but mailbox receipt and channel verification require
-  the human mailbox owner.
+- The primary operator has confirmed receipt, but no named backup recipient has been proven and the dev trace
+  fix has not yet completed production promotion plus a full school-day stability window.
 
 Required follow-up:
 
-- Complete Google email-channel verification and send a test alert.
-- Verify at least one test incident reaches the operator channel.
+- Add/verify the named backup route and prove the same test incident reaches primary and backup.
+- Promote the dev-proven trace fix through production approval and capture one school day without recurring
+  exporter failures.
 
 ### Compliance Log Routing Is Live; Retention Ownership Requires Review
 
@@ -289,11 +302,11 @@ Required follow-up:
 
 ### GCP Service Account Strategy Is Broad
 
-All seven dev Cloud Run services now use dedicated per-service identities. The seven production
-services still use the default compute service account.
+All fourteen dev/prod Cloud Run services now use dedicated per-service identities. Eight of nine Cloud
+Run jobs and all seven live dev Cloud Deploy targets still use the default Compute service account.
 
-The dev reporting Pub/Sub push caller is also a separate dedicated service account, distinct from
-the platform runtime identity.
+Dev and production reporting Pub/Sub push callers use dedicated service accounts distinct from the
+platform runtime identity.
 
 Impact:
 
@@ -302,9 +315,9 @@ Impact:
 
 Required follow-up:
 
-- Promote the verified dev identity matrix to production through a guarded canary.
-- Remove the broad legacy default-compute permissions after production and the remaining Pub/Sub
-  subscriptions no longer depend on that account.
+- Move the remaining jobs and live dev Cloud Deploy targets to their dedicated identities.
+- Remove the legacy platform invoker binding and broad default-compute permissions after those cutovers
+  have been observed and rollback evidence exists.
 
 ### Dev and Prod Share One Project
 

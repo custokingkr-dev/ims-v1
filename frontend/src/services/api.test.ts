@@ -78,6 +78,13 @@ describe('api.ts module exports', () => {
     expect(typeof mod.setAccessToken).toBe('function');
   });
 
+  it('keeps streaming-download token access in the in-memory API module', async () => {
+    const mod = await import('./api');
+    mod.setAccessToken('stream-token');
+    expect(mod.getAccessToken()).toBe('stream-token');
+    mod.setAccessToken(null);
+  });
+
   it('exports refreshToken as a function', async () => {
     const mod = await import('./api');
     expect(typeof mod.refreshToken).toBe('function');

@@ -1,5 +1,8 @@
 # Onboarding, Isolation, Erasure And Cost Certification Evidence
 
+> Historical evidence record. Preserve the measurements below. For current live state and unresolved
+> launch gates, use [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md).
+
 Date: 2026-08-11
 Scope: 100-150 schools, 200,000-300,000 total student records, with at least one 10,000-student school.
 Environment: onboarding evidence used local JDK 25, Testcontainers PostgreSQL 16 and Docker Desktop;

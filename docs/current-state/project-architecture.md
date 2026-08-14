@@ -1,6 +1,6 @@
 # Project Architecture
 
-Last verified: 2026-08-05.
+Last reconciled: 2026-08-12 against service source, gateway routes, deployment source, and live GCP inventory.
 
 ## Product Scope
 
@@ -10,7 +10,8 @@ Custoking IMS is a multi-tenant school operations platform. The current deployed
 - Programmable Node API gateway.
 - Five Spring Boot domain/runtime services.
 - PostgreSQL on Cloud SQL.
-- Pub/Sub-backed asynchronous reporting and notification ingress.
+- Pub/Sub-backed asynchronous reporting ingress. Notification ingress is implemented and verified in dev;
+  production does not yet have a notification push subscription or DLQ.
 - GCP-native observability.
 
 ## Current Runtime Topology
@@ -94,7 +95,7 @@ The gateway owns:
 - Security headers including CSP, HSTS, and referrer policy.
 - Request body size protection.
 - Token-bucket rate limiting.
-- Local HS512 JWT verification when `GATEWAY_LOCAL_JWT_VERIFY` is enabled and `APP_JWT_SECRET` is present.
+- Local HS256/HS512 JWT verification when `GATEWAY_LOCAL_JWT_VERIFY` is enabled and `APP_JWT_SECRET` is present.
 - Fallback token introspection through identity-service.
 - Cloud Run ID-token upstream auth when `GATEWAY_CLOUD_RUN_AUTH=auto`.
 - Per-service token header injection:

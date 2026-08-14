@@ -1,5 +1,12 @@
 # Production Deployment Record - 2026-08-11
 
+> **2026-08-12 reconciliation:** all 14 Cloud Run services remain Ready and use dedicated runtime
+> identities. Production SQL remains `RUNNABLE` on zonal `db-g1-small` with encrypted-only connections,
+> backups/PITR, deletion protection and `max_connections=200`. Production reporting uses dedicated OIDC
+> identity `ims-reporting-push-prod`, but has no DLQ. Production notification still has no subscription or
+> DLQ and remains logging/dry-run. See [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md) for
+> the current launch gates; this file remains the immutable deployment record.
+
 Project: `custoking` (`305630109861`)
 
 Region: `asia-south2`

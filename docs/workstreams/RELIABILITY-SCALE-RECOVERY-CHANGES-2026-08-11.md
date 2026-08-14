@@ -1,5 +1,8 @@
 # Reliability, Scale, and Recovery Changes — 2026-08-11
 
+> Historical implementation and test evidence. Current launch blockers, owners, cost controls and
+> acceptance criteria are in [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md).
+
 ## 1. Scope and evidence standard
 
 This workstream covers only notification/event delivery, outbox reliability, scale-to-zero async

@@ -91,5 +91,6 @@ describe('workspace nav module filtering', () => {
 
     expect(items).not.toContainEqual(expect.objectContaining({ key: 'home' }));
     expect(items).toContainEqual(expect.objectContaining({ key: 'photoimport' }));
+    expect(items).toContainEqual(expect.objectContaining({ key: 'studentexport' }));
   });
 });

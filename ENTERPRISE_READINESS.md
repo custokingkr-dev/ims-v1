@@ -1,5 +1,9 @@
 # Custoking IMS — Enterprise Readiness Assessment
 
+> Historical assessment from 2026-05-22. It predates the split-service production deployment and current
+> scale evidence. Use [docs/DOCUMENTATION-INDEX.md](docs/DOCUMENTATION-INDEX.md) and
+> [docs/REMAINING-WORK-2026-08-12.md](docs/REMAINING-WORK-2026-08-12.md) for present readiness.
+
 > Generated: 2026-05-22 | Branch: `feature/v1` | Highest migration: **V127**
 
 ---
