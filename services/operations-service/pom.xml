@@ -97,7 +97,7 @@
         <dependency>
             <groupId>io.opentelemetry.contrib</groupId>
             <artifactId>opentelemetry-gcp-auth-extension</artifactId>
-            <version>1.56.0-alpha</version>
+            <version>1.59.0-alpha</version>
         </dependency>
         <dependency>
             <groupId>com.google.auth</groupId>
