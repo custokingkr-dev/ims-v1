@@ -1,5 +1,9 @@
 # Security and Governance Planned Changes
 
+> Historical workstream plan and evidence. Production runtime identities and production reporting OIDC
+> have since been completed. Current IAM drift and governance gates are in
+> [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md).
+
 Date: 2026-08-11 IST
 Scope: repository controls, GitHub governance, Google Cloud runtime/deployment IAM, Pub/Sub push authentication, secret lifecycle, dependency and container security, and public ingress
 Live project: `custoking` (`305630109861`)

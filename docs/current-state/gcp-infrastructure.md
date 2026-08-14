@@ -1,6 +1,39 @@
 # GCP Infrastructure
 
-Last verified: 2026-08-10 with `gcloud.cmd` against project `custoking`.
+Last reconciled: 2026-08-12 with `gcloud.cmd` against project `custoking`.
+
+## 2026-08-14 Delta
+
+- Governed cost-control workflow run `31795809595` succeeded from `main`; direct `gcloud` inspection showed
+  `custoking-db-dev` `STOPPED`, tier `db-f1-micro`, activation policy `NEVER`.
+- The approved future layout is development in `custoking-dev` and production in `custoking-prod`. Neither
+  destination project was visible to the operating account on 14 August, so every live resource documented
+  below still belongs to the mixed source project `custoking`.
+- Ten Cloud Run jobs are now visible. The one-shot `otel-probe-dev-20260813` is successful temporary evidence
+  and remains a cleanup candidate; eight regular jobs still use the default Compute service account.
+- The four dev async-relay Scheduler jobs are in `asia-south1`, are paused, and no production relay Scheduler
+  jobs exist.
+
+## 2026-08-12 Authoritative Reconciliation
+
+The detailed inventory below records the earlier deployment baseline. Where it conflicts with this table,
+this reconciliation and the dated production evidence take precedence.
+
+| Area | Verified live state |
+| --- | --- |
+| Cloud Run | 14/14 services Ready; all runtime services use dedicated per-service identities; concurrency 80; minimum scale 0; all declare ingress `all`; frontend/gateway are public and Spring services remain IAM-private |
+| Scaling | prod max instances: gateway 3, frontend 2, each Spring service 2; dev max instances 4 except frontend 2 |
+| Cloud SQL dev | `STOPPED`, `db-f1-micro`, zonal, 15 GB, encrypted-only, backups/PITR disabled, `max_connections=200` |
+| Cloud SQL prod | `RUNNABLE`, `db-g1-small`, zonal, 10 GB auto-resize, private IP, encrypted-only, backups/PITR/deletion protection enabled, `max_connections=200` |
+| Pub/Sub | reporting push active in dev/prod with dedicated OIDC identities; dev reporting has DLQ; prod reporting has no DLQ; dev notification has push+DLQ; prod notification has neither |
+| Scheduler | four dev async-relay jobs in `asia-south1`, all paused; no production relay jobs |
+| Cloud Run jobs | nine total; eight use default Compute, including both prod SQL jobs; only direct-service-smoke uses a dedicated identity |
+| Cloud Deploy | production targets use `clouddeploy-prod-deployer`; live dev targets still use default Compute despite dedicated identity in source templates |
+| Artifact Registry | about 6.13 GB; delete-after-7-days and keep-last-3 policies active; registry scanning disabled |
+| Student photo bucket | about 2.34 GB; uniform access, public-access prevention, seven-day soft delete and 14-day temporary-prefix lifecycle |
+| GitHub | public repository; no visible ruleset/classic protection on `main` or `dev`; prod Environment review exists, admin bypass disabled, self-review allowed |
+
+Secrets values, database credentials, token query values, and student identifiers are intentionally absent.
 
 ## Project and Region
 
@@ -70,43 +103,39 @@ Verified service-level invoker bindings:
   - `custoking-frontend-prod`: `roles/run.invoker=allUsers`
 - Private Spring services:
   - identity, school-core, operations, billing in both envs allow the Monitoring service agent for authenticated uptime checks.
-  - platform-service in both envs allows the Monitoring service agent and the default compute service account.
-  - platform-service dev additionally allows the dedicated reporting push service account.
+  - platform-service allows the Monitoring service agent and the dedicated reporting/notification push callers that exist in each environment.
+  - a legacy default-Compute platform invoker binding remains and must be removed after job/target IAM cutover evidence.
 
 Platform-service additionally allows:
 
-- `serviceAccount:305630109861-compute@developer.gserviceaccount.com`
-- dev only: `serviceAccount:ims-reporting-push-dev@custoking.iam.gserviceaccount.com`
+- `serviceAccount:305630109861-compute@developer.gserviceaccount.com` (legacy)
+- dev: `serviceAccount:ims-reporting-push-dev@custoking.iam.gserviceaccount.com`
+- dev: `serviceAccount:ims-notification-push-dev@custoking.iam.gserviceaccount.com`
+- prod: `serviceAccount:ims-reporting-push-prod@custoking.iam.gserviceaccount.com`
 
-The dedicated dev binding supports reporting Pub/Sub push with OIDC. The default compute binding
-remains because notification push and production have not yet been migrated.
+The dedicated bindings support Pub/Sub push with OIDC. Production notification has no subscription;
+the default-Compute binding is now legacy rather than an active reporting dependency.
 
 ## Runtime Service Account
 
-Dev uses a dedicated identity per Cloud Run service:
+Both environments use a dedicated identity per Cloud Run service:
 
-| Service | Dev runtime identity | Resource-specific access |
+| Service | Dev / prod runtime identity | Resource-specific access |
 | --- | --- | --- |
-| Identity | `ims-identity-dev` | 5 secrets; telemetry; invoke school core |
-| School core | `ims-school-core-dev` | 10 secrets; telemetry; reporting publish; photo objects; self-signing |
-| Operations | `ims-operations-dev` | 5 secrets; telemetry; reporting publish; invoke school core |
-| Platform | `ims-platform-dev` | 8 secrets; telemetry; invoke school core and operations |
-| Billing | `ims-billing-dev` | 3 secrets; telemetry; reporting publish |
-| API gateway | `ims-api-gateway-dev` | 13 secrets; Cloud Trace; invoke five private backends |
-| Frontend | `ims-frontend-dev` | no project-level role |
-
-Production Cloud Run services still run as:
-
-```text
-305630109861-compute@developer.gserviceaccount.com
-```
+| Identity | `ims-identity-<env>` | scoped secrets; telemetry; invoke school core |
+| School core | `ims-school-core-<env>` | scoped secrets; telemetry; reporting publish; photo objects; self-signing |
+| Operations | `ims-operations-<env>` | scoped secrets; telemetry; reporting publish; invoke school core |
+| Platform | `ims-platform-<env>` | scoped secrets; telemetry; invoke school core and operations |
+| Billing | `ims-billing-<env>` | scoped secrets; telemetry; reporting publish |
+| API gateway | `ims-api-gateway-<env>` | scoped secrets; Cloud Trace; invoke five private backends |
+| Frontend | `ims-frontend-<env>` | no project-level role |
 
 The dev effective-policy audit verified 44 secret assignments, 12 project-role assignments, three
 topic publishers, nine Cloud Run invoker edges, one bucket role and one self-signing role with zero
 missing bindings. Dev runtime identities do not have broad build, deploy, or project-wide secret
 roles.
 
-Project-level IAM bindings still present on the production/default compute service account:
+Broad project-level IAM bindings still present on the default Compute service account:
 
 - `roles/artifactregistry.writer`
 - `roles/cloudbuild.builds.builder`
@@ -162,7 +191,7 @@ Outbox publishers are configured in both envs:
 
 | Instance | Database version | Region | State | Tier | Private IP |
 | --- | --- | --- | --- | --- | --- |
-| `custoking-db-dev` | `POSTGRES_16` | `asia-south2` | `RUNNABLE` | `db-custom-4-7680` | `10.92.0.4` |
+| `custoking-db-dev` | `POSTGRES_16` | `asia-south2` | `STOPPED` | `db-f1-micro` | `10.92.0.4` |
 | `custoking-db-prod` | `POSTGRES_16` | `asia-south2` | `RUNNABLE` | `db-g1-small` | `10.92.0.5` |
 
 Databases:
@@ -282,15 +311,13 @@ Subscriptions:
 | Subscription | Topic | Push target | OIDC service account | Ack deadline | State |
 | --- | --- | --- | --- | --- | --- |
 | `ims-reporting-service-push-dev` | `ims-reporting-events-v1-dev` | platform-service dev `/api/v1/pubsub/reporting-events` (no query) | `ims-reporting-push-dev` | 30s | ACTIVE |
-| `ims-reporting-service-push-prod` | `ims-reporting-events-v1-prod` | platform-service prod `/api/v1/pubsub/reporting-events` | default compute SA | 30s | ACTIVE |
+| `ims-reporting-service-push-prod` | `ims-reporting-events-v1-prod` | platform-service prod `/api/v1/pubsub/reporting-events` (no query) | `ims-reporting-push-prod` | 30s | ACTIVE |
 | `ims-notification-service-push-dev` | `ims-notifications-events-v1-dev` | platform-service dev `/api/v1/pubsub/notifications` (no query) | `ims-notification-push-dev` | 30s | ACTIVE |
 
-The dev reporting and notification endpoints have no query credential and use audiences equal to the
-platform Cloud Run service URL. Both dev subscriptions use 10-600 second retry, ten delivery attempts and
-dedicated dead-letter topics; guarded notification idempotency/DLQ probes passed with the logging provider,
-so no external message was sent. The production reporting endpoint still contains a secret-bearing query
-parameter; its literal value is intentionally not documented. The production notification topic still has
-no subscription.
+The live push endpoints have no query credential and use audiences equal to the platform Cloud Run service
+URL. Both dev subscriptions use 10-600 second retry, ten delivery attempts and dedicated dead-letter topics;
+guarded notification idempotency/DLQ probes passed with the logging provider, so no external message was
+sent. Production reporting has no DLQ. The production notification topic still has no subscription.
 
 ## Workload Identity Federation
 

@@ -1,7 +1,6 @@
 # Custoking IMS Current-State Documentation
 
-Last verified: 2026-08-05 from repository files, GitHub Actions runs, and live GCP project `custoking`.
-CI/CD active-state updated: 2026-08-04.
+Last reconciled: 2026-08-12 from repository files, GitHub configuration, and live GCP project `custoking`.
 
 This documentation bundle captures the current project state after the dev/prod greenfield deployment and the CI/CD/observability rebuild. It is intentionally evidence-led: if a fact could not be verified from code, deployment configuration, local artifacts, or live GCP inventory, it is listed in [gaps-and-drift.md](gaps-and-drift.md) instead of being assumed.
 
@@ -15,6 +14,15 @@ This documentation bundle captures the current project state after the dev/prod 
 - [school-student-lifecycle.md](school-student-lifecycle.md) - implemented school onboarding readiness, localization lineage, student date handling, and import semantics.
 - [observability-operations.md](observability-operations.md) - dashboards, uptime, alerts, log metrics, traces, runtime evidence, and operations checks.
 - [gaps-and-drift.md](gaps-and-drift.md) - verified missing items, stale docs, and follow-up work.
+- [../architecture/custoking-architecture.html](../architecture/custoking-architecture.html) - visual application and live GCP architecture with verified gaps.
+- [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md) - authoritative prioritized launch gates and acceptance criteria.
+
+## Source Precedence
+
+Use this bundle for the current system shape, the dated production/scale evidence for what happened at a
+specific time, and [../DOCUMENTATION-INDEX.md](../DOCUMENTATION-INDEX.md) when documents conflict. Plans,
+spike reports, migration roadmaps, and dated workstream narratives are retained as historical evidence;
+they are not statements of current live state unless a current-state document explicitly adopts them.
 
 ## Source Trail
 

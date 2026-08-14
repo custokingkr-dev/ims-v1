@@ -77,7 +77,7 @@ When the local Postgres container is available, the runner verifies these tables
 
 | Schema | Assertion |
 | --- | --- |
-| `tenant_school.outbox_events` | `school.upserted.v1`, `student.upserted.v1`, `attendance-daily.upserted.v1`, `fee-assignment.upserted.v1`, `payment.recorded.v1`, `catalog-order.upserted.v1` |
+| `tenant_school.outbox_events` | `school.upserted.v1`, `student.upserted.v1`, `student.deleted.v1`, `attendance-daily.upserted.v1`, `fee-assignment.upserted.v1`, `payment.recorded.v1`, `catalog-order.upserted.v1` |
 | `firefighting.outbox_events` | `firefighting-request.upserted.v1` |
 | `billing.outbox_events` | `billing.invoice-upserted.v1` |
 | `student.import_batches` | Original import filename, SHA-256, and file size are persisted |

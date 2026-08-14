@@ -1,6 +1,13 @@
 # CI/CD Current State
 
-Last source audit: 2026-08-04.
+Last reconciled: 2026-08-12 against active workflows, deployment templates, GitHub environment policy,
+and live Cloud Deploy targets.
+
+Live drift: all production targets use `clouddeploy-prod-deployer`, but all seven live dev targets still
+use the default Compute service account. Source templates already specify `clouddeploy-dev-deployer`; a
+guarded target reconciliation is still required. The public repository has no visible ruleset or classic
+branch protection on `main` or `dev`. The `prod` Environment requires review and disallows admin bypass,
+but currently permits self-review.
 
 ## Status
 

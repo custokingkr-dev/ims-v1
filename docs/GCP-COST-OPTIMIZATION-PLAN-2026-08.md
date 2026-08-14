@@ -6,6 +6,20 @@
 > supersedes every recommendation below to retain production on `db-g1-small`. The shared-core
 > instance remains the observed current state, not the production target.
 
+> **Live-state reconciliation (2026-08-12):** dev SQL is stopped on `db-f1-micro`; all four dev relay
+> Scheduler jobs are paused; all 14 Cloud Run services have minimum scale 0; production SQL remains
+> zonal `db-g1-small`; Artifact Registry is approximately 6.13 GB after cleanup; and the standard billing
+> export is INR 5,558.30 gross through 2026-08-11 19:00 UTC. Use
+> [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md) for current decisions and gates. Older
+> point-in-time sizes and forecasts below are retained as historical evidence.
+
+> **Cost-control verification (2026-08-14):** governed workflow run `31795809595` succeeded from `main`;
+> direct inspection then showed `custoking-db-dev` `STOPPED` on `db-f1-micro` with activation policy `NEVER`.
+> The database is start/stop controlled and must be rechecked after every approved dev window; this dated
+> result is not a promise that it remains stopped indefinitely. An earlier dispatch from `dev` failed WIF
+> authentication because the cost-controller provider condition does not authorize that ref; manual
+> dispatches must use the workflow's governed `main` ref unless IAM policy is deliberately changed.
+
 Last updated: 2026-08-05
 Project inspected: `custoking`  
 Region inspected: `asia-south2`  

@@ -1,5 +1,9 @@
 # Onboarding, Cost, Compliance And Operations Change Plan
 
+> Historical workstream plan and evidence. Current live state and remaining acceptance gates are maintained
+> in [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md). Point-in-time sizes and counts
+> below must not be treated as current inventory.
+
 Date: 2026-08-11
 Scope: 100-150 schools, 200,000-300,000 total student records, and a maximum expected school size of
 10,000 students.
@@ -98,9 +102,11 @@ work deployed only to dev and ran the bounded synthetic probe documented below; 
   billing setup, or a go-live approval.
 - The API gateway has an in-memory token bucket keyed by bearer token (or client IP), default 50 RPS and
   burst 100. It is not school-aggregate protection and each gateway replica has its own bucket.
-- Permanent student records are soft-deleted in the application. There is no school-offboarding workflow
-  and no coordinated erase/export covering all schemas, projections, outboxes, backups, logs, photos,
-  Drive folders, identities, and provider records.
+- As of 2026-08-13, the student delete command is a hard delete across school-core student-owned rows,
+  private student photo objects, and platform reporting/notification projections; archive and restore
+  surfaces are removed. There is still no school-offboarding workflow or full erasure process covering
+  historical event payloads, shared import workbooks, backups, logs, Drive folders, identities, and
+  provider records.
 - Consent is an append-only, school-scoped event ledger with `STUDENT_PHOTO`, `ID_CARD_PRODUCTION`,
   `SCHOOL_COMMUNICATIONS`, `APAAR_REGISTRATION`, and `DATA_CORRECTION` purposes. Photo upload and MSG91
   delivery do not consult the effective ledger. `student_guardians.receives_notifications` is also not

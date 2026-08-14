@@ -1,5 +1,11 @@
 # Planned Changes and Execution Program — 2026-08-11
 
+> **Status reconciliation (2026-08-12):** this document is a dated execution record. Production runtime
+> identities and production reporting OIDC were completed after some observations below were written;
+> Artifact Registry is now approximately 6.13 GB and 110 alert policies are enabled. Use
+> [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md) for current incomplete work and acceptance
+> criteria. Do not reinterpret historical test measurements or decisions below as current live inventory.
+
 > Production update: the reviewed application was promoted on 2026-08-11 and the authorized runtime IAM,
 > Cloud Deploy IAM, reporting OIDC, Cloud SQL encrypted-only transport, and workflow-identity controls were
 > applied. Exact revisions, digests, workflow runs, rollback points, budget state, and residual rollout gates

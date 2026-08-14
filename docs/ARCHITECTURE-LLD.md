@@ -1,10 +1,13 @@
 # Custoking IMS Low-Level Design
 
+Last reconciled: 2026-08-12. This design describes current source boundaries; live capacity and
+infrastructure gaps are maintained in [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md).
+
 ## Repository Layout
 
 ```text
 frontend/                 React/Vite SPA
-services/api-gateway/     nginx gateway
+services/api-gateway/     programmable Node HTTP proxy
 services/*-service/       Consolidated domain services
 scripts/                  Audits, smokes, deployment checks
 deploy/clouddeploy/       Cloud Deploy pipelines and targets
@@ -35,7 +38,7 @@ docker-compose.yml        Local split-service topology
 | Reporting client | `X-Reporting-Service-Token` | `platform-service` |
 | Billing client | `X-Billing-Service-Token` | `billing-service` |
 | Notification client | `X-Notification-Service-Token` | `platform-service` |
-| Audit client | `X-Audit-Ingest-Token` | `platform-service` |
+| Audit client | `X-Audit-Service-Token` | `platform-service` |
 
 ## Database Design
 
@@ -58,7 +61,10 @@ Each domain service has its own Flyway history table and schema. Runtime code sh
 
 ## Events
 
-Domain services expose synchronous compatibility APIs today. Event publishing remains the target integration model for cross-service projections; consumers must be idempotent and store processed event IDs in their own schema when those publishers are enabled.
+School-core, operations and billing publish reporting events through transactional outboxes. Platform
+receives the canonical envelope through Pub/Sub, stores an idempotent inbox record keyed by `eventId`, and
+projects reporting read models. Production reporting push is active but has no Pub/Sub DLQ; production
+notification push is not yet provisioned.
 
 ## MSG91 Notification Design
 
@@ -68,6 +74,8 @@ Notification delivery is centralized in `platform-service`.
 - WhatsApp uses Custoking-managed MSG91 setup initially.
 - Hybrid onboarding allows a school sender profile to move to its own WhatsApp Business account later.
 - Sender profiles and onboarding status live in the notification schema.
+- Production delivery remains `logging` with `MSG91_DRY_RUN=true`; do not claim real SMS/WhatsApp delivery
+  until consent, sender/template approval, subscription topology and a bounded recipient canary pass.
 
 ## Cloud Run Configuration
 
@@ -102,7 +110,7 @@ Gateway smokes require production tokens or credentials:
 ```powershell
 $env:IMS_SMOKE_SUPERADMIN_TOKEN = "<token>"
 $env:IMS_SMOKE_ADMIN_TOKEN = "<token>"
-powershell -ExecutionPolicy Bypass -File scripts\smoke-deployment-readiness.ps1 -GatewayBaseUrl "https://custoking-api-gateway-xkv7oenbna-em.a.run.app" -SchoolId 4
+powershell -ExecutionPolicy Bypass -File scripts\smoke-deployment-readiness.ps1 -GatewayBaseUrl "<approved-gateway-url>" -SchoolId "<approved-school-uuid>"
 powershell -ExecutionPolicy Bypass -File scripts\smoke-production-write-paths.ps1
 ```
 

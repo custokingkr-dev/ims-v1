@@ -1,5 +1,11 @@
 # Scale Readiness, GCP Cost Model, and One-Week Production Plan
 
+> **Status reconciliation (2026-08-12):** completed measurements remain evidence, but current unresolved
+> gates and execution order are maintained in
+> [REMAINING-WORK-2026-08-12.md](REMAINING-WORK-2026-08-12.md). The system is approved for controlled
+> canaries, not simultaneous onboarding of 100-150 schools, until the arrival-rate mixed workload,
+> production SQL/HA decision, async production topology, and governance gates pass.
+
 Original evidence date: 2026-08-10; capacity/cost status reconciled 2026-08-11
 Repository: `custokingkr-dev/ims-v1`
 GCP project inspected: `custoking`

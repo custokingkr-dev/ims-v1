@@ -1,6 +1,29 @@
 # Observability and Operations
 
-Last verified: 2026-08-05.
+Last reconciled: 2026-08-12 against live Monitoring, Logging, health, and Pub/Sub inventory.
+
+## 2026-08-14 OpenTelemetry Delta
+
+- Commit `3e3fb4d7` is deployed to all five Java services in dev. It prevents scheduled/background trace
+  flushing from running without a request-scoped Google authentication context.
+- Deployment gates passed with 1,044 tests. A 13-minute live check covered 48 scheduled cycles with zero
+  trace-export failure metric increments, zero exporter errors, and the expected traces.
+- The primary human operator confirmed alert-email receipt. Backup-recipient delivery remains unproven.
+- Production has not received this dev-only commit; production promotion and a one-school-day stability
+  window remain OBS-01 acceptance work.
+
+## 2026-08-12 Live Reconciliation
+
+- 110 alert policies are enabled, eight uptime checks exist, and all policies reference the one enabled
+  operator email channel. Human receipt/verification is still required.
+- Production gateway and frontend return HTTP 200. No production HTTP 5xx was observed in the last-day
+  review; the nine ERROR log entries were OTLP span-export timeouts.
+- Both reporting push subscriptions use dedicated OIDC identities. Dev reporting has a DLQ; production
+  reporting does not.
+- Dev notification has a push subscription and DLQ. Production notification has neither and remains
+  logging/dry-run only.
+- Logging retention remains seven days in `_Default`, 400 days locked in `_Required`, and 180 days in the
+  India compliance bucket.
 
 ## Observability Architecture
 
@@ -223,7 +246,7 @@ Originally verified on 2026-07-09:
 - Dev/prod topics exist.
 - Dev/prod reporting push subscriptions are ACTIVE.
 - Reporting push subscriptions use OIDC service account auth.
-- Platform-service has required invoker binding for default compute service account.
+- Platform-service retains a legacy default-Compute invoker binding in addition to dedicated push/runtime identities.
 - Real `PubSubDomainEventPublisher` startup logs were found for dev/prod billing, operations, and school-core.
 - Prod DB audit showed outbox and inbox backlog/open/error counts at 0.
 
@@ -236,7 +259,8 @@ Dev reporting push was reverified on 2026-08-10 after its OIDC cutover:
   acknowledged with HTTP 204.
 - The post-cutover authenticated gateway suite passed 40/40 and environment preflight had zero
   blockers.
-- Production reporting remains on the default compute push identity and requires its own cutover.
+- Production reporting now uses `ims-reporting-push-prod`; its remaining event-delivery gate is an observed
+  real event plus a production DLQ/replay posture.
 - Dev now has a dedicated OIDC notification push subscription with retry/DLQ. Canonical duplicate delivery
   was stored once and a poison event reached the DLQ under the logging/dry-run provider. Production still
   has no notification subscription, and real consented provider delivery remains gated.

@@ -1,5 +1,10 @@
 # Architecture Review — Custoking IMS
 
+> Historical review from 2026-06-28. The service split, deployment path and live GCP state changed after
+> this assessment. Use [docs/DOCUMENTATION-INDEX.md](docs/DOCUMENTATION-INDEX.md),
+> [docs/architecture/custoking-architecture.html](docs/architecture/custoking-architecture.html), and
+> [docs/REMAINING-WORK-2026-08-12.md](docs/REMAINING-WORK-2026-08-12.md) for current decisions.
+
 **Reviewer role:** Principal / Chief Architect
 **Date:** 2026-06-28
 **Scope:** Full-stack review — service boundaries, data flow, dependencies, infra/deploy, DB schema, CI/CD — benchmarked against 2026 best practices.

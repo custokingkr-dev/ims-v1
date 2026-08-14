@@ -2,6 +2,9 @@
 ## Custoking IMS — Institutional Management System  
 ### v2.0 · Ground-Up Architecture Design
 
+> Product/design baseline, not live infrastructure evidence. Resolve implementation or deployment
+> conflicts through [docs/DOCUMENTATION-INDEX.md](docs/DOCUMENTATION-INDEX.md) and the current-state bundle.
+
 ---
 
 > **Document Purpose:** Greenfield redesign specification for Custoking IMS, derived from the operational v1 system. Every module, API surface, data model, and cross-cutting concern is specified here. Use this PRD as the authoritative reference for any rewrite, new service extraction, or feature addition.
@@ -603,7 +606,7 @@ schools:
 | ST1 | Enrol student | School admin, Ops | Admission number, name, class, section, parent contacts, Aadhaar (encrypted) |
 | ST2 | View student profile | Admin, Ops | Shows fee status, attendance summary, payment history |
 | ST3 | Update student | Admin | Class/section change, contact update |
-| ST4 | Soft-delete student | Admin | Sets `deleted_at`. Does not appear in lists. |
+| ST4 | Permanently delete student | Admin | Requires exact admission-number confirmation; removes the student and linked domain records. Cannot be restored. |
 | ST5 | Bulk CSV import | Admin | Parse → validate → preview → confirm 2-step flow. Errors returned per row. |
 | ST6 | Student photo upload | Admin | GCS signed URL flow; photo URL stored on student. |
 | ST7 | Search students | Admin, Ops | By name, admission number, class, section. |
@@ -1298,7 +1301,7 @@ GET    /api/schools/{schoolId}/students         [student:read]
 POST   /api/schools/{schoolId}/students         [student:create]
 GET    /api/schools/{schoolId}/students/{id}    [student:read]
 PUT    /api/schools/{schoolId}/students/{id}    [student:update]
-DELETE /api/schools/{schoolId}/students/{id}    [student:update]
+DELETE /api/v1/students/{id}                    [student:delete; `X-Student-Delete-Confirmation` required]
 POST   /api/schools/{schoolId}/students/import/preview  [student:import]
 POST   /api/schools/{schoolId}/students/import/confirm  [student:import]
 ```

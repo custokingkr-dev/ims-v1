@@ -1,6 +1,6 @@
 # School And Student Lifecycle
 
-Last verified: 2026-08-05.
+Last verified: 2026-08-13.
 
 This document describes implemented behavior. It is not a future-state proposal.
 
@@ -78,6 +78,22 @@ Admission date is parsed as a date-only value and written with the imported stud
 Bulk import still assigns the school's current academic year. It does not accept an arbitrary
 academic-year label from the workbook because assignment belongs to the enrollment lifecycle.
 
+## Permanent Student Deletion
+
+`DELETE /api/v1/students/{id}` is a non-recoverable hard delete and requires the caller to have
+`student:delete`. The exact admission number is URL-encoded in the
+`X-Student-Delete-Confirmation` header, avoiding an unreliable DELETE request body. The archive
+list, archive command, restore command, and superadmin restore UI have been removed.
+
+School-core deletes the student's attendance and absentee-notification rows, fee assignments and
+payments, import links, review items, promotion items, enrollment history, guardian links and
+consents, and orphaned guardians in one transaction. Attendance-day aggregates are recalculated.
+Private student photo objects are removed after the database transaction commits. The same
+transaction emits a minimal `student.deleted.v1` tombstone containing only student id and school id;
+platform-service consumes it to remove student reporting facts, event contributions, notification
+logs, and the student dimension. Migrations `student/V18` and `reporting/V27` keep these deletion
+lookups index-backed.
+
 ## Data That Is Not Rewritten
 
 The localization migrations add/backfill tenant settings only. They do not alter student DOBs,
@@ -96,4 +112,3 @@ Required release checks for these contracts:
 5. Create/edit a disposable student, verify DOB/admission date round-trip, then delete the test data.
 6. Promote the exact tested commit to production and run read-only health/migration checks before a
    bounded disposable write smoke. Remove only records created by that smoke.
-

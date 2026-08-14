@@ -6,6 +6,13 @@ Billing account: `018AC9-E669C1-2FC9B8`
 
 Guardrail: `Custoking Monthly Guardrail`, INR 5,000 monthly gross cost, project scoped
 
+> **Reconciled 2026-08-12:** the standard billing export had reached INR 5,558.30 gross through
+> 2026-08-11 19:00 UTC, with approximately INR -5,558.31 credits and therefore approximately zero net
+> payable cost. Gross service totals were led by Cloud Run (INR 3,195), Cloud SQL (INR 1,807.38),
+> Cloud Build (INR 306.96), and Artifact Registry (INR 135.71). The conclusion below is unchanged:
+> the budget breach is real on the configured gross-cost basis and is primarily attributable to deliberate
+> dev certification, not an active production runaway.
+
 ## Verified status
 
 The live Cloud Billing budget page reported `INR 5,016.73 / INR 5,000.00` on 2026-08-11. The
