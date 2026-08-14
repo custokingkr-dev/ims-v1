@@ -275,7 +275,28 @@ jobs:
       - name: Ensure development database is running
         if: ${{ needs.resolve-target.outputs.target_env == 'dev' }}
         shell: pwsh
+        env:
+          AFFECTED_MATRIX_JSON: ${{ needs.detect.outputs.docker_matrix }}
         run: |
+          $matrix = $env:AFFECTED_MATRIX_JSON | ConvertFrom-Json
+          $databaseBackedServices = @(
+            "identity-service",
+            "school-core-service",
+            "operations-service",
+            "platform-service",
+            "billing-service"
+          )
+          $needsDatabase = @(
+            $matrix.include | Where-Object {
+              $databaseBackedServices -contains [string]$_.name
+            }
+          ).Count -gt 0
+
+          if (-not $needsDatabase) {
+            Write-Host "Skipping development Cloud SQL start: no database-backed service is affected."
+            exit 0
+          }
+
           ./scripts/set-dev-cloudsql-state.ps1 `
             -ProjectId "$env:GCP_PROJECT_ID" `
             -InstanceName custoking-db-dev `
