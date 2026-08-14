@@ -95,6 +95,10 @@ class AuthSessionMigrationTest {
         assertTrue(roleHasPermission("ADMIN", "staff:manage"));
         assertTrue(roleHasPermission("TEACHER", "timetable:read"));
         assertTrue(roleHasPermission("OPERATIONS", "student:create"));
+        assertTrue(permissionExists("student:export"));
+        assertTrue(roleHasPermission("OPERATIONS", "student:export"));
+        assertTrue(roleHasPermission("SUPERADMIN", "student:export"));
+        assertFalse(roleHasPermission("VIEWER", "student:export"));
         assertFalse(roleHasPermission("VIEWER", "staff:manage"));
     }
 

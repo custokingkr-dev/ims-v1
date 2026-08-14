@@ -76,7 +76,7 @@ export function withDerivedModuleGroups(moduleCodes: Iterable<string>): Set<stri
 
 export type PanelKey =
   | 'home' | 'students' | 'fees' | 'feestructure' | 'attendance' | 'timetable'
-  | 'addstudent' | 'bulkimport' | 'photoimport' | 'staff' | 'catalog' | 'orders' | 'planning' | 'classsetup'
+  | 'addstudent' | 'bulkimport' | 'photoimport' | 'studentexport' | 'staff' | 'catalog' | 'orders' | 'planning' | 'classsetup'
   | 'ff-dashboard' | 'ff-new' | 'ff-approvals' | 'ff-orders'
   | 'sa-all-orders' | 'sa-new-order' | 'sa-invoices'
   | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog'
@@ -159,6 +159,7 @@ export const OPERATIONS_NAV_SECTIONS: WorkspaceNavSection[] = [
     title: 'ERP',
     items: [
       { key: 'photoimport', label: 'Student photo import', icon: '' },
+      { key: 'studentexport', label: 'Student data export', icon: '' },
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
     ],
@@ -224,6 +225,7 @@ export const SUPERADMIN_NAV_SECTIONS: Array<{
     title: 'Operations',
     items: [
       { key: 'photoimport', label: 'Student photo import', icon: '' },
+      { key: 'studentexport', label: 'Student data export', icon: '' },
       { key: 'orders', label: 'Order approvals', icon: '📦' },
       { key: 'sa-all-orders', label: 'All orders', icon: '📋' },
       { key: 'sa-new-order', label: 'New order request', icon: '✏️' },
@@ -264,6 +266,7 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   addstudent: 'Add student',
   bulkimport: 'Bulk import',
   photoimport: 'Student photo import',
+  studentexport: 'Student details & photos',
   staff: 'Staff & HR',
   classsetup: 'Class & section setup',
   catalog: 'Catalog',

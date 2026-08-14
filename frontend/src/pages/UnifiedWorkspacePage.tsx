@@ -24,6 +24,7 @@ import { AddStudentPanel } from './workspace/panels/AddStudentPanel';
 import { SchoolStructurePanel } from './workspace/panels/SchoolStructurePanel';
 import { BulkImportPanel } from './workspace/panels/BulkImportPanel';
 import { PhotoImportPanel } from './workspace/panels/PhotoImportPanel';
+import { StudentExportPanel } from './workspace/panels/StudentExportPanel';
 import { FirefightingDashboardPanel } from './workspace/panels/FirefightingDashboardPanel';
 import { FirefightingNewPanel } from './workspace/panels/FirefightingNewPanel';
 import { FirefightingApprovalsPanel } from './workspace/panels/FirefightingApprovalsPanel';
@@ -300,6 +301,7 @@ export default function UnifiedWorkspacePage() {
       case 'addstudent': return ['student:create'];
       case 'bulkimport': return ['student:import'];
       case 'photoimport': return ['student:photo-import'];
+      case 'studentexport': return ['student:export'];
       case 'attendance': return ['attendance:read'];
       case 'timetable': return ['timetable:read'];
       case 'staff': return ['staff:read'];
@@ -527,6 +529,8 @@ export default function UnifiedWorkspacePage() {
           {panelAllowed && panel === 'bulkimport' && <BulkImportPanel setPanel={setPanel} onRefresh={refresh} schoolScopedParams={schoolScopedParams} canCreateStudents={can('student:create')} />}
 
           {panelAllowed && panel === 'photoimport' && <PhotoImportPanel />}
+
+          {panelAllowed && panel === 'studentexport' && <StudentExportPanel />}
 
           {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 

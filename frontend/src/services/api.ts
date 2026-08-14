@@ -12,6 +12,11 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
+/** Read-only access for authenticated streaming downloads handled by the browser fetch API. */
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
 export function getAuthSessionVersion(): number {
   return authSessionVersion;
 }

@@ -11,6 +11,7 @@ Detailed architecture docs:
 - [Event Envelope Contract](docs/EVENT-ENVELOPE-CONTRACT.md)
 - [Local Setup](docs/LOCAL-SETUP.md)
 - [Logical E2E Tests](docs/LOGICAL-E2E-TESTS.md)
+- [Operator Student Details and Photo Export](docs/OPERATOR-STUDENT-EXPORT.md)
 - [GCP Support Files](deploy/gcp/README.md)
 - [MSG91 Production Setup](docs/MSG91-PRODUCTION-SETUP.md)
 

@@ -597,10 +597,12 @@ test('verifyJwtLocally accepts a valid enriched HS512 token', () => {
   assert.equal(claims.ver, 2);
 });
 
-test('student-photo-import routes to student', () => {
+test('student photo import and assigned-school export routes go to student service', () => {
   const resolve = (p) => routes.find((r) => r.matches(p))?.service;
   assert.equal(resolve('/api/v1/student-photo-imports/context'), 'student');
   assert.equal(resolve('/api/v1/student-photo-imports/8c1f/scan'), 'student');
+  assert.equal(resolve('/api/v1/students/export/context'), 'student');
+  assert.equal(resolve('/api/v1/students/export/archive'), 'student');
 });
 
 test('verifyJwtLocally accepts a valid enriched HS256 token', () => {
