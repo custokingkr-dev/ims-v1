@@ -1,16 +1,16 @@
 # Observability and Operations
 
-Last reconciled: 2026-08-12 against live Monitoring, Logging, health, and Pub/Sub inventory.
+Last reconciled: 2026-08-14 against live Monitoring, Logging, health, and Pub/Sub inventory.
 
 ## 2026-08-14 OpenTelemetry Delta
 
-- Commit `3e3fb4d7` is deployed to all five Java services in dev. It prevents scheduled/background trace
-  flushing from running without a request-scoped Google authentication context.
-- Deployment gates passed with 1,044 tests. A 13-minute live check covered 48 scheduled cycles with zero
-  trace-export failure metric increments, zero exporter errors, and the expected traces.
+- The background-flush correction is deployed to all five Java services in dev and production. It prevents
+  scheduled/background trace flushing from running without a request-scoped Google authentication context.
+- Production commit `754f0417` and CD run `31820051376` passed. Fresh authenticated checks returned HTTP 200
+  for all seven services and produced exact current-revision traces for the gateway and all five Java services.
+- The post-deployment 30-minute exporter-error query returned zero errors.
 - The primary human operator confirmed alert-email receipt. Backup-recipient delivery remains unproven.
-- Production has not received this dev-only commit; production promotion and a one-school-day stability
-  window remain OBS-01 acceptance work.
+- Production promotion is complete; a one-school-day stability window remains OBS-01 acceptance work.
 
 ## 2026-08-12 Live Reconciliation
 

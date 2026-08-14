@@ -15,16 +15,19 @@ superseded historical analysis.
 
 ## 2026-08-14 reconciliation delta
 
-- The OpenTelemetry background-flush correction is deployed to all five Java services in dev at commit
-  `3e3fb4d7`; 1,044 tests and all deployment/security gates passed. A 13-minute live check covered 48
-  scheduled cycles with zero exporter errors and exact traces. Production promotion and one full school-day
-  stability evidence remain.
+- The OpenTelemetry background-flush correction is deployed to all five Java services in dev and production.
+  Production commit `754f0417` passed release run `31820051376`; fresh authenticated checks produced exact
+  current-revision traces for the gateway and all five Java services with zero exporter errors. One full
+  school-day stability window remains.
 - The primary operator confirmed receipt of the alert email. A named backup recipient and a complete
   primary/backup delivery test still remain.
-- The governed cost-control workflow run `31795809595` succeeded from `main` on 14 August. Direct inspection
-  then showed `custoking-db-dev` `STOPPED`, `db-f1-micro`, activation policy `NEVER`.
-- Dev is four commits ahead of production: operator student export, clean Temurin runtime, export runtime
-  configuration, and the OpenTelemetry flush fix still require a separately approved production promotion.
+- The governed cost-control workflow run `31823448382` succeeded from production commit `754f0417` on
+  14 August. Direct inspection showed `custoking-db-dev` `STOPPED`, activation policy `NEVER`; the release
+  workflow also skipped SQL startup for a frontend-only dev deployment.
+- Production promotion is complete for the operator student export, permanent-delete behavior, clean Temurin
+  runtime, dependency batch, cost guard, and OpenTelemetry fix. All seven live endpoints returned HTTP 200.
+- Dependabot alerts remain disabled and require repository-admin authority. Branch protection and production
+  self-review controls remain GOV-01 administrator work.
 - The 12 August baseline table below remains immutable evidence for its cutoff; this delta supersedes only
   the operational claims explicitly listed above.
 

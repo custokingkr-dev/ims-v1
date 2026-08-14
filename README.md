@@ -8,6 +8,7 @@ Detailed architecture docs:
 
 - [Verified Architecture Overview](docs/architecture/custoking-architecture.html)
 - [Documentation Index and Source Precedence](docs/DOCUMENTATION-INDEX.md)
+- [Production Deployment Evidence (2026-08-14)](docs/PRODUCTION-DEPLOYMENT-2026-08-14.md)
 - [Remaining Work and Launch Gates (2026-08-12)](docs/REMAINING-WORK-2026-08-12.md)
 - [GCP Split-Project Migration Runbook (2026-08-16)](docs/GCP-SPLIT-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md)
 - [GCP Migration Data-Integrity Plan (2026-08-16)](docs/GCP-MIGRATION-DATA-INTEGRITY-PLAN-2026-08-16.md)

@@ -2,7 +2,7 @@
 
 Reconciled: 2026-08-14
 
-This index covers the repository's 71 documentation artifacts under `docs/` plus the primary root-level
+This index covers the repository's 73 documentation artifacts under `docs/` plus the primary root-level
 project documents. It prevents dated plans and test evidence from being mistaken for current live state.
 Historical measurements are intentionally preserved; changing them would falsify the record.
 
@@ -73,6 +73,7 @@ and deployment history must remain unchanged.
 - `DEV-SCALE-VALIDATION-2026-08-10.md`
 - `GCP-BUDGET-INCIDENT-2026-08-11.md`
 - `PRODUCTION-DEPLOYMENT-2026-08-11.md`
+- `PRODUCTION-DEPLOYMENT-2026-08-14.md`
 - `PLANNED-CHANGES-EXECUTION-2026-08-11.md`
 - `SCALE-READINESS-AND-COST-PLAN-2026-08-10.md`
 - `workstreams/ONBOARDING-CERTIFICATION-RESULTS-2026-08-11.md`
