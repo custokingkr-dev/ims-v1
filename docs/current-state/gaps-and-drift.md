@@ -1,12 +1,13 @@
 # Gaps, Drift, and Missing Verification
 
-Last reconciled: 2026-08-12 against current source, GitHub configuration, and live GCP inventory.
+Last reconciled: 2026-08-14 against current source, GitHub configuration, and live GCP inventory.
 
-**14 August delta:** the dev OpenTelemetry background-flush fix passed deployment and a 13-minute/48-cycle
-live check with zero exporter failures. The primary operator confirmed alert-email receipt. OBS-01 now
-requires production promotion, one full school-day stability evidence, and a tested backup recipient. The
-approved GCP migration target is two new projects; see the authoritative remaining-work register and split-
-project runbook. The destination projects are not yet visible, so migration remains NO-GO.
+**14 August delta:** the OpenTelemetry background-flush fix is deployed to dev and production. Production
+commit `754f0417` passed exact-digest deployment, seven live HTTP checks, exact current-revision tracing, and
+a 30-minute exporter-error query with zero failures. The primary operator confirmed alert-email receipt.
+OBS-01 now requires one full school-day stability window and a tested backup recipient. The approved GCP
+migration target is two new projects; see the authoritative remaining-work register and split-project
+runbook. The destination projects are not yet visible, so migration remains NO-GO.
 
 The authoritative prioritized closure plan is
 [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md). Production services and production
@@ -76,14 +77,13 @@ policies. Six production uptime checks are active at a 900-second period.
 
 Impact:
 
-- The primary operator has confirmed receipt, but no named backup recipient has been proven and the dev trace
-  fix has not yet completed production promotion plus a full school-day stability window.
+- The primary operator has confirmed receipt and the trace fix has completed production promotion, but no
+  named backup recipient has been proven and the full school-day stability window is incomplete.
 
 Required follow-up:
 
 - Add/verify the named backup route and prove the same test incident reaches primary and backup.
-- Promote the dev-proven trace fix through production approval and capture one school day without recurring
-  exporter failures.
+- Capture one full school day in both promoted environments without recurring exporter failures.
 
 ### Compliance Log Routing Is Live; Retention Ownership Requires Review
 
