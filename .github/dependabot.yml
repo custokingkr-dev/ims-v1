@@ -2,8 +2,11 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       workflow-actions:
         patterns: ["*"]
@@ -17,25 +20,58 @@ updates:
       - /services/operations-service
       - /services/platform-service
       - /services/school-core-service
+    target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       runtime-base-images:
         patterns: ["*"]
+        update-types: [minor, patch]
+        group-by: dependency-name
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+      # Node 24 and Java 25 are repository-wide runtime contracts. Upgrade them
+      # explicitly with their manifests, CI images, and production images.
+      - dependency-name: node
+        versions: [">= 25"]
+      - dependency-name: maven
+        versions: ["3-eclipse-temurin-26"]
 
   - package-ecosystem: npm
     directories:
       - /frontend
       - /services/api-gateway
+    target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
+      npm-opentelemetry:
+        patterns: ["@opentelemetry/*"]
+        update-types: [minor, patch]
+      npm-vite-toolchain:
+        dependency-type: development
+        patterns: ["vite", "vitest", "@vitejs/*", "@vitest/*"]
+        update-types: [minor, patch]
       npm-runtime:
         dependency-type: production
         patterns: ["*"]
+        exclude-patterns: ["@opentelemetry/*"]
+        update-types: [minor, patch]
+        group-by: dependency-name
       npm-development:
         dependency-type: development
         patterns: ["*"]
+        exclude-patterns: ["vite", "vitest", "@vitejs/*", "@vitest/*"]
+        update-types: [minor, patch]
+        group-by: dependency-name
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: maven
     directories:
@@ -44,12 +80,22 @@ updates:
       - /services/operations-service
       - /services/platform-service
       - /services/school-core-service
+    target-branch: dev
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       maven-runtime:
         dependency-type: production
         patterns: ["*"]
+        update-types: [minor, patch]
+        group-by: dependency-name
       maven-development:
         dependency-type: development
         patterns: ["*"]
+        update-types: [minor, patch]
+        group-by: dependency-name
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
