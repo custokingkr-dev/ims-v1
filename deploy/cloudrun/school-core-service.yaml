@@ -75,6 +75,7 @@ spec:
               value: "512"
             - name: STUDENT_PHOTO_MAX_BYTES
               value: "5242880"
+            # Bound simultaneous archive generation per instance to control memory and GCS reads.
             - name: STUDENT_EXPORT_MAX_CONCURRENT
               value: "2"
             - name: SCHOOL_CORE_OUTBOX_PUBSUB_TOPIC_ID

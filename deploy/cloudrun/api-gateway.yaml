@@ -20,8 +20,8 @@ spec:
     spec:
       serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
       containerConcurrency: 80
-      # Match school-core's export ceiling so large assigned-school photo archives are not cut
-      # off by the streaming proxy before the upstream request completes.
+      # Cloud Deploy source of truth: match school-core's export ceiling so large assigned-school
+      # photo archives are not cut off by the streaming proxy before the upstream completes.
       timeoutSeconds: 600
       containers:
         - image: custoking-api-gateway
