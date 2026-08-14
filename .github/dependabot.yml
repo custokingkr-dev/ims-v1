@@ -37,8 +37,10 @@ updates:
       # explicitly with their manifests, CI images, and production images.
       - dependency-name: node
         versions: [">= 25"]
+      # Maven image tags encode the JDK track in a suffix, so Dependabot cannot
+      # reliably apply a SemVer range. Keep the Java 25 build image pinned until
+      # the repository-wide Java runtime upgrade is performed explicitly.
       - dependency-name: maven
-        versions: ["3-eclipse-temurin-26"]
 
   - package-ecosystem: npm
     directories:
