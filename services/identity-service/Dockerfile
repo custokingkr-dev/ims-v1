@@ -9,7 +9,7 @@ RUN for attempt in 1 2 3; do \
 COPY src ./src
 RUN mvn -q -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:25-jre@sha256:f19dbf0a22d0b3658fda48ce7d7181df05ad14bda151dd5ad12cc09d1451c70e
+FROM eclipse-temurin:25-jre-noble@sha256:fbcf915c585659b30eb766ada4d6d7cfc9ec1040bf521e95bf61b10a25af73db
 ARG APP_NAME=custoking-identity-service
 ARG APP_VERSION=0.1.0-SNAPSHOT
 ARG APP_DESCRIPTION="Custoking IMS identity microservice"
