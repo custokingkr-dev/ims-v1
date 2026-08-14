@@ -18,10 +18,10 @@
     "@opentelemetry/resources": "^2.10.0",
     "@opentelemetry/sdk-node": "^0.221.0",
     "@opentelemetry/sdk-trace-base": "^2.9.0",
-    "google-auth-library": "^10.9.0"
+    "google-auth-library": "^10.9.1"
   },
   "overrides": {
-    "google-auth-library": "^10.9.0",
+    "google-auth-library": "$google-auth-library",
     "gaxios": "^7.1.4"
   }
 }
