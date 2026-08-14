@@ -505,7 +505,7 @@ If the destination cannot accept an in-place move, a new-project program must ex
 - Two Cloud SQL instances, users/roles, schema/data, backup/PITR policies, application cutover, replication or controlled write outage, and restore rehearsal.
 - 21 buckets, unique bucket names, IAM/lifecycle/retention/soft-delete/versioning/CORS, every object generation/checksum, Terraform-state backend migration, and student-photo validation.
 - Artifact Registry images and digest mapping.
-- 14 Cloud Run services, 10 jobs, new endpoints, IAM, environment/secret references, scaling/ingress/VPC configuration, and all inter-service URLs.
+- 14 Cloud Run services, 10 jobs, new endpoints, IAM, environment variables, Secret Manager bindings, autoscaling, ingress, VPC configuration, and all inter-service URLs.
 - 14 Cloud Deploy pipelines/targets and associated execution identities/artifact buckets.
 - 6 Pub/Sub topics, 5 subscriptions, push/OIDC endpoints, DLQs, and 4 paused Scheduler jobs.
 - 44 secrets through a secure value transfer/rotation process.
