@@ -88,9 +88,14 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      maven-jjwt:
+        dependency-type: production
+        patterns: ["io.jsonwebtoken:*"]
+        update-types: [minor, patch]
       maven-runtime:
         dependency-type: production
         patterns: ["*"]
+        exclude-patterns: ["io.jsonwebtoken:*"]
         update-types: [minor, patch]
         group-by: dependency-name
       maven-development:
