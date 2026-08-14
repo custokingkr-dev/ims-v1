@@ -47,7 +47,8 @@ management:
   opentelemetry:
     tracing:
       export:
-        # Flush at request/scheduled-task boundaries before request-based Cloud Run suspends CPU.
+        # Request-boundary flushing drains scheduled spans with the next HTTP request while CPU is allocated.
+        # Never flush from a task decorator: request-based CPU can be suspended mid-export.
         schedule-delay: ${OTEL_BSP_SCHEDULE_DELAY:1h}
         otlp:
           # One second was below observed tail latency; four seconds still failed on a live

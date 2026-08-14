@@ -162,13 +162,16 @@ Terraform grants the runtime
 service account `roles/cloudtrace.agent`, `roles/telemetry.tracesWriter`, and
 `roles/serviceusage.serviceUsageConsumer`.
 
-Spring services use boundary-triggered batch flushes because request-based Cloud Run CPU can be
-suspended after an HTTP request or scheduled task. The exporter defaults are a two-second connect
-timeout, six-second request timeout, and seven-second force-flush wait. Keep the exporter timeout
-strictly below the flush wait. Do not reduce the exporter below six seconds: live scale-from-zero
-instances exceeded a four-second Telemetry API deadline on their first connection even though
-subsequent exports succeeded. Do not enable always-allocated CPU solely for tracing; it adds
-baseline Cloud Run cost.
+Spring services force-flush at HTTP request boundaries because request-based Cloud Run keeps CPU
+allocated while a request is active. Do not attach a force-flush `TaskDecorator` to scheduled or
+asynchronous executors: a background task isn't a Cloud Run CPU-allocation boundary, so CPU can be
+suspended during the export and produce a terminal timeout. Spans created by an opportunistically
+resumed scheduled task remain in the batch and are drained by the next HTTP request boundary. The
+exporter defaults are a two-second connect timeout, six-second request timeout, and seven-second
+request-boundary force-flush wait. Keep the exporter timeout strictly below the flush wait. Do not
+reduce the exporter below six seconds: live scale-from-zero instances exceeded a four-second
+Telemetry API deadline on their first connection even though subsequent exports succeeded. Do not
+enable always-allocated CPU solely for tracing; it adds baseline Cloud Run cost.
 
 Treat every current-revision `Failed to export spans` log as a trace-delivery failure. Investigate
 it with the exact-version verifier below; do not accept trace presence from an older revision as
