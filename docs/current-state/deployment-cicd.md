@@ -1,6 +1,6 @@
 # CI/CD Current State
 
-Last reconciled: 2026-08-12 against active workflows, deployment templates, GitHub environment policy,
+Last reconciled: 2026-08-14 against active workflows, deployment templates, GitHub environment policy,
 and live Cloud Deploy targets.
 
 Live drift: all production targets use `clouddeploy-prod-deployer`, but all seven live dev targets still
@@ -8,6 +8,11 @@ use the default Compute service account. Source templates already specify `cloud
 guarded target reconciliation is still required. The public repository has no visible ruleset or classic
 branch protection on `main` or `dev`. The `prod` Environment requires review and disallows admin bypass,
 but currently permits self-review.
+
+Production evidence: promotion PR `#108` merged as `754f0417`; CD run `31820051376` passed exact-digest
+Trivy gates, seven serialized Cloud Deploy rollouts, revision/digest/traffic verification, and gateway smoke.
+The cost-control status run `31823448382` passed, and `custoking-db-dev` remained stopped. See
+`../PRODUCTION-DEPLOYMENT-2026-08-14.md`.
 
 ## Status
 
