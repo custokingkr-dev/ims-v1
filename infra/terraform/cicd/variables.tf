@@ -85,6 +85,18 @@ variable "recovery_validation_bucket" {
   default     = "custoking-db-snapshots"
 }
 
+variable "scan_evidence_bucket" {
+  description = "Existing bucket holding digest-keyed Trivy verdicts and their evidence, so an unchanged image digest is not re-pulled from Artifact Registry on every release. Configure a lifecycle rule to delete objects after 30 days."
+  type        = string
+  default     = "custoking-scan-evidence"
+}
+
+variable "dev_release_service_account" {
+  description = "Email of the identity dev releases actually run as. The dev GitHub environment sets no RELEASE_BUILDER_SERVICE_ACCOUNT, so build-release.yml falls back to the repository-level DEPLOY_SERVICE_ACCOUNT. Point this at github-release-dev once that account exists and the dev environment sets it."
+  type        = string
+  default     = "github-actions-sa@custoking.iam.gserviceaccount.com"
+}
+
 variable "recovery_bucket_iam_role_id" {
   description = "Existing project custom role ID that can add and remove the temporary clone service identity."
   type        = string

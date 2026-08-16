@@ -24,6 +24,14 @@ locals {
     recovery        = "custoking-recovery-operator"
   }
 
+  # Identities that build-release.yml actually authenticates as when it reads and writes Trivy
+  # verdicts. Kept as a list rather than reusing github_service_accounts because dev has not yet
+  # migrated off the shared deploy account; see var.dev_release_service_account.
+  scan_evidence_members = distinct([
+    "serviceAccount:${google_service_account.github["release_prod"].email}",
+    "serviceAccount:${var.dev_release_service_account}",
+  ])
+
   # Service-account impersonation is branch-specific. Provider-level allowlisting alone is not
   # sufficient because a workflow changed on dev must never be able to request a prod identity.
   github_service_account_workflow_refs = {
@@ -412,6 +420,35 @@ resource "google_project_iam_member" "recovery_roles" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.github["recovery"].email}"
+}
+
+# Scanning an image pulls it out of Artifact Registry to a GitHub-hosted runner, which is billed as
+# internet egress. Both release identities read and write digest-keyed verdicts here so an unchanged
+# digest is scanned once rather than on every release, including when the prod promotion resolves an
+# image dev already scanned. Prod runs as its own release account; dev still runs as the shared
+# deploy account because the dev environment sets no RELEASE_BUILDER_SERVICE_ACCOUNT.
+resource "google_storage_bucket_iam_member" "release_scan_evidence_object_admin" {
+  for_each = toset(local.scan_evidence_members)
+
+  bucket = var.scan_evidence_bucket
+  role   = "roles/storage.objectAdmin"
+  member = each.value
+
+  condition {
+    title       = "scan_evidence_trivy_prefix_only"
+    description = "Allow object access only under trivy/v1/."
+    expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name.startsWith('projects/_/buckets/${var.scan_evidence_bucket}/objects/trivy/v1/')"
+  }
+}
+
+# gcloud storage resolves the bucket before it reads or writes an object, so both release identities
+# also need metadata read on the bucket itself.
+resource "google_storage_bucket_iam_member" "release_scan_evidence_bucket_viewer" {
+  for_each = toset(local.scan_evidence_members)
+
+  bucket = var.scan_evidence_bucket
+  role   = "roles/storage.bucketViewer"
+  member = each.value
 }
 
 resource "google_storage_bucket_iam_member" "recovery_bucket_policy_operator" {

@@ -37,6 +37,11 @@ env:
   ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY || 'custoking' }}
   WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
   RELEASE_BUILDER_SERVICE_ACCOUNT: ${{ vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
+  # Digest-keyed Trivy verdict cache. Scanning pulls each image from Artifact Registry to this
+  # runner, which is billed internet egress; reusing a recent verdict for an unchanged digest
+  # avoids the pull. Absent or unreachable, every service simply scans as before.
+  SCAN_EVIDENCE_BUCKET: ${{ vars.SCAN_EVIDENCE_BUCKET || 'custoking-scan-evidence' }}
+  SCAN_EVIDENCE_TTL_HOURS: "24"
 
 jobs:
   resolve-target:
@@ -397,9 +402,139 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
 
+      # Scanning an image pulls it from Artifact Registry to this runner, which sits outside GCP and
+      # is therefore billed internet egress. A release resolves all seven services whether or not they
+      # were rebuilt, so unchanged digests were being re-pulled on every run. Reuse a stored verdict
+      # when the same immutable digest was already scanned by the same scanner inside the TTL. Any
+      # failure here is a cache miss, never a build failure: the gate still fails closed.
+      - name: Restore cached Trivy verdicts
+        id: scan_cache
+        if: always()
+        shell: pwsh
+        env:
+          TRIVY_ACTION_SHA: ed142fd0673e97e23eac54620cfb913e5ce36c25
+        run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $scanKeys = [ordered]@{
+            "identity-service"    = "identity"
+            "school-core-service" = "school_core"
+            "operations-service"  = "operations"
+            "platform-service"    = "platform"
+            "billing-service"     = "billing"
+            "frontend"            = "frontend"
+            "api-gateway"         = "api_gateway"
+          }
+
+          $cached = [ordered]@{}
+          foreach ($value in $scanKeys.Values) { $cached[$value] = $false }
+          $restored = @()
+
+          $bucket = [string]$env:SCAN_EVIDENCE_BUCKET
+          $ttlHours = [double]$env:SCAN_EVIDENCE_TTL_HOURS
+          $actionSha = [string]$env:TRIVY_ACTION_SHA
+
+          if ([string]::IsNullOrWhiteSpace($bucket)) {
+            Write-Host "No scan evidence bucket configured. Every resolved image will be scanned."
+          } elseif (-not (Test-Path -LiteralPath "release-evidence/images.json" -PathType Leaf)) {
+            Write-Host "No images.json present. Every resolved image will be scanned."
+          } else {
+            New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
+            $manifest = Get-Content -LiteralPath release-evidence/images.json -Raw | ConvertFrom-Json
+            foreach ($entry in @($manifest.services)) {
+              $service = [string]$entry.service
+              if (-not $scanKeys.Contains($service)) { continue }
+              $key = [string]$scanKeys[$service]
+              $digest = [string]$entry.digest
+              if ($digest -notmatch "^sha256:[0-9a-f]{64}$") { continue }
+              $digestKey = $digest.Replace(":", "-")
+              $base = "gs://$bucket/trivy/v1/$service/$digestKey"
+              $tablePath = "release-evidence/trivy/$service-$digestKey.table.txt"
+              $sarifPath = "release-evidence/trivy/$service-$digestKey.sarif"
+
+              try {
+                $raw = (& gcloud storage cat "$base/verdict.json" 2>$null) -join "`n"
+                $catExitCode = $LASTEXITCODE
+                $global:LASTEXITCODE = 0
+                if ($catExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($raw)) {
+                  Write-Host "miss $service - no stored verdict"
+                  continue
+                }
+
+                $verdict = $raw | ConvertFrom-Json
+                if ([string]$verdict.digestKey -ne $digestKey) {
+                  Write-Host "miss $service - stored verdict is for a different digest"
+                  continue
+                }
+                if ([string]$verdict.trivyAction -ne $actionSha) {
+                  Write-Host "miss $service - stored verdict came from a different scanner revision"
+                  continue
+                }
+                if ([string]$verdict.gate -ne "success" -or [string]$verdict.sarif -ne "success") {
+                  Write-Host "miss $service - stored verdict is not a pass"
+                  continue
+                }
+
+                $scannedAt = [datetimeoffset]::Parse(
+                  [string]$verdict.scannedAtUtc, [cultureinfo]::InvariantCulture).UtcDateTime
+                $ageHours = ([datetime]::UtcNow - $scannedAt).TotalHours
+                if ($ageHours -lt 0 -or $ageHours -gt $ttlHours) {
+                  Write-Host ("miss {0} - verdict is {1:N1}h old, TTL is {2}h" -f $service, $ageHours, $ttlHours)
+                  continue
+                }
+
+                & gcloud storage cp "$base/evidence.table.txt" $tablePath --quiet 2>$null | Out-Null
+                $tableOk = $LASTEXITCODE -eq 0
+                $global:LASTEXITCODE = 0
+                & gcloud storage cp "$base/evidence.sarif" $sarifPath --quiet 2>$null | Out-Null
+                $sarifOk = $LASTEXITCODE -eq 0
+                $global:LASTEXITCODE = 0
+
+                $tableOk = $tableOk -and (Test-Path -LiteralPath $tablePath -PathType Leaf) -and
+                  (Get-Item -LiteralPath $tablePath).Length -gt 0
+                $sarifOk = $sarifOk -and (Test-Path -LiteralPath $sarifPath -PathType Leaf) -and
+                  (Get-Item -LiteralPath $sarifPath).Length -gt 0
+
+                if (-not ($tableOk -and $sarifOk)) {
+                  Remove-Item -LiteralPath $tablePath -Force -ErrorAction SilentlyContinue
+                  Remove-Item -LiteralPath $sarifPath -Force -ErrorAction SilentlyContinue
+                  Write-Host "miss $service - stored evidence incomplete"
+                  continue
+                }
+
+                $cached[$key] = $true
+                $restored += [ordered]@{
+                  service = $service
+                  digestKey = $digestKey
+                  scannedAtUtc = [string]$verdict.scannedAtUtc
+                  ageHours = [math]::Round($ageHours, 2)
+                }
+                Write-Host ("hit  {0} - reusing verdict {1:N1}h old, no registry pull" -f $service, $ageHours)
+              } catch {
+                $global:LASTEXITCODE = 0
+                Write-Host "miss $service - $($_.Exception.Message)"
+              }
+            }
+
+            [ordered]@{
+              bucket = $bucket
+              ttlHours = $ttlHours
+              scanner = $actionSha
+              restored = $restored
+            } | ConvertTo-Json -Depth 6 | Set-Content release-evidence/trivy/scan-cache.json
+          }
+
+          foreach ($key in $cached.Keys) {
+            $value = if ($cached[$key]) { "true" } else { "false" }
+            "${key}_cached=$value" >> $env:GITHUB_OUTPUT
+          }
+          Write-Host "Reused $($restored.Count) of $($cached.Count) verdicts."
+          $global:LASTEXITCODE = 0
+
       - name: Trivy exact-digest HIGH/CRITICAL gate (identity-service)
         id: trivy_gate_identity
-        if: ${{ always() && steps.images.outputs.identity_ref != '' }}
+        if: ${{ always() && steps.images.outputs.identity_ref != '' && steps.scan_cache.outputs.identity_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -412,7 +547,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (identity-service)
         id: trivy_sarif_identity
-        if: ${{ always() && steps.images.outputs.identity_ref != '' }}
+        if: ${{ always() && steps.images.outputs.identity_ref != '' && steps.scan_cache.outputs.identity_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -425,7 +560,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (school-core-service)
         id: trivy_gate_school_core
-        if: ${{ always() && steps.images.outputs.school_core_ref != '' }}
+        if: ${{ always() && steps.images.outputs.school_core_ref != '' && steps.scan_cache.outputs.school_core_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -438,7 +573,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (school-core-service)
         id: trivy_sarif_school_core
-        if: ${{ always() && steps.images.outputs.school_core_ref != '' }}
+        if: ${{ always() && steps.images.outputs.school_core_ref != '' && steps.scan_cache.outputs.school_core_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -451,7 +586,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (operations-service)
         id: trivy_gate_operations
-        if: ${{ always() && steps.images.outputs.operations_ref != '' }}
+        if: ${{ always() && steps.images.outputs.operations_ref != '' && steps.scan_cache.outputs.operations_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -464,7 +599,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (operations-service)
         id: trivy_sarif_operations
-        if: ${{ always() && steps.images.outputs.operations_ref != '' }}
+        if: ${{ always() && steps.images.outputs.operations_ref != '' && steps.scan_cache.outputs.operations_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -477,7 +612,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (platform-service)
         id: trivy_gate_platform
-        if: ${{ always() && steps.images.outputs.platform_ref != '' }}
+        if: ${{ always() && steps.images.outputs.platform_ref != '' && steps.scan_cache.outputs.platform_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -490,7 +625,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (platform-service)
         id: trivy_sarif_platform
-        if: ${{ always() && steps.images.outputs.platform_ref != '' }}
+        if: ${{ always() && steps.images.outputs.platform_ref != '' && steps.scan_cache.outputs.platform_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -503,7 +638,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (billing-service)
         id: trivy_gate_billing
-        if: ${{ always() && steps.images.outputs.billing_ref != '' }}
+        if: ${{ always() && steps.images.outputs.billing_ref != '' && steps.scan_cache.outputs.billing_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -516,7 +651,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (billing-service)
         id: trivy_sarif_billing
-        if: ${{ always() && steps.images.outputs.billing_ref != '' }}
+        if: ${{ always() && steps.images.outputs.billing_ref != '' && steps.scan_cache.outputs.billing_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -529,7 +664,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (frontend)
         id: trivy_gate_frontend
-        if: ${{ always() && steps.images.outputs.frontend_ref != '' }}
+        if: ${{ always() && steps.images.outputs.frontend_ref != '' && steps.scan_cache.outputs.frontend_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -542,7 +677,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (frontend)
         id: trivy_sarif_frontend
-        if: ${{ always() && steps.images.outputs.frontend_ref != '' }}
+        if: ${{ always() && steps.images.outputs.frontend_ref != '' && steps.scan_cache.outputs.frontend_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -555,7 +690,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (api-gateway)
         id: trivy_gate_api_gateway
-        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' }}
+        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' && steps.scan_cache.outputs.api_gateway_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -568,7 +703,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (api-gateway)
         id: trivy_sarif_api_gateway
-        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' }}
+        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' && steps.scan_cache.outputs.api_gateway_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -579,6 +714,132 @@ jobs:
           format: sarif
           output: release-evidence/trivy/api-gateway-${{ steps.images.outputs.api_gateway_digest_key }}.sarif
 
+      # Publish verdicts for digests scanned in this run so later runs, including the prod promotion
+      # of an already-scanned dev image, can skip the registry pull. Only passes are stored: a failing
+      # gate must re-run every time, and a stale failure must never be able to block a fix.
+      - name: Store Trivy verdicts for reuse
+        if: always()
+        shell: pwsh
+        env:
+          TRIVY_ACTION_SHA: ed142fd0673e97e23eac54620cfb913e5ce36c25
+          IDENTITY_CACHED: ${{ steps.scan_cache.outputs.identity_cached }}
+          IDENTITY_GATE: ${{ steps.trivy_gate_identity.outcome }}
+          IDENTITY_SARIF: ${{ steps.trivy_sarif_identity.outcome }}
+          SCHOOL_CORE_CACHED: ${{ steps.scan_cache.outputs.school_core_cached }}
+          SCHOOL_CORE_GATE: ${{ steps.trivy_gate_school_core.outcome }}
+          SCHOOL_CORE_SARIF: ${{ steps.trivy_sarif_school_core.outcome }}
+          OPERATIONS_CACHED: ${{ steps.scan_cache.outputs.operations_cached }}
+          OPERATIONS_GATE: ${{ steps.trivy_gate_operations.outcome }}
+          OPERATIONS_SARIF: ${{ steps.trivy_sarif_operations.outcome }}
+          PLATFORM_CACHED: ${{ steps.scan_cache.outputs.platform_cached }}
+          PLATFORM_GATE: ${{ steps.trivy_gate_platform.outcome }}
+          PLATFORM_SARIF: ${{ steps.trivy_sarif_platform.outcome }}
+          BILLING_CACHED: ${{ steps.scan_cache.outputs.billing_cached }}
+          BILLING_GATE: ${{ steps.trivy_gate_billing.outcome }}
+          BILLING_SARIF: ${{ steps.trivy_sarif_billing.outcome }}
+          FRONTEND_CACHED: ${{ steps.scan_cache.outputs.frontend_cached }}
+          FRONTEND_GATE: ${{ steps.trivy_gate_frontend.outcome }}
+          FRONTEND_SARIF: ${{ steps.trivy_sarif_frontend.outcome }}
+          API_GATEWAY_CACHED: ${{ steps.scan_cache.outputs.api_gateway_cached }}
+          API_GATEWAY_GATE: ${{ steps.trivy_gate_api_gateway.outcome }}
+          API_GATEWAY_SARIF: ${{ steps.trivy_sarif_api_gateway.outcome }}
+        run: |
+          $ErrorActionPreference = "Continue"
+          $PSNativeCommandUseErrorActionPreference = $false
+
+          $scanKeys = [ordered]@{
+            "identity-service"    = "identity"
+            "school-core-service" = "school_core"
+            "operations-service"  = "operations"
+            "platform-service"    = "platform"
+            "billing-service"     = "billing"
+            "frontend"            = "frontend"
+            "api-gateway"         = "api_gateway"
+          }
+
+          $bucket = [string]$env:SCAN_EVIDENCE_BUCKET
+          $actionSha = [string]$env:TRIVY_ACTION_SHA
+
+          if ([string]::IsNullOrWhiteSpace($bucket)) {
+            Write-Host "No scan evidence bucket configured. Nothing stored."
+            exit 0
+          }
+          if (-not (Test-Path -LiteralPath "release-evidence/images.json" -PathType Leaf)) {
+            Write-Host "No images.json present. Nothing stored."
+            exit 0
+          }
+
+          function Get-EnvValue([string]$name) {
+            $item = Get-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue
+            if ($null -eq $item) { return "" }
+            return [string]$item.Value
+          }
+
+          $stored = 0
+          $manifest = Get-Content -LiteralPath release-evidence/images.json -Raw | ConvertFrom-Json
+          foreach ($entry in @($manifest.services)) {
+            $service = [string]$entry.service
+            if (-not $scanKeys.Contains($service)) { continue }
+            $key = [string]$scanKeys[$service]
+            $prefix = $key.ToUpperInvariant()
+            $digest = [string]$entry.digest
+            if ($digest -notmatch "^sha256:[0-9a-f]{64}$") { continue }
+            $digestKey = $digest.Replace(":", "-")
+
+            if ((Get-EnvValue "${prefix}_CACHED") -eq "true") { continue }
+            if ((Get-EnvValue "${prefix}_GATE") -ne "success") { continue }
+            if ((Get-EnvValue "${prefix}_SARIF") -ne "success") { continue }
+
+            $tablePath = "release-evidence/trivy/$service-$digestKey.table.txt"
+            $sarifPath = "release-evidence/trivy/$service-$digestKey.sarif"
+            $tableOk = (Test-Path -LiteralPath $tablePath -PathType Leaf) -and
+              (Get-Item -LiteralPath $tablePath).Length -gt 0
+            $sarifOk = (Test-Path -LiteralPath $sarifPath -PathType Leaf) -and
+              (Get-Item -LiteralPath $sarifPath).Length -gt 0
+            if (-not ($tableOk -and $sarifOk)) { continue }
+
+            $base = "gs://$bucket/trivy/v1/$service/$digestKey"
+            try {
+              $verdictPath = [System.IO.Path]::GetTempFileName()
+              [ordered]@{
+                service = $service
+                immutableImage = [string]$entry.immutableRef
+                digestKey = $digestKey
+                scannedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+                trivyAction = $actionSha
+                gate = "success"
+                sarif = "success"
+              } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $verdictPath
+
+              & gcloud storage cp $tablePath "$base/evidence.table.txt" --quiet 2>$null | Out-Null
+              $ok = $LASTEXITCODE -eq 0
+              $global:LASTEXITCODE = 0
+              & gcloud storage cp $sarifPath "$base/evidence.sarif" --quiet 2>$null | Out-Null
+              $ok = $ok -and $LASTEXITCODE -eq 0
+              $global:LASTEXITCODE = 0
+              if ($ok) {
+                # Written last so a verdict is only ever visible once both evidence objects exist.
+                & gcloud storage cp $verdictPath "$base/verdict.json" --quiet 2>$null | Out-Null
+                $ok = $LASTEXITCODE -eq 0
+                $global:LASTEXITCODE = 0
+              }
+              Remove-Item -LiteralPath $verdictPath -Force -ErrorAction SilentlyContinue
+
+              if ($ok) {
+                $stored++
+                Write-Host "stored $service $digestKey"
+              } else {
+                Write-Host "could not store $service $digestKey; the next run will rescan it"
+              }
+            } catch {
+              $global:LASTEXITCODE = 0
+              Write-Host "could not store $service - $($_.Exception.Message)"
+            }
+          }
+
+          Write-Host "Stored $stored verdict(s)."
+          $global:LASTEXITCODE = 0
+
       - name: Enforce exact-digest Trivy gates and evidence
         if: always()
         shell: pwsh
@@ -587,41 +848,48 @@ jobs:
           IDENTITY_DIGEST_KEY: ${{ steps.images.outputs.identity_digest_key }}
           IDENTITY_GATE: ${{ steps.trivy_gate_identity.outcome }}
           IDENTITY_SARIF: ${{ steps.trivy_sarif_identity.outcome }}
+          IDENTITY_CACHED: ${{ steps.scan_cache.outputs.identity_cached }}
           SCHOOL_CORE_REF: ${{ steps.images.outputs.school_core_ref }}
           SCHOOL_CORE_DIGEST_KEY: ${{ steps.images.outputs.school_core_digest_key }}
           SCHOOL_CORE_GATE: ${{ steps.trivy_gate_school_core.outcome }}
           SCHOOL_CORE_SARIF: ${{ steps.trivy_sarif_school_core.outcome }}
+          SCHOOL_CORE_CACHED: ${{ steps.scan_cache.outputs.school_core_cached }}
           OPERATIONS_REF: ${{ steps.images.outputs.operations_ref }}
           OPERATIONS_DIGEST_KEY: ${{ steps.images.outputs.operations_digest_key }}
           OPERATIONS_GATE: ${{ steps.trivy_gate_operations.outcome }}
           OPERATIONS_SARIF: ${{ steps.trivy_sarif_operations.outcome }}
+          OPERATIONS_CACHED: ${{ steps.scan_cache.outputs.operations_cached }}
           PLATFORM_REF: ${{ steps.images.outputs.platform_ref }}
           PLATFORM_DIGEST_KEY: ${{ steps.images.outputs.platform_digest_key }}
           PLATFORM_GATE: ${{ steps.trivy_gate_platform.outcome }}
           PLATFORM_SARIF: ${{ steps.trivy_sarif_platform.outcome }}
+          PLATFORM_CACHED: ${{ steps.scan_cache.outputs.platform_cached }}
           BILLING_REF: ${{ steps.images.outputs.billing_ref }}
           BILLING_DIGEST_KEY: ${{ steps.images.outputs.billing_digest_key }}
           BILLING_GATE: ${{ steps.trivy_gate_billing.outcome }}
           BILLING_SARIF: ${{ steps.trivy_sarif_billing.outcome }}
+          BILLING_CACHED: ${{ steps.scan_cache.outputs.billing_cached }}
           FRONTEND_REF: ${{ steps.images.outputs.frontend_ref }}
           FRONTEND_DIGEST_KEY: ${{ steps.images.outputs.frontend_digest_key }}
           FRONTEND_GATE: ${{ steps.trivy_gate_frontend.outcome }}
           FRONTEND_SARIF: ${{ steps.trivy_sarif_frontend.outcome }}
+          FRONTEND_CACHED: ${{ steps.scan_cache.outputs.frontend_cached }}
           API_GATEWAY_REF: ${{ steps.images.outputs.api_gateway_ref }}
           API_GATEWAY_DIGEST_KEY: ${{ steps.images.outputs.api_gateway_digest_key }}
           API_GATEWAY_GATE: ${{ steps.trivy_gate_api_gateway.outcome }}
           API_GATEWAY_SARIF: ${{ steps.trivy_sarif_api_gateway.outcome }}
+          API_GATEWAY_CACHED: ${{ steps.scan_cache.outputs.api_gateway_cached }}
         run: |
           $ErrorActionPreference = "Stop"
           New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
           $checks = @(
-            [pscustomobject]@{ service = "identity-service"; image = $env:IDENTITY_REF; digestKey = $env:IDENTITY_DIGEST_KEY; gate = $env:IDENTITY_GATE; sarif = $env:IDENTITY_SARIF },
-            [pscustomobject]@{ service = "school-core-service"; image = $env:SCHOOL_CORE_REF; digestKey = $env:SCHOOL_CORE_DIGEST_KEY; gate = $env:SCHOOL_CORE_GATE; sarif = $env:SCHOOL_CORE_SARIF },
-            [pscustomobject]@{ service = "operations-service"; image = $env:OPERATIONS_REF; digestKey = $env:OPERATIONS_DIGEST_KEY; gate = $env:OPERATIONS_GATE; sarif = $env:OPERATIONS_SARIF },
-            [pscustomobject]@{ service = "platform-service"; image = $env:PLATFORM_REF; digestKey = $env:PLATFORM_DIGEST_KEY; gate = $env:PLATFORM_GATE; sarif = $env:PLATFORM_SARIF },
-            [pscustomobject]@{ service = "billing-service"; image = $env:BILLING_REF; digestKey = $env:BILLING_DIGEST_KEY; gate = $env:BILLING_GATE; sarif = $env:BILLING_SARIF },
-            [pscustomobject]@{ service = "frontend"; image = $env:FRONTEND_REF; digestKey = $env:FRONTEND_DIGEST_KEY; gate = $env:FRONTEND_GATE; sarif = $env:FRONTEND_SARIF },
-            [pscustomobject]@{ service = "api-gateway"; image = $env:API_GATEWAY_REF; digestKey = $env:API_GATEWAY_DIGEST_KEY; gate = $env:API_GATEWAY_GATE; sarif = $env:API_GATEWAY_SARIF }
+            [pscustomobject]@{ service = "identity-service"; image = $env:IDENTITY_REF; digestKey = $env:IDENTITY_DIGEST_KEY; gate = $env:IDENTITY_GATE; sarif = $env:IDENTITY_SARIF; cached = $env:IDENTITY_CACHED },
+            [pscustomobject]@{ service = "school-core-service"; image = $env:SCHOOL_CORE_REF; digestKey = $env:SCHOOL_CORE_DIGEST_KEY; gate = $env:SCHOOL_CORE_GATE; sarif = $env:SCHOOL_CORE_SARIF; cached = $env:SCHOOL_CORE_CACHED },
+            [pscustomobject]@{ service = "operations-service"; image = $env:OPERATIONS_REF; digestKey = $env:OPERATIONS_DIGEST_KEY; gate = $env:OPERATIONS_GATE; sarif = $env:OPERATIONS_SARIF; cached = $env:OPERATIONS_CACHED },
+            [pscustomobject]@{ service = "platform-service"; image = $env:PLATFORM_REF; digestKey = $env:PLATFORM_DIGEST_KEY; gate = $env:PLATFORM_GATE; sarif = $env:PLATFORM_SARIF; cached = $env:PLATFORM_CACHED },
+            [pscustomobject]@{ service = "billing-service"; image = $env:BILLING_REF; digestKey = $env:BILLING_DIGEST_KEY; gate = $env:BILLING_GATE; sarif = $env:BILLING_SARIF; cached = $env:BILLING_CACHED },
+            [pscustomobject]@{ service = "frontend"; image = $env:FRONTEND_REF; digestKey = $env:FRONTEND_DIGEST_KEY; gate = $env:FRONTEND_GATE; sarif = $env:FRONTEND_SARIF; cached = $env:FRONTEND_CACHED },
+            [pscustomobject]@{ service = "api-gateway"; image = $env:API_GATEWAY_REF; digestKey = $env:API_GATEWAY_DIGEST_KEY; gate = $env:API_GATEWAY_GATE; sarif = $env:API_GATEWAY_SARIF; cached = $env:API_GATEWAY_CACHED }
           )
           $results = @()
           $failures = @()
@@ -636,14 +904,19 @@ jobs:
               (Get-Item -LiteralPath $tablePath).Length -gt 0
             $sarifPresent = (Test-Path -LiteralPath $sarifPath -PathType Leaf) -and
               (Get-Item -LiteralPath $sarifPath).Length -gt 0
-            $passed = $immutable -and $check.gate -eq "success" -and $check.sarif -eq "success" -and
-              $tablePresent -and $sarifPresent
+            # A verdict is acceptable either because this run scanned the digest, or because the
+            # restore step proved the same immutable digest passed the same scanner inside the TTL
+            # and materialised its evidence. Evidence must be present on disk either way.
+            $wasCached = ([string]$check.cached) -eq "true"
+            $wasScanned = $check.gate -eq "success" -and $check.sarif -eq "success"
+            $passed = $immutable -and $tablePresent -and $sarifPresent -and ($wasScanned -or $wasCached)
             $results += [ordered]@{
               service = $check.service
               immutableImage = $check.image
               digestKey = $check.digestKey
               highCriticalGate = $check.gate
               sarifScan = $check.sarif
+              source = if ($wasCached) { "cached" } else { "scanned" }
               tableEvidence = $tablePath
               sarifEvidence = $sarifPath
               passed = $passed
@@ -657,6 +930,9 @@ jobs:
             environment = "${{ needs.resolve-target.outputs.target_env }}"
             scanner = "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25"
             scannedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+            verdictCacheTtlHours = [double]$env:SCAN_EVIDENCE_TTL_HOURS
+            scannedCount = @($results | Where-Object { $_.source -eq "scanned" }).Count
+            cachedCount = @($results | Where-Object { $_.source -eq "cached" }).Count
             services = $results
           } | ConvertTo-Json -Depth 10 | Set-Content release-evidence/trivy/exact-digest-scan.json
           if ($failures.Count -gt 0) {
