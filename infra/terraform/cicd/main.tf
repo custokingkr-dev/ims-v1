@@ -24,6 +24,14 @@ locals {
     recovery        = "custoking-recovery-operator"
   }
 
+  # Identities that build-release.yml actually authenticates as when it reads and writes Trivy
+  # verdicts. Kept as a list rather than reusing github_service_accounts because dev has not yet
+  # migrated off the shared deploy account; see var.dev_release_service_account.
+  scan_evidence_members = distinct([
+    "serviceAccount:${google_service_account.github["release_prod"].email}",
+    "serviceAccount:${var.dev_release_service_account}",
+  ])
+
   # Service-account impersonation is branch-specific. Provider-level allowlisting alone is not
   # sufficient because a workflow changed on dev must never be able to request a prod identity.
   github_service_account_workflow_refs = {
@@ -393,6 +401,9 @@ resource "google_project_iam_member" "cost_controller_roles" {
   for_each = toset([
     "roles/cloudsql.editor",
     "roles/serviceusage.serviceUsageConsumer",
+    # Required to run any query job. It confers no data access on its own; readable data is granted
+    # separately and narrowly on the billing export dataset below.
+    "roles/bigquery.jobUser",
   ])
 
   project = var.project_id
@@ -412,6 +423,45 @@ resource "google_project_iam_member" "recovery_roles" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.github["recovery"].email}"
+}
+
+# Read access for the daily Artifact Registry egress report. Scoped to the billing export dataset
+# rather than the project so the cost-control identity cannot read application data. Paired with
+# roles/bigquery.jobUser above, which permits running a query but grants no data of its own.
+resource "google_bigquery_dataset_iam_member" "cost_controller_billing_export_viewer" {
+  project    = var.project_id
+  dataset_id = var.billing_export_dataset
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.github["cost_controller"].email}"
+}
+
+# Scanning an image pulls it out of Artifact Registry to a GitHub-hosted runner, which is billed as
+# internet egress. Both release identities read and write digest-keyed verdicts here so an unchanged
+# digest is scanned once rather than on every release, including when the prod promotion resolves an
+# image dev already scanned. Prod runs as its own release account; dev still runs as the shared
+# deploy account because the dev environment sets no RELEASE_BUILDER_SERVICE_ACCOUNT.
+resource "google_storage_bucket_iam_member" "release_scan_evidence_object_admin" {
+  for_each = toset(local.scan_evidence_members)
+
+  bucket = var.scan_evidence_bucket
+  role   = "roles/storage.objectAdmin"
+  member = each.value
+
+  condition {
+    title       = "scan_evidence_trivy_prefix_only"
+    description = "Allow object access only under trivy/v1/."
+    expression  = "resource.type == 'storage.googleapis.com/Object' && resource.name.startsWith('projects/_/buckets/${var.scan_evidence_bucket}/objects/trivy/v1/')"
+  }
+}
+
+# gcloud storage resolves the bucket before it reads or writes an object, so both release identities
+# also need metadata read on the bucket itself.
+resource "google_storage_bucket_iam_member" "release_scan_evidence_bucket_viewer" {
+  for_each = toset(local.scan_evidence_members)
+
+  bucket = var.scan_evidence_bucket
+  role   = "roles/storage.bucketViewer"
+  member = each.value
 }
 
 resource "google_storage_bucket_iam_member" "recovery_bucket_policy_operator" {

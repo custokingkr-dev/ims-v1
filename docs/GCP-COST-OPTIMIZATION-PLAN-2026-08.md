@@ -20,6 +20,17 @@
 > authentication because the cost-controller provider condition does not authorize that ref; manual
 > dispatches must use the workflow's governed `main` ref unless IAM policy is deliberately changed.
 
+> **Artifact Registry egress regression identified and fixed (2026-08-16):** the "not a major cost
+> driver" assessment below is superseded. Commit `6d9da9b2` (2026-08-11) added fourteen exact-digest
+> Trivy steps to `.github/workflows/build-release.yml`. Every release resolves all seven service
+> images, so each run pulled all seven from `asia-south2` to a GitHub-hosted runner outside Google
+> Cloud, which is billed internet egress. Artifact Registry egress was exactly INR 0 before that
+> commit and INR 628.93 / 58.84 GB after it. On 2026-08-13/14 alone, 24 releases pulled 168 images
+> for 48.46 GB (INR 518), of which only 62 digests were new. A digest-keyed verdict cache in
+> `gs://custoking-scan-evidence` with a 24-hour TTL now skips the pull when the same immutable digest
+> already passed the same scanner revision. See the Artifact Registry section below for the measured
+> detail and the residual risk.
+
 Last updated: 2026-08-05
 Project inspected: `custoking`  
 Region inspected: `asia-south2`  
@@ -196,7 +207,49 @@ Cleanup policies are applied:
 - delete images older than 7 days
 - keep last 3 versions per service
 
-This is not a major cost driver now, but it should stay monitored because image churn can grow quickly during active development.
+Stored bytes are not a major cost driver. Egress became one on 2026-08-11 and is the larger risk.
+
+#### Scan-driven egress (measured 2026-08-16)
+
+Pulling an image into Cloud Run in the same region is free. Pulling it to a GitHub-hosted runner is
+billed as internet egress, and the release gate does exactly that.
+
+| Day | Egress | Cost | Note |
+| --- | ---: | ---: | --- |
+| through 2026-08-10 | 0.00 GB | INR 0.00 | no exact-digest scanning yet |
+| 2026-08-11 | 10.36 GB | INR 110.77 | `6d9da9b2` adds fourteen Trivy steps |
+| 2026-08-12 | 0.00 GB | INR 0.00 | no releases reached the release job |
+| 2026-08-13 | 30.23 GB | INR 323.19 | dependabot and codex merge batch |
+| 2026-08-14 | 18.23 GB | INR 194.85 | continued merges plus the prod release |
+
+Attribution for 2026-08-13/14: 45 `CD / Deploy branch environment` runs, of which 24 reached the
+release job. The `images` step resolves every service to an immutable digest whether or not it was
+rebuilt, so each of those 24 runs pulled exactly seven images. 168 pulls against 48.46 GB implies
+about 288 MB per pull, which matches the Spring Boot images. Only 62 new tagged digests were built in
+that window, so roughly 106 of the 168 pulls re-scanned a digest that already had a verdict.
+
+The paired SARIF step is not a second pull. Trivy's layer cache serves it, evidenced by step
+durations of 4-9 seconds against 10-42 seconds for the gate that precedes it. Do not remove it as a
+cost measure; it is already free.
+
+Unit cost is fixed per release run at roughly 2.0 GB, about INR 21.5, and scales with merge frequency
+rather than with code size. At the 2026-08-13/14 pace of twelve releases per day this line item
+projects to about INR 7,750/month, which alone would exceed the whole idle baseline.
+
+Mitigation in place since 2026-08-16: `build-release.yml` restores a stored verdict from
+`gs://custoking-scan-evidence` when the same immutable digest passed the same pinned scanner revision
+within 24 hours, and skips the scan. Only passes are stored, so a failing gate always rescans. Cache
+failures are misses, never passes; the gate still fails closed and the enforcement step still requires
+the evidence files on disk. Bucket IAM is in `infra/terraform/cicd/main.tf`.
+
+Residual risks worth monitoring:
+
+- The saving depends on merge frequency. A quiet week saves little because there is little to save.
+- The 24-hour TTL is the deliberate trade. An unchanged digest can ship up to a day after its last
+  CVE evaluation. Shortening the TTL costs egress; lengthening it costs freshness.
+- Scanning still happens off-platform. Moving the gate to a same-region runner would remove the
+  egress entirely rather than reduce it, and would also fix the load-generator egress noted in
+  `GCP-BUDGET-INCIDENT-2026-08-11.md`. That remains the better long-term fix.
 
 ### Observability
 
@@ -580,7 +633,10 @@ Before each school onboarding wave:
 - [ ] Check outbox pending count and oldest pending age.
 - [ ] Check Pub/Sub oldest unacked message age.
 - [ ] Check student photo bucket growth.
-- [ ] Check Artifact Registry size.
+- [ ] Check Artifact Registry size and, separately, Artifact Registry egress. Egress is the larger
+      line item and is driven by release frequency, not by stored bytes. Confirm the verdict cache is
+      being reused: `cachedCount` in `release-evidence/trivy/exact-digest-scan.json` should be
+      non-zero on any run that did not rebuild every service.
 - [ ] Check logs volume/retention.
 - [ ] Recalculate expected per-school gross margin.
 
@@ -624,6 +680,16 @@ This keeps the expensive baseline to Cloud SQL and avoids paying continuously fo
 6. Add weekly cost review SQL and dashboard.
 7. Add dev Cloud SQL start/stop automation.
 8. Run Java service cold-start/right-size experiments in dev.
+9. Apply `infra/terraform/cicd` so the scan-evidence bucket IAM is state-managed. The bindings were
+   granted directly with `gcloud` on 2026-08-16 to unblock the fix; Terraform declares the same
+   members, roles, and condition, so applying reconciles without conflict.
+10. Decide whether to move the exact-digest scan gate to a same-region Google Cloud runner, which
+    removes the scan egress rather than reducing it.
+11. Reconcile the release service-account drift found on 2026-08-16: Terraform declares
+    `github-release-dev`, but that account does not exist and the dev environment sets no
+    `RELEASE_BUILDER_SERVICE_ACCOUNT`, so dev releases run as the shared `github-actions-sa`. Until
+    that is resolved, `var.dev_release_service_account` must keep pointing at the account dev
+    actually uses or the verdict cache silently stops working on dev.
 
 ## Source Notes
 
