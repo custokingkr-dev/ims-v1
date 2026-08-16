@@ -91,6 +91,12 @@ variable "scan_evidence_bucket" {
   default     = "custoking-scan-evidence"
 }
 
+variable "billing_export_dataset" {
+  description = "Existing BigQuery dataset holding the detailed Cloud Billing export. The cost-control identity reads it to report Artifact Registry egress; it is granted no other BigQuery data."
+  type        = string
+  default     = "billing_export"
+}
+
 variable "dev_release_service_account" {
   description = "Email of the identity dev releases actually run as. The dev GitHub environment sets no RELEASE_BUILDER_SERVICE_ACCOUNT, so build-release.yml falls back to the repository-level DEPLOY_SERVICE_ACCOUNT. Point this at github-release-dev once that account exists and the dev environment sets it."
   type        = string
