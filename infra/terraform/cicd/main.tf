@@ -401,6 +401,9 @@ resource "google_project_iam_member" "cost_controller_roles" {
   for_each = toset([
     "roles/cloudsql.editor",
     "roles/serviceusage.serviceUsageConsumer",
+    # Required to run any query job. It confers no data access on its own; readable data is granted
+    # separately and narrowly on the billing export dataset below.
+    "roles/bigquery.jobUser",
   ])
 
   project = var.project_id
@@ -420,6 +423,16 @@ resource "google_project_iam_member" "recovery_roles" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.github["recovery"].email}"
+}
+
+# Read access for the daily Artifact Registry egress report. Scoped to the billing export dataset
+# rather than the project so the cost-control identity cannot read application data. Paired with
+# roles/bigquery.jobUser above, which permits running a query but grants no data of its own.
+resource "google_bigquery_dataset_iam_member" "cost_controller_billing_export_viewer" {
+  project    = var.project_id
+  dataset_id = var.billing_export_dataset
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.github["cost_controller"].email}"
 }
 
 # Scanning an image pulls it out of Artifact Registry to a GitHub-hosted runner, which is billed as
