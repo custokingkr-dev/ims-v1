@@ -97,6 +97,12 @@ variable "billing_export_dataset" {
   default     = "billing_export"
 }
 
+variable "enable_recovery_bindings" {
+  description = "Whether to manage the recovery-drill identity's permissions. The custoking-recovery-operator account exists, but as of 2026-08-16 none of these three bindings exist live as declared: roles/cloudsql.admin, roles/serviceusage.serviceUsageConsumer, the recovery-drill workload identity binding, and the recovery bucket binding, which is live unconditionally where this module scopes it to recovery-drills/. Enabling this grants real permissions including clone and delete on Cloud SQL, and replaces an unconditional bucket binding, so it needs a security owner's review rather than riding along with a state-adoption apply. See infra/terraform/cicd/README.md and docs/TERRAFORM-CICD-STATE-ADOPTION-SCOPE-2026-08-17.md."
+  type        = bool
+  default     = false
+}
+
 variable "enable_dev_identities" {
   description = "Whether to manage the per-environment dev CI/CD identities (github-release-dev, github-rollback-dev, github-config-dev, clouddeploy-dev-deployer). These are declared because moving dev off the shared github-actions-sa is the intended end state, but none of them exist in the live project as of 2026-08-16 and dev authenticates as the shared account. Keep false so state reflects reality; flipping it to true begins that migration and requires the dev GitHub environment variables to move in the same change or dev CI breaks. See docs/TERRAFORM-CICD-STATE-ADOPTION-SCOPE-2026-08-17.md."
   type        = bool

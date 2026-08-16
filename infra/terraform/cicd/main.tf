@@ -68,7 +68,8 @@ locals {
   github_service_account_workflow_refs = {
     for key, refs in local.github_service_account_workflow_refs_all :
     key => refs
-    if var.enable_dev_identities || !contains(local.dev_identity_keys, key)
+    if(var.enable_dev_identities || !contains(local.dev_identity_keys, key)) &&
+    (var.enable_recovery_bindings || key != "recovery")
   }
 
   allowed_workflow_claims = [
@@ -452,10 +453,10 @@ resource "google_project_iam_member" "cost_controller_roles" {
 # workflow-dedicated identity; reduce this predefined role only after a live drill proves an exact
 # custom-permission set and cleanup path.
 resource "google_project_iam_member" "recovery_roles" {
-  for_each = toset([
+  for_each = var.enable_recovery_bindings ? toset([
     "roles/cloudsql.admin",
     "roles/serviceusage.serviceUsageConsumer",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -502,6 +503,7 @@ resource "google_storage_bucket_iam_member" "release_scan_evidence_bucket_viewer
 }
 
 resource "google_storage_bucket_iam_member" "recovery_bucket_policy_operator" {
+  count  = var.enable_recovery_bindings ? 1 : 0
   bucket = var.recovery_validation_bucket
   role   = "projects/${var.project_id}/roles/${var.recovery_bucket_iam_role_id}"
   member = "serviceAccount:${google_service_account.github["recovery"].email}"
