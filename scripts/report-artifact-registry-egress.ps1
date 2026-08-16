@@ -39,17 +39,35 @@ $query = "SELECT FORMAT_DATE('%Y-%m-%d', DATE(usage_start_time)) AS day, " +
   "AND DATE(usage_start_time) >= LEAST(DATE_SUB(CURRENT_DATE(), INTERVAL $Days DAY), " +
   "DATE_TRUNC(CURRENT_DATE(), MONTH)) GROUP BY day ORDER BY day DESC"
 
-$raw = & $BqCommand query "--project_id=$ProjectId" --use_legacy_sql=false --format=json --quiet $query
+# --headless suppresses the interactive first-run setup on a fresh runner. Without it bq prints a
+# "Welcome to BigQuery!" banner to stdout ahead of the payload.
+$raw = & $BqCommand --headless query "--project_id=$ProjectId" --use_legacy_sql=false --format=json --quiet $query
 if ($LASTEXITCODE -ne 0) {
   throw "BigQuery query failed. Confirm the cost-control identity has roles/bigquery.jobUser on '$ProjectId' and read access to the billing export dataset."
 }
 
+# bq can still emit banners or warnings on stdout ahead of the payload, which is not valid JSON.
+# Belt and braces alongside --headless: drop everything before the first line that opens the array
+# or object. Do not trust the whole stream to be JSON just because the command succeeded.
+$jsonLines = @($raw)
+$startIndex = -1
+for ($i = 0; $i -lt $jsonLines.Count; $i++) {
+  $trimmed = ([string]$jsonLines[$i]).TrimStart()
+  if ($trimmed.StartsWith("[") -or $trimmed.StartsWith("{")) { $startIndex = $i; break }
+}
+if ($startIndex -gt 0) {
+  Write-Host "Discarded $startIndex non-JSON line(s) from bq output before parsing."
+}
+
 $rows = @()
-if (-not [string]::IsNullOrWhiteSpace(($raw -join ""))) {
-  # Windows PowerShell 5.1 emits a JSON array as one object rather than enumerating it, so a bare
-  # @(ConvertFrom-Json) yields an array containing an array. Piping normalises both hosts.
-  $parsed = ($raw -join "`n") | ConvertFrom-Json
-  $rows = @($parsed | ForEach-Object { $_ })
+if ($startIndex -ge 0) {
+  $payload = ($jsonLines[$startIndex..($jsonLines.Count - 1)]) -join "`n"
+  if (-not [string]::IsNullOrWhiteSpace($payload)) {
+    # Windows PowerShell 5.1 emits a JSON array as one object rather than enumerating it, so a bare
+    # @(ConvertFrom-Json) yields an array containing an array. Piping normalises both hosts.
+    $parsed = $payload | ConvertFrom-Json
+    $rows = @($parsed | ForEach-Object { $_ })
+  }
 }
 
 $monthStart = (Get-Date).ToUniversalTime().ToString("yyyy-MM-01")
