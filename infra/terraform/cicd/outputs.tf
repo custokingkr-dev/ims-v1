@@ -3,7 +3,7 @@ output "workload_identity_provider" {
 }
 
 output "release_dev_service_account" {
-  value = google_service_account.github["release_dev"].email
+  value = try(google_service_account.github["release_dev"].email, null)
 }
 
 output "release_prod_service_account" {
@@ -11,7 +11,7 @@ output "release_prod_service_account" {
 }
 
 output "rollback_dev_service_account" {
-  value = google_service_account.github["rollback_dev"].email
+  value = try(google_service_account.github["rollback_dev"].email, null)
 }
 
 output "rollback_prod_service_account" {
@@ -19,7 +19,7 @@ output "rollback_prod_service_account" {
 }
 
 output "config_dev_service_account" {
-  value = google_service_account.github["config_dev"].email
+  value = try(google_service_account.github["config_dev"].email, null)
 }
 
 output "config_prod_service_account" {

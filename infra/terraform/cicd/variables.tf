@@ -97,6 +97,12 @@ variable "billing_export_dataset" {
   default     = "billing_export"
 }
 
+variable "enable_dev_identities" {
+  description = "Whether to manage the per-environment dev CI/CD identities (github-release-dev, github-rollback-dev, github-config-dev, clouddeploy-dev-deployer). These are declared because moving dev off the shared github-actions-sa is the intended end state, but none of them exist in the live project as of 2026-08-16 and dev authenticates as the shared account. Keep false so state reflects reality; flipping it to true begins that migration and requires the dev GitHub environment variables to move in the same change or dev CI breaks. See docs/TERRAFORM-CICD-STATE-ADOPTION-SCOPE-2026-08-17.md."
+  type        = bool
+  default     = false
+}
+
 variable "dev_release_service_account" {
   description = "Email of the identity dev releases actually run as. The dev GitHub environment sets no RELEASE_BUILDER_SERVICE_ACCOUNT, so build-release.yml falls back to the repository-level DEPLOY_SERVICE_ACCOUNT. Point this at github-release-dev once that account exists and the dev environment sets it."
   type        = string
