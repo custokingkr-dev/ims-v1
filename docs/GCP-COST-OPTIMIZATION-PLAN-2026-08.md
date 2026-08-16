@@ -680,9 +680,21 @@ This keeps the expensive baseline to Cloud SQL and avoids paying continuously fo
 6. Add weekly cost review SQL and dashboard.
 7. Add dev Cloud SQL start/stop automation.
 8. Run Java service cold-start/right-size experiments in dev.
-9. Apply `infra/terraform/cicd` so the scan-evidence bucket IAM is state-managed. The bindings were
-   granted directly with `gcloud` on 2026-08-16 to unblock the fix; Terraform declares the same
-   members, roles, and condition, so applying reconciles without conflict.
+9. **Do not run `terraform apply` in `infra/terraform/cicd` as it stands.** Correcting an earlier note
+   in this document, which claimed applying would reconcile without conflict: it would not. Verified
+   2026-08-16, `terraform state list` reports `No state file was found!`. There is no backend block,
+   no local `terraform.tfstate`, and `gs://custoking-terraform-state` holds only `observability/`
+   state. A plan therefore reports **95 to add, 0 to change, 0 to destroy** — it wants to create every
+   service account, the workload identity pool and the Artifact Registry repository, all of which
+   already exist. `infra/terraform/cicd/README.md` documents the required import-first sequence.
+
+   The scan-evidence and BigQuery bindings were granted directly with `gcloud`/`bq` on 2026-08-16 and
+   are correct and live; only their *state management* is outstanding. Making this module genuinely
+   state-managed needs two things done deliberately, not as a side effect of a cost fix: a GCS
+   backend for `cicd` mirroring the one `observability` already uses, and a full import of the
+   existing resources per the README. Importing writes state only and does not mutate
+   infrastructure; the risk is entirely in the first apply afterwards, so that plan must be read
+   line by line before it runs.
 10. Decide whether to move the exact-digest scan gate to a same-region Google Cloud runner, which
     removes the scan egress rather than reducing it.
 11. Reconcile the release service-account drift found on 2026-08-16: Terraform declares
