@@ -13,7 +13,21 @@ locals {
   # environment contract, or runtime identities. Add all three together before enabling it.
   environments = toset(["dev", "prod"])
 
-  github_service_accounts = {
+  # Environments whose Cloud Deploy / per-environment CI identities this module manages. Dev drops
+  # out unless var.enable_dev_identities is set, because clouddeploy-dev-deployer and the dev GitHub
+  # identities do not exist live. local.environments still means "environments that exist" and is
+  # used where the resource does not depend on a dev identity.
+  managed_environments = toset([
+    for env in local.environments : env
+    if var.enable_dev_identities || env != "dev"
+  ])
+
+  # Identities whose live existence depends on var.enable_dev_identities. Declared because moving dev
+  # off the shared github-actions-sa is the intended end state, but none exist live yet, so they are
+  # filtered out by default and this module stays a truthful record of the project.
+  dev_identity_keys = ["release_dev", "rollback_dev", "config_dev"]
+
+  github_service_accounts_all = {
     release_dev     = "github-release-dev"
     release_prod    = "github-release-prod"
     rollback_dev    = "github-rollback-dev"
@@ -22,6 +36,12 @@ locals {
     config_prod     = "github-config-prod"
     cost_controller = "github-cost-controller"
     recovery        = "custoking-recovery-operator"
+  }
+
+  github_service_accounts = {
+    for key, account in local.github_service_accounts_all :
+    key => account
+    if var.enable_dev_identities || !contains(local.dev_identity_keys, key)
   }
 
   # Identities that build-release.yml actually authenticates as when it reads and writes Trivy
@@ -34,7 +54,7 @@ locals {
 
   # Service-account impersonation is branch-specific. Provider-level allowlisting alone is not
   # sufficient because a workflow changed on dev must never be able to request a prod identity.
-  github_service_account_workflow_refs = {
+  github_service_account_workflow_refs_all = {
     release_dev     = toset(["${var.github_repository}/.github/workflows/build-release.yml@refs/heads/dev"])
     release_prod    = toset(["${var.github_repository}/.github/workflows/build-release.yml@refs/heads/main"])
     rollback_dev    = toset(["${var.github_repository}/.github/workflows/rollback.yml@refs/heads/dev"])
@@ -43,6 +63,13 @@ locals {
     config_prod     = toset(["${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/main"])
     cost_controller = toset(["${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main"])
     recovery        = toset(["${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main"])
+  }
+
+  github_service_account_workflow_refs = {
+    for key, refs in local.github_service_account_workflow_refs_all :
+    key => refs
+    if(var.enable_dev_identities || !contains(local.dev_identity_keys, key)) &&
+    (var.enable_recovery_bindings || key != "recovery")
   }
 
   allowed_workflow_claims = [
@@ -62,9 +89,15 @@ locals {
     "(${join(" || ", [for claim in local.allowed_workflow_claims : "(assertion.ref == '${claim.ref}' && assertion.workflow_ref == '${claim.workflow_ref}')"])})",
   ])
 
-  deploy_service_accounts = {
+  deploy_service_accounts_all = {
     dev  = "clouddeploy-dev-deployer"
     prod = "clouddeploy-prod-deployer"
+  }
+
+  deploy_service_accounts = {
+    for env, account in local.deploy_service_accounts_all :
+    env => account
+    if var.enable_dev_identities || env != "dev"
   }
 
   runtime_service_account_bindings = {
@@ -77,6 +110,7 @@ locals {
         }
       ]
     ]) : binding.key => binding
+    if var.enable_dev_identities || binding.env != "dev"
   }
 
   github_workflow_ref_bindings = {
@@ -202,12 +236,12 @@ resource "google_service_account_iam_member" "github_wif" {
 }
 
 resource "google_project_iam_member" "release_dev_roles" {
-  for_each = toset([
+  for_each = var.enable_dev_identities ? toset([
     "roles/clouddeploy.releaser",
     "roles/cloudsql.editor",
     "roles/run.developer",
     "roles/serviceusage.serviceUsageConsumer",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -242,22 +276,24 @@ resource "google_storage_bucket_iam_member" "release_prod_source_object_creator"
 }
 
 resource "google_storage_bucket_iam_member" "release_dev_source_bucket_viewer" {
+  count  = var.enable_dev_identities ? 1 : 0
   bucket = var.clouddeploy_source_bucket
   role   = "roles/storage.bucketViewer"
   member = "serviceAccount:${google_service_account.github["release_dev"].email}"
 }
 
 resource "google_storage_bucket_iam_member" "release_dev_source_object_creator" {
+  count  = var.enable_dev_identities ? 1 : 0
   bucket = var.clouddeploy_source_bucket
   role   = "roles/storage.objectCreator"
   member = "serviceAccount:${google_service_account.github["release_dev"].email}"
 }
 
 resource "google_project_iam_member" "rollback_dev_roles" {
-  for_each = toset([
+  for_each = var.enable_dev_identities ? toset([
     "roles/run.developer",
     "roles/serviceusage.serviceUsageConsumer",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -300,7 +336,7 @@ resource "google_project_iam_custom_role" "clouddeploy_config_reconciler" {
 }
 
 resource "google_project_iam_member" "config_reconciler_roles" {
-  for_each = toset(["dev", "prod"])
+  for_each = local.managed_environments
 
   project = var.project_id
   role    = google_project_iam_custom_role.clouddeploy_config_reconciler.name
@@ -308,7 +344,7 @@ resource "google_project_iam_member" "config_reconciler_roles" {
 }
 
 resource "google_project_iam_member" "config_reconciler_service_usage" {
-  for_each = toset(["dev", "prod"])
+  for_each = local.managed_environments
 
   project = var.project_id
   role    = "roles/serviceusage.serviceUsageConsumer"
@@ -317,7 +353,7 @@ resource "google_project_iam_member" "config_reconciler_service_usage" {
 
 resource "google_project_iam_member" "clouddeploy_deployer_roles" {
   for_each = {
-    for pair in setproduct(local.environments, toset([
+    for pair in setproduct(local.managed_environments, toset([
       "roles/clouddeploy.jobRunner",
       "roles/run.developer",
       ])) : "${pair[0]}:${pair[1]}" => {
@@ -342,8 +378,9 @@ resource "google_service_account_iam_member" "clouddeploy_act_as_runtime" {
 # also deploy with the existing per-service Cloud Run runtime identities. Keep actAs resource-scoped.
 resource "google_service_account_iam_member" "release_builder_act_as_clouddeploy" {
   for_each = {
-    dev  = "release_dev"
-    prod = "release_prod"
+    for env, key in { dev = "release_dev", prod = "release_prod" } :
+    env => key
+    if var.enable_dev_identities || env != "dev"
   }
   service_account_id = google_service_account.clouddeploy[each.key].name
   role               = "roles/iam.serviceAccountUser"
@@ -351,7 +388,7 @@ resource "google_service_account_iam_member" "release_builder_act_as_clouddeploy
 }
 
 resource "google_service_account_iam_member" "release_builder_act_as_dev_runtime" {
-  for_each           = var.runtime_service_account_emails["dev"]
+  for_each           = var.enable_dev_identities ? var.runtime_service_account_emails["dev"] : toset([])
   service_account_id = "projects/${var.project_id}/serviceAccounts/${each.value}"
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.github["release_dev"].email}"
@@ -364,7 +401,7 @@ resource "google_service_account_iam_member" "rollback_prod_act_as_clouddeploy" 
 }
 
 resource "google_service_account_iam_member" "config_reconciler_act_as_clouddeploy" {
-  for_each           = local.environments
+  for_each           = local.managed_environments
   service_account_id = google_service_account.clouddeploy[each.value].name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.github["config_${each.value}"].email}"
@@ -373,7 +410,7 @@ resource "google_service_account_iam_member" "config_reconciler_act_as_clouddepl
 # Cloud Run deployment requires the deployer to read the selected image. Scope that permission to
 # the one release repository instead of granting Artifact Registry Reader project-wide.
 resource "google_artifact_registry_repository_iam_member" "clouddeploy_image_reader" {
-  for_each   = local.environments
+  for_each   = local.managed_environments
   project    = var.project_id
   location   = google_artifact_registry_repository.custoking.location
   repository = google_artifact_registry_repository.custoking.repository_id
@@ -390,6 +427,7 @@ resource "google_artifact_registry_repository_iam_member" "release_prod_image_re
 }
 
 resource "google_artifact_registry_repository_iam_member" "release_dev_image_writer" {
+  count      = var.enable_dev_identities ? 1 : 0
   project    = var.project_id
   location   = google_artifact_registry_repository.custoking.location
   repository = google_artifact_registry_repository.custoking.repository_id
@@ -415,10 +453,10 @@ resource "google_project_iam_member" "cost_controller_roles" {
 # workflow-dedicated identity; reduce this predefined role only after a live drill proves an exact
 # custom-permission set and cleanup path.
 resource "google_project_iam_member" "recovery_roles" {
-  for_each = toset([
+  for_each = var.enable_recovery_bindings ? toset([
     "roles/cloudsql.admin",
     "roles/serviceusage.serviceUsageConsumer",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -465,6 +503,7 @@ resource "google_storage_bucket_iam_member" "release_scan_evidence_bucket_viewer
 }
 
 resource "google_storage_bucket_iam_member" "recovery_bucket_policy_operator" {
+  count  = var.enable_recovery_bindings ? 1 : 0
   bucket = var.recovery_validation_bucket
   role   = "projects/${var.project_id}/roles/${var.recovery_bucket_iam_role_id}"
   member = "serviceAccount:${google_service_account.github["recovery"].email}"
