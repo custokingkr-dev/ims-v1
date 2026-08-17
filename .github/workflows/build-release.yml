@@ -278,6 +278,7 @@ jobs:
         run: New-Item -ItemType Directory -Force -Path release-evidence | Out-Null
 
       - name: Ensure development database is running
+        id: dev_database
         if: ${{ needs.resolve-target.outputs.target_env == 'dev' }}
         shell: pwsh
         env:
@@ -301,6 +302,22 @@ jobs:
             Write-Host "Skipping development Cloud SQL start: no database-backed service is affected."
             exit 0
           }
+
+          # Record the state we found so the run can put it back. Deploys previously started the
+          # instance and left activation policy at ALWAYS, so a single dev deploy turned a
+          # deliberately stopped database into one running indefinitely at about INR 29/day until
+          # somebody noticed or the scheduled cost-control sweep caught it.
+          # Runner is ubuntu-latest, so the CLI is "gcloud"; the .cmd shim is Windows-only. Resolved
+          # the same way as scripts/set-dev-cloudsql-state.ps1 so this keeps working if that changes.
+          $gcloud = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
+          $state = ((& $gcloud sql instances describe custoking-db-dev `
+            "--project=$env:GCP_PROJECT_ID" --format="value(state)") -join "").Trim()
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not read the development Cloud SQL state before starting it."
+          }
+          $wasRunning = $state -eq "RUNNABLE"
+          Write-Host "Development database state before deploy: $state"
+          "restore_to_stopped=$(if ($wasRunning) { 'false' } else { 'true' })" >> $env:GITHUB_OUTPUT
 
           ./scripts/set-dev-cloudsql-state.ps1 `
             -ProjectId "$env:GCP_PROJECT_ID" `
@@ -1068,6 +1085,20 @@ jobs:
           }
           $lines | Set-Content release-evidence/summary.md
           $lines | ForEach-Object { $_ >> $env:GITHUB_STEP_SUMMARY }
+
+      # Put the development database back as it was found. Runs on failure and cancellation too:
+      # a deploy that dies midway is exactly the case that used to leave the instance running.
+      # Only stops what this run started, so a database someone is actively using stays up.
+      - name: Restore development database state
+        if: ${{ always() && needs.resolve-target.outputs.target_env == 'dev' && steps.dev_database.outputs.restore_to_stopped == 'true' }}
+        shell: pwsh
+        run: |
+          Write-Host "Development database was stopped before this deploy; returning it to that state."
+          ./scripts/set-dev-cloudsql-state.ps1 `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -InstanceName custoking-db-dev `
+            -State stop `
+            -Wait
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: always()
