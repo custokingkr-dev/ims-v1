@@ -247,9 +247,11 @@ Residual risks worth monitoring:
 - The saving depends on merge frequency. A quiet week saves little because there is little to save.
 - The 24-hour TTL is the deliberate trade. An unchanged digest can ship up to a day after its last
   CVE evaluation. Shortening the TTL costs egress; lengthening it costs freshness.
-- Scanning still happens off-platform. Moving the gate to a same-region runner would remove the
-  egress entirely rather than reduce it, and would also fix the load-generator egress noted in
-  `GCP-BUDGET-INCIDENT-2026-08-11.md`. That remains the better long-term fix.
+- Scanning still happens off-platform, so a pull is still billed for each genuinely new digest.
+  Moving the gate to same-region execution was investigated on 2026-08-17 and **deliberately not
+  adopted**; see follow-up 10 for the measurements and the index-digest finding that closes it. The
+  separate load-generator egress in `GCP-BUDGET-INCIDENT-2026-08-11.md` is unaffected by that
+  decision and its same-region recommendation still stands on its own.
 
 ### Observability
 
@@ -695,8 +697,46 @@ This keeps the expensive baseline to Cloud SQL and avoids paying continuously fo
    existing resources per the README. Importing writes state only and does not mutate
    infrastructure; the risk is entirely in the first apply afterwards, so that plan must be read
    line by line before it runs.
-10. Decide whether to move the exact-digest scan gate to a same-region Google Cloud runner, which
-    removes the scan egress rather than reducing it.
+10. **CLOSED, not adopted (2026-08-17): move the exact-digest scan gate to same-region execution.**
+    Investigated and prototyped; the remaining saving does not justify the change. Do not re-open
+    without reading the findings below, each of which cost real investigation time.
+
+    Two candidate targets were eliminated outright. **Cloud Build** is not same-region: its default
+    pool bills as `E2 cpu utilization per minute in the global region (Default Pool)`, so pulling
+    `asia-south2` images to it is cross-region and possibly worse than today. A regional or private
+    pool would fix that but adds configuration or fixed cost, and Cloud Build is not free here
+    either, having already billed INR 869 for 343,848 CPU-seconds. **Artifact Analysis on-demand
+    scanning** is roughly an order of magnitude underwater: about USD 0.26 per image against roughly
+    930 new digests a month is approximately INR 21,000/month, to save INR 1,000-3,000.
+
+    That left scanning at build time, on the runner that just built the image, where the layers are
+    already local and no pull occurs. A local prototype against a throwaway registry established:
+
+    - Multi-exporter (`type=image,push=true` plus `type=oci,dest=...`) does work with
+      `provenance=mode=max` and `sbom=true`.
+    - The **image manifest digest is identical** between the pushed image and the exported tarball,
+      so scanning the tarball scans exactly the released image content.
+    - The **index digest differs**, because the attestation manifest embeds per-exporter build
+      metadata. Pushed `sha256:4fbd6160d277...` against tarball `sha256:b5439f067b19...`, with image
+      sub-manifest `sha256:063174c5a67f...` matching in both.
+
+    This is the finding that closes the item. The gate keys evidence on the **index** digest, so the
+    design only works if the verdict cache is re-keyed to the runtime image digest that
+    `build-release.yml` already computes. That re-key is defensible, since attestation metadata
+    carries no CVEs, but it changes the meaning of the security contract, invalidates every stored
+    verdict, and lands alongside a build-path change and a new fallback branch for digests without a
+    verdict. Three coupled changes to a release security gate.
+
+    One correction for anyone re-testing: `--load` combined with attestations does **not** reliably
+    fail. It succeeded on a workstation using the containerd image store
+    (`io.containerd.snapshotter.v1`), which handles OCI indexes. GitHub-hosted runners typically use
+    the classic dockerd store and are expected to behave differently. Do not conclude anything about
+    runner behaviour from a local test.
+
+    The verdict cache already removed roughly 90% of this line item, which is why the remainder does
+    not pay for the complexity. Measured: 2026-08-13 INR 323.19 and 2026-08-14 INR 194.85 before the
+    cache, against 2026-08-16 INR 30.24 on a day that ran two full releases. Re-open only if merge
+    frequency rises far enough that the residual egress becomes material against these figures.
 11. Reconcile the release service-account drift found on 2026-08-16: Terraform declares
     `github-release-dev`, but that account does not exist and the dev environment sets no
     `RELEASE_BUILDER_SERVICE_ACCOUNT`, so dev releases run as the shared `github-actions-sa`. Until
