@@ -624,6 +624,114 @@ Likely first candidate:
 
 Cloud Run CUDs are less urgent while services run request-based with min `0`.
 
+## Costs This Plan Previously Understated (2026-08-17)
+
+Four gaps found by re-auditing the export rather than re-reading this document. Each changes a number
+that has been quoted elsewhere.
+
+### 1. Every figure in this plan is pre-tax
+
+The billing export carries no tax rows: `cost_type` contains only `regular` and `rounding_error`.
+Indian Google Cloud invoices add **18% GST** on top. Section 8 already lists taxes as excluded, so the
+model is internally consistent, but any figure repeated outside that caveat understates the invoice
+by 18%.
+
+| Figure | Pre-tax | With 18% GST |
+| --- | ---: | ---: |
+| Zero-user floor | 4,450 | **5,251** |
+| Normal development month | 5,500-7,500 | **6,490-8,850** |
+| 100 schools / 200k students, zonal midpoint | 31,881 | **37,620** |
+| 150 schools / 300k students, zonal midpoint | 37,396 | **44,127** |
+| 100 schools, regional HA midpoint | 52,084 | **61,459** |
+
+Quote GST-inclusive figures in any commercial or budgeting context. Keep the pre-tax figures for
+engineering comparison against the export, which is pre-tax.
+
+### 2. Cloud Logging is free-tier masked, and one load test nearly exhausts the allowance
+
+Cloud Logging has billed exactly INR 0 throughout, which is why it never appeared in the baseline.
+That is the free allowance, not absence of usage:
+
+| Month | Ingested | Billed |
+| --- | ---: | ---: |
+| 2026-07 | 7.9 GiB | INR 0 |
+| 2026-08 (to 17th) | 48.9 GiB | INR 0 |
+
+The monthly free allowance is 50 GiB. August reached 48.9 GiB with effectively no users, and the
+driver is a single day:
+
+```
+2026-08-11   38.33 GiB    full Soak load certification
+2026-08-15    0.03 GiB    steady state
+2026-08-16    0.04 GiB    steady state
+```
+
+Steady state is roughly 1.5 GiB/month and is not a concern. One Soak run consuming 77% of the monthly
+allowance is. The existing gross-spend preflight in `scripts/invoke-dev-load-certification.ps1`
+cannot see this, because ingestion inside the allowance bills zero — the guard reports the run as
+free right up until the allowance is crossed, after which every further GiB is charged. A
+volume-based `-AllowLoggingOverrun` guard now sits alongside the cost guard for that reason.
+
+At 100-150 schools, sustained ingestion is unmodelled in
+[SCALE-READINESS-AND-COST-PLAN-2026-08-10.md](SCALE-READINESS-AND-COST-PLAN-2026-08-10.md) and should
+be measured before that fleet target is committed. The same free-tier masking applies to Pub/Sub
+(1.5 GiB used against 10 GiB free), Cloud Trace and Cloud Monitoring: all bill zero today, none are
+in the fleet model.
+
+### 3. Committed use discounts do not apply to the current database
+
+Worth stating plainly because it is counter-intuitive: prod runs `db-g1-small`, a **shared-core**
+instance billed as one bundled SKU, `Cloud SQL for PostgreSQL: Zonal - Small instance in Delhi`.
+Cloud SQL committed use discounts are spend commitments against **dedicated-core** vCPU and RAM SKUs,
+which a shared-core instance does not consume. Buying a commitment today would buy nothing.
+
+The billing account's own pricing export exposes only the `Default` consumption model, so committed
+rates could not be read from project data and the percentages below must be confirmed against
+Google's current published terms before any commitment.
+
+CUDs become relevant only after the move to `db-custom-4-7680`, at which point the covered component
+is compute, not storage:
+
+| Component | Monthly, pre-tax |
+| --- | ---: |
+| 4 vCPU at INR 4.744054/vCPU-hour x 730 | 13,853 |
+| 7.5 GiB RAM at INR 0.8034285/GiB-hour x 730 | 4,399 |
+| **Compute subtotal, CUD-eligible** | **18,252** |
+| 100 GiB SSD at INR 19.511835/GiB-month, not CUD-eligible | 1,951 |
+
+At commonly documented Cloud SQL commitment terms, a one-year commitment on that compute saves in the
+region of INR 4,500/month and a three-year roughly INR 9,500/month. Revisit at the tier change, not
+before, and only once the steady-state shape is known — a commitment is a floor, so it converts
+flexible spend into fixed spend.
+
+### 4. Messaging is likely the largest single line at scale, larger than all of GCP
+
+`MSG91_DRY_RUN` defaults to `true`, so nothing has been sent and messaging has cost nothing to date.
+That makes it invisible in every measurement in this document while remaining the most probable
+largest cost at fleet scale.
+
+Three channels are wired in `platform-service`: SMS, email, and WhatsApp. Using this plan's own
+example volume — 5% absentees across 300,000 students over 22 school days — gives 330,000 outbound
+messages per month from attendance alone, before fee reminders, announcements, or transactional
+notifications.
+
+Provider rates are commercial and must come from the actual MSG91 contract, so the model is left
+rate-parameterised rather than asserting a price:
+
+| Rate per message | 330k messages/month | Versus 150-school zonal GCP (37,396 pre-tax) |
+| ---: | ---: | --- |
+| INR 0.10 | 33,000 | comparable to all infrastructure |
+| INR 0.15 | 49,500 | **1.3x all infrastructure** |
+| INR 0.20 | 66,000 | **1.8x all infrastructure** |
+| INR 0.25 | 82,500 | **2.2x all infrastructure** |
+
+Two structural points. WhatsApp is billed per 24-hour conversation rather than per message, so its
+economics differ from SMS entirely and can be far cheaper at high volume; the channel mix is a
+commercial lever, not just a product choice. And per-school margin cannot be computed until the
+application emits per-school send counts — follow-up 5 in this document remains open, and no usage
+counters exist in the services today, so the INR 199-399/school/month figures in section 8 are
+top-down division of a modelled total rather than anything measured.
+
 ## Cost Guardrail Checklist
 
 Before each school onboarding wave:
