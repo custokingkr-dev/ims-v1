@@ -39,7 +39,7 @@ public class NotificationBroadcastCommandRepository {
                 .param("title", required(request.get("title"), "title"))
                 .param("message", required(request.get("message"), "message"))
                 .param("audienceType", str(request.get("audienceType"), "ALL"))
-                .param("channels", channels(request.get("channels")))
+                .param("channels", channels(request.get("channels"), longObj(request.get("schoolId"))))
                 .param("scheduledAt", offsetDateTime(request.get("scheduledAt")))
                 .param("createdBy", longObj(request.get("createdBy")))
                 .param("createdAt", now)
@@ -184,11 +184,62 @@ public class NotificationBroadcastCommandRepository {
     }
 
     @SuppressWarnings("unchecked")
-    private String channels(Object value) {
+    private String channels(Object value, Long schoolId) {
         if (value instanceof List<?> list) {
-            return list.isEmpty() ? "SMS" : String.join(",", list.stream().map(String::valueOf).toList());
+            return list.isEmpty()
+                    ? defaultChannel(schoolId)
+                    : String.join(",", list.stream().map(String::valueOf).toList());
         }
-        return str(value, "SMS");
+        return str(value, defaultChannel(schoolId));
+    }
+
+    /**
+     * Channel used when the caller does not name one.
+     *
+     * <p>WhatsApp utility messages are materially cheaper than SMS in India — Meta's list rate is
+     * INR 0.1150 against roughly INR 0.15-0.25 per SMS — and school notifications are utility
+     * traffic. Defaulting to WhatsApp is therefore worth doing, but only where it will actually
+     * send: {@code Msg91NotificationDeliveryProvider} requires an approved {@code template_name}
+     * for WhatsApp and throws without one. A school only has that after completing WhatsApp
+     * onboarding, so this resolves per school and falls back to SMS everywhere else. A blanket
+     * default would break broadcasts for every school that has not onboarded.
+     *
+     * <p>Resolution mirrors {@code SenderProfileRepository}: a school-specific profile takes
+     * precedence over the global default profile.
+     */
+    private String defaultChannel(Long schoolId) {
+        // The SQL is branched rather than binding a null parameter into a comparison. Binding an
+        // untyped null here previously caused PostgreSQL "could not determine data type" failures
+        // elsewhere in this codebase, and SenderProfileRepository.list uses the same branching.
+        String sql = schoolId == null
+                ? """
+                  SELECT whatsapp_default_template_name
+                  FROM notification.notification_sender_profiles
+                  WHERE active = TRUE
+                    AND school_id IS NULL
+                    AND whatsapp_default_template_name IS NOT NULL
+                    AND btrim(whatsapp_default_template_name) <> ''
+                  ORDER BY updated_at DESC
+                  LIMIT 1
+                  """
+                : """
+                  SELECT whatsapp_default_template_name
+                  FROM notification.notification_sender_profiles
+                  WHERE active = TRUE
+                    AND (school_id = :schoolId OR school_id IS NULL)
+                    AND whatsapp_default_template_name IS NOT NULL
+                    AND btrim(whatsapp_default_template_name) <> ''
+                  ORDER BY school_id NULLS LAST, updated_at DESC
+                  LIMIT 1
+                  """;
+        JdbcClient.StatementSpec spec = jdbc.sql(sql);
+        if (schoolId != null) {
+            spec = spec.param("schoolId", schoolId);
+        }
+        return spec.query(String.class).optional()
+                .filter(name -> !name.isBlank())
+                .map(name -> "WHATSAPP")
+                .orElse("SMS");
     }
 
     private List<String> splitChannels(String channels) {

@@ -6,7 +6,10 @@ import jakarta.validation.constraints.NotBlank;
  * DTO for POST /notifications/broadcasts.
  * Maps to NotificationBroadcastCommandRepository.create(Map) keys:
  *   required: title, message
- *   optional: schoolId, module, audienceType (defaults to "ALL"), channels (defaults to "SMS"),
+ *   optional: schoolId, module, audienceType (defaults to "ALL"),
+ *             channels (defaults to "WHATSAPP" where the school has an approved WhatsApp
+ *             template, otherwise "SMS" — WhatsApp utility is the cheaper channel but only
+ *             sends once the school has completed WhatsApp onboarding),
  *             scheduledAt, createdBy
  */
 public record CreateBroadcastRequest(
