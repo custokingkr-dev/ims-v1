@@ -209,3 +209,39 @@ student, attendance, and reporting migrations:
 | Reserved schools/students after cleanup | 0 / 0 |
 
 These local figures validate generation and cleanup, not GCP production capacity.
+
+## Staff workload arrival profile
+
+`staff-workload-arrival.js` exists because the other profiles test the wrong population. They ramp
+virtual users against the 200,000-student assumption behind the original scale plan, but the system
+has **no student or parent authentication** — only seven staff roles. The real population is roughly
+20 active staff per school, about 3,008 users at the 150-school target rather than 300,000.
+
+Re-derived from that population, peak load is about **47 requests/second at 150 schools**, against a
+stack already measured at 244 req/s. The open question is therefore whether a smaller database holds
+the arrival rate real staff produce — a rate question, so this profile drives a target
+requests/second with `ramping-arrival-rate` instead of a VU count. VU count is an output.
+
+Flow weights come from the persona model: per school per day, teachers generate 14 × 110 requests,
+school admin 1 × 400, accountants 2 × 320, operations 2 × 260, viewer 1 × 60. Teachers are therefore
+about half of all traffic, and the mix is weighted rather than round-robin so that stays true.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\invoke-dev-load-certification.ps1 `
+  -Profile StaffWorkload -AllowScaleWrites -BaselineRps 17 -PeakRps 50
+```
+
+The stage shape is a school day: 5 min pre-school baseline, 3 min ramp, 20 min morning attendance
+burst, 3 min down, 35 min afternoon baseline, 2 min stop — 68 minutes total.
+
+Reading the result:
+
+- **`dropped_iterations` must be 0.** If k6 could not deliver the requested rate, the run says
+  nothing about the database and is invalid regardless of latency.
+- Thresholds are p95 < 500 ms and p99 < 1500 ms, tighter than the 800 ms used for the student-scale
+  profiles, because staff rates should leave the database comfortable.
+- Cloud SQL CPU, memory and connection guardrails are enforced by the certification script as usual.
+
+To test whether a smaller instance suffices, resize dev to the candidate shape first, then run this
+profile at the fleet size you are sizing for. A pass at `db-custom-2-3840` and `-PeakRps 50` is the
+evidence needed to drop the 150-school database from `db-custom-4-7680`.
