@@ -23,6 +23,16 @@ param(
   [int]$MaximumBillingDataAgeHours = 24,
   [ValidateRange(0, 1000000)]
   [double]$EstimatedRunCostInr = 0,
+  # Cloud Logging bills nothing until the monthly free allowance is crossed, so the gross-cost guard
+  # above cannot see it. The 2026-08-11 Soak run ingested 38.33 GiB in one day against a 50 GiB
+  # monthly allowance, on days whose steady state is about 0.05 GiB. Guard the allowance directly.
+  [ValidateRange(1, 10000)]
+  [double]$LoggingFreeTierGib = 50,
+  [ValidateRange(0, 10000)]
+  [double]$EstimatedRunLogGib = 0,
+  [ValidateRange(0.1, 1.0)]
+  [double]$LoggingHeadroomRatio = 0.80,
+  [switch]$AllowLoggingOverrun,
   [string]$K6Image = "grafana/k6:2.0.0@sha256:a33a0cfdc4d2483d6b7a3a22e726a499ff2831a671a49239104cd34a9937523c",
   [switch]$AllowScaleWrites,
   [switch]$AllowBudgetOverrun,
@@ -98,6 +108,47 @@ $budgetPreflight = [ordered]@{
 }
 if (-not $AllowBudgetOverrun -and $projectedGrossSpendInr -gt $guardrailInr) {
   throw "Projected gross spend INR $([math]::Round($projectedGrossSpendInr, 2)) exceeds the load-test guard INR $([math]::Round($guardrailInr, 2)). Pass -AllowBudgetOverrun only with explicit spending-owner approval."
+}
+
+# Cloud Logging free-allowance preflight. This is deliberately volume-based rather than cost-based:
+# ingestion inside the monthly allowance bills zero, so the gross-spend guard above reports a run as
+# free right up until the allowance is crossed, after which every further GiB is charged.
+$loggingSql = "SELECT ROUND(SUM(usage.amount) / POW(1024, 3), 3) AS ingested_gib " +
+  "FROM ``$BillingExportTable`` WHERE service.description = 'Cloud Logging' " +
+  "AND invoice.month = '$invoiceMonth'"
+$loggingRowsJson = & $bq query --use_legacy_sql=false --format=json $loggingSql
+if ($LASTEXITCODE -ne 0) {
+  throw "Could not query Cloud Logging ingestion before load certification."
+}
+$loggingRows = @($loggingRowsJson | ConvertFrom-Json)
+$ingestedGib = if ($loggingRows.Count -eq 1 -and $null -ne $loggingRows[0].ingested_gib) {
+  [double]$loggingRows[0].ingested_gib
+} else {
+  0.0
+}
+
+if ($EstimatedRunLogGib -le 0) {
+  # Measured on 2026-08-11: a full Soak run ingested 38.33 GiB. Shorter profiles scale down roughly
+  # with their hold duration; revise these from evidence rather than assumption when profiles change.
+  $EstimatedRunLogGib = if ($Profile -eq "Soak") { 40.0 } else { 12.0 }
+}
+$projectedLogGib = $ingestedGib + $EstimatedRunLogGib
+$loggingGuardGib = $LoggingFreeTierGib * $LoggingHeadroomRatio
+$loggingPreflight = [ordered]@{
+  invoiceMonth = $invoiceMonth
+  ingestedGib = [math]::Round($ingestedGib, 3)
+  estimatedRunGib = [math]::Round($EstimatedRunLogGib, 3)
+  projectedGib = [math]::Round($projectedLogGib, 3)
+  freeTierGib = $LoggingFreeTierGib
+  maximumProjectedGib = [math]::Round($loggingGuardGib, 3)
+  overrideUsed = [bool]$AllowLoggingOverrun
+}
+if (-not $AllowLoggingOverrun -and $projectedLogGib -gt $loggingGuardGib) {
+  throw ("Projected Cloud Logging ingestion $([math]::Round($projectedLogGib, 2)) GiB exceeds the " +
+    "guard $([math]::Round($loggingGuardGib, 2)) GiB of the $LoggingFreeTierGib GiB monthly free " +
+    "allowance (already ingested $([math]::Round($ingestedGib, 2)) GiB this invoice month). " +
+    "Beyond the allowance every further GiB is charged. Reduce log verbosity, wait for the next " +
+    "invoice month, or pass -AllowLoggingOverrun with explicit spending-owner approval.")
 }
 
 if ([string]::IsNullOrWhiteSpace($env:K6_ACCESS_TOKENS) -and
@@ -307,6 +358,7 @@ $evidence = [ordered]@{
   hold = $Hold
   k6Image = $K6Image
   budgetPreflight = $budgetPreflight
+  loggingPreflight = $loggingPreflight
   startedAtUtc = $startedAt.ToString("o")
   completedAtUtc = [datetime]::UtcNow.ToString("o")
   k6ExitCode = $k6ExitCode
