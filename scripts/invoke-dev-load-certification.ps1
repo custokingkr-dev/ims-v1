@@ -1,5 +1,9 @@
 param(
-  [ValidateSet("Soak", "MorningBurst", "MixedMorning")]
+  # StaffWorkload drives a target requests/second rather than a VU count. The other profiles ramp
+  # virtual users against the 200,000-student assumption; the system has no student or parent
+  # authentication, so the real population is about 20 staff per school. See
+  # load-tests/staff-workload-arrival.js.
+  [ValidateSet("Soak", "MorningBurst", "MixedMorning", "StaffWorkload")]
   [string]$Profile = "Soak",
   [string]$ProjectId = "custoking",
   [string]$CloudSqlInstance = "custoking-db-dev",
@@ -30,6 +34,12 @@ param(
   [double]$LoggingFreeTierGib = 50,
   [ValidateRange(0, 10000)]
   [double]$EstimatedRunLogGib = 0,
+  # StaffWorkload only. Modelled at 150 schools: 16.6 req/s daily average, 46.6 req/s in the
+  # morning attendance burst, against a stack already measured at 244 req/s.
+  [ValidateRange(1, 300)]
+  [int]$BaselineRps = 17,
+  [ValidateRange(1, 300)]
+  [int]$PeakRps = 50,
   [ValidateRange(0.1, 1.0)]
   [double]$LoggingHeadroomRatio = 0.80,
   [switch]$AllowLoggingOverrun,
@@ -91,7 +101,9 @@ if ($billingDataAgeHours -gt $MaximumBillingDataAgeHours) {
 }
 
 if ($EstimatedRunCostInr -le 0) {
-  $EstimatedRunCostInr = if ($Profile -eq "Soak") { 1200.0 } else { 300.0 }
+  $EstimatedRunCostInr = if ($Profile -eq "Soak") { 1200.0 }
+    elseif ($Profile -eq "StaffWorkload") { 60.0 }
+    else { 300.0 }
 }
 $projectedGrossSpendInr = $grossSpendInr + $EstimatedRunCostInr
 $guardrailInr = $budgetAmountInr * $BudgetHeadroomRatio
@@ -130,7 +142,13 @@ $ingestedGib = if ($loggingRows.Count -eq 1 -and $null -ne $loggingRows[0].inges
 if ($EstimatedRunLogGib -le 0) {
   # Measured on 2026-08-11: a full Soak run ingested 38.33 GiB. Shorter profiles scale down roughly
   # with their hold duration; revise these from evidence rather than assumption when profiles change.
-  $EstimatedRunLogGib = if ($Profile -eq "Soak") { 40.0 } else { 12.0 }
+  $EstimatedRunLogGib = if ($Profile -eq "Soak") { 40.0 }
+    elseif ($Profile -eq "StaffWorkload") {
+      # 2.55 KiB of logs per request, measured 2026-08-11. A 68-minute run averaging roughly
+      # 25 req/s is about 100,000 requests, so well under a GiB. Rounded up for headroom.
+      2.0
+    }
+    else { 12.0 }
 }
 $projectedLogGib = $ingestedGib + $EstimatedRunLogGib
 $loggingGuardGib = $LoggingFreeTierGib * $LoggingHeadroomRatio
@@ -160,7 +178,10 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
   throw "Docker is required to run the pinned k6 container."
 }
 
-$defaults = if ($Profile -eq "Soak") {
+$defaults = if ($Profile -eq "StaffWorkload") {
+  # The arrival-rate script defines its own school-day stage shape; these only cap the VU pool.
+  @{ PeakVus = 300; Hold = "35m"; RampUp = "3m"; RampDown = "3m" }
+} elseif ($Profile -eq "Soak") {
   @{ PeakVus = 300; Hold = "4h"; RampUp = "5m"; RampDown = "5m" }
 } else {
   @{ PeakVus = 300; Hold = "15m"; RampUp = "30s"; RampDown = "2m" }
@@ -255,7 +276,9 @@ $lastConnectionTimestamp = $null
 $lastMemoryTimestamp = $null
 $monitoringSamples = [System.Collections.Generic.List[object]]::new()
 
-$testScript = if ($Profile -eq "MixedMorning") {
+$testScript = if ($Profile -eq "StaffWorkload") {
+  "/scripts/staff-workload-arrival.js"
+} elseif ($Profile -eq "MixedMorning") {
   "/scripts/school-day-mixed-read.js"
 } else {
   "/scripts/school-day-attendance-write.js"
@@ -267,6 +290,7 @@ $arguments = @(
   "-e", "K6_LOGIN_PASSWORD", "-e", "ALLOW_SCALE_WRITES=1",
   "-e", "SCALE_SCHOOL_COUNT=100", "-e", "SCALE_TOTAL_STUDENTS=300000",
   "-e", "SCALE_LARGE_SCHOOL_STUDENTS=10000", "-e", "PEAK_VUS=$PeakVus",
+  "-e", "BASELINE_RPS=$BaselineRps", "-e", "PEAK_RPS=$PeakRps", "-e", "MAX_VUS=$PeakVus",
   "-e", "RAMP_UP=$($defaults.RampUp)", "-e", "HOLD=$Hold", "-e", "RAMP_DOWN=$($defaults.RampDown)",
   "-v", "${loadTests}:/scripts:ro", "-v", "${evidenceRoot}:/results",
   $K6Image, "run", "--summary-export=/results/$summaryName",
