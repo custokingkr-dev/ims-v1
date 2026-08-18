@@ -222,11 +222,17 @@ or URL, and `auth_sessions` migrates with the database.
 
 ---
 
-## 8. The fifteen defects, and the two that only production could produce
+## 8. The sixteen defects, and the three that only production could produce
 
 All are already fixed in the scripts or the repository. They are listed so that a failure at two in the
-morning is recognised rather than debugged. Rows 1–13 came from the dev rehearsal; rows 14–15 came from
+morning is recognised rather than debugged. Rows 1–13 came from the dev rehearsal; rows 14–16 came from
 building `custoking-prod` itself and **could not have been caught on dev at any level of diligence**.
+
+Defect 16 also leaves a design question to settle after the window: with prod's manifests pointing at the
+build project's registry, **`custoking-dev` becomes a runtime dependency of production** — Cloud Run
+re-pulls on scale-out, so deleting an image there, or losing that project, degrades prod. The alternative
+is to promote digests into prod's own registry at release time, which the migration already proved is
+cheap (`docker buildx imagetools create` copies server-side in seconds).
 
 | # | Defect | Where it bites |
 | --- | --- | --- |
@@ -244,6 +250,7 @@ building `custoking-prod` itself and **could not have been caught on dev at any 
 | 12 | **CRLF** line splitting silently produced zero secrets *and reported success* | secret transfer |
 | 13 | **`gcloud` consumes stdin inside shell loops**, so only the last item processes | any bulk loop; add `</dev/null` |
 | 14 | **Production only.** The captured `traffic` block pins `revisionName` to a **source** revision that does not exist in the destination, so routing fails with *"Revision does not exist or is deleted"* while the container is perfectly healthy. The same capture also pins `spec.template.metadata.name`, so a failed first attempt can never be superseded — every retry collides with the same dead revision. | service deploy; **structurally invisible on dev**, which deploys directly with `latestRevision: true` while prod is deployed by Cloud Deploy, which pins revisions explicitly |
+| 16 | **Production only.** After the flip, prod's Cloud Run manifests reference images in the **build project's** registry, but image pulls are performed by prod's Cloud Run service agent (`service-<projectNumber>@serverless-robot-prod`), which had no cross-project reader. The three GitHub SAs were granted and looked sufficient; they are not, because none of them pulls the image. | the **first prod release after cutover**, failing at deploy with an image-pull error after the pipeline has otherwise succeeded. Impossible on dev, which builds and runs in one project and never pulls cross-project |
 | 15 | **Production only.** `gcloud storage rsync --exclude` matches against the **whole object name**, not a prefix, so `^temporary/` silently excluded nothing while `^students/` and `^student-imports/` worked. 122 transient objects were copied. Each alternative needs a trailing `.*`. | photo copy; dev's bucket had no populated `temporary/` tree, so the broken alternative never had anything to fail against |
 
 Two further traps worth holding in mind. Terraform here authenticates with an access token because there
