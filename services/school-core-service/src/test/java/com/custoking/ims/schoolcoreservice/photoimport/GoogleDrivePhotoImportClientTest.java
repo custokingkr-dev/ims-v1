@@ -100,12 +100,44 @@ class GoogleDrivePhotoImportClientTest {
             String clientId,
             String clientSecret,
             String refreshToken) {
+        return client(enabled, rootFolder, clientId, clientSecret, refreshToken, "user");
+    }
+
+    private static GoogleDrivePhotoImportClient client(
+            boolean enabled,
+            String rootFolder,
+            String clientId,
+            String clientSecret,
+            String refreshToken,
+            String credentialMode) {
         return new GoogleDrivePhotoImportClient(
                 new ObjectMapper(),
                 enabled,
                 rootFolder,
                 clientId,
                 clientSecret,
-                refreshToken);
+                refreshToken,
+                credentialMode);
+    }
+
+    @Test
+    void serviceAccountModeNeedsNoPersonalOauthCredentials() {
+        // In service-account mode the runtime identity supplies the credential, so the three personal
+        // OAuth settings are irrelevant and their absence must not disable Drive.
+        GoogleDrivePhotoImportClient serviceAccount =
+                client(true, "root-folder", "", "", "", "service-account");
+        assertThat(serviceAccount.isEnabled()).isTrue();
+        assertThat(serviceAccount.isProvisioningEnabled()).isTrue();
+        assertThat(serviceAccount.credentialMode()).isEqualTo("service-account");
+    }
+
+    @Test
+    void defaultsToPersonalOauthSoExistingDeploymentsAreUnaffected() {
+        GoogleDrivePhotoImportClient defaulted = client(true, "root-folder", "id", "secret", "token");
+        assertThat(defaulted.credentialMode()).isEqualTo("user");
+        assertThat(defaulted.isEnabled()).isTrue();
+
+        // Same settings but with the personal credentials missing must still disable Drive in user mode.
+        assertThat(client(true, "root-folder", "", "", "").isEnabled()).isFalse();
     }
 }
