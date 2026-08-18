@@ -33,10 +33,15 @@ Resolved by importing into a **new database, `custoking_prod_new`**, and repoint
 `SPRING_DATASOURCE_URL` / `FLYWAY_URL`. That update rolled the instances, which incidentally released the
 stale connections. No destructive operation was needed at any point.
 
-**Consequence to settle later:** production runs on a database named `custoking_prod_new`. Nothing is
-broken — the name is a configuration variable — but renaming it to `custoking_prod` needs the stale
-database dropped first and a brief connection break. The stale pre-load database has been left in place
-deliberately: irreversible cleanup immediately after a cutover is the wrong instinct.
+**Resolved the same night.** Production now runs on `custoking_prod`, the canonical name. The rename was
+done at 00:17 IST after a fresh backup: drop the stale pre-load database, then in one session revoke
+CONNECT on `custoking_prod_new`, terminate its seven connections, `ALTER DATABASE ... RENAME`, and
+re-grant CONNECT. Revoking CONNECT first is what makes this safe — without it the backends reconnect
+between the terminate and the rename, and the rename fails. The five backends were then repointed.
+
+Verified after the rename: digest unchanged at 107 relations / 38,677 rows / `6a953917...`, 26 default ACL
+entries, 66 RLS policies, `app_rt` holding CONNECT and able to read every table, and production answering
+with gateway UP, frontend 200 and auth-gated 401s on business routes.
 
 ## Two measurements worth keeping
 
@@ -70,7 +75,6 @@ reap themselves — but the root cause is still unknown and the plan should stop
 
 ## Open
 
-- Rename `custoking_prod_new` and drop the stale `custoking_prod` (needs a short connection break).
 - Root-cause the `temporary/` exclusion failure.
 - Re-enable `Ops / GCP cost controls`, currently `disabled_manually`.
 - Drive: share the prod folder with `ims-school-core-prod@custoking-prod` and set credential mode.
