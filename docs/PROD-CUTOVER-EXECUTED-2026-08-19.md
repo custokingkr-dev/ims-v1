@@ -80,3 +80,29 @@ reap themselves — but the root cause is still unknown and the plan should stop
 - Drive: share the prod folder with `ims-school-core-prod@custoking-prod` and set credential mode.
 - Configure a replacement BigQuery billing export **before** `custoking` is deleted.
 - `custoking-db-dev` is still RUNNABLE in the source project, billing for nothing.
+
+## Release path, repaired and reconciled
+
+The cutover deployed services directly from the migration script, so the production release path had never
+executed against `custoking-prod`. Repairing it surfaced a defect worse than anything in the cutover itself.
+
+**Workflow-level `env:` blocks resolve `vars` in workflow scope, where environment-scoped variables do not
+exist**, so `GCP_PROJECT_ID` and friends silently took the *repository* value. That was invisible while dev
+and prod shared one project and every value agreed. After the split the repository value is `custoking-dev`,
+which meant a production release would have deployed into the development project, a production rollback
+would have been aimed there mid-incident, and reconciling production config would have created prod's Cloud
+Deploy pipeline in dev. The release job already re-declared `WORKLOAD_IDENTITY_PROVIDER` and both service
+accounts at job scope for exactly this reason; the project variables were missed only because they used to
+agree. Fixed in the release, rollback and reconcile jobs.
+
+Reconciliation then created seven delivery pipelines and seven targets in `custoking-prod`, each pointing at
+`projects/custoking-prod/locations/asia-south2`. Note that `gcloud deploy targets list` reports them as
+absent; the REST API shows them correctly.
+
+**The Drive switch needed the release, not just the share.** Granting the runtime service account access to
+the intake folder is verified — it lists all seven school folders with edit rights. But `d1ce22f5`, which
+teaches the application to authenticate as that identity, reached `main` only with this migration. Until
+production runs that image, `STUDENT_PHOTO_IMPORT_CREDENTIAL_MODE=service-account` is inert and Drive still
+uses the OAuth client owned by `custoking`. Infrastructure access and application capability are separate
+things, and only one of them was cleared by sharing a folder.
+
