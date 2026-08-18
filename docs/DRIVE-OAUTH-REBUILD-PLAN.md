@@ -38,6 +38,36 @@ Steps 2 and 3 read files **uploaded by photographers**, which the application di
 So a like-for-like rebuild carries the restricted-scope burden. The only way out is to stop using a
 user credential at all — see option A.
 
+## 2a. How the flow actually works, and why that lowers the risk
+
+Verified in code, because it decides how much the folder-creation question matters:
+
+- **Folder provisioning is automatic.** `POST /schools` calls `photoFolders.ensureForSchool(schoolId)`,
+  which builds school → academic year → intake in Drive.
+- **It fails soft.** `DriveFolderProvisioningService` wraps every Drive call and returns
+  `ProvisioningResult.failed(...)` instead of throwing, recording `status` and `last_error` in
+  `student.photo_import_drive_folders`. A Drive outage therefore does **not** break school creation.
+- **There is a retry path**: `POST /folders/{schoolId}/provision`.
+- **Import is operator-triggered**, and its hot path is list + download only.
+
+So creation is rare (once per school per academic year), non-fatal, and retryable, while the frequent path
+is pure reads. That is the opposite of the risk profile that would rule out a service account.
+
+Measured in production 2026-08-18: **7 bindings, all `READY`, zero failures**. Four of the eleven schools
+have no binding at all, which matches exactly the four schools with no photos — they predate or do not use
+the feature.
+
+### Known gap: provisioning failure is silent
+
+`DriveFolderProvisioningService` has **no logger**. Failures are swallowed into the returned result and
+the database column, and nothing is written to Cloud Logging, so no log-based metric or alert can see
+them. Provisioning could fail for every new school and the only symptom would be an operator eventually
+finding an import has nowhere to read from.
+
+Nothing is currently being hidden, but this must be fixed **as part of whichever option is chosen** —
+add a warning log on the failure branch, then a log-based metric and alert alongside the existing
+outbox/inbox metrics. It is a code change, so it is deliberately not bundled into migration week.
+
 ## 3. Option A — replace the user credential with a service account (evaluate first)
 
 Instead of an OAuth client plus a user refresh token, give the runtime service account access by
