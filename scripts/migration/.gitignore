@@ -1,0 +1,4 @@
+# Captured live Cloud Run service definitions. These are migration working files, not source of truth.
+# They embed environment-specific values (Drive root folder IDs, bucket names, private database IPs)
+# that belong in restricted migration evidence rather than in Git.
+capture/

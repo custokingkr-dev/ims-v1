@@ -1,5 +1,13 @@
 # Custoking Split-Project GCP Migration Runbook
 
+> **SUPERSEDED 2026-08-18 by `GCP-SPLIT-PROJECT-MIGRATION-PLAN-2026-08-18.md`.** That plan was rebuilt
+> from live discovery against the source project, both destination projects, and the GitHub repository.
+> It corrects this document on several points of fact — most importantly that prod promotion resolves its
+> image from the registry belonging to `GCP_PROJECT_ID`, so splitting that variable breaks every prod
+> release; that no Cloud Run domain mapping exists, so cutover cannot be a DNS change; and that no
+> application code change is required. Use this runbook only for the procedural scaffolding it shares
+> with the new plan, and treat the new plan as authoritative wherever they disagree.
+
 **Prepared:** 2026-08-14 IST
 **Target:** development to `custoking-dev`; production to `custoking-prod`
 **Source:** existing mixed-environment project `custoking`
@@ -27,9 +35,17 @@ must complete its stabilization period before production receives a GO decision.
 recoverable and authoritative until the destination environment is formally accepted; source deletion is a
 separate future change.
 
-As of 14 August 2026, neither destination project is visible to the operating account. A Sunday production
-cutover is therefore NO-GO unless the projects, billing, access, quotas, infrastructure, data rehearsal, and
-rollback route are created and verified beforehand.
+**Superseded by live evidence on 18 August 2026 — see `GCP-MIGRATION-PREFLIGHT-EVIDENCE-2026-08-18.md`.**
+Both destination projects now exist and are `ACTIVE`, so the original "neither destination project is
+visible" blocker is cleared. Two facts this runbook did not anticipate replace it:
+
+- the destinations sit under a **different organization** than the source, so this is a cross-organization
+  migration and must be approved as one; and
+- both destinations are billed to an account the operating account **has no permission on**, so budgets,
+  alert recipients, and cost review cannot be established on them.
+
+Production cutover remains NO-GO until the billing blocker is cleared and the projects, access, quotas,
+infrastructure, data rehearsal, and rollback route are created and verified beforehand.
 
 ## 2. Scope: everything that must be recreated or re-bound
 
@@ -79,13 +95,24 @@ Do not make one personal account the only rollback path.
 
 ## 4. Hard prerequisites
 
-- [ ] `custoking-dev` and `custoking-prod` exist under the intended organization/folders and are visible to
-  both primary and backup operators.
+Live status against these gates as of 18 August 2026 is recorded in
+`GCP-MIGRATION-PREFLIGHT-EVIDENCE-2026-08-18.md` section 3. Update that evidence file rather than ticking
+boxes here from memory.
+
+- [x] `custoking-dev` and `custoking-prod` exist and are visible to both primary and backup operators.
+  **Note: they are under a different organization than the source.** The cross-organization decision must be
+  explicitly approved and recorded, and an owner must be named for source-organization authority, which the
+  operating account does not hold.
 - [ ] Billing is attached; environment-specific budgets and alert recipients are enabled before paid
-  resources are created.
+  resources are created. **FAILING** — billing is attached to an account the operating account cannot
+  access, so no budget or alert recipient can be created. Resolve before any paid destination resource
+  exists.
 - [ ] Organization policies, allowed regions, IAM domain restrictions, service-account constraints, VPC
   Service Controls, CMEK requirements, and audit requirements are recorded for both destinations.
-- [ ] `asia-south2` Cloud Run and Cloud SQL quotas are sufficient for rollout overlap and the approved SQL
+  **Partial** — destination organization policies are enumerated; domain-restricted sharing and resource
+  location restrictions are confirmed absent, so cross-organization data copy and `asia-south2` are
+  permitted. Source organization policies remain unreadable.
+- [x] `asia-south2` Cloud Run and Cloud SQL quotas are sufficient for rollout overlap and the approved SQL
   tiers. Quota is verified rather than inferred from the source project.
 - [ ] Required APIs and service agents are enabled deliberately in each destination.
 - [ ] The complete source inventory and environment classification have zero unassigned resources.
