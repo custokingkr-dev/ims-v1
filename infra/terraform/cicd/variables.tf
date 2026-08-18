@@ -1,3 +1,14 @@
+variable "environments" {
+  description = "Environments whose CI/CD identities this project owns. Before the split-project migration one project held both, so the default keeps that behaviour. A destination project must own exactly its own environment, otherwise it grows the other environment's identities."
+  type        = list(string)
+  default     = ["dev", "prod"]
+
+  validation {
+    condition     = length(setsubtract(toset(var.environments), toset(["dev", "prod"]))) == 0 && length(var.environments) > 0
+    error_message = "environments may contain only dev and/or prod, and must not be empty; stage is unsupported until its target manifests and IAM contract exist."
+  }
+}
+
 variable "project_id" {
   description = "GCP project that hosts Custoking CI/CD and Cloud Run."
   type        = string
@@ -71,11 +82,8 @@ variable "runtime_service_account_emails" {
   }
 
   validation {
-    condition = (
-      length(setsubtract(toset(keys(var.runtime_service_account_emails)), toset(["dev", "prod"]))) == 0 &&
-      length(setsubtract(toset(["dev", "prod"]), toset(keys(var.runtime_service_account_emails)))) == 0
-    )
-    error_message = "runtime_service_account_emails must define exactly dev and prod; stage is unsupported until its target manifests and IAM contract exist."
+    condition     = length(setsubtract(toset(keys(var.runtime_service_account_emails)), toset(["dev", "prod"]))) == 0
+    error_message = "runtime_service_account_emails may define only dev and/or prod; stage is unsupported until its target manifests and IAM contract exist. Entries for environments absent from var.environments are ignored."
   }
 }
 

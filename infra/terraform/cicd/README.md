@@ -208,3 +208,24 @@ PROD_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID
 ```
 
 These are not secret values, but they are kept out of source so scanners do not treat DB coordinates or Drive folder IDs as exposed credentials. They were copied from the existing GitHub `dev` and `prod` Environment variables.
+
+## Split-project usage
+
+`var.environments` selects which environments a project owns. Before the split-project migration one
+project held both, so it defaults to `["dev", "prod"]` and existing behaviour is unchanged. A destination
+project must own exactly its own environment, otherwise it grows the other environment's identities:
+
+    terraform init -reconfigure \
+      -backend-config="bucket=custoking-dev-terraform-state" \
+      -backend-config="prefix=cicd" \
+      -backend-config="access_token=$(gcloud auth print-access-token)"
+    terraform apply -var-file=custoking-dev.tfvars
+
+There is no Application Default Credentials on the operator workstation and
+`gcloud auth application-default login` needs a browser, so authenticate with an access token:
+export `GOOGLE_OAUTH_ACCESS_TOKEN` for the provider and pass `access_token` to the backend. **The token
+expires after about an hour**; a stale one surfaces as a 401 reading state, which looks like state loss
+but is not. Re-run `init -reconfigure` with a fresh token.
+
+A destination project sets `enable_dev_identities = true` because there is no shared `github-actions-sa`
+to fall back on, and `billing_export_dataset = ""` until its billing account is accessible.
