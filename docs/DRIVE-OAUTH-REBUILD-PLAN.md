@@ -93,6 +93,53 @@ Steps:
 If folder creation fails, a hybrid works: keep provisioning folders manually or under the existing user
 credential, and use the service account only for the list/download path.
 
+## 3a. TESTED 2026-08-18 — option A works, but a straight switch duplicates every folder
+
+All four capability checks passed against the dev root folder shared with
+`ims-school-core-dev@custoking-dev.iam.gserviceaccount.com` as Editor:
+
+| Check | Result |
+| --- | --- |
+| see the shared folder | `canListChildren: true`, `canAddChildren: true` |
+| list children | 4 school folders |
+| **create a subfolder** | **succeeded**, owned by the service account |
+| download a file the folder owner uploaded | HTTP 200 |
+
+That settles the two things that were genuinely uncertain. **Cloud Run's application default credentials
+do honour `createScoped(DRIVE_SCOPE)`** — the metadata server is not pinned to `cloud-platform` here —
+and **service-account-owned folder creation is not blocked by Drive quota**, because a folder is metadata
+with no content. The importer only ever creates folders and downloads files; it never uploads file bytes
+to Drive, so the quota concern does not arise at all.
+
+### The blocker that testing found instead
+
+Switching `credential-mode` to `service-account` on dev and provisioning three schools **created three
+duplicate folders** beside the originals. Root cause is not permissions and cannot be fixed with IAM:
+
+`ensureManagedFolder` finds an existing folder by querying
+`appProperties has { key='…' and value='…' }`, and **Drive `appProperties` are private to the application
+that wrote them**. The service account is a different application identity, so it cannot see the metadata
+the personal OAuth client stamped. The lookup returns nothing and a new folder is created.
+
+This is dangerous in a way that would not be obvious in production: photographers keep uploading to the
+original folder while the importer reads a new empty one, so imports quietly find nothing. There is no
+error to alert on.
+
+The duplicates created during the test were deleted and dev was reverted to `user` mode, which is the
+default.
+
+### The fix, before this switch can be used
+
+Stop identifying folders by `appProperties` and trust the database, which is already the system of
+record: `student.photo_import_drive_folders` stores `school_folder_id`, `academic_year_folder_id` and
+`intake_folder_id`. Provisioning should verify the stored ID still resolves to a live folder and only
+create when it does not. That removes the dependency on per-application private metadata entirely, and it
+makes the credential swap a no-op for existing schools.
+
+Two smaller options exist but are worse: switching to `properties` (visible to all apps) still fails for
+folders already stamped with `appProperties`, and re-stamping every existing folder as the service
+account would have to be driven from the database IDs anyway — which is the fix above, plus extra work.
+
 ## 4. Option B — rebuild the OAuth client in the destination organization
 
 Like-for-like. Do this per environment, or once with both redirect URIs.
