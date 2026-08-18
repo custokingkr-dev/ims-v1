@@ -2,12 +2,21 @@ package com.custoking.ims.schoolcoreservice.photoimport;
 
 import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningRepository.DriveFolderBinding;
 import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningRepository.SchoolDriveScope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
 @Service
 public class DriveFolderProvisioningService {
+    /**
+     * Provisioning deliberately fails soft so that a Drive outage cannot block school creation. That made
+     * it silent: the failure reached only the returned result and the database column, never Cloud
+     * Logging, so no metric or alert could see it and folders could fail for every new school unnoticed.
+     */
+    private static final Logger log = LoggerFactory.getLogger(DriveFolderProvisioningService.class);
+
     private final DriveFolderProvisioningRepository repository;
     private final GoogleDrivePhotoImportClient drive;
 
@@ -45,6 +54,8 @@ public class DriveFolderProvisioningService {
         try {
             rootFolderId = drive.rootFolderId();
         } catch (RuntimeException ex) {
+            log.warn("drive.folder.provisioning.failed schoolId={} academicYearId={} reason={}",
+                    scope.schoolId(), scope.academicYearId(), ex.getMessage());
             return ProvisioningResult.failed(scope, ex.getMessage());
         }
 
@@ -66,10 +77,14 @@ public class DriveFolderProvisioningService {
                 replaceReadyBinding = true;
             } catch (DrivePhotoImportException ex) {
                 if (!"drive_access_denied".equals(ex.code()) && !"not_a_folder".equals(ex.code())) {
+                    log.warn("drive.folder.provisioning.failed schoolId={} academicYearId={} reason={}",
+                            scope.schoolId(), scope.academicYearId(), ex.getMessage());
                     return ProvisioningResult.failed(scope, ex.getMessage());
                 }
                 replaceReadyBinding = true;
             } catch (RuntimeException ex) {
+                log.warn("drive.folder.provisioning.failed schoolId={} academicYearId={} reason={}",
+                        scope.schoolId(), scope.academicYearId(), ex.getMessage());
                 return ProvisioningResult.failed(scope, ex.getMessage());
             }
         }
@@ -106,6 +121,8 @@ public class DriveFolderProvisioningService {
         try {
             rootFolderId = drive.rootFolderId();
         } catch (RuntimeException ex) {
+            log.warn("drive.folder.provisioning.failed schoolId={} academicYearId={} reason={}",
+                    scope.schoolId(), scope.academicYearId(), ex.getMessage());
             return ProvisioningResult.failed(scope, ex.getMessage());
         }
         return repository.find(schoolId, scope.academicYearId())

@@ -11,7 +11,7 @@ locals {
 
   # Stage is intentionally absent: the repository has no stage target manifests, protected
   # environment contract, or runtime identities. Add all three together before enabling it.
-  environments = toset(["dev", "prod"])
+  environments = toset(var.environments)
 
   # Environments whose Cloud Deploy / per-environment CI identities this module manages. Dev drops
   # out unless var.enable_dev_identities is set, because clouddeploy-dev-deployer and the dev GitHub
@@ -27,6 +27,18 @@ locals {
   # filtered out by default and this module stays a truthful record of the project.
   dev_identity_keys = ["release_dev", "rollback_dev", "config_dev"]
 
+  # Which environment each identity key belongs to. Keys absent from this map (cost_controller,
+  # recovery) are environment-agnostic and are owned by whichever project runs them.
+  identity_environment = {
+    release_dev   = "dev"
+    release_prod  = "prod"
+    rollback_dev  = "dev"
+    rollback_prod = "prod"
+    config_dev    = "dev"
+    config_prod   = "prod"
+    recovery      = "prod"
+  }
+
   github_service_accounts_all = {
     release_dev     = "github-release-dev"
     release_prod    = "github-release-prod"
@@ -41,16 +53,19 @@ locals {
   github_service_accounts = {
     for key, account in local.github_service_accounts_all :
     key => account
-    if var.enable_dev_identities || !contains(local.dev_identity_keys, key)
+    if(
+      (!contains(keys(local.identity_environment), key) || contains(var.environments, local.identity_environment[key])) &&
+      (var.enable_dev_identities || !contains(local.dev_identity_keys, key))
+    )
   }
 
   # Identities that build-release.yml actually authenticates as when it reads and writes Trivy
   # verdicts. Kept as a list rather than reusing github_service_accounts because dev has not yet
   # migrated off the shared deploy account; see var.dev_release_service_account.
-  scan_evidence_members = distinct([
-    "serviceAccount:${google_service_account.github["release_prod"].email}",
-    "serviceAccount:${var.dev_release_service_account}",
-  ])
+  scan_evidence_members = distinct(concat(
+    contains(var.environments, "prod") ? ["serviceAccount:${google_service_account.github["release_prod"].email}"] : [],
+    contains(var.environments, "dev") ? ["serviceAccount:${var.dev_release_service_account}"] : [],
+  ))
 
   # Service-account impersonation is branch-specific. Provider-level allowlisting alone is not
   # sufficient because a workflow changed on dev must never be able to request a prod identity.
@@ -69,19 +84,33 @@ locals {
     for key, refs in local.github_service_account_workflow_refs_all :
     key => refs
     if(var.enable_dev_identities || !contains(local.dev_identity_keys, key)) &&
-    (var.enable_recovery_bindings || key != "recovery")
+    (var.enable_recovery_bindings || key != "recovery") &&
+    (!contains(keys(local.identity_environment), key) || contains(var.environments, local.identity_environment[key]))
   }
 
-  allowed_workflow_claims = [
-    { ref = "refs/heads/dev", workflow_ref = "${var.github_repository}/.github/workflows/build-release.yml@refs/heads/dev" },
-    { ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/build-release.yml@refs/heads/main" },
-    { ref = "refs/heads/dev", workflow_ref = "${var.github_repository}/.github/workflows/rollback.yml@refs/heads/dev" },
-    { ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/rollback.yml@refs/heads/main" },
-    { ref = "refs/heads/dev", workflow_ref = "${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/dev" },
-    { ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/main" },
-    { ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main" },
-    { ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main" },
-  ]
+  branch_for_environment = { dev = "refs/heads/dev", prod = "refs/heads/main" }
+
+  environment_workflow_claims = flatten([
+    for env in var.environments : [
+      for workflow in ["build-release.yml", "rollback.yml", "reconcile-deployment-config.yml"] : {
+        ref          = local.branch_for_environment[env]
+        workflow_ref = "${var.github_repository}/.github/workflows/${workflow}@${local.branch_for_environment[env]}"
+      }
+    ]
+  ])
+
+  # Scheduled maintenance runs from main whichever environment it acts on, so a dev-only project must
+  # still trust refs/heads/main for these or its cost-control run cannot authenticate.
+  # The provider condition governs which workflows may ATTEMPT federation; the impersonation bindings
+  # govern what they can actually assume. Keep them decoupled: gating this claim on
+  # enable_recovery_bindings would silently narrow the provider and break recovery drills for a project
+  # that owns production.
+  maintenance_workflow_claims = concat(
+    [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main" }],
+    contains(var.environments, "prod") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main" }] : []
+  )
+
+  allowed_workflow_claims = concat(local.environment_workflow_claims, local.maintenance_workflow_claims)
 
   github_provider_attribute_condition = join(" && ", [
     "assertion.repository_id == '${var.github_repository_id}'",
@@ -97,7 +126,7 @@ locals {
   deploy_service_accounts = {
     for env, account in local.deploy_service_accounts_all :
     env => account
-    if var.enable_dev_identities || env != "dev"
+    if contains(var.environments, env) && (var.enable_dev_identities || env != "dev")
   }
 
   runtime_service_account_bindings = {
@@ -110,7 +139,7 @@ locals {
         }
       ]
     ]) : binding.key => binding
-    if var.enable_dev_identities || binding.env != "dev"
+    if contains(var.environments, binding.env) && (var.enable_dev_identities || binding.env != "dev")
   }
 
   github_workflow_ref_bindings = {
@@ -249,11 +278,11 @@ resource "google_project_iam_member" "release_dev_roles" {
 }
 
 resource "google_project_iam_member" "release_prod_roles" {
-  for_each = toset([
+  for_each = contains(var.environments, "prod") ? toset([
     "roles/clouddeploy.releaser",
     "roles/run.viewer",
     "roles/serviceusage.serviceUsageConsumer",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -264,12 +293,14 @@ resource "google_project_iam_member" "release_prod_roles" {
 # does not include Cloud Storage data-plane access, so grant only bucket metadata read and
 # create-only object access on Cloud Deploy's regional staging bucket.
 resource "google_storage_bucket_iam_member" "release_prod_source_bucket_viewer" {
+  count  = contains(var.environments, "prod") ? 1 : 0
   bucket = var.clouddeploy_source_bucket
   role   = "roles/storage.bucketViewer"
   member = "serviceAccount:${google_service_account.github["release_prod"].email}"
 }
 
 resource "google_storage_bucket_iam_member" "release_prod_source_object_creator" {
+  count  = contains(var.environments, "prod") ? 1 : 0
   bucket = var.clouddeploy_source_bucket
   role   = "roles/storage.objectCreator"
   member = "serviceAccount:${google_service_account.github["release_prod"].email}"
@@ -301,11 +332,11 @@ resource "google_project_iam_member" "rollback_dev_roles" {
 }
 
 resource "google_project_iam_member" "rollback_prod_roles" {
-  for_each = toset([
+  for_each = contains(var.environments, "prod") ? toset([
     "roles/clouddeploy.operator",
     "roles/run.viewer",
     "roles/serviceusage.serviceUsageConsumer",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -380,7 +411,7 @@ resource "google_service_account_iam_member" "release_builder_act_as_clouddeploy
   for_each = {
     for env, key in { dev = "release_dev", prod = "release_prod" } :
     env => key
-    if var.enable_dev_identities || env != "dev"
+    if contains(var.environments, env) && (var.enable_dev_identities || env != "dev")
   }
   service_account_id = google_service_account.clouddeploy[each.key].name
   role               = "roles/iam.serviceAccountUser"
@@ -395,6 +426,7 @@ resource "google_service_account_iam_member" "release_builder_act_as_dev_runtime
 }
 
 resource "google_service_account_iam_member" "rollback_prod_act_as_clouddeploy" {
+  count              = contains(var.environments, "prod") ? 1 : 0
   service_account_id = google_service_account.clouddeploy["prod"].name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${google_service_account.github["rollback_prod"].email}"
@@ -419,6 +451,7 @@ resource "google_artifact_registry_repository_iam_member" "clouddeploy_image_rea
 }
 
 resource "google_artifact_registry_repository_iam_member" "release_prod_image_reader" {
+  count      = contains(var.environments, "prod") ? 1 : 0
   project    = var.project_id
   location   = google_artifact_registry_repository.custoking.location
   repository = google_artifact_registry_repository.custoking.repository_id
@@ -433,6 +466,32 @@ resource "google_artifact_registry_repository_iam_member" "release_dev_image_wri
   repository = google_artifact_registry_repository.custoking.repository_id
   role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.github["release_dev"].email}"
+}
+
+# Dev rolls back by moving Cloud Run traffic directly, which re-applies the service spec and therefore
+# requires acting as the runtime identity. Production rolls back through a Cloud Deploy rollout, which
+# runs as the Cloud Deploy execution account, so its rollback identity deliberately does NOT get actAs.
+# Before the split this was invisible: dev rolled back as the shared github-actions-sa, which held
+# roles/iam.serviceAccountUser project-wide.
+resource "google_service_account_iam_member" "rollback_dev_act_as_runtime" {
+  for_each           = (contains(var.environments, "dev") && var.enable_dev_identities) ? var.runtime_service_account_emails["dev"] : toset([])
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${each.value}"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github["rollback_dev"].email}"
+}
+
+# Rolling a Cloud Run service back to an earlier revision re-resolves that revision's image, so the
+# rollback identity needs to read the release repository. Before the split-project migration dev rolled
+# back as the shared github-actions-sa, which held artifactregistry.writer project-wide and masked this;
+# a dedicated per-environment identity does not, and the rollback fails with
+# "artifactregistry.repositories.downloadArtifacts denied" after the traffic decision is already made.
+resource "google_artifact_registry_repository_iam_member" "rollback_image_reader" {
+  for_each   = local.managed_environments
+  project    = var.project_id
+  location   = google_artifact_registry_repository.custoking.location
+  repository = google_artifact_registry_repository.custoking.repository_id
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${google_service_account.github["rollback_${each.value}"].email}"
 }
 
 resource "google_project_iam_member" "cost_controller_roles" {
@@ -467,6 +526,7 @@ resource "google_project_iam_member" "recovery_roles" {
 # rather than the project so the cost-control identity cannot read application data. Paired with
 # roles/bigquery.jobUser above, which permits running a query but grants no data of its own.
 resource "google_bigquery_dataset_iam_member" "cost_controller_billing_export_viewer" {
+  count      = var.billing_export_dataset == "" ? 0 : 1
   project    = var.project_id
   dataset_id = var.billing_export_dataset
   role       = "roles/bigquery.dataViewer"

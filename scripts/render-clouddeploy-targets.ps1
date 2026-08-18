@@ -31,10 +31,21 @@ function Require-DeploymentValue([string]$Name) {
   return $value.Trim()
 }
 
+# GCP_PROJECT_ID / GCP_PROJECT_NUMBER / GCP_REGION are substituted so one template serves any project.
+# Before the split these were hardcoded to "custoking", which silently pointed every rendered target at
+# the old project.
+$projectId = Require-DeploymentValue "GCP_PROJECT_ID"
 $replacements = @{
   "__DB_HOST__" = Require-DeploymentValue "DB_HOST"
   "__DB_NAME__" = Require-DeploymentValue "DB_NAME"
   "__STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__" = Require-DeploymentValue "STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID"
+  "__PROJECT_ID__" = $projectId
+  "__PROJECT_NUMBER__" = Require-DeploymentValue "GCP_PROJECT_NUMBER"
+  "__REGION__" = Require-DeploymentValue "GCP_REGION"
+  # The student-photo bucket used to be derived as custoking-student-photos-<env>. Bucket names are
+  # globally unique, so the destination cannot reuse that name and the derivation would have pointed the
+  # new project at the OLD project's bucket. It must be an explicit parameter.
+  "__PHOTO_BUCKET__" = Require-DeploymentValue "STUDENT_PHOTO_BUCKET"
 }
 
 $text = Get-Content -Raw -Path $TemplatePath
@@ -47,7 +58,7 @@ if ($targetCount -ne 7) {
   throw "Cloud Deploy $Environment target template must contain exactly seven service targets; found $targetCount."
 }
 
-$expectedExecutionAccount = "clouddeploy-$Environment-deployer@custoking.iam.gserviceaccount.com"
+$expectedExecutionAccount = "clouddeploy-$Environment-deployer@$projectId.iam.gserviceaccount.com"
 $executionAccountCount = ([regex]::Matches(
     $text,
     "(?m)^\s*serviceAccount:\s*$([regex]::Escape($expectedExecutionAccount))\s*$"
@@ -59,7 +70,7 @@ if ($executionAccountCount -ne $targetCount) {
 $runtimeAccounts = @([regex]::Matches($text, '(?m)^\s*runtime_service_account:\s*(\S+)\s*$') |
   ForEach-Object { $_.Groups[1].Value })
 if ($runtimeAccounts.Count -ne $targetCount -or
-    @($runtimeAccounts | Where-Object { $_ -notmatch "-$Environment@custoking\.iam\.gserviceaccount\.com$" }).Count -gt 0) {
+    @($runtimeAccounts | Where-Object { $_ -notmatch "-$Environment@$([regex]::Escape($projectId))\.iam\.gserviceaccount\.com$" }).Count -gt 0) {
   throw "Every Cloud Deploy $Environment target must use its environment-specific dedicated runtime identity."
 }
 

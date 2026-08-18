@@ -80,6 +80,9 @@ student:
     # caller and does not create a second GCS copy, keeping storage and compute spend bounded.
     max-concurrent: ${STUDENT_EXPORT_MAX_CONCURRENT:2}
   photo-import:
+    # user  = personal OAuth client id/secret/refresh token (the pre-migration default).
+    # service-account = the Cloud Run runtime identity; share the Drive folders with its address.
+    credential-mode: ${STUDENT_PHOTO_IMPORT_CREDENTIAL_MODE:user}
     drive-enabled: ${STUDENT_PHOTO_IMPORT_DRIVE_ENABLED:false}
     # Root folder owned by the personal Google account connected through offline OAuth.
     root-folder-id: ${STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID:}

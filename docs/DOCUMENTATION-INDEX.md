@@ -26,10 +26,39 @@ repository now ignores `outputs/`.
 - `architecture/custoking-architecture.html` — verified application architecture plus live GCP boundary,
   capacity evidence, and unresolved infrastructure gates.
 - `REMAINING-WORK-2026-08-12.md` — single prioritized backlog and go/no-go checklist.
-- `GCP-SPLIT-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md` — authoritative procedure for rebuilding dev in
-  `custoking-dev` and production in `custoking-prod`; currently NO-GO until the target projects and gates exist.
+- `GCP-SPLIT-PROJECT-MIGRATION-PLAN-2026-08-18.md` — **authoritative migration plan.** Rebuilt from live
+  discovery: full verified source inventory, the four decisions that must be made first (Artifact Registry
+  topology above all), and the exact GitHub-variable and repository-file changes required. Records that no
+  application code change is needed.
+- `GCP-SPLIT-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md` — **superseded** by the plan above; retained for its
+  procedural scaffolding. Its factual claims about registry topology, DNS cutover, and code impact are wrong.
+- `PROD-MIGRATION-PLAN-2026-08-18.md` — **the plan to execute for production.** Written after custoking-dev
+  was migrated and verified, so it is a rehearsed procedure rather than a theory: what differs about prod,
+  the variable-pinning order that must not be reversed, the measured copy set, the three integrity rules
+  that prevent a false NO-GO, and the fifteen defects found — thirteen from the dev rehearsal plus two
+  that only building production could surface, because prod is deployed by Cloud Deploy and dev is not.
+- `GCP-CUTOVER-RUNBOOK-2026-08-18.md` — **the executable cutover.** Minute-by-minute plan targeting 5–10
+  minutes of unavailability with users staying signed in. Uses Cloud Run invoker IAM (`allUsers`) as the
+  atomic switch in the absence of DNS, explains why DMS/CDC is not worth it at 146 MB, and confirms the data
+  surface is only Cloud SQL + GCS (no Firestore, Redis, Spanner or Bigtable anywhere).
+- `DRIVE-OAUTH-REBUILD-PLAN.md` — the one thing that gates DELETING `custoking`. The Drive client lives in
+  the source project and cannot be moved; its granted scope was measured as the restricted
+  `.../auth/drive`, so a like-for-like rebuild needs Google verification plus a CASA assessment. Records
+  why `drive.file` cannot work here and proposes a service-account alternative that avoids verification.
+- `GCP-SOURCE-DELETION-CONTINUITY-2026-08-18.md` — **read this before deleting `custoking`.** What survives
+  (all BCrypt passwords, scoped RBAC, Drive folders), what must be value-transferred (secrets, or 378 live
+  sessions drop), what the dump does **not** carry (the `appuser`/`app_rt` database roles), and what is
+  destroyed forever (Drive OAuth client, locked audit logs, backups, `.a.run.app` URLs with no DNS layer).
+- `GCP-MIGRATION-DATA-LEDGER-PROD-2026-08-18.md` — **measured** production data ledger: exact row counts,
+  Flyway state (matches the repo exactly), drained durable-event state, and a full Cloud Storage ↔ Postgres
+  reconciliation. Zero broken photo references. Records why `source_object_key` is designed to dangle, which
+  a naive integrity check would misread as hundreds of missing objects and a false NO-GO.
 - `GCP-MIGRATION-DATA-INTEGRITY-PLAN-2026-08-16.md` — mandatory source/destination database, object,
   durable-event, and Drive reconciliation criteria for the split-project migration.
+- `GCP-MIGRATION-PREFLIGHT-EVIDENCE-2026-08-18.md` — live status of the runbook's section 4 gates. Records
+  that both destination projects now exist but sit in a **different organization**, and that their billing
+  account is inaccessible to the operating account. Supersedes the "destinations not visible" blocker in
+  both documents above; update this file rather than ticking boxes in the runbook.
 - `current-state/README.md` — map and evidence rules.
 - `current-state/project-architecture.md` — service topology, route flow, schemas, JWT and tenant isolation.
 - `current-state/gcp-infrastructure.md` — live resource inventory; its 2026-08-12 reconciliation overrides

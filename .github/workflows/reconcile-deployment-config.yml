@@ -19,6 +19,10 @@ concurrency:
 
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+  # Required by render-clouddeploy-targets.ps1 to build the deterministic Cloud Run service URLs.
+  GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+  # Bucket names are globally unique, so this can no longer be derived from the environment name.
+  STUDENT_PHOTO_BUCKET: ${{ vars.STUDENT_PHOTO_BUCKET }}
   GCP_REGION: ${{ vars.GCP_REGION || 'asia-south2' }}
   WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
 
@@ -29,6 +33,13 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       DEPLOYMENT_CONFIG_SERVICE_ACCOUNT: ${{ vars.DEPLOYMENT_CONFIG_SERVICE_ACCOUNT }}
+      # Re-declared at job scope on purpose; see the note in build-release.yml. At workflow scope these
+      # resolve to the REPOSITORY value (custoking-dev), which would have applied the production Cloud
+      # Deploy pipeline and targets into the development project.
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+      STUDENT_PHOTO_BUCKET: ${{ vars.STUDENT_PHOTO_BUCKET }}
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
       DEV_DB_HOST: ${{ vars.DEV_DB_HOST || vars.DB_HOST }}
       DEV_DB_NAME: ${{ vars.DEV_DB_NAME || vars.DB_NAME }}
       DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID: ${{ vars.DEV_STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID || vars.STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID }}

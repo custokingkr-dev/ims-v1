@@ -20,7 +20,7 @@ spec:
         run.googleapis.com/network-interfaces: '[{"network":"default","subnetwork":"default"}]'
         run.googleapis.com/vpc-access-egress: private-ranges-only # from-param: ${vpc_egress}
     spec:
-      serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
+      serviceAccountName: PLACEHOLDER-REPLACED-BY-DEPLOY-PARAM # from-param: ${runtime_service_account}
       containerConcurrency: 80
       timeoutSeconds: 600
       containers:
@@ -66,7 +66,7 @@ spec:
             - name: SCHOOL_CORE_DATASOURCE_SCHEMAS
               value: tenant_school,student,attendance,fee,catalog
             - name: STUDENT_PHOTO_BUCKET
-              value: custoking-student-photos-dev # from-param: custoking-student-photos-${env}
+              value: custoking-student-photos-dev # from-param: ${photo_bucket}
             - name: STUDENT_PHOTO_IMPORT_DRIVE_ENABLED
               value: "true"
             - name: STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID

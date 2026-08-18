@@ -1,0 +1,39 @@
+# Observability inputs for the migrated dev environment (custoking-dev).
+# Real *.tfvars are gitignored because they carry operator email addresses; copy this to
+# custoking-dev.tfvars and fill in the channels.
+#
+#   terraform init -reconfigure \
+#     -backend-config="bucket=custoking-dev-terraform-state" \
+#     -backend-config="prefix=observability/dev" \
+#     -backend-config="access_token=$(gcloud auth print-access-token)"
+#   terraform apply -var-file=custoking-dev.tfvars
+#
+# There is no ADC on the operator workstation, so export GOOGLE_OAUTH_ACCESS_TOKEN for the provider as
+# well. The token lasts about an hour; a stale one reads as a 401 on state, which looks like state loss
+# but is not.
+
+project = "custoking-dev"
+region  = "asia-south2"
+env     = "dev"
+
+enable_uptime_checks = true
+
+# The source project had a single channel, which fails the runbook's own primary-and-backup requirement.
+notification_email_addresses = {
+  primary = "REPLACE-primary@example.com"
+  backup  = "REPLACE-backup@example.com"
+}
+
+# Before the split this was prod-only because both environments shared a project. Now that dev has its
+# own project, dev logs would otherwise fall to the 30-day _Default bucket with no India-resident routing.
+manage_compliance_logging     = true
+compliance_log_retention_days = 180
+
+max_instances_by_service = {
+  "identity-service"    = 4
+  "school-core-service" = 4
+  "operations-service"  = 4
+  "platform-service"    = 4
+  "billing-service"     = 4
+  "api-gateway"         = 4
+}

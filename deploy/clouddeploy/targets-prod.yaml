@@ -6,9 +6,10 @@ metadata:
 description: identity-service prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-identity-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-identity-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -23,21 +24,21 @@ deployParameters:
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -47,9 +48,10 @@ metadata:
 description: school-core-service prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-school-core-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-school-core-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -64,21 +66,21 @@ deployParameters:
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -88,9 +90,10 @@ metadata:
 description: operations-service prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-operations-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-operations-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -105,21 +108,21 @@ deployParameters:
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -129,9 +132,10 @@ metadata:
 description: platform-service prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-platform-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-platform-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -150,21 +154,21 @@ deployParameters:
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "true"
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -174,9 +178,10 @@ metadata:
 description: billing-service prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-billing-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-billing-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -191,21 +196,21 @@ deployParameters:
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -215,9 +220,10 @@ metadata:
 description: api-gateway prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-api-gateway-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-api-gateway-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -232,21 +238,21 @@ deployParameters:
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -256,9 +262,10 @@ metadata:
 description: frontend prod Cloud Run target
 deployParameters:
   env: prod
-  project_id: custoking
+  project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
-  runtime_service_account: ims-frontend-prod@custoking.iam.gserviceaccount.com
+  runtime_service_account: ims-frontend-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
@@ -273,18 +280,18 @@ deployParameters:
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
-  frontend_url: https://custoking-frontend-prod-l7mhms5c2a-em.a.run.app
-  gateway_url: https://custoking-api-gateway-prod-l7mhms5c2a-em.a.run.app
-  identity_url: https://custoking-identity-service-prod-l7mhms5c2a-em.a.run.app
-  school_core_url: https://custoking-school-core-service-prod-l7mhms5c2a-em.a.run.app
-  operations_url: https://custoking-operations-service-prod-l7mhms5c2a-em.a.run.app
-  platform_url: https://custoking-platform-service-prod-l7mhms5c2a-em.a.run.app
-  billing_url: https://custoking-billing-service-prod-l7mhms5c2a-em.a.run.app
+  frontend_url: https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  gateway_url: https://custoking-api-gateway-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  identity_url: https://custoking-identity-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  school_core_url: https://custoking-school-core-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  operations_url: https://custoking-operations-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  platform_url: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
+  billing_url: https://custoking-billing-service-prod-__PROJECT_NUMBER__.__REGION__.run.app
 requireApproval: false
 executionConfigs:
   - usages:
       - RENDER
       - DEPLOY
-    serviceAccount: clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
+    serviceAccount: clouddeploy-prod-deployer@__PROJECT_ID__.iam.gserviceaccount.com
 run:
-  location: projects/custoking/locations/asia-south2
+  location: projects/__PROJECT_ID__/locations/asia-south2

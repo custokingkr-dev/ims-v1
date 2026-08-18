@@ -18,7 +18,7 @@ spec:
         run.googleapis.com/cpu-throttling: "true"
         run.googleapis.com/startup-cpu-boost: "false" # from-param: ${startup_cpu_boost}
     spec:
-      serviceAccountName: 305630109861-compute@developer.gserviceaccount.com # from-param: ${runtime_service_account}
+      serviceAccountName: PLACEHOLDER-REPLACED-BY-DEPLOY-PARAM # from-param: ${runtime_service_account}
       containerConcurrency: 80
       # Cloud Deploy source of truth: match school-core's export ceiling so large assigned-school
       # photo archives are not cut off by the streaming proxy before the upstream completes.

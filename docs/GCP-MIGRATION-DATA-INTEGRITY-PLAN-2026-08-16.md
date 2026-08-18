@@ -23,6 +23,9 @@ Read-only discovery on 13-14 August 2026 established:
 - Drive is outside the GCP project and must be accessed by newly created destination identities;
 - production reporting lacks a DLQ, and production notifications have a topic but no subscription; and
 - as of 14 August, the operating account cannot see either approved destination project.
+  **Superseded 18 August 2026:** both destination projects now exist and are `ACTIVE`, but they sit under a
+  different organization than the source and are billed to an account the operating account cannot access.
+  See `GCP-MIGRATION-PREFLIGHT-EVIDENCE-2026-08-18.md`.
 
 Therefore migration is NO-GO until every section 9 gate has a named owner, timestamp, restricted evidence
 reference, and independent verifier.

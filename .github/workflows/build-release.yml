@@ -35,6 +35,11 @@ env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
   GCP_REGION: ${{ vars.GCP_REGION || 'asia-south2' }}
   ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY || 'custoking' }}
+  # The registry project is deliberately SEPARATE from the runtime project. Production never builds: it
+  # promotes by resolving a dev-approved-<sourceId> tag. If the registry followed GCP_PROJECT_ID, splitting
+  # dev and prod into different projects would leave production looking in an empty registry and every
+  # promotion would fail with "No dev-approved image exists".
+  ARTIFACT_REGISTRY_PROJECT_ID: ${{ vars.ARTIFACT_REGISTRY_PROJECT_ID || vars.GCP_PROJECT_ID }}
   WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
   RELEASE_BUILDER_SERVICE_ACCOUNT: ${{ vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
   # Digest-keyed Trivy verdict cache. Scanning pulls each image from Artifact Registry to this
@@ -163,7 +168,7 @@ jobs:
             BuildArgs = [string]$env:BUILD_ARGS
           }
           $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json
-          $registry = "$env:GCP_REGION-docker.pkg.dev/$env:GCP_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
+          $registry = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
           $sourceRef = "$registry/${{ matrix.image }}:$($metadata.sourceTag)"
           $shaRef = "$registry/${{ matrix.image }}:sha-${{ needs.resolve-target.outputs.commit_sha }}"
           $digestOutput = & gcloud artifacts docker images describe $sourceRef --format="value(image_summary.digest)" 2>$null
@@ -248,6 +253,16 @@ jobs:
       WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
       RELEASE_BUILDER_SERVICE_ACCOUNT: ${{ vars.RELEASE_BUILDER_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
       CLOUD_DEPLOY_SOURCE_STAGING_DIR: ${{ vars.CLOUD_DEPLOY_SOURCE_STAGING_DIR }}
+      # These MUST be re-declared here. The workflow-level env block resolves `vars` in workflow scope,
+      # where environment-scoped variables do not exist, so it silently yields the REPOSITORY value. That
+      # was harmless while dev and prod lived in one project and every value was identical; after the
+      # split the repository value is custoking-dev, so a production release would have deployed
+      # production into the development project. The three above were already re-declared for exactly
+      # this reason; these were missed only because they used to agree.
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+      STUDENT_PHOTO_BUCKET: ${{ vars.STUDENT_PHOTO_BUCKET }}
+      ARTIFACT_REGISTRY_PROJECT_ID: ${{ vars.ARTIFACT_REGISTRY_PROJECT_ID || vars.GCP_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -337,7 +352,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $targetEnv = "${{ needs.resolve-target.outputs.target_env }}"
           $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
-          $registry = "$env:GCP_REGION-docker.pkg.dev/$env:GCP_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
+          $registry = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
           $matrix = $env:AFFECTED_MATRIX_JSON | ConvertFrom-Json
           $services = @()
 

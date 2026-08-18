@@ -29,12 +29,20 @@ public class GoogleDrivePhotoImportClient {
     private static final String API = "https://www.googleapis.com/drive/v3/files";
     private static final String FOLDER_MIME = "application/vnd.google-apps.folder";
     private static final long DEFAULT_MAX_DOWNLOAD_BYTES = 20L * 1024 * 1024;
+    /**
+     * The importer lists and downloads files that photographers uploaded, which this application did not
+     * create, so the narrower drive.file scope cannot see them.
+     */
+    private static final String DRIVE_SCOPE = "https://www.googleapis.com/auth/drive";
+    static final String CREDENTIAL_MODE_USER = "user";
+    static final String CREDENTIAL_MODE_SERVICE_ACCOUNT = "service-account";
 
     private final boolean enabled;
     private final String configuredRootFolder;
     private final String oauthClientId;
     private final String oauthClientSecret;
     private final String oauthRefreshToken;
+    private final String credentialMode;
     private final ObjectMapper objectMapper;
     private final HttpClient http;
     private volatile GoogleCredentials credentials;
@@ -45,18 +53,39 @@ public class GoogleDrivePhotoImportClient {
             @Value("${student.photo-import.root-folder-id:}") String rootFolderId,
             @Value("${student.photo-import.oauth.client-id:}") String oauthClientId,
             @Value("${student.photo-import.oauth.client-secret:}") String oauthClientSecret,
-            @Value("${student.photo-import.oauth.refresh-token:}") String oauthRefreshToken) {
+            @Value("${student.photo-import.oauth.refresh-token:}") String oauthRefreshToken,
+            @Value("${student.photo-import.credential-mode:user}") String credentialMode) {
         this.enabled = enabled;
         this.configuredRootFolder = setting(rootFolderId);
         this.oauthClientId = setting(oauthClientId);
         this.oauthClientSecret = setting(oauthClientSecret);
         this.oauthRefreshToken = setting(oauthRefreshToken);
+        this.credentialMode = setting(credentialMode).isBlank()
+                ? CREDENTIAL_MODE_USER
+                : setting(credentialMode).toLowerCase(Locale.ROOT);
         this.objectMapper = objectMapper;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     }
 
     public boolean isEnabled() {
-        return enabled && hasPersonalOauthCredentials();
+        return enabled && hasUsableCredentials();
+    }
+
+    /** Which credential this client authenticates with. Defaults to the personal OAuth user. */
+    public String credentialMode() {
+        return credentialMode;
+    }
+
+    private boolean usingServiceAccount() {
+        return CREDENTIAL_MODE_SERVICE_ACCOUNT.equals(credentialMode);
+    }
+
+    /**
+     * In service-account mode there is nothing to configure beyond the runtime identity, which Cloud Run
+     * supplies; the folders simply have to be shared with that identity's address.
+     */
+    private boolean hasUsableCredentials() {
+        return usingServiceAccount() || hasPersonalOauthCredentials();
     }
 
     public boolean isProvisioningEnabled() {
@@ -283,11 +312,13 @@ public class GoogleDrivePhotoImportClient {
                 synchronized (this) {
                     current = credentials;
                     if (current == null) {
-                        current = UserCredentials.newBuilder()
-                                .setClientId(oauthClientId)
-                                .setClientSecret(oauthClientSecret)
-                                .setRefreshToken(oauthRefreshToken)
-                                .build();
+                        current = usingServiceAccount()
+                                ? GoogleCredentials.getApplicationDefault().createScoped(DRIVE_SCOPE)
+                                : UserCredentials.newBuilder()
+                                        .setClientId(oauthClientId)
+                                        .setClientSecret(oauthClientSecret)
+                                        .setRefreshToken(oauthRefreshToken)
+                                        .build();
                         credentials = current;
                     }
                 }
@@ -300,8 +331,11 @@ public class GoogleDrivePhotoImportClient {
             }
             return token.getTokenValue();
         } catch (IOException ex) {
-            throw new DrivePhotoImportException("drive_auth_failed",
-                    "The personal Google Drive connection is unavailable or expired; reconnect the account", ex);
+            throw new DrivePhotoImportException("drive_auth_failed", usingServiceAccount()
+                    ? "The Drive service-account credential is unavailable; confirm the folders are shared "
+                            + "with the runtime service account"
+                    : "The personal Google Drive connection is unavailable or expired; reconnect the account",
+                    ex);
         }
     }
 
@@ -436,8 +470,18 @@ public class GoogleDrivePhotoImportClient {
                         .noneMatch(expectedParentId::equals)) {
             return false;
         }
-        if (!(row.get("appProperties") instanceof Map<?, ?> properties)) {
-            return false;
+        // Drive appProperties are PRIVATE to the application that wrote them, so a different credential
+        // identity cannot see the ones an earlier client stamped. Requiring them here meant that changing
+        // credential-mode made every existing folder look unrecognised, and provisioning created a
+        // duplicate beside it -- with photographers still uploading to the original while the importer
+        // read the new empty one, and nothing erroring.
+        //
+        // The folder id being checked came from our own database, and the checks above already establish
+        // that it resolves to a live, untrashed folder under the expected parent. Treat appProperties as
+        // corroborating evidence instead: when they are visible they must still match exactly, and when
+        // they are absent the structural checks stand on their own.
+        if (!(row.get("appProperties") instanceof Map<?, ?> properties) || properties.isEmpty()) {
+            return true;
         }
         return expectedProperties.entrySet().stream()
                 .allMatch(entry -> entry.getValue().equals(string(properties.get(entry.getKey()))));

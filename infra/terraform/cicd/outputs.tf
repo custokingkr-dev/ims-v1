@@ -7,7 +7,7 @@ output "release_dev_service_account" {
 }
 
 output "release_prod_service_account" {
-  value = google_service_account.github["release_prod"].email
+  value = try(google_service_account.github["release_prod"].email, null)
 }
 
 output "rollback_dev_service_account" {
@@ -15,7 +15,7 @@ output "rollback_dev_service_account" {
 }
 
 output "rollback_prod_service_account" {
-  value = google_service_account.github["rollback_prod"].email
+  value = try(google_service_account.github["rollback_prod"].email, null)
 }
 
 output "config_dev_service_account" {
@@ -23,7 +23,7 @@ output "config_dev_service_account" {
 }
 
 output "config_prod_service_account" {
-  value = google_service_account.github["config_prod"].email
+  value = try(google_service_account.github["config_prod"].email, null)
 }
 
 output "cost_controller_service_account" {
@@ -31,7 +31,7 @@ output "cost_controller_service_account" {
 }
 
 output "recovery_operator_service_account" {
-  value = google_service_account.github["recovery"].email
+  value = try(google_service_account.github["recovery"].email, null)
 }
 
 output "artifact_registry_repository" {
