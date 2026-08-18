@@ -36,6 +36,10 @@ repository now ignores `outputs/`.
   minutes of unavailability with users staying signed in. Uses Cloud Run invoker IAM (`allUsers`) as the
   atomic switch in the absence of DNS, explains why DMS/CDC is not worth it at 146 MB, and confirms the data
   surface is only Cloud SQL + GCS (no Firestore, Redis, Spanner or Bigtable anywhere).
+- `DRIVE-OAUTH-REBUILD-PLAN.md` — the one thing that gates DELETING `custoking`. The Drive client lives in
+  the source project and cannot be moved; its granted scope was measured as the restricted
+  `.../auth/drive`, so a like-for-like rebuild needs Google verification plus a CASA assessment. Records
+  why `drive.file` cannot work here and proposes a service-account alternative that avoids verification.
 - `GCP-SOURCE-DELETION-CONTINUITY-2026-08-18.md` — **read this before deleting `custoking`.** What survives
   (all BCrypt passwords, scoped RBAC, Drive folders), what must be value-transferred (secrets, or 378 live
   sessions drop), what the dump does **not** carry (the `appuser`/`app_rt` database roles), and what is
