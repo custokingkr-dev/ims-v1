@@ -36,6 +36,7 @@ locals {
     rollback_prod = "prod"
     config_dev    = "dev"
     config_prod   = "prod"
+    recovery      = "prod"
   }
 
   github_service_accounts_all = {
@@ -54,8 +55,7 @@ locals {
     key => account
     if(
       (!contains(keys(local.identity_environment), key) || contains(var.environments, local.identity_environment[key])) &&
-      (var.enable_dev_identities || !contains(local.dev_identity_keys, key)) &&
-      (var.enable_recovery_bindings || key != "recovery")
+      (var.enable_dev_identities || !contains(local.dev_identity_keys, key))
     )
   }
 
@@ -101,9 +101,13 @@ locals {
 
   # Scheduled maintenance runs from main whichever environment it acts on, so a dev-only project must
   # still trust refs/heads/main for these or its cost-control run cannot authenticate.
+  # The provider condition governs which workflows may ATTEMPT federation; the impersonation bindings
+  # govern what they can actually assume. Keep them decoupled: gating this claim on
+  # enable_recovery_bindings would silently narrow the provider and break recovery drills for a project
+  # that owns production.
   maintenance_workflow_claims = concat(
     [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main" }],
-    var.enable_recovery_bindings ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main" }] : []
+    contains(var.environments, "prod") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main" }] : []
   )
 
   allowed_workflow_claims = concat(local.environment_workflow_claims, local.maintenance_workflow_claims)
