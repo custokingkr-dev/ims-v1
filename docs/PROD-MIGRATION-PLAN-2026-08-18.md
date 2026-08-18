@@ -10,6 +10,11 @@ This is not a theoretical plan. Every step below was executed against `custoking
 failures it produced are already fixed in the scripts. **Thirteen defects surfaced in the rehearsal, and
 every one of them would otherwise have hit production.**
 
+The destination was then built and loaded ahead of the window, which produced **two more that the
+rehearsal could not have found** — they live in the ways production genuinely differs from dev. Rehearsing
+on dev is necessary and it is not sufficient; build production early enough that its own defects have
+somewhere to surface other than the window.
+
 ---
 
 ## 1. What is different about production
@@ -177,10 +182,11 @@ or URL, and `auth_sessions` migrates with the database.
 
 ---
 
-## 8. The thirteen defects the rehearsal found
+## 8. The fifteen defects, and the two that only production could produce
 
 All are already fixed in the scripts or the repository. They are listed so that a failure at two in the
-morning is recognised rather than debugged.
+morning is recognised rather than debugged. Rows 1–13 came from the dev rehearsal; rows 14–15 came from
+building `custoking-prod` itself and **could not have been caught on dev at any level of diligence**.
 
 | # | Defect | Where it bites |
 | --- | --- | --- |
@@ -197,6 +203,8 @@ morning is recognised rather than debugged.
 | 11 | PowerShell 5.1 raises **`NativeCommandError`** on redirected native stderr | scripts throw on successful commands |
 | 12 | **CRLF** line splitting silently produced zero secrets *and reported success* | secret transfer |
 | 13 | **`gcloud` consumes stdin inside shell loops**, so only the last item processes | any bulk loop; add `</dev/null` |
+| 14 | **Production only.** The captured `traffic` block pins `revisionName` to a **source** revision that does not exist in the destination, so routing fails with *"Revision does not exist or is deleted"* while the container is perfectly healthy. The same capture also pins `spec.template.metadata.name`, so a failed first attempt can never be superseded — every retry collides with the same dead revision. | service deploy; **structurally invisible on dev**, which deploys directly with `latestRevision: true` while prod is deployed by Cloud Deploy, which pins revisions explicitly |
+| 15 | **Production only.** `gcloud storage rsync --exclude` matches against the **whole object name**, not a prefix, so `^temporary/` silently excluded nothing while `^students/` and `^student-imports/` worked. 122 transient objects were copied. Each alternative needs a trailing `.*`. | photo copy; dev's bucket had no populated `temporary/` tree, so the broken alternative never had anything to fail against |
 
 Two further traps worth holding in mind. Terraform here authenticates with an access token because there
 is no Application Default Credentials on the workstation, and that token expires after about an hour — a

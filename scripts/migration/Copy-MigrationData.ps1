@@ -217,7 +217,11 @@ if (Test-Stage 'photos') {
   # Keeping the legacy prefixes out matters more when the source is being deleted: copying them carries
   # dead data into a project that is meant to be clean, and they cannot be cleaned up by the application
   # (StudentPhotoStorage.deleteStoredPhoto ignores any key not under schools/.../students/).
-  $exclusions = '^temporary/|^students/|^student-imports/'
+  # gcloud storage rsync matches --exclude against the WHOLE object name, so a bare prefix anchor is not
+  # enough: '^temporary/' silently failed to exclude temporary/photo-imports/... during the production
+  # pre-sync while the other two prefixes were excluded, and 122 transient objects copied. Each
+  # alternative needs its own trailing .* so it matches the full key.
+  $exclusions = '^temporary/.*|^students/.*|^student-imports/.*'
   Invoke-Native @('storage', 'rsync', '--recursive', "--exclude=$exclusions",
     "gs://$SourcePhotoBucket", "gs://$TargetPhotoBucket") | Out-Null
 

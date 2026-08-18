@@ -43,6 +43,11 @@ param(
   # Artifact Registry repository id. Kept identical between projects, so a valid image reference legally
   # contains the literal word "custoking" as the repository segment.
   [string]$ArtifactRepository = 'custoking',
+  # Withhold public access. Granting allUsers is the cutover switch itself, so a staged build must deploy
+  # the services reachable only by their own identities and flip traffic later. Without this the
+  # destination is publicly serving migrated data while the source is still live, which is exactly the
+  # split-brain the invoker-IAM switch exists to prevent.
+  [switch]$NoPublicAccess,
   [switch]$WhatIf
 )
 
@@ -125,6 +130,18 @@ foreach ($svc in $Service) {
     # metadata.namespace carries the SOURCE project number. Cloud Run rejects the apply outright with
     # "Namespace must be project ID or quoted number", so rewrite rather than drop it.
     if ($line -match '^(\s*)namespace:\s') { $keep.Add("$($Matches[1])namespace: '$TargetProject'"); continue }
+    # spec.template.metadata.name pins the REVISION name. Carried over from the capture it means Cloud Run
+    # will not mint a fresh revision, so a failed first attempt can never be superseded -- every retry
+    # collides with the same dead revision. Drop it and let Cloud Run generate the name.
+    if ($line -match '^\s{6}name:\s+custoking-[a-z-]+-(dev|prod)-[a-z0-9]+\s*$') { continue }
+    # The traffic block pins revisionName to a SOURCE revision that does not exist in the destination, so
+    # routing fails with "Revision ... does not exist or is deleted" even though the container started
+    # healthily. Production carries this and dev does not: prod is deployed by Cloud Deploy, which pins
+    # revisions explicitly, while dev deploys directly and uses latestRevision. Route to the latest
+    # revision instead.
+    if ($line -match '^(\s*)revisionName:\s+custoking-[a-z-]+-(dev|prod)-[a-z0-9]+\s*$') {
+      $keep.Add("$($Matches[1])latestRevision: true"); continue
+    }
     $keep.Add($line)
   }
   $text = ($keep -join "`n")
@@ -200,6 +217,11 @@ if (-not $WhatIf) {
   }
   Write-Host '  monitoring uptime-check agent granted on backends'
 
+  if ($NoPublicAccess) {
+    Write-Host "`n=== public access WITHHELD (-NoPublicAccess) ===" -ForegroundColor Yellow
+    Write-Host '  frontend and gateway are deployed but NOT reachable. Grant allUsers at cutover.'
+    return
+  }
   Write-Host "`n=== public access ===" -ForegroundColor Cyan
   # Only the frontend and the gateway are public; the five backends stay private and are reachable only
   # by the named runtime identities. This mirrors the source exactly.

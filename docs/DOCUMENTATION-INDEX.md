@@ -35,7 +35,8 @@ repository now ignores `outputs/`.
 - `PROD-MIGRATION-PLAN-2026-08-18.md` — **the plan to execute for production.** Written after custoking-dev
   was migrated and verified, so it is a rehearsed procedure rather than a theory: what differs about prod,
   the variable-pinning order that must not be reversed, the measured copy set, the three integrity rules
-  that prevent a false NO-GO, and the thirteen defects the rehearsal found.
+  that prevent a false NO-GO, and the fifteen defects found — thirteen from the dev rehearsal plus two
+  that only building production could surface, because prod is deployed by Cloud Deploy and dev is not.
 - `GCP-CUTOVER-RUNBOOK-2026-08-18.md` — **the executable cutover.** Minute-by-minute plan targeting 5–10
   minutes of unavailability with users staying signed in. Uses Cloud Run invoker IAM (`allUsers`) as the
   atomic switch in the absence of DNS, explains why DMS/CDC is not worth it at 146 MB, and confirms the data
