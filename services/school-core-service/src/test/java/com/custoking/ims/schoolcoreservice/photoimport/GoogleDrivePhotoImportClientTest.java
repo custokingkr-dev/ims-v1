@@ -56,6 +56,51 @@ class GoogleDrivePhotoImportClientTest {
     }
 
     @Test
+    void acceptsAFolderWhoseAppPropertiesAnotherCredentialWrote() {
+        // Drive appProperties are private to the application that wrote them, so after a credential
+        // change the same folder comes back with none visible. The id came from our own database and the
+        // structural checks still hold, so it must be recognised -- otherwise provisioning creates a
+        // duplicate beside the folder photographers are already uploading to.
+        Map<String, Object> invisibleProperties = Map.of(
+                "mimeType", "application/vnd.google-apps.folder",
+                "trashed", false,
+                "parents", List.of("year-folder"));
+
+        assertThat(GoogleDrivePhotoImportClient.matchesManagedFolderMetadata(
+                invisibleProperties, "year-folder", Map.of(
+                        "custokingType", "student-photo-intake",
+                        "custokingSchoolUid", "school-uid"))).isTrue();
+
+        // An empty map is the same situation and must behave identically.
+        assertThat(GoogleDrivePhotoImportClient.matchesManagedFolderMetadata(
+                Map.of(
+                        "mimeType", "application/vnd.google-apps.folder",
+                        "trashed", false,
+                        "parents", List.of("year-folder"),
+                        "appProperties", Map.of()),
+                "year-folder", Map.of("custokingType", "student-photo-intake"))).isTrue();
+
+        // Structure is still enforced: a wrong parent is rejected even with no appProperties to check.
+        assertThat(GoogleDrivePhotoImportClient.matchesManagedFolderMetadata(
+                invisibleProperties, "some-other-parent", Map.of(
+                        "custokingType", "student-photo-intake"))).isFalse();
+    }
+
+    @Test
+    void stillRejectsVisibleAppPropertiesThatDisagree() {
+        // When appProperties ARE visible they remain authoritative, so a folder belonging to a different
+        // school or year is not silently accepted.
+        Map<String, Object> wrongSchool = Map.of(
+                "mimeType", "application/vnd.google-apps.folder",
+                "trashed", false,
+                "parents", List.of("year-folder"),
+                "appProperties", Map.of("custokingSchoolUid", "a-different-school"));
+
+        assertThat(GoogleDrivePhotoImportClient.matchesManagedFolderMetadata(
+                wrongSchool, "year-folder", Map.of("custokingSchoolUid", "school-uid"))).isFalse();
+    }
+
+    @Test
     void rejectsTrashedFoldersAndRenamedNonImageFiles() {
         Map<String, Object> trashed = Map.of(
                 "mimeType", "application/vnd.google-apps.folder",

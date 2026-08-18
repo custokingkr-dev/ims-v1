@@ -78,14 +78,14 @@ public class DriveFolderProvisioningService {
             } catch (DrivePhotoImportException ex) {
                 if (!"drive_access_denied".equals(ex.code()) && !"not_a_folder".equals(ex.code())) {
                     log.warn("drive.folder.provisioning.failed schoolId={} academicYearId={} reason={}",
-                    scope.schoolId(), scope.academicYearId(), ex.getMessage());
-            return ProvisioningResult.failed(scope, ex.getMessage());
+                            scope.schoolId(), scope.academicYearId(), ex.getMessage());
+                    return ProvisioningResult.failed(scope, ex.getMessage());
                 }
                 replaceReadyBinding = true;
             } catch (RuntimeException ex) {
                 log.warn("drive.folder.provisioning.failed schoolId={} academicYearId={} reason={}",
-                    scope.schoolId(), scope.academicYearId(), ex.getMessage());
-            return ProvisioningResult.failed(scope, ex.getMessage());
+                        scope.schoolId(), scope.academicYearId(), ex.getMessage());
+                return ProvisioningResult.failed(scope, ex.getMessage());
             }
         }
 

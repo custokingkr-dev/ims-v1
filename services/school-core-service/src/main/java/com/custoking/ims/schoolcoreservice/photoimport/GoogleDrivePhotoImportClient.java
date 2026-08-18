@@ -470,8 +470,18 @@ public class GoogleDrivePhotoImportClient {
                         .noneMatch(expectedParentId::equals)) {
             return false;
         }
-        if (!(row.get("appProperties") instanceof Map<?, ?> properties)) {
-            return false;
+        // Drive appProperties are PRIVATE to the application that wrote them, so a different credential
+        // identity cannot see the ones an earlier client stamped. Requiring them here meant that changing
+        // credential-mode made every existing folder look unrecognised, and provisioning created a
+        // duplicate beside it -- with photographers still uploading to the original while the importer
+        // read the new empty one, and nothing erroring.
+        //
+        // The folder id being checked came from our own database, and the checks above already establish
+        // that it resolves to a live, untrashed folder under the expected parent. Treat appProperties as
+        // corroborating evidence instead: when they are visible they must still match exactly, and when
+        // they are absent the structural checks stand on their own.
+        if (!(row.get("appProperties") instanceof Map<?, ?> properties) || properties.isEmpty()) {
+            return true;
         }
         return expectedProperties.entrySet().stream()
                 .allMatch(entry -> entry.getValue().equals(string(properties.get(entry.getKey()))));
