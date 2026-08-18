@@ -41,6 +41,8 @@ concurrency:
 
 env:
   GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+  # Required by render-clouddeploy-targets.ps1 to build the deterministic Cloud Run service URLs.
+  GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
   GCP_REGION: ${{ vars.GCP_REGION || 'asia-south2' }}
   WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
   ROLLBACK_SERVICE_ACCOUNT: ${{ vars.ROLLBACK_SERVICE_ACCOUNT || vars.DEPLOY_SERVICE_ACCOUNT }}
