@@ -53,6 +53,15 @@ jobs:
   rollback:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      # Re-declared at job scope on purpose; see the note in build-release.yml. At workflow scope `vars`
+      # resolves in workflow context, where environment-scoped variables do not exist, so these silently
+      # take the REPOSITORY value (custoking-dev). A production rollback would have been aimed at the
+      # development project -- during an incident, which is the worst possible time to find out.
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+      STUDENT_PHOTO_BUCKET: ${{ vars.STUDENT_PHOTO_BUCKET }}
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Enforce rollback branch boundary
