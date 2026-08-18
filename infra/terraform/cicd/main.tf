@@ -468,6 +468,32 @@ resource "google_artifact_registry_repository_iam_member" "release_dev_image_wri
   member     = "serviceAccount:${google_service_account.github["release_dev"].email}"
 }
 
+# Dev rolls back by moving Cloud Run traffic directly, which re-applies the service spec and therefore
+# requires acting as the runtime identity. Production rolls back through a Cloud Deploy rollout, which
+# runs as the Cloud Deploy execution account, so its rollback identity deliberately does NOT get actAs.
+# Before the split this was invisible: dev rolled back as the shared github-actions-sa, which held
+# roles/iam.serviceAccountUser project-wide.
+resource "google_service_account_iam_member" "rollback_dev_act_as_runtime" {
+  for_each           = (contains(var.environments, "dev") && var.enable_dev_identities) ? var.runtime_service_account_emails["dev"] : toset([])
+  service_account_id = "projects/${var.project_id}/serviceAccounts/${each.value}"
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:${google_service_account.github["rollback_dev"].email}"
+}
+
+# Rolling a Cloud Run service back to an earlier revision re-resolves that revision's image, so the
+# rollback identity needs to read the release repository. Before the split-project migration dev rolled
+# back as the shared github-actions-sa, which held artifactregistry.writer project-wide and masked this;
+# a dedicated per-environment identity does not, and the rollback fails with
+# "artifactregistry.repositories.downloadArtifacts denied" after the traffic decision is already made.
+resource "google_artifact_registry_repository_iam_member" "rollback_image_reader" {
+  for_each   = local.managed_environments
+  project    = var.project_id
+  location   = google_artifact_registry_repository.custoking.location
+  repository = google_artifact_registry_repository.custoking.repository_id
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${google_service_account.github["rollback_${each.value}"].email}"
+}
+
 resource "google_project_iam_member" "cost_controller_roles" {
   for_each = toset([
     "roles/cloudsql.editor",

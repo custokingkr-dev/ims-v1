@@ -22,7 +22,7 @@ understood in advance, would produce a **false NO-GO** at cutover.
 | # | Finding | Severity |
 | --- | --- | --- |
 | D1 | `source_object_key` legitimately dangles by design — a naive DB↔GCS check reports hundreds of "missing objects" | **Must understand before cutover, or the integrity gate fails wrongly** |
-| D2 | One student exists that was never projected into `reporting.dim_student` | Real, pre-existing projection gap |
+| D2 | ~~One student never projected~~ **RESOLVED: not a defect** — 5 soft-deleted students, 4 stale dimension rows | No action |
 | D3 | 17 superseded photo objects and 11 legacy-prefix objects are unreferenced | Cleanup, do not migrate |
 
 ---
@@ -96,10 +96,26 @@ source of 376. Exact `count(*)` proved both are **376**. That apparent mismatch 
 | `student.student_review_items` | 1,796 | `fact_student_review_item` | 1,796 | match |
 | `student.students` | **1,257** | `dim_student` | **1,256** | **D2 — off by one** |
 
-**D2:** a targeted anti-join confirms `students_missing_from_dim = 1` and `dim_rows_with_no_student = 0`.
-Exactly one student was never projected. Resolve or explain this **before** migration: carried across
-unexplained, the same delta reappears in the destination ledger and cannot be distinguished from
-migration-induced loss.
+**D2 — RESOLVED 2026-08-18. This is not data loss, and nothing needs repairing before migration.**
+
+The anti-join finds one student in `students` with no `dim_student` row, but the explanation is benign:
+
+| | |
+| --- | --- |
+| students total | 1,257 |
+| of which **soft-deleted** (`deleted_at IS NOT NULL`) | **5** — ids 5, 6, 8, 13, 77 |
+| students live | 1,252 |
+| `dim_student` rows | 1,256 = **1,252 live + 4 stale** |
+| `dim_student` rows for soft-deleted students | 4 |
+
+The single "missing" student is id 77, soft-deleted 2026-08-03, and it is **correctly absent** from the
+dimension. The four still present were deleted 2026-07-10, before the projection handled deletions. So
+the projection is not dropping data; it is carrying four stale rows from before a behaviour change.
+
+**Consequence for the integrity gate:** compare **source to destination**, not source to an invariant.
+A pre-existing quirk appears identically on both sides, and a gate asserting
+`dim_student == students` would fail on healthy data. Cleaning the four stale rows is optional
+housekeeping and deliberately out of scope for the migration.
 
 ---
 
@@ -227,8 +243,8 @@ At 68.91 MB total, with a 146 MB database, the entire production cutover moves w
 
 ## 8. Actions before cutover
 
-1. **Resolve D2** — identify the unprojected student and either repair the projection or record why the
-   delta is expected. Without this the destination ledger is ambiguous.
+1. ~~Resolve D2~~ **Done.** The delta is explained by soft-deletion (section 3); no repair needed. The
+   gate must compare source to destination rather than to an invariant.
 2. **Encode D1 into the integrity gate** — scope it to `students.photo_url` and explicitly exclude
    lifecycle-managed keys. This is the difference between a meaningful gate and a guaranteed false failure.
 3. **Clean up D3** — capture evidence, then delete the 17 superseded and 11 legacy objects in the source,
