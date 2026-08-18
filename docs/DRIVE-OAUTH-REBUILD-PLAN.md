@@ -128,7 +128,34 @@ error to alert on.
 The duplicates created during the test were deleted and dev was reverted to `user` mode, which is the
 default.
 
-### The fix, before this switch can be used
+### FIXED AND RE-TESTED 2026-08-18 — option A is proven end to end
+
+`matchesManagedFolderMetadata` now treats `appProperties` as corroborating rather than required: still
+authoritative when visible, so a folder belonging to a different school or year is rejected exactly as
+before, but absent ones no longer force a duplicate. The folder id comes from
+`student.photo_import_drive_folders` and the remaining checks already prove it resolves to a live,
+untrashed folder under the expected parent.
+
+Re-tested from a clean state — duplicates removed, bindings rebound to the original user-owned folders —
+then switched to `service-account` mode and provisioned three schools:
+
+| | |
+| --- | --- |
+| folders under the root before | 4, all owned by the personal account |
+| folders after provisioning as the service account | **4, unchanged** |
+| duplicates created | **0** |
+| photo-import context endpoint | HTTP 200 |
+| existing photo still served | HTTP 200, 22,263 bytes |
+
+So the service account reused folders it owns none of and whose private metadata it cannot see. **Dev now
+runs in `service-account` mode.**
+
+The first attempt at this test was invalid and worth recording: the database bindings still pointed at the
+folders created during the earlier failed run, which had since been deleted, so provisioning correctly
+re-created them and the fix was never exercised. Resetting to a genuine starting state was necessary
+before the result meant anything.
+
+### The original fix rationale
 
 Stop identifying folders by `appProperties` and trust the database, which is already the system of
 record: `student.photo_import_drive_folders` stores `school_folder_id`, `academic_year_folder_id` and
