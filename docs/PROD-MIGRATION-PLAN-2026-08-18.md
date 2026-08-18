@@ -103,7 +103,9 @@ Running services are unaffected if that registry is ever unavailable; only new d
 | Superseded, unreferenced photos | 17 | **do not copy** |
 | Legacy numeric-prefix objects | 11 | **do not copy** |
 
-`Copy-MigrationData.ps1` already excludes `^temporary/|^students/|^student-imports/`.
+`Copy-MigrationData.ps1` excludes `^temporary/.*|^students/.*|^student-imports/.*`. The trailing `.*` on
+each alternative is load-bearing: `gcloud storage rsync --exclude` matches the **whole object name**, so
+the earlier prefix-only form silently excluded nothing from `temporary/` (defect 15).
 
 ### Three integrity rules that prevent a false NO-GO
 
@@ -115,6 +117,44 @@ Running services are unaffected if that registry is ever unavailable; only new d
    handling deletions. A gate asserting `dim_student == students` fails on healthy data.
 3. **Use exact `count(*)`, never `n_live_tup`.** During the ledger work the estimate reported
    `dim_section` as 379 against a real 376.
+4. **Run one whole-database digest on both sides, with the identical query.** The per-relation table in the
+   ledger is a curated selection, so matching it proves nothing about the relations it omits. Run this on
+   source and destination and compare the three values — it covers every user relation, not a chosen subset:
+
+   ```sql
+   SELECT count(*) AS relations, sum(c) AS rows,
+          md5(string_agg(t || ':' || c, ',' ORDER BY t)) AS digest
+   FROM (SELECT schemaname || '.' || relname AS t,
+                (xpath('/row/c/text()', query_to_xml(
+                   format('select count(*) as c from %I.%I', schemaname, relname),
+                   false, true, '')))[1]::text::bigint AS c
+         FROM pg_stat_user_tables) s;
+   ```
+
+   Measured on `custoking-prod` after the pre-load: **107 relations, 38,438 rows,
+   digest `dc8555e71be3c55f90eb98a6f86067f1`.** That figure is the *pre-load* state and will move when the
+   frozen dump is re-imported at T0; what must match is source against destination at that moment, both
+   sides queried the same way. Note it is 107 relations, not the ledger's 66 — the difference is exactly
+   why the digest, and not the curated table, is the gate.
+
+### Restore drill — executed 2026-08-18, PASSED
+
+Backups being *configured* is not evidence they are *restorable*. A point-in-time clone of
+`custoking-db-prod` was taken and verified before the window, then deleted. PITR was used deliberately over
+a plain backup restore because it exercises the write-ahead-log chain as well as the backup file.
+
+| Check | Destination | Restored clone | Verdict |
+| --- | --- | --- | --- |
+| relations / rows / digest | 107 / 38,438 / `dc8555e7…` | 107 / 38,438 / `dc8555e7…` | **identical** |
+| policies / RLS tables / schemas | 66 / 66 / 13 | 66 / 66 / 13 | identical |
+| `appuser`, `app_rt` roles | present, `app_rt` NOBYPASSRLS | present, `app_rt` NOBYPASSRLS | identical |
+| students / users / sessions / schools | — | 1,257 / 49 / 382 / 11 | matches the ledger |
+
+Two things worth carrying into the window. **A clone inherits deletion protection**, so the drill instance
+cannot be removed until `--no-deletion-protection` is applied first — budget for that rather than
+discovering it while trying to clean up. And roles survive a clone even though they do **not** survive
+`pg_dump`; the recovery path and the migration path therefore differ precisely on the thing most likely to
+be forgotten.
 
 ---
 
