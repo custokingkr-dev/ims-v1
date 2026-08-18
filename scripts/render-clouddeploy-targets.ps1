@@ -42,6 +42,10 @@ $replacements = @{
   "__PROJECT_ID__" = $projectId
   "__PROJECT_NUMBER__" = Require-DeploymentValue "GCP_PROJECT_NUMBER"
   "__REGION__" = Require-DeploymentValue "GCP_REGION"
+  # The student-photo bucket used to be derived as custoking-student-photos-<env>. Bucket names are
+  # globally unique, so the destination cannot reuse that name and the derivation would have pointed the
+  # new project at the OLD project's bucket. It must be an explicit parameter.
+  "__PHOTO_BUCKET__" = Require-DeploymentValue "STUDENT_PHOTO_BUCKET"
 }
 
 $text = Get-Content -Raw -Path $TemplatePath

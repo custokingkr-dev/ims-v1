@@ -7,6 +7,7 @@ description: identity-service prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-identity-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
@@ -48,6 +49,7 @@ description: school-core-service prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-school-core-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
@@ -89,6 +91,7 @@ description: operations-service prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-operations-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
@@ -130,6 +133,7 @@ description: platform-service prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-platform-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
@@ -175,6 +179,7 @@ description: billing-service prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-billing-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
@@ -216,6 +221,7 @@ description: api-gateway prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-api-gateway-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
@@ -257,6 +263,7 @@ description: frontend prod Cloud Run target
 deployParameters:
   env: prod
   project_id: __PROJECT_ID__
+  photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-frontend-prod@__PROJECT_ID__.iam.gserviceaccount.com
   db_host: __DB_HOST__
