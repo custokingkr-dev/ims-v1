@@ -60,7 +60,7 @@ resource "google_monitoring_dashboard" "live_operations" {
                 filter = "metric.type=\"${local.live_ops_session_metric}\""
                 aggregation = {
                   alignmentPeriod    = "300s"
-                  perSeriesAligner   = "ALIGN_PERCENTILE_99"
+                  perSeriesAligner   = "ALIGN_PERCENTILE_50"
                   crossSeriesReducer = "REDUCE_MAX"
                 }
               }
@@ -76,7 +76,7 @@ resource "google_monitoring_dashboard" "live_operations" {
                 filter = "metric.type=\"${local.live_ops_sessions_metric}\""
                 aggregation = {
                   alignmentPeriod    = "300s"
-                  perSeriesAligner   = "ALIGN_PERCENTILE_99"
+                  perSeriesAligner   = "ALIGN_PERCENTILE_50"
                   crossSeriesReducer = "REDUCE_MAX"
                 }
               }
@@ -94,7 +94,7 @@ resource "google_monitoring_dashboard" "live_operations" {
                   filter = "metric.type=\"${local.live_ops_logins_metric}\""
                   aggregation = {
                     alignmentPeriod    = "300s"
-                    perSeriesAligner   = "ALIGN_PERCENTILE_99"
+                    perSeriesAligner   = "ALIGN_PERCENTILE_50"
                     crossSeriesReducer = "REDUCE_MAX"
                   }
                 }
