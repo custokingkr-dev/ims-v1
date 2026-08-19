@@ -67,6 +67,19 @@ SQL
 # environment needs job-running rights on the project that happens to own the export.
 ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
 
+# Create the metric descriptors up front, before there is anything to publish. A custom metric
+# descriptor is otherwise created implicitly on first write, so a project whose billing export has not
+# yet produced a row has no descriptor at all -- and a dashboard panel referencing it renders "Cannot
+# find metric", an error, rather than an honest empty chart. Creating them is idempotent.
+for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_date; do
+  curl -s -o /dev/null -X POST     "https://monitoring.googleapis.com/v3/projects/${PUBLISH_PROJECT}/metricDescriptors"     -H "Authorization: Bearer $(gcloud auth print-access-token)"     -H "Content-Type: application/json"     -d "{\"type\":\"custom.googleapis.com/custoking/cost/${SUFFIX}\",
+         \"metricKind\":\"GAUGE\",\"valueType\":\"DOUBLE\",
+         \"description\":\"Billing-export spend (${SUFFIX}) for this project.\",
+         \"labels\":[{\"key\":\"billing_account\",\"valueType\":\"STRING\"},
+                    {\"key\":\"project_id\",\"valueType\":\"STRING\"},
+                    {\"key\":\"currency\",\"valueType\":\"STRING\"}]}" || true
+done
+
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
   # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its
   # first table appears, which can take a day. Exiting non-zero here would produce a job that alerts every
