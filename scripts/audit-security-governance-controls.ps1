@@ -342,7 +342,14 @@ foreach ($targetContract in @(
   )) {
   $targetText = $contents[$targetContract.File]
   $targetCount = ([regex]::Matches($targetText, '(?m)^kind:\s*Target\s*$')).Count
-  $expectedExecutionAccount = "clouddeploy-$($targetContract.Environment)-deployer@custoking.iam.gserviceaccount.com"
+  # The project is no longer a constant. Before the split every environment lived in "custoking", so
+  # hardcoding it here was invisible; now it names the source project and this audit would reject
+  # perfectly correct dev and prod targets. Derived from the rendered target instead.
+  $auditProjectId = if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { $targetContract.ProjectId }
+  if ([string]::IsNullOrWhiteSpace($auditProjectId)) {
+    throw "Cannot audit Cloud Deploy targets without GCP_PROJECT_ID or a project id on the target contract."
+  }
+  $expectedExecutionAccount = "clouddeploy-$($targetContract.Environment)-deployer@$auditProjectId.iam.gserviceaccount.com"
   $executionAccountCount = ([regex]::Matches(
       $targetText,
       "(?m)^\s*serviceAccount:\s*$([regex]::Escape($expectedExecutionAccount))\s*$"
@@ -353,7 +360,7 @@ foreach ($targetContract in @(
     $violations.Add("$($targetContract.File) must wire all seven targets to $expectedExecutionAccount.") | Out-Null
   }
   if ($runtimeAccounts.Count -ne $targetCount -or @($runtimeAccounts | Where-Object {
-        $_ -notmatch "-$($targetContract.Environment)@custoking\.iam\.gserviceaccount\.com$"
+        $_ -notmatch "-$($targetContract.Environment)@$([regex]::Escape($auditProjectId))\.iam\.gserviceaccount\.com$"
       }).Count -gt 0) {
     $violations.Add("$($targetContract.File) must use seven environment-specific runtime identities.") | Out-Null
   }

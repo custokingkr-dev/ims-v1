@@ -32,7 +32,11 @@ concurrency:
   cancel-in-progress: ${{ github.ref_name == 'dev' || inputs.target_environment == 'dev' }}
 
 env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+  # No fallback. This used to default to 'custoking', which named the pre-split project: a missing
+  # variable then silently targeted a real, wrong project instead of failing. That project is being
+  # deleted, so the fallback can only ever be wrong now, and an empty value fails loudly at the first
+  # gcloud call rather than deploying somewhere unintended.
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   GCP_REGION: ${{ vars.GCP_REGION || 'asia-south2' }}
   ARTIFACT_REGISTRY_REPOSITORY: ${{ vars.ARTIFACT_REGISTRY_REPOSITORY || 'custoking' }}
   # The registry project is deliberately SEPARATE from the runtime project. Production never builds: it

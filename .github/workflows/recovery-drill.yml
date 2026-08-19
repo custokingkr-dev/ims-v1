@@ -19,6 +19,13 @@ jobs:
     timeout-minutes: 90
     environment: prod
     env:
+      # Declared at job scope so the environment's value is used. At workflow scope `vars` resolves in
+      # workflow context, where environment variables do not exist, and would silently take the
+      # repository value.
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      REGION: ${{ vars.GCP_REGION }}
+      SOURCE_INSTANCE: ${{ vars.PROD_CLOUDSQL_INSTANCE || 'custoking-db-prod' }}
+    env:
       WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
       RECOVERY_OPERATOR_SERVICE_ACCOUNT: ${{ vars.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
       PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
@@ -41,15 +48,21 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:PROD_DB_NAME)) {
             throw "PROD_DB_NAME is not configured in the prod GitHub environment."
           }
+          # The drill previously hardcoded -ProjectId custoking. After the project split that names the
+          # SOURCE project, which is being deleted, so the drill would have restored into a project that
+          # no longer exists -- and reported a recovery capability nobody actually has.
+          if ([string]::IsNullOrWhiteSpace($env:GCP_PROJECT_ID)) {
+            throw "GCP_PROJECT_ID is not configured in the prod GitHub environment."
+          }
 
       - name: Execute isolated PITR restore drill
         shell: pwsh
         run: |
           ./scripts/invoke-cloudsql-restore-drill.ps1 `
-            -ProjectId custoking `
-            -Region asia-south2 `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -Region "$env:REGION" `
             -Environment prod `
-            -SourceInstance custoking-db-prod `
+            -SourceInstance "$env:SOURCE_INSTANCE" `
             -Database $env:PROD_DB_NAME `
             -Apply `
             -AllowProductionRecoveryDrill

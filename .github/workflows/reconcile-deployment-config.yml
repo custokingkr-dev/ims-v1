@@ -18,7 +18,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'custoking' }}
+  # No fallback. This used to default to 'custoking', which named the pre-split project: a missing
+  # variable then silently targeted a real, wrong project instead of failing. That project is being
+  # deleted, so the fallback can only ever be wrong now, and an empty value fails loudly at the first
+  # gcloud call rather than deploying somewhere unintended.
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
   # Required by render-clouddeploy-targets.ps1 to build the deterministic Cloud Run service URLs.
   GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
   # Bucket names are globally unique, so this can no longer be derived from the environment name.
