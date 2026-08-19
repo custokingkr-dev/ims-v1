@@ -311,3 +311,21 @@ variable "slo_fast_burn_rate_retest_window" {
   type        = string
   default     = "180s"
 }
+
+variable "enable_cost_metric_export" {
+  description = "Publish billing-export spend into Cloud Monitoring as custom metrics. Requires a BigQuery billing export in this project."
+  type        = bool
+  default     = false
+}
+
+variable "cost_metric_schedule" {
+  description = "Cron schedule for the cost exporter. Billing export only refreshes a few times a day, so running more often re-queries identical rows and adds BigQuery cost to a job whose purpose is watching cost."
+  type        = string
+  default     = "0 */3 * * *"
+}
+
+variable "cost_metric_scheduler_region" {
+  description = "Region for the Cloud Scheduler trigger. Separate from var.region because Cloud Scheduler is not available in every region that runs Cloud Run, asia-south2 included."
+  type        = string
+  default     = "asia-south1"
+}
