@@ -19,6 +19,17 @@ set -euo pipefail
 PROJECT="${COST_METRIC_PROJECT:?COST_METRIC_PROJECT is required}"
 DATASET="${COST_METRIC_DATASET:-billing_export}"
 
+# Which project's spend to report. Defaults to the project publishing the metric, because a dashboard in
+# custoking-prod must show what custoking-prod costs -- not whatever else happens to share the billing
+# export. Without this filter the export is summed across every project it covers, and prod's dashboard
+# reported the old project's INR 22,516 as if it were its own.
+#
+# Set to "*" for a cumulative view across every project in the export; the metric is then labelled per
+# project so one series exists for each.
+SCOPE="${COST_METRIC_SCOPE_PROJECT:-$PROJECT}"
+
+echo "scope: ${SCOPE}"
+
 echo "querying ${PROJECT}.${DATASET}.gcp_billing_export_v1_*"
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
@@ -27,6 +38,7 @@ echo "querying ${PROJECT}.${DATASET}.gcp_billing_export_v1_*"
 read -r -d '' QUERY <<SQL || true
 SELECT
   _TABLE_SUFFIX AS billing_account,
+  IFNULL(project.id, "(unattributed)") AS project_id,
   currency,
   ROUND(SUM(IF(DATE(usage_start_time) = CURRENT_DATE() - 1, cost, 0)), 4) AS gross_yesterday,
   ROUND(SUM(IF(DATE(usage_start_time) = CURRENT_DATE() - 1,
@@ -36,7 +48,8 @@ SELECT
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd
 FROM \`${PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
-GROUP BY 1, 2
+  AND ("${SCOPE}" = "*" OR project.id = "${SCOPE}")
+GROUP BY 1, 2, 3
 SQL
 
 ROWS=$(bq query --project_id="${PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
@@ -76,7 +89,13 @@ METRICS = [
 
 series = []
 for row in rows:
-    labels = {"billing_account": row["billing_account"], "currency": row["currency"]}
+    # project_id is a label, not a filter baked into the metric name, so the same metric serves both a
+    # single-project dashboard and a cumulative one across the organisation.
+    labels = {
+        "billing_account": row["billing_account"],
+        "project_id": row["project_id"],
+        "currency": row["currency"],
+    }
     for suffix, column in METRICS:
         series.append({
             "metric": {"type": "custom.googleapis.com/custoking/" + suffix, "labels": labels},
@@ -107,7 +126,7 @@ for start in range(0, len(series), 200):
     print("published " + str(len(chunk["timeSeries"])) + " series")
 
 for row in rows:
-    print("  " + row["billing_account"] + " " + row["currency"]
+    print("  " + row["project_id"] + " (" + row["billing_account"] + ") " + row["currency"]
           + ": yesterday gross=" + str(row["gross_yesterday"]) + " net=" + str(row["net_yesterday"])
           + ", mtd gross=" + str(row["gross_mtd"]) + " net=" + str(row["net_mtd"]))
 PUBLISHER_EOF

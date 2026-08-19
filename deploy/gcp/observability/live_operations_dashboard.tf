@@ -360,7 +360,13 @@ resource "google_monitoring_dashboard" "live_operations" {
                 plotType = "LINE"
                 timeSeriesQuery = {
                   timeSeriesFilter = {
-                    filter = "metric.type=\"custom.googleapis.com/custoking/cost/gross_yesterday\""
+                    filter = join(" AND ", [
+                      "metric.type=\"custom.googleapis.com/custoking/cost/gross_yesterday\"",
+                      # Scope to THIS project. The billing export can cover several projects,
+                      # and without this the panel sums all of them -- prod's dashboard was
+                      # reporting the old project's spend as if it were its own.
+                      "metric.label.project_id=\"${var.project}\"",
+                    ])
                     aggregation = {
                       alignmentPeriod    = "3600s"
                       perSeriesAligner   = "ALIGN_MEAN"
@@ -374,7 +380,13 @@ resource "google_monitoring_dashboard" "live_operations" {
                 plotType = "LINE"
                 timeSeriesQuery = {
                   timeSeriesFilter = {
-                    filter = "metric.type=\"custom.googleapis.com/custoking/cost/net_yesterday\""
+                    filter = join(" AND ", [
+                      "metric.type=\"custom.googleapis.com/custoking/cost/net_yesterday\"",
+                      # Scope to THIS project. The billing export can cover several projects,
+                      # and without this the panel sums all of them -- prod's dashboard was
+                      # reporting the old project's spend as if it were its own.
+                      "metric.label.project_id=\"${var.project}\"",
+                    ])
                     aggregation = {
                       alignmentPeriod    = "3600s"
                       perSeriesAligner   = "ALIGN_MEAN"
@@ -393,7 +405,13 @@ resource "google_monitoring_dashboard" "live_operations" {
           scorecard = {
             timeSeriesQuery = {
               timeSeriesFilter = {
-                filter = "metric.type=\"custom.googleapis.com/custoking/cost/gross_month_to_date\""
+                filter = join(" AND ", [
+                  "metric.type=\"custom.googleapis.com/custoking/cost/gross_month_to_date\"",
+                  # Scope to THIS project. The billing export can cover several projects,
+                  # and without this the panel sums all of them -- prod's dashboard was
+                  # reporting the old project's spend as if it were its own.
+                  "metric.label.project_id=\"${var.project}\"",
+                ])
                 aggregation = {
                   alignmentPeriod    = "3600s"
                   perSeriesAligner   = "ALIGN_MEAN"
