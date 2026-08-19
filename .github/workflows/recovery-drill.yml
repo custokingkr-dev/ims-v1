@@ -19,16 +19,15 @@ jobs:
     timeout-minutes: 90
     environment: prod
     env:
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+      RECOVERY_OPERATOR_SERVICE_ACCOUNT: ${{ vars.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
+      PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
       # Declared at job scope so the environment's value is used. At workflow scope `vars` resolves in
       # workflow context, where environment variables do not exist, and would silently take the
       # repository value.
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
       REGION: ${{ vars.GCP_REGION }}
       SOURCE_INSTANCE: ${{ vars.PROD_CLOUDSQL_INSTANCE || 'custoking-db-prod' }}
-    env:
-      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
-      RECOVERY_OPERATOR_SERVICE_ACCOUNT: ${{ vars.RECOVERY_OPERATOR_SERVICE_ACCOUNT }}
-      PROD_DB_NAME: ${{ vars.PROD_DB_NAME }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
