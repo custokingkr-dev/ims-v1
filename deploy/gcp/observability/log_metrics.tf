@@ -457,7 +457,7 @@ resource "google_logging_metric" "session_active_users" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -483,7 +483,7 @@ resource "google_logging_metric" "session_active_sessions" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -509,7 +509,7 @@ resource "google_logging_metric" "session_logins_recent" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }

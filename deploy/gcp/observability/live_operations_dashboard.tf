@@ -60,7 +60,7 @@ resource "google_monitoring_dashboard" "live_operations" {
                 filter = "metric.type=\"${local.live_ops_session_metric}\""
                 aggregation = {
                   alignmentPeriod    = "300s"
-                  perSeriesAligner   = "ALIGN_PERCENTILE_99"
+                  perSeriesAligner   = "ALIGN_PERCENTILE_50"
                   crossSeriesReducer = "REDUCE_MAX"
                 }
               }
@@ -76,7 +76,7 @@ resource "google_monitoring_dashboard" "live_operations" {
                 filter = "metric.type=\"${local.live_ops_sessions_metric}\""
                 aggregation = {
                   alignmentPeriod    = "300s"
-                  perSeriesAligner   = "ALIGN_PERCENTILE_99"
+                  perSeriesAligner   = "ALIGN_PERCENTILE_50"
                   crossSeriesReducer = "REDUCE_MAX"
                 }
               }
@@ -94,13 +94,42 @@ resource "google_monitoring_dashboard" "live_operations" {
                   filter = "metric.type=\"${local.live_ops_logins_metric}\""
                   aggregation = {
                     alignmentPeriod    = "300s"
-                    perSeriesAligner   = "ALIGN_PERCENTILE_99"
+                    perSeriesAligner   = "ALIGN_PERCENTILE_50"
                     crossSeriesReducer = "REDUCE_MAX"
                   }
                 }
               }
             }]
             yAxis = { label = "sign-ins", scale = "LINEAR" }
+          }
+        },
+        {
+          # A deliberate heartbeat. The per-feature charts exclude health checks, which is right for
+          # measuring real usage but means they flatten to nothing when nobody is using the system --
+          # and on a dashboard called Live Operations, "quiet" and "dead" then look identical. This
+          # panel uses the built-in Cloud Run request count, which includes uptime probes, so there is
+          # always a line. If THIS goes flat, the gateway really has stopped serving.
+          title = "Heartbeat: all gateway requests, health checks included"
+          xyChart = {
+            dataSets = [{
+              plotType = "LINE"
+              timeSeriesQuery = {
+                timeSeriesFilter = {
+                  filter = join(" AND ", [
+                    "resource.type=\"cloud_run_revision\"",
+                    "resource.labels.service_name=\"custoking-api-gateway-${var.env}\"",
+                    "metric.type=\"run.googleapis.com/request_count\"",
+                  ])
+                  aggregation = {
+                    alignmentPeriod    = "60s"
+                    perSeriesAligner   = "ALIGN_RATE"
+                    crossSeriesReducer = "REDUCE_SUM"
+                    groupByFields      = ["metric.label.response_code_class"]
+                  }
+                }
+              }
+            }]
+            yAxis = { label = "requests per second", scale = "LINEAR" }
           }
         },
         {
@@ -331,7 +360,13 @@ resource "google_monitoring_dashboard" "live_operations" {
                 plotType = "LINE"
                 timeSeriesQuery = {
                   timeSeriesFilter = {
-                    filter = "metric.type=\"custom.googleapis.com/custoking/cost/gross_yesterday\""
+                    filter = join(" AND ", [
+                      "metric.type=\"custom.googleapis.com/custoking/cost/gross_yesterday\"",
+                      # Scope to THIS project. The billing export can cover several projects,
+                      # and without this the panel sums all of them -- prod's dashboard was
+                      # reporting the old project's spend as if it were its own.
+                      "metric.label.project_id=\"${var.project}\"",
+                    ])
                     aggregation = {
                       alignmentPeriod    = "3600s"
                       perSeriesAligner   = "ALIGN_MEAN"
@@ -345,7 +380,13 @@ resource "google_monitoring_dashboard" "live_operations" {
                 plotType = "LINE"
                 timeSeriesQuery = {
                   timeSeriesFilter = {
-                    filter = "metric.type=\"custom.googleapis.com/custoking/cost/net_yesterday\""
+                    filter = join(" AND ", [
+                      "metric.type=\"custom.googleapis.com/custoking/cost/net_yesterday\"",
+                      # Scope to THIS project. The billing export can cover several projects,
+                      # and without this the panel sums all of them -- prod's dashboard was
+                      # reporting the old project's spend as if it were its own.
+                      "metric.label.project_id=\"${var.project}\"",
+                    ])
                     aggregation = {
                       alignmentPeriod    = "3600s"
                       perSeriesAligner   = "ALIGN_MEAN"
@@ -364,7 +405,13 @@ resource "google_monitoring_dashboard" "live_operations" {
           scorecard = {
             timeSeriesQuery = {
               timeSeriesFilter = {
-                filter = "metric.type=\"custom.googleapis.com/custoking/cost/gross_month_to_date\""
+                filter = join(" AND ", [
+                  "metric.type=\"custom.googleapis.com/custoking/cost/gross_month_to_date\"",
+                  # Scope to THIS project. The billing export can cover several projects,
+                  # and without this the panel sums all of them -- prod's dashboard was
+                  # reporting the old project's spend as if it were its own.
+                  "metric.label.project_id=\"${var.project}\"",
+                ])
                 aggregation = {
                   alignmentPeriod    = "3600s"
                   perSeriesAligner   = "ALIGN_MEAN"

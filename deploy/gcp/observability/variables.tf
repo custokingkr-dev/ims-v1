@@ -319,13 +319,59 @@ variable "enable_cost_metric_export" {
 }
 
 variable "cost_metric_schedule" {
-  description = "Cron schedule for the cost exporter. Billing export only refreshes a few times a day, so running more often re-queries identical rows and adds BigQuery cost to a job whose purpose is watching cost."
+  description = <<-DESC
+    Cron schedule for the cost exporter.
+
+    Hourly rather than three-hourly. The underlying billing data only refreshes a few times a day, so
+    this re-queries identical rows most of the time -- but a custom metric is a point in time, not a
+    level, and a dashboard window shorter than the write interval simply contains no point and renders
+    blank. Publishing hourly keeps a one-hour view populated. The query scans a small table and costs
+    approximately nothing.
+  DESC
   type        = string
-  default     = "0 */3 * * *"
+  default     = "0 * * * *"
 }
 
 variable "cost_metric_scheduler_region" {
   description = "Region for the Cloud Scheduler trigger. Separate from var.region because Cloud Scheduler is not available in every region that runs Cloud Run, asia-south2 included."
   type        = string
   default     = "asia-south1"
+}
+
+variable "gauge_metric_buckets" {
+  description = <<-DESC
+    Bucket bounds for log-based metrics that carry a gauge rather than a count.
+
+    Log-based metrics can only be counters or distributions, so a gauge has to be smuggled through a
+    distribution -- and distributions only support percentile aligners, which INTERPOLATE WITHIN A BUCKET
+    rather than returning the recorded value. With coarse bounds that is badly wrong: against bounds
+    [0,1,5,10,...] a true value of 5 falls in [5,10) and P99 reported 9.95, roughly double.
+
+    These bounds sit on half-integers so every integer N falls in the middle of bucket [N-0.5, N+0.5).
+    Any percentile estimate is then within half a unit of the truth and displays correctly. Resolution
+    degrades above 30, where exactness stops mattering for the things measured here.
+  DESC
+  type        = list(number)
+  default = [
+    0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5,
+    10.5, 11.5, 12.5, 13.5, 14.5, 15.5, 16.5, 17.5, 18.5, 19.5,
+    20.5, 25.5, 30.5, 50.5, 100.5, 250.5, 500.5, 1000.5,
+  ]
+}
+
+variable "cost_metric_bq_project" {
+  description = <<-DESC
+    Project holding the BigQuery billing export. Defaults to this project.
+
+    A billing account exports to exactly one dataset, so environments sharing an account cannot each own
+    one. Dev points this at the project that does own the export and filters to itself.
+  DESC
+  type        = string
+  default     = ""
+}
+
+variable "cost_metric_scope_project" {
+  description = "Project whose spend to report. Empty means this project. \"*\" reports every project in the export as separate labelled series, for a cumulative view."
+  type        = string
+  default     = ""
 }

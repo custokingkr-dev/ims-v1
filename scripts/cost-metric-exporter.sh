@@ -19,7 +19,27 @@ set -euo pipefail
 PROJECT="${COST_METRIC_PROJECT:?COST_METRIC_PROJECT is required}"
 DATASET="${COST_METRIC_DATASET:-billing_export}"
 
-echo "querying ${PROJECT}.${DATASET}.gcp_billing_export_v1_*"
+# Three separate concerns, because they are genuinely three different projects in the general case.
+#
+# A billing account exports to exactly ONE dataset, so environments sharing an account cannot each own
+# their own export -- custoking-dev and custoking-prod share account 014C0A, and the export lands in
+# custoking-prod. Dev therefore READS from prod's dataset, FILTERS to its own project, and PUBLISHES its
+# metric into its own project so its dashboard is self-contained.
+BQ_PROJECT="${COST_METRIC_BQ_PROJECT:-$PROJECT}"           # where the billing export dataset lives
+PUBLISH_PROJECT="${COST_METRIC_PUBLISH_PROJECT:-$PROJECT}" # where the custom metric is written
+
+# Which project's spend to report. Defaults to the project publishing the metric, because a dashboard in
+# custoking-prod must show what custoking-prod costs -- not whatever else happens to share the billing
+# export. Without this filter the export is summed across every project it covers, and prod's dashboard
+# reported the old project's INR 22,516 as if it were its own.
+#
+# Set to "*" for a cumulative view across every project in the export; the metric is then labelled per
+# project so one series exists for each.
+SCOPE="${COST_METRIC_SCOPE_PROJECT:-$PUBLISH_PROJECT}"  # whose spend to report; "*" for all
+
+echo "read=${BQ_PROJECT}.${DATASET}  scope=${SCOPE}  publish=${PUBLISH_PROJECT}"
+
+
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
 # history because free-trial credit covered it, hiding the real consumption that becomes payable the
@@ -27,6 +47,7 @@ echo "querying ${PROJECT}.${DATASET}.gcp_billing_export_v1_*"
 read -r -d '' QUERY <<SQL || true
 SELECT
   _TABLE_SUFFIX AS billing_account,
+  IFNULL(project.id, "(unattributed)") AS project_id,
   currency,
   ROUND(SUM(IF(DATE(usage_start_time) = CURRENT_DATE() - 1, cost, 0)), 4) AS gross_yesterday,
   ROUND(SUM(IF(DATE(usage_start_time) = CURRENT_DATE() - 1,
@@ -34,12 +55,30 @@ SELECT
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH), cost, 0)), 4) AS gross_mtd,
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH),
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd
-FROM \`${PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
+FROM \`${BQ_PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
-GROUP BY 1, 2
+  AND ("${SCOPE}" = "*" OR project.id = "${SCOPE}")
+GROUP BY 1, 2, 3
 SQL
 
-ROWS=$(bq query --project_id="${PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
+# The query job runs in the PUBLISHING project, not the one holding the data. The table is fully
+# qualified either way, so this only decides which project is billed for the query and which needs
+# bigquery.jobUser -- and that should be the project whose service account is running, otherwise every
+# environment needs job-running rights on the project that happens to own the export.
+ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
+
+# Create the metric descriptors up front, before there is anything to publish. A custom metric
+# descriptor is otherwise created implicitly on first write, so a project whose billing export has not
+# yet produced a row has no descriptor at all -- and a dashboard panel referencing it renders "Cannot
+# find metric", an error, rather than an honest empty chart. Creating them is idempotent.
+for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_date; do
+  curl -s -o /dev/null -X POST     "https://monitoring.googleapis.com/v3/projects/${PUBLISH_PROJECT}/metricDescriptors"     -H "Authorization: Bearer $(gcloud auth print-access-token)"     -H "Content-Type: application/json"     -d "{\"type\":\"custom.googleapis.com/custoking/cost/${SUFFIX}\",
+         \"metricKind\":\"GAUGE\",\"valueType\":\"DOUBLE\",
+         \"description\":\"Billing-export spend (${SUFFIX}) for this project.\",
+         \"labels\":[{\"key\":\"billing_account\",\"valueType\":\"STRING\"},
+                    {\"key\":\"project_id\",\"valueType\":\"STRING\"},
+                    {\"key\":\"currency\",\"valueType\":\"STRING\"}]}" || true
+done
 
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
   # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its
@@ -76,7 +115,13 @@ METRICS = [
 
 series = []
 for row in rows:
-    labels = {"billing_account": row["billing_account"], "currency": row["currency"]}
+    # project_id is a label, not a filter baked into the metric name, so the same metric serves both a
+    # single-project dashboard and a cumulative one across the organisation.
+    labels = {
+        "billing_account": row["billing_account"],
+        "project_id": row["project_id"],
+        "currency": row["currency"],
+    }
     for suffix, column in METRICS:
         series.append({
             "metric": {"type": "custom.googleapis.com/custoking/" + suffix, "labels": labels},
@@ -107,12 +152,12 @@ for start in range(0, len(series), 200):
     print("published " + str(len(chunk["timeSeries"])) + " series")
 
 for row in rows:
-    print("  " + row["billing_account"] + " " + row["currency"]
+    print("  " + row["project_id"] + " (" + row["billing_account"] + ") " + row["currency"]
           + ": yesterday gross=" + str(row["gross_yesterday"]) + " net=" + str(row["net_yesterday"])
           + ", mtd gross=" + str(row["gross_mtd"]) + " net=" + str(row["net_mtd"]))
 PUBLISHER_EOF
 
-printf '%s' "${ROWS}" | python3 "${PUBLISHER}" "${PROJECT}" "${NOW}"
+printf '%s' "${ROWS}" | python3 "${PUBLISHER}" "${PUBLISH_PROJECT}" "${NOW}"
 
 # Deployed as Cloud Run job `ims-cost-metric-prod` in custoking-prod/asia-south2, running as
 # cost-metric-exporter@custoking-prod (bigquery.jobUser, bigquery.dataViewer, monitoring.metricWriter),

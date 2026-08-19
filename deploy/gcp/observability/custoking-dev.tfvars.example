@@ -44,7 +44,16 @@ max_instances_by_service = {
 #
 # Enabled in custoking-prod. Real tfvars are gitignored, so this example is the only committed record
 # that the variable exists -- without it the setting is invisible to anyone rebuilding the environment.
-enable_cost_metric_export = false
+enable_cost_metric_export = true
+
+# A billing account exports to exactly ONE dataset, so environments sharing an account cannot each own
+# their export. custoking-dev and custoking-prod share account 014C0A and the export lands in
+# custoking-prod, so dev reads that dataset, filters to its own project, and publishes the metric into
+# itself. Leave both empty when a project owns its own export.
+cost_metric_bq_project    = "custoking-prod"
+cost_metric_scope_project = "custoking-dev"
+
+# Set the scope to "*" instead for a cumulative view: one labelled series per project in the export.
 
 # Cloud Scheduler is not offered in asia-south2, so the trigger runs from the nearest region that has it
 # and calls into the job's own region.

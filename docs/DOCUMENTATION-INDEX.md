@@ -49,6 +49,15 @@ repository now ignores `outputs/`.
   (all BCrypt passwords, scoped RBAC, Drive folders), what must be value-transferred (secrets, or 378 live
   sessions drop), what the dump does **not** carry (the `appuser`/`app_rt` database roles), and what is
   destroyed forever (Drive OAuth client, locked audit logs, backups, `.a.run.app` URLs with no DNS layer).
+- `PROD-CUTOVER-EXECUTED-2026-08-19.md` — **what actually happened.** Production moved to `custoking-prod`
+  with ~25 minutes of unavailability against a 5–10 minute target, and the record says why: the planned
+  method for clearing the destination database was refused mid-window. Also records the two measurements
+  the plan got wrong — Cloud Run IAM takes about 76 seconds to reach the serving path, so `allUsers` is not
+  the atomic switch the plan assumes — and the four attempts the release path needed.
+- `PROD-DATA-VERIFICATION-2026-08-19.md` — **the evidence that nothing was lost.** Source against
+  destination on identical queries: one differing relation out of 107, and that one is expired-session
+  cleanup rather than loss. Records two harness faults that produced convincing wrong answers, which is the
+  more transferable lesson than the row counts.
 - `GCP-MIGRATION-DATA-LEDGER-PROD-2026-08-18.md` — **measured** production data ledger: exact row counts,
   Flyway state (matches the repo exactly), drained durable-event state, and a full Cloud Storage ↔ Postgres
   reconciliation. Zero broken photo references. Records why `source_object_key` is designed to dangle, which
