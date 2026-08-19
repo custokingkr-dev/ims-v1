@@ -3,7 +3,7 @@ param(
     [string] $ExpectedDevHost,
     [long] $SchoolId = 0,
     [string] $ExpectedRevision,
-    [string] $ProjectId = "custoking",
+    [string] $ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
     [string] $Region = "asia-south2",
     [string] $ServiceName = "custoking-school-core-service-dev",
     [string] $LoginEmailEnvironmentVariable = "IMS_DEV_ONBOARDING_EMAIL",

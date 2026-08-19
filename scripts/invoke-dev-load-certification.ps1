@@ -5,7 +5,7 @@ param(
   # load-tests/staff-workload-arrival.js.
   [ValidateSet("Soak", "MorningBurst", "MixedMorning", "StaffWorkload")]
   [string]$Profile = "Soak",
-  [string]$ProjectId = "custoking",
+  [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
   [string]$CloudSqlInstance = "custoking-db-dev",
   [string]$BaseUrl = "https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app",
   [int]$PeakVus = 0,
