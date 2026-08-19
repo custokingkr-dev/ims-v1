@@ -106,3 +106,28 @@ production runs that image, `STUDENT_PHOTO_IMPORT_CREDENTIAL_MODE=service-accoun
 uses the OAuth client owned by `custoking`. Infrastructure access and application capability are separate
 things, and only one of them was cleared by sharing a folder.
 
+## Release path proven, 2026-08-19
+
+The production release path now works end to end through Cloud Deploy. All seven services redeployed and
+reached Ready, the school-core revision came up against `10.92.0.3` with `CREDENTIAL_MODE=service-account`
+intact, Flyway applied nothing (27 migrations, latest 2026-08-11), and a per-relation comparison against the
+still-frozen source shows **one differing relation out of 107** — `auth_sessions`, the expired-session
+cleanup.
+
+It took four attempts, and each failure was a distinct real defect rather than flakiness:
+
+| Attempt | Failure | Defect |
+| --- | --- | --- |
+| 1 | Revision could not reach the database | 17 — stale repository `PROD_DB_HOST` beat the environment's `DB_HOST` |
+| 2 | Identical failure despite the variable being fixed | 20 — Cloud Deploy targets are rendered artifacts; the old value was baked in at reconcile time |
+| 3 | `ALREADY_EXISTS` before any deployment | 19 — release IDs embed `run_attempt`, always 1 on a fresh dispatch; retry means re-running the failed run |
+| 4 | Success | — |
+
+Attempt 2 is the one worth remembering. Fixing the source of a value and assuming the consumer follows is
+exactly the mistake that makes a fix look like it did not work.
+
+**Production was never at risk across any of it.** Cloud Run refused three successive revisions that failed
+their startup probe and never shifted traffic; the gateway answered correctly throughout. The guard rail
+that made this safe is the same one that makes a green release dangerous when the failure is silent — which
+is why defect 18 mattered more than any of the three that actually broke the build.
+
