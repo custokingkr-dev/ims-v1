@@ -37,3 +37,16 @@ max_instances_by_service = {
   "billing-service"     = 4
   "api-gateway"         = 4
 }
+
+# Publish billing-export spend into Cloud Monitoring as custom metrics, feeding the Live Operations
+# dashboard's spend panels. Requires a BigQuery billing export writing into this project; leave false
+# until that export exists, or the job runs every three hours and finds nothing.
+#
+# Enabled in custoking-prod. Real tfvars are gitignored, so this example is the only committed record
+# that the variable exists -- without it the setting is invisible to anyone rebuilding the environment.
+enable_cost_metric_export = false
+
+# Cloud Scheduler is not offered in asia-south2, so the trigger runs from the nearest region that has it
+# and calls into the job's own region.
+# cost_metric_scheduler_region = "asia-south1"
+# cost_metric_schedule         = "0 */3 * * *"
