@@ -450,12 +450,18 @@ resource "google_artifact_registry_repository_iam_member" "clouddeploy_image_rea
   member     = "serviceAccount:${google_service_account.clouddeploy[each.value].email}"
 }
 
-resource "google_artifact_registry_repository_iam_member" "release_prod_image_reader" {
+# Writer, not reader. Production promotes by copying the dev-approved digest from the BUILD project's
+# registry into this one, so that the deployed manifest references an image in the production project
+# rather than in the development project. Without that copy, Cloud Run re-pulls from the dev registry on
+# every scale-out, which makes a development project a runtime dependency of production: pruning an image
+# there, or losing the project, degrades production. The copy is a server-side manifest write and moves no
+# bytes, so the cost of removing that coupling is close to nothing.
+resource "google_artifact_registry_repository_iam_member" "release_prod_image_writer" {
   count      = contains(var.environments, "prod") ? 1 : 0
   project    = var.project_id
   location   = google_artifact_registry_repository.custoking.location
   repository = google_artifact_registry_repository.custoking.repository_id
-  role       = "roles/artifactregistry.reader"
+  role       = "roles/artifactregistry.writer"
   member     = "serviceAccount:${google_service_account.github["release_prod"].email}"
 }
 

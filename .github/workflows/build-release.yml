@@ -352,7 +352,14 @@ jobs:
           $ErrorActionPreference = "Stop"
           $targetEnv = "${{ needs.resolve-target.outputs.target_env }}"
           $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
-          $registry = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
+          # Two registries, deliberately. Resolution reads from the BUILD project, because that is where
+          # the dev-approved tag lives. Deployment must reference the TARGET project, because Cloud Run
+          # re-pulls on every scale-out: leaving production pointed at the build project's registry makes
+          # a development project a runtime dependency of production, so pruning an image there degrades
+          # prod. For dev the two are the same and nothing is copied.
+          $sourceRegistry  = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
+          $runtimeRegistry = "$env:GCP_REGION-docker.pkg.dev/$env:GCP_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
+          $registry = $sourceRegistry
           $matrix = $env:AFFECTED_MATRIX_JSON | ConvertFrom-Json
           $services = @()
 
@@ -395,7 +402,25 @@ jobs:
               $runtimeDigest = [string]$runtimeDescriptor.digest
             }
 
-            $immutableRef = "$registry/$($entry.image)@$digest"
+            # Promote the resolved digest into the target project's registry before anything references
+            # it. imagetools create is a server-side manifest copy -- it moves no layers and completes in
+            # seconds -- and because images are content addressed, the digest is identical on both sides,
+            # so the promoted reference is provably the same bytes that were approved on dev.
+            if ($runtimeRegistry -ne $sourceRegistry) {
+              & docker buildx imagetools create --tag "$runtimeRegistry/$($entry.image):$resolvedTag" "$sourceRegistry/$($entry.image)@$digest"
+              if ($LASTEXITCODE -ne 0) {
+                throw "Could not promote $($entry.image)@$digest into $runtimeRegistry."
+              }
+              $promoted = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
+              $promotedDigest = if ($null -eq $promoted) { "" } else { ([string]$promoted).Trim() }
+              # A copy that lands under a different digest would mean the bytes changed in transit. Deploying
+              # that would silently ship something other than what dev approved and what Trivy scanned.
+              if ($promotedDigest -ne $digest) {
+                throw "Promoted digest $promotedDigest does not match approved digest $digest for $($entry.image)."
+              }
+            }
+
+            $immutableRef = "$runtimeRegistry/$($entry.image)@$digest"
             $scanKey = switch ([string]$entry.name) {
               "identity-service" { "identity" }
               "school-core-service" { "school_core" }
@@ -419,7 +444,7 @@ jobs:
               digest = $digest
               immutableRef = $immutableRef
               runtimeDigest = $runtimeDigest
-              runtimeRef = "$registry/$($entry.image)@$runtimeDigest"
+              runtimeRef = "$runtimeRegistry/$($entry.image)@$runtimeDigest"
             }
           }
 
