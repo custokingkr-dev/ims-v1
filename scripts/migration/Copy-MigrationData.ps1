@@ -217,11 +217,17 @@ if (Test-Stage 'photos') {
   # Keeping the legacy prefixes out matters more when the source is being deleted: copying them carries
   # dead data into a project that is meant to be clean, and they cannot be cleaned up by the application
   # (StudentPhotoStorage.deleteStoredPhoto ignores any key not under schools/.../students/).
-  # gcloud storage rsync matches --exclude against the WHOLE object name, so a bare prefix anchor is not
-  # enough: '^temporary/' silently failed to exclude temporary/photo-imports/... during the production
-  # pre-sync while the other two prefixes were excluded, and 122 transient objects copied. Each
-  # alternative needs its own trailing .* so it matches the full key.
-  $exclusions = '^temporary/.*|^students/.*|^student-imports/.*'
+  # gcloud storage rsync SILENTLY DROPS THE FIRST ALTERNATIVE of a top-level regex alternation. This was
+  # measured, not inferred: rsyncing the production bucket into an empty scratch bucket, the pattern
+  # '^temporary/.*|^students/.*|^student-imports/.*' copied all 122 temporary/ objects while correctly
+  # excluding the other two prefixes. The same '^temporary/.*' used alone excludes them. Prefixing a
+  # throwaway alternative ('DUMMY|...') also makes the real ones work, which confirms position rather
+  # than syntax is the fault.
+  #
+  # Grouping instead of alternating avoids it entirely, because there is no top-level alternative to
+  # lose. Verified against the scratch bucket: temporary, top-level students and top-level
+  # student-imports all excluded, while the nested schools/<id>/students/... photos still copy.
+  $exclusions = '^(temporary|students|student-imports)/'
   Invoke-Native @('storage', 'rsync', '--recursive', "--exclude=$exclusions",
     "gs://$SourcePhotoBucket", "gs://$TargetPhotoBucket") | Out-Null
 
