@@ -327,3 +327,189 @@ resource "google_monitoring_alert_policy" "notification_inbox_dead_letter" {
 
   user_labels = local.common_user_labels
 }
+
+# ---------------------------------------------------------------------------------------------------
+# Live operations metrics
+#
+# These back the "Live Operations" dashboard. Two of them extract from logs the gateway already writes,
+# so they cost nothing to collect and needed no application change; the session metrics come from a
+# structured health log emitted by identity-service, following the same shape as the outbox metrics
+# above because Cloud Monitoring cannot query Postgres directly.
+# ---------------------------------------------------------------------------------------------------
+
+locals {
+  gateway_service_name  = "custoking-api-gateway-${var.env}"
+  identity_service_name = "custoking-identity-service-${var.env}"
+}
+
+
+resource "google_logging_metric" "gateway_requests_by_feature" {
+  project     = var.project
+  name        = "custoking/${var.env}/gateway_requests_by_feature"
+  description = "Gateway request count labelled by the upstream the gateway actually routed to."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.gateway_service_name}\"",
+    "jsonPayload.message=\"gateway.request\"",
+    # Health checks are answered before routing, so they carry no upstream and would appear as a large
+    # unlabelled series. Uptime probes alone are six polls a minute -- enough to swamp real traffic on a
+    # per-feature chart and make the application look busier than it is.
+    "NOT jsonPayload.path=\"/gateway-health\"",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    unit         = "1"
+    display_name = "Gateway requests by feature"
+
+    labels {
+      key         = "feature"
+      value_type  = "STRING"
+      description = "Upstream the gateway routed to: tenant, student, identity, fee, billing, reporting, attendance, catalog, firefighting or workflow."
+    }
+
+    labels {
+      key         = "status_class"
+      value_type  = "STRING"
+      description = "HTTP status class: 2, 3, 4 or 5."
+    }
+
+    labels {
+      key         = "method"
+      value_type  = "STRING"
+      description = "HTTP method."
+    }
+  }
+
+  # upstreamService is the gateway's OWN routing decision, not a guess parsed from the path. Deriving
+  # the feature from the URL would be wrong here: every real API call is /api/v1/... regardless of which
+  # domain serves it, so a path-prefix label would collapse the entire application into one bucket.
+  label_extractors = {
+    feature = "EXTRACT(jsonPayload.upstreamService)"
+    # Bucketing to a class keeps cardinality bounded; the exact code stays in the logs for triage.
+    status_class = "REGEXP_EXTRACT(jsonPayload.status, \"^([0-9])\")"
+    method       = "EXTRACT(jsonPayload.method)"
+  }
+}
+
+resource "google_logging_metric" "gateway_latency_by_feature" {
+  project     = var.project
+  name        = "custoking/${var.env}/gateway_latency_by_feature"
+  description = "Distribution of gateway-measured request duration in milliseconds, labelled by upstream."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.gateway_service_name}\"",
+    "jsonPayload.message=\"gateway.request\"",
+    "jsonPayload.durationMs:*",
+    "NOT jsonPayload.path=\"/gateway-health\"",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "ms"
+    display_name = "Gateway latency by feature"
+
+    labels {
+      key         = "feature"
+      value_type  = "STRING"
+      description = "Upstream the gateway routed to."
+    }
+  }
+
+  # durationMs is already numeric in the payload, so this needs no parsing. Note it is the GATEWAY's
+  # view of the request, which includes upstream time plus gateway overhead -- that is what a user
+  # experiences, and it is the number worth alerting on.
+  value_extractor = "EXTRACT(jsonPayload.durationMs)"
+
+  label_extractors = {
+    feature = "EXTRACT(jsonPayload.upstreamService)"
+  }
+
+  bucket_options {
+    exponential_buckets {
+      num_finite_buckets = 20
+      growth_factor      = 2
+      scale              = 1
+    }
+  }
+}
+
+resource "google_logging_metric" "session_active_users" {
+  project     = var.project
+  name        = "custoking/${var.env}/session_active_users"
+  description = "Distinct users holding an unexpired ACTIVE session, from identity-service health logs."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.identity_service_name}\"",
+    "jsonPayload.health.sessions.activeUsers:*",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Active users"
+  }
+
+  value_extractor = "EXTRACT(jsonPayload.health.sessions.activeUsers)"
+
+  bucket_options {
+    explicit_buckets {
+      bounds = var.async_count_metric_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "session_active_sessions" {
+  project     = var.project
+  name        = "custoking/${var.env}/session_active_sessions"
+  description = "Unexpired ACTIVE sessions. Exceeds active users when one person is signed in on several devices."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.identity_service_name}\"",
+    "jsonPayload.health.sessions.activeSessions:*",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Active sessions"
+  }
+
+  value_extractor = "EXTRACT(jsonPayload.health.sessions.activeSessions)"
+
+  bucket_options {
+    explicit_buckets {
+      bounds = var.async_count_metric_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "session_logins_recent" {
+  project     = var.project
+  name        = "custoking/${var.env}/session_logins_recent"
+  description = "Sessions created in the last 15 minutes, as a live sign-in rate."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.identity_service_name}\"",
+    "jsonPayload.health.sessions.loginsLast15m:*",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Logins in last 15 minutes"
+  }
+
+  value_extractor = "EXTRACT(jsonPayload.health.sessions.loginsLast15m)"
+
+  bucket_options {
+    explicit_buckets {
+      bounds = var.async_count_metric_buckets
+    }
+  }
+}
