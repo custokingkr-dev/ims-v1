@@ -513,3 +513,118 @@ resource "google_logging_metric" "session_logins_recent" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------------------------------
+# Platform business counts (product dashboard)
+#
+# Emitted by school-core-service, which owns both the tenant_school and student schemas. It counts across
+# every tenant deliberately -- "how many schools are on the platform" belongs to the platform, not to any
+# one school -- which is why the reporter carries an explicit RLS bypass. Without it the runtime role sees
+# zero, and the charts would show an empty platform with no error anywhere.
+# ---------------------------------------------------------------------------------------------------
+
+locals {
+  school_core_service_name = "custoking-school-core-service-${var.env}"
+
+  # Dense where exactness matters, coarse where only the trend does. Half-integer bounds mean an integer N
+  # falls mid-bucket, so a percentile recovers it rather than reporting the bucket edge.
+  count_gauge_buckets = concat(
+    [for i in range(0, 31) : i + 0.5],        # 0.5 .. 30.5  step 1
+    [for i in range(16, 51) : i * 2 + 0.5],   # 32.5 .. 100.5 step 2
+    [for i in range(11, 51) : i * 10 + 0.5],  # 110.5 .. 500.5 step 10
+    [for i in range(11, 41) : i * 50 + 0.5],  # 550.5 .. 2000.5 step 50
+    [for i in range(11, 51) : i * 200 + 0.5], # 2200.5 .. 10000.5 step 200
+  )
+}
+
+resource "google_logging_metric" "platform_schools" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_schools"
+  description = "Schools provisioned on the platform."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.schools:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Schools"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.schools)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "platform_schools_with_students" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_schools_with_students"
+  description = "Schools that actually hold students. Reach rather than inventory -- the gap against total schools is provisioned-but-unused."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.schoolsWithStudents:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Schools with students"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.schoolsWithStudents)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "platform_students" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_students"
+  description = "Live students, excluding soft-deleted records."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.studentsLive:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Students"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.studentsLive)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "platform_sections" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_sections"
+  description = "Class sections configured across all schools."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.sections:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Sections"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.sections)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}

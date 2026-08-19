@@ -375,3 +375,17 @@ variable "cost_metric_scope_project" {
   type        = string
   default     = ""
 }
+
+variable "count_gauge_bucket_max" {
+  description = <<-DESC
+    Upper bound for business-count gauge buckets.
+
+    Log-based metrics cannot carry an exact gauge, only a distribution read through a percentile, and a
+    percentile is interpolated WITHIN its bucket. Precision is therefore a property of the bucket layout,
+    not of the data. These bounds are dense at the low end -- half-integers to 30, where counts like
+    "schools: 11" must be exact -- and coarsen with magnitude, where a trend matters more than a unit.
+    At the current student count the worst-case error is under two percent.
+  DESC
+  type        = number
+  default     = 10000
+}
