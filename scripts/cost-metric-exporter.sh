@@ -19,6 +19,15 @@ set -euo pipefail
 PROJECT="${COST_METRIC_PROJECT:?COST_METRIC_PROJECT is required}"
 DATASET="${COST_METRIC_DATASET:-billing_export}"
 
+# Three separate concerns, because they are genuinely three different projects in the general case.
+#
+# A billing account exports to exactly ONE dataset, so environments sharing an account cannot each own
+# their own export -- custoking-dev and custoking-prod share account 014C0A, and the export lands in
+# custoking-prod. Dev therefore READS from prod's dataset, FILTERS to its own project, and PUBLISHES its
+# metric into its own project so its dashboard is self-contained.
+BQ_PROJECT="${COST_METRIC_BQ_PROJECT:-$PROJECT}"           # where the billing export dataset lives
+PUBLISH_PROJECT="${COST_METRIC_PUBLISH_PROJECT:-$PROJECT}" # where the custom metric is written
+
 # Which project's spend to report. Defaults to the project publishing the metric, because a dashboard in
 # custoking-prod must show what custoking-prod costs -- not whatever else happens to share the billing
 # export. Without this filter the export is summed across every project it covers, and prod's dashboard
@@ -26,11 +35,11 @@ DATASET="${COST_METRIC_DATASET:-billing_export}"
 #
 # Set to "*" for a cumulative view across every project in the export; the metric is then labelled per
 # project so one series exists for each.
-SCOPE="${COST_METRIC_SCOPE_PROJECT:-$PROJECT}"
+SCOPE="${COST_METRIC_SCOPE_PROJECT:-$PUBLISH_PROJECT}"  # whose spend to report; "*" for all
 
-echo "scope: ${SCOPE}"
+echo "read=${BQ_PROJECT}.${DATASET}  scope=${SCOPE}  publish=${PUBLISH_PROJECT}"
 
-echo "querying ${PROJECT}.${DATASET}.gcp_billing_export_v1_*"
+
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
 # history because free-trial credit covered it, hiding the real consumption that becomes payable the
@@ -46,13 +55,13 @@ SELECT
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH), cost, 0)), 4) AS gross_mtd,
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH),
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd
-FROM \`${PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
+FROM \`${BQ_PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
   AND ("${SCOPE}" = "*" OR project.id = "${SCOPE}")
 GROUP BY 1, 2, 3
 SQL
 
-ROWS=$(bq query --project_id="${PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
+ROWS=$(bq query --project_id="${BQ_PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
 
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
   # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its
@@ -131,7 +140,7 @@ for row in rows:
           + ", mtd gross=" + str(row["gross_mtd"]) + " net=" + str(row["net_mtd"]))
 PUBLISHER_EOF
 
-printf '%s' "${ROWS}" | python3 "${PUBLISHER}" "${PROJECT}" "${NOW}"
+printf '%s' "${ROWS}" | python3 "${PUBLISHER}" "${PUBLISH_PROJECT}" "${NOW}"
 
 # Deployed as Cloud Run job `ims-cost-metric-prod` in custoking-prod/asia-south2, running as
 # cost-metric-exporter@custoking-prod (bigquery.jobUser, bigquery.dataViewer, monitoring.metricWriter),
