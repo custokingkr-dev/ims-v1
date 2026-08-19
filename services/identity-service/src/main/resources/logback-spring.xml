@@ -9,6 +9,13 @@
                 <threadName/>
                 <mdc/>
                 <message/>
+                <!-- Emits SLF4J structured arguments (StructuredArguments.kv) as real JSON fields rather
+                     than rendering them into the message text. Without this, `kv("health", map)` appears
+                     only inside the message string, so log-based metrics extracting
+                     jsonPayload.health.* match nothing and sit permanently empty with no error. The
+                     outbox and notification-inbox metrics were defined against those fields and had
+                     never collected a single point until this was added. -->
+                <arguments/>
                 <stackTrace/>
                 <pattern>
                     <pattern>{"service":"${serviceName}"}</pattern>
