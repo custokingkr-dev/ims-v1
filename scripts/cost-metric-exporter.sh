@@ -61,7 +61,11 @@ WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
 GROUP BY 1, 2, 3
 SQL
 
-ROWS=$(bq query --project_id="${BQ_PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
+# The query job runs in the PUBLISHING project, not the one holding the data. The table is fully
+# qualified either way, so this only decides which project is billed for the query and which needs
+# bigquery.jobUser -- and that should be the project whose service account is running, otherwise every
+# environment needs job-running rights on the project that happens to own the export.
+ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
 
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
   # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its

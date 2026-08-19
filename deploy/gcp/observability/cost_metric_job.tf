@@ -73,6 +73,21 @@ resource "google_cloud_run_v2_job" "cost_metric_exporter" {
         }
 
         env {
+          name  = "COST_METRIC_BQ_PROJECT"
+          value = var.cost_metric_bq_project != "" ? var.cost_metric_bq_project : var.project
+        }
+
+        env {
+          name  = "COST_METRIC_SCOPE_PROJECT"
+          value = var.cost_metric_scope_project != "" ? var.cost_metric_scope_project : var.project
+        }
+
+        env {
+          name  = "COST_METRIC_PUBLISH_PROJECT"
+          value = var.project
+        }
+
+        env {
           name  = "SCRIPT_B64"
           value = local.cost_metric_script
         }
@@ -116,4 +131,15 @@ resource "google_cloud_scheduler_job" "cost_metric_exporter" {
   }
 
   depends_on = [google_cloud_run_v2_job_iam_member.cost_metric_scheduler_invoker]
+}
+
+# When the export lives in another project, this identity needs to read it there. Scoped to the one
+# dataset rather than granting project-wide BigQuery access.
+resource "google_bigquery_dataset_iam_member" "cost_metric_cross_project_reader" {
+  count = (var.enable_cost_metric_export && var.cost_metric_bq_project != "" && var.cost_metric_bq_project != var.project) ? 1 : 0
+
+  project    = var.cost_metric_bq_project
+  dataset_id = "billing_export"
+  role       = "roles/bigquery.dataViewer"
+  member     = "serviceAccount:${google_service_account.cost_metric_exporter[0].email}"
 }

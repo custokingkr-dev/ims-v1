@@ -358,3 +358,20 @@ variable "gauge_metric_buckets" {
     20.5, 25.5, 30.5, 50.5, 100.5, 250.5, 500.5, 1000.5,
   ]
 }
+
+variable "cost_metric_bq_project" {
+  description = <<-DESC
+    Project holding the BigQuery billing export. Defaults to this project.
+
+    A billing account exports to exactly one dataset, so environments sharing an account cannot each own
+    one. Dev points this at the project that does own the export and filters to itself.
+  DESC
+  type        = string
+  default     = ""
+}
+
+variable "cost_metric_scope_project" {
+  description = "Project whose spend to report. Empty means this project. \"*\" reports every project in the export as separate labelled series, for a cumulative view."
+  type        = string
+  default     = ""
+}
