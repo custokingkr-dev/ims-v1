@@ -111,6 +111,17 @@ export const PANELS = [
     format: "ms",
   },
   {
+    id: "requests_by_tenant",
+    group: "usage",
+    title: "Requests by school",
+    note: "The question every other number here was unable to answer. Renders as 'never reported' until a release carries the gateway change that adds schoolId to the request log.",
+    filter: `metric.type="${L("gateway_requests_by_tenant")}"`,
+    ...COUNT,
+    groupBy: ["metric.label.school_id"],
+    kind: "breakdown",
+    format: "int",
+  },
+  {
     id: "requests_total",
     group: "usage",
     title: "Total request volume",
