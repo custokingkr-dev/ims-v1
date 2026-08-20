@@ -62,6 +62,20 @@ variable "service_health_paths" {
   default     = {}
 }
 
+variable "uptime_content_matchers" {
+  description = <<-DESC
+    Optional response-body substring per logical service, defaulting to "UP".
+
+    "UP" is the Spring Boot Actuator convention and is right for the six backends. The frontend is
+    nginx serving a single-page app, so until its /healthz route ships it has no endpoint that
+    returns "UP" -- and its catch-all returns index.html with a 200 for every unknown path, which
+    means a status-code-only check would pass no matter what. Matching a string from the real
+    document is the honest check: it proves nginx served the application shell, not just a socket.
+  DESC
+  type        = map(string)
+  default     = {}
+}
+
 variable "uptime_authenticated_services" {
   description = "Whether each uptime check should use Monitoring service-agent OIDC authentication."
   type        = map(bool)

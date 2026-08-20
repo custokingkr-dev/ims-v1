@@ -11,10 +11,10 @@ locals {
 
   default_health_paths = {
     api-gateway = "/gateway-health"
-    # nginx, not Spring Boot -- there is no /actuator/health. Measured: /health answers in ~60ms,
-    # while / is a full SPA fetch that cold-starts in over five seconds and would trip the uptime
-    # timeout on a scaled-to-zero service.
-    frontend = "/health"
+    # nginx, not Spring Boot -- there is no /actuator/health, and until /healthz ships every unknown
+    # path returns index.html with a 200 via try_files. So probe the real document and match on its
+    # content instead: measured at 42ms warm and 5.2s on a cold start, inside the 10s timeout.
+    frontend = "/"
   }
 
   default_max_instances_by_service = {
@@ -37,6 +37,10 @@ locals {
 
   service_health_paths = {
     for service in var.services : service => lookup(var.service_health_paths, service, lookup(local.default_health_paths, service, "/actuator/health"))
+  }
+
+  service_uptime_content = {
+    for service in var.services : service => lookup(var.uptime_content_matchers, service, "UP")
   }
 
   service_max_instances = {
@@ -94,6 +98,7 @@ locals {
       display_name   = local.service_display_names[service]
       host           = local.service_hosts[service]
       health_path    = local.service_health_paths[service]
+      content_match  = local.service_uptime_content[service]
       authenticated  = local.uptime_authenticated_services[service]
     }
     if contains(keys(local.service_hosts), service)
