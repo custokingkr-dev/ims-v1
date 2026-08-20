@@ -82,6 +82,34 @@ variable "uptime_authenticated_services" {
   default     = {}
 }
 
+variable "manage_billing_budget" {
+  description = "Whether this root creates a Cloud Billing budget for its environment's project."
+  type        = bool
+  default     = false
+}
+
+variable "billing_account_id" {
+  description = "Billing account the environment's project bills to, without the billingAccounts/ prefix."
+  type        = string
+  default     = ""
+}
+
+variable "monthly_budget_inr" {
+  description = <<-DESC
+    Monthly budget in INR for this environment's project.
+
+    Not a target and not a cap -- a tripwire. The measured zero-user floor for the whole platform is
+    about INR 4,450/month, of which prod is roughly INR 3,832 and 81.5% of that is one Cloud SQL
+    instance whose daily cost has a coefficient of variation of zero. So a normal month is close to
+    flat, and any real movement is either genuine growth or a defect.
+
+    The default leaves headroom over that floor while still firing well before a runaway becomes
+    expensive. Raise it deliberately when real load arrives rather than when it alerts.
+  DESC
+  type        = number
+  default     = 6000
+}
+
 variable "enable_alert_notifications" {
   description = <<-DESC
     Whether alert policies in this environment notify anyone at all.
