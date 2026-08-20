@@ -125,6 +125,31 @@ variable "uptime_failure_checker_quorum" {
   default     = 2
 }
 
+variable "enable_shared_dashboard" {
+  description = "Whether to run the shared owner/ops dashboard on Cloud Run behind IAP."
+  type        = bool
+  default     = false
+}
+
+variable "dashboard_image" {
+  description = "Fully-qualified image for the dashboard service."
+  type        = string
+  default     = ""
+}
+
+variable "dashboard_viewers" {
+  description = <<-DESC
+    IAM members allowed to open the dashboard, as `user:name@example.com` or `group:...`.
+
+    IAP checks Google identity before a request reaches the container, so granting access is an IAM
+    change rather than an account in the application. There are no passwords to manage and no session
+    handling to get wrong -- which is the main reason to put IAP in front of it rather than build a
+    login.
+  DESC
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_aggregate_error_alert" {
   description = <<-DESC
     Whether to run a single aggregate server-error alert in place of seven per-service ones.

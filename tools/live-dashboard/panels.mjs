@@ -317,3 +317,33 @@ export const SERVICES = [
   "identity-service", "school-core-service", "operations-service",
   "platform-service", "billing-service", "api-gateway", "frontend",
 ].map(svc);
+
+// ---------------------------------------------------------------------------------------------------
+// Audience
+//
+// Two pages from one service, and the split is by CONTENT not layout. Audience is the one axis that
+// genuinely changes dashboard design: a strategic view wants a static snapshot and simple displays, an
+// operational view wants near-real-time and needs to grab attention. Google's SRE guidance puts it in a
+// sentence -- "high-level management may want to view quite different information than SREs".
+//
+// A page that serves both gets scanned by neither: the person asking "did adoption move this week" and
+// the person asking "why is p99 up" ignore each other's panels.
+//
+// The owner view deliberately favours ABSOLUTE COUNTS over percentages. "Three people hit an error
+// yesterday" lands where "99.7% availability" does not, and at roughly 600 real requests a day a
+// percentage is dominated by whichever handful of requests happened to arrive.
+export const AUDIENCE = {
+  owner: [
+    "cost_mtd", "cost_yesterday", "cost_net_mtd",
+    "schools", "schools_live", "students", "sections",
+    "active_users", "logins_recent",
+    "requests_by_tenant", "requests_by_feature", "errors_5xx",
+  ],
+  ops: [
+    "active_users", "active_sessions", "logins_recent", "errors_5xx",
+    "requests_by_feature", "latency_by_feature", "requests_total", "requests_by_tenant",
+    "outbox_pending", "outbox_dead", "outbox_age", "inbox_backlog", "inbox_dead",
+    "instances", "cold_starts", "sql_cpu", "sql_conns",
+    "cost_mtd",
+  ],
+};

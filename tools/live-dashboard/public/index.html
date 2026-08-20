@@ -167,7 +167,7 @@ footer {
 
 <header>
   <div>
-    <h1>Custoking, live</h1>
+    <h1 id="title">Custoking, live</h1>
     <div class="sub" id="sub">connecting…</div>
   </div>
   <div class="controls">
@@ -385,10 +385,13 @@ function render(data) {
     `${data.panels.filter((p) => p.state === "live" || p.state === "zero").length}/${data.panels.length} panels reporting`;
 }
 
+// The path decides the audience: /owner and /ops serve the same document with different panels.
+const AUDIENCE = location.pathname.replace(/^\/+|\/+$/g, "") || "all";
+
 async function refresh() {
   const win = $("window").value;
   try {
-    const res = await fetch(`/api/snapshot?window=${win}`);
+    const res = await fetch(`/api/snapshot?window=${win}&audience=${encodeURIComponent(AUDIENCE)}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
     render(data);
@@ -401,6 +404,10 @@ async function refresh() {
   }
 }
 
+{
+  const t = { owner: "Custoking — business", ops: "Custoking — operations" }[AUDIENCE];
+  if (t) { document.title = t; $("title").textContent = t; }
+}
 $("window").addEventListener("change", refresh);
 $("theme").addEventListener("click", () => {
   const now = document.documentElement.getAttribute("data-theme");

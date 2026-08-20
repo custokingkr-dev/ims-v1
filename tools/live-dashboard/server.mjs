@@ -32,7 +32,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { PANELS, GROUPS } from "./panels.mjs";
+import { PANELS, GROUPS, AUDIENCE } from "./panels.mjs";
 import { COST_INPUTS, estimateDailyInr } from "./cost.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -273,7 +273,10 @@ async function estimateCost(token) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
-  if (url.pathname === "/" || url.pathname === "/index.html") {
+  // Two audiences, one document. The page reads its own path and asks the API for that subset, which
+  // keeps a single template rather than two that drift apart.
+  if (url.pathname === "/owner" || url.pathname === "/ops" ||
+      url.pathname === "/" || url.pathname === "/index.html") {
     const html = fs.readFileSync(path.join(HERE, "public", "index.html"), "utf8");
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(html);
@@ -283,8 +286,14 @@ const server = http.createServer(async (req, res) => {
     const windowMinutes = Math.min(10080, Math.max(15, Number(url.searchParams.get("window") || 180)));
     try {
       const token = await accessToken();
+      const audience = url.searchParams.get("audience");
+      const allowed = AUDIENCE[audience];
+      // An unknown or absent audience returns everything rather than nothing. A dashboard that renders
+      // empty because of a typo in a query string looks exactly like a dashboard whose backend is down.
+      const selected = allowed ? PANELS.filter((p) => allowed.includes(p.id)) : PANELS;
+
       const [panels, cost] = await Promise.all([
-        Promise.all(PANELS.map((p) => fetchPanel(p, token, windowMinutes))),
+        Promise.all(selected.map((p) => fetchPanel(p, token, windowMinutes))),
         estimateCost(token).catch(() => null),
       ]);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
@@ -293,6 +302,7 @@ const server = http.createServer(async (req, res) => {
         windowMinutes,
         generatedAt: new Date().toISOString(),
         groups: GROUPS,
+        audience: url.searchParams.get("audience") || "all",
         panels,
         cost,
       }));
