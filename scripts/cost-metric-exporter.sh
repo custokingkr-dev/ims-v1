@@ -84,7 +84,32 @@ if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
   # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its
   # first table appears, which can take a day. Exiting non-zero here would produce a job that alerts every
   # hour about a condition nobody can act on.
-  echo "no billing rows in range yet; nothing to publish"
+  #
+  # But "legitimate" is not the same as "fine", and the difference is diagnosable. This job ran hourly and
+  # reported success for 19 hours while publishing nothing, because the scope filter matched zero rows and
+  # both cases took this same silent branch. The cost panels sat on stale data and the exit code said 0.
+  # So before exiting, establish WHICH empty this is -- the export has produced nothing at all, or it has
+  # produced data that this scope excludes. Those need completely different fixes.
+  DIAG=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=csv --quiet "
+    SELECT _TABLE_SUFFIX AS billing_account,
+           IFNULL(project.id, '(unattributed)') AS project_id,
+           COUNT(*) AS rows_62d,
+           CAST(MAX(DATE(usage_start_time)) AS STRING) AS newest_usage
+    FROM \`${BQ_PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
+    WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
+    GROUP BY 1, 2 ORDER BY 3 DESC" 2>/dev/null || echo "")
+
+  if [ -z "${DIAG}" ] || [ "$(printf '%s' "${DIAG}" | wc -l)" -le 1 ]; then
+    echo "WARNING: the billing export dataset ${BQ_PROJECT}.${DATASET} contains NO rows for ANY project" >&2
+    echo "         in the last 62 days. This is not 'no data yet for us' -- the export itself is producing" >&2
+    echo "         nothing. Check that the billing account has an active BigQuery export configured, and" >&2
+    echo "         note that a newly enabled export does not backfill." >&2
+  else
+    echo "WARNING: the export HAS data, but none of it matches scope='${SCOPE}'. Spend for this project is" >&2
+    echo "         not being published and the dashboard will show stale figures. What the export holds:" >&2
+    printf '%s
+' "${DIAG}" | sed 's/^/           /' >&2
+  fi
   exit 0
 fi
 

@@ -44,6 +44,17 @@ REQUIRED_METRICS=(
   "custoking/${ENVIRONMENT}/session_active_users"
 )
 
+# Custom metrics carry a different type prefix, which is the only reason they are listed separately.
+#
+# Their absence from this list cost exactly what the script exists to prevent. The cost exporter ran
+# hourly, exited 0, and published nothing for nineteen hours -- because its BigQuery scope matched no
+# rows and the empty case took the same silent branch as "not ready yet". This script passed clean
+# throughout. A liveness assertion covering four of five pipelines certifies the wrong thing.
+REQUIRED_CUSTOM_METRICS=(
+  "custom.googleapis.com/custoking/cost/gross_month_to_date"
+  "custom.googleapis.com/custoking/cost/gross_yesterday"
+)
+
 # Resolve a JSON interpreter BEFORE querying anything, and prove it works.
 #
 # This block exists because of a real false alarm. On Windows, `python3` resolves to a Microsoft Store
@@ -77,23 +88,29 @@ echo "asserting telemetry liveness in ${PROJECT} over the last ${WINDOW_HOURS}h"
 echo
 
 failures=0
-for metric in "${REQUIRED_METRICS[@]}"; do
+
+# Both families are asserted identically; only the type prefix differs.
+ALL_METRICS=()
+for m in "${REQUIRED_METRICS[@]}"; do ALL_METRICS+=("logging.googleapis.com/user/${m}"); done
+for m in "${REQUIRED_CUSTOM_METRICS[@]}"; do ALL_METRICS+=("${m}"); done
+
+for metric in "${ALL_METRICS[@]}"; do
   count=$(curl -s -G \
     -H "Authorization: Bearer ${TOKEN}" \
-    --data-urlencode "filter=metric.type=\"logging.googleapis.com/user/${metric}\"" \
+    --data-urlencode "filter=metric.type=\"${metric}\"" \
     --data-urlencode "interval.startTime=${START}" \
     --data-urlencode "interval.endTime=${END}" \
     "https://monitoring.googleapis.com/v3/projects/${PROJECT}/timeSeries" \
     | "${PY_BIN}" -c "import sys,json; print(len(json.load(sys.stdin).get('timeSeries',[])))" 2>/dev/null || echo "ERR")
 
   if [ "${count}" = "ERR" ]; then
-    printf '  %-56s QUERY FAILED\n' "${metric}"
+    printf '  %-58s QUERY FAILED\n' "${metric##*/custoking/}"
     failures=$((failures + 1))
   elif [ "${count}" = "0" ]; then
-    printf '  %-56s NO DATA\n' "${metric}"
+    printf '  %-58s NO DATA\n' "${metric##*/custoking/}"
     failures=$((failures + 1))
   else
-    printf '  %-56s ok (%s series)\n' "${metric}" "${count}"
+    printf '  %-58s ok (%s series)\n' "${metric##*/custoking/}" "${count}"
   fi
 done
 
@@ -116,4 +133,4 @@ MSG
   exit 1
 fi
 
-echo "all ${#REQUIRED_METRICS[@]} required metrics are reporting"
+echo "all ${#ALL_METRICS[@]} required metrics are reporting"
