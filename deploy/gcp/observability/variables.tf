@@ -110,6 +110,61 @@ variable "monthly_budget_inr" {
   default     = 6000
 }
 
+variable "uptime_failure_checker_quorum" {
+  description = <<-DESC
+    How many uptime checker regions must fail before an incident opens.
+
+    Was effectively 1, which contradicts Google's documented default of "at least two regions" and their
+    warning that a single checker failing "might be the result of the checker's command timing out due
+    to a network issue". Each checker location is a separate time series and there is no cross-series
+    reducer, so one region having a bad minute paged.
+
+    Six checkers probe each service, so two is still fast and sensitive: a real outage fails all six.
+  DESC
+  type        = number
+  default     = 2
+}
+
+variable "enable_aggregate_error_alert" {
+  description = <<-DESC
+    Whether to run a single aggregate server-error alert in place of seven per-service ones.
+
+    The per-service policies are ratio conditions over run.googleapis.com/request_count, which includes
+    uptime-probe traffic -- roughly 3,456 synthetic requests a day against 600 real ones. They largely
+    measure the prober. This counts real 5xx from the gateway's own request log, which already excludes
+    /gateway-health.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "aggregate_5xx_threshold" {
+  description = <<-DESC
+    Real server errors in a 15-minute window before alerting.
+
+    An absolute count, not a rate, and that is the point. At roughly 600 real requests a day a ratio is
+    dominated by whichever handful arrived: overnight a five-minute window can hold two requests, so one
+    failure reads as a 50% error rate. Five real errors is five real people, regardless of denominator.
+  DESC
+  type        = number
+  default     = 4
+}
+
+variable "enable_per_service_error_notifications" {
+  description = <<-DESC
+    Whether the per-service 5xx, latency and saturation policies notify, or exist only as dashboards.
+
+    Defaults to false once the aggregate alert is on. They stay as objects because their charts remain
+    useful for narrowing down a problem after the aggregate has told you there IS one -- but seven
+    emails for one upstream failure is how an inbox becomes something you filter rather than read.
+
+    The latency ones are the weakest of the three: with min-instances at zero and Spring Boot cold
+    starts, a 2s p95 threshold largely measures cold starts rather than user pain.
+  DESC
+  type        = bool
+  default     = true
+}
+
 variable "enable_product_liveness_check" {
   description = <<-DESC
     Whether to run the school-hours product liveness check.

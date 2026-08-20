@@ -2,6 +2,10 @@
 
 Procedures for operators managing the current Custoking IMS split-service production environment.
 
+> **Woken by an alert? Read [`runbooks/3am.md`](runbooks/3am.md) first — not this file.**
+> It is one page, and its first section is the decision about whether you should be awake at all. This
+> document assumes an operator who is thinking clearly; that one does not.
+
 ## 1. Health Checks
 
 ### Public Gateway

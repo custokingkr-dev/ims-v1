@@ -4,7 +4,7 @@ resource "google_monitoring_alert_policy" "service_5xx_rate" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-5xx-rate"
   combiner              = "OR"
-  notification_channels = local.effective_notification_channel_ids
+  notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "ERROR"
 
   conditions {
@@ -53,7 +53,7 @@ resource "google_monitoring_alert_policy" "service_p95_latency" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-p95-latency"
   combiner              = "OR"
-  notification_channels = local.effective_notification_channel_ids
+  notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "WARNING"
 
   conditions {
@@ -95,7 +95,7 @@ resource "google_monitoring_alert_policy" "service_instance_saturation" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-max-instance-saturation"
   combiner              = "OR"
-  notification_channels = local.effective_notification_channel_ids
+  notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "WARNING"
 
   conditions {
@@ -154,14 +154,24 @@ resource "google_monitoring_alert_policy" "uptime_failure" {
         per_series_aligner = "ALIGN_FRACTION_TRUE"
       }
 
+      # TWO checkers must fail, not one.
+      #
+      # Each checker LOCATION is its own time series, and there is no cross-series reducer here, so
+      # `count = 1` meant any single region seeing a failure opened an incident. Google's own
+      # documentation sets the default at "at least two regions" and warns that one checker failing
+      # "might be the result of the checker's command timing out due to a network issue" -- i.e. a
+      # property of the internet between Iowa and Delhi, not of the service.
+      #
+      # Six checkers probe each service, so requiring two is still a fast, sensitive signal for a real
+      # outage: if the service is actually down, all six fail together.
       trigger {
-        count = 1
+        count = var.uptime_failure_checker_quorum
       }
     }
   }
 
   documentation {
-    content   = "The health endpoint uptime check is failing for ${local.service_names[each.key]}. Confirm Cloud Run revision readiness and invoke the health endpoint with the operator identity."
+    content   = "The health endpoint uptime check is failing for ${local.service_names[each.key]} from at least ${var.uptime_failure_checker_quorum} checker regions. Confirm Cloud Run revision readiness and invoke the health endpoint with the operator identity."
     mime_type = "text/markdown"
   }
 
