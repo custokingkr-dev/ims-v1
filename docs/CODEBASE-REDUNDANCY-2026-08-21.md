@@ -65,7 +65,29 @@ The whole outbox cluster (`OutboxRelayTriggerController`, `OutboxPublisherConfig
 `OutboxPublisherStartupCheck`, `OutboxAsyncHealthReporter`, `PubSubDomainEventPublisher`,
 `LoggingDomainEventPublisher`, plus tests) is replicated across billing, operations and school-core.
 
-### Why this was not fixed here
+### Guarded instead of extracted
+
+A shared module is the right end state and is **not** a safe change to make casually, for a reason that
+only surfaced on inspection: **there is no aggregator pom.** Each service is an independent Maven
+project parented to `spring-boot-starter-parent`, and each Docker build context is *its own directory*,
+with the Dockerfile resolving dependencies from Maven Central. So a shared module must be published to a
+Maven registry, with credentials available inside the Docker build, versioned, and ordered ahead of
+every service in CI. That is surgery on the release path — the same path that carries a manual
+production approval gate.
+
+So the duplication stays and `scripts/check-duplicate-class-drift.py` stops it drifting. It runs on
+every PR and fails if any of the seven currently-identical classes stops matching its copies. That takes
+the real value at a fraction of the risk: the danger was never the 636 lines, it was a fix landing in
+one copy and silently leaving four services on the old behaviour.
+
+Only the already-identical classes are guarded. The eighteen diverged ones are left alone deliberately —
+locking them together would force artificial uniformity on services with genuinely different needs, as
+billing-service's operator-free `TenantScope` demonstrates.
+
+Verified in both directions: the check passes clean, and fails when a copy is perturbed. A check that
+only ever passes is one nobody can trust.
+
+### If the shared module is ever done anyway
 
 Extracting a shared module touches five Maven modules and the build. It is the right change, and it is
 not one to make at the end of a long session without running the full test suite. The sequencing that
