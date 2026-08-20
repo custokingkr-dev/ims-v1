@@ -19,6 +19,13 @@ resource "google_logging_project_sink" "compliance_india" {
   # Keep complete Cloud Run request logs, errors, explicit security/audit application
   # events, and Google Cloud audit logs. The short-lived _Default bucket remains useful
   # for broader operational logs without multiplying long-retention storage cost.
+  #
+  # gateway.request is listed explicitly because it does not match anything else here. It is an
+  # INFO-severity application log on stdout, not a `run.googleapis.com/requests` entry, so before this
+  # line it landed ONLY in _Default -- global location, 30-day retention. Now that it carries schoolId
+  # and userId that is the wrong bucket on both counts: DPDP Rules 6(1)(e) and 8(3) require logs of
+  # processing personal data be retained a minimum of one year, and CERT-In requires 180 days held
+  # within Indian jurisdiction.
   filter = <<-EOT
     log_id("cloudaudit.googleapis.com/activity") OR
     log_id("cloudaudit.googleapis.com/system_event") OR
@@ -26,6 +33,7 @@ resource "google_logging_project_sink" "compliance_india" {
     (resource.type="cloud_run_revision" AND resource.labels.service_name=~"custoking-.*-(dev|prod)" AND (
       log_id("run.googleapis.com/requests") OR
       severity>=ERROR OR
+      jsonPayload.message="gateway.request" OR
       jsonPayload.auditEvent:* OR
       jsonPayload.securityEvent:* OR
       textPayload=~"(?i)(authentication|authorization|login|logout|permission denied|audit)"

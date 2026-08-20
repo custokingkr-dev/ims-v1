@@ -6,10 +6,15 @@ locals {
     platform-service    = "Platform Service"
     billing-service     = "Billing Service"
     api-gateway         = "API Gateway"
+    frontend            = "Frontend"
   }
 
   default_health_paths = {
     api-gateway = "/gateway-health"
+    # nginx, not Spring Boot -- there is no /actuator/health. Measured: /health answers in ~60ms,
+    # while / is a full SPA fetch that cold-starts in over five seconds and would trip the uptime
+    # timeout on a scaled-to-zero service.
+    frontend = "/health"
   }
 
   default_max_instances_by_service = {
@@ -19,6 +24,7 @@ locals {
     platform-service    = 2
     billing-service     = 2
     api-gateway         = 3
+    frontend            = 3
   }
 
   service_names = {
@@ -38,7 +44,7 @@ locals {
   }
 
   uptime_authenticated_services = {
-    for service in var.services : service => lookup(var.uptime_authenticated_services, service, service != "api-gateway")
+    for service in var.services : service => lookup(var.uptime_authenticated_services, service, !contains(["api-gateway", "frontend"], service))
   }
 
   common_user_labels = {

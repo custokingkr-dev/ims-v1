@@ -31,6 +31,10 @@ variable "services" {
     "platform-service",
     "billing-service",
     "api-gateway",
+    # The frontend is the only thing a human actually loads in a browser, and until now it was the one
+    # Cloud Run service with no uptime check, no SLO and no error alert -- monitored by nothing while
+    # six backends were monitored six ways each.
+    "frontend",
   ]
 }
 
@@ -64,6 +68,39 @@ variable "uptime_authenticated_services" {
   default     = {}
 }
 
+variable "enable_alert_notifications" {
+  description = <<-DESC
+    Whether alert policies in this environment notify anyone at all.
+
+    Set false for dev. Dev's Cloud SQL is stopped and its services scale to zero, so most of what it
+    emits is noise about a system nobody is using -- and both environments were wired to the SAME two
+    addresses, which made a dev alert indistinguishable from a production one at a glance. Incidents
+    still open and remain visible in the console; they just cannot reach a person.
+  DESC
+  type        = bool
+  default     = true
+}
+
+variable "enable_slo_burn_notifications" {
+  description = <<-DESC
+    Whether the eight SLO burn-rate policies per environment send notifications, or exist only as
+    dashboard objects.
+
+    Defaults to false, and the arithmetic is why. A 99.5% availability goal puts the fast-burn
+    threshold at 14.4 x 0.005 = 7.2% error rate. Overnight a five-minute window holds roughly two
+    requests -- almost all of them uptime probes -- so ONE failed probe is a 50% error rate, and two
+    failures inside an hour satisfy both windows of the AND combiner. An ERROR-severity policy then
+    emails at 3am about a service no user was trying to reach.
+
+    This is Google's own documented low-traffic failure mode, not a misconfiguration: multi-window
+    burn-rate alerting assumes a request rate that makes a ratio meaningful, and roughly 600 requests
+    a day does not. The SLOs themselves stay -- the monthly error-budget number is genuinely useful.
+    Only the paging is removed.
+  DESC
+  type        = bool
+  default     = false
+}
+
 variable "enable_uptime_checks" {
   description = "Whether to create uptime checks for services whose hosts can be resolved. Keep false during cost-controlled shutdowns so probes do not wake services."
   type        = bool
@@ -87,6 +124,10 @@ variable "manage_compliance_logging" {
   default     = false
 }
 
+# NOTE: 365 is a compliance floor, not a preference. DPDP Rule 6(1)(e) requires a Data Fiduciary to
+# "retain such logs and personal data for a period of one year", and Rule 8(3) independently requires
+# "logs of the processing for a minimum period of one year". The previous default of 180 was this
+# variable's own validation floor -- i.e. the value you get by not choosing one.
 variable "compliance_log_retention_days" {
   description = "Retention for security, request, and audit logs routed to the India-resident compliance bucket."
   type        = number

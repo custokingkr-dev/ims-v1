@@ -442,6 +442,66 @@ resource "google_logging_metric" "gateway_requests_by_feature" {
   }
 }
 
+# A SEPARATE metric rather than a school_id label on the one above, deliberately.
+#
+# Adding a label to an existing log-based metric forces Terraform to REPLACE it, and a log-based metric
+# computes forward only -- it never backfills. Replacing therefore discards every point the metric has
+# ever collected, silently, with the plan reporting an ordinary "must be replaced". Given how much of
+# this project has been spent finding telemetry that was quietly empty, trading real history for a new
+# dimension is the wrong trade when both can be had for one extra metric on a log line that is already
+# being written.
+#
+# Cardinality is bounded on purpose. Cloud Monitoring caps a metric at 30,000 active time series and,
+# past that, THROTTLES SILENTLY -- "some data points might not be written to the metric", with no error.
+# school_id x feature is roughly 11 x 10 today. A userId label would project past the cap immediately,
+# which is why the gateway logs userId but nothing labels a metric with it.
+resource "google_logging_metric" "gateway_requests_by_tenant" {
+  project     = var.project
+  name        = "custoking/${var.env}/gateway_requests_by_tenant"
+  description = "Gateway request count labelled by tenant and upstream, for per-school usage and cost attribution."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.gateway_service_name}\"",
+    "jsonPayload.message=\"gateway.request\"",
+    "NOT jsonPayload.path=\"/gateway-health\"",
+    # Only authenticated requests carry a tenant. Without this the unauthenticated traffic -- probes,
+    # login attempts, token refresh -- would collapse into a single large unlabelled series and drown
+    # the eleven real ones.
+    "jsonPayload.schoolId:*",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    unit         = "1"
+    display_name = "Gateway requests by tenant"
+
+    labels {
+      key         = "school_id"
+      value_type  = "STRING"
+      description = "Tenant the request was authenticated against."
+    }
+
+    labels {
+      key         = "feature"
+      value_type  = "STRING"
+      description = "Upstream the gateway routed to."
+    }
+
+    labels {
+      key         = "status_class"
+      value_type  = "STRING"
+      description = "HTTP status class: 2, 3, 4 or 5."
+    }
+  }
+
+  label_extractors = {
+    school_id    = "EXTRACT(jsonPayload.schoolId)"
+    feature      = "EXTRACT(jsonPayload.upstreamService)"
+    status_class = "REGEXP_EXTRACT(jsonPayload.status, \"^([0-9])\")"
+  }
+}
+
 resource "google_logging_metric" "gateway_latency_by_feature" {
   project     = var.project
   name        = "custoking/${var.env}/gateway_latency_by_feature"
