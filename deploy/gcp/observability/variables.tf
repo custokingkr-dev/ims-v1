@@ -110,6 +110,21 @@ variable "monthly_budget_inr" {
   default     = 6000
 }
 
+variable "enable_product_liveness_check" {
+  description = <<-DESC
+    Whether to run the school-hours product liveness check.
+
+    Answers the one question none of the threshold policies can: can people actually USE this right
+    now. Runs as a scheduled job rather than an alert policy because the condition is time-bounded and
+    Cloud Monitoring cannot express "only during school hours" -- a cron schedule can, for free, where
+    the notification-layer alternative is a paid PagerDuty tier.
+
+    Prod only. Dev has a stopped database and no users to fail.
+  DESC
+  type        = bool
+  default     = false
+}
+
 variable "enable_cost_analysis_collector" {
   description = <<-DESC
     Whether to run the daily per-service cost collector.
