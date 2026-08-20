@@ -3,6 +3,20 @@ locals {
   notification_service_name_regex = "custoking-platform-service-${var.env}"
 }
 
+# NOTE ON THE BUCKETS BELOW
+#
+# These five carry gauges, not counts, and dashboards read them through a percentile. A percentile over a
+# distribution is INTERPOLATED WITHIN ITS BUCKET, so bucket width IS the precision of the number shown.
+# Against the old count bounds [0,1,5,10,25,...] a dead-letter count of 1 fell in [1,5) and rendered as
+# roughly 4.8: a permanently idle queue displayed as a small standing backlog. The old age bounds began
+# at 0, so a fully drained queue reported an oldest-pending age of nearly 30 seconds.
+#
+# The gauge bounds sit on half-integers, so an integer N falls mid-bucket and a percentile recovers it.
+# The fine age bounds start above zero so an empty queue reads as empty.
+#
+# Alert thresholds on these were tuned against the inflated values and will now see smaller, correct
+# numbers. They should fire less often -- that is the correction landing, not the alerting weakening.
+
 resource "google_logging_metric" "outbox_pending_count" {
   project     = var.project
   name        = "custoking/${var.env}/outbox_pending_count"
@@ -24,7 +38,7 @@ resource "google_logging_metric" "outbox_pending_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -50,7 +64,7 @@ resource "google_logging_metric" "outbox_dead_letter_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -76,7 +90,7 @@ resource "google_logging_metric" "outbox_oldest_pending_age_seconds" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_age_metric_buckets
+      bounds = var.async_age_metric_buckets_fine
     }
   }
 }
@@ -102,7 +116,7 @@ resource "google_logging_metric" "notification_inbox_backlog_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -128,7 +142,7 @@ resource "google_logging_metric" "notification_inbox_dead_letter_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -162,6 +176,13 @@ resource "google_monitoring_alert_policy" "outbox_pending" {
         count = 1
       }
     }
+  }
+
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
   }
 
   documentation {
@@ -203,6 +224,13 @@ resource "google_monitoring_alert_policy" "outbox_dead_letter" {
     }
   }
 
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
   documentation {
     content   = "Outbox dead-letter count is non-zero. Inspect the owning service logs and replay or repair the failed events before they age out."
     mime_type = "text/markdown"
@@ -240,6 +268,13 @@ resource "google_monitoring_alert_policy" "outbox_oldest_pending_age" {
         count = 1
       }
     }
+  }
+
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
   }
 
   documentation {
@@ -281,6 +316,13 @@ resource "google_monitoring_alert_policy" "notification_inbox_backlog" {
     }
   }
 
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
   documentation {
     content   = "Notification inbox backlog is above threshold. Check Pub/Sub push delivery, provider failures, and platform-service retry logs."
     mime_type = "text/markdown"
@@ -318,6 +360,13 @@ resource "google_monitoring_alert_policy" "notification_inbox_dead_letter" {
         count = 1
       }
     }
+  }
+
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
   }
 
   documentation {
@@ -390,6 +439,66 @@ resource "google_logging_metric" "gateway_requests_by_feature" {
     # Bucketing to a class keeps cardinality bounded; the exact code stays in the logs for triage.
     status_class = "REGEXP_EXTRACT(jsonPayload.status, \"^([0-9])\")"
     method       = "EXTRACT(jsonPayload.method)"
+  }
+}
+
+# A SEPARATE metric rather than a school_id label on the one above, deliberately.
+#
+# Adding a label to an existing log-based metric forces Terraform to REPLACE it, and a log-based metric
+# computes forward only -- it never backfills. Replacing therefore discards every point the metric has
+# ever collected, silently, with the plan reporting an ordinary "must be replaced". Given how much of
+# this project has been spent finding telemetry that was quietly empty, trading real history for a new
+# dimension is the wrong trade when both can be had for one extra metric on a log line that is already
+# being written.
+#
+# Cardinality is bounded on purpose. Cloud Monitoring caps a metric at 30,000 active time series and,
+# past that, THROTTLES SILENTLY -- "some data points might not be written to the metric", with no error.
+# school_id x feature is roughly 11 x 10 today. A userId label would project past the cap immediately,
+# which is why the gateway logs userId but nothing labels a metric with it.
+resource "google_logging_metric" "gateway_requests_by_tenant" {
+  project     = var.project
+  name        = "custoking/${var.env}/gateway_requests_by_tenant"
+  description = "Gateway request count labelled by tenant and upstream, for per-school usage and cost attribution."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.gateway_service_name}\"",
+    "jsonPayload.message=\"gateway.request\"",
+    "NOT jsonPayload.path=\"/gateway-health\"",
+    # Only authenticated requests carry a tenant. Without this the unauthenticated traffic -- probes,
+    # login attempts, token refresh -- would collapse into a single large unlabelled series and drown
+    # the eleven real ones.
+    "jsonPayload.schoolId:*",
+  ])
+
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "INT64"
+    unit         = "1"
+    display_name = "Gateway requests by tenant"
+
+    labels {
+      key         = "school_id"
+      value_type  = "STRING"
+      description = "Tenant the request was authenticated against."
+    }
+
+    labels {
+      key         = "feature"
+      value_type  = "STRING"
+      description = "Upstream the gateway routed to."
+    }
+
+    labels {
+      key         = "status_class"
+      value_type  = "STRING"
+      description = "HTTP status class: 2, 3, 4 or 5."
+    }
+  }
+
+  label_extractors = {
+    school_id    = "EXTRACT(jsonPayload.schoolId)"
+    feature      = "EXTRACT(jsonPayload.upstreamService)"
+    status_class = "REGEXP_EXTRACT(jsonPayload.status, \"^([0-9])\")"
   }
 }
 
@@ -510,6 +619,121 @@ resource "google_logging_metric" "session_logins_recent" {
   bucket_options {
     explicit_buckets {
       bounds = var.gauge_metric_buckets
+    }
+  }
+}
+
+# ---------------------------------------------------------------------------------------------------
+# Platform business counts (product dashboard)
+#
+# Emitted by school-core-service, which owns both the tenant_school and student schemas. It counts across
+# every tenant deliberately -- "how many schools are on the platform" belongs to the platform, not to any
+# one school -- which is why the reporter carries an explicit RLS bypass. Without it the runtime role sees
+# zero, and the charts would show an empty platform with no error anywhere.
+# ---------------------------------------------------------------------------------------------------
+
+locals {
+  school_core_service_name = "custoking-school-core-service-${var.env}"
+
+  # Dense where exactness matters, coarse where only the trend does. Half-integer bounds mean an integer N
+  # falls mid-bucket, so a percentile recovers it rather than reporting the bucket edge.
+  count_gauge_buckets = concat(
+    [for i in range(0, 31) : i + 0.5],        # 0.5 .. 30.5  step 1
+    [for i in range(16, 51) : i * 2 + 0.5],   # 32.5 .. 100.5 step 2
+    [for i in range(11, 51) : i * 10 + 0.5],  # 110.5 .. 500.5 step 10
+    [for i in range(11, 41) : i * 50 + 0.5],  # 550.5 .. 2000.5 step 50
+    [for i in range(11, 51) : i * 200 + 0.5], # 2200.5 .. 10000.5 step 200
+  )
+}
+
+resource "google_logging_metric" "platform_schools" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_schools"
+  description = "Schools provisioned on the platform."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.schools:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Schools"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.schools)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "platform_schools_with_students" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_schools_with_students"
+  description = "Schools that actually hold students. Reach rather than inventory -- the gap against total schools is provisioned-but-unused."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.schoolsWithStudents:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Schools with students"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.schoolsWithStudents)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "platform_students" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_students"
+  description = "Live students, excluding soft-deleted records."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.studentsLive:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Students"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.studentsLive)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
+    }
+  }
+}
+
+resource "google_logging_metric" "platform_sections" {
+  project     = var.project
+  name        = "custoking/${var.env}/platform_sections"
+  description = "Class sections configured across all schools."
+  filter = join(" AND ", [
+    "resource.type=\"cloud_run_revision\"",
+    "resource.labels.service_name=\"${local.school_core_service_name}\"",
+    "jsonPayload.health.platform.sections:*",
+  ])
+  metric_descriptor {
+    metric_kind  = "DELTA"
+    value_type   = "DISTRIBUTION"
+    unit         = "1"
+    display_name = "Sections"
+  }
+  value_extractor = "EXTRACT(jsonPayload.health.platform.sections)"
+  bucket_options {
+    explicit_buckets {
+      bounds = local.count_gauge_buckets
     }
   }
 }

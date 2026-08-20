@@ -1,7 +1,7 @@
 param(
   [ValidateSet("source", "dev", "prod")]
   [string]$Environment = "source",
-  [string]$ProjectId = "custoking",
+  [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
   [string]$Region = "asia-south2",
   [string]$PgStatSslEvidencePath = "",
   [ValidateRange(1, 1440)]

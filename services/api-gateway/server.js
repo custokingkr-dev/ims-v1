@@ -169,6 +169,14 @@ const server = http.createServer(async (req, res) => {
   let requestId = req.headers['x-request-id'] || randomUUID();
   let parsed = null;
   let matchedService = null;
+  // Tenant context for the request log. Set only after a principal is verified, so an unauthenticated
+  // 401 is never attributed to a school.
+  //
+  // Deliberately two scalars rather than the principal object: `principal` also carries `email`, and
+  // spreading it here would put email addresses into the _Default log bucket, which is global rather
+  // than India-resident. The two ids are what every per-tenant metric needs; the email is not.
+  let schoolId = null;
+  let userId = null;
   const startedAt = process.hrtime.bigint();
   const traceFields = currentTraceFields(req);
   const gatewaySpan = otelTrace.getTracer('api-gateway').startSpan(
@@ -212,6 +220,8 @@ const server = http.createServer(async (req, res) => {
       status: res.statusCode,
       durationMs: Math.round(durationMs),
       upstreamService: matchedService,
+      schoolId,
+      userId,
     }, traceFields);
   });
 
@@ -263,6 +273,8 @@ const server = http.createServer(async (req, res) => {
           sendJson(res, 401, { message: 'Unauthorized' });
           return;
         }
+        schoolId = principal.branchId ?? null;
+        userId = principal.userId ?? null;
         await proxy(req, res, matched, parsed, requestId, principal);
         return;
       }

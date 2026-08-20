@@ -13,7 +13,7 @@ of being found weeks later in an invoice.
 Reports gross cost. Net is meaningless while promotional credits are active.
 #>
 param(
-  [string]$ProjectId = "custoking",
+  [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
   [string]$BillingTable = "custoking.billing_export.gcp_billing_export_v1_018AC9_E669C1_2FC9B8",
   [ValidateRange(1, 90)]
   [int]$Days = 14,

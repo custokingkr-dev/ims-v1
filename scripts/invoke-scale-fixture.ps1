@@ -3,7 +3,7 @@ param(
     [string]$Action = "Status",
     [ValidateSet("dev")]
     [string]$Environment = "dev",
-    [string]$Project = "custoking",
+    [string]$Project = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "Project is required: pass -Project explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
     [string]$Region = "asia-south2",
     [string]$InstanceName = "custoking-db-dev",
     [string]$Database = "custoking_dev",

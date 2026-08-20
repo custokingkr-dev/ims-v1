@@ -314,7 +314,12 @@ bucket = "custoking-terraform-state"
 prefix = "observability/dev"
 ```
 
-Live bucket `custoking-terraform-state` exists.
+**That guidance is stale and must not be followed.** `custoking-terraform-state` lives in the
+pre-split `custoking` project, which is being deleted. Live state is per-environment, in each
+environment's own project: `custoking-prod-terraform-state` (prefix `observability/prod`) and
+`custoking-dev-terraform-state` (prefix `observability/dev`). Both the old and new buckets currently
+exist and both carry an `observability/` prefix, so pointing at the wrong one fails silently rather
+than erroring -- it reads stale state and then plans to create resources that already exist.
 
 In the current PowerShell environment, `Get-Command terraform` returned no command, so Terraform was not currently discoverable on PATH during this documentation pass.
 

@@ -1,5 +1,5 @@
 param(
-    [string]$Project = "custoking",
+    [string]$Project = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "Project is required: pass -Project explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
     [string]$Region = "asia-south2",
     [string]$HostAddress = "10.116.0.3",
     [int]$Port = 5432,

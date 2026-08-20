@@ -45,7 +45,7 @@ resource "google_monitoring_uptime_check_config" "public_service" {
   }
 
   content_matchers {
-    content = "UP"
+    content = each.value.content_match
     matcher = "CONTAINS_STRING"
   }
 
@@ -90,7 +90,7 @@ resource "google_monitoring_uptime_check_config" "authenticated_service" {
   }
 
   content_matchers {
-    content = "UP"
+    content = each.value.content_match
     matcher = "CONTAINS_STRING"
   }
 

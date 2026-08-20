@@ -68,15 +68,42 @@ The observability Terraform root creates email channels from
 `notification_email_addresses` and attaches them to all managed alert policies.
 Example production apply:
 
+State lives in the bucket **inside the environment's own project** -- `custoking-prod-terraform-state`
+for prod, `custoking-dev-terraform-state` for dev. It is not `custoking-terraform-state`: that bucket
+belongs to the pre-split project, which is being deleted. Both buckets currently exist and both carry an
+`observability/` prefix, so pointing at the wrong one does not error -- it reads stale state, and the
+resulting plan proposes creating 63 alert policies that already exist.
+
+There is no Application Default Credentials on the operator workstation, so the backend needs an
+explicit access token as well as the provider environment variable. The token expires after about an
+hour; a stale one surfaces as a 401 reading state, which looks like state loss and is not.
+
 ```powershell
+$tok = gcloud auth print-access-token
+$env:GOOGLE_OAUTH_ACCESS_TOKEN = $tok
 terraform -chdir=deploy/gcp/observability init -reconfigure `
-  -backend-config="bucket=custoking-terraform-state" `
-  -backend-config="prefix=observability/prod"
-terraform -chdir=deploy/gcp/observability apply `
-  -var="env=prod" `
-  -var='notification_email_addresses={primary="operator@example.com"}' `
-  -var="manage_compliance_logging=true"
+  -backend-config="bucket=custoking-prod-terraform-state" `
+  -backend-config="prefix=observability/prod" `
+  -backend-config="access_token=$tok"
+terraform -chdir=deploy/gcp/observability apply -var-file=custoking-prod.tfvars
 ```
+
+Anything touching Cloud Billing -- the budget resources in particular -- additionally needs the
+provider's quota project pinned, or it fails with a 403 naming a project number you will not
+recognise:
+
+```powershell
+$env:USER_PROJECT_OVERRIDE = "true"
+$env:GOOGLE_BILLING_PROJECT = "custoking-prod"
+```
+
+The same trap catches `gcloud billing` from the command line, and there it is worse because the error
+is actively misleading. gcloud takes its quota project from the gcloud core project, which is still the
+pre-split `custoking`, and that project has the Cloud Billing API disabled. The resulting message says
+`does not have permission to access billingAccounts instance`, which reads as an IAM denial and is not
+one -- this account grants `billing.budgets.create` and `billing.budgets.list` when asked with a valid
+quota project. Pass `--billing-project=custoking-prod`, or query the REST API with an explicit
+`x-goog-user-project` header, before concluding anything about billing permissions.
 
 The production state was applied on 2026-08-05 and its email channel was attached
 to all managed policies. Google sends a verification message for email channels.

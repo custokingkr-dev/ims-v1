@@ -1,10 +1,12 @@
 param(
-  [string]$ProjectId = "custoking",
+  [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
   [string]$Instance = "custoking-db-prod",
   [string]$BackupLocation = "asia-south2",
   [string]$BackupStartTimeUtc = "20:30",
   [string]$ValidationBucket = "custoking-db-snapshots",
-  [string]$RecoveryOperatorServiceAccount = "custoking-recovery-operator@custoking.iam.gserviceaccount.com",
+  # Derived from the project rather than hardcoded. The literal named the pre-split project, so after the
+  # split this pointed at an identity in a project that is being deleted.
+  [string]$RecoveryOperatorServiceAccount = "",
   [string]$RecoveryBucketIamRoleId = "custokingRecoveryBucketIamOperator",
   [string]$RecoveryBucketIamRoleFile = "deploy/gcp/recovery-bucket-iam-operator-role.yaml",
   [ValidateRange(7, 365)]
@@ -13,6 +15,10 @@ param(
   [int]$TransactionLogRetentionDays = 7,
   [switch]$Apply
 )
+
+if ([string]::IsNullOrWhiteSpace($RecoveryOperatorServiceAccount)) {
+  $RecoveryOperatorServiceAccount = "custoking-recovery-operator@$ProjectId.iam.gserviceaccount.com"
+}
 
 $ErrorActionPreference = "Stop"
 $gcloud = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }

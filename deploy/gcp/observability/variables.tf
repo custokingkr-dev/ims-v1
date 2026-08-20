@@ -31,6 +31,10 @@ variable "services" {
     "platform-service",
     "billing-service",
     "api-gateway",
+    # The frontend is the only thing a human actually loads in a browser, and until now it was the one
+    # Cloud Run service with no uptime check, no SLO and no error alert -- monitored by nothing while
+    # six backends were monitored six ways each.
+    "frontend",
   ]
 }
 
@@ -58,10 +62,85 @@ variable "service_health_paths" {
   default     = {}
 }
 
+variable "uptime_content_matchers" {
+  description = <<-DESC
+    Optional response-body substring per logical service, defaulting to "UP".
+
+    "UP" is the Spring Boot Actuator convention and is right for the six backends. The frontend is
+    nginx serving a single-page app, so until its /healthz route ships it has no endpoint that
+    returns "UP" -- and its catch-all returns index.html with a 200 for every unknown path, which
+    means a status-code-only check would pass no matter what. Matching a string from the real
+    document is the honest check: it proves nginx served the application shell, not just a socket.
+  DESC
+  type        = map(string)
+  default     = {}
+}
+
 variable "uptime_authenticated_services" {
   description = "Whether each uptime check should use Monitoring service-agent OIDC authentication."
   type        = map(bool)
   default     = {}
+}
+
+variable "manage_billing_budget" {
+  description = "Whether this root creates a Cloud Billing budget for its environment's project."
+  type        = bool
+  default     = false
+}
+
+variable "billing_account_id" {
+  description = "Billing account the environment's project bills to, without the billingAccounts/ prefix."
+  type        = string
+  default     = ""
+}
+
+variable "monthly_budget_inr" {
+  description = <<-DESC
+    Monthly budget in INR for this environment's project.
+
+    Not a target and not a cap -- a tripwire. The measured zero-user floor for the whole platform is
+    about INR 4,450/month, of which prod is roughly INR 3,832 and 81.5% of that is one Cloud SQL
+    instance whose daily cost has a coefficient of variation of zero. So a normal month is close to
+    flat, and any real movement is either genuine growth or a defect.
+
+    The default leaves headroom over that floor while still firing well before a runaway becomes
+    expensive. Raise it deliberately when real load arrives rather than when it alerts.
+  DESC
+  type        = number
+  default     = 6000
+}
+
+variable "enable_alert_notifications" {
+  description = <<-DESC
+    Whether alert policies in this environment notify anyone at all.
+
+    Set false for dev. Dev's Cloud SQL is stopped and its services scale to zero, so most of what it
+    emits is noise about a system nobody is using -- and both environments were wired to the SAME two
+    addresses, which made a dev alert indistinguishable from a production one at a glance. Incidents
+    still open and remain visible in the console; they just cannot reach a person.
+  DESC
+  type        = bool
+  default     = true
+}
+
+variable "enable_slo_burn_notifications" {
+  description = <<-DESC
+    Whether the eight SLO burn-rate policies per environment send notifications, or exist only as
+    dashboard objects.
+
+    Defaults to false, and the arithmetic is why. A 99.5% availability goal puts the fast-burn
+    threshold at 14.4 x 0.005 = 7.2% error rate. Overnight a five-minute window holds roughly two
+    requests -- almost all of them uptime probes -- so ONE failed probe is a 50% error rate, and two
+    failures inside an hour satisfy both windows of the AND combiner. An ERROR-severity policy then
+    emails at 3am about a service no user was trying to reach.
+
+    This is Google's own documented low-traffic failure mode, not a misconfiguration: multi-window
+    burn-rate alerting assumes a request rate that makes a ratio meaningful, and roughly 600 requests
+    a day does not. The SLOs themselves stay -- the monthly error-budget number is genuinely useful.
+    Only the paging is removed.
+  DESC
+  type        = bool
+  default     = false
 }
 
 variable "enable_uptime_checks" {
@@ -87,6 +166,10 @@ variable "manage_compliance_logging" {
   default     = false
 }
 
+# NOTE: 365 is a compliance floor, not a preference. DPDP Rule 6(1)(e) requires a Data Fiduciary to
+# "retain such logs and personal data for a period of one year", and Rule 8(3) independently requires
+# "logs of the processing for a minimum period of one year". The previous default of 180 was this
+# variable's own validation floor -- i.e. the value you get by not choosing one.
 variable "compliance_log_retention_days" {
   description = "Retention for security, request, and audit logs routed to the India-resident compliance bucket."
   type        = number
@@ -141,9 +224,21 @@ variable "outbox_pending_threshold" {
 }
 
 variable "outbox_dead_letter_threshold" {
-  description = "Alert threshold for the extracted outbox dead-letter count."
+  description = <<-DESC
+    Alert threshold for the extracted outbox dead-letter count.
+
+    IMPORTANT -- why this default is 0.5 and not 0.
+
+    This gauge is carried through a distribution and read at a percentile, so a TRUE ZERO reports as the
+    upper bound of the underflow bucket, which these bounds place at 0.5. Measured against production with
+    every queue drained: exactly 0.500 at both p50 and p95.
+
+    A threshold of 0 therefore fires permanently on a perfectly healthy system, and because these policies
+    latch open, that incident then masks every real dead letter that follows -- strictly worse than having
+    no alert at all. 0.5 separates a true zero (0.5, not greater) from a true one (~1.0, greater).
+  DESC
   type        = number
-  default     = 0
+  default     = 0.5
 }
 
 variable "outbox_oldest_age_seconds_threshold" {
@@ -159,9 +254,21 @@ variable "notification_inbox_backlog_threshold" {
 }
 
 variable "notification_inbox_dead_letter_threshold" {
-  description = "Alert threshold for notification inbox events in terminal dead-letter state."
+  description = <<-DESC
+    Alert threshold for notification inbox events in terminal dead-letter state.
+
+    IMPORTANT -- why this default is 0.5 and not 0.
+
+    This gauge is carried through a distribution and read at a percentile, so a TRUE ZERO reports as the
+    upper bound of the underflow bucket, which these bounds place at 0.5. Measured against production with
+    every queue drained: exactly 0.500 at both p50 and p95.
+
+    A threshold of 0 therefore fires permanently on a perfectly healthy system, and because these policies
+    latch open, that incident then masks every real dead letter that follows -- strictly worse than having
+    no alert at all. 0.5 separates a true zero (0.5, not greater) from a true one (~1.0, greater).
+  DESC
   type        = number
-  default     = 0
+  default     = 0.5
 }
 
 variable "storage_bucket_ids" {
@@ -374,4 +481,31 @@ variable "cost_metric_scope_project" {
   description = "Project whose spend to report. Empty means this project. \"*\" reports every project in the export as separate labelled series, for a cumulative view."
   type        = string
   default     = ""
+}
+
+variable "count_gauge_bucket_max" {
+  description = <<-DESC
+    Upper bound for business-count gauge buckets.
+
+    Log-based metrics cannot carry an exact gauge, only a distribution read through a percentile, and a
+    percentile is interpolated WITHIN its bucket. Precision is therefore a property of the bucket layout,
+    not of the data. These bounds are dense at the low end -- half-integers to 30, where counts like
+    "schools: 11" must be exact -- and coarsen with magnitude, where a trend matters more than a unit.
+    At the current student count the worst-case error is under two percent.
+  DESC
+  type        = number
+  default     = 10000
+}
+
+variable "async_age_metric_buckets_fine" {
+  description = <<-DESC
+    Bucket bounds for age-like gauges read through a percentile.
+
+    The original age bounds began at 0, so a drained queue -- age exactly zero -- fell in [0,30) and a
+    percentile reported close to 30 seconds. An empty queue therefore looked like a half-minute backlog
+    that never cleared. Starting above zero puts a true zero in the underflow bucket, where it reads as
+    zero, and the low end is dense enough that a few seconds of lag is distinguishable from a few minutes.
+  DESC
+  type        = list(number)
+  default     = [0.5, 1, 2, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1800, 3600, 7200, 14400, 28800]
 }
