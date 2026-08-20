@@ -125,6 +125,34 @@ variable "uptime_failure_checker_quorum" {
   default     = 2
 }
 
+variable "enable_dashboard_load_balancer" {
+  description = <<-DESC
+    Put the dashboard behind an external load balancer with IAP on the backend service.
+
+    The direct IAP-on-Cloud-Run integration was tried first and would not admit an authorised user with
+    every ordinary cause eliminated. This is the older, reliable path. It costs roughly INR 1,500/month
+    for the forwarding rule, which is the trade for something that works with ordinary Google accounts.
+
+    IAP cannot be on both the load balancer and the Cloud Run service, so enabling this turns the
+    service's own iap_enabled off and narrows its ingress to load-balancer traffic only.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "dashboard_domain" {
+  description = <<-DESC
+    Domain for the managed certificate. Leave empty to derive one from the reserved IP via sslip.io.
+
+    A Google-managed certificate validates by checking the domain resolves to the load balancer's IP,
+    and there is no registered domain anywhere in this project. sslip.io resolves <dashed-ip>.sslip.io
+    to that IP by construction, which satisfies validation without buying anything. Set a real domain
+    here later and only the certificate changes.
+  DESC
+  type        = string
+  default     = ""
+}
+
 variable "enable_shared_dashboard" {
   description = "Whether to run the shared owner/ops dashboard on Cloud Run behind IAP."
   type        = bool

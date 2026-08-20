@@ -49,10 +49,12 @@ resource "google_cloud_run_v2_service" "dashboard" {
   location            = var.region
   deletion_protection = false
 
-  # IAP terminates in front of Cloud Run, so the service itself takes ingress from the load balancer
-  # and the internet -- access control is IAP's job, not the ingress setting's.
-  ingress     = "INGRESS_TRAFFIC_ALL"
-  iap_enabled = true
+  # IAP CANNOT BE ON BOTH the load balancer and the Cloud Run service -- Google is explicit about this.
+  # When the load balancer path is enabled, IAP moves to the backend service and this must turn off,
+  # and ingress narrows so the only way in is through the load balancer. Leaving ingress open would
+  # mean the .run.app URL bypassed the gate entirely.
+  ingress     = var.enable_dashboard_load_balancer ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
+  iap_enabled = !var.enable_dashboard_load_balancer
 
   template {
     service_account = google_service_account.dashboard[0].email
@@ -104,7 +106,9 @@ resource "google_cloud_run_v2_service" "dashboard" {
 # The service agent is created on demand rather than with the project, so it may not exist until
 # `gcloud beta services identity create --service=iap.googleapis.com` has been run once.
 resource "google_cloud_run_v2_service_iam_member" "dashboard_iap_invoker" {
-  count = local.dashboard_enabled
+  # The load-balancer path declares its own invoker binding; two members with the same role on the same
+  # resource would fight over the policy.
+  count = var.enable_dashboard_load_balancer ? 0 : local.dashboard_enabled
 
   project  = var.project
   location = var.region
@@ -117,7 +121,7 @@ resource "google_cloud_run_v2_service_iam_member" "dashboard_iap_invoker" {
 # person is an IAM grant rather than an account in the app -- there are no passwords to manage and no
 # session store to get wrong.
 resource "google_iap_web_cloud_run_service_iam_member" "dashboard_viewers" {
-  for_each = var.enable_shared_dashboard ? toset(var.dashboard_viewers) : toset([])
+  for_each = (var.enable_shared_dashboard && !var.enable_dashboard_load_balancer) ? toset(var.dashboard_viewers) : toset([])
 
   project                = var.project
   location               = var.region
