@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Custoking — live</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --paper:#F1F3F2; --surface:#FBFCFB; --surface-2:#E7EBE9;
+  --ink:#141B1C; --ink-2:#3E4A4B; --ink-3:#6B7877;
+  --rule:#D2D9D7; --rule-2:#BCC6C4;
+  --accent:#1F4A4F; --accent-lo:#DCE6E5;
+  --critical:#A33A2E; --critical-lo:#F4E2DE;
+  --caution:#7E6118;  --caution-lo:#F2EBD6;
+  --verified:#2C6249; --verified-lo:#DDEAE2;
+  --s1:.35rem; --s2:.7rem; --s3:1.1rem; --s4:1.7rem; --s5:2.6rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#0E1415; --surface:#151D1E; --surface-2:#1E2829;
+    --ink:#E6EDEB; --ink-2:#B2BFBD; --ink-3:#7E8C8A;
+    --rule:#273334; --rule-2:#354445;
+    --accent:#7FBDB8; --accent-lo:#17292B;
+    --critical:#E58877; --critical-lo:#2B1917;
+    --caution:#D6B45C;  --caution-lo:#26200F;
+    --verified:#71B896; --verified-lo:#132420;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#0E1415; --surface:#151D1E; --surface-2:#1E2829;
+  --ink:#E6EDEB; --ink-2:#B2BFBD; --ink-3:#7E8C8A;
+  --rule:#273334; --rule-2:#354445;
+  --accent:#7FBDB8; --accent-lo:#17292B;
+  --critical:#E58877; --critical-lo:#2B1917;
+  --caution:#D6B45C;  --caution-lo:#26200F;
+  --verified:#71B896; --verified-lo:#132420;
+}
+
+* { box-sizing:border-box; }
+body {
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",ui-sans-serif,system-ui,"Segoe UI",sans-serif;
+  font-size:15.5px; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.wrap { max-width:1320px; margin:0 auto; padding:0 var(--s4) var(--s5); }
+
+/* ---------- header ---------- */
+header {
+  display:flex; flex-wrap:wrap; align-items:flex-end; gap:var(--s3) var(--s4);
+  padding:var(--s5) 0 var(--s3); border-bottom:1px solid var(--rule-2); margin-bottom:var(--s4);
+}
+h1 {
+  font-family:Newsreader,ui-serif,Georgia,serif; font-weight:500; font-size:2rem;
+  margin:0; letter-spacing:-.015em; line-height:1;
+}
+.sub { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.72rem; color:var(--ink-3); margin-top:var(--s1); }
+.controls { margin-left:auto; display:flex; align-items:center; gap:var(--s3); }
+select, button.ghost {
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.74rem;
+  background:var(--surface); color:var(--ink); border:1px solid var(--rule-2);
+  border-radius:3px; padding:.4rem .6rem; cursor:pointer;
+}
+select:focus-visible, button.ghost:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.pulse {
+  display:inline-flex; align-items:center; gap:.45em;
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.7rem; color:var(--ink-3);
+}
+.pulse .dot {
+  width:7px; height:7px; border-radius:50%; background:var(--verified);
+  animation:beat 2.4s ease-in-out infinite;
+}
+.pulse.err .dot { background:var(--critical); animation:none; }
+@keyframes beat { 0%,100%{opacity:1} 50%{opacity:.25} }
+@media (prefers-reduced-motion: reduce) { .pulse .dot { animation:none } }
+
+/* ---------- banner ---------- */
+.banner {
+  border:1px solid var(--critical); background:var(--critical-lo); color:var(--critical);
+  border-radius:3px; padding:var(--s3); margin-bottom:var(--s4); font-size:.9rem;
+}
+.banner:empty { display:none; }
+
+/* ---------- groups ---------- */
+section { margin-bottom:var(--s5); }
+.ghead { display:flex; align-items:baseline; gap:var(--s3); margin-bottom:var(--s3); flex-wrap:wrap; }
+.ghead h2 { font-family:Newsreader,ui-serif,Georgia,serif; font-weight:500; font-size:1.3rem; margin:0; }
+.ghead .blurb { color:var(--ink-3); font-size:.83rem; }
+
+.grid { display:grid; gap:var(--s3); grid-template-columns:repeat(auto-fill,minmax(268px,1fr)); }
+.card {
+  background:var(--surface); border:1px solid var(--rule); border-radius:4px;
+  padding:var(--s3); display:flex; flex-direction:column; gap:var(--s2);
+  border-top:3px solid var(--rule-2); min-height:150px;
+}
+.card.wide { grid-column:span 2; }
+@media (max-width:640px) { .card.wide { grid-column:span 1; } }
+.card.s-live  { border-top-color:var(--accent); }
+.card.s-zero  { border-top-color:var(--verified); }
+.card.s-stale { border-top-color:var(--caution); }
+.card.s-never { border-top-color:var(--critical); }
+.card.s-failed{ border-top-color:var(--critical); }
+.card.sev-bad  { border-top-color:var(--critical); }
+.card.sev-warn { border-top-color:var(--caution); }
+
+.card .t { font-size:.82rem; color:var(--ink-2); font-weight:500; }
+.card .v {
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;
+  font-size:2.1rem; font-weight:500; line-height:1; letter-spacing:-.03em;
+}
+.card.emph .v { font-size:2.7rem; }
+.card.sev-bad .v  { color:var(--critical); }
+.card.sev-warn .v { color:var(--caution); }
+.card .n { font-size:.74rem; color:var(--ink-3); line-height:1.45; margin-top:auto; }
+
+.state {
+  display:inline-flex; align-items:center; gap:.4em; align-self:flex-start;
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.6rem;
+  letter-spacing:.1em; text-transform:uppercase; font-weight:600;
+  padding:.18em .5em; border-radius:2px;
+}
+.state.zero  { background:var(--verified-lo); color:var(--verified); }
+.state.stale { background:var(--caution-lo);  color:var(--caution); }
+.state.never { background:var(--critical-lo); color:var(--critical); }
+.state.failed{ background:var(--critical-lo); color:var(--critical); }
+
+canvas.spark { width:100%; height:38px; display:block; }
+.card.wide canvas.spark { height:74px; }
+
+/* ---------- breakdown ---------- */
+.bars { display:flex; flex-direction:column; gap:.3rem; }
+.bar { display:grid; grid-template-columns:1fr auto; gap:.5rem; align-items:center; font-size:.76rem; }
+.bar .lbl { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-2); }
+.bar .amt { font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums; color:var(--ink-3); }
+.bar .track { grid-column:1/-1; height:3px; background:var(--surface-2); border-radius:2px; overflow:hidden; }
+.bar .fill { height:100%; background:var(--accent); }
+
+.err { font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.68rem; color:var(--critical); word-break:break-word; }
+
+footer {
+  border-top:1px solid var(--rule); padding-top:var(--s3);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.68rem; color:var(--ink-3);
+  display:flex; flex-wrap:wrap; gap:var(--s1) var(--s3);
+}
+.legend { display:flex; flex-wrap:wrap; gap:var(--s2); align-items:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div>
+    <h1>Custoking, live</h1>
+    <div class="sub" id="sub">connecting…</div>
+  </div>
+  <div class="controls">
+    <label class="pulse" id="pulse"><span class="dot"></span><span id="pulsetext">live</span></label>
+    <select id="window" aria-label="Time window">
+      <option value="60">last hour</option>
+      <option value="180" selected>last 3 hours</option>
+      <option value="720">last 12 hours</option>
+      <option value="1440">last 24 hours</option>
+      <option value="10080">last 7 days</option>
+    </select>
+    <button class="ghost" id="theme" type="button">theme</button>
+  </div>
+</header>
+
+<div class="banner" id="banner"></div>
+<div id="body"></div>
+
+<footer>
+  <span>reads the Cloud Monitoring API directly · no data is stored by this page</span>
+  <span class="legend">
+    <span class="state zero">zero</span><span>reporting a real 0</span>
+    <span class="state stale">stale</span><span>emitted before, not now</span>
+    <span class="state never">never</span><span>no point, ever</span>
+  </span>
+</footer>
+
+</div>
+
+<script type="module">
+const $ = (id) => document.getElementById(id);
+let timer = null;
+
+const fmt = {
+  int:      (v) => Math.round(v).toLocaleString("en-IN"),
+  float1:   (v) => v.toFixed(1),
+  rate:     (v) => v < 1 ? v.toFixed(2) + "/s" : v.toFixed(1) + "/s",
+  ms:       (v) => v >= 1000 ? (v / 1000).toFixed(2) + "s" : Math.round(v) + "ms",
+  pct:      (v) => (v * 100).toFixed(1) + "%",
+  inr:      (v) => "₹" + Math.round(v).toLocaleString("en-IN"),
+  duration: (v) => v < 60 ? Math.round(v) + "s"
+                 : v < 3600 ? Math.round(v / 60) + "m"
+                 : (v / 3600).toFixed(1) + "h",
+};
+
+function ago(iso) {
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 60) return mins + "m ago";
+  if (mins < 1440) return Math.round(mins / 60) + "h ago";
+  return Math.round(mins / 1440) + "d ago";
+}
+
+function sparkline(canvas, points, colorVar) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+  if (points.length < 2) return;
+
+  const css = getComputedStyle(document.documentElement);
+  const stroke = css.getPropertyValue(colorVar).trim();
+  const vals = points.map((p) => p.v);
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const span = (max - min) || 1;
+  const pad = 3;
+  const x = (i) => (i / (points.length - 1)) * w;
+  const y = (v) => h - pad - ((v - min) / span) * (h - pad * 2);
+
+  ctx.beginPath();
+  ctx.moveTo(x(0), h);
+  points.forEach((p, i) => ctx.lineTo(x(i), y(p.v)));
+  ctx.lineTo(x(points.length - 1), h);
+  ctx.closePath();
+  ctx.globalAlpha = 0.10; ctx.fillStyle = stroke; ctx.fill(); ctx.globalAlpha = 1;
+
+  ctx.beginPath();
+  points.forEach((p, i) => (i ? ctx.lineTo(x(i), y(p.v)) : ctx.moveTo(x(i), y(p.v))));
+  ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.lineJoin = "round"; ctx.stroke();
+
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(x(points.length - 1), y(last.v), 2.6, 0, Math.PI * 2);
+  ctx.fillStyle = stroke; ctx.fill();
+}
+
+function cardFor(p) {
+  const el = document.createElement("div");
+  const sev = p.severity && p.severity !== "ok" ? ` sev-${p.severity}` : "";
+  el.className = `card s-${p.state}${sev}${p.emphasis ? " emph" : ""}` +
+                 (p.kind === "series" || p.kind === "breakdown" ? " wide" : "");
+
+  const title = document.createElement("div");
+  title.className = "t"; title.textContent = p.title;
+  el.appendChild(title);
+
+  if (p.state === "failed") {
+    el.insertAdjacentHTML("beforeend",
+      `<span class="state failed">query failed</span><div class="err"></div>`);
+    el.querySelector(".err").textContent = p.error;
+  } else if (p.state === "never") {
+    el.insertAdjacentHTML("beforeend",
+      `<span class="state never">never reported</span>
+       <div class="n">No point in 30 days. The metric exists but nothing has ever written to it — any alert on it cannot fire.</div>`);
+    return el;
+  } else if (p.state === "stale") {
+    const v = document.createElement("div");
+    v.className = "v"; v.textContent = fmt[p.format] ? fmt[p.format](p.value) : p.value;
+    el.appendChild(v);
+    el.insertAdjacentHTML("beforeend", `<span class="state stale">last seen ${ago(p.lastSeen)}</span>`);
+  } else if (p.kind === "breakdown") {
+    const rows = (p.series || []).map((s) => ({
+      label: s.label || "(all)", value: s.points[s.points.length - 1].v,
+    })).filter((r) => r.value > 0);
+    const top = Math.max(...rows.map((r) => r.value), 1);
+    const bars = document.createElement("div");
+    bars.className = "bars";
+    if (!rows.length) {
+      bars.innerHTML = `<span class="state zero">reporting zero</span>`;
+    }
+    for (const r of rows) {
+      const row = document.createElement("div");
+      row.className = "bar";
+      row.innerHTML = `<span class="lbl"></span><span class="amt"></span>
+                       <span class="track"><span class="fill" style="width:${(r.value / top) * 100}%"></span></span>`;
+      row.querySelector(".lbl").textContent = r.label;
+      row.querySelector(".amt").textContent = fmt[p.format] ? fmt[p.format](r.value) : r.value;
+      bars.appendChild(row);
+    }
+    el.appendChild(bars);
+  } else {
+    const v = document.createElement("div");
+    v.className = "v"; v.textContent = fmt[p.format] ? fmt[p.format](p.value) : p.value;
+    el.appendChild(v);
+    if (p.state === "zero") {
+      el.insertAdjacentHTML("beforeend", `<span class="state zero">reporting zero</span>`);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.className = "spark";
+    el.appendChild(canvas);
+    queueMicrotask(() => sparkline(
+      canvas,
+      (p.series && p.series[0] && p.series[0].points) || [],
+      p.severity === "bad" ? "--critical" : p.severity === "warn" ? "--caution" : "--accent",
+    ));
+  }
+
+  if (p.note) {
+    const n = document.createElement("div");
+    n.className = "n"; n.textContent = p.note;
+    el.appendChild(n);
+  }
+  return el;
+}
+
+function render(data) {
+  const body = $("body");
+  body.textContent = "";
+  for (const g of data.groups) {
+    const panels = data.panels.filter((p) => p.group === g.id);
+    if (!panels.length) continue;
+    const sec = document.createElement("section");
+    const head = document.createElement("div");
+    head.className = "ghead";
+    head.innerHTML = `<h2></h2><span class="blurb"></span>`;
+    head.querySelector("h2").textContent = g.title;
+    head.querySelector(".blurb").textContent = g.blurb;
+    sec.appendChild(head);
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    panels.forEach((p) => grid.appendChild(cardFor(p)));
+    sec.appendChild(grid);
+    body.appendChild(sec);
+  }
+
+  const broken = data.panels.filter((p) => p.state === "never" || p.state === "failed");
+  $("banner").textContent = broken.length
+    ? `${broken.length} panel${broken.length > 1 ? "s have" : " has"} no usable data: ` +
+      broken.map((p) => p.title).join(", ") + ". Alerts built on these cannot fire."
+    : "";
+
+  $("sub").textContent =
+    `${data.project} · updated ${new Date(data.generatedAt).toLocaleTimeString()} · ` +
+    `${data.panels.filter((p) => p.state === "live" || p.state === "zero").length}/${data.panels.length} panels reporting`;
+}
+
+async function refresh() {
+  const win = $("window").value;
+  try {
+    const res = await fetch(`/api/snapshot?window=${win}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    render(data);
+    $("pulse").classList.remove("err");
+    $("pulsetext").textContent = "live";
+  } catch (err) {
+    $("pulse").classList.add("err");
+    $("pulsetext").textContent = "stalled";
+    $("banner").textContent = `Could not reach the dashboard API: ${err.message}`;
+  }
+}
+
+$("window").addEventListener("change", refresh);
+$("theme").addEventListener("click", () => {
+  const now = document.documentElement.getAttribute("data-theme");
+  const next = now === "dark" ? "light" : now === "light" ? null : "dark";
+  if (next) document.documentElement.setAttribute("data-theme", next);
+  else document.documentElement.removeAttribute("data-theme");
+  refresh();
+});
+window.addEventListener("resize", () => clearTimeout(timer) || (timer = setTimeout(refresh, 250)));
+
+refresh();
+// 5 minutes, not 1. Since 2 October 2025 Cloud Monitoring bills read calls by TIME SERIES RETURNED
+// ($0.50/million, first million free per billing account), so refresh rate is now a cost lever. A full
+// render is ~75 series: at 5 minutes a tab left open all day stays inside the free allotment; at 60
+// seconds it is ~3.2M series/month and starts costing real money to watch a dashboard.
+setInterval(refresh, 300_000);
+</script>
+</body>
+</html>

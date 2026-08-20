@@ -141,9 +141,21 @@ variable "outbox_pending_threshold" {
 }
 
 variable "outbox_dead_letter_threshold" {
-  description = "Alert threshold for the extracted outbox dead-letter count."
+  description = <<-DESC
+    Alert threshold for the extracted outbox dead-letter count.
+
+    IMPORTANT -- why this default is 0.5 and not 0.
+
+    This gauge is carried through a distribution and read at a percentile, so a TRUE ZERO reports as the
+    upper bound of the underflow bucket, which these bounds place at 0.5. Measured against production with
+    every queue drained: exactly 0.500 at both p50 and p95.
+
+    A threshold of 0 therefore fires permanently on a perfectly healthy system, and because these policies
+    latch open, that incident then masks every real dead letter that follows -- strictly worse than having
+    no alert at all. 0.5 separates a true zero (0.5, not greater) from a true one (~1.0, greater).
+  DESC
   type        = number
-  default     = 0
+  default     = 0.5
 }
 
 variable "outbox_oldest_age_seconds_threshold" {
@@ -159,9 +171,21 @@ variable "notification_inbox_backlog_threshold" {
 }
 
 variable "notification_inbox_dead_letter_threshold" {
-  description = "Alert threshold for notification inbox events in terminal dead-letter state."
+  description = <<-DESC
+    Alert threshold for notification inbox events in terminal dead-letter state.
+
+    IMPORTANT -- why this default is 0.5 and not 0.
+
+    This gauge is carried through a distribution and read at a percentile, so a TRUE ZERO reports as the
+    upper bound of the underflow bucket, which these bounds place at 0.5. Measured against production with
+    every queue drained: exactly 0.500 at both p50 and p95.
+
+    A threshold of 0 therefore fires permanently on a perfectly healthy system, and because these policies
+    latch open, that incident then masks every real dead letter that follows -- strictly worse than having
+    no alert at all. 0.5 separates a true zero (0.5, not greater) from a true one (~1.0, greater).
+  DESC
   type        = number
-  default     = 0
+  default     = 0.5
 }
 
 variable "storage_bucket_ids" {

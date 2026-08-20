@@ -178,6 +178,13 @@ resource "google_monitoring_alert_policy" "outbox_pending" {
     }
   }
 
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
   documentation {
     content   = "Outbox pending count is above threshold. Check relay logs, Pub/Sub publish errors, and oldest pending age."
     mime_type = "text/markdown"
@@ -215,6 +222,13 @@ resource "google_monitoring_alert_policy" "outbox_dead_letter" {
         count = 1
       }
     }
+  }
+
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
   }
 
   documentation {
@@ -256,6 +270,13 @@ resource "google_monitoring_alert_policy" "outbox_oldest_pending_age" {
     }
   }
 
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
   documentation {
     content   = "Oldest pending outbox age is above threshold. Confirm scheduled relay instances are alive and Pub/Sub accepts publishes."
     mime_type = "text/markdown"
@@ -295,6 +316,13 @@ resource "google_monitoring_alert_policy" "notification_inbox_backlog" {
     }
   }
 
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
+  }
+
   documentation {
     content   = "Notification inbox backlog is above threshold. Check Pub/Sub push delivery, provider failures, and platform-service retry logs."
     mime_type = "text/markdown"
@@ -332,6 +360,13 @@ resource "google_monitoring_alert_policy" "notification_inbox_dead_letter" {
         count = 1
       }
     }
+  }
+
+
+  # Without this, an incident that opens never closes on its own -- and because Cloud Monitoring notifies
+  # on incident CREATION only, a latched-open incident silently swallows every later occurrence.
+  alert_strategy {
+    auto_close = "1800s"
   }
 
   documentation {
