@@ -49,7 +49,11 @@ env:
   # Digest-keyed Trivy verdict cache. Scanning pulls each image from Artifact Registry to this
   # runner, which is billed internet egress; reusing a recent verdict for an unchanged digest
   # avoids the pull. Absent or unreachable, every service simply scans as before.
-  SCAN_EVIDENCE_BUCKET: ${{ vars.SCAN_EVIDENCE_BUCKET || 'custoking-scan-evidence' }}
+  # No fallback. 'custoking-scan-evidence' lived in the pre-split project and returns 404 since that
+  # project was deleted, so the default could only ever send every scan to a bucket that is not there.
+  # Empty is the correct degraded state -- the cache is skipped and each service simply scans, which is
+  # what the comment above already promised. A wrong bucket name is worse than no bucket name.
+  SCAN_EVIDENCE_BUCKET: ${{ vars.SCAN_EVIDENCE_BUCKET }}
   SCAN_EVIDENCE_TTL_HOURS: "24"
 
 jobs:
