@@ -11,9 +11,13 @@ locals {
 
   default_health_paths = {
     api-gateway = "/gateway-health"
-    # nginx, not Spring Boot -- there is no /actuator/health, and until /healthz ships every unknown
-    # path returns index.html with a 200 via try_files. So probe the real document and match on its
-    # content instead: measured at 42ms warm and 5.2s on a cold start, inside the 10s timeout.
+    # The frontend probes its ROOT and matches on document content, and that is deliberate rather than
+    # a stopgap. Two reasons. First, /healthz is reserved by Cloud Run's front end and 404s before
+    # reaching any container -- measured across three services and two projects. Second, and more
+    # importantly, this service's try_files sends every unknown path to index.html with a 200, so a
+    # status-code check against a dedicated health route proves only that Cloud Run is up. Matching a
+    # string from the real document proves nginx served the actual application shell. Measured at 42ms
+    # warm and 5.2s on a cold start, inside the 10s timeout.
     frontend = "/"
   }
 

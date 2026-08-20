@@ -33,6 +33,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PANELS, GROUPS } from "./panels.mjs";
+import { COST_INPUTS, estimateDailyInr } from "./cost.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT = process.env.DASHBOARD_PROJECT || "custoking-prod";
@@ -225,6 +226,47 @@ async function fetchPanel(panel, token, windowMinutes) {
   };
 }
 
+
+// ---------------------------------------------------------------------------------------------------
+// Live cost estimate
+//
+// Computed from resource usage rather than read from the billing export, because that export is broken
+// at the billing-account level and Google owns the fix. See cost.mjs for the method and its limits.
+
+async function estimateCost(token) {
+  const end = new Date();
+  const start = new Date(end.getTime() - 24 * 60 * 60_000);
+  const totals = {};
+
+  for (const input of COST_INPUTS) {
+    try {
+      const params = new URLSearchParams({
+        filter: `metric.type="${input.metric}"`,
+        "interval.startTime": start.toISOString(),
+        "interval.endTime": end.toISOString(),
+        "aggregation.alignmentPeriod": "86400s",
+        "aggregation.perSeriesAligner": input.aligner,
+        "aggregation.crossSeriesReducer": "REDUCE_SUM",
+      });
+      const res = await monitoringRequest(`/v3/projects/${PROJECT}/timeSeries?${params}`, token);
+      let sum = 0;
+      for (const series of res.timeSeries || []) {
+        for (const point of series.points || []) {
+          const v = point.value || {};
+          sum += Number(v.doubleValue ?? v.int64Value ?? 0);
+        }
+      }
+      totals[input.key] = sum;
+    } catch {
+      // A missing input understates the estimate rather than failing the page. The panel says
+      // "estimate" for exactly this kind of reason.
+      totals[input.key] = 0;
+    }
+  }
+
+  return { ...estimateDailyInr(totals), totals };
+}
+
 // ---------------------------------------------------------------------------------------------------
 // HTTP
 
@@ -241,7 +283,10 @@ const server = http.createServer(async (req, res) => {
     const windowMinutes = Math.min(10080, Math.max(15, Number(url.searchParams.get("window") || 180)));
     try {
       const token = await accessToken();
-      const panels = await Promise.all(PANELS.map((p) => fetchPanel(p, token, windowMinutes)));
+      const [panels, cost] = await Promise.all([
+        Promise.all(PANELS.map((p) => fetchPanel(p, token, windowMinutes))),
+        estimateCost(token).catch(() => null),
+      ]);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
       return res.end(JSON.stringify({
         project: PROJECT,
@@ -249,6 +294,7 @@ const server = http.createServer(async (req, res) => {
         generatedAt: new Date().toISOString(),
         groups: GROUPS,
         panels,
+        cost,
       }));
     } catch (err) {
       res.writeHead(500, { "content-type": "application/json" });

@@ -110,6 +110,40 @@ variable "monthly_budget_inr" {
   default     = 6000
 }
 
+variable "enable_product_liveness_check" {
+  description = <<-DESC
+    Whether to run the school-hours product liveness check.
+
+    Answers the one question none of the threshold policies can: can people actually USE this right
+    now. Runs as a scheduled job rather than an alert policy because the condition is time-bounded and
+    Cloud Monitoring cannot express "only during school hours" -- a cron schedule can, for free, where
+    the notification-layer alternative is a paid PagerDuty tier.
+
+    Prod only. Dev has a stopped database and no users to fail.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "enable_cost_analysis_collector" {
+  description = <<-DESC
+    Whether to run the daily per-service cost collector.
+
+    Independent of the billing export by design. The usage-cost export for this billing account cannot
+    be enabled -- a server-side fault confirmed across six configurations -- so cost is reconstructed
+    from Cloud Monitoring usage priced at real SKU rates instead. Enable in prod; dev's spend is a
+    stopped database and is not worth a daily job.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "cost_analysis_dataset" {
+  description = "BigQuery dataset holding the computed cost tables and the restored historical billing export."
+  type        = string
+  default     = "cost_analysis"
+}
+
 variable "enable_alert_notifications" {
   description = <<-DESC
     Whether alert policies in this environment notify anyone at all.

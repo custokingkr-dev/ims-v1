@@ -72,19 +72,32 @@ before changing application tracing code.
 Do not commit a backend with credentials. Use a GCS backend from a local backend
 file, for example:
 
-```hcl
-bucket = "custoking-terraform-state"
-prefix = "observability/dev"
-```
+State lives in the bucket **inside each environment's own project**, not in a shared one:
 
-The dev state bucket is `gs://custoking-terraform-state` and uses prefix
-`observability/dev`. Initialize with:
+| Environment | Bucket | Prefix |
+| --- | --- | --- |
+| dev | `gs://custoking-dev-terraform-state` | `observability/dev` |
+| prod | `gs://custoking-prod-terraform-state` | `observability/prod` |
+
+`gs://custoking-terraform-state` belonged to the pre-split `custoking` project and is gone. Do not use
+it: while both buckets existed they each carried an `observability/` prefix, so pointing at the wrong
+one did not error -- it read stale state and then planned to create resources that already existed.
+
+There is no Application Default Credentials on the operator workstation, so the backend needs an
+access token as well as the provider environment variable, and the token expires after about an hour.
 
 ```powershell
-terraform -chdir=deploy/gcp/observability init `
-  -backend-config="bucket=custoking-terraform-state" `
-  -backend-config="prefix=observability/dev"
+$tok = gcloud auth print-access-token
+$env:GOOGLE_OAUTH_ACCESS_TOKEN = $tok
+terraform -chdir=deploy/gcp/observability init -reconfigure `
+  -backend-config="bucket=custoking-dev-terraform-state" `
+  -backend-config="prefix=observability/dev" `
+  -backend-config="access_token=$tok"
 ```
+
+Anything touching Cloud Billing (the budget resources) additionally needs
+`$env:USER_PROJECT_OVERRIDE = "true"` and `$env:GOOGLE_BILLING_PROJECT = "<project>"`, or it fails with
+a 403 naming an unrelated project number.
 
 ## Plan and Apply
 
@@ -94,10 +107,11 @@ pass `-var="enable_uptime_checks=true"`. Keep `uptime_period=900s` unless the
 extra probe volume from five-minute checks is intentional.
 
 ```powershell
-terraform -chdir=deploy/gcp/observability init `
-  -backend-config="bucket=custoking-terraform-state" `
-  -backend-config="prefix=observability/dev"
-terraform -chdir=deploy/gcp/observability plan -var="env=dev"
+terraform -chdir=deploy/gcp/observability init -reconfigure `
+  -backend-config="bucket=custoking-dev-terraform-state" `
+  -backend-config="prefix=observability/dev" `
+  -backend-config="access_token=$(gcloud auth print-access-token)"
+terraform -chdir=deploy/gcp/observability plan -var-file=custoking-dev.tfvars
 terraform -chdir=deploy/gcp/observability apply -var="env=dev"
 ```
 

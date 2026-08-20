@@ -126,6 +126,21 @@ section { margin-bottom:var(--s5); }
 .state.never { background:var(--critical-lo); color:var(--critical); }
 .state.failed{ background:var(--critical-lo); color:var(--critical); }
 
+
+/* ---------- live cost estimate ---------- */
+.cost {
+  background:var(--surface); border:1px solid var(--rule); border-left:4px solid var(--accent);
+  border-radius:4px; padding:var(--s3) var(--s4); margin-bottom:var(--s4);
+  display:flex; flex-wrap:wrap; gap:var(--s3) var(--s5); align-items:flex-end;
+}
+.cost .item { display:flex; flex-direction:column; gap:2px; }
+.cost .k { font-size:.72rem; color:var(--ink-3); }
+.cost .v {
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-variant-numeric:tabular-nums;
+  font-size:1.5rem; font-weight:500; line-height:1; letter-spacing:-.02em;
+}
+.cost .note { font-size:.72rem; color:var(--ink-3); flex:1 1 260px; line-height:1.45; }
+.cost:empty { display:none; }
 canvas.spark { width:100%; height:38px; display:block; }
 .card.wide canvas.spark { height:74px; }
 
@@ -169,6 +184,7 @@ footer {
 </header>
 
 <div class="banner" id="banner"></div>
+<div class="cost" id="cost"></div>
 <div id="body"></div>
 
 <footer>
@@ -309,7 +325,36 @@ function cardFor(p) {
   return el;
 }
 
+
+function renderCost(c) {
+  const el = $("cost");
+  el.textContent = "";
+  if (!c) return;
+  const inr = (v) => "₹" + Math.round(v).toLocaleString("en-IN");
+  const add = (k, v) => {
+    const d = document.createElement("div");
+    d.className = "item";
+    d.innerHTML = `<span class="k"></span><span class="v"></span>`;
+    d.querySelector(".k").textContent = k;
+    d.querySelector(".v").textContent = v;
+    el.appendChild(d);
+  };
+  add("Estimated spend / day", inr(c.totalInr));
+  add("Projected / month", inr(c.totalInr * 30));
+  add("Cloud SQL (fixed)", inr(c.cloudSqlInr));
+  add("Cloud Run (variable)", inr(c.cloudRunInr));
+  add("Fixed share", c.fixedSharePct.toFixed(0) + "%");
+  const n = document.createElement("div");
+  n.className = "note";
+  n.textContent =
+    "Estimate, not an invoice — computed from resource usage priced at asia-south2 SKU rates, " +
+    "because the billing export is broken at the account level. More current than the export, which " +
+    "lags hours by design. Cloud SQL is a measured constant; it is fixed regardless of tenants.";
+  el.appendChild(n);
+}
+
 function render(data) {
+  renderCost(data.cost);
   const body = $("body");
   body.textContent = "";
   for (const g of data.groups) {

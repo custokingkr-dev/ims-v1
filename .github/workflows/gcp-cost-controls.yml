@@ -84,11 +84,26 @@ jobs:
   artifact-registry-egress:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Skipped entirely when no billing export table is configured, rather than run and fail.
+    #
+    # This job failed every scheduled run from 2026-08-19 onward, and the cause is worth recording: the
+    # env below used to end in `|| 'custoking.billing_export.…'`. That fallback named the pre-split
+    # project, so when the variable was unset the job did not fail loudly -- it queried a table in a
+    # project this identity could not read, and after 2026-08-20 could not exist at all.
+    #
+    # Worse, the fallback DEFEATED THE GUARD BELOW. "Validate cost-report configuration" exists to catch
+    # a missing BILLING_EXPORT_TABLE, but a default guarantees the value is always present, so the check
+    # passed every time and the failure surfaced later as an opaque BigQuery error instead.
+    #
+    # With the fallback gone the condition is honest: no table configured means nothing to report, so
+    # the job skips. It resumes by itself the moment the variable is set, which is the right behaviour
+    # while the usage-cost export for billing account 014C0A remains unfixable on Google's side.
+    if: vars.BILLING_EXPORT_TABLE != ''
     env:
       GCP_PROJECT_ID: ${{ vars.DEV_GCP_PROJECT_ID }}
       WORKLOAD_IDENTITY_PROVIDER: ${{ vars.DEV_COST_WORKLOAD_IDENTITY_PROVIDER }}
       COST_CONTROLLER_SERVICE_ACCOUNT: ${{ vars.DEV_COST_CONTROLLER_SERVICE_ACCOUNT }}
-      BILLING_EXPORT_TABLE: ${{ vars.BILLING_EXPORT_TABLE || 'custoking.billing_export.gcp_billing_export_v1_018AC9_E669C1_2FC9B8' }}
+      BILLING_EXPORT_TABLE: ${{ vars.BILLING_EXPORT_TABLE }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 

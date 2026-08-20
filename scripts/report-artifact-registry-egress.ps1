@@ -14,7 +14,10 @@ Reports gross cost. Net is meaningless while promotional credits are active.
 #>
 param(
   [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
-  [string]$BillingTable = "custoking.billing_export.gcp_billing_export_v1_018AC9_E669C1_2FC9B8",
+  # No default. This used to name the pre-split project, so an unset value did not fail -- it silently
+  # queried a table belonging to a project that is now deleted, and the error surfaced as an opaque
+  # BigQuery failure rather than a missing-configuration one.
+  [string]$BillingTable = $(if ($env:BILLING_EXPORT_TABLE) { $env:BILLING_EXPORT_TABLE } else { throw "BillingTable is required: pass -BillingTable as project.dataset.table or set BILLING_EXPORT_TABLE." }),
   [ValidateRange(1, 90)]
   [int]$Days = 14,
   # A single uncached release run pulls all seven images, roughly 2 GB / INR 21. Warn near seven
