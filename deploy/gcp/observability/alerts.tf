@@ -4,7 +4,7 @@ resource "google_monitoring_alert_policy" "service_5xx_rate" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-5xx-rate"
   combiner              = "OR"
-  notification_channels = local.effective_notification_channel_ids
+  notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "ERROR"
 
   conditions {
@@ -53,7 +53,7 @@ resource "google_monitoring_alert_policy" "service_p95_latency" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-p95-latency"
   combiner              = "OR"
-  notification_channels = local.effective_notification_channel_ids
+  notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "WARNING"
 
   conditions {
@@ -95,7 +95,7 @@ resource "google_monitoring_alert_policy" "service_instance_saturation" {
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-max-instance-saturation"
   combiner              = "OR"
-  notification_channels = local.effective_notification_channel_ids
+  notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "WARNING"
 
   conditions {
