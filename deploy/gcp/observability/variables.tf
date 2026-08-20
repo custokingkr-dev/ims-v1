@@ -110,6 +110,25 @@ variable "monthly_budget_inr" {
   default     = 6000
 }
 
+variable "enable_cost_analysis_collector" {
+  description = <<-DESC
+    Whether to run the daily per-service cost collector.
+
+    Independent of the billing export by design. The usage-cost export for this billing account cannot
+    be enabled -- a server-side fault confirmed across six configurations -- so cost is reconstructed
+    from Cloud Monitoring usage priced at real SKU rates instead. Enable in prod; dev's spend is a
+    stopped database and is not worth a daily job.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "cost_analysis_dataset" {
+  description = "BigQuery dataset holding the computed cost tables and the restored historical billing export."
+  type        = string
+  default     = "cost_analysis"
+}
+
 variable "enable_alert_notifications" {
   description = <<-DESC
     Whether alert policies in this environment notify anyone at all.
