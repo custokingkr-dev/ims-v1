@@ -389,3 +389,16 @@ variable "count_gauge_bucket_max" {
   type        = number
   default     = 10000
 }
+
+variable "async_age_metric_buckets_fine" {
+  description = <<-DESC
+    Bucket bounds for age-like gauges read through a percentile.
+
+    The original age bounds began at 0, so a drained queue -- age exactly zero -- fell in [0,30) and a
+    percentile reported close to 30 seconds. An empty queue therefore looked like a half-minute backlog
+    that never cleared. Starting above zero puts a true zero in the underflow bucket, where it reads as
+    zero, and the low end is dense enough that a few seconds of lag is distinguishable from a few minutes.
+  DESC
+  type        = list(number)
+  default     = [0.5, 1, 2, 5, 10, 15, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1800, 3600, 7200, 14400, 28800]
+}

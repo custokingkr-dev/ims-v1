@@ -3,6 +3,20 @@ locals {
   notification_service_name_regex = "custoking-platform-service-${var.env}"
 }
 
+# NOTE ON THE BUCKETS BELOW
+#
+# These five carry gauges, not counts, and dashboards read them through a percentile. A percentile over a
+# distribution is INTERPOLATED WITHIN ITS BUCKET, so bucket width IS the precision of the number shown.
+# Against the old count bounds [0,1,5,10,25,...] a dead-letter count of 1 fell in [1,5) and rendered as
+# roughly 4.8: a permanently idle queue displayed as a small standing backlog. The old age bounds began
+# at 0, so a fully drained queue reported an oldest-pending age of nearly 30 seconds.
+#
+# The gauge bounds sit on half-integers, so an integer N falls mid-bucket and a percentile recovers it.
+# The fine age bounds start above zero so an empty queue reads as empty.
+#
+# Alert thresholds on these were tuned against the inflated values and will now see smaller, correct
+# numbers. They should fire less often -- that is the correction landing, not the alerting weakening.
+
 resource "google_logging_metric" "outbox_pending_count" {
   project     = var.project
   name        = "custoking/${var.env}/outbox_pending_count"
@@ -24,7 +38,7 @@ resource "google_logging_metric" "outbox_pending_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -50,7 +64,7 @@ resource "google_logging_metric" "outbox_dead_letter_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -76,7 +90,7 @@ resource "google_logging_metric" "outbox_oldest_pending_age_seconds" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_age_metric_buckets
+      bounds = var.async_age_metric_buckets_fine
     }
   }
 }
@@ -102,7 +116,7 @@ resource "google_logging_metric" "notification_inbox_backlog_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
@@ -128,7 +142,7 @@ resource "google_logging_metric" "notification_inbox_dead_letter_count" {
 
   bucket_options {
     explicit_buckets {
-      bounds = var.async_count_metric_buckets
+      bounds = var.gauge_metric_buckets
     }
   }
 }
