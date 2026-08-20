@@ -110,6 +110,21 @@ variable "monthly_budget_inr" {
   default     = 6000
 }
 
+variable "uptime_failure_checker_quorum" {
+  description = <<-DESC
+    How many uptime checker regions must fail before an incident opens.
+
+    Was effectively 1, which contradicts Google's documented default of "at least two regions" and their
+    warning that a single checker failing "might be the result of the checker's command timing out due
+    to a network issue". Each checker location is a separate time series and there is no cross-series
+    reducer, so one region having a bad minute paged.
+
+    Six checkers probe each service, so two is still fast and sensitive: a real outage fails all six.
+  DESC
+  type        = number
+  default     = 2
+}
+
 variable "enable_aggregate_error_alert" {
   description = <<-DESC
     Whether to run a single aggregate server-error alert in place of seven per-service ones.
