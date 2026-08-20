@@ -50,7 +50,27 @@ REQUIRED_METRICS=(
 # hourly, exited 0, and published nothing for nineteen hours -- because its BigQuery scope matched no
 # rows and the empty case took the same silent branch as "not ready yet". This script passed clean
 # throughout. A liveness assertion covering four of five pipelines certifies the wrong thing.
-REQUIRED_CUSTOM_METRICS=(
+REQUIRED_CUSTOM_METRICS=()
+
+# Metrics that are KNOWN broken, with a reason and a date, and do not fail this check.
+#
+# This list exists so the check can stay honest without becoming noise. A check that fails every day
+# for a fortnight is one you learn to skip, and skipping it is exactly the failure this script was
+# written to prevent -- so a break that is understood and tracked elsewhere must look different from a
+# break that is news.
+#
+# Entries are still queried and still reported. They just do not set the exit code. Anything here needs
+# a reason and a date so it cannot rot into a permanent exemption that nobody remembers granting.
+#
+# 2026-08-20 -- cost/*: the Cloud Billing BigQuery export for account 014C0A-C6B9AF-5FABC0 cannot be
+# enabled. It registered on 2026-08-19T09:21Z, created both table shells, and delivered zero rows in
+# 28 hours. Re-enabling fails server-side with "Failed to save billing export configuration" against
+# two different target datasets (request IDs 5466219921450779379 and 9544724675933638475), which
+# places the fault at the billing account, not the dataset or our IAM. Open with Google billing
+# support. NOTE: spend ALERTING is unaffected -- the budgets in deploy/gcp/observability/budget.tf
+# read Google's billing data directly and do not depend on this export. What is lost is cost
+# ATTRIBUTION and the dashboard's spend panels.
+KNOWN_BROKEN_METRICS=(
   "custom.googleapis.com/custoking/cost/gross_month_to_date"
   "custom.googleapis.com/custoking/cost/gross_yesterday"
 )
@@ -92,7 +112,17 @@ failures=0
 # Both families are asserted identically; only the type prefix differs.
 ALL_METRICS=()
 for m in "${REQUIRED_METRICS[@]}"; do ALL_METRICS+=("logging.googleapis.com/user/${m}"); done
-for m in "${REQUIRED_CUSTOM_METRICS[@]}"; do ALL_METRICS+=("${m}"); done
+for m in "${REQUIRED_CUSTOM_METRICS[@]:-}"; do [ -n "${m}" ] && ALL_METRICS+=("${m}"); done
+for m in "${KNOWN_BROKEN_METRICS[@]:-}"; do [ -n "${m}" ] && ALL_METRICS+=("${m}"); done
+
+is_known_broken() {
+  for k in "${KNOWN_BROKEN_METRICS[@]:-}"; do
+    [ "${k}" = "$1" ] && return 0
+  done
+  return 1
+}
+
+known_broken_seen=0
 
 for metric in "${ALL_METRICS[@]}"; do
   count=$(curl -s -G \
@@ -103,7 +133,16 @@ for metric in "${ALL_METRICS[@]}"; do
     "https://monitoring.googleapis.com/v3/projects/${PROJECT}/timeSeries" \
     | "${PY_BIN}" -c "import sys,json; print(len(json.load(sys.stdin).get('timeSeries',[])))" 2>/dev/null || echo "ERR")
 
-  if [ "${count}" = "ERR" ]; then
+  if is_known_broken "${metric}"; then
+    if [ "${count}" = "0" ] || [ "${count}" = "ERR" ]; then
+      printf '  %-58s still broken (known, tracked)\n' "${metric##*/custoking/}"
+      known_broken_seen=$((known_broken_seen + 1))
+    else
+      # Recovery is worth saying out loud. A known-broken entry that starts reporting again should be
+      # removed from the list, and nobody will remember to unless the script says so.
+      printf '  %-58s RECOVERED (%s series) -- remove from KNOWN_BROKEN_METRICS\n' "${metric##*/custoking/}" "${count}"
+    fi
+  elif [ "${count}" = "ERR" ]; then
     printf '  %-58s QUERY FAILED\n' "${metric##*/custoking/}"
     failures=$((failures + 1))
   elif [ "${count}" = "0" ]; then
@@ -133,4 +172,9 @@ MSG
   exit 1
 fi
 
-echo "all ${#ALL_METRICS[@]} required metrics are reporting"
+if [ "${known_broken_seen}" -gt 0 ]; then
+  echo "all required metrics are reporting (${known_broken_seen} known-broken metric(s) still down --"
+  echo "see KNOWN_BROKEN_METRICS in this script for the reason and date)"
+else
+  echo "all ${#ALL_METRICS[@]} required metrics are reporting"
+fi
