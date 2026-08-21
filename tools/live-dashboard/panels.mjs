@@ -24,6 +24,17 @@ const svc = (name) => `custoking-${name}-${ENV}`;
 // Distributions cannot represent an exact gauge, so this is a floor rather than a fix. For a non-negative
 // integer gauge the underflow bucket contains only zero, which makes the mapping unambiguous.
 const GAUGE = { aligner: "ALIGN_PERCENTILE_50", reducer: "REDUCE_MAX", zeroBelow: 0.5 };
+
+// The dashboard runs on Cloud Run in the same project it observes, so project-wide Cloud Run metrics
+// include the observer. That is not theoretical: over a three-hour window the ONLY service reporting
+// container startup latency was custoking-dashboard-prod, because uptime probes keep the application
+// services warm. "Cold start p95" on the operations page was reporting the monitoring tool's own cold
+// start and nothing about the product.
+//
+// Excluded from every project-wide Cloud Run metric for the same reason it matters for cold starts:
+// instance counts and request volume would otherwise include this page's own traffic, so opening the
+// dashboard would move the numbers the dashboard shows.
+const NOT_SELF = 'resource.label.service_name != monitoring.regex.full_match(".*-dashboard-.*")';
 // Counters: per-second rate, summed across series.
 const RATE = { aligner: "ALIGN_RATE", reducer: "REDUCE_SUM" };
 // Counters where the absolute count over the window is what matters, not the rate.
@@ -126,7 +137,7 @@ export const PANELS = [
     group: "usage",
     title: "Total request volume",
     note: "Includes uptime-probe traffic, which at this scale is most of it overnight.",
-    filter: `metric.type="run.googleapis.com/request_count"`,
+    filter: `metric.type="run.googleapis.com/request_count" AND ${NOT_SELF}`,
     ...RATE,
     kind: "series",
     format: "rate",
@@ -236,7 +247,7 @@ export const PANELS = [
     group: "infra",
     title: "Instances running",
     note: "Billed by instance-time, so this line is the shape of your Cloud Run bill.",
-    filter: `metric.type="run.googleapis.com/container/instance_count"`,
+    filter: `metric.type="run.googleapis.com/container/instance_count" AND ${NOT_SELF}`,
     aligner: "ALIGN_MEAN",
     reducer: "REDUCE_SUM",
     kind: "series",
@@ -247,7 +258,7 @@ export const PANELS = [
     group: "infra",
     title: "Cold start, p95",
     note: "With min-instances at zero this is what a first user after a quiet period actually waits.",
-    filter: `metric.type="run.googleapis.com/container/startup_latencies"`,
+    filter: `metric.type="run.googleapis.com/container/startup_latencies" AND ${NOT_SELF}`,
     aligner: "ALIGN_PERCENTILE_95",
     reducer: "REDUCE_MAX",
     kind: "scorecard",

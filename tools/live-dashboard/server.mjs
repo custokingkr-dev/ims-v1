@@ -33,7 +33,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PANELS, GROUPS, AUDIENCE } from "./panels.mjs";
-import { COST_INPUTS, estimateDailyInr } from "./cost.mjs";
+import { COST_INPUTS, estimateDailyInr, COST_FILTER_EXCLUDE_SELF } from "./cost.mjs";
 import * as auth from "./auth.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -273,7 +273,7 @@ async function estimateCost(token) {
   for (const input of COST_INPUTS) {
     try {
       const params = new URLSearchParams({
-        filter: `metric.type="${input.metric}"`,
+        filter: `metric.type="${input.metric}" AND ${COST_FILTER_EXCLUDE_SELF}`,
         "interval.startTime": start.toISOString(),
         "interval.endTime": end.toISOString(),
         "aggregation.alignmentPeriod": "86400s",
