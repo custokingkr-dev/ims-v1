@@ -43,6 +43,11 @@ const INR_PER_DAY_CLOUD_SQL = 102.70;
 // add a network dependency and a failure mode to a panel whose whole point is a rough run-rate.
 const INR_PER_USD = 88;
 
+// Exported so server.mjs appends it to every cost query. Without it the dashboard's own CPU and
+// memory land in the estimate, so looking at the spend figure would increase the spend figure.
+export const COST_FILTER_EXCLUDE_SELF =
+  'resource.label.service_name != monitoring.regex.full_match(".*-dashboard-.*")';
+
 export const COST_INPUTS = [
   { key: "cpuSeconds", metric: "run.googleapis.com/container/cpu/allocation_time", aligner: "ALIGN_SUM" },
   { key: "gibSeconds", metric: "run.googleapis.com/container/memory/allocation_time", aligner: "ALIGN_SUM" },

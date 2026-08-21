@@ -24,6 +24,21 @@ const svc = (name) => `custoking-${name}-${ENV}`;
 // Distributions cannot represent an exact gauge, so this is a floor rather than a fix. For a non-negative
 // integer gauge the underflow bucket contains only zero, which makes the mapping unambiguous.
 const GAUGE = { aligner: "ALIGN_PERCENTILE_50", reducer: "REDUCE_MAX", zeroBelow: 0.5 };
+
+// The dashboard runs on Cloud Run in the same project it observes, so project-wide Cloud Run metrics
+// include the observer. That is not theoretical: over a three-hour window the ONLY service reporting
+// container startup latency was custoking-dashboard-prod, because uptime probes keep the application
+// services warm. "Cold start p95" on the operations page was reporting the monitoring tool's own cold
+// start and nothing about the product.
+//
+// Excluded from every project-wide Cloud Run metric for the same reason it matters for cold starts:
+// instance counts and request volume would otherwise include this page's own traffic, so opening the
+// dashboard would move the numbers the dashboard shows.
+const NOT_SELF = 'resource.label.service_name != monitoring.regex.full_match(".*-dashboard-.*")';
+
+// Past this age a value is withheld instead of shown with a stale marker. See the Money section below
+// for why one hour, and for what the frozen figures turned out to actually describe.
+const COST_EXPIRY = { expiresAfterHours: 1 };
 // Counters: per-second rate, summed across series.
 const RATE = { aligner: "ALIGN_RATE", reducer: "REDUCE_SUM" };
 // Counters where the absolute count over the window is what matters, not the rate.
@@ -126,7 +141,7 @@ export const PANELS = [
     group: "usage",
     title: "Total request volume",
     note: "Includes uptime-probe traffic, which at this scale is most of it overnight.",
-    filter: `metric.type="run.googleapis.com/request_count"`,
+    filter: `metric.type="run.googleapis.com/request_count" AND ${NOT_SELF}`,
     ...RATE,
     kind: "series",
     format: "rate",
@@ -236,7 +251,7 @@ export const PANELS = [
     group: "infra",
     title: "Instances running",
     note: "Billed by instance-time, so this line is the shape of your Cloud Run bill.",
-    filter: `metric.type="run.googleapis.com/container/instance_count"`,
+    filter: `metric.type="run.googleapis.com/container/instance_count" AND ${NOT_SELF}`,
     aligner: "ALIGN_MEAN",
     reducer: "REDUCE_SUM",
     kind: "series",
@@ -247,7 +262,7 @@ export const PANELS = [
     group: "infra",
     title: "Cold start, p95",
     note: "With min-instances at zero this is what a first user after a quiet period actually waits.",
-    filter: `metric.type="run.googleapis.com/container/startup_latencies"`,
+    filter: `metric.type="run.googleapis.com/container/startup_latencies" AND ${NOT_SELF}`,
     aligner: "ALIGN_PERCENTILE_95",
     reducer: "REDUCE_MAX",
     kind: "scorecard",
@@ -277,6 +292,24 @@ export const PANELS = [
   },
 
   // ---------------------------------------------------------------- Money
+  //
+  // These three read from the Cloud Billing BigQuery export, and the export is broken on Google's side.
+  // The hourly collector ims-cost-metric-prod still runs and still fails -- every execution since
+  // 2026-08-19T12:28Z has exited 1 against an empty usage-cost table -- which is the correct behaviour:
+  // it refuses to write a number it cannot compute.
+  //
+  // The dashboard was not being equally careful. It kept rendering the last values the collector
+  // managed to write, and those values carry labels project_id="custoking" and
+  // billing_account="018AC9-E669C1-2FC9B8". That project was DELETED on 2026-08-20, and production
+  // bills to 014C0A-C6B9AF-5FABC0. So a panel headed "Spend, month to date" was showing a dead
+  // project's spend on an account this project does not use, marked only "last seen 2 days ago".
+  //
+  // A one-hour expiry is generous for an hourly job and short enough that nothing from a previous era
+  // survives on screen. The panels withhold rather than disappear, so the broken export stays visible
+  // as a known gap instead of quietly vanishing from the page.
+  //
+  // The live cost band at the top of the page is unaffected -- it is computed from resource usage and
+  // SKU rates and needs no billing export at all.
   {
     id: "cost_mtd",
     group: "money",
@@ -288,6 +321,7 @@ export const PANELS = [
     kind: "scorecard",
     format: "inr",
     emphasis: true,
+    ...COST_EXPIRY,
   },
   {
     id: "cost_yesterday",
@@ -299,6 +333,7 @@ export const PANELS = [
     reducer: "REDUCE_SUM",
     kind: "scorecard",
     format: "inr",
+    ...COST_EXPIRY,
   },
   {
     id: "cost_net_mtd",
@@ -310,6 +345,7 @@ export const PANELS = [
     reducer: "REDUCE_SUM",
     kind: "scorecard",
     format: "inr",
+    ...COST_EXPIRY,
   },
 ];
 

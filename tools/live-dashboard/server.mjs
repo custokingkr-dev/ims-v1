@@ -33,7 +33,7 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PANELS, GROUPS, AUDIENCE } from "./panels.mjs";
-import { COST_INPUTS, estimateDailyInr } from "./cost.mjs";
+import { COST_INPUTS, estimateDailyInr, COST_FILTER_EXCLUDE_SELF } from "./cost.mjs";
 import * as auth from "./auth.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -220,16 +220,53 @@ async function fetchPanel(panel, token, windowMinutes) {
           : { ...base, state: "never" };
       }
       const last = wideSeries.flat().sort((a, b) => new Date(b.t) - new Date(a.t))[0];
+
+      // A stale marker asks the reader to discount a number. Past some age the number stops being a
+      // discountable version of the truth and becomes an answer to a DIFFERENT QUESTION, and no caveat
+      // rescues that -- so a panel may declare the age at which its value expires, and past it the
+      // value is withheld rather than dressed in a warning.
+      //
+      // The cost panels are why. They froze on 2026-08-19 and kept rendering, and the frozen figures
+      // carry labels project_id="custoking" and billing_account="018AC9-E669C1-2FC9B8": a project that
+      // has since been DELETED, billed to an account this one does not run on (it runs on 014C0A). A
+      // panel headed "Spend, month to date" was reporting a dead project's bill on somebody else's
+      // account. "Last seen 2 days ago" reads as "roughly right, slightly behind", which is precisely
+      // the wrong inference.
+      //
+      // Withholding is also self-repairing. The hourly collector still runs and still fails against the
+      // broken billing export; if Google ever fixes it, fresh points arrive and the panels light up on
+      // their own with no code change.
+      const ageHours = (end.getTime() - new Date(last.t).getTime()) / 3_600_000;
+      if (panel.expiresAfterHours && ageHours > panel.expiresAfterHours) {
+        return { ...base, state: "expired", lastSeen: last.t };
+      }
       return { ...base, state: "stale", lastSeen: last.t, value: last.v };
     } catch (err) {
       return { ...base, state: "failed", error: err.message };
     }
   }
 
-  const latest = series.map((s) => s.points[s.points.length - 1].v);
+  // How a series collapses to one number depends on WHAT IT IS, and treating them alike was a real bug:
+  // two pages open side by side showed different values for the same metric.
+  //
+  // A DELTA counter is a count PER BUCKET. Taking the last bucket of a three-hour window means showing
+  // the last three minutes under a "last 3 hours" label, and every page load samples a different
+  // bucket -- so the number moved on each refresh and disagreed between the two dashboards. Counters
+  // must be SUMMED across the window to mean what the label says.
+  //
+  // A gauge is a level, so the most recent reading is the answer and summing would be nonsense: adding
+  // up sixty consecutive readings of "1276 students" gives 76,560.
+  const isCounter = panel.aligner === "ALIGN_DELTA";
+  const collapse = (pts) =>
+    isCounter ? pts.reduce((a, p) => a + p.v, 0) : pts[pts.length - 1].v;
+
+  // Carried per series so the client renders the same number the headline is built from, rather than
+  // recomputing from raw points and drifting away from it again.
+  for (const entry of series) entry.value = collapse(entry.points);
+
   const value = panel.kind === "breakdown"
-    ? latest.reduce((a, b) => a + b, 0)
-    : Math.max(...latest);
+    ? series.reduce((a, entry) => a + entry.value, 0)
+    : Math.max(...series.map((entry) => entry.value));
 
   const severity = panel.severity ? panel.severity(value) : null;
   return {
@@ -237,9 +274,7 @@ async function fetchPanel(panel, token, windowMinutes) {
     state: value === 0 ? "zero" : "live",
     value,
     severity,
-    series: series
-      .sort((a, b) => b.points[b.points.length - 1].v - a.points[a.points.length - 1].v)
-      .slice(0, 12),
+    series: series.sort((a, b) => b.value - a.value).slice(0, 12),
   };
 }
 
@@ -258,7 +293,7 @@ async function estimateCost(token) {
   for (const input of COST_INPUTS) {
     try {
       const params = new URLSearchParams({
-        filter: `metric.type="${input.metric}"`,
+        filter: `metric.type="${input.metric}" AND ${COST_FILTER_EXCLUDE_SELF}`,
         "interval.startTime": start.toISOString(),
         "interval.endTime": end.toISOString(),
         "aggregation.alignmentPeriod": "86400s",
