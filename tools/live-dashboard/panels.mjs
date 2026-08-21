@@ -333,8 +333,13 @@ export const SERVICES = [
 // yesterday" lands where "99.7% availability" does not, and at roughly 600 real requests a day a
 // percentage is dominated by whichever handful of requests happened to arrive.
 export const AUDIENCE = {
+  // The billing-export cost panels are deliberately ABSENT from the owner view. They read INR 14,515
+  // month-to-date -- the deleted project's figure, frozen since the usage-cost export broke on
+  // Google's side -- while the live band above them reads INR 110/day. Two contradictory cost numbers
+  // on an executive page is worse than one missing one, and "stale" is a caveat a reader has to notice
+  // rather than one the page enforces. They stay in the ops view, where a stale marker means something
+  // to whoever can act on it, and they will return here on their own if the export is ever fixed.
   owner: [
-    "cost_mtd", "cost_yesterday", "cost_net_mtd",
     "schools", "schools_live", "students", "sections",
     "active_users", "logins_recent",
     "requests_by_tenant", "requests_by_feature", "errors_5xx",

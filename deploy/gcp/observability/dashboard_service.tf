@@ -53,8 +53,16 @@ resource "google_cloud_run_v2_service" "dashboard" {
   # When the load balancer path is enabled, IAP moves to the backend service and this must turn off,
   # and ingress narrows so the only way in is through the load balancer. Leaving ingress open would
   # mean the .run.app URL bypassed the gate entirely.
-  ingress     = var.enable_dashboard_load_balancer ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
-  iap_enabled = !var.enable_dashboard_load_balancer
+  # IAP is off for good. Two integration paths were tried -- direct on Cloud Run, then a load balancer
+  # with IAP on the backend service -- and both refused an authorised holder of roles/owner and
+  # roles/iap.admin at organisation level, with correct IAM on each path, no access levels, and no
+  # restricting org policy. The account is a consumer Google identity and the organisation has no
+  # Cloud Identity directory; IAP is built around organisational identity and that is the wall.
+  #
+  # The dashboard authenticates people itself instead: Google Sign-In plus an email allowlist. That
+  # works with ordinary gmail.com accounts, needs no domain, and costs nothing.
+  ingress     = "INGRESS_TRAFFIC_ALL"
+  iap_enabled = false
 
   template {
     service_account = google_service_account.dashboard[0].email
@@ -84,6 +92,41 @@ resource "google_cloud_run_v2_service" "dashboard" {
       env {
         name  = "DASHBOARD_ENV"
         value = var.env
+      }
+
+      env {
+        name  = "OAUTH_CLIENT_ID"
+        value = var.dashboard_oauth_client_id
+      }
+
+      # From Secret Manager, never a tfvar. tfvars are gitignored here but still sit in plaintext on a
+      # workstation and in whatever shell history created them; a secret reference is auditable and
+      # rotatable without touching the deployment.
+      env {
+        name = "OAUTH_CLIENT_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = "dashboard-oauth-client-secret"
+            version = "latest"
+          }
+        }
+      }
+
+      # Signs session cookies. Its own secret so that rotating it logs everyone out deliberately rather
+      # than as a side effect of redeploying.
+      env {
+        name = "SESSION_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = "dashboard-session-secret"
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "DASHBOARD_ALLOWED_EMAILS"
+        value = join(",", var.dashboard_allowed_emails)
       }
     }
   }
@@ -128,6 +171,19 @@ resource "google_iap_web_cloud_run_service_iam_member" "dashboard_viewers" {
   cloud_run_service_name = google_cloud_run_v2_service.dashboard[0].name
   role                   = "roles/iap.httpsResourceAccessor"
   member                 = each.value
+}
+
+# The application authenticates people itself, so Cloud Run has to let requests reach it. This is the
+# line that makes the service publicly INVOKABLE -- everything that keeps it private now lives in
+# auth.mjs, which refuses anyone not on the allowlist and fails closed when unconfigured.
+resource "google_cloud_run_v2_service_iam_member" "dashboard_public" {
+  count = local.dashboard_enabled
+
+  project  = var.project
+  location = var.region
+  name     = google_cloud_run_v2_service.dashboard[0].name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
 }
 
 output "dashboard_url" {

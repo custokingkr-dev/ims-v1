@@ -13,7 +13,7 @@ FROM node:22-alpine@sha256:41e4389f3d988d2ed55392df4db1420ad048ae53324a8e2b7c6d1
 USER node
 WORKDIR /app
 
-COPY --chown=node:node server.mjs panels.mjs cost.mjs ./
+COPY --chown=node:node server.mjs panels.mjs cost.mjs auth.mjs ./
 COPY --chown=node:node public ./public
 
 # Cloud Run supplies PORT; the default matches local use so the same command works in both places.

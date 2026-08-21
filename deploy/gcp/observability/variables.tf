@@ -125,6 +125,24 @@ variable "uptime_failure_checker_quorum" {
   default     = 2
 }
 
+variable "dashboard_oauth_client_id" {
+  description = "OAuth 2.0 client ID for dashboard sign-in. Not secret; the client SECRET lives in Secret Manager."
+  type        = string
+  default     = ""
+}
+
+variable "dashboard_allowed_emails" {
+  description = <<-DESC
+    Email addresses permitted to open the dashboard.
+
+    An EMPTY list denies everyone. That is deliberate: a misconfiguration should lock the door rather
+    than remove it. The list is re-checked on every request, so removing someone takes effect on their
+    next page load rather than when their session expires.
+  DESC
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_dashboard_load_balancer" {
   description = <<-DESC
     Put the dashboard behind an external load balancer with IAP on the backend service.
