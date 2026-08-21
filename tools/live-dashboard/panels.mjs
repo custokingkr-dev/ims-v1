@@ -35,6 +35,10 @@ const GAUGE = { aligner: "ALIGN_PERCENTILE_50", reducer: "REDUCE_MAX", zeroBelow
 // instance counts and request volume would otherwise include this page's own traffic, so opening the
 // dashboard would move the numbers the dashboard shows.
 const NOT_SELF = 'resource.label.service_name != monitoring.regex.full_match(".*-dashboard-.*")';
+
+// Past this age a value is withheld instead of shown with a stale marker. See the Money section below
+// for why one hour, and for what the frozen figures turned out to actually describe.
+const COST_EXPIRY = { expiresAfterHours: 1 };
 // Counters: per-second rate, summed across series.
 const RATE = { aligner: "ALIGN_RATE", reducer: "REDUCE_SUM" };
 // Counters where the absolute count over the window is what matters, not the rate.
@@ -288,6 +292,24 @@ export const PANELS = [
   },
 
   // ---------------------------------------------------------------- Money
+  //
+  // These three read from the Cloud Billing BigQuery export, and the export is broken on Google's side.
+  // The hourly collector ims-cost-metric-prod still runs and still fails -- every execution since
+  // 2026-08-19T12:28Z has exited 1 against an empty usage-cost table -- which is the correct behaviour:
+  // it refuses to write a number it cannot compute.
+  //
+  // The dashboard was not being equally careful. It kept rendering the last values the collector
+  // managed to write, and those values carry labels project_id="custoking" and
+  // billing_account="018AC9-E669C1-2FC9B8". That project was DELETED on 2026-08-20, and production
+  // bills to 014C0A-C6B9AF-5FABC0. So a panel headed "Spend, month to date" was showing a dead
+  // project's spend on an account this project does not use, marked only "last seen 2 days ago".
+  //
+  // A one-hour expiry is generous for an hourly job and short enough that nothing from a previous era
+  // survives on screen. The panels withhold rather than disappear, so the broken export stays visible
+  // as a known gap instead of quietly vanishing from the page.
+  //
+  // The live cost band at the top of the page is unaffected -- it is computed from resource usage and
+  // SKU rates and needs no billing export at all.
   {
     id: "cost_mtd",
     group: "money",
@@ -299,6 +321,7 @@ export const PANELS = [
     kind: "scorecard",
     format: "inr",
     emphasis: true,
+    ...COST_EXPIRY,
   },
   {
     id: "cost_yesterday",
@@ -310,6 +333,7 @@ export const PANELS = [
     reducer: "REDUCE_SUM",
     kind: "scorecard",
     format: "inr",
+    ...COST_EXPIRY,
   },
   {
     id: "cost_net_mtd",
@@ -321,6 +345,7 @@ export const PANELS = [
     reducer: "REDUCE_SUM",
     kind: "scorecard",
     format: "inr",
+    ...COST_EXPIRY,
   },
 ];
 

@@ -220,6 +220,26 @@ async function fetchPanel(panel, token, windowMinutes) {
           : { ...base, state: "never" };
       }
       const last = wideSeries.flat().sort((a, b) => new Date(b.t) - new Date(a.t))[0];
+
+      // A stale marker asks the reader to discount a number. Past some age the number stops being a
+      // discountable version of the truth and becomes an answer to a DIFFERENT QUESTION, and no caveat
+      // rescues that -- so a panel may declare the age at which its value expires, and past it the
+      // value is withheld rather than dressed in a warning.
+      //
+      // The cost panels are why. They froze on 2026-08-19 and kept rendering, and the frozen figures
+      // carry labels project_id="custoking" and billing_account="018AC9-E669C1-2FC9B8": a project that
+      // has since been DELETED, billed to an account this one does not run on (it runs on 014C0A). A
+      // panel headed "Spend, month to date" was reporting a dead project's bill on somebody else's
+      // account. "Last seen 2 days ago" reads as "roughly right, slightly behind", which is precisely
+      // the wrong inference.
+      //
+      // Withholding is also self-repairing. The hourly collector still runs and still fails against the
+      // broken billing export; if Google ever fixes it, fresh points arrive and the panels light up on
+      // their own with no code change.
+      const ageHours = (end.getTime() - new Date(last.t).getTime()) / 3_600_000;
+      if (panel.expiresAfterHours && ageHours > panel.expiresAfterHours) {
+        return { ...base, state: "expired", lastSeen: last.t };
+      }
       return { ...base, state: "stale", lastSeen: last.t, value: last.v };
     } catch (err) {
       return { ...base, state: "failed", error: err.message };

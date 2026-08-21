@@ -101,6 +101,10 @@ section { margin-bottom:var(--s5); }
 .card.s-zero  { border-top-color:var(--verified); }
 .card.s-stale { border-top-color:var(--caution); }
 .card.s-never { border-top-color:var(--critical); }
+/* Withheld, not broken -- so it takes the caution colour rather than the critical one, and the dash is
+   dimmed so the eye moves past it instead of reading it as a value. */
+.card.s-expired { border-top-color:var(--caution); }
+.card .v.muted { color:var(--ink-3); }
 .card.s-failed{ border-top-color:var(--critical); }
 .card.sev-bad  { border-top-color:var(--critical); }
 .card.sev-warn { border-top-color:var(--caution); }
@@ -125,6 +129,7 @@ section { margin-bottom:var(--s5); }
 .state.stale { background:var(--caution-lo);  color:var(--caution); }
 .state.never { background:var(--critical-lo); color:var(--critical); }
 .state.failed{ background:var(--critical-lo); color:var(--critical); }
+.state.expired{ background:var(--caution-lo); color:var(--caution); }
 
 
 /* ---------- live cost estimate ---------- */
@@ -193,6 +198,7 @@ footer {
     <span class="state zero">zero</span><span>reporting a real 0</span>
     <span class="state stale">stale</span><span>emitted before, not now</span>
     <span class="state never">never</span><span>no point, ever</span>
+    <span class="state expired">too old</span><span>value withheld, not stale</span>
   </span>
 </footer>
 
@@ -205,7 +211,10 @@ let timer = null;
 const fmt = {
   int:      (v) => Math.round(v).toLocaleString("en-IN"),
   float1:   (v) => v.toFixed(1),
-  rate:     (v) => v < 1 ? v.toFixed(2) + "/s" : v.toFixed(1) + "/s",
+  // Switches to per-minute below 1/s. This product serves a few hundred requests an hour, so "0.04/s"
+  // was the standard unit rendering the true number least legibly -- and this page argues elsewhere
+  // that absolute counts land where rates do not. "2.7/min" is the same measurement, readable.
+  rate:     (v) => v < 1 ? (v * 60).toFixed(1) + "/min" : v.toFixed(1) + "/s",
   ms:       (v) => v >= 1000 ? (v / 1000).toFixed(2) + "s" : Math.round(v) + "ms",
   pct:      (v) => (v * 100).toFixed(1) + "%",
   inr:      (v) => "₹" + Math.round(v).toLocaleString("en-IN"),
@@ -274,6 +283,15 @@ function cardFor(p) {
     el.insertAdjacentHTML("beforeend",
       `<span class="state never">never reported</span>
        <div class="n">No point in 30 days. The metric exists but nothing has ever written to it — any alert on it cannot fire.</div>`);
+    return el;
+  } else if (p.state === "expired") {
+    // Deliberately shows no number. The panel HAS a last value; it is withheld because at this age it
+    // describes something other than what the title asks, and a figure on screen gets read and
+    // remembered whatever caveat sits beside it.
+    el.insertAdjacentHTML("beforeend",
+      `<span class="state expired">too old to show</span>
+       <div class="v muted">—</div>
+       <div class="n">Last written ${ago(p.lastSeen)}, past this panel's limit. The value is withheld rather than shown with a caveat: at this age it no longer answers the question in the title.</div>`);
     return el;
   } else if (p.state === "stale") {
     const v = document.createElement("div");
