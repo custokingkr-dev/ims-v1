@@ -128,6 +128,19 @@ resource "google_cloud_run_v2_service" "dashboard" {
         name  = "DASHBOARD_ALLOWED_EMAILS"
         value = join(",", var.dashboard_allowed_emails)
       }
+
+      # Pins the OAuth redirect_uri instead of deriving it from the request's Host header, which a
+      # client controls. Google's registered-URI check already refuses a spoofed origin, but that is an
+      # external configuration doing the work; this makes it a property of the deployment.
+      #
+      # It cannot read the service's own .uri -- that is a self-reference and Terraform rejects the
+      # cycle -- so it comes from a variable. Left empty the app falls back to the request headers,
+      # which is what a workstation needs, so an unset value degrades to the previous behaviour rather
+      # than breaking sign-in.
+      env {
+        name  = "DASHBOARD_PUBLIC_URL"
+        value = var.dashboard_public_url
+      }
     }
   }
 

@@ -327,10 +327,50 @@ async function estimateCost(token) {
 // running on a workstation, where the process is already behind the machine's own login.
 const AUTH_REQUIRED = process.env.DASHBOARD_AUTH !== "off";
 
+// Where sign-in is allowed to land. An allowlist rather than sanitisation, because this replaced a
+// sanitiser that did not work and carried a comment claiming it did.
+//
+// The old line was:
+//
+//   (state || "/owner").replace(/^[^/]*/, "") || "/owner"
+//
+// with a note saying the result was "forced to a relative path so a crafted state cannot turn this
+// into an open redirect". It does not. The pattern strips characters up to the FIRST slash, so
+// "https://evil.com/x" loses only "https:" and yields "//evil.com/x" -- a scheme-relative URL, which
+// every browser follows off-site. CodeQL flagged it (js/server-side-unvalidated-url-redirection) and
+// CodeQL was right.
+//
+// Exploiting it needs a callback that reaches the redirect, so it is not trivially reachable, but the
+// value of an open redirect is that the link starts on a domain the victim trusts -- which this one
+// does. Not worth reasoning about when the real destination set has two members in it.
+//
+// So: no parsing, no stripping, no cleverness. Match against the pages that exist, or go to /owner.
+// A destination that is not one of these is a bug or an attack, and both want the same answer.
+const SIGN_IN_DESTINATIONS = new Set(["/owner", "/ops"]);
+
+function safeDest(candidate) {
+  return SIGN_IN_DESTINATIONS.has(candidate) ? candidate : "/owner";
+}
+
+// Pinned in production, derived only as a local fallback.
+//
+// CodeQL did not flag this one, but it is the same family as the open redirect above and was found
+// while fixing it. redirect_uri was built from the Host and X-Forwarded-Proto headers, both of which
+// the client sends. A spoofed Host would put an attacker's origin into the Google sign-in URL this
+// server hands out.
+//
+// It is not currently exploitable, because Google refuses any redirect_uri that is not registered on
+// the OAuth client -- but that is someone else's configuration doing the work, and it is one console
+// edit away from not doing it. An explicit value costs one environment variable.
+//
+// Unset, it falls back to the headers so the same code runs on a workstation. The x-forwarded-proto
+// read stays in that path: Cloud Run terminates TLS upstream, so an inbound request looks like plain
+// http, and building an http:// callback produces a confusing OAuth mismatch rather than an obvious
+// scheme problem.
+const PUBLIC_URL = (process.env.DASHBOARD_PUBLIC_URL || "").replace(/\/+$/, "");
+
 function externalOrigin(req) {
-  // Cloud Run terminates TLS upstream, so the inbound request looks like plain http. Building the
-  // redirect_uri from that would send Google an http:// callback that does not match the registered
-  // one, and the failure reads as a confusing OAuth mismatch rather than a scheme problem.
+  if (PUBLIC_URL) return PUBLIC_URL;
   const proto = req.headers["x-forwarded-proto"] || "http";
   return `${proto}://${req.headers.host}`;
 }
@@ -358,9 +398,7 @@ const server = http.createServer(async (req, res) => {
             <strong>${email}</strong> is not on the allowlist for this dashboard.<br>
             Ask the owner to add you, then sign in again.</p>`);
         }
-        // Only the destination path is carried through state, and it is forced to a relative path so a
-        // crafted state cannot turn this into an open redirect.
-        const dest = (url.searchParams.get("state") || "/owner").replace(/^[^/]*/, "") || "/owner";
+        const dest = safeDest(url.searchParams.get("state"));
         res.writeHead(302, {
           "set-cookie": `ck_session=${auth.makeSession(email)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`,
           location: dest,
@@ -372,9 +410,15 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    // CodeQL flags this as js/user-controlled-bypass: a condition guarding a sensitive action, driven
+    // by a user-provided value. The value is a cookie, and a session cookie is user-provided by
+    // definition -- the query cannot see that readSession verifies an HMAC-SHA256 signature with
+    // timingSafeEqual before returning anything, so signature checks read to it as no check at all.
+    // Reviewed and dismissed on the alert rather than worked around here; see auth.mjs.
     if (!auth.readSession(req.headers.cookie)) {
-      const dest = url.pathname === "/" ? "/owner" : url.pathname;
-      res.writeHead(302, { location: auth.authUrl(redirectUri, dest) });
+      // Constrained on the way OUT as well as on the way back. Putting an arbitrary pathname into
+      // state and validating only on return means the check has exactly one place to be wrong in.
+      res.writeHead(302, { location: auth.authUrl(redirectUri, safeDest(url.pathname)) });
       return res.end();
     }
   }

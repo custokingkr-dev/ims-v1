@@ -9,7 +9,7 @@ RUN for attempt in 1 2 3; do \
 COPY src ./src
 RUN mvn -q -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:25-jre-noble@sha256:fbcf915c585659b30eb766ada4d6d7cfc9ec1040bf521e95bf61b10a25af73db
+FROM eclipse-temurin:25-jre-noble@sha256:1a99f30a84d58729f1184c1c693f25fb6f91970ddf05395515540bc5773b8edd
 ARG APP_NAME=custoking-platform-service
 ARG APP_VERSION=0.1.0-SNAPSHOT
 ARG APP_DESCRIPTION="Custoking IMS platform microservice (reporting + notification + audit)"
