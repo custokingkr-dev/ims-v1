@@ -131,6 +131,23 @@ variable "dashboard_oauth_client_id" {
   default     = ""
 }
 
+variable "dashboard_public_url" {
+  description = <<-EOT
+    Public origin the dashboard builds its OAuth redirect_uri from, e.g. https://custoking-dashboard-prod-xxxx-em.a.run.app.
+    Pinning it keeps a client-supplied Host header out of the sign-in URL. Empty falls back to request
+    headers, which is correct for local use. Must match a redirect URI registered on the OAuth client.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    # An http origin would be sent to Google as the callback and rejected, and the resulting
+    # redirect_uri_mismatch says nothing about the scheme being the cause.
+    condition     = var.dashboard_public_url == "" || startswith(var.dashboard_public_url, "https://")
+    error_message = "dashboard_public_url must be empty or an https:// origin."
+  }
+}
+
 variable "dashboard_allowed_emails" {
   description = <<-DESC
     Email addresses permitted to open the dashboard.
