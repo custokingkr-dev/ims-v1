@@ -32,8 +32,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { PANELS, GROUPS } from "./panels.mjs";
+import { PANELS, GROUPS, AUDIENCE } from "./panels.mjs";
 import { COST_INPUTS, estimateDailyInr } from "./cost.mjs";
+import * as auth from "./auth.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT = process.env.DASHBOARD_PROJECT || "custoking-prod";
@@ -177,7 +178,23 @@ async function fetchPanel(panel, token, windowMinutes) {
     return { ...base, state: "failed", error: err.message };
   }
 
-  const floor = (v) => (panel.zeroBelow !== undefined && v <= panel.zeroBelow ? 0 : v);
+  // Two corrections, both consequences of carrying a gauge through a distribution and reading it at a
+  // percentile. The percentile interpolates WITHIN a bucket, so it never returns the recorded value:
+  //
+  //   a true 0    reports as the underflow bucket's UPPER bound  -> 0.5
+  //   a true 1276 reports as its bucket's LOWER bound            -> 1275.5
+  //
+  // Measured, not theorised: the reporter logged 1276 students and 376 sections while the dashboard
+  // rendered 1275.50 and 375.50. Half a student is the kind of number that makes a reader distrust
+  // every other figure on the page, which is worse than the 0.5 itself.
+  //
+  // So: floor anything at or below the zero threshold to a real zero, then round. Rounding alone would
+  // turn 0.5 into 1 and invent a phantom item in an empty queue, which is why order matters here.
+  const isCount = panel.format === "int" && panel.zeroBelow !== undefined;
+  const floor = (v) => {
+    if (panel.zeroBelow !== undefined && v <= panel.zeroBelow) return 0;
+    return isCount ? Math.round(v) : v;
+  };
   const series = (response.timeSeries || [])
     .map((s) => ({
       label: labelOf(s, panel.groupBy),
@@ -270,10 +287,67 @@ async function estimateCost(token) {
 // ---------------------------------------------------------------------------------------------------
 // HTTP
 
+// Auth is required unless explicitly disabled for local use. Defaulting to REQUIRED matters: a
+// misconfigured deployment must refuse people, never admit them. `DASHBOARD_AUTH=off` is only for
+// running on a workstation, where the process is already behind the machine's own login.
+const AUTH_REQUIRED = process.env.DASHBOARD_AUTH !== "off";
+
+function externalOrigin(req) {
+  // Cloud Run terminates TLS upstream, so the inbound request looks like plain http. Building the
+  // redirect_uri from that would send Google an http:// callback that does not match the registered
+  // one, and the failure reads as a confusing OAuth mismatch rather than a scheme problem.
+  const proto = req.headers["x-forwarded-proto"] || "http";
+  return `${proto}://${req.headers.host}`;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
 
-  if (url.pathname === "/" || url.pathname === "/index.html") {
+  if (AUTH_REQUIRED) {
+    const redirectUri = `${externalOrigin(req)}/auth/callback`;
+
+    if (!auth.configured) {
+      res.writeHead(503, { "content-type": "text/plain" });
+      return res.end("Dashboard auth is not configured: OAUTH_CLIENT_ID and OAUTH_CLIENT_SECRET are unset.");
+    }
+
+    if (url.pathname === "/auth/callback") {
+      try {
+        const code = url.searchParams.get("code");
+        if (!code) throw new Error("no code");
+        const tokens = await auth.exchangeCode(code, redirectUri);
+        const email = await auth.verifyIdToken(tokens.id_token);
+        if (!auth.isAllowed(email)) {
+          res.writeHead(403, { "content-type": "text/html; charset=utf-8" });
+          return res.end(`<p style="font:16px system-ui;padding:2rem">
+            <strong>${email}</strong> is not on the allowlist for this dashboard.<br>
+            Ask the owner to add you, then sign in again.</p>`);
+        }
+        // Only the destination path is carried through state, and it is forced to a relative path so a
+        // crafted state cannot turn this into an open redirect.
+        const dest = (url.searchParams.get("state") || "/owner").replace(/^[^/]*/, "") || "/owner";
+        res.writeHead(302, {
+          "set-cookie": `ck_session=${auth.makeSession(email)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`,
+          location: dest,
+        });
+        return res.end();
+      } catch (err) {
+        res.writeHead(400, { "content-type": "text/plain" });
+        return res.end(`Sign-in failed: ${err.message}`);
+      }
+    }
+
+    if (!auth.readSession(req.headers.cookie)) {
+      const dest = url.pathname === "/" ? "/owner" : url.pathname;
+      res.writeHead(302, { location: auth.authUrl(redirectUri, dest) });
+      return res.end();
+    }
+  }
+
+  // Two audiences, one document. The page reads its own path and asks the API for that subset, which
+  // keeps a single template rather than two that drift apart.
+  if (url.pathname === "/owner" || url.pathname === "/ops" ||
+      url.pathname === "/" || url.pathname === "/index.html") {
     const html = fs.readFileSync(path.join(HERE, "public", "index.html"), "utf8");
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
     return res.end(html);
@@ -283,8 +357,14 @@ const server = http.createServer(async (req, res) => {
     const windowMinutes = Math.min(10080, Math.max(15, Number(url.searchParams.get("window") || 180)));
     try {
       const token = await accessToken();
+      const audience = url.searchParams.get("audience");
+      const allowed = AUDIENCE[audience];
+      // An unknown or absent audience returns everything rather than nothing. A dashboard that renders
+      // empty because of a typo in a query string looks exactly like a dashboard whose backend is down.
+      const selected = allowed ? PANELS.filter((p) => allowed.includes(p.id)) : PANELS;
+
       const [panels, cost] = await Promise.all([
-        Promise.all(PANELS.map((p) => fetchPanel(p, token, windowMinutes))),
+        Promise.all(selected.map((p) => fetchPanel(p, token, windowMinutes))),
         estimateCost(token).catch(() => null),
       ]);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
@@ -293,6 +373,7 @@ const server = http.createServer(async (req, res) => {
         windowMinutes,
         generatedAt: new Date().toISOString(),
         groups: GROUPS,
+        audience: url.searchParams.get("audience") || "all",
         panels,
         cost,
       }));

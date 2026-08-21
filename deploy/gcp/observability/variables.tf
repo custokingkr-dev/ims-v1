@@ -125,6 +125,77 @@ variable "uptime_failure_checker_quorum" {
   default     = 2
 }
 
+variable "dashboard_oauth_client_id" {
+  description = "OAuth 2.0 client ID for dashboard sign-in. Not secret; the client SECRET lives in Secret Manager."
+  type        = string
+  default     = ""
+}
+
+variable "dashboard_allowed_emails" {
+  description = <<-DESC
+    Email addresses permitted to open the dashboard.
+
+    An EMPTY list denies everyone. That is deliberate: a misconfiguration should lock the door rather
+    than remove it. The list is re-checked on every request, so removing someone takes effect on their
+    next page load rather than when their session expires.
+  DESC
+  type        = list(string)
+  default     = []
+}
+
+variable "enable_dashboard_load_balancer" {
+  description = <<-DESC
+    Put the dashboard behind an external load balancer with IAP on the backend service.
+
+    The direct IAP-on-Cloud-Run integration was tried first and would not admit an authorised user with
+    every ordinary cause eliminated. This is the older, reliable path. It costs roughly INR 1,500/month
+    for the forwarding rule, which is the trade for something that works with ordinary Google accounts.
+
+    IAP cannot be on both the load balancer and the Cloud Run service, so enabling this turns the
+    service's own iap_enabled off and narrows its ingress to load-balancer traffic only.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "dashboard_domain" {
+  description = <<-DESC
+    Domain for the managed certificate. Leave empty to derive one from the reserved IP via sslip.io.
+
+    A Google-managed certificate validates by checking the domain resolves to the load balancer's IP,
+    and there is no registered domain anywhere in this project. sslip.io resolves <dashed-ip>.sslip.io
+    to that IP by construction, which satisfies validation without buying anything. Set a real domain
+    here later and only the certificate changes.
+  DESC
+  type        = string
+  default     = ""
+}
+
+variable "enable_shared_dashboard" {
+  description = "Whether to run the shared owner/ops dashboard on Cloud Run behind IAP."
+  type        = bool
+  default     = false
+}
+
+variable "dashboard_image" {
+  description = "Fully-qualified image for the dashboard service."
+  type        = string
+  default     = ""
+}
+
+variable "dashboard_viewers" {
+  description = <<-DESC
+    IAM members allowed to open the dashboard, as `user:name@example.com` or `group:...`.
+
+    IAP checks Google identity before a request reaches the container, so granting access is an IAM
+    change rather than an account in the application. There are no passwords to manage and no session
+    handling to get wrong -- which is the main reason to put IAP in front of it rather than build a
+    login.
+  DESC
+  type        = list(string)
+  default     = []
+}
+
 variable "enable_aggregate_error_alert" {
   description = <<-DESC
     Whether to run a single aggregate server-error alert in place of seven per-service ones.

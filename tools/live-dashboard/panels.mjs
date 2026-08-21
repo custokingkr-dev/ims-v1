@@ -317,3 +317,38 @@ export const SERVICES = [
   "identity-service", "school-core-service", "operations-service",
   "platform-service", "billing-service", "api-gateway", "frontend",
 ].map(svc);
+
+// ---------------------------------------------------------------------------------------------------
+// Audience
+//
+// Two pages from one service, and the split is by CONTENT not layout. Audience is the one axis that
+// genuinely changes dashboard design: a strategic view wants a static snapshot and simple displays, an
+// operational view wants near-real-time and needs to grab attention. Google's SRE guidance puts it in a
+// sentence -- "high-level management may want to view quite different information than SREs".
+//
+// A page that serves both gets scanned by neither: the person asking "did adoption move this week" and
+// the person asking "why is p99 up" ignore each other's panels.
+//
+// The owner view deliberately favours ABSOLUTE COUNTS over percentages. "Three people hit an error
+// yesterday" lands where "99.7% availability" does not, and at roughly 600 real requests a day a
+// percentage is dominated by whichever handful of requests happened to arrive.
+export const AUDIENCE = {
+  // The billing-export cost panels are deliberately ABSENT from the owner view. They read INR 14,515
+  // month-to-date -- the deleted project's figure, frozen since the usage-cost export broke on
+  // Google's side -- while the live band above them reads INR 110/day. Two contradictory cost numbers
+  // on an executive page is worse than one missing one, and "stale" is a caveat a reader has to notice
+  // rather than one the page enforces. They stay in the ops view, where a stale marker means something
+  // to whoever can act on it, and they will return here on their own if the export is ever fixed.
+  owner: [
+    "schools", "schools_live", "students", "sections",
+    "active_users", "logins_recent",
+    "requests_by_tenant", "requests_by_feature", "errors_5xx",
+  ],
+  ops: [
+    "active_users", "active_sessions", "logins_recent", "errors_5xx",
+    "requests_by_feature", "latency_by_feature", "requests_total", "requests_by_tenant",
+    "outbox_pending", "outbox_dead", "outbox_age", "inbox_backlog", "inbox_dead",
+    "instances", "cold_starts", "sql_cpu", "sql_conns",
+    "cost_mtd",
+  ],
+};
