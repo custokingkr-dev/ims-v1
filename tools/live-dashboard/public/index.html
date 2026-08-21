@@ -281,8 +281,12 @@ function cardFor(p) {
     el.appendChild(v);
     el.insertAdjacentHTML("beforeend", `<span class="state stale">last seen ${ago(p.lastSeen)}</span>`);
   } else if (p.kind === "breakdown") {
+    // Uses the value the server already collapsed, rather than recomputing from the last raw point.
+    // Two places deriving the same number independently is how the headline and the breakdown drifted
+    // apart in the first place.
     const rows = (p.series || []).map((s) => ({
-      label: s.label || "(all)", value: s.points[s.points.length - 1].v,
+      label: s.label || "(all)",
+      value: s.value !== undefined ? s.value : s.points[s.points.length - 1].v,
     })).filter((r) => r.value > 0);
     const top = Math.max(...rows.map((r) => r.value), 1);
     const bars = document.createElement("div");
