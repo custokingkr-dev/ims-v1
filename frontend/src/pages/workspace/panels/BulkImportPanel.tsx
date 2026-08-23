@@ -1,5 +1,4 @@
 import { DragEvent, useRef, useState } from 'react';
-import * as XLSX from 'xlsx';
 import api from '../../../services/api';
 import { ModuleShell } from '../ui';
 import type { PanelKey } from '../config';
@@ -283,6 +282,9 @@ export function BulkImportPanel({
 
   // Uniform SheetJS-based reader for .xlsx/.xls/.ods/.csv into header-keyed rows.
   const parseRows = async (file: File): Promise<Record<string, string | number>[]> => {
+    // SheetJS is only needed after the operator selects a workbook. Keeping it
+    // out of the panel module makes the import instructions cheap to open.
+    const XLSX = await import('xlsx');
     const buf = await file.arrayBuffer();
     const wb = XLSX.read(buf, { type: 'array', cellDates: true });
     const sheet = wb.Sheets[wb.SheetNames[0]];

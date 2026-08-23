@@ -94,6 +94,22 @@ class GuardianConsentRepositoryIntegrationTest {
     }
 
     @Test
+    void changingDestinationClearsPreviouslyVerifiedContactEvenWhenEditFormPostsTrue() {
+        Map<String, Object> created = repository.addGuardian(1L, Map.of(
+                "fullName", "Parent One", "phone", "9876543210", "relationship", "FATHER",
+                "primary", true, "contactVerified", true));
+        Map<String, Object> guardian = guardians(created).getFirst();
+        assertThat(guardian.get("contactVerifiedAt")).isNotNull();
+
+        Map<String, Object> updated = repository.updateGuardian(
+                1L, String.valueOf(guardian.get("id")), Map.of(
+                        "fullName", "Parent One", "phone", "9876543299", "relationship", "FATHER",
+                        "primary", true, "contactVerified", true, "version", guardian.get("version")));
+
+        assertThat(guardians(updated).getFirst().get("contactVerifiedAt")).isNull();
+    }
+
+    @Test
     void expiredGrantIsReportedAsExpiredAndIdempotencyCannotCrossStudents() {
         Map<String, Object> consent = Map.of(
                 "purpose", "STUDENT_PHOTO", "status", "GRANTED", "noticeVersion", "privacy-1",

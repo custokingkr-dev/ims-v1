@@ -23,10 +23,12 @@ public class FeeReadRepository {
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
+    private final GuardianCommunicationPolicy guardianCommunicationPolicy;
 
     public FeeReadRepository(JdbcClient jdbc, OutboxWriter outbox) {
         this.jdbc = jdbc;
         this.outbox = outbox;
+        this.guardianCommunicationPolicy = new GuardianCommunicationPolicy(jdbc);
     }
 
     public List<FeeBandRow> bands(String academicYearId, Long schoolId) {
@@ -668,13 +670,12 @@ public class FeeReadRepository {
                 .toList();
         if (overdueAssignmentIds.isEmpty()) {
             return row("ok", true, "queued", 0, "classId", classId, "sectionId", sectionId,
-                    "content", List.of());
+                    "content", List.of(), "suppressedCount", 0, "suppressed", List.of());
         }
-        List<Map<String, Object>> requests = jdbc.sql("""
+        List<Map<String, Object>> candidates = jdbc.sql("""
                         SELECT fa.id AS assignment_id, fa.academic_year_id,
                                GREATEST(fa.net_payable - fa.paid_amount, 0) AS due_amount,
                                s.id AS student_id, s.full_name AS student_name,
-                               COALESCE(NULLIF(s.father_contact, ''), NULLIF(s.phone, '')) AS destination,
                                s.school_id, s.class_id, s.section_id
                         FROM fee.fee_assignments fa
                         JOIN student.students s ON s.id = fa.student_id
@@ -690,41 +691,63 @@ public class FeeReadRepository {
                 .param("classId", classId)
                 .param("sectionId", sectionId)
                 .param("academicYearId", academicYearId)
-                .query((rs, rowNum) -> {
-                    String requestId = UUID.randomUUID().toString();
-                    long studentId = rs.getLong("student_id");
-                    long dueAmount = rs.getLong("due_amount");
-                    return row(
-                            "reminderRequestId", requestId,
+                .query((rs, rowNum) -> row(
                             "assignmentId", rs.getString("assignment_id"),
-                            "studentId", studentId,
+                            "studentId", rs.getLong("student_id"),
                             "schoolId", rs.getLong("school_id"),
                             "academicYearId", rs.getString("academic_year_id"),
                             "classId", rs.getString("class_id"),
                             "sectionId", rs.getString("section_id"),
-                            "dueAmount", dueAmount,
-                            "actorId", actorId,
-                            "sourceEventType", "fees.fee-reminder-requested.v1",
-                            "sourceEventId", requestId,
-                            "notificationType", "FEE_REMINDER",
-                            "channel", "SMS",
-                            "destination", rs.getString("destination"),
+                            "dueAmount", rs.getLong("due_amount"),
                             "recipientName", rs.getString("student_name"),
-                            "subject", "Fee payment reminder",
-                            "template", "fee-reminder.v1",
-                            "variables", row(
-                                    "assignmentId", rs.getString("assignment_id"),
-                                    "studentId", studentId,
-                                    "studentName", rs.getString("student_name"),
-                                    "academicYearId", rs.getString("academic_year_id"),
-                                    "dueAmount", dueAmount));
-                })
+                            "studentName", rs.getString("student_name")))
                 .list()
                 .stream()
                 .filter(request -> overdueAssignmentIds.contains(String.valueOf(request.get("assignmentId"))))
                 .toList();
+        List<Map<String, Object>> requests = new ArrayList<>();
+        List<Map<String, Object>> suppressed = new ArrayList<>();
+        for (Map<String, Object> candidate : candidates) {
+            long studentId = longValue(candidate.get("studentId"), 0);
+            var decision = guardianCommunicationPolicy.evaluate(schoolId, studentId, "SMS");
+            if (!decision.allowed()) {
+                suppressed.add(row(
+                        "assignmentId", candidate.get("assignmentId"),
+                        "studentId", studentId,
+                        "reason", decision.reason()));
+                continue;
+            }
+            String requestId = UUID.randomUUID().toString();
+            requests.add(row(
+                    "reminderRequestId", requestId,
+                    "assignmentId", candidate.get("assignmentId"),
+                    "studentId", studentId,
+                    "schoolId", candidate.get("schoolId"),
+                    "academicYearId", candidate.get("academicYearId"),
+                    "classId", candidate.get("classId"),
+                    "sectionId", candidate.get("sectionId"),
+                    "dueAmount", candidate.get("dueAmount"),
+                    "actorId", actorId,
+                    "sourceEventType", "fees.fee-reminder-requested.v1",
+                    "sourceEventId", requestId,
+                    "notificationType", "FEE_REMINDER",
+                    "channel", decision.channel(),
+                    "destination", decision.destination(),
+                    "recipientType", "GUARDIAN",
+                    "recipientId", decision.guardianId(),
+                    "recipientName", candidate.get("recipientName"),
+                    "subject", "Fee payment reminder",
+                    "template", "fee-reminder.v1",
+                    "policyEvidence", decision.evidence(requestId),
+                    "variables", row(
+                            "assignmentId", candidate.get("assignmentId"),
+                            "studentId", studentId,
+                            "studentName", candidate.get("studentName"),
+                            "academicYearId", candidate.get("academicYearId"),
+                            "dueAmount", candidate.get("dueAmount"))));
+        }
         return row("ok", true, "queued", requests.size(), "classId", classId, "sectionId", sectionId,
-                "content", requests);
+                "content", requests, "suppressedCount", suppressed.size(), "suppressed", suppressed);
     }
 
     public Map<String, Object> feesModule(String academicYearId, Long schoolId) {

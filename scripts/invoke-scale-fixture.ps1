@@ -9,6 +9,7 @@ param(
     [string]$Database = "custoking_dev",
     [string]$DbUser = "appuser",
     [string]$PasswordSecret = "db-password-dev",
+    [string]$JobServiceAccount = "",
     [string]$Network = "default",
     [string]$Subnet = "default",
     [long]$BaseSchoolId = 900000000,
@@ -28,6 +29,19 @@ param(
 $ErrorActionPreference = "Stop"
 $jobName = "ims-scale-fixture-$Environment"
 $startedAt = Get-Date
+
+if ($Project -cne "custoking-dev") {
+    throw "Scale fixtures are restricted to the split development project custoking-dev."
+}
+if ($InstanceName -cne "custoking-db-dev" -or $Database -cne "custoking_dev") {
+    throw "Scale fixtures are restricted to custoking-db-dev/custoking_dev."
+}
+if ([string]::IsNullOrWhiteSpace($JobServiceAccount)) {
+    $JobServiceAccount = "ims-scale-fixture-$Environment@$Project.iam.gserviceaccount.com"
+}
+if (-not $JobServiceAccount.EndsWith("@$Project.iam.gserviceaccount.com", [StringComparison]::OrdinalIgnoreCase)) {
+    throw "JobServiceAccount must belong to the selected development project."
+}
 
 if ($Action -in @("Seed", "LongHistorySeed", "AsyncSeed", "AsyncCleanup", "ScaleBacklogCleanup", "Cleanup") -and -not $AllowScaleWrites) {
     throw "-$Action modifies the dev database. Pass -AllowScaleWrites after reviewing the reserved scale tenant range."
@@ -71,14 +85,23 @@ function Ensure-ScaleJob {
         $currentSslMode = [string](@($container.env | Where-Object {
                     $_.name -eq "PGSSLMODE"
                 } | Select-Object -First 1)[0].value)
-        if ($currentSslMode.ToLowerInvariant() -ne "require") {
-            Write-Host "Reconciling PGSSLMODE=require on existing Cloud Run job $jobName"
+        $currentServiceAccount = [string]$existingJob.spec.template.spec.template.spec.serviceAccountName
+        if ([string]::IsNullOrWhiteSpace($currentServiceAccount)) {
+            $currentServiceAccount = [string]$existingJob.spec.template.template.serviceAccount
+        }
+        if ($currentSslMode.ToLowerInvariant() -ne "require" -or
+            $currentServiceAccount -ne $JobServiceAccount) {
+            if (-not $AllowScaleWrites) {
+                throw "Cloud Run job $jobName requires identity/transport reconciliation. Pass -AllowScaleWrites."
+            }
+            Write-Host "Reconciling dedicated identity and PGSSLMODE=require on Cloud Run job $jobName"
             & $Gcloud run jobs update $jobName `
                 --project=$Project `
                 --region=$Region `
+                --service-account=$JobServiceAccount `
                 --update-env-vars=PGSSLMODE=require | Write-Output
             if ($LASTEXITCODE -ne 0) {
-                throw "Could not require encrypted PostgreSQL transport on Cloud Run job $jobName."
+                throw "Could not reconcile identity/transport on Cloud Run job $jobName."
             }
         }
         return
@@ -91,6 +114,7 @@ function Ensure-ScaleJob {
             --region=$Region `
             --image=postgres:16-alpine `
             --command=sh `
+            --service-account=$JobServiceAccount `
             --set-env-vars=PGSSLMODE=require `
             --set-secrets=PGPASSWORD="${PasswordSecret}:latest" `
             --network=$Network `
@@ -102,6 +126,58 @@ function Ensure-ScaleJob {
     if ($LASTEXITCODE -ne 0) {
         throw "Could not create Cloud Run job $jobName."
     }
+}
+
+function Ensure-ScaleIdentity {
+    $accountName = $JobServiceAccount.Split('@')[0]
+    $previousPreference = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $Gcloud iam service-accounts describe $JobServiceAccount `
+            --project=$Project --format="value(email)" 2>$null | Out-Null
+        $accountExists = $LASTEXITCODE -eq 0
+        $global:LASTEXITCODE = 0
+    } finally {
+        $ErrorActionPreference = $previousPreference
+    }
+    if (-not $accountExists) {
+        if (-not $AllowScaleWrites) {
+            throw "Dedicated scale-fixture identity $JobServiceAccount is missing. Pass -AllowScaleWrites to provision it."
+        }
+        & $Gcloud iam service-accounts create $accountName `
+            --project=$Project `
+            --display-name="IMS dev scale fixture job" | Write-Output
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not create dedicated scale-fixture identity $JobServiceAccount."
+        }
+    }
+
+    if (-not $AllowScaleWrites) { return }
+
+    # Scope secret access to the one database-password secret. Cloud SQL client is retained even
+    # though the current job uses private IP directly, so switching to the connector cannot silently
+    # fall back to a broader default identity. Direct VPC egress is restricted to the selected subnet.
+    & $Gcloud secrets add-iam-policy-binding $PasswordSecret `
+        --project=$Project `
+        --member="serviceAccount:$JobServiceAccount" `
+        --role=roles/secretmanager.secretAccessor `
+        --quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not grant password-secret access to $JobServiceAccount." }
+
+    & $Gcloud projects add-iam-policy-binding $Project `
+        --member="serviceAccount:$JobServiceAccount" `
+        --role=roles/cloudsql.client `
+        --condition=None `
+        --quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not grant Cloud SQL client to $JobServiceAccount." }
+
+    & $Gcloud compute networks subnets add-iam-policy-binding $Subnet `
+        --project=$Project `
+        --region=$Region `
+        --member="serviceAccount:$JobServiceAccount" `
+        --role=roles/compute.networkUser `
+        --quiet | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Could not grant subnet use to $JobServiceAccount." }
 }
 
 $instance = ((& $Gcloud sql instances describe $InstanceName `
@@ -395,6 +471,7 @@ SELECT 'IMS_SCALE_STATUS|' || json_build_object(
     }
 }
 
+Ensure-ScaleIdentity
 Ensure-ScaleJob
 $marker = "IMS_SCALE_JOB_" + ((New-Guid).ToString("n").Substring(0, 10))
 $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($sql))

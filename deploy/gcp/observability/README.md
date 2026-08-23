@@ -168,3 +168,20 @@ these fields when the values are available:
 These are distribution metrics, so dashboards and alerts use p95/max alignment
 over each five-minute window rather than treating the extracted log values as
 true gauges.
+
+## Attendance DATA-01 Growth Monitoring
+
+School-core emits `jsonPayload.health.attendanceStorage` with approximate rows, relation/index bytes, and
+interval scan counters. The DATA-01 log metrics and alert policies are intentionally opt-in:
+
+```powershell
+terraform -chdir=deploy/gcp/observability plan `
+  -var-file=custoking-dev.tfvars `
+  -var="enable_attendance_growth_monitoring=true"
+```
+
+Review the plan and verify development logs before any apply. Production activation is a separate approved
+plan/apply; crossing a row or scan threshold does not authorize the partition operator scripts. Defaults are
+10M rows for preparation, 20M for scheduling execution before 25M, 8 GiB of indexes for review, and one
+full-table sequential-read equivalent per five-minute sample sustained for 15 minutes. See
+`docs/DB-SCALING-THRESHOLDS.md` for statistics-reset, small-table suppression, and response guidance.

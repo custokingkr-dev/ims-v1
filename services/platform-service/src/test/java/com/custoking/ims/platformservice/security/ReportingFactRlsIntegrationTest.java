@@ -93,6 +93,8 @@ class ReportingFactRlsIntegrationTest {
     @AfterAll
     static void tearDown() {
         TenantContext.clear();
+        com.custoking.ims.platformservice.TestDataSources.close(appRt);
+        com.custoking.ims.platformservice.TestDataSources.close(ownerDs);
         if (PG != null) PG.stop();
     }
 

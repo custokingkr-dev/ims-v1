@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -24,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * bean existed in the context and this test failed with a
  * {@code NoSuchBeanDefinitionException}.
  */
-@SpringBootTest
+@SpringBootTest(properties = "management.tracing.export.otlp.enabled=false")
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
 class TracingAutoConfigTest {
 

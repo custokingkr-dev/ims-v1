@@ -15,6 +15,7 @@ public class NotificationInboxEvent {
     public static final String STATUS_PROCESSED = "PROCESSED";
     public static final String STATUS_FAILED = "FAILED";
     public static final String STATUS_DEAD_LETTER = "DEAD_LETTER";
+    public static final String STATUS_SUPPRESSED = "SUPPRESSED";
 
     @Id
     @Column(name = "event_id", nullable = false, length = 120)

@@ -29,6 +29,7 @@ $cloneBucketAccessGranted = $false
 $cloneServiceAccount = $null
 $drillSucceeded = $false
 $evidence = $null
+$validationFailureMessage = $null
 $validationObjectRemoved = $false
 $temporaryBucketIamRemoved = $false
 $temporaryInstanceRemoved = $false
@@ -150,9 +151,18 @@ function Invoke-CloudSqlSchemaOnlyExport {
   while ([datetime]::UtcNow -lt $deadline) {
     $current = Invoke-RestMethod -Method Get -Uri $operationUrl -Headers $headers
     if ([string]$current.status -eq "DONE") {
-      $errors = @($current.error.errors)
+      # A missing nested property can be wrapped as a one-element array containing null.
+      # Only concrete API error objects make a completed export fail.
+      $errors = @($current.error.errors | Where-Object { $null -ne $_ })
       if ($errors.Count -gt 0) {
-        $safeErrors = @($errors | ForEach-Object { "$($_.code): $($_.message)" }) -join "; "
+        $safeErrors = @($errors | ForEach-Object {
+            $code = if (-not [string]::IsNullOrWhiteSpace([string]$_.code)) { [string]$_.code }
+              elseif (-not [string]::IsNullOrWhiteSpace([string]$_.reason)) { [string]$_.reason }
+              else { "unknown" }
+            $message = if (-not [string]::IsNullOrWhiteSpace([string]$_.message)) { [string]$_.message }
+              else { $_ | ConvertTo-Json -Depth 6 -Compress }
+            "${code}: $message"
+          }) -join "; "
         throw "Cloud SQL schema-only export failed: $safeErrors"
       }
       return $operationName
@@ -245,16 +255,17 @@ try {
       }
       $exportCreated = $true
     } catch {
+      $attemptFailure = $_.Exception.Message
       if ($attempt -ge 3) {
-        throw
+        throw $attemptFailure
       }
-      & $gcloud storage objects describe $validationUri "--project=$ProjectId" --format="value(name)" 2>$null | Out-Null
-      $partialObjectExists = $LASTEXITCODE -eq 0
-      $global:LASTEXITCODE = 0
+      $partialObjectExists = -not (Test-GcloudResourceAbsent `
+          -Arguments @("storage", "objects", "describe", $validationUri, "--project=$ProjectId", "--format=value(name)") `
+          -ResourceLabel $validationUri)
       if ($partialObjectExists) {
         Invoke-Gcloud @("storage", "rm", $validationUri, "--project=$ProjectId", "--quiet")
       }
-      Write-Host "Export attempt $attempt failed; waiting for bucket IAM propagation."
+      Write-Host "Export attempt $attempt failed ($attemptFailure); waiting for bucket IAM propagation."
       Start-Sleep -Seconds 20
     }
   }
@@ -288,11 +299,39 @@ try {
     validationRtoSeconds = [math]::Round(([datetime]::UtcNow - $startedAt).TotalSeconds, 2)
   }
 }
+catch {
+  $validationFailureMessage = $_.Exception.Message
+  if ($null -eq $evidence) {
+    $evidence = [ordered]@{
+      project = $ProjectId
+      region = $Region
+      environment = $Environment
+      sourceInstance = $SourceInstance
+      targetInstance = $target
+      database = $Database
+      pointInTimeUtc = $PointInTimeUtc.ToUniversalTime().ToString("o")
+      validationMode = $validationMode
+      schemaOnly = [bool]$isProduction
+      dataRowsValidated = $false
+      startedAtUtc = $startedAt.ToString("o")
+      restoreInstanceReadySeconds = if ($null -ne $restoreReadyAt) {
+        [math]::Round(($restoreReadyAt - $startedAt).TotalSeconds, 2)
+      } else { $null }
+      validationFailure = $validationFailureMessage
+    }
+  }
+  throw
+}
 finally {
   if ($exportRequested -and ($drillSucceeded -or -not $KeepOnFailure)) {
-    & $gcloud storage objects describe $validationUri "--project=$ProjectId" --format="value(name)" 2>$null | Out-Null
-    $objectExists = $LASTEXITCODE -eq 0
-    $global:LASTEXITCODE = 0
+    try {
+      $objectExists = -not (Test-GcloudResourceAbsent `
+          -Arguments @("storage", "objects", "describe", $validationUri, "--project=$ProjectId", "--format=value(name)") `
+          -ResourceLabel $validationUri)
+    } catch {
+      $objectExists = $false
+      $cleanupErrors.Add($_.Exception.Message)
+    }
     if ($objectExists) {
       & $gcloud storage rm $validationUri "--project=$ProjectId" --quiet
       $global:LASTEXITCODE = 0
@@ -379,6 +418,20 @@ finally {
     $evidence["finishedAtUtc"] = [datetime]::UtcNow.ToString("o")
     Write-RecoveryEvidence -Document $evidence
     throw "Recovery drill cleanup failed: $($cleanupErrors -join '; ')"
+  }
+  if (-not $drillSucceeded -and $null -ne $evidence) {
+    $evidence["status"] = "validation-failed"
+    $evidence["cleanupConfirmed"] = [bool](
+      (-not $exportRequested -or $validationObjectRemoved) -and
+      (-not $cloneBucketAccessGranted -or $temporaryBucketIamRemoved) -and
+      (-not $targetCreated -or $temporaryInstanceRemoved)
+    )
+    $evidence["validationObjectRemoved"] = [bool]$validationObjectRemoved
+    $evidence["temporaryBucketIamRemoved"] = [bool]$temporaryBucketIamRemoved
+    $evidence["temporaryInstanceRemoved"] = [bool]$temporaryInstanceRemoved
+    $evidence["cleanupErrors"] = @()
+    $evidence["finishedAtUtc"] = [datetime]::UtcNow.ToString("o")
+    Write-RecoveryEvidence -Document $evidence
   }
 }
 

@@ -7,7 +7,7 @@ import { formatLakh, formatPaise, paiseToRupeeInput } from '../utils';
 import type { WorkspaceData } from '../config';
 
 interface Props {
-  workspace: WorkspaceData | null;
+  workspace: ({ fees?: WorkspaceData['fees']; school: Partial<WorkspaceData['school']> }) | null;
   onRefresh: () => void | Promise<void>;
 }
 

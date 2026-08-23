@@ -1,13 +1,36 @@
 # Gaps, Drift, and Missing Verification
 
-Last reconciled: 2026-08-14 against current source, GitHub configuration, and live GCP inventory.
+Last reconciled: 2026-08-24 against current source and executed migration evidence.
+
+**24 August delta:** MIG-01 is complete. Development runs in `custoking-dev` and production runs in
+`custoking-prod`; production passed the full relation digest, object, durable-event, smoke, and repaired
+release-path checks. The legacy source project is now observed in `DELETE_REQUESTED` state; this execution
+did not request or alter deletion. Production school-core uses service-account Drive access, and a temporary
+job under the deployed runtime identity proved the configured Drive root remains readable, listable, and
+writable. Billing-export, backup/log-retention, and formal deletion custody still require named owners.
+
+Production async topology is now active: all four authenticated relay schedules return HTTP 200 and the
+reporting and notification push subscriptions have dedicated OIDC identities, explicit retry, seven-day
+retention, and DLQs. A production PITR clone/schema-validation drill passed a 603.96-second RTO and proved
+complete cleanup. Governed development capacity testing remains fail-closed because month-to-date gross
+cost is already over its approved budget; GitHub protection, policy ownership, real provider delivery, and
+the named-school canary remain owner/authority gates.
+
+Attendance partitioning has now passed a durable 25,000,000-row forward/rollback rehearsal with equal
+counts and checksums plus uniqueness, FK/check, RLS/bypass, pruning/default, index, and exact-cleanup gates.
+Repository-side DATA-01 now has a reviewed maintenance-window operator design rather than unsafe automatic
+Flyway startup DDL, plus a PostgreSQL statistics reporter and disabled-by-default Terraform for row, index,
+and sequential-scan thresholds. The remaining live gap is an owner-approved restored-clone run, maintenance
+freeze/cutover decision, and explicit observability plan/apply. No production partition DDL or live DATA-01
+alert was applied.
 
 **14 August delta:** the OpenTelemetry background-flush fix is deployed to dev and production. Production
 commit `754f0417` passed exact-digest deployment, seven live HTTP checks, exact current-revision tracing, and
 a 30-minute exporter-error query with zero failures. The primary operator confirmed alert-email receipt.
 OBS-01 now requires one full school-day stability window and a tested backup recipient. The approved GCP
 migration target is two new projects; see the authoritative remaining-work register and split-project
-runbook. The destination projects are not yet visible, so migration remains NO-GO.
+runbook. That dated visibility blocker was superseded by the completed development rehearsal and 19 August
+production cutover.
 
 The authoritative prioritized closure plan is
 [../REMAINING-WORK-2026-08-12.md](../REMAINING-WORK-2026-08-12.md). Production services and production
@@ -22,8 +45,8 @@ split by release, configuration, and rollback duties. Exact live state and rollb
 `docs/PRODUCTION-DEPLOYMENT-2026-08-11.md`. Older statements below about default Cloud Run identities,
 permissive production SQL, the reporting query credential, or repository-only WIF conditions are retained as
 historical drift and are superseded by that dated record. Remaining gaps include branch protection, two SQL
-jobs on the default Compute identity, a production reporting delivery observation, production notification
-and real MSG91 validation, database/HA capacity approval, and legal/canary acceptance.
+jobs on the default Compute identity, a governed real reporting/DLQ observation, real MSG91 validation,
+database/HA capacity approval, and legal/canary acceptance.
 
 This file intentionally lists unresolved or partially verified items. These are not assumptions.
 
@@ -56,10 +79,11 @@ in safe mode while bounded retry/dead-letter handling remains active.
 
 Impact:
 
-- Pub/Sub notification ingress and notification DB flows may work, but actual MSG91 delivery is not proven enabled.
-- Dev notification Pub/Sub ingress is now wired through a dedicated OIDC push subscription with retry/DLQ;
-  canonical duplicate delivery and poison-to-DLQ probes passed using the logging/dry-run provider. Production
-  still has no notification subscription, and real consented MSG91 delivery remains unproven.
+- Pub/Sub notification ingress and notification DB flows are wired with production retry/DLQ controls, but
+  actual MSG91 delivery is not proven enabled.
+- Dev and production notification Pub/Sub ingress use dedicated OIDC push subscriptions with retry/DLQ;
+  canonical duplicate delivery and poison-to-DLQ probes passed using the logging/dry-run provider. Real
+  consented MSG91 delivery remains unproven.
 - Current prod config is explicitly dry-run/logging.
 
 Required follow-up:

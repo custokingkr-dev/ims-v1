@@ -179,6 +179,7 @@ public class GuardianConsentRepository {
                 SET full_name = :fullName, phone = :phone, email = :email,
                     preferred_language = :preferredLanguage,
                     contact_verified_at = CASE
+                        WHEN phone IS DISTINCT FROM :phone OR email IS DISTINCT FROM :email THEN NULL
                         WHEN :contactVerified THEN COALESCE(contact_verified_at, :now)
                         ELSE NULL
                     END,

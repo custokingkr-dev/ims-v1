@@ -30,8 +30,10 @@ public class NotificationInboxHealthIndicator implements HealthIndicator {
             long processed = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_PROCESSED);
             long failed = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_FAILED);
             long deadLetter = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_DEAD_LETTER);
+            long suppressed = inboxRepository.countByStatus(NotificationInboxEvent.STATUS_SUPPRESSED);
             long deliveredAttempts = attemptRepository.countByStatus(NotificationDeliveryAttempt.STATUS_DELIVERED);
             long failedAttempts = attemptRepository.countByStatus(NotificationDeliveryAttempt.STATUS_FAILED);
+            long suppressedAttempts = attemptRepository.countByStatus(NotificationDeliveryAttempt.STATUS_SUPPRESSED);
             long oldestFailedAgeSeconds = inboxRepository
                     .findOldestReceivedAtByStatus(NotificationInboxEvent.STATUS_FAILED)
                     .map(NotificationInboxHealthIndicator::ageSeconds)
@@ -42,8 +44,10 @@ public class NotificationInboxHealthIndicator implements HealthIndicator {
                     .withDetail("processed", processed)
                     .withDetail("failed", failed)
                     .withDetail("deadLetter", deadLetter)
+                    .withDetail("suppressed", suppressed)
                     .withDetail("deliveredAttempts", deliveredAttempts)
                     .withDetail("failedAttempts", failedAttempts)
+                    .withDetail("suppressedAttempts", suppressedAttempts)
                     .withDetail("oldestFailedAgeSeconds", oldestFailedAgeSeconds)
                     .build();
         } catch (Exception ex) {

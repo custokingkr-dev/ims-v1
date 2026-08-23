@@ -2,6 +2,21 @@
 
 Last reconciled: 2026-08-14 against live Monitoring, Logging, health, and Pub/Sub inventory.
 
+## 2026-08-24 DATA-01 Repository Delta
+
+- School-core now emits `health.attendanceStorage` every five minutes using relation metadata and
+  PostgreSQL statistics rather than an exact row count. The query covers both the current heap and future
+  partition children.
+- The sample contains approximate rows, heap/index/total bytes, interval sequential/index scan counters,
+  and normalized full-table scan equivalents. New instances establish a zero-delta baseline, statistics
+  resets cannot emit negative deltas, and the sequential-scan risk signal stays zero below one million rows.
+- `deploy/gcp/observability/attendance_growth.tf` defines row preparation/execution, index-growth, and
+  sequential-scan metrics and policies. `enable_attendance_growth_monitoring` defaults to `false`; these are
+  reviewable repository controls, not evidence of a live apply.
+- Activation order is development log verification, Terraform plan review, development apply/observation,
+  then a separately approved production plan/apply. A threshold incident is a prompt to refresh statistics
+  and inspect query plans; it never authorizes partition DDL.
+
 ## 2026-08-14 OpenTelemetry Delta
 
 - The background-flush correction is deployed to all five Java services in dev and production. It prevents

@@ -24,8 +24,6 @@ on:
 permissions:
   actions: read
   contents: read
-  id-token: write
-  packages: write
 
 concurrency:
   group: cd-environment-${{ inputs.target_environment || (github.ref_name == 'main' && 'prod') || 'dev' }}
@@ -116,10 +114,107 @@ jobs:
       force_all: ${{ inputs.force_full_deploy || (github.event_name == 'workflow_dispatch' && inputs.commit_sha != '') }}
       target_environment: ${{ needs.resolve-target.outputs.target_env }}
 
-  build-images:
+  release-static-gate:
+    name: release-static-gate
     needs: [resolve-target, detect]
-    if: ${{ needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
+      - name: Verify offline architecture invariants
+        shell: pwsh
+        run: |
+          ./scripts/audit-deployment-boundaries.ps1
+          ./scripts/audit-microservice-runtime-boundaries.ps1
+          ./scripts/audit-service-authorization-boundaries.ps1
+          ./scripts/audit-runtime-schema-dependency-baseline.ps1
+          ./scripts/audit-service-contract-coverage.ps1
+          ./scripts/audit-service-package-shape.ps1
+          ./scripts/audit-service-schema-defaults.ps1
+          ./scripts/audit-service-datasource-pool.ps1
+          ./scripts/audit-repository-data-boundaries.ps1
+          ./scripts/audit-microservice-test-catalog.ps1
+          ./scripts/audit-microservice-build-catalog.ps1
+          ./scripts/audit-security-governance-controls.ps1
+      - name: Verify guarded duplicate classes
+        run: python3 scripts/check-duplicate-class-drift.py
+
+  release-service-test:
+    name: release-service-test (${{ matrix.name }})
+    needs: [resolve-target, detect]
+    if: ${{ needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect.outputs.service_matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        if: ${{ matrix.tool == 'maven' }}
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        if: ${{ matrix.tool != 'maven' }}
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: ${{ matrix.path }}/package-lock.json
+      - name: Install Node dependencies
+        if: ${{ matrix.tool != 'maven' }}
+        working-directory: ${{ matrix.path }}
+        run: npm ci --include=dev
+      - name: Run Maven tests
+        if: ${{ matrix.tool == 'maven' }}
+        working-directory: ${{ matrix.path }}
+        run: mvn -B test --no-transfer-progress
+      - name: Run gateway tests
+        if: ${{ matrix.tool == 'node' }}
+        working-directory: ${{ matrix.path }}
+        run: node --test server.test.js
+      - name: Run frontend unit tests and production build
+        if: ${{ matrix.tool == 'npm' }}
+        working-directory: ${{ matrix.path }}
+        run: |
+          npm audit --audit-level=high
+          npm run test:coverage
+          npm run build
+      - name: Install Playwright Chromium
+        if: ${{ matrix.tool == 'npm' }}
+        working-directory: ${{ matrix.path }}
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated frontend browser tests
+        if: ${{ matrix.tool == 'npm' }}
+        working-directory: ${{ matrix.path }}
+        run: npm run test:e2e
+
+  release-secret-scan:
+    name: release-secret-scan
+    needs: resolve-target
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.resolve-target.outputs.commit_sha }}
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-images:
+    needs: [resolve-target, detect, release-static-gate, release-service-test, release-secret-scan]
+    if: ${{ always() && needs.resolve-target.outputs.target_env == 'dev' && needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' && needs.release-static-gate.result == 'success' && needs.release-service-test.result == 'success' && needs.release-secret-scan.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+      packages: write
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -150,18 +245,6 @@ jobs:
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
-
-      - name: Export gcloud access token
-        id: gcloud-access-token
-        shell: bash
-        run: echo "token=$(gcloud auth print-access-token)" >> "$GITHUB_OUTPUT"
-
-      - name: Login Docker to Artifact Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
-        with:
-          registry: ${{ env.GCP_REGION }}-docker.pkg.dev
-          username: oauth2accesstoken
-          password: ${{ steps.gcloud-access-token.outputs.token }}
 
       - name: Resolve content-addressed image
         id: source
@@ -253,9 +336,13 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   release:
-    needs: [resolve-target, detect, build-images]
-    if: ${{ always() && needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
+    needs: [resolve-target, detect, release-static-gate, release-service-test, release-secret-scan, build-images]
+    if: ${{ always() && needs.detect.outputs.has_service_changes == 'true' && needs.detect.outputs.deployment_reconciliation_required != 'true' && needs.release-static-gate.result == 'success' && needs.release-service-test.result == 'success' && needs.release-secret-scan.result == 'success' && (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') }}
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
     environment: ${{ needs.resolve-target.outputs.target_env }}
     env:
       WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}

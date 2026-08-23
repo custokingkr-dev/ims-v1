@@ -17,13 +17,23 @@ param(
   [string]$RollbackWorkflow = ".github/workflows/rollback.yml",
   [string]$RecoveryWorkflow = ".github/workflows/recovery-drill.yml",
   [string]$RestoreDrillScript = "scripts/invoke-cloudsql-restore-drill.ps1",
+  [string]$DeadLetterReplayScript = "scripts/replay-pubsub-dead-letter.ps1",
+  [string]$AsyncSchedulerConfigurator = "scripts/configure-async-relay-scheduler.ps1",
+  [string]$NotificationResilienceConfigurator = "scripts/configure-notification-pubsub-push-oidc.ps1",
+  [string]$ReportingResilienceConfigurator = "scripts/configure-reporting-pubsub-resilience.ps1",
+  [string]$ScaleFixtureScript = "scripts/invoke-scale-fixture.ps1",
+  [string]$LoadCertificationScript = "scripts/invoke-dev-load-certification.ps1",
   [string]$CloudSqlTransportAudit = "scripts/audit-cloudsql-transport-security.ps1",
   [string]$CloudSqlTransportSql = "scripts/audit-cloudsql-transport-security.sql",
   [string]$CloudSqlTransportCapture = "scripts/capture-cloudsql-transport-evidence.ps1",
   [string]$CicdTerraform = "infra/terraform/cicd/main.tf",
   [string]$DependabotConfig = ".github/dependabot.yml",
   [string]$CodeQlWorkflow = ".github/workflows/codeql-analysis.yml",
-  [string]$ContainerWorkflow = ".github/workflows/security-scan.yml"
+  [string]$ContainerWorkflow = ".github/workflows/security-scan.yml",
+  [string]$Msg91Provider = "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProvider.java",
+  [string]$PlatformApplicationConfig = "services/platform-service/src/main/resources/application.yml",
+  [string]$PlatformCloudRunManifest = "deploy/cloudrun/platform-service.yaml",
+  [string]$NotificationConsentEvidence = "docs/NOTIFICATION-CONSENT-ENFORCEMENT-2026-08-24.md"
 )
 
 $ErrorActionPreference = "Stop"
@@ -34,9 +44,12 @@ $paths = @($ReadinessAudit, $GovernanceConfigurator, $RuntimeConfigurator,
   $CloudDeployPipelineRenderer, $AffectedResolver,
   $BuildReleaseWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
   $RecoveryWorkflow, $RestoreDrillScript, $CloudSqlTransportAudit, $CloudSqlTransportSql,
-  $CloudSqlTransportCapture,
+  $CloudSqlTransportCapture, $DeadLetterReplayScript, $AsyncSchedulerConfigurator,
+  $NotificationResilienceConfigurator, $ReportingResilienceConfigurator,
+  $ScaleFixtureScript, $LoadCertificationScript,
   $CicdTerraform, $DependabotConfig, $CodeQlWorkflow,
-  $ContainerWorkflow)
+  $ContainerWorkflow, $Msg91Provider, $PlatformApplicationConfig,
+  $PlatformCloudRunManifest, $NotificationConsentEvidence)
 $contents = @{}
 foreach ($relative in $paths) {
   $path = Join-Path $repoRoot $relative
@@ -95,7 +108,84 @@ Require-Text $GovernanceConfigurator @(
   "required_approving_review_count",
   "analyze (java-kotlin)",
   "analyze (javascript-typescript)",
-  "required_conversation_resolution"
+  "required_conversation_resolution",
+  "Validate every production-environment invariant before making any external change"
+)
+$governancePreflightIndex = $contents[$GovernanceConfigurator].IndexOf(
+  'if ($applyEnvironmentPolicyRequested)'
+)
+$governanceMutationIndex = $contents[$GovernanceConfigurator].IndexOf('if ($ApplyWorkloadIdentity)')
+if ($governancePreflightIndex -lt 0 -or $governanceMutationIndex -lt 0 -or
+    $governancePreflightIndex -gt $governanceMutationIndex) {
+  $violations.Add("Governance configuration must validate production Environment invariants before any WIF/GitHub mutation.") | Out-Null
+}
+
+Require-Text $Msg91Provider @(
+  "LIVE_DELIVERY_BLOCK_MESSAGE",
+  "an authenticated current-consent revalidation mechanism",
+  "idempotency contract must be implemented",
+  "throw liveDeliveryBlocked();",
+  'body.put("CRQID", request.eventId())'
+)
+$msg91HasLiveDispatch = $contents[$Msg91Provider].Contains('.header("authkey"') -or $contents[$Msg91Provider].Contains('.retrieve().toBodilessEntity()')
+if ($msg91HasLiveDispatch) {
+  $violations.Add("MSG91 provider must not contain a live HTTP dispatch path while consent revalidation and provider idempotency are unresolved.") | Out-Null
+}
+Require-Text $PlatformApplicationConfig @(
+  'provider: ${NOTIFICATION_DELIVERY_PROVIDER:logging}',
+  'dry-run: ${MSG91_DRY_RUN:true}'
+)
+Require-Text $PlatformCloudRunManifest @(
+  '- name: MSG91_DRY_RUN',
+  'value: "true" # from-param: ${msg91_dry_run}',
+  '- name: NOTIFICATION_DELIVERY_PROVIDER',
+  'value: logging # from-param: ${notification_delivery_provider}'
+)
+Require-Text $NotificationConsentEvidence @(
+  "https://docs.msg91.com/sms/send-sms",
+  "https://msg91.com/help/text-sms/custom-metadata-parameters-for-tracking-api-requests",
+  "https://docs.msg91.com/email/send-email",
+  "https://docs.msg91.com/whatsapp/template-bulk",
+  "https://docs.msg91.com/otp/sendotp",
+  "live HTTP dispatch path is absent"
+)
+
+Require-Text $DeadLetterReplayScript @(
+  '[Parameter(Mandatory = $true)]',
+  'expectedDeadLetterTopic',
+  'Refusing to replay from an ambiguous source',
+  'if (-not $Apply)',
+  'No messages were pulled, leased, published, or acknowledged'
+)
+$replayReadOnlyGateIndex = $contents[$DeadLetterReplayScript].IndexOf('if (-not $Apply)')
+$replayPullIndex = $contents[$DeadLetterReplayScript].IndexOf('pubsub subscriptions pull')
+if ($replayReadOnlyGateIndex -lt 0 -or $replayPullIndex -lt 0 -or
+    $replayReadOnlyGateIndex -gt $replayPullIndex) {
+  $violations.Add("Dead-letter replay must exit through a read-only gate before leasing messages.") | Out-Null
+}
+Require-Text $AsyncSchedulerConfigurator @(
+  '$verificationStartedAt = (Get-Date).ToUniversalTime()',
+  'scheduler jobs run',
+  'every target returned 2xx'
+)
+if ($contents[$AsyncSchedulerConfigurator].Contains('AddSeconds(-30)')) {
+  $violations.Add("Async Scheduler verification must not accept a request logged before its trigger window.") | Out-Null
+}
+foreach ($resilienceScript in @($NotificationResilienceConfigurator, $ReportingResilienceConfigurator)) {
+  Require-Text $resilienceScript @(
+    '--message-retention-duration=7d --expiration-period=never',
+    'updatedDeadLetterSubscription',
+    'messageRetentionDuration -ne "604800s"',
+    'Refusing to mutate it'
+  )
+}
+Require-Text $ScaleFixtureScript @(
+  'restricted to the split development project custoking-dev',
+  'JobServiceAccount must belong to the selected development project'
+)
+Require-Text $LoadCertificationScript @(
+  'restricted to the split development project custoking-dev',
+  'may send authentication material only to localhost or the discovered'
 )
 
 Require-Text $SecretRotationAudit @(
@@ -145,7 +235,7 @@ Require-Text $CicdTerraform @(
   'config_reconciler_roles',
   'config_reconciler_act_as_clouddeploy',
   'clouddeploy_image_reader',
-  'release_prod_image_reader',
+  'release_prod_image_writer',
   'release_dev_image_writer',
   'recovery_bucket_policy_operator',
   'recovery_bucket_and_validation_prefix_only',
@@ -218,7 +308,8 @@ if ($restoreFinallyIndex -lt 0 -or $restorePassedIndex -lt $restoreFinallyIndex)
 Require-Text $RecoveryWorkflow @(
   "environment: prod",
   "-Environment prod",
-  "-SourceInstance custoking-db-prod",
+  "PROD_CLOUDSQL_INSTANCE",
+  '-SourceInstance "$env:SOURCE_INSTANCE"',
   "-AllowProductionRecoveryDrill"
 )
 Require-Text $CloudSqlTransportAudit @(
@@ -230,6 +321,8 @@ Require-Text $CloudSqlTransportAudit @(
   'PGSSLMODE=require',
   'existingJobReconciliationFiles',
   '--update-env-vars=PGSSLMODE=require',
+  'requiresDedicatedIdentity',
+  '--service-account',
   'unexpectedUpdateFlags',
   'reconcilesExistingJob',
   'PgStatSslEvidencePath',
@@ -342,13 +435,10 @@ foreach ($targetContract in @(
   )) {
   $targetText = $contents[$targetContract.File]
   $targetCount = ([regex]::Matches($targetText, '(?m)^kind:\s*Target\s*$')).Count
-  # The project is no longer a constant. Before the split every environment lived in "custoking", so
-  # hardcoding it here was invisible; now it names the source project and this audit would reject
-  # perfectly correct dev and prod targets. Derived from the rendered target instead.
-  $auditProjectId = if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { $targetContract.ProjectId }
-  if ([string]::IsNullOrWhiteSpace($auditProjectId)) {
-    throw "Cannot audit Cloud Deploy targets without GCP_PROJECT_ID or a project id on the target contract."
-  }
+  # These are source templates, not rendered environment artifacts. Validate the required project
+  # placeholder so one offline audit can cover both split projects without borrowing a project id
+  # from the caller and accidentally accepting a dev identity in the prod template (or vice versa).
+  $auditProjectId = "__PROJECT_ID__"
   $expectedExecutionAccount = "clouddeploy-$($targetContract.Environment)-deployer@$auditProjectId.iam.gserviceaccount.com"
   $executionAccountCount = ([regex]::Matches(
       $targetText,
@@ -386,12 +476,17 @@ Require-Text $AffectedResolver @(
 )
 Require-Text $DetectWorkflow @("deployment_reconciliation_required")
 Require-Text $BuildReleaseWorkflow @(
+  "release-static-gate",
+  "release-service-test",
+  "release-secret-scan",
+  "npm run test:coverage",
+  "npm run test:e2e",
   "configuration-reconciliation-required",
   "No image was built and no release was created",
   "Ops / Reconcile deployment configuration",
   "Resolve immutable release images",
   "id: images",
-  '$immutableRef = "$registry/$($entry.image)@$digest"',
+  '$immutableRef = "$runtimeRegistry/$($entry.image)@$digest"',
   '${scanKey}_ref=$immutableRef',
   "immutableRef = `$immutableRef",
   "Trivy exact-digest HIGH/CRITICAL gate",
@@ -412,6 +507,24 @@ if ($contents[$BuildReleaseWorkflow].Contains("Apply changed deployment configur
   $violations.Add("Build/release must not reconcile Cloud Deploy control-plane configuration.") | Out-Null
 }
 $buildReleaseContent = $contents[$BuildReleaseWorkflow]
+$globalPermissionMatch = [regex]::Match(
+  $buildReleaseContent,
+  '(?ms)^permissions:\s*(?<body>.*?)^concurrency:'
+)
+if (-not $globalPermissionMatch.Success -or
+    $globalPermissionMatch.Groups["body"].Value -match '(?m)^\s+(id-token|packages):\s*write\s*$') {
+  $violations.Add("Build/release must not grant OIDC or package-write permission globally to test/scanner jobs.") | Out-Null
+}
+foreach ($privilegedJob in @("build-images", "release")) {
+  $privilegedPermissionMatch = [regex]::Match(
+    $buildReleaseContent,
+    "(?ms)^  $([regex]::Escape($privilegedJob)):\s*.*?^    permissions:\s*(?<body>.*?)(?=^    [A-Za-z_-]+:|^  [A-Za-z_-]+:)"
+  )
+  if (-not $privilegedPermissionMatch.Success -or
+      $privilegedPermissionMatch.Groups["body"].Value -notmatch '(?m)^\s+id-token:\s*write\s*$') {
+    $violations.Add("Build/release job '$privilegedJob' must hold its OIDC permission locally.") | Out-Null
+  }
+}
 $releaseScanOutputs = @("identity", "school_core", "operations", "platform", "billing", "frontend", "api_gateway")
 $releaseImageRefs = @([regex]::Matches($buildReleaseContent, '(?m)^\s*image-ref:\s*(?<value>.+?)\s*$'))
 if ($releaseImageRefs.Count -ne ($releaseScanOutputs.Count * 2)) {
@@ -496,10 +609,12 @@ Require-Text $ContainerWorkflow @(
 $approvedActionPins = @{
   "actions/checkout@v4"                 = "11d5960a326750d5838078e36cf38b85af677262"
   "actions/checkout@v7"                 = "3d3c42e5aac5ba805825da76410c181273ba90b1"
+  "actions/checkout@v7.0.1"             = "3d3c42e5aac5ba805825da76410c181273ba90b1"
   "actions/setup-java@v5"               = "b6effb05e454b25005698d916606bdc6ffcbf961"
   "actions/setup-node@v7"               = "820762786026740c76f36085b0efc47a31fe5020"
   "actions/upload-artifact@v4"          = "ea165f8d65b6e75b540449e92b4886f43607fa02"
   "actions/upload-artifact@v7"          = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+  "actions/upload-artifact@v7.0.1"      = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
   "aquasecurity/trivy-action@v0.36.0"    = "ed142fd0673e97e23eac54620cfb913e5ce36c25"
   "docker/build-push-action@v7"         = "53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
   "docker/login-action@v4"              = "dbcb813823bdd20940b903addbd779551569679f"

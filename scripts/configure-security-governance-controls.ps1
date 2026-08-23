@@ -51,6 +51,28 @@ if (-not [bool]$repo.permissions.admin -and
   throw "The authenticated GitHub principal is not a repository administrator; requested GitHub settings cannot be applied."
 }
 
+# Preserve the live production reviewer identities exactly. This script must never invent a
+# reviewer, replace an existing reviewer, or turn off the existing main-only deployment policy.
+# The only production Environment hardening performed below is disabling self-review while
+# retaining the current reviewers, admin-bypass setting, and branch-policy mode.
+$prodEnvironmentJson = (& gh api "repos/$Repository/environments/prod") -join "`n"
+if ($LASTEXITCODE -ne 0) { throw "Could not read the prod Environment for $Repository." }
+$prodEnvironment = $prodEnvironmentJson | ConvertFrom-Json
+$prodReviewerRule = @($prodEnvironment.protection_rules | Where-Object { $_.type -eq "required_reviewers" }) |
+  Select-Object -First 1
+$prodReviewers = @($prodReviewerRule.reviewers | ForEach-Object {
+  [ordered]@{
+    type = [string]$_.type
+    id = [long]$_.reviewer.id
+    login = [string]$_.reviewer.login
+  }
+})
+$prodBranchPoliciesJson = (& gh api "repos/$Repository/environments/prod/deployment-branch-policies") -join "`n"
+if ($LASTEXITCODE -ne 0) { throw "Could not read prod Environment branch policies for $Repository." }
+$prodBranchPolicies = @(($prodBranchPoliciesJson | ConvertFrom-Json).branch_policies | ForEach-Object {
+  [ordered]@{ id = [long]$_.id; name = [string]$_.name; type = [string]$_.type }
+})
+
 $allowedWorkflowClaims = @(
   @{ ref = "refs/heads/dev"; workflow_ref = "$Repository/.github/workflows/build-release.yml@refs/heads/dev" },
   @{ ref = "refs/heads/main"; workflow_ref = "$Repository/.github/workflows/build-release.yml@refs/heads/main" },
@@ -235,6 +257,14 @@ $plan = [ordered]@{
   ownerId = $ownerId
   branchProtection = [ordered]@{ branches = @("main", "dev"); requiredStatusChecks = @($RequiredStatusChecks) }
   devEnvironmentBranchPolicy = @("dev")
+  prodEnvironment = [ordered]@{
+    requiredReviewers = $prodReviewers
+    preventSelfReviewCurrent = [bool]$prodReviewerRule.prevent_self_review
+    preventSelfReviewPlanned = $true
+    canAdminsBypassCurrent = [bool]$prodEnvironment.can_admins_bypass
+    canAdminsBypassPlanned = $false
+    branchPolicies = $prodBranchPolicies
+  }
   workloadIdentity = [ordered]@{
     pool = $WorkloadIdentityPool
     provider = $WorkloadIdentityProvider
@@ -255,6 +285,20 @@ if (-not $externalMutationRequested) {
   $plan | ConvertTo-Json -Depth 8
   Write-Host "Dry run only. No GitHub or Google Cloud settings were changed."
   exit 0
+}
+
+# Validate every production-environment invariant before making any external change. Otherwise a
+# later refusal could leave dev policies or Workload Identity partially updated despite a failed run.
+if ($applyEnvironmentPolicyRequested) {
+  if ($prodReviewers.Count -lt 2) {
+    throw "Refusing to disable prod self-review without at least two existing required reviewers."
+  }
+  $unexpectedProdBranchPolicies = @($prodBranchPolicies | Where-Object {
+    $_.type -ne "branch" -or $_.name -ne "main"
+  })
+  if ($prodBranchPolicies.Count -ne 1 -or $unexpectedProdBranchPolicies.Count -gt 0) {
+    throw "Refusing to update prod Environment because its deployment policy is not exactly one main branch rule."
+  }
 }
 
 if ($ApplyWorkloadIdentity) {
@@ -321,6 +365,37 @@ if ($applyEnvironmentPolicyRequested) {
       "api", "--method", "DELETE",
       "repos/$Repository/environments/dev/deployment-branch-policies/$($unexpectedPolicy.id)"
     )
+  }
+
+  $prodEnvironmentPolicy = [ordered]@{
+    wait_timer = 0
+    reviewers = @($prodReviewers | ForEach-Object {
+      [ordered]@{ type = $_.type; id = $_.id }
+    })
+    prevent_self_review = $true
+    can_admins_bypass = $false
+    deployment_branch_policy = [ordered]@{
+      protected_branches = [bool]$prodEnvironment.deployment_branch_policy.protected_branches
+      custom_branch_policies = [bool]$prodEnvironment.deployment_branch_policy.custom_branch_policies
+    }
+  } | ConvertTo-Json -Depth 6 -Compress
+  Invoke-Checked -Command "gh" -Arguments @(
+    "api", "--method", "PUT", "repos/$Repository/environments/prod", "--input", "-"
+  ) -InputJson $prodEnvironmentPolicy
+
+  $verifiedProdJson = (& gh api "repos/$Repository/environments/prod") -join "`n"
+  if ($LASTEXITCODE -ne 0) { throw "Could not verify the updated prod Environment." }
+  $verifiedProd = $verifiedProdJson | ConvertFrom-Json
+  $verifiedReviewerRule = @($verifiedProd.protection_rules | Where-Object { $_.type -eq "required_reviewers" }) |
+    Select-Object -First 1
+  $expectedReviewerKeys = @($prodReviewers | ForEach-Object { "$($_.type):$($_.id)" } | Sort-Object)
+  $verifiedReviewerKeys = @($verifiedReviewerRule.reviewers | ForEach-Object {
+    "$([string]$_.type):$([long]$_.reviewer.id)"
+  } | Sort-Object)
+  if (-not [bool]$verifiedReviewerRule.prevent_self_review -or
+      [bool]$verifiedProd.can_admins_bypass -or
+      (Compare-Object $expectedReviewerKeys $verifiedReviewerKeys)) {
+    throw "Updated prod Environment did not preserve reviewers and enforce no self-review/admin bypass."
   }
 }
 

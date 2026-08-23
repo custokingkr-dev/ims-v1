@@ -1,6 +1,15 @@
 # GCP Infrastructure
 
-Last reconciled: 2026-08-12 with `gcloud.cmd` against project `custoking`.
+Last detailed resource inventory: 2026-08-12 against the former mixed project `custoking`.
+
+## 2026-08-24 Split-Project Reconciliation
+
+Development now runs in `custoking-dev`; production has run in `custoking-prod` since 19 August. The
+production database/object/event integrity gates and the repaired release path passed. The detailed tables
+below are retained as the pre-migration baseline and must not be read as a current single-project inventory.
+Use `../PROD-CUTOVER-EXECUTED-2026-08-19.md`, `../PROD-DATA-VERIFICATION-2026-08-19.md`, and fresh inventory
+for resource-level operational decisions. The source project `custoking` remains only while its documented
+Drive OAuth, billing-export, backup/log-retention, and deletion-continuity dependencies are resolved.
 
 ## 2026-08-14 Delta
 

@@ -5,6 +5,8 @@ param(
   [ValidateSet("dev", "prod")]
   [string]$Environment = "dev",
   [string]$Schedule = "* * * * *",
+  [ValidateRange(60, 600)]
+  [int]$DeliveryVerificationTimeoutSeconds = 180,
   [switch]$Apply,
   [switch]$EnableCloudSchedulerApi,
   [switch]$AllowProduction
@@ -132,4 +134,53 @@ foreach ($target in $resolved) {
     throw "Scheduler job $($target.job) has an unexpected target URI."
   }
 }
-Write-Host "Configured and verified $($resolved.Count) OIDC-authenticated async relay jobs."
+
+# A successful IAM policy write does not mean Cloud Run's invoker check has
+# converged everywhere yet. The Scheduler retry policy covers that propagation
+# window, but the provisioning procedure must wait for a real 2xx delivery so
+# an initial 403 cannot be mistaken for a completed rollout.
+$verificationStartedAt = (Get-Date).ToUniversalTime()
+$verificationDeadline = (Get-Date).AddSeconds($DeliveryVerificationTimeoutSeconds)
+$verified = @{}
+$latestStatus = @{}
+
+# Trigger a bounded verification attempt instead of assuming the configured
+# cron schedule will fire inside the verification window (operators may choose
+# an hourly or school-day-only schedule). The relay endpoints are idempotent and
+# the explicit -Apply gate already authorizes their activation.
+foreach ($target in $resolved) {
+  Invoke-Gcloud scheduler jobs run $target.job `
+    "--project=$ProjectId" "--location=$SchedulerLocation"
+}
+
+do {
+  $logJson = ((Invoke-Gcloud logging read "resource.type=cloud_run_revision" `
+    "--project=$ProjectId" --freshness=10m --limit=1000 --order=desc --format=json) -join "`n")
+  $entries = if ([string]::IsNullOrWhiteSpace($logJson)) { @() } else { @($logJson | ConvertFrom-Json) }
+  foreach ($target in $resolved) {
+    $attempts = @($entries | Where-Object {
+      $_.httpRequest.userAgent -eq "Google-Cloud-Scheduler" -and
+      $_.httpRequest.requestUrl -eq [string]$target.uri -and
+      ([DateTimeOffset]$_.timestamp).UtcDateTime -ge $verificationStartedAt
+    } | Sort-Object { [DateTimeOffset]$_.timestamp } -Descending)
+    if ($attempts.Count -gt 0) {
+      $latestStatus[$target.job] = [int]$attempts[0].httpRequest.status
+      if ($attempts | Where-Object { [int]$_.httpRequest.status -ge 200 -and [int]$_.httpRequest.status -lt 300 }) {
+        $verified[$target.job] = $true
+      }
+    }
+  }
+  if ($verified.Count -eq $resolved.Count) { break }
+  Start-Sleep -Seconds 10
+} while ((Get-Date) -lt $verificationDeadline)
+
+$unverified = @($resolved | Where-Object { -not $verified.ContainsKey($_.job) })
+if ($unverified.Count -gt 0) {
+  $details = $unverified | ForEach-Object {
+    $status = if ($latestStatus.ContainsKey($_.job)) { $latestStatus[$_.job] } else { "no request observed" }
+    "$($_.job) ($status)"
+  }
+  throw "Scheduler delivery did not reach 2xx within $DeliveryVerificationTimeoutSeconds seconds: $($details -join ', '). IAM propagation can produce transient 403 responses; leave retries enabled and inspect Cloud Run request logs before retrying configuration."
+}
+
+Write-Host "Configured and verified $($resolved.Count) OIDC-authenticated async relay jobs; every target returned 2xx."

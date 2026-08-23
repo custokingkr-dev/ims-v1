@@ -41,6 +41,24 @@ $iamOnlyControllerContracts = @{
     }
 }
 
+# A small number of controllers intentionally centralize a compound authorization contract
+# in a private helper instead of repeating it in every mapped method. Keep these contracts
+# explicit and exact so adding a helper named "authorize" cannot accidentally bypass the
+# route-level scope audit. Every mapped method must invoke the helper, and the helper must
+# continue to fail closed on the service token, actor role, and dedicated permission.
+$centralizedScopedGuardContracts = @{
+    "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentExportController.java" = @{
+        MappedMethodCount = 2
+        Invocation = 'authorize(token);'
+        RequiredPatterns = @(
+            'private\s+void\s+authorize\s*\(\s*String\s+token\s*\)',
+            '!StringUtils\.hasText\(studentToken\)\s*\|\|\s*!studentToken\.equals\(token\)',
+            'TenantScope\.requireOperationsOrSuperAdmin\(\);',
+            'TenantScope\.requirePermission\("student:export"\);'
+        )
+    }
+}
+
 $serviceContracts = @(
     @{ Service = "platform-service"; Header = "X-Notification-Service-Token"; Secret = "notification-status-token"; Env = "NOTIFICATION_SERVICE_TOKEN" },
     @{ Service = "platform-service"; Header = "X-Audit-Service-Token"; Secret = "audit-ingest-token"; Env = "AUDIT_SERVICE_TOKEN" },
@@ -97,6 +115,33 @@ foreach ($file in $controllerFiles) {
         continue
     }
 
+    $hasApprovedCentralizedScopedGuard = $false
+    $centralizedGuardContract = $centralizedScopedGuardContracts[$normalizedRelative]
+    if ($null -ne $centralizedGuardContract) {
+        $mappedMethodCount = [regex]::Matches($source, "@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping)").Count
+        $guardInvocationCount = [regex]::Matches(
+            $source,
+            [regex]::Escape([string]$centralizedGuardContract.Invocation)
+        ).Count
+        $hasApprovedCentralizedScopedGuard =
+            $mappedMethodCount -eq [int]$centralizedGuardContract.MappedMethodCount -and
+            $guardInvocationCount -eq $mappedMethodCount
+
+        foreach ($requiredPattern in $centralizedGuardContract.RequiredPatterns) {
+            if ($source -notmatch $requiredPattern) {
+                $hasApprovedCentralizedScopedGuard = $false
+                $violations.Add("Centralized scoped authorization guard drifted in ${relative}: missing pattern $requiredPattern")
+            }
+        }
+
+        if ($mappedMethodCount -ne [int]$centralizedGuardContract.MappedMethodCount) {
+            $violations.Add("Centralized scoped authorization endpoint count drifted in ${relative}: expected $($centralizedGuardContract.MappedMethodCount), found $mappedMethodCount")
+        }
+        if ($guardInvocationCount -ne $mappedMethodCount) {
+            $violations.Add("Every mapped endpoint must invoke the centralized scoped authorization guard: $relative")
+        }
+    }
+
     if ($source -match "StringUtils\.hasText\((readToken|serviceToken|statusToken|ingestToken|introspectionToken)\)\s*&&\s*!\1\.equals\(token\)") {
         $violations.Add("Controller uses fail-open optional service token check: $relative")
     }
@@ -111,6 +156,7 @@ foreach ($file in $controllerFiles) {
     }
 
     if ($source -match "@(GetMapping|PostMapping|PutMapping|PatchMapping|DeleteMapping)" -and
+        -not $hasApprovedCentralizedScopedGuard -and
         $source -notmatch "require(Token|ValidToken)\([^;]+,\s*`"[a-z][a-z0-9-]*:[a-z][a-z0-9:-]*`"\)" -and
         $source -notmatch "login\(" -and
         $source -notmatch "refresh\(" -and

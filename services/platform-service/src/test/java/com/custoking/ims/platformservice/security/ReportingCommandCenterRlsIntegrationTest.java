@@ -79,6 +79,7 @@ class ReportingCommandCenterRlsIntegrationTest {
     @AfterAll
     static void tearDown() {
         TenantContext.clear();
+        com.custoking.ims.platformservice.TestDataSources.close(appRt);
         if (PG != null) PG.stop();
     }
 

@@ -1,17 +1,54 @@
 # Remaining Work and Production Launch Gates
 
-Evidence cutoff: 2026-08-12 IST
+Evidence cutoff: 2026-08-24 IST (the 12 August baseline is retained below as historical evidence)
 
 Scope: Custoking IMS at 100-150 schools, 200,000-300,000 total student records, and up to 10,000
 students in one school. This is the authoritative remaining-work register. It contains no secret values or
 student-level data.
 
-Migration reconciliation (14 August 2026): the approved destination is two new projects, `custoking-dev`
-and `custoking-prod`, not an in-place move of `custoking`. The executable plan is
-`GCP-SPLIT-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md` with mandatory companion
-`GCP-MIGRATION-DATA-INTEGRITY-PLAN-2026-08-16.md`. Both target projects are currently unavailable to the
-operating account, so production migration is NO-GO. The former in-place runbook is retained only as a
+Migration reconciliation (24 August 2026): development moved to `custoking-dev` before the production
+rehearsal, and production moved to `custoking-prod` on 19 August. The production integrity gate matched all
+107 relations (38,677 rows, identical digest), object counts matched, durable event queues were drained,
+and the repaired Cloud Deploy release path was subsequently proven. MIG-01 is therefore complete. The
+The legacy source project was observed in `DELETE_REQUESTED` state on 24 August; this execution did not
+request, cancel, or modify that deletion. The production school-core workload uses service-account Drive
+access rather than the legacy OAuth client, and a temporary job under its real runtime identity proved that
+the configured Drive root can be read, listed, and written. Billing-export, backup/log-retention, and formal
+source-deletion custody still require named owners. The former in-place runbook is retained only as
 superseded historical analysis.
+
+## 2026-08-24 production-blocker execution delta
+
+- **ASYNC-01 infrastructure is complete.** Four authenticated production relay schedules return HTTP 200;
+  reporting and notification push subscriptions are `ACTIVE` with dedicated OIDC identities, ten delivery
+  attempts, 10-600 second retries, seven-day retention, no expiry, and guarded DLQ inspection. Backlogs and
+  DLQs were zero, so no unknown production item was manufactured or replayed.
+- **Recovery execution passed.** A production PITR clone became `RUNNABLE`, exported a schema-only validation
+  artifact, met a 603.96-second validation RTO, and then removed the clone, temporary object, and temporary
+  bucket IAM grant. Independent cleanup checks were zero.
+- **PRIV-01 technical controls pass.** Counts-only current-tree/history/release scans found no sensitive
+  tracked artifact, and CI now runs both repository-boundary and synthetic multi-tenant export/erasure
+  controls. DATA-02 remains open only for policy/ownership and full-system production offboarding.
+- **NOTIFY-01 code controls pass locally.** Guardian delivery now fails closed unless the active verified
+  preference and current guardian-specific consent are present; platform suppression is terminal and
+  audited. The change is tested but not committed, reviewed, released, or enabled against a real provider.
+- **PERF-01 is cost-blocked before load.** The 300,000-student seed passed on a two-vCPU development SQL
+  shape with Query Insights. The governed cost preflight found development month-to-date gross cost already
+  above its INR 2,000 budget, while log-volume headroom passed; therefore neither of the two required load
+  runs was started without explicit spending-owner approval. Development SQL was then restored to the
+  stopped `db-f1-micro` baseline with Query Insights disabled.
+- **DATA-01 production-volume rehearsal passes.** A durable PostgreSQL 16 rehearsal migrated 25,000,000
+  source rows into four partitions and reconstructed the unpartitioned rollback shape in 761.52 seconds.
+  Source, target, and rollback counts were identical; forward/rollback checksums, global uniqueness, FK,
+  check, RLS/bypass, pruning, default-partition, index, and cleanup gates all passed. The SQL remains a
+  prototype owned by the school-core attendance Flyway track; production threshold monitoring and reviewed
+  online rollout DDL still remain.
+- **GOV-01 remains authority-blocked.** Exact required check names and desired branch/environment controls are
+  documented, but the authenticated GitHub principal has write/triage rather than admin authority. A guarded
+  apply refused before mutation; repository visibility and production self-review remain owner decisions.
+- **PILOT-01 and real provider delivery remain business-blocked.** No named school, acceptance/support owner,
+  production smoke credential, approved consented recipient, sender/template, or commercial approval was
+  supplied. Production remains on the logging provider with MSG91 dry-run enabled.
 
 ## 2026-08-14 reconciliation delta
 
@@ -50,8 +87,8 @@ recovery/governance choices.
 | Scale data | 300,501 synthetic students; largest school 10,000; exact import completed in 527.372 seconds and was idempotent | Record volume and bulk import are proven in dev |
 | Write soak | corrected 4h10m/300-VU attendance soak passed: 4,178,728 requests, zero 5xx, SQL CPU 54.22% | Target write path has strong dev evidence |
 | Mixed morning | read-heavy test saturated SQL at 100% on 4 vCPU and 99.45% on 8 vCPU; query telemetry was unavailable | Broad production capacity is not proven; simply buying more CPU is not justified |
-| Async | dev reporting and notification OIDC/DLQs exist; prod reporting push exists without DLQ; prod notification subscription/DLQ absent; relay schedules absent in prod | Production async reliability is incomplete |
-| Cost | August export through 2026-08-11 19:00 UTC: INR 5,558.30 gross, approximately zero net after credits | INR 5,000 gross budget exceeded, mainly by deliberate dev certification |
+| Async | Production relay schedules and reporting/notification OIDC push subscriptions, retry and DLQ topology are active; current backlog is zero | Infrastructure is ready; a governed real-event/DLQ observation remains |
+| Cost | Development export through 2026-08-23: INR 2,601.07 gross against an INR 2,000 budget | Further certification load is fail-closed pending explicit spending-owner approval |
 | Security | Trivy: 0 High/Critical, 239 Medium, 30 Low; public GitHub repo has no visible main/dev branch protection | No critical image finding, but governance/backlog remains |
 | Observability | 110 enabled alert policies, eight uptime checks, one enabled email channel | Coverage exists; human notification receipt and query telemetry remain unproven |
 
@@ -66,13 +103,13 @@ recovery/governance choices.
 
 | ID | Remaining work | Done when | Cost control |
 | --- | --- | --- | --- |
-| MIG-01 | Build and rehearse the approved two-project GCP migration | `custoking-dev` and `custoking-prod` exist; complete resource ledger has no unassigned item; dev copy/rollback rehearsal and data-integrity gates pass; production receives a separate GO | min scale 0; sequential validation; source retained; duplicate-resource owner/end date required |
-| PRIV-01 | Keep student/photographer exports out of Git and define handling/expiry | `outputs/` ignored; exports moved outside worktree; retention owner/date recorded; repository/history scan proves no normal branch contains the files | No GCP cost; prevents an expensive privacy incident |
+| MIG-01 — complete 2026-08-19 | Build and rehearse the approved two-project GCP migration | Development was migrated and rehearsed first; production cut over separately; the 107-relation/38,677-row digest and object/event integrity gates passed; the release path was re-proven | Source retained until its separate continuity/deletion gates close |
+| PRIV-01 — technical controls complete 2026-08-24 | Keep student/photographer exports out of Git and define handling/expiry | CI and counts-only current/history/release scans prove no sensitive tracked artifact; recipient custody/expiry belongs to DATA-02 policy ownership | No GCP cost; prevents an expensive privacy incident |
 | GOV-01 | Protect `main` and `dev`; prevent prod self-approval; review public visibility | required reviews/checks and force-push/deletion restrictions active; direct-push negative test fails; prod self-review disabled; visibility decision recorded | No runtime cost |
 | PERF-01 | Replace the closed-loop MixedMorning test with an approved arrival-rate school-day model and capture query telemetry | workload assumptions signed; Query Insights or equivalent statement telemetry works; test passes twice at the chosen shape without guardrail breach | same-region runner; dev SQL only for test window; cost preflight required |
 | DB-01 | Choose production SQL shape, availability, RTO/RPO and connection budget from PERF-01 evidence | written decision names tier, zonal/regional HA, RTO, RPO, pool math, max instances, backup/restore test, monthly envelope and rollback | no resize/HA purchase before evidence and approval |
-| DATA-01 | Design and rehearse attendance partitioning before growth makes it emergency work | forward migration tested on production-like volume; unique/FK/index semantics, pruning, rollback and Flyway ownership proven; trigger threshold monitored | design/rehearsal in stopped-on-idle dev; execute before 25M rows |
-| ASYNC-01 | Complete production async execution and failure handling | approved Scheduler/relay path active; reporting prod DLQ/replay proven; notification subscription/DLQ created only with a real producer; backlog/oldest-age alerts and idempotency probes pass | min scale stays 0; minute cadence begins only if latency needs it |
+| DATA-01 — repository controls complete; live approval pending | Design and rehearse attendance partitioning before growth makes it emergency work | 25M-row forward/rollback correctness is proven; guarded maintenance operator stages, schema tests, and disabled-by-default row/index/scan monitoring are reviewable | restored-clone/operator approval, write-freeze window, explicit monitoring apply, and production execution remain; no production DDL or alerts were applied |
+| ASYNC-01 — infrastructure complete 2026-08-24 | Complete production async execution and failure handling | relay, push, retry, DLQ and guarded inspection are active; retain a governed real-event/replay observation when an event exists | min scale stays 0; minute cadence is enabled on four relay targets |
 | NOTIFY-01 | Add consent/preference enforcement and prove a bounded real provider send | authoritative consent checked before enqueue/send; approved sender/template/commercials; dry-run then one consented recipient canary; provider receipt and audit rows reconciled | keep logging/dry-run until business approval; cap canary volume |
 | DATA-02 | Approve retention, export, erasure, offboarding and incident ownership | policy maps each data class to owner/retention/legal basis; school export and verified deletion drill pass; bucket/database/log/backup implications documented | lifecycle/retention changes costed before activation |
 | PILOT-01 | Complete one named-school full-day canary | school acceptance signed; morning attendance, imports, fees, reporting and recovery observed; zero unresolved Sev-1/2; rollback and support contacts exercised | one school, bounded users, daily gross-cost review |
@@ -156,6 +193,13 @@ Required design:
 - define default/future partition creation and late-arriving data behavior;
 - rehearse online/backfill migration, rollback and Flyway ordering on production-like volume; and
 - alert on row count, largest relation, sequential scans and index growth.
+
+Repository implementation now uses a guarded maintenance-window sequence instead of an application-startup
+Flyway migration. That is an intentional safety boundary: the current write path has no dual-write/catch-up
+protocol, and pretending the table rewrite is online would risk lost or divergent attendance rows. See
+`docs/runbooks/ATTENDANCE-DATA01-PARTITION-ROLLOUT.md` and `docs/DB-SCALING-THRESHOLDS.md`. The application
+reporter and `deploy/gcp/observability/attendance_growth.tf` are committed but the Terraform feature flag
+defaults off; activation remains a separately approved dev-then-prod plan/apply.
 
 Do not deploy partition DDL directly to production before the rehearsal and restore test pass.
 
@@ -244,20 +288,22 @@ remain blocked on those owners even if engineering preparation finishes.
 6. Keep Artifact Registry cleanup/rollback evidence; do not manually purge deployed digests for a small
    saving. Current repository size is approximately 6.13 GB.
 7. Budgets are alerts, not hard caps. Monitor gross cost because promotional credits are temporary.
-8. Build the approved `custoking-dev` and `custoking-prod` destinations sequentially. Keep the source intact,
-   cap duplicate-resource spend, and do not cut production over until the dev migration/rollback rehearsal
-   and data-integrity gates pass.
+8. Keep the migrated `custoking-dev` and `custoking-prod` projects authoritative. The source is already
+   `DELETE_REQUESTED`; do not change that state without owner authority. Preserve the 24 August Drive
+   runtime-identity evidence and assign billing-export, backup/log-retention, and deletion-custody owners.
 
 ## Broad-onboarding go/no-go checklist
 
 Broad onboarding is **GO** only when all are true:
 
-- [ ] MIG-01 destination projects, dev rehearsal, rollback, and source/destination integrity gates pass.
+- [x] MIG-01 destination projects, dev rehearsal, rollback, and source/destination integrity gates passed.
 - [ ] PRIV-01 export handling and repository/history verification complete.
 - [ ] GOV-01 branch/environment controls pass negative tests.
 - [ ] PERF-01 arrival-rate mixed workload passes twice with query evidence.
 - [ ] DB-01 production tier, HA, RTO/RPO, connections and cost are approved and deployed/tested.
-- [ ] DATA-01 partition migration is rehearsed and threshold monitoring is active.
+- [ ] DATA-01 staged migration has passed the approved restored-clone/operator drill and threshold monitoring
+  has been explicitly activated in dev then production. Repository controls and the 25M rehearsal are complete;
+  no production DDL or alerting change has been applied.
 - [ ] ASYNC-01 production relays, reporting DLQ/replay and end-to-end reporting event are proven.
 - [ ] NOTIFY-01 consent enforcement and provider posture are approved; otherwise notification-dependent
   product flows remain disabled.

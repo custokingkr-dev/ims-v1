@@ -256,19 +256,20 @@ non-expiring inspection subscription on the DLQ. Production requires an addition
 
 `scripts/replay-pubsub-dead-letter.ps1` supports reporting and notifications. It:
 
-- defaults to dev and requires `-AllowProduction` for production;
-- leases at most 100 messages;
-- never acknowledges in dry-run;
+- requires an explicit reporting/notifications pipeline selection;
+- defaults to dev and requires `-AllowProduction` for a production apply;
+- performs only subscription/topic inspection unless `-Apply` is present;
+- leases at most 100 messages only after the apply gate;
 - republishes the original payload/attributes before acknowledging;
 - strips Pub/Sub source-wrapper attributes;
 - acknowledges only messages whose republish returned exactly one message ID.
 
-Pulling in dry-run temporarily leases messages, so operators must still coordinate inspection. The
-script intentionally does not provide an automatic replay loop: poison messages must not be cycled
-without diagnosis.
+The script intentionally does not provide an automatic replay loop: poison messages must not be
+cycled without diagnosis. Read-only inspection cannot reveal message bodies or lease messages;
+operators must diagnose from the DLQ metrics/log evidence before authorizing `-Apply`.
 
 Live dev proof used a unique valid canonical envelope published directly to the reporting DLQ.
-Dry-run pulled one message and acknowledged none. Apply republished one payload to
+The earlier implementation's dry-run pulled one message and acknowledged none. Apply republished one payload to
 `ims-reporting-events-v1-dev` and acknowledged it only after publish success. The push endpoint
 returned HTTP 204 at `2026-08-11T00:43:06.760243Z`; database evidence showed one reporting inbox
 row, `processed=1`, `failed=0`. This proves the replay mechanism, not automatic dead-letter routing.

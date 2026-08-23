@@ -22,9 +22,12 @@ export default defineConfig({
         'src/main.tsx',      // entry point — nothing to unit-test
       ],
       thresholds: {
-        // TODO: raise to 30 % after more component tests are added (Group C+)
-        lines: 10,
-        functions: 10,
+        // Floors track the measured suite baseline and prevent silent regression while
+        // browser coverage protects the auth/workspace shell behavior separately.
+        statements: 30,
+        branches: 60,
+        functions: 40,
+        lines: 30,
       },
     },
     // Silence noisy console output during test runs

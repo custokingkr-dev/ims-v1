@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,32 +12,36 @@ import {
 } from './workspace/config';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
-import { HomePanel } from './workspace/panels/HomePanel';
-import { StudentsPanel } from './workspace/panels/StudentsPanel';
-import { FeeModulePanel } from './workspace/panels/FeeModulePanel';
-import { AttendanceModulePanel } from './workspace/panels/AttendanceModulePanel';
-import { TimetableStudioPanel } from './workspace/panels/TimetableStudioPanel';
-import { StaffPanel } from './workspace/panels/StaffPanel';
-import { PlanningPanel } from './workspace/panels/PlanningPanel';
-import { CatalogPanel } from './workspace/panels/CatalogPanel';
-import { AddStudentPanel } from './workspace/panels/AddStudentPanel';
-import { SchoolStructurePanel } from './workspace/panels/SchoolStructurePanel';
-import { BulkImportPanel } from './workspace/panels/BulkImportPanel';
-import { PhotoImportPanel } from './workspace/panels/PhotoImportPanel';
-import { StudentExportPanel } from './workspace/panels/StudentExportPanel';
-import { FirefightingDashboardPanel } from './workspace/panels/FirefightingDashboardPanel';
-import { FirefightingNewPanel } from './workspace/panels/FirefightingNewPanel';
-import { FirefightingApprovalsPanel } from './workspace/panels/FirefightingApprovalsPanel';
-import { FirefightingOrdersPanel } from './workspace/panels/FirefightingOrdersPanel';
-import { SaErpPanel } from './workspace/panels/SaErpPanel';
-import { SaRevenuePanel } from './workspace/panels/SaRevenuePanel';
-import { SaCatalogPanel } from './workspace/panels/SaCatalogPanel';
-import { SaOrderApprovalsPanel } from './workspace/panels/SaOrderApprovalsPanel';
-import { AdminOrdersPanel } from './workspace/panels/AdminOrdersPanel';
-import { SaAllOrdersPanel } from './workspace/panels/SaAllOrdersPanel';
-import { SaNewOrderPanel } from './workspace/panels/SaNewOrderPanel';
-import { SaSchoolsPanel } from './workspace/panels/SaSchoolsPanel';
-import { SaInvoicesPanel } from './workspace/panels/SaInvoicesPanel';
+
+// Panels are navigation-level features. Loading them on demand keeps large,
+// role-specific modules out of the initial workspace download without changing
+// the panel API or its state ownership.
+const HomePanel = lazy(() => import('./workspace/panels/HomePanel').then((module) => ({ default: module.HomePanel })));
+const StudentsPanel = lazy(() => import('./workspace/panels/StudentsPanel').then((module) => ({ default: module.StudentsPanel })));
+const FeeModulePanel = lazy(() => import('./workspace/panels/FeeModulePanel').then((module) => ({ default: module.FeeModulePanel })));
+const AttendanceModulePanel = lazy(() => import('./workspace/panels/AttendanceModulePanel').then((module) => ({ default: module.AttendanceModulePanel })));
+const TimetableStudioPanel = lazy(() => import('./workspace/panels/TimetableStudioPanel').then((module) => ({ default: module.TimetableStudioPanel })));
+const StaffPanel = lazy(() => import('./workspace/panels/StaffPanel').then((module) => ({ default: module.StaffPanel })));
+const PlanningPanel = lazy(() => import('./workspace/panels/PlanningPanel').then((module) => ({ default: module.PlanningPanel })));
+const CatalogPanel = lazy(() => import('./workspace/panels/CatalogPanel').then((module) => ({ default: module.CatalogPanel })));
+const AddStudentPanel = lazy(() => import('./workspace/panels/AddStudentPanel').then((module) => ({ default: module.AddStudentPanel })));
+const SchoolStructurePanel = lazy(() => import('./workspace/panels/SchoolStructurePanel').then((module) => ({ default: module.SchoolStructurePanel })));
+const BulkImportPanel = lazy(() => import('./workspace/panels/BulkImportPanel').then((module) => ({ default: module.BulkImportPanel })));
+const PhotoImportPanel = lazy(() => import('./workspace/panels/PhotoImportPanel').then((module) => ({ default: module.PhotoImportPanel })));
+const StudentExportPanel = lazy(() => import('./workspace/panels/StudentExportPanel').then((module) => ({ default: module.StudentExportPanel })));
+const FirefightingDashboardPanel = lazy(() => import('./workspace/panels/FirefightingDashboardPanel').then((module) => ({ default: module.FirefightingDashboardPanel })));
+const FirefightingNewPanel = lazy(() => import('./workspace/panels/FirefightingNewPanel').then((module) => ({ default: module.FirefightingNewPanel })));
+const FirefightingApprovalsPanel = lazy(() => import('./workspace/panels/FirefightingApprovalsPanel').then((module) => ({ default: module.FirefightingApprovalsPanel })));
+const FirefightingOrdersPanel = lazy(() => import('./workspace/panels/FirefightingOrdersPanel').then((module) => ({ default: module.FirefightingOrdersPanel })));
+const SaErpPanel = lazy(() => import('./workspace/panels/SaErpPanel').then((module) => ({ default: module.SaErpPanel })));
+const SaRevenuePanel = lazy(() => import('./workspace/panels/SaRevenuePanel').then((module) => ({ default: module.SaRevenuePanel })));
+const SaCatalogPanel = lazy(() => import('./workspace/panels/SaCatalogPanel').then((module) => ({ default: module.SaCatalogPanel })));
+const SaOrderApprovalsPanel = lazy(() => import('./workspace/panels/SaOrderApprovalsPanel').then((module) => ({ default: module.SaOrderApprovalsPanel })));
+const AdminOrdersPanel = lazy(() => import('./workspace/panels/AdminOrdersPanel').then((module) => ({ default: module.AdminOrdersPanel })));
+const SaAllOrdersPanel = lazy(() => import('./workspace/panels/SaAllOrdersPanel').then((module) => ({ default: module.SaAllOrdersPanel })));
+const SaNewOrderPanel = lazy(() => import('./workspace/panels/SaNewOrderPanel').then((module) => ({ default: module.SaNewOrderPanel })));
+const SaSchoolsPanel = lazy(() => import('./workspace/panels/SaSchoolsPanel').then((module) => ({ default: module.SaSchoolsPanel })));
+const SaInvoicesPanel = lazy(() => import('./workspace/panels/SaInvoicesPanel').then((module) => ({ default: module.SaInvoicesPanel })));
 
 export default function UnifiedWorkspacePage() {
   const { user, logout } = useAuth();
@@ -127,9 +131,21 @@ export default function UnifiedWorkspacePage() {
             name: 'Custoking Operations',
             meta: 'Assigned school workflows',
           },
-          dashboard: {},
+          dashboard: {
+            students: 0,
+            sections: 0,
+            attendancePercent: 0,
+            attendancePresent: 0,
+            feeCollectedLakh: 0,
+            feeTargetLakh: 0,
+            feeOverdueCount: 0,
+            firefightingActive: 0,
+            pendingApprovals: 0,
+          },
+          recentActivity: [],
           orders: [],
           staff: [],
+          annualPlan: { terms: [] },
         });
         setActiveModules(withDerivedModuleGroups(['ORDERS', 'FIREFIGHTING']));
         return;
@@ -250,7 +266,23 @@ export default function UnifiedWorkspacePage() {
   // ── Bootstrap and panel-change effects ─────────────────────────────────────
   useEffect(() => {
     if (isPlatformAdmin) {
-      setWorkspace({ school: { name: 'Custoking Platform', meta: 'Super Admin' } });
+      setWorkspace({
+        school: { name: 'Custoking Platform', meta: 'Super Admin' },
+        dashboard: {
+          students: 0,
+          sections: 0,
+          attendancePercent: 0,
+          attendancePresent: 0,
+          feeCollectedLakh: 0,
+          feeTargetLakh: 0,
+          feeOverdueCount: 0,
+          firefightingActive: 0,
+          pendingApprovals: 0,
+        },
+        recentActivity: [],
+        staff: [],
+        annualPlan: { terms: [] },
+      });
       loadPendingApprovalOrders();
       return;
     }
@@ -498,6 +530,7 @@ export default function UnifiedWorkspacePage() {
         </div>
 
         <div className="ck-content">
+          <Suspense fallback={<div className="ck-loading" role="status" aria-live="polite">Loading module...</div>}>
           {!panelAllowed && !isPlatformAdmin && (
             <ModuleShell title="Module unavailable" subtitle="This module is not enabled for this school.">
               <div className="ck-card">
@@ -648,6 +681,7 @@ export default function UnifiedWorkspacePage() {
               onRefresh={refresh}
             />
           )}
+          </Suspense>
         </div>
       </main>
     </div>
