@@ -72,9 +72,14 @@ public class StudentExportArchiveWriter {
     }
 
     public Result write(ExportData data, OutputStream output) throws IOException {
+        return write(data, output, progress -> { });
+    }
+
+    public Result write(ExportData data, OutputStream output, ProgressListener progressListener) throws IOException {
         List<PhotoMapping> mappings = allocatePhotoNames(data.students());
         int exportedPhotos = 0;
         int missingPhotos = 0;
+        int processedStudents = 0;
 
         try (ZipOutputStream zip = new ZipOutputStream(output)) {
             // JPEG and XLSX payloads are already compressed. Level zero substantially reduces
@@ -109,15 +114,32 @@ public class StudentExportArchiveWriter {
                         zip.closeEntry();
                         exportedPhotos++;
                     }
+                    processedStudents += batch.size();
+                    progressListener.onProgress(new Progress(
+                            processedStudents,
+                            mappings.size(),
+                            exportedPhotos,
+                            missingPhotos,
+                            "PHOTOS",
+                            photoProgressPercent(processedStudents, mappings.size())));
                 }
             }
 
+            progressListener.onProgress(new Progress(
+                    processedStudents, mappings.size(), exportedPhotos, missingPhotos, "WORKBOOK", 90));
             zip.putNextEntry(new ZipEntry("Student-Details.xlsx"));
             writeWorkbook(mappings, zip);
             zip.closeEntry();
+            progressListener.onProgress(new Progress(
+                    processedStudents, mappings.size(), exportedPhotos, missingPhotos, "FINALIZING", 98));
             zip.finish();
         }
         return new Result(data.students().size(), exportedPhotos, missingPhotos);
+    }
+
+    private static int photoProgressPercent(int processedStudents, int totalStudents) {
+        if (totalStudents <= 0) return 90;
+        return Math.min(90, (int) ((long) processedStudents * 90L / totalStudents));
     }
 
     private static Optional<StoredPhoto> await(Future<Optional<StoredPhoto>> future) throws IOException {
@@ -273,4 +295,17 @@ public class StudentExportArchiveWriter {
     }
 
     public record Result(int studentCount, int exportedPhotoCount, int missingPhotoCount) {}
+
+    public record Progress(
+            int processedStudents,
+            int totalStudents,
+            int exportedPhotoCount,
+            int missingPhotoCount,
+            String phase,
+            int percent) {}
+
+    @FunctionalInterface
+    public interface ProgressListener {
+        void onProgress(Progress progress);
+    }
 }

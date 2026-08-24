@@ -6,6 +6,7 @@ import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportCli
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Batch;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.ImportRow;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryPreparation;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryProgress;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryResult;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RowInput;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.SourceInput;
@@ -134,7 +135,14 @@ public class PhotoImportService {
         return Map.of(
                 "batch", repository.batch(id, schoolId),
                 "rows", repository.rows(id, schoolId),
-                "access", repository.accessState(id, schoolId));
+                "access", repository.accessState(id, schoolId),
+                "recoveryProgress", repository.photoRecoveryProgress(
+                        id, schoolId, PHOTO_RECOVERY_VERSION));
+    }
+
+    public RecoveryProgress recoveryProgress(UUID id) {
+        long schoolId = authorizedBatchSchool(id);
+        return repository.photoRecoveryProgress(id, schoolId, PHOTO_RECOVERY_VERSION);
     }
 
     public Batch scan(UUID id) {
@@ -375,6 +383,8 @@ public class PhotoImportService {
                             preparation.message()));
                     case "IN_PROGRESS" -> results.add(new RecoveryResult(
                             rowId, "IN_PROGRESS", null, preparation.message()));
+                    case "PROTECTED" -> results.add(new RecoveryResult(
+                            rowId, "PROTECTED", null, preparation.message()));
                     default -> results.add(new RecoveryResult(
                             rowId, "FAILED", null, preparation.message()));
                 }
@@ -416,8 +426,12 @@ public class PhotoImportService {
                 results.add(repository.completePhotoRecovery(
                         preparation, PHOTO_RECOVERY_VERSION, normalized));
             } catch (Exception ex) {
-                results.add(repository.failPhotoRecovery(
-                        preparation.recoveryId(), rowId, schoolId, safeRecoveryError(ex)));
+                String message = safeRecoveryError(ex);
+                results.add(isPhotoProtectionDecision(message)
+                        ? repository.protectPhotoRecovery(
+                                preparation.recoveryId(), rowId, schoolId, message)
+                        : repository.failPhotoRecovery(
+                                preparation.recoveryId(), rowId, schoolId, message));
             }
         }
         return recoverySummary(id, schoolId, results);
@@ -632,7 +646,7 @@ public class PhotoImportService {
                 : message.replaceAll("[\\r\\n]+", " ");
     }
 
-    private static RecoveryBatchResult recoverySummary(
+    private RecoveryBatchResult recoverySummary(
             UUID batchId, long schoolId, List<RecoveryResult> results) {
         return new RecoveryBatchResult(
                 batchId,
@@ -641,8 +655,14 @@ public class PhotoImportService {
                 countRecoveryStatus(results, "RECOVERED"),
                 countRecoveryStatus(results, "ALREADY_RECOVERED"),
                 countRecoveryStatus(results, "IN_PROGRESS"),
+                countRecoveryStatus(results, "PROTECTED"),
                 countRecoveryStatus(results, "FAILED"),
-                List.copyOf(results));
+                List.copyOf(results),
+                repository.photoRecoveryProgress(batchId, schoolId, PHOTO_RECOVERY_VERSION));
+    }
+
+    private static boolean isPhotoProtectionDecision(String message) {
+        return message != null && message.startsWith("Student photo changed");
     }
 
     private static long countRecoveryStatus(List<RecoveryResult> results, String status) {
@@ -737,8 +757,10 @@ public class PhotoImportService {
             long recoveredCount,
             long alreadyRecoveredCount,
             long inProgressCount,
+            long protectedCount,
             long failedCount,
-            List<RecoveryResult> rows) {
+            List<RecoveryResult> rows,
+            RecoveryProgress progress) {
     }
 
     public record RowReviewUpdate(

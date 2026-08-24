@@ -129,6 +129,8 @@ describe('PhotoImportPanel', () => {
 
     await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
     expect(await screen.findByText('COMPLETED')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /photo import complete/i }))
+      .toHaveAttribute('aria-valuenow', '100');
   });
 
   it('continues execution after a transient timeout by refreshing batch progress', async () => {
@@ -410,6 +412,64 @@ describe('PhotoImportPanel', () => {
       expect.objectContaining({ timeout: 120000 }),
     );
     expect(await screen.findByText(/full-frame recovery completed for 12 photos/i)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /full-frame recovery complete/i }))
+      .toHaveAttribute('aria-valuenow', '100');
+    expect(screen.getByText(/12 of 12 reviewed/i)).toBeInTheDocument();
     expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/changed after this import will be left untouched/i));
+  });
+
+  it('restores persisted recovery progress after refresh and labels protected photos separately', async () => {
+    const appliedRow = {
+      id: '00000001-1111-4111-8111-111111111111',
+      excelRow: 2,
+      admissionNo: 'ADM-1',
+      workbookName: 'Student 1',
+      className: 'I',
+      sectionName: 'A',
+      status: 'APPLIED',
+      cropX: 0.5,
+      cropY: 0.5,
+      manuallyReviewed: false,
+    };
+    const completedBatch = {
+      ...frozenBatch,
+      status: 'COMPLETED',
+      readyCount: 0,
+      appliedCount: 12,
+      totalRows: 12,
+    };
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [completedBatch] } as any;
+      if (url === '/student-photo-imports/batch-2') {
+        return {
+          data: {
+            batch: completedBatch,
+            rows: [appliedRow],
+            access: null,
+            recoveryProgress: {
+              totalCount: 12,
+              processedCount: 7,
+              recoveredCount: 6,
+              protectedCount: 1,
+              failedCount: 0,
+              inProgressCount: 0,
+              pendingCount: 5,
+              percentComplete: 58,
+              resumable: true,
+            },
+          },
+        } as any;
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+
+    render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+
+    expect(await screen.findByRole('button', { name: /resume full-frame recovery/i })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /full-frame recovery can resume/i }))
+      .toHaveAttribute('aria-valuenow', '58');
+    expect(screen.getByText(/6 restored, 1 protected, 0 failed, 5 pending/i)).toBeInTheDocument();
   });
 });

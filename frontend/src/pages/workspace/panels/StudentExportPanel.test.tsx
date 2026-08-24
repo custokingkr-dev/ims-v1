@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import api from '../../../services/api';
 import { downloadStudentExport } from '../../../features/students';
 import { StudentExportPanel } from './StudentExportPanel';
@@ -14,6 +14,7 @@ vi.mock('../../../features/students', () => ({
 
 describe('StudentExportPanel', () => {
   beforeEach(() => {
+    cleanup();
     vi.clearAllMocks();
     vi.mocked(api.get).mockResolvedValue({
       data: {
@@ -43,7 +44,39 @@ describe('StudentExportPanel', () => {
     await waitFor(() => expect(downloadStudentExport).toHaveBeenCalledWith(
       7,
       expect.stringMatching(/^gvs-student-details-and-photos-\d{4}-\d{2}-\d{2}\.zip$/),
+      expect.any(Function),
     ));
+    expect(await screen.findByText(/downloaded green valley school/i)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: /student export complete/i })).toHaveAttribute('aria-valuenow', '100');
+  });
+
+  it('shows measured server-side percent progress while the archive is being built', async () => {
+    let finish!: () => void;
+    vi.mocked(downloadStudentExport).mockImplementation(async (_schoolId, _name, onProgress) => {
+      onProgress?.({
+        phase: 'preparing',
+        loadedBytes: 0,
+        percent: 25,
+        serverPhase: 'PHOTOS',
+        processedStudents: 250,
+        totalStudents: 1000,
+        exportedPhotos: 240,
+        missingPhotos: 10,
+      });
+      await new Promise<void>(resolve => { finish = resolve; });
+      return 'saved';
+    });
+
+    render(<StudentExportPanel />);
+    await screen.findByRole('button', { name: /download excel and all photos/i });
+    fireEvent.change(screen.getByLabelText('School'), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: /download excel and all photos/i }));
+
+    const progress = await screen.findByRole('progressbar', { name: /packing student photos/i });
+    expect(progress).toHaveAttribute('aria-valuenow', '25');
+    expect(screen.getByText('25%')).toBeInTheDocument();
+    expect(screen.getByText(/250 of 1,000 student records packed/i)).toBeInTheDocument();
+    finish();
     expect(await screen.findByText(/downloaded green valley school/i)).toBeInTheDocument();
   });
 });
