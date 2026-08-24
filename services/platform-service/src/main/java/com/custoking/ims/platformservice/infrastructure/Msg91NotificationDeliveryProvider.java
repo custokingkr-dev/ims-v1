@@ -12,10 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -26,30 +23,30 @@ import java.util.Map;
 public class Msg91NotificationDeliveryProvider implements NotificationDeliveryProvider {
 
     private static final Logger log = LoggerFactory.getLogger(Msg91NotificationDeliveryProvider.class);
+    private static final String LIVE_DELIVERY_BLOCK_MESSAGE = "MSG91 live delivery is disabled: "
+            + "an authenticated current-consent revalidation mechanism and a documented provider "
+            + "idempotency contract must be implemented before MSG91_DRY_RUN=false";
 
     private final Msg91Properties properties;
     private final SenderProfileRepository senderProfiles;
     private final ObjectMapper objectMapper;
-    private final RestClient restClient;
 
     public Msg91NotificationDeliveryProvider(Msg91Properties properties,
                                              SenderProfileRepository senderProfiles,
-                                             ObjectMapper objectMapper,
-                                             RestClient.Builder restClientBuilder) {
+                                             ObjectMapper objectMapper) {
         this.properties = properties;
         this.senderProfiles = senderProfiles;
         this.objectMapper = objectMapper;
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(properties.getTimeout());
-        requestFactory.setReadTimeout(properties.getTimeout());
-        this.restClient = restClientBuilder.requestFactory(requestFactory).build();
     }
 
     @Bean
     ApplicationRunner validateMsg91Configuration() {
         return args -> {
-            if (!properties.isDryRun() && properties.getAuthKey().isBlank()) {
-                throw new IllegalStateException("notification.msg91.auth-key is required when MSG91_DRY_RUN=false");
+            if (!properties.isDryRun()) {
+                if (properties.getAuthKey().isBlank()) {
+                    throw new IllegalStateException("notification.msg91.auth-key is required when MSG91_DRY_RUN=false");
+                }
+                throw liveDeliveryBlocked();
             }
         };
     }
@@ -100,6 +97,10 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("template_id", required(flowId, "flowId"));
         body.put("recipients", java.util.List.of(recipient));
+        // MSG91 documents CRQID as correlation metadata returned in reports and webhooks. It is
+        // deliberately not treated as an idempotency key: the provider contract does not promise
+        // duplicate suppression for this value.
+        body.put("CRQID", request.eventId());
         putIfPresent(body, "short_url", firstText(payload, "shortUrl", "short_url"));
         return body;
     }
@@ -199,36 +200,25 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
     }
 
     private void send(Channel channel, NotificationDeliveryRequest request, Object body) {
-        if (properties.isDryRun()) {
-            // Delivery payloads can contain a guardian's phone/email, a student's name, an OTP,
-            // or fee/attendance details. They must not be copied into Cloud Logging merely because
-            // the provider is in dry-run mode. Payload construction above still validates the
-            // configured sender/template contract; this audit line records only non-PII routing
-            // metadata.
-            log.info("msg91.dry-run eventId={} channel={}", request.eventId(), channel.name());
-            return;
-        }
-        if (properties.getAuthKey().isBlank()) {
-            throw new IllegalStateException("notification.msg91.auth-key is required when dry-run=false");
+        if (!properties.isDryRun()) {
+            if (properties.getAuthKey().isBlank()) {
+                throw new IllegalStateException("notification.msg91.auth-key is required when dry-run=false");
+            }
+            // Defense in depth: a direct invocation that bypasses Spring's ApplicationRunner must
+            // still be unable to reach a provider until both release-blocking contracts exist.
+            throw liveDeliveryBlocked();
         }
 
-        String endpoint = endpoint(channel);
-        RestClient.RequestBodySpec spec = restClient.post()
-                .uri(endpoint)
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .header("authkey", properties.getAuthKey());
-        spec.body(body).retrieve().toBodilessEntity();
-        log.info("msg91.sent eventId={} channel={}", request.eventId(), channel.name());
+        // Delivery payloads can contain a guardian's phone/email, a student's name, an OTP,
+        // or fee/attendance details. They must not be copied into Cloud Logging merely because
+        // the provider is in dry-run mode. Payload construction above still validates the
+        // configured sender/template contract; this audit line records only non-PII routing
+        // metadata.
+        log.info("msg91.dry-run eventId={} channel={}", request.eventId(), channel.name());
     }
 
-    private String endpoint(Channel channel) {
-        return switch (channel) {
-            case OTP -> properties.getOtpEndpoint();
-            case SMS -> properties.getSmsEndpoint();
-            case EMAIL -> properties.getEmailEndpoint();
-            case WHATSAPP -> properties.getWhatsappTemplateEndpoint();
-        };
+    private static IllegalStateException liveDeliveryBlocked() {
+        return new IllegalStateException(LIVE_DELIVERY_BLOCK_MESSAGE);
     }
 
     private Map<String, Object> variables(JsonNode payload) {

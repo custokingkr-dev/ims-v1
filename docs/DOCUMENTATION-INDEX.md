@@ -1,8 +1,8 @@
 # Documentation Index and Source Precedence
 
-Reconciled: 2026-08-14
+Reconciled: 2026-08-24
 
-This index covers the repository's 73 documentation artifacts under `docs/` plus the primary root-level
+This index covers the repository documentation under `docs/` plus the primary root-level
 project documents. It prevents dated plans and test evidence from being mistaken for current live state.
 Historical measurements are intentionally preserved; changing them would falsify the record.
 
@@ -26,13 +26,13 @@ repository now ignores `outputs/`.
 - `architecture/custoking-architecture.html` — verified application architecture plus live GCP boundary,
   capacity evidence, and unresolved infrastructure gates.
 - `REMAINING-WORK-2026-08-12.md` — single prioritized backlog and go/no-go checklist.
-- `GCP-SPLIT-PROJECT-MIGRATION-PLAN-2026-08-18.md` — **authoritative migration plan.** Rebuilt from live
+- `GCP-SPLIT-PROJECT-MIGRATION-PLAN-2026-08-18.md` — **executed migration plan.** Rebuilt from live
   discovery: full verified source inventory, the four decisions that must be made first (Artifact Registry
   topology above all), and the exact GitHub-variable and repository-file changes required. Records that no
   application code change is needed.
 - `GCP-SPLIT-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md` — **superseded** by the plan above; retained for its
   procedural scaffolding. Its factual claims about registry topology, DNS cutover, and code impact are wrong.
-- `PROD-MIGRATION-PLAN-2026-08-18.md` — **the plan to execute for production.** Written after custoking-dev
+- `PROD-MIGRATION-PLAN-2026-08-18.md` — **the executed production plan.** Written after custoking-dev
   was migrated and verified, so it is a rehearsed procedure rather than a theory: what differs about prod,
   the variable-pinning order that must not be reversed, the measured copy set, the three integrity rules
   that prevent a false NO-GO, and the fifteen defects found — thirteen from the dev rehearsal plus two
@@ -41,10 +41,9 @@ repository now ignores `outputs/`.
   minutes of unavailability with users staying signed in. Uses Cloud Run invoker IAM (`allUsers`) as the
   atomic switch in the absence of DNS, explains why DMS/CDC is not worth it at 146 MB, and confirms the data
   surface is only Cloud SQL + GCS (no Firestore, Redis, Spanner or Bigtable anywhere).
-- `DRIVE-OAUTH-REBUILD-PLAN.md` — the one thing that gates DELETING `custoking`. The Drive client lives in
-  the source project and cannot be moved; its granted scope was measured as the restricted
-  `.../auth/drive`, so a like-for-like rebuild needs Google verification plus a CASA assessment. Records
-  why `drive.file` cannot work here and proposes a service-account alternative that avoids verification.
+- `DRIVE-OAUTH-REBUILD-PLAN.md` — historical analysis of the legacy OAuth client. Production now uses the
+  service-account alternative and a 24 August runtime-identity probe proved Drive read/list/write access;
+  the legacy source project was already `DELETE_REQUESTED` when inspected.
 - `GCP-SOURCE-DELETION-CONTINUITY-2026-08-18.md` — **read this before deleting `custoking`.** What survives
   (all BCrypt passwords, scoped RBAC, Drive folders), what must be value-transferred (secrets, or 378 live
   sessions drop), what the dump does **not** carry (the `appuser`/`app_rt` database roles), and what is
@@ -78,6 +77,15 @@ repository now ignores `outputs/`.
 - `current-state/codebase-conventions.md` — repository/runtime conventions.
 - `current-state/school-student-lifecycle.md` — implemented onboarding/import/date/localization behavior.
 - `current-state/gaps-and-drift.md` — evidence narrative; defer to the remaining-work document for priority.
+- `PRODUCTION-CANARY-READINESS-EVIDENCE-2026-08-24.md` — live async, recovery, Drive-continuity and governed
+  capacity execution evidence, plus the precise owner/approval boundaries still blocking launch.
+- `GITHUB-GOVERNANCE-READINESS-2026-08-24.md` — exact required checks, current repository/environment state,
+  and the verified GitHub-admin authority boundary.
+- `NOTIFICATION-CONSENT-ENFORCEMENT-2026-08-24.md` — fail-closed guardian consent implementation and tests;
+  distinguishes repository completion from real-provider approval and deployment.
+- `PRIVACY-TECHNICAL-CONTROLS-EVIDENCE-2026-08-24.md` and
+  `DATA-LIFECYCLE-POLICY-DECISION-TEMPLATE.md` — technical export/erasure and repository-history controls,
+  followed by the legal/ownership fields engineering must not invent.
 
 ## Active contracts, operational procedures, and reference designs
 

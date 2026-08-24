@@ -334,8 +334,8 @@ class StudentOutboxEmissionIntegrationTest {
             st.execute("INSERT INTO attendance.attendance_student_records(id, attendance_daily_id, student_id, school_id, attendance_date, academic_year_id, class_id, section_id, status) " +
                     "VALUES ('record-delete', 'daily-delete', " + id + ", " + schoolId + ", DATE '2026-08-13', 'ay1', 'c1', 's1', 'ABSENT'), " +
                     "('record-keep', 'daily-delete', 999999, " + schoolId + ", DATE '2026-08-13', 'ay1', 'c1', 's1', 'PRESENT')");
-            st.execute("INSERT INTO attendance.absentee_notifications(id, school_id, student_id, class_id, section_id, academic_year_id, attendance_date, parent_contact, message) " +
-                    "VALUES ('notification-delete', " + schoolId + ", " + id + ", 'c1', 's1', 'ay1', DATE '2026-08-13', '9876500000', 'Absent')");
+            st.execute("INSERT INTO attendance.absentee_notifications(id, school_id, student_id, class_id, section_id, academic_year_id, attendance_date, parent_contact, message, status) " +
+                    "VALUES ('notification-delete', " + schoolId + ", " + id + ", 'c1', 's1', 'ay1', DATE '2026-08-13', '9876500000', 'Absent', 'SUPPRESSED')");
             st.execute("INSERT INTO student.student_review_campaigns(id, school_id, review_type, title, status) " +
                     "VALUES ('campaign-delete', " + schoolId + ", 'PROFILE_VERIFICATION', 'Delete test', 'ACTIVE')");
             st.execute("INSERT INTO student.student_review_items(id, campaign_id, student_id, school_id) " +

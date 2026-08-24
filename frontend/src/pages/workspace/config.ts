@@ -1,7 +1,7 @@
 // Navigation structure, panel identifiers, and static data configuration.
 // Add new panels here - nav and title map update automatically.
 
-export type WorkspaceData = any;
+export type { WorkspaceData } from '../../types/workspace';
 
 export type LegacyModuleCode =
   | 'STUDENTS' | 'ATTENDANCE' | 'FEES' | 'INVOICES'

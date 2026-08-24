@@ -67,17 +67,8 @@ public class NotificationBroadcastCommandRepository {
     @Transactional
     public Map<String, Object> send(UUID id, Long actorId) {
         requireBroadcast(id);
-        jdbc.sql("""
-                UPDATE notification.notification_broadcasts
-                SET status = 'SENT', sent_by = :actorId,
-                    sent_at = :now, updated_at = :now
-                WHERE id = :id
-                """)
-                .param("id", id)
-                .param("actorId", actorId)
-                .param("now", OffsetDateTime.now())
-                .update();
-        return row(id);
+        throw new IllegalArgumentException(
+                "Broadcast dispatch is blocked until communication category and recipient policy evidence are recorded");
     }
 
     public Map<String, Object> deliveryStatus(UUID id) {

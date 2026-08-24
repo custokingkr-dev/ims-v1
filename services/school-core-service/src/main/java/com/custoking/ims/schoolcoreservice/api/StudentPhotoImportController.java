@@ -5,9 +5,11 @@ import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Bat
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.CacheControl;
@@ -145,6 +147,15 @@ public class StudentPhotoImportController {
         return service.execute(id);
     }
 
+    @PostMapping("/{id}/recover")
+    public PhotoImportService.RecoveryBatchResult recover(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID id,
+            @Valid @RequestBody RecoverAppliedPhotosRequest request) {
+        requireToken(token, "student:write");
+        return service.recoverAppliedRows(id, request.rowIds());
+    }
+
     @GetMapping("/{batchId}/rows/{rowId}/preview")
     public ResponseEntity<byte[]> preview(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
@@ -217,5 +228,9 @@ public class StudentPhotoImportController {
             Boolean excluded,
             @DecimalMin("0.0") @DecimalMax("1.0") Double cropX,
             @DecimalMin("0.0") @DecimalMax("1.0") Double cropY) {
+    }
+
+    public record RecoverAppliedPhotosRequest(
+            @NotEmpty @Size(max = 100) List<@NotNull UUID> rowIds) {
     }
 }

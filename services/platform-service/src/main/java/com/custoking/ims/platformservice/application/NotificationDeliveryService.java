@@ -10,15 +10,18 @@ public class NotificationDeliveryService {
 
     private final ObjectMapper objectMapper;
     private final NotificationDeliveryProvider deliveryProvider;
+    private final NotificationPolicyGuard policyGuard;
 
     public NotificationDeliveryService(ObjectMapper objectMapper, NotificationDeliveryProvider deliveryProvider) {
         this.objectMapper = objectMapper;
         this.deliveryProvider = deliveryProvider;
+        this.policyGuard = new NotificationPolicyGuard();
     }
 
     public void deliver(NotificationInboxEvent event) {
         try {
             JsonNode payload = objectMapper.readTree(event.getPayload());
+            policyGuard.requireAllowed(event, payload);
             deliveryProvider.deliver(new NotificationDeliveryRequest(
                     event.getEventId(),
                     text(payload, "template"),
@@ -26,6 +29,8 @@ public class NotificationDeliveryService {
                     text(payload, "recipientType"),
                     text(payload, "recipientId"),
                     event.getPayload()));
+        } catch (NotificationSuppressedException ex) {
+            throw ex;
         } catch (Exception ex) {
             throw new IllegalStateException("Unable to parse notification payload", ex);
         }

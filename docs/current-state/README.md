@@ -1,6 +1,11 @@
 # Custoking IMS Current-State Documentation
 
-Last reconciled: 2026-08-12 from repository files, GitHub configuration, and live GCP project `custoking`.
+Last reconciled: 2026-08-24 from repository files and the executed split-project cutover evidence.
+
+The detailed 12–14 August inventory remains point-in-time evidence. Since 19 August, development runs in
+`custoking-dev` and production runs in `custoking-prod`; the mixed source project `custoking` is retained
+only for explicitly documented continuity/deletion dependencies. When a resource-level claim below has not
+been re-inventoried after cutover, use `../PROD-CUTOVER-EXECUTED-2026-08-19.md` and fresh live inventory.
 
 This documentation bundle captures the current project state after the dev/prod greenfield deployment and the CI/CD/observability rebuild. It is intentionally evidence-led: if a fact could not be verified from code, deployment configuration, local artifacts, or live GCP inventory, it is listed in [gaps-and-drift.md](gaps-and-drift.md) instead of being assumed.
 

@@ -34,6 +34,7 @@ const {
   server,
   routes,
   requiresUserAuth,
+  isCookieAuthPath,
   outboundHeaders,
   isRequestHopHeader,
   isResponseHopHeader,
@@ -48,6 +49,8 @@ const {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  boundedRequestBody,
+  isPayloadTooLargeError,
   currentTraceFields,
   cloudLoggingTraceFields,
   parseTraceparentHeader,
@@ -148,6 +151,13 @@ test('auth classifier treats login refresh and logout as public auth routes', ()
   assert.equal(requiresUserAuth('/api/v1/auth/introspect'), true);
   assert.equal(requiresUserAuth('/reporting-api/v1/dashboard'), true);
   assert.equal(requiresUserAuth('/assets/index.js'), false);
+});
+
+test('cookie-auth classifier is limited to refresh and logout routes', () => {
+  assert.equal(isCookieAuthPath('/api/v1/auth/refresh'), true);
+  assert.equal(isCookieAuthPath('/api/v1/auth/logout/session'), true);
+  assert.equal(isCookieAuthPath('/api/v1/auth/login'), false);
+  assert.equal(isCookieAuthPath('/api/v1/auth/refresh-token'), false);
 });
 
 test('outbound headers strip hop-by-hop request headers and add forwarding metadata', () => {
@@ -364,6 +374,24 @@ test('preflight from a disallowed origin is blocked', async () => {
   assert.deepEqual(payload, { message: 'Origin not allowed' });
 });
 
+test('ordinary refresh and logout requests from a disallowed origin are blocked', async () => {
+  const baseUrl = await listen();
+
+  for (const path of ['/api/v1/auth/refresh', '/api/v1/auth/logout']) {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        origin: 'https://evil.example.com',
+        'content-type': 'application/json',
+      },
+      body: '{}',
+    });
+    assert.equal(response.status, 403);
+    assert.equal(response.headers.get('access-control-allow-origin'), null);
+    assert.deepEqual(await response.json(), { message: 'Origin not allowed' });
+  }
+});
+
 test('oversized request body is rejected with 413 before reaching an upstream', async () => {
   const baseUrl = await listen();
 
@@ -397,6 +425,62 @@ test('bodyTooLarge honours the configured content-length limit', () => {
   assert.equal(bodyTooLarge({ headers: {} }), false);
 });
 
+test('bounded request body counts actual stream bytes without relying on content-length', async () => {
+  const body = Readable.from([Buffer.alloc(600), Buffer.alloc(500)]);
+  const received = [];
+
+  await assert.rejects(async () => {
+    for await (const chunk of boundedRequestBody(body, 1024)) received.push(chunk);
+  }, (error) => isPayloadTooLargeError(error));
+  assert.equal(Buffer.concat(received).length, 600);
+});
+
+test('bounded request body can be disabled explicitly', async () => {
+  const received = [];
+  for await (const chunk of boundedRequestBody(Readable.from([Buffer.alloc(2048)]), 0)) {
+    received.push(chunk);
+  }
+  assert.equal(Buffer.concat(received).length, 2048);
+});
+
+test('proxy rejects a chunked upload when actual bytes exceed the configured limit', async () => {
+  let upstreamBytes = 0;
+  const upstream = http.createServer(async (req, res) => {
+    try {
+      for await (const chunk of req) upstreamBytes += chunk.length;
+      res.end('ok');
+    } catch {
+      // The gateway deliberately aborts the incomplete upstream upload.
+    }
+  });
+  await new Promise((resolve) => upstream.listen(0, '127.0.0.1', resolve));
+
+  try {
+    const req = Readable.from([Buffer.alloc(600), Buffer.alloc(500)]);
+    req.method = 'POST';
+    req.headers = { 'transfer-encoding': 'chunked' };
+    req.socket = { remoteAddress: '127.0.0.1' };
+    const res = { setHeader() {}, write() {}, end() {} };
+    const address = upstream.address();
+
+    await assert.rejects(
+      proxyToUrl(
+        req,
+        res,
+        new URL(`http://127.0.0.1:${address.port}/upload`),
+        'chunked-request',
+        null,
+        null,
+        { maxBodyBytes: 1024 },
+      ),
+      (error) => isPayloadTooLargeError(error),
+    );
+    assert.ok(upstreamBytes <= 1024);
+  } finally {
+    await new Promise((resolve) => upstream.close(resolve));
+  }
+});
+
 test('bearer parsing is strict and deterministic for untrusted authorization headers', () => {
   assert.equal(parseBearerToken('Bearer abc.def-_~+/='), 'abc.def-_~+/=');
   assert.equal(parseBearerToken('bearer token'), 'token');
@@ -404,6 +488,7 @@ test('bearer parsing is strict and deterministic for untrusted authorization hea
   assert.equal(parseBearerToken('Bearer  token'), 'token');
   assert.equal(parseBearerToken('Bearer\ttoken'), null);
   assert.equal(parseBearerToken(`Bearer ${' '.repeat(100_000)}`), null);
+  assert.equal(parseBearerToken(`Bearer ${'a'.repeat(8193)}`), null);
   assert.equal(parseBearerToken(undefined), null);
 });
 
@@ -500,9 +585,12 @@ test('proxy targets reject encoded traversal and path-separator segments', () =>
 });
 
 test('rate-limit key prefers a valid bearer token, falls back to forwarded client IP', () => {
-  assert.equal(rateLimitKey({ headers: { authorization: 'Bearer abc.def' }, socket: {} }), 'tok:abc.def');
-  assert.equal(rateLimitKey({ headers: { authorization: 'Bearer  abc.def', 'x-forwarded-for': '10.0.0.6' }, socket: {} }), 'tok:abc.def');
+  const tokenKey = rateLimitKey({ headers: { authorization: 'Bearer abc.def' }, socket: {} });
+  assert.match(tokenKey, /^tok-sha256:[A-Za-z0-9_-]{43}$/);
+  assert.equal(tokenKey.includes('abc.def'), false);
+  assert.equal(rateLimitKey({ headers: { authorization: 'Bearer  abc.def', 'x-forwarded-for': '10.0.0.6' }, socket: {} }), tokenKey);
   assert.equal(rateLimitKey({ headers: { 'x-forwarded-for': '10.0.0.5, 10.0.0.1' }, socket: {} }), 'ip:10.0.0.5');
+  assert.equal(rateLimitKey({ headers: { authorization: `Bearer ${'a'.repeat(8193)}`, 'x-forwarded-for': '10.0.0.8' }, socket: {} }), 'ip:10.0.0.8');
   assert.equal(clientIp({ headers: {}, socket: { remoteAddress: '10.0.0.9' } }), '10.0.0.9');
 });
 
@@ -529,6 +617,20 @@ test('rate limiter is disabled when rps is zero', () => {
   for (let i = 0; i < 5; i += 1) {
     assert.equal(checkRateLimit(req, { rps: 0, burst: 0, buckets, now: 1 }).allowed, true);
   }
+});
+
+test('rate limiter never exceeds its configured key bound under active-key churn', () => {
+  const buckets = new Map();
+  const request = (token) => ({ headers: { authorization: `Bearer ${token}` }, socket: {} });
+
+  checkRateLimit(request('one'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1000 });
+  checkRateLimit(request('two'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1001 });
+  checkRateLimit(request('three'), { rps: 1, burst: 2, buckets, maxKeys: 2, now: 1002 });
+
+  assert.equal(buckets.size, 2);
+  assert.equal([...buckets.keys()].some((key) => key.includes('one') || key.includes('two') || key.includes('three')), false);
+  assert.equal(buckets.has(rateLimitKey(request('one'))), false);
+  assert.equal(buckets.has(rateLimitKey(request('three'))), true);
 });
 
 test('outbound headers strip client-supplied authenticated and service-token headers', () => {

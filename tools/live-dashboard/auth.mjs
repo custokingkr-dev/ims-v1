@@ -126,7 +126,12 @@ export function readSession(cookieHeader) {
   const a = Buffer.from(parts[2]);
   const b = Buffer.from(expected);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
-  if (Number(parts[1]) < Date.now()) return null;
+  // Written as "not in the future" rather than "in the past" so a non-numeric expiry fails CLOSED.
+  // Number("abc") is NaN, and NaN < Date.now() is false -- the past-tense form would have accepted a
+  // session that never expires. Unreachable today, because the expiry is inside the signed value and
+  // the HMAC above has already passed, but it costs one operator and it stops being unreachable the
+  // moment someone moves the expiry out of the signature.
+  if (!(Number(parts[1]) > Date.now())) return null;
   const email = Buffer.from(parts[0], "base64url").toString("utf8");
   // Re-checked on every request, not just at sign-in: removing someone from the allowlist must take
   // effect on their next page load, not twelve hours later when their cookie expires.

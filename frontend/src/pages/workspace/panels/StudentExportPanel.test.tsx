@@ -28,7 +28,7 @@ describe('StudentExportPanel', () => {
     vi.mocked(downloadStudentExport).mockResolvedValue('saved');
   });
 
-  it('requires an assigned school selection and downloads that school only', async () => {
+  it('requires a school selection and downloads that school only', async () => {
     render(<StudentExportPanel />);
 
     const button = await screen.findByRole('button', { name: /download excel and all photos/i });

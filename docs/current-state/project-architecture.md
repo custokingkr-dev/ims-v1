@@ -1,6 +1,6 @@
 # Project Architecture
 
-Last reconciled: 2026-08-12 against service source, gateway routes, deployment source, and live GCP inventory.
+Last reconciled: 2026-08-24 against service source and the executed split-project cutover evidence.
 
 ## Product Scope
 
@@ -27,9 +27,11 @@ Async:
 domain services -> transactional outbox -> Pub/Sub topic -> platform-service push ingress
 ```
 
-Both environments live in the single GCP project `custoking` and region `asia-south2`.
+The environments are isolated by GCP project in region `asia-south2`: development is in `custoking-dev`
+and production is in `custoking-prod`. The former mixed project `custoking` is a retained migration source,
+not the current runtime boundary.
 
-Environment separation is by suffix:
+Within each project, environment-specific resources retain their suffixes:
 
 - Cloud Run services: `custoking-<service>-dev` and `custoking-<service>-prod`
 - Secret Manager secrets: `<secret>-dev` and `<secret>-prod`

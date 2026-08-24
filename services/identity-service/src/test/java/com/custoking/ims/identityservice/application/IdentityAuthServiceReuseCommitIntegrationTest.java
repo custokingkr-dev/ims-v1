@@ -19,6 +19,11 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.util.HexFormat;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -151,6 +156,122 @@ class IdentityAuthServiceReuseCommitIntegrationTest {
                             .isGreaterThanOrEqualTo(1);
                 }
             }
+        }
+    }
+
+    @Test
+    void concurrentRefresh_sameToken_issuesOnlyOneSuccessor_andAuditsTheReplay() throws Exception {
+        String familyId = "concurrent-family-" + System.nanoTime();
+        String userEmail = "concurrent-refresh-it-" + System.nanoTime() + "@example.com";
+        AuthenticatedUserSnapshot snap = new AuthenticatedUserSnapshot(
+                0L, "Concurrent IT User", userEmail, "ADMIN", null, null, null, null);
+        String rawToken = jwtService.generateRefreshToken(snap);
+        String tokenHash = sha256Hex(rawToken);
+
+        long userId;
+        String originalSessionId = UUID.randomUUID().toString();
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner")) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO identity.app_users" +
+                    "  (full_name, email, password_hash, role, created_at)" +
+                    "  VALUES ('Concurrent IT User', ?, 'bcrypt-placeholder', 'ADMIN', now())" +
+                    "  RETURNING id")) {
+                ps.setString(1, userEmail);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    userId = rs.getLong(1);
+                }
+            }
+            try (PreparedStatement ps = c.prepareStatement(
+                    "INSERT INTO identity.auth_sessions" +
+                    "  (id, user_id, access_token_hash, refresh_token_hash," +
+                    "   family_id, status, created_at, expires_at)" +
+                    "  VALUES (?, ?, ?, ?, ?, 'ACTIVE', now(), now() + interval '7 days')")) {
+                ps.setString(1, originalSessionId);
+                ps.setLong(2, userId);
+                ps.setString(3, "access-" + UUID.randomUUID());
+                ps.setString(4, tokenHash);
+                ps.setString(5, familyId);
+                ps.executeUpdate();
+            }
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        Future<String> first = executor.submit(() -> concurrentRefreshOutcome(rawToken, ready, start));
+        Future<String> second = executor.submit(() -> concurrentRefreshOutcome(rawToken, ready, start));
+
+        boolean refreshContendedForTheRowLock;
+        try (Connection lockHolder = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner")) {
+            lockHolder.setAutoCommit(false);
+            try (PreparedStatement ps = lockHolder.prepareStatement(
+                    "SELECT id FROM identity.auth_sessions WHERE id = ? FOR UPDATE")) {
+                ps.setString(1, originalSessionId);
+                try (ResultSet ignored = ps.executeQuery()) {
+                    assertThat(ignored.next()).isTrue();
+                }
+            }
+
+            assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            // Both workers have started and the only row they need is held by this transaction.
+            // If refresh used an ordinary read, they would complete while this lock remains held.
+            Thread.sleep(1_000);
+            refreshContendedForTheRowLock = !first.isDone() && !second.isDone();
+            lockHolder.commit();
+        }
+
+        try {
+            assertThat(first.get(10, TimeUnit.SECONDS))
+                    .isIn("SUCCESS", "REUSE_DETECTED");
+            assertThat(second.get(10, TimeUnit.SECONDS))
+                    .isIn("SUCCESS", "REUSE_DETECTED");
+            assertThat(java.util.List.of(first.get(), second.get()))
+                    .containsExactlyInAnyOrder("SUCCESS", "REUSE_DETECTED");
+        } finally {
+            executor.shutdownNow();
+        }
+        assertThat(refreshContendedForTheRowLock)
+                .as("refresh should queue behind the token-row lock held by the test")
+                .isTrue();
+
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner")) {
+            try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT COUNT(*) FROM identity.auth_sessions WHERE family_id = ?")) {
+                ps.setString(1, familyId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    assertThat(rs.getInt(1))
+                            .as("the original token plus exactly one successor")
+                            .isEqualTo(2);
+                }
+            }
+            try (PreparedStatement ps = c.prepareStatement(
+                    "SELECT COUNT(*) FROM identity.rbac_audit_log" +
+                    " WHERE event_type = 'REFRESH_TOKEN_REUSE_DETECTED' AND correlation_id = ?")) {
+                ps.setString(1, familyId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    rs.next();
+                    assertThat(rs.getInt(1))
+                            .as("the losing concurrent refresh is audited as token reuse")
+                            .isEqualTo(1);
+                }
+            }
+        }
+    }
+
+    private String concurrentRefreshOutcome(String rawToken,
+                                            CountDownLatch ready,
+                                            CountDownLatch start) throws Exception {
+        ready.countDown();
+        assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
+        try {
+            identityAuthService.refresh(rawToken);
+            return "SUCCESS";
+        } catch (ResponseStatusException ex) {
+            assertThat(ex.getMessage()).contains("reuse detected");
+            return "REUSE_DETECTED";
         }
     }
 

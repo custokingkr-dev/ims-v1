@@ -9,6 +9,15 @@ interface StudentPhotoAvatarProps {
   fallbackClassName?: string;
 }
 
+/**
+ * Shared student-photo display contract.
+ *
+ * The permanent photo is always shown full-frame: consumers may choose the frame size through
+ * their existing surface class, but they must not crop the image to fill that frame. This keeps
+ * directory, attendance, detail, and verification views consistent with the bytes used by export.
+ */
+const FULL_FRAME_PHOTO_CLASS = 'ck-student-photo-full-frame';
+
 const objectUrlCache = new Map<string, string>();
 const pendingLoads = new Map<string, Promise<string | null>>();
 const MAX_CACHED_PHOTOS = 300;
@@ -92,7 +101,7 @@ export function StudentPhotoAvatar({
     <img
       src={resolvedUrl}
       alt={displayName}
-      className={className}
+      className={`${className} ${FULL_FRAME_PHOTO_CLASS}`.trim()}
       loading="lazy"
       decoding="async"
       onError={() => setFailed(true)}

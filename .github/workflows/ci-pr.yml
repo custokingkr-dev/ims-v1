@@ -31,6 +31,56 @@ jobs:
       - name: Check guarded classes have not diverged
         run: python3 scripts/check-duplicate-class-drift.py
 
+  # Offline architectural invariants are cheap enough to run on every PR. Keeping them
+  # independent from the affected-service matrix catches cross-service contract drift even
+  # when a PR changes only deployment configuration, smoke coverage, or an audit baseline.
+  static-architecture-audits:
+    name: static-architecture-audits
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - name: Audit offline service boundaries
+        shell: pwsh
+        run: |
+          ./scripts/audit-deployment-boundaries.ps1
+          ./scripts/audit-microservice-runtime-boundaries.ps1
+          ./scripts/audit-service-authorization-boundaries.ps1
+          ./scripts/audit-runtime-schema-dependency-baseline.ps1
+          ./scripts/audit-service-contract-coverage.ps1
+          ./scripts/audit-service-package-shape.ps1
+          ./scripts/audit-service-schema-defaults.ps1
+          ./scripts/audit-service-datasource-pool.ps1
+          ./scripts/audit-microservice-test-catalog.ps1
+          ./scripts/audit-microservice-build-catalog.ps1
+          ./scripts/audit-security-governance-controls.ps1
+
+  privacy-technical-controls:
+    name: privacy-technical-controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Audit current, branch, history and release export boundaries
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/audit-repository-data-boundaries.ps1
+          ./scripts/audit-repository-export-history.ps1
+      - name: Run synthetic export and verified-deletion drill
+        shell: pwsh
+        run: ./scripts/invoke-privacy-export-erasure-drill.ps1
+
   service-test:
     name: service-test (${{ matrix.name }})
     needs: detect
@@ -70,8 +120,16 @@ jobs:
         working-directory: ${{ matrix.path }}
         run: |
           npm audit --audit-level=high
-          npm test
+          npm run test:coverage
           npm run build
+      - name: Install Playwright Chromium
+        if: ${{ matrix.tool == 'npm' }}
+        working-directory: ${{ matrix.path }}
+        run: npx playwright install --with-deps chromium
+      - name: Run authenticated frontend browser tests
+        if: ${{ matrix.tool == 'npm' }}
+        working-directory: ${{ matrix.path }}
+        run: npm run test:e2e
 
   docker-build:
     name: docker-build (${{ matrix.name }})
@@ -116,7 +174,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   summary:
-    needs: [detect, service-test, docker-build, secret-scan]
+    needs: [detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, service-test, docker-build, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -128,6 +186,9 @@ jobs:
             echo "- Service changes: ${{ needs.detect.outputs.has_service_changes }}"
             echo "- Service tests: ${{ needs.service-test.result }}"
             echo "- Docker builds: ${{ needs.docker-build.result }}"
+            echo "- Duplicate class drift: ${{ needs.duplicate-class-drift.result }}"
+            echo "- Static architecture audits: ${{ needs.static-architecture-audits.result }}"
+            echo "- Privacy technical controls: ${{ needs.privacy-technical-controls.result }}"
             echo "- Secret scan: ${{ needs.secret-scan.result }}"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Enforce required job results
@@ -136,6 +197,9 @@ jobs:
           failed=0
           for result in \
             "${{ needs.detect.result }}" \
+            "${{ needs.duplicate-class-drift.result }}" \
+            "${{ needs.static-architecture-audits.result }}" \
+            "${{ needs.privacy-technical-controls.result }}" \
             "${{ needs.service-test.result }}" \
             "${{ needs.docker-build.result }}" \
             "${{ needs.secret-scan.result }}"; do

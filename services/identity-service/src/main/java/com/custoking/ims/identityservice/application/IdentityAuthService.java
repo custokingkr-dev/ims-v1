@@ -78,7 +78,9 @@ public class IdentityAuthService {
         } catch (RuntimeException ex) {
             throw unauthorized("Invalid refresh token");
         }
-        AuthSessionEntity session = sessions.findByRefreshTokenHash(tokenDigest(rawRefreshToken))
+        // Serialize rotation on the presented token. A concurrent waiter must see ROTATED after
+        // the winner commits, rather than issuing a second successor from the same ACTIVE row.
+        AuthSessionEntity session = sessions.findByRefreshTokenHashForUpdate(tokenDigest(rawRefreshToken))
                 .orElseThrow(() -> unauthorized("Invalid refresh token"));
 
         // Reuse detection: a replay of a retired/revoked token is a theft signal.

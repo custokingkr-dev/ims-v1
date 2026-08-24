@@ -41,7 +41,10 @@ $platformService = "custoking-platform-service-$Environment"
 $topic = "ims-notifications-events-v1-$Environment"
 $subscription = "ims-notification-service-push-$Environment"
 $deadLetterTopic = "ims-notifications-dead-letter-v1-$Environment"
-$deadLetterSubscription = "ims-notifications-dead-letter-inspection-$Environment"
+$deadLetterSubscriptionCandidates = @(
+  "notifications-dead-letter-inspection-$Environment",
+  "ims-notifications-dead-letter-inspection-$Environment"
+)
 $pushServiceAccountName = "ims-notification-push-$Environment"
 $pushServiceAccount = "$pushServiceAccountName@$ProjectId.iam.gserviceaccount.com"
 $pubsubServiceAgent = "service-$projectNumber@gcp-sa-pubsub.iam.gserviceaccount.com"
@@ -52,7 +55,32 @@ $pushEndpoint = "$platformUrl/api/v1/pubsub/notifications"
 $topicExists = Test-GcloudResource @("pubsub", "topics", "describe", $topic, "--project=$ProjectId")
 $subscriptionExists = Test-GcloudResource @("pubsub", "subscriptions", "describe", $subscription, "--project=$ProjectId")
 $deadLetterTopicExists = Test-GcloudResource @("pubsub", "topics", "describe", $deadLetterTopic, "--project=$ProjectId")
-$deadLetterSubscriptionExists = Test-GcloudResource @("pubsub", "subscriptions", "describe", $deadLetterSubscription, "--project=$ProjectId")
+$deadLetterSubscription = $deadLetterSubscriptionCandidates[0]
+$deadLetterSubscriptionExists = $false
+foreach ($candidate in $deadLetterSubscriptionCandidates) {
+  if (Test-GcloudResource @("pubsub", "subscriptions", "describe", $candidate, "--project=$ProjectId")) {
+    $deadLetterSubscription = $candidate
+    $deadLetterSubscriptionExists = $true
+    break
+  }
+}
+$currentDeadLetterSubscription = if ($deadLetterSubscriptionExists) {
+  ((Invoke-Gcloud pubsub subscriptions describe $deadLetterSubscription `
+    "--project=$ProjectId" --format=json) -join "`n") | ConvertFrom-Json
+} else {
+  $null
+}
+if ($deadLetterSubscriptionExists -and
+    ([string]$currentDeadLetterSubscription.topic -split '/')[-1] -ne $deadLetterTopic) {
+  throw "Notification dead-letter inspection subscription targets an unexpected topic. Refusing to mutate it."
+}
+
+$currentSubscription = if ($subscriptionExists) {
+  ((Invoke-Gcloud pubsub subscriptions describe $subscription `
+    "--project=$ProjectId" --format=json) -join "`n") | ConvertFrom-Json
+} else {
+  $null
+}
 
 $summary = [ordered]@{
   environment = $Environment
@@ -67,7 +95,17 @@ $summary = [ordered]@{
   deadLetterTopicExists = $deadLetterTopicExists
   deadLetterSubscription = $deadLetterSubscription
   deadLetterSubscriptionExists = $deadLetterSubscriptionExists
+  currentDeadLetterSubscriptionTopic = ([string]$currentDeadLetterSubscription.topic -split '/')[-1]
   maxDeliveryAttempts = $MaxDeliveryAttempts
+  currentEndpoint = [string]$currentSubscription.pushConfig.pushEndpoint
+  currentAudience = [string]$currentSubscription.pushConfig.oidcToken.audience
+  currentPushServiceAccount = [string]$currentSubscription.pushConfig.oidcToken.serviceAccountEmail
+  currentMaxDeliveryAttempts = [int]$currentSubscription.deadLetterPolicy.maxDeliveryAttempts
+  currentRetryMinimum = [string]$currentSubscription.retryPolicy.minimumBackoff
+  currentRetryMaximum = [string]$currentSubscription.retryPolicy.maximumBackoff
+  currentAckDeadlineSeconds = [int]$currentSubscription.ackDeadlineSeconds
+  currentMessageRetention = [string]$currentSubscription.messageRetentionDuration
+  currentExpirationTtl = [string]$currentSubscription.expirationPolicy.ttl
   applyRequested = [bool]$Apply
 }
 
@@ -105,6 +143,8 @@ if (-not $deadLetterSubscriptionExists) {
     "--project=$ProjectId" "--topic=$deadLetterTopic" `
     --expiration-period=never --message-retention-duration=7d
 }
+Invoke-Gcloud pubsub subscriptions update $deadLetterSubscription `
+  "--project=$ProjectId" --message-retention-duration=7d --expiration-period=never
 
 Invoke-Gcloud pubsub topics add-iam-policy-binding $deadLetterTopic `
   "--project=$ProjectId" "--member=serviceAccount:$pubsubServiceAgent" `
@@ -152,9 +192,41 @@ if (([string]$updated.deadLetterPolicy.deadLetterTopic -split '/')[-1] -ne $dead
 if ([int]$updated.deadLetterPolicy.maxDeliveryAttempts -ne $MaxDeliveryAttempts) {
   throw "Notification max delivery attempts do not match the requested value."
 }
+if ([string]$updated.retryPolicy.minimumBackoff -ne "10s" -or
+    [string]$updated.retryPolicy.maximumBackoff -ne "600s") {
+  throw "Notification retry policy does not match the requested 10s-600s range."
+}
+if ([int]$updated.ackDeadlineSeconds -ne 30) {
+  throw "Notification acknowledgement deadline does not match the required 30 seconds."
+}
+if ([string]$updated.messageRetentionDuration -ne "604800s") {
+  throw "Notification message retention does not match the required 7 days."
+}
+if (-not [string]::IsNullOrWhiteSpace([string]$updated.expirationPolicy.ttl)) {
+  throw "Notification push subscription must not expire."
+}
+$updatedDeadLetterSubscription = ((Invoke-Gcloud pubsub subscriptions describe $deadLetterSubscription `
+  "--project=$ProjectId" --format=json) -join "`n") | ConvertFrom-Json
+if (([string]$updatedDeadLetterSubscription.topic -split '/')[-1] -ne $deadLetterTopic) {
+  throw "Notification dead-letter inspection subscription targets an unexpected topic."
+}
+if ([string]$updatedDeadLetterSubscription.messageRetentionDuration -ne "604800s" -or
+    -not [string]::IsNullOrWhiteSpace([string]$updatedDeadLetterSubscription.expirationPolicy.ttl)) {
+  throw "Notification dead-letter inspection subscription must retain messages for 7 days without expiring."
+}
 
 $summary.subscriptionExists = $true
 $summary.deadLetterTopicExists = $true
 $summary.deadLetterSubscriptionExists = $true
+$summary.currentEndpoint = [string]$updated.pushConfig.pushEndpoint
+$summary.currentAudience = [string]$updated.pushConfig.oidcToken.audience
+$summary.currentPushServiceAccount = [string]$updated.pushConfig.oidcToken.serviceAccountEmail
+$summary.currentMaxDeliveryAttempts = [int]$updated.deadLetterPolicy.maxDeliveryAttempts
+$summary.currentRetryMinimum = [string]$updated.retryPolicy.minimumBackoff
+$summary.currentRetryMaximum = [string]$updated.retryPolicy.maximumBackoff
+$summary.currentAckDeadlineSeconds = [int]$updated.ackDeadlineSeconds
+$summary.currentMessageRetention = [string]$updated.messageRetentionDuration
+$summary.currentExpirationTtl = [string]$updated.expirationPolicy.ttl
+$summary.currentDeadLetterSubscriptionTopic = ([string]$updatedDeadLetterSubscription.topic -split '/')[-1]
 $summary.applied = $true
 $summary | ConvertTo-Json

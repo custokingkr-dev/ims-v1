@@ -3,7 +3,8 @@
 This Terraform root manages the GCP-native observability layer for one Custoking
 environment in project `custoking`:
 
-- Cloud Monitoring dashboards for the 5 domain services plus `api-gateway`.
+- Cloud Monitoring dashboards for the 5 domain services plus `api-gateway`, with dedicated product,
+  engineering, live-operations, and billing/cost views.
 - Optional uptime checks against `/actuator/health` or `/gateway-health`;
   private services use Cloud Run revision targets with Monitoring service-agent
   OIDC.
@@ -27,6 +28,27 @@ available in Cloud Monitoring.
   `roles/cloudtrace.agent` for Cloud Trace exporters, plus
   `roles/telemetry.tracesWriter` and `roles/serviceusage.serviceUsageConsumer`
   for OTLP export to `telemetry.googleapis.com`.
+
+## Billing and cost reporting
+
+`Custoking <env> - Billing & Cost` keeps authoritative and estimated cost evidence visibly separate:
+
+- **Export available** and **source lag** show whether the BigQuery billing export can be trusted.
+- Confirmed gross/net spend comes from the billing-export metric publisher and is grouped by project.
+- CPU, memory, requests, billable instance time, and egress remain live per service even while billing
+  export is delayed.
+- Cloud SQL is shown as a usage/baseline signal; its estimated daily cost remains in BigQuery.
+
+For detailed project/service/SKU rows, query
+`<billing-export-project>.billing_export.gcp_billing_export_v1_*`. When the usage-cost export is absent,
+use the existing estimated views `custoking-prod.cost_analysis.v_daily_cost` and
+`custoking-prod.cost_analysis.v_service_cost`. These are not interchangeable: billing export is the
+invoice-grade source, while `cost_analysis` reconstructs selected usage at pinned rates and a measured
+Cloud SQL baseline. See `scripts/README-cost-analysis.md` for the model and its limitations.
+
+The dashboard intentionally does not turn missing export data into zero spend. An unavailable or stale
+export is shown as a telemetry problem, and the live usage panels continue to show which resources are
+driving cost while it is repaired.
 
 ## Prerequisites
 
@@ -168,3 +190,20 @@ these fields when the values are available:
 These are distribution metrics, so dashboards and alerts use p95/max alignment
 over each five-minute window rather than treating the extracted log values as
 true gauges.
+
+## Attendance DATA-01 Growth Monitoring
+
+School-core emits `jsonPayload.health.attendanceStorage` with approximate rows, relation/index bytes, and
+interval scan counters. The DATA-01 log metrics and alert policies are intentionally opt-in:
+
+```powershell
+terraform -chdir=deploy/gcp/observability plan `
+  -var-file=custoking-dev.tfvars `
+  -var="enable_attendance_growth_monitoring=true"
+```
+
+Review the plan and verify development logs before any apply. Production activation is a separate approved
+plan/apply; crossing a row or scan threshold does not authorize the partition operator scripts. Defaults are
+10M rows for preparation, 20M for scheduling execution before 25M, 8 GiB of indexes for review, and one
+full-table sequential-read equivalent per five-minute sample sustained for 15 minutes. See
+`docs/DB-SCALING-THRESHOLDS.md` for statistics-reset, small-table suppression, and response guidance.

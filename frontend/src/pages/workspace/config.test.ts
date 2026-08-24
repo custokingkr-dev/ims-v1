@@ -3,6 +3,7 @@ import {
   ACCOUNTANT_NAV_SECTIONS,
   ADMIN_NAV_SECTIONS,
   OPERATIONS_NAV_SECTIONS,
+  SUPERADMIN_NAV_SECTIONS,
   TEACHER_NAV_SECTIONS,
   VIEWER_NAV_SECTIONS,
   filterNavSectionsForModules,
@@ -92,5 +93,14 @@ describe('workspace nav module filtering', () => {
     expect(items).not.toContainEqual(expect.objectContaining({ key: 'home' }));
     expect(items).toContainEqual(expect.objectContaining({ key: 'photoimport' }));
     expect(items).toContainEqual(expect.objectContaining({ key: 'studentexport' }));
+  });
+
+  it('exposes the student export workflow to platform superadmins', () => {
+    const items = SUPERADMIN_NAV_SECTIONS.flatMap((section) => section.items);
+
+    expect(items).toContainEqual(expect.objectContaining({
+      key: 'studentexport',
+      label: 'Student data export',
+    }));
   });
 });

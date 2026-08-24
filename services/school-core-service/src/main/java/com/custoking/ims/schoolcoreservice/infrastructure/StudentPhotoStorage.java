@@ -80,7 +80,7 @@ public class StudentPhotoStorage {
         return StringUtils.hasText(bucket);
     }
 
-    /** Validate + resize + store the image; returns the GCS object key to persist. */
+    /** Validate + resize without cropping + store the image; returns the GCS object key to persist. */
     public String upload(String schoolStorageId, long studentId, byte[] data, String contentType) {
         return upload(schoolStorageId, studentId, data, contentType, 0.5, 0.5);
     }
@@ -213,8 +213,10 @@ public class StudentPhotoStorage {
     }
 
     /**
-     * Validates orientation/decoded size and produces a centered square JPEG portrait.
-     * Exposed for the review preview so the operator sees the exact crop that execution stores.
+     * Validates orientation/decoded size and produces an aspect-ratio-preserving JPEG portrait.
+     * The longest edge is bounded by {@code dimension}; no part of the source frame is discarded.
+     * Legacy crop coordinates remain accepted and validated for API compatibility, but are no
+     * longer used to destructively crop the stored photo.
      */
     public byte[] normalizePortrait(byte[] data, String contentType) {
         return normalizePortrait(data, contentType, 0.5, 0.5);
@@ -253,12 +255,8 @@ public class StudentPhotoStorage {
                     .useExifOrientation(true)
                     .scale(1)
                     .asBufferedImage();
-            int side = Math.min(oriented.getWidth(), oriented.getHeight());
-            int left = cropOrigin(cropX, oriented.getWidth(), side);
-            int top = cropOrigin(cropY, oriented.getHeight(), side);
-            BufferedImage cropped = oriented.getSubimage(left, top, side, side);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Thumbnails.of(cropped)
+            Thumbnails.of(oriented)
                     .size(dimension, dimension)
                     .outputFormat("jpg")
                     .outputQuality(0.82)
@@ -349,11 +347,6 @@ public class StudentPhotoStorage {
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
         }
-    }
-
-    private static int cropOrigin(double focus, int dimension, int side) {
-        int origin = (int) Math.round(focus * dimension - side / 2.0);
-        return Math.max(0, Math.min(dimension - side, origin));
     }
 
     private static void requireCropCoordinate(double value, String field) {

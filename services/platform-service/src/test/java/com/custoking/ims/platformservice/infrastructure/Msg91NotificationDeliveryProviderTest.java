@@ -3,7 +3,6 @@ package com.custoking.ims.platformservice.infrastructure;
 import com.custoking.ims.platformservice.application.NotificationDeliveryRequest;
 import tools.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.client.RestClient;
 
 import java.util.List;
 import java.util.Map;
@@ -31,6 +30,7 @@ class Msg91NotificationDeliveryProviderTest {
                 """));
 
         assertThat(body).containsEntry("template_id", "flow-123");
+        assertThat(body).containsEntry("CRQID", "event-1");
         List<Map<String, Object>> recipients = list(body.get("recipients"));
         assertThat(recipients).hasSize(1);
         assertThat(recipients.getFirst())
@@ -152,6 +152,36 @@ class Msg91NotificationDeliveryProviderTest {
     }
 
     @Test
+    void failsFastWhenLiveDeliveryHasAuthKeyButContractsAreNotImplemented() {
+        Fixture fixture = fixture();
+        fixture.properties.setDryRun(false);
+        fixture.properties.setAuthKey("test-only-key");
+
+        assertThatThrownBy(() -> fixture.provider.validateMsg91Configuration().run(null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("current-consent revalidation")
+                .hasMessageContaining("idempotency contract");
+    }
+
+    @Test
+    void directLiveDeliveryCannotBypassStartupGuard() {
+        Fixture fixture = fixture();
+        fixture.properties.setDryRun(false);
+        fixture.properties.setAuthKey("test-only-key");
+        fixture.properties.setSmsFlowId("flow-123");
+
+        assertThatThrownBy(() -> fixture.provider.deliver(request("event-live", "SMS", """
+                {
+                  "destination": "919999999999"
+                }
+                """)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasRootCauseMessage("MSG91 live delivery is disabled: an authenticated current-consent "
+                        + "revalidation mechanism and a documented provider idempotency contract must be "
+                        + "implemented before MSG91_DRY_RUN=false");
+    }
+
+    @Test
     void dryRunDeliveryDoesNotRequireAuthKey() {
         Fixture fixture = fixture();
         fixture.properties.setDryRun(true);
@@ -183,7 +213,7 @@ class Msg91NotificationDeliveryProviderTest {
     private Fixture fixture() {
         Msg91Properties properties = new Msg91Properties();
         Msg91NotificationDeliveryProvider provider =
-                new Msg91NotificationDeliveryProvider(properties, null, objectMapper, RestClient.builder());
+                new Msg91NotificationDeliveryProvider(properties, null, objectMapper);
         return new Fixture(properties, provider);
     }
 

@@ -7,7 +7,7 @@ param(
   [string]$Profile = "Soak",
   [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
   [string]$CloudSqlInstance = "custoking-db-dev",
-  [string]$BaseUrl = "https://custoking-api-gateway-dev-l7mhms5c2a-em.a.run.app",
+  [string]$BaseUrl = "",
   [int]$PeakVus = 0,
   [string]$Hold = "",
   [ValidateRange(1, 10)]
@@ -18,9 +18,15 @@ param(
   [int]$ConnectionStopCount = 140,
   [ValidateRange(1, 10)]
   [int]$ConsecutiveMonitoringFailures = 3,
-  [string]$BillingAccount = "018AC9-E669C1-2FC9B8",
-  [string]$BudgetDisplayName = "Custoking Monthly Guardrail",
-  [string]$BillingExportTable = "custoking.billing_export.gcp_billing_export_v1_018AC9_E669C1_2FC9B8",
+  [string]$BillingAccount = "",
+  [string]$BudgetDisplayName = "",
+  # Post-split projects use the governed cost-analysis collector while the linked billing account's
+  # raw standard export is being established. The table must contain a fresh row for ProjectId or
+  # certification fails closed.
+  [string]$BillingCostTable = "",
+  # Optional raw standard export used for the Cloud Logging ingestion allowance. When it is absent,
+  # the guard uses Cloud Monitoring's authoritative month-to-date Logging ingestion gauge.
+  [string]$BillingExportTable = "",
   [ValidateRange(0.1, 1.0)]
   [double]$BudgetHeadroomRatio = 0.80,
   [ValidateRange(1, 72)]
@@ -52,11 +58,85 @@ param(
 $ErrorActionPreference = "Stop"
 $gcloud = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
 $bq = if ($env:OS -eq "Windows_NT") { "bq.cmd" } else { "bq" }
+$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
+$evidenceRoot = Join-Path $repoRoot $EvidenceDirectory
+New-Item -ItemType Directory -Force -Path $evidenceRoot | Out-Null
+
+function Write-PreflightBlockEvidence(
+  [string]$Gate,
+  [string]$Reason,
+  [object]$BudgetState,
+  [object]$LoggingState
+) {
+  $preflightStamp = [datetime]::UtcNow.ToString("yyyyMMddHHmmssfff")
+  $preflightPath = Join-Path $evidenceRoot `
+    "$($Profile.ToLowerInvariant())-$preflightStamp-preflight-blocked.json"
+  [ordered]@{
+    generatedAtUtc = [datetime]::UtcNow.ToString("o")
+    status = "BLOCKED"
+    gate = $Gate
+    reason = $Reason
+    projectId = $ProjectId
+    profile = $Profile
+    baseUrl = $BaseUrl
+    billingAccount = $BillingAccount
+    billingCostTable = $BillingCostTable
+    budgetPreflight = $BudgetState
+    loggingPreflight = $LoggingState
+  } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $preflightPath -Encoding UTF8
+  Write-Host "Preflight blocker evidence: $preflightPath"
+}
+
+function ConvertFrom-BigQueryUtcTimestamp([object]$Value) {
+  # BigQuery TIMESTAMP values are UTC even though `bq --format=json` omits the trailing Z.
+  $parsed = [datetime]::Parse(
+    [string]$Value,
+    [Globalization.CultureInfo]::InvariantCulture,
+    [Globalization.DateTimeStyles]::AllowWhiteSpaces
+  )
+  return [datetime]::SpecifyKind($parsed, [DateTimeKind]::Utc)
+}
+if ($ProjectId -cne "custoking-dev") {
+  throw "Load certification is restricted to the split development project custoking-dev."
+}
+if ($CloudSqlInstance -cne "custoking-db-dev") {
+  throw "Load certification is restricted to the custoking-db-dev instance."
+}
 if (-not $AllowScaleWrites) {
   throw "Load certification updates the reserved synthetic attendance fixture. Pass -AllowScaleWrites."
 }
-if ($BaseUrl -notmatch '-dev-' -and $BaseUrl -notmatch 'localhost') {
-  throw "Load certification is restricted to dev or localhost."
+$gatewayService = "custoking-api-gateway-dev"
+$discoveredGatewayUrl = ((& $gcloud run services describe $gatewayService `
+      "--project=$ProjectId" --region=asia-south2 --format="value(status.url)") -join "").Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($discoveredGatewayUrl)) {
+  throw "Could not discover the Cloud Run URL for $gatewayService in $ProjectId."
+}
+if ([string]::IsNullOrWhiteSpace($BaseUrl)) {
+  $BaseUrl = $discoveredGatewayUrl
+}
+$baseUri = [uri]$BaseUrl
+$isLocalTarget = $baseUri.IsLoopback -and $baseUri.Scheme -eq "http"
+if (-not $isLocalTarget -and
+    $BaseUrl.TrimEnd('/') -cne $discoveredGatewayUrl.TrimEnd('/')) {
+  throw "Load certification may send authentication material only to localhost or the discovered $gatewayService URL in $ProjectId."
+}
+
+if ([string]::IsNullOrWhiteSpace($BillingAccount)) {
+  $billingProjectJson = & $gcloud billing projects describe $ProjectId --format=json
+  if ($LASTEXITCODE -ne 0) {
+    throw "Could not discover the billing account linked to $ProjectId."
+  }
+  $billingProject = $billingProjectJson | ConvertFrom-Json
+  $BillingAccount = ([string]$billingProject.billingAccountName) -replace '^billingAccounts/', ''
+  if ([string]::IsNullOrWhiteSpace($BillingAccount)) {
+    throw "Project $ProjectId is not linked to a billing account."
+  }
+}
+if ([string]::IsNullOrWhiteSpace($BudgetDisplayName)) {
+  $BudgetDisplayName = "$ProjectId-monthly"
+}
+if ([string]::IsNullOrWhiteSpace($BillingCostTable)) {
+  $BillingCostTable = "$ProjectId.cost_analysis.daily_service_cost"
 }
 
 $budgetJson = & $gcloud billing budgets list "--billing-account=$BillingAccount" --format=json
@@ -82,22 +162,25 @@ if (-not (Get-Command $bq -ErrorAction SilentlyContinue)) {
   throw "The bq CLI is required for the gross-spend preflight."
 }
 $invoiceMonth = [datetime]::UtcNow.ToString("yyyyMM")
-$billingSql = "SELECT ROUND(SUM(cost), 2) AS gross_cost_inr, " +
-  "MAX(usage_end_time) AS latest_usage_end, MAX(export_time) AS latest_export " +
-  "FROM ``$BillingExportTable`` WHERE project.id = '$ProjectId' AND invoice.month = '$invoiceMonth'"
-$billingRowsJson = & $bq query --use_legacy_sql=false --format=json $billingSql
+$billingSql = "SELECT ROUND(SUM(cost_inr), 2) AS gross_cost_inr, " +
+  "MAX(TIMESTAMP(usage_date)) AS latest_usage_end, MAX(computed_at) AS latest_export " +
+  "FROM ``$BillingCostTable`` WHERE project = '$ProjectId' " +
+  "AND FORMAT_DATE('%Y%m', usage_date) = '$invoiceMonth'"
+$billingRowsJson = & $bq query "--project_id=$ProjectId" --use_legacy_sql=false --format=json $billingSql
 if ($LASTEXITCODE -ne 0) {
-  throw "Could not query the billing export before load certification."
+  throw "Could not query the governed cost table before load certification."
 }
 $billingRows = @($billingRowsJson | ConvertFrom-Json)
-if ($billingRows.Count -ne 1 -or $null -eq $billingRows[0].latest_usage_end) {
-  throw "The billing export did not return a current-month spend row."
+if ($billingRows.Count -ne 1 -or $null -eq $billingRows[0].latest_usage_end -or
+    $null -eq $billingRows[0].latest_export) {
+  throw "The governed cost table $BillingCostTable has no current-month row for $ProjectId; load certification remains blocked."
 }
 $grossSpendInr = [double]$billingRows[0].gross_cost_inr
-$latestUsageEnd = ([datetime]$billingRows[0].latest_usage_end).ToUniversalTime()
-$billingDataAgeHours = ([datetime]::UtcNow - $latestUsageEnd).TotalHours
+$latestUsageEnd = ConvertFrom-BigQueryUtcTimestamp $billingRows[0].latest_usage_end
+$latestCostComputation = ConvertFrom-BigQueryUtcTimestamp $billingRows[0].latest_export
+$billingDataAgeHours = ([datetime]::UtcNow - $latestCostComputation).TotalHours
 if ($billingDataAgeHours -gt $MaximumBillingDataAgeHours) {
-  throw "Billing data is $([math]::Round($billingDataAgeHours, 1)) hours old; maximum is $MaximumBillingDataAgeHours."
+  throw "Cost data is $([math]::Round($billingDataAgeHours, 1)) hours old; maximum is $MaximumBillingDataAgeHours."
 }
 
 if ($EstimatedRunCostInr -le 0) {
@@ -115,28 +198,66 @@ $budgetPreflight = [ordered]@{
   projectedGrossSpendInr = [math]::Round($projectedGrossSpendInr, 2)
   maximumProjectedSpendInr = [math]::Round($guardrailInr, 2)
   latestUsageEndUtc = $latestUsageEnd.ToString("o")
+  latestCostComputationUtc = $latestCostComputation.ToString("o")
   billingDataAgeHours = [math]::Round($billingDataAgeHours, 2)
   overrideUsed = [bool]$AllowBudgetOverrun
 }
 if (-not $AllowBudgetOverrun -and $projectedGrossSpendInr -gt $guardrailInr) {
-  throw "Projected gross spend INR $([math]::Round($projectedGrossSpendInr, 2)) exceeds the load-test guard INR $([math]::Round($guardrailInr, 2)). Pass -AllowBudgetOverrun only with explicit spending-owner approval."
+  $budgetBlockReason = "Projected gross spend INR $([math]::Round($projectedGrossSpendInr, 2)) exceeds the load-test guard INR $([math]::Round($guardrailInr, 2)). Pass -AllowBudgetOverrun only with explicit spending-owner approval."
+  Write-PreflightBlockEvidence -Gate "budget" -Reason $budgetBlockReason `
+    -BudgetState $budgetPreflight -LoggingState $null
+  throw $budgetBlockReason
 }
 
 # Cloud Logging free-allowance preflight. This is deliberately volume-based rather than cost-based:
 # ingestion inside the monthly allowance bills zero, so the gross-spend guard above reports a run as
 # free right up until the allowance is crossed, after which every further GiB is charged.
-$loggingSql = "SELECT ROUND(SUM(usage.amount) / POW(1024, 3), 3) AS ingested_gib " +
-  "FROM ``$BillingExportTable`` WHERE service.description = 'Cloud Logging' " +
-  "AND invoice.month = '$invoiceMonth'"
-$loggingRowsJson = & $bq query --use_legacy_sql=false --format=json $loggingSql
-if ($LASTEXITCODE -ne 0) {
-  throw "Could not query Cloud Logging ingestion before load certification."
-}
-$loggingRows = @($loggingRowsJson | ConvertFrom-Json)
-$ingestedGib = if ($loggingRows.Count -eq 1 -and $null -ne $loggingRows[0].ingested_gib) {
-  [double]$loggingRows[0].ingested_gib
+if ([string]::IsNullOrWhiteSpace($BillingExportTable)) {
+  # The linked split-project billing account may not yet have a raw export. Cloud Logging publishes
+  # an authoritative month-to-date GAUGE, so use it instead of weakening or skipping the allowance.
+  $loggingToken = ((& $gcloud auth print-access-token) -join "").Trim()
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($loggingToken)) {
+    throw "Could not obtain an access token for the Cloud Logging ingestion guard."
+  }
+  $loggingMetric = "logging.googleapis.com/billing/monthly_bytes_ingested"
+  $loggingEnd = [datetime]::UtcNow
+  $loggingStart = [datetime]::new($loggingEnd.Year, $loggingEnd.Month, 1, 0, 0, 0, [datetimekind]::Utc)
+  $loggingFilter = "metric.type=`"$loggingMetric`""
+  $loggingUri = "https://monitoring.googleapis.com/v3/projects/$ProjectId/timeSeries" +
+    "?filter=$([uri]::EscapeDataString($loggingFilter))" +
+    "&interval.startTime=$([uri]::EscapeDataString($loggingStart.ToString('o')))" +
+    "&interval.endTime=$([uri]::EscapeDataString($loggingEnd.ToString('o')))" +
+    "&view=FULL"
+  $loggingResponse = Invoke-RestMethod -Uri $loggingUri `
+    -Headers @{ Authorization = "Bearer $loggingToken" } -TimeoutSec 30
+  $latestLoggingPoints = @($loggingResponse.timeSeries | ForEach-Object {
+      @($_.points | Sort-Object { [datetime]$_.interval.endTime } -Descending | Select-Object -First 1)
+    } | Where-Object { $null -ne $_.value.int64Value })
+  if ($latestLoggingPoints.Count -eq 0) {
+    throw "Cloud Monitoring returned no month-to-date Cloud Logging ingestion metric for $ProjectId."
+  }
+  $ingestedBytes = [double](($latestLoggingPoints | ForEach-Object {
+        [double]$_.value.int64Value
+      } | Measure-Object -Sum).Sum)
+  $ingestedGib = $ingestedBytes / [math]::Pow(1024, 3)
+  $loggingUsageSource = "cloud-monitoring:$loggingMetric"
+  $loggingUsageObservedAtUtc = [datetime]::UtcNow.ToString("o")
 } else {
-  0.0
+  $loggingSql = "SELECT ROUND(SUM(usage.amount) / POW(1024, 3), 3) AS ingested_gib " +
+    "FROM ``$BillingExportTable`` WHERE service.description = 'Cloud Logging' " +
+    "AND invoice.month = '$invoiceMonth'"
+  $loggingRowsJson = & $bq query --use_legacy_sql=false --format=json $loggingSql
+  if ($LASTEXITCODE -ne 0) {
+    throw "Could not query Cloud Logging ingestion before load certification."
+  }
+  $loggingRows = @($loggingRowsJson | ConvertFrom-Json)
+  $ingestedGib = if ($loggingRows.Count -eq 1 -and $null -ne $loggingRows[0].ingested_gib) {
+    [double]$loggingRows[0].ingested_gib
+  } else {
+    0.0
+  }
+  $loggingUsageSource = "billing-export:$BillingExportTable"
+  $loggingUsageObservedAtUtc = [datetime]::UtcNow.ToString("o")
 }
 
 if ($EstimatedRunLogGib -le 0) {
@@ -159,14 +280,19 @@ $loggingPreflight = [ordered]@{
   projectedGib = [math]::Round($projectedLogGib, 3)
   freeTierGib = $LoggingFreeTierGib
   maximumProjectedGib = [math]::Round($loggingGuardGib, 3)
+  usageSource = $loggingUsageSource
+  usageObservedAtUtc = $loggingUsageObservedAtUtc
   overrideUsed = [bool]$AllowLoggingOverrun
 }
 if (-not $AllowLoggingOverrun -and $projectedLogGib -gt $loggingGuardGib) {
-  throw ("Projected Cloud Logging ingestion $([math]::Round($projectedLogGib, 2)) GiB exceeds the " +
+  $loggingBlockReason = ("Projected Cloud Logging ingestion $([math]::Round($projectedLogGib, 2)) GiB exceeds the " +
     "guard $([math]::Round($loggingGuardGib, 2)) GiB of the $LoggingFreeTierGib GiB monthly free " +
     "allowance (already ingested $([math]::Round($ingestedGib, 2)) GiB this invoice month). " +
     "Beyond the allowance every further GiB is charged. Reduce log verbosity, wait for the next " +
     "invoice month, or pass -AllowLoggingOverrun with explicit spending-owner approval.")
+  Write-PreflightBlockEvidence -Gate "logging" -Reason $loggingBlockReason `
+    -BudgetState $budgetPreflight -LoggingState $loggingPreflight
+  throw $loggingBlockReason
 }
 
 if ([string]::IsNullOrWhiteSpace($env:K6_ACCESS_TOKENS) -and
@@ -252,10 +378,7 @@ function Get-LatestMetricPoint(
   }
 }
 
-$repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $loadTests = Join-Path $repoRoot "load-tests"
-$evidenceRoot = Join-Path $repoRoot $EvidenceDirectory
-New-Item -ItemType Directory -Force -Path $evidenceRoot | Out-Null
 $stamp = [datetime]::UtcNow.ToString("yyyyMMddHHmmss")
 $containerName = "ims-k6-$($Profile.ToLowerInvariant())-$stamp"
 $summaryName = "$($Profile.ToLowerInvariant())-$stamp-k6-summary.json"

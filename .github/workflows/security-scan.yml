@@ -23,6 +23,15 @@ jobs:
           - { name: billing-service, context: services/billing-service, image: custoking-billing-service }
           - { name: frontend, context: frontend, image: custoking-frontend }
           - { name: api-gateway, context: services/api-gateway, image: custoking-api-gateway }
+          # The dashboard is not under services/ and is not built by build-release.yml, so it was
+          # absent from every scan in this repo -- and it is the ONLY service reachable from the
+          # internet. On 2026-08-21 it was found running with 138 vulnerabilities, 5 CRITICAL and
+          # 47 HIGH, all of them fixable. Nothing had failed; nothing had ever looked.
+          #
+          # tools/live-dashboard/release.sh gates a manual release, but only when somebody releases.
+          # This entry is what notices a base image that goes stale while nobody is rebuilding, which
+          # is exactly how it got to 138 in the first place.
+          - { name: dashboard, context: tools/live-dashboard, image: custoking-dashboard }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4

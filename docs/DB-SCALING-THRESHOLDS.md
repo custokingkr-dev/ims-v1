@@ -32,8 +32,12 @@ below are correctness gaps (see Index audit).
 
 - **Target table:** `attendance.attendance_student_records` (the student × day fact
   table), **not** `attendance_daily` (the small per-section/day parent).
-- **Trigger:** roughly **1–5 million rows** in `attendance_student_records`, or sooner if
-  index-backed hot queries against it start degrading in `EXPLAIN (ANALYZE, BUFFERS)`.
+- **Prepare at 10 million rows.** Refresh statistics, repeat production-shaped query plans, run the
+  checked-in production operator sequence against a restored clone, and obtain a maintenance/freeze
+  decision. This is deliberately before the migration becomes urgent.
+- **Schedule execution at 20 million rows and finish before 25 million.** At current onboarding targets,
+  200,000–300,000 students generate roughly 44–66 million fact rows per 220-day academic year, so waiting
+  for an incident is not a workable rollout policy. Query-plan degradation can advance these thresholds.
 - **Required restructure:** Postgres declarative partitioning requires the partition key
   to be part of the table's `PRIMARY KEY` and every `UNIQUE` constraint. Today
   `attendance_daily`'s PK is `id VARCHAR`, and `attendance_student_records` carries a FK
@@ -46,6 +50,26 @@ below are correctness gaps (see Index audit).
   the table in (an online create-partitioned-and-migrate, not an `ALTER TABLE`).
 - **Range strategy:** range-partition by academic year (or by month within a year, if
   monthly ranges are needed for retention/archival granularity).
+
+## Production rollout contract
+
+The 25-million-row rehearsal proves the target semantics and resource envelope; it does **not** make an
+application-startup Flyway rewrite safe. PostgreSQL cannot build the replacement table, global identity
+registry, backfill, indexes, and name swap atomically without long locks and a large transaction/WAL
+envelope. The current application also writes directly to the authoritative table, so an online copy needs
+a reviewed dual-write/catch-up protocol that the repository does not currently have.
+
+DATA-01 therefore uses the guarded operator sequence in
+`docs/runbooks/ATTENDANCE-DATA01-PARTITION-ROLLOUT.md`. It requires an approved write freeze, bounded
+`lock_timeout`, phase evidence, equal row counts/checksums, constraint/RLS/pruning verification, and a
+rollback decision before application writes resume. No production Flyway migration has been added, and no
+operator script is authorized merely by crossing a monitoring threshold.
+
+The rollout remains maintenance-window based until one of these is explicitly designed and tested:
+
+1. dual-write triggers plus a high-watermark/catch-up protocol that preserves the global identity registry;
+2. a logical-replication/change-data-capture cutover with delete/update ordering; or
+3. an application release that dual-writes both representations and proves convergence.
 
 ## Index-tuning threshold
 
@@ -120,6 +144,31 @@ script against the target Cloud SQL instance via a short-lived Cloud Run job (or
 For exact row counts (rather than the planner's `reltuples` estimate) on the small
 tables this doc tracks, `SELECT count(*) FROM <schema>.<table>` is cheap enough to run
 directly.
+
+## Continuous DATA-01 monitoring
+
+`AttendanceStorageHealthReporter` emits one bounded-cardinality structured sample every five minutes from
+`pg_stat_user_tables`, `pg_class`, and relation-size functions. It uses planner/autovacuum row estimates and
+`pg_partition_tree`, so collection does not perform an exact `count(*)` and continues to work after cutover.
+Its scan signal is an interval delta rather than a lifetime PostgreSQL counter; a restart establishes a
+zero-delta baseline, counter resets are suppressed, and sequential-scan risk is suppressed below one million
+rows where PostgreSQL is expected to prefer cheap sequential reads.
+
+Reviewable Terraform is in `deploy/gcp/observability/attendance_growth.tf` and is guarded by
+`enable_attendance_growth_monitoring=false`. No live metric or alert is created until an operator reviews a
+plan and explicitly enables it. The source thresholds are:
+
+| Signal | Warning/action threshold | Reason |
+|---|---:|---|
+| Approximate fact rows | 10,000,000 | start clone rehearsal, plan review and maintenance approval |
+| Approximate fact rows | 20,000,000 | schedule the approved cutover before 25,000,000 |
+| Aggregate fact-table index bytes | 8 GiB | inspect write amplification, duplicate/unused indexes and disk headroom |
+| Sequential tuples read | one full-table equivalent per five-minute interval, sustained 15 minutes | capture `EXPLAIN (ANALYZE, BUFFERS)` for the responsible production-shaped query |
+
+Because PostgreSQL statistics are estimates and can reset, an alert is a review trigger rather than proof
+that DDL is required. Run `ANALYZE attendance.attendance_student_records`, inspect the raw structured log,
+and confirm query plans before acting. Multiple Cloud Run instances are reduced with `MAX`, not summed, so
+replicas do not multiply the scan signal.
 
 ## Connection pooling
 

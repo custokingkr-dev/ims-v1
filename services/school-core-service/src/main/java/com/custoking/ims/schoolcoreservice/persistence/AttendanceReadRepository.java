@@ -28,6 +28,7 @@ public class AttendanceReadRepository {
     private final JdbcClient jdbc;
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
+    private final GuardianCommunicationPolicy guardianCommunicationPolicy;
     private final String dailyTable;
     private final String recordsTable;
     private final String absenteeTable;
@@ -42,6 +43,7 @@ public class AttendanceReadRepository {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
+        this.guardianCommunicationPolicy = new GuardianCommunicationPolicy(jdbc);
         this.dailyTable = qualifiedTable(schema, "attendance_daily");
         this.recordsTable = qualifiedTable(schema, "attendance_student_records");
         this.absenteeTable = qualifiedTable(schema, "absentee_notifications");
@@ -554,10 +556,17 @@ public class AttendanceReadRepository {
         Map<Long, String> schoolNameCache = new java.util.HashMap<>();
         String dateLabel = date.format(DateTimeFormatter.ofPattern("dd MMM yyyy"));
         int queued = 0, skippedNoContact = 0, skippedAlreadyQueued = 0;
+        List<Map<String, Object>> suppressed = new ArrayList<>();
         for (Map<String, Object> s : students) {
             if (Boolean.TRUE.equals(s.get("alreadyQueued"))) { skippedAlreadyQueued++; continue; }
-            if (!Boolean.TRUE.equals(s.get("hasContact"))) { skippedNoContact++; continue; }
             long rowSchoolId = longNum(s.get("schoolId"), 0);
+            long studentId = longNum(s.get("studentId"), 0);
+            var decision = guardianCommunicationPolicy.evaluate(rowSchoolId, studentId, "WHATSAPP");
+            if (!decision.allowed()) {
+                if ("DESTINATION_MISSING".equals(decision.reason())) skippedNoContact++;
+                suppressed.add(row("studentId", studentId, "reason", decision.reason()));
+                continue;
+            }
             String academicYearId = currentAcademicYearId(rowSchoolId);
             String schoolName = schoolNameFor(rowSchoolId, schoolNameCache);
             String message = "Dear Parent, " + s.get("fullName") + " (" + s.get("classSection")
@@ -565,26 +574,41 @@ public class AttendanceReadRepository {
                     + ". Please contact the school if this is unexpected.";
             int inserted = jdbc.sql("""
                     INSERT INTO %s(id, school_id, student_id, class_id, section_id, academic_year_id,
-                                   attendance_date, parent_contact, channel, message, status, queued_by)
+                                   attendance_date, parent_contact, channel, message, status, queued_by,
+                                   guardian_id, consent_event_id, consent_notice_version,
+                                   policy_version, policy_decision, destination_sha256,
+                                   policy_evaluated_at, policy_expires_at)
                     VALUES (:id, :schoolId, :studentId, :classId, :sectionId, :academicYearId,
-                            :date, :parentContact, 'WHATSAPP', :message, 'QUEUED', :actorId)
+                            :date, :parentContact, 'WHATSAPP', :message, 'QUEUED', :actorId,
+                            :guardianId, :consentEventId, :consentNoticeVersion,
+                            :policyVersion, 'ALLOW', :destinationSha256,
+                            :policyEvaluatedAt, :policyExpiresAt)
                     ON CONFLICT (student_id, attendance_date) DO NOTHING
                     """.formatted(absenteeTable))
                     .param("id", UUID.randomUUID().toString())
                     .param("schoolId", longNum(s.get("schoolId"), 0))
-                    .param("studentId", longNum(s.get("studentId"), 0))
+                    .param("studentId", studentId)
                     .param("classId", s.get("classId"))
                     .param("sectionId", s.get("sectionId"))
                     .param("academicYearId", academicYearId)
                     .param("date", date)
-                    .param("parentContact", s.get("parentContact"))
+                    .param("parentContact", decision.destination())
                     .param("message", message)
                     .param("actorId", actorId)
+                    .param("guardianId", decision.guardianId())
+                    .param("consentEventId", decision.consentEventId())
+                    .param("consentNoticeVersion", decision.consentNoticeVersion())
+                    .param("policyVersion", GuardianCommunicationPolicy.POLICY_VERSION)
+                    .param("destinationSha256", GuardianCommunicationPolicy.destinationSha256(
+                            decision.channel(), decision.destination()))
+                    .param("policyEvaluatedAt", decision.evaluatedAt())
+                    .param("policyExpiresAt", decision.expiresAt())
                     .update();
             if (inserted > 0) queued++; else skippedAlreadyQueued++;
         }
         return row("date", date.toString(), "queued", queued,
-                "skippedNoContact", skippedNoContact, "skippedAlreadyQueued", skippedAlreadyQueued);
+                "skippedNoContact", skippedNoContact, "skippedAlreadyQueued", skippedAlreadyQueued,
+                "suppressedCount", suppressed.size(), "suppressed", suppressed);
     }
 
     public Map<String, Object> sectionInfo(LocalDate date, String sectionId, Long schoolId) {

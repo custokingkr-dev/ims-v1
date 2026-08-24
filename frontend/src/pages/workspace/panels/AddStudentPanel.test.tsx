@@ -90,9 +90,42 @@ describe('AddStudentPanel class/section dropdowns', () => {
     expect(preview.tagName).toBe('CANVAS');
     expect(container.querySelector('img[alt="Student preview"]')).toBeNull();
     expect(decode).toHaveBeenCalledWith(file);
-    await waitFor(() => expect(drawImage).toHaveBeenCalledWith(bitmap, expect.any(Number), expect.any(Number), expect.any(Number), expect.any(Number)));
+    await waitFor(() => expect(drawImage).toHaveBeenCalledWith(bitmap, 0, 64, 512, 384));
+    expect(screen.getByText(/complete photo frame is preserved/i)).toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
 
     unmount();
     expect(bitmap.close).toHaveBeenCalledTimes(1);
+  });
+
+  it('uploads the original full-frame file instead of a generated crop', async () => {
+    const bitmap = { width: 400, height: 800, close: vi.fn() } as unknown as ImageBitmap;
+    const context = {
+      fillStyle: '',
+      fillRect: vi.fn(),
+      drawImage: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue(bitmap));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context);
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({ data: { id: 42 } })
+      .mockResolvedValueOnce({ data: { id: 42 } });
+
+    const { container } = render(<AddStudentPanel setPanel={vi.fn()} onRefresh={vi.fn().mockResolvedValue(undefined)} />);
+    fireEvent.change(screen.getByPlaceholderText('Manual unique ID'), { target: { value: 'ADM-42' } });
+    fireEvent.change(screen.getByPlaceholderText('Student full name'), { target: { value: 'Asha Rao' } });
+    await waitFor(() => expect(screen.getByRole('option', { name: 'A' })).toBeInTheDocument());
+
+    const file = new File(['original-portrait'], 'asha.png', { type: 'image/png' });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [file] } });
+    await screen.findByRole('img', { name: 'Student preview' });
+    fireEvent.click(screen.getByRole('button', { name: /save & enroll student/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(2));
+    const [photoUrl, body] = vi.mocked(api.post).mock.calls[1];
+    expect(photoUrl).toBe('/students/42/photo');
+    expect(body).toBeInstanceOf(FormData);
+    expect((body as FormData).get('file')).toBe(file);
   });
 });

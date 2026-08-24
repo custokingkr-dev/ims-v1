@@ -768,6 +768,281 @@ public class PhotoImportRepository {
         return batchInTransaction(id, schoolId);
     }
 
+    /**
+     * Claims one previously applied row for a versioned, idempotent recovery pass. A completed
+     * claim is returned as-is, while a failed (or abandoned) claim can be retried. The student's
+     * current photo must still be the photo written by this import row so recovery cannot overwrite
+     * a newer manual upload or a later import.
+     */
+    @Transactional
+    public RecoveryPreparation beginPhotoRecovery(
+            UUID batchId,
+            long schoolId,
+            UUID rowId,
+            String recoveryVersion,
+            Long requestedBy) {
+        selectSchoolScope(schoolId);
+        RecoveryTarget target = jdbc.sql("""
+                SELECT r.id AS row_id, r.batch_id, r.school_id, r.student_id,
+                       r.drive_file_id, r.drive_file_name, r.source_checksum,
+                       r.final_photo_key, s.photo_url AS current_photo_key,
+                       b.school_uid::text AS school_uid
+                FROM student.photo_import_rows r
+                JOIN student.photo_import_batches b
+                  ON b.id = r.batch_id AND b.school_id = r.school_id
+                JOIN student.students s
+                  ON s.id = r.student_id AND s.school_id = r.school_id
+                WHERE r.id = :rowId AND r.batch_id = :batchId AND r.school_id = :schoolId
+                  AND r.status = 'APPLIED' AND s.deleted_at IS NULL
+                FOR UPDATE OF r, s
+                """)
+                .param("rowId", rowId)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> new RecoveryTarget(
+                        rs.getObject("row_id", UUID.class),
+                        rs.getObject("batch_id", UUID.class),
+                        rs.getLong("school_id"),
+                        rs.getLong("student_id"),
+                        rs.getString("drive_file_id"),
+                        rs.getString("drive_file_name"),
+                        rs.getString("source_checksum"),
+                        rs.getString("final_photo_key"),
+                        rs.getString("current_photo_key"),
+                        rs.getString("school_uid")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Only an applied photo-import row for an active student can be recovered"));
+        if (target.driveFileId() == null || target.driveFileId().isBlank()) {
+            throw new IllegalArgumentException("The applied row has no retained Drive source file id");
+        }
+        if (target.finalPhotoKey() == null || target.finalPhotoKey().isBlank()) {
+            throw new IllegalArgumentException("The applied row has no recoverable final photo key");
+        }
+
+        RecoveryAudit existing = recoveryAudit(rowId, schoolId, recoveryVersion, true).orElse(null);
+        if (existing != null && "COMPLETED".equals(existing.status())) {
+            return new RecoveryPreparation(existing.id(), "ALREADY_RECOVERED", existing.message(), target);
+        }
+        if (existing != null && "EXECUTING".equals(existing.status())
+                && existing.updatedAt().isAfter(OffsetDateTime.now().minusMinutes(15))) {
+            return new RecoveryPreparation(existing.id(), "IN_PROGRESS",
+                    "Photo recovery is already running", target);
+        }
+
+        UUID recoveryId = existing == null ? UUID.randomUUID() : existing.id();
+        if (!Objects.equals(target.finalPhotoKey(), target.currentPhotoKey())) {
+            upsertRecovery(recoveryId, target, recoveryVersion, requestedBy, "FAILED",
+                    "Student photo changed after this import; recovery did not overwrite it");
+            return new RecoveryPreparation(recoveryId, "FAILED",
+                    "Student photo changed after this import; recovery did not overwrite it", target);
+        }
+
+        upsertRecovery(recoveryId, target, recoveryVersion, requestedBy, "EXECUTING",
+                "Recovery claimed; validating retained Drive source");
+        return new RecoveryPreparation(recoveryId, "READY", null, target);
+    }
+
+    @Transactional
+    public RecoveryResult completePhotoRecovery(
+            RecoveryPreparation preparation,
+            String recoveryVersion,
+            byte[] normalizedPortrait) {
+        RecoveryTarget target = preparation.target();
+        selectSchoolScope(target.schoolId());
+        RecoveryTarget current = jdbc.sql("""
+                SELECT r.id AS row_id, r.batch_id, r.school_id, r.student_id,
+                       r.drive_file_id, r.drive_file_name, r.source_checksum,
+                       r.final_photo_key, s.photo_url AS current_photo_key,
+                       b.school_uid::text AS school_uid
+                FROM student.photo_import_rows r
+                JOIN student.photo_import_batches b
+                  ON b.id = r.batch_id AND b.school_id = r.school_id
+                JOIN student.students s
+                  ON s.id = r.student_id AND s.school_id = r.school_id
+                WHERE r.id = :rowId AND r.batch_id = :batchId AND r.school_id = :schoolId
+                  AND r.status = 'APPLIED' AND s.deleted_at IS NULL
+                FOR UPDATE OF r, s
+                """)
+                .param("rowId", target.rowId())
+                .param("batchId", target.batchId())
+                .param("schoolId", target.schoolId())
+                .query((rs, rowNum) -> new RecoveryTarget(
+                        rs.getObject("row_id", UUID.class),
+                        rs.getObject("batch_id", UUID.class),
+                        rs.getLong("school_id"),
+                        rs.getLong("student_id"),
+                        rs.getString("drive_file_id"),
+                        rs.getString("drive_file_name"),
+                        rs.getString("source_checksum"),
+                        rs.getString("final_photo_key"),
+                        rs.getString("current_photo_key"),
+                        rs.getString("school_uid")))
+                .optional()
+                .orElseThrow(() -> new IllegalArgumentException("Applied photo-import row is no longer recoverable"));
+        RecoveryAudit audit = recoveryAudit(target.rowId(), target.schoolId(), recoveryVersion, true)
+                .orElseThrow(() -> new IllegalArgumentException("Photo recovery claim not found"));
+        if ("COMPLETED".equals(audit.status())) {
+            return new RecoveryResult(target.rowId(), "ALREADY_RECOVERED", audit.recoveredPhotoKey(), audit.message());
+        }
+        if (!audit.id().equals(preparation.recoveryId()) || !"EXECUTING".equals(audit.status())) {
+            throw new IllegalArgumentException("Photo recovery claim is not active");
+        }
+        if (!Objects.equals(target.finalPhotoKey(), current.finalPhotoKey())
+                || !Objects.equals(target.finalPhotoKey(), current.currentPhotoKey())) {
+            throw new IllegalArgumentException("Student photo changed while recovery was running");
+        }
+
+        String recoveredKey = photoStorage.uploadNormalizedPortrait(
+                current.schoolUid(), current.studentId(), normalizedPortrait);
+        int studentUpdated = jdbc.sql("""
+                UPDATE student.students
+                SET photo_url = :photoKey, updated_at = now(), updated_by = :updatedBy,
+                    version = version + 1
+                WHERE id = :studentId AND school_id = :schoolId AND photo_url = :priorPhotoKey
+                """)
+                .param("photoKey", recoveredKey)
+                .param("updatedBy", String.valueOf(TenantContext.get().userId()))
+                .param("studentId", current.studentId())
+                .param("schoolId", current.schoolId())
+                .param("priorPhotoKey", current.finalPhotoKey())
+                .update();
+        if (studentUpdated != 1) {
+            throw new IllegalArgumentException("Student photo changed while recovery was being saved");
+        }
+        int rowUpdated = jdbc.sql("""
+                UPDATE student.photo_import_rows
+                SET final_photo_key = :photoKey,
+                    message = 'Portrait recovered from retained Drive original without cropping',
+                    updated_at = now()
+                WHERE id = :rowId AND batch_id = :batchId AND school_id = :schoolId
+                  AND status = 'APPLIED' AND final_photo_key = :priorPhotoKey
+                """)
+                .param("photoKey", recoveredKey)
+                .param("rowId", current.rowId())
+                .param("batchId", current.batchId())
+                .param("schoolId", current.schoolId())
+                .param("priorPhotoKey", current.finalPhotoKey())
+                .update();
+        if (rowUpdated != 1) {
+            throw new IllegalArgumentException("Photo-import row changed while recovery was being saved");
+        }
+        if (!Objects.equals(recoveredKey, current.finalPhotoKey())) {
+            invalidateActivePhotoVerification(current.studentId(), current.schoolId());
+        }
+        String message = Objects.equals(recoveredKey, current.finalPhotoKey())
+                ? "Original was reprocessed; the stored photo was already equivalent"
+                : "Portrait recovered from retained Drive original without cropping";
+        jdbc.sql("""
+                UPDATE student.photo_import_recoveries
+                SET status = 'COMPLETED', recovered_photo_key = :photoKey,
+                    message = :message, completed_at = now(), updated_at = now()
+                WHERE id = :id AND school_id = :schoolId AND status = 'EXECUTING'
+                """)
+                .param("photoKey", recoveredKey)
+                .param("message", message)
+                .param("id", audit.id())
+                .param("schoolId", current.schoolId())
+                .update();
+        outbox.append(
+                "student.photo-recovered.v1",
+                "student.photo-recovered.v1:" + current.rowId() + ":" + recoveryVersion,
+                "student",
+                String.valueOf(current.studentId()),
+                current.schoolId(),
+                Map.of(
+                        "studentId", current.studentId(),
+                        "schoolId", current.schoolId(),
+                        "photoImportBatchId", current.batchId().toString(),
+                        "photoImportRowId", current.rowId().toString(),
+                        "recoveryVersion", recoveryVersion,
+                        "photoKey", recoveredKey));
+        return new RecoveryResult(current.rowId(), "RECOVERED", recoveredKey, message);
+    }
+
+    @Transactional
+    public RecoveryResult failPhotoRecovery(UUID recoveryId, UUID rowId, long schoolId, String message) {
+        selectSchoolScope(schoolId);
+        String safeMessage = truncate(message, 800);
+        jdbc.sql("""
+                UPDATE student.photo_import_recoveries
+                SET status = 'FAILED', message = :message, completed_at = now(), updated_at = now()
+                WHERE id = :id AND row_id = :rowId AND school_id = :schoolId
+                  AND status = 'EXECUTING'
+                """)
+                .param("message", safeMessage)
+                .param("id", recoveryId)
+                .param("rowId", rowId)
+                .param("schoolId", schoolId)
+                .update();
+        return new RecoveryResult(rowId, "FAILED", null, safeMessage);
+    }
+
+    private Optional<RecoveryAudit> recoveryAudit(
+            UUID rowId, long schoolId, String recoveryVersion, boolean forUpdate) {
+        String locking = forUpdate ? " FOR UPDATE" : "";
+        return jdbc.sql("""
+                SELECT id, status, recovered_photo_key, message, updated_at
+                FROM student.photo_import_recoveries
+                WHERE row_id = :rowId AND school_id = :schoolId
+                  AND recovery_version = :recoveryVersion
+                """ + locking)
+                .param("rowId", rowId)
+                .param("schoolId", schoolId)
+                .param("recoveryVersion", recoveryVersion)
+                .query((rs, rowNum) -> new RecoveryAudit(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("status"),
+                        rs.getString("recovered_photo_key"),
+                        rs.getString("message"),
+                        rs.getObject("updated_at", OffsetDateTime.class)))
+                .optional();
+    }
+
+    private void upsertRecovery(
+            UUID recoveryId,
+            RecoveryTarget target,
+            String recoveryVersion,
+            Long requestedBy,
+            String status,
+            String message) {
+        jdbc.sql("""
+                INSERT INTO student.photo_import_recoveries
+                    (id, row_id, batch_id, school_id, student_id, recovery_version, status,
+                     requested_by, drive_file_id, source_checksum, prior_photo_key, message,
+                     completed_at)
+                VALUES
+                    (:id, :rowId, :batchId, :schoolId, :studentId, :recoveryVersion, :status,
+                     :requestedBy, :driveFileId, :sourceChecksum, :priorPhotoKey, :message,
+                     CASE WHEN :status = 'FAILED' THEN now() ELSE NULL END)
+                ON CONFLICT (row_id, recovery_version) DO UPDATE
+                SET status = EXCLUDED.status,
+                    requested_by = EXCLUDED.requested_by,
+                    drive_file_id = EXCLUDED.drive_file_id,
+                    source_checksum = EXCLUDED.source_checksum,
+                    prior_photo_key = EXCLUDED.prior_photo_key,
+                    recovered_photo_key = NULL,
+                    message = EXCLUDED.message,
+                    attempt_count = student.photo_import_recoveries.attempt_count + 1,
+                    requested_at = now(),
+                    completed_at = CASE WHEN EXCLUDED.status = 'FAILED' THEN now() ELSE NULL END,
+                    updated_at = now()
+                """)
+                .param("id", recoveryId)
+                .param("rowId", target.rowId())
+                .param("batchId", target.batchId())
+                .param("schoolId", target.schoolId())
+                .param("studentId", target.studentId())
+                .param("recoveryVersion", recoveryVersion)
+                .param("status", status)
+                .param("requestedBy", requestedBy)
+                .param("driveFileId", target.driveFileId())
+                .param("sourceChecksum", target.sourceChecksum())
+                .param("priorPhotoKey", target.finalPhotoKey())
+                .param("message", message)
+                .update();
+    }
+
     @Transactional(readOnly = true)
     public GoogleDrivePhotoImportClient.DriveFile sourceFile(UUID batchId, long schoolId, String driveFileId) {
         selectSchoolScope(schoolId);
@@ -919,6 +1194,14 @@ public class PhotoImportRepository {
     private record StudentState(String photoKey, String academicYearId) {
     }
 
+    private record RecoveryAudit(
+            UUID id,
+            String status,
+            String recoveredPhotoKey,
+            String message,
+            OffsetDateTime updatedAt) {
+    }
+
     private record Counts(int applied, int failed, int ready) {
     }
 
@@ -1028,5 +1311,32 @@ public class PhotoImportRepository {
             Integer classSortOrder,
             String sectionName,
             String photoKey) {
+    }
+
+    public record RecoveryTarget(
+            UUID rowId,
+            UUID batchId,
+            long schoolId,
+            long studentId,
+            String driveFileId,
+            String driveFileName,
+            String sourceChecksum,
+            String finalPhotoKey,
+            String currentPhotoKey,
+            String schoolUid) {
+    }
+
+    public record RecoveryPreparation(
+            UUID recoveryId,
+            String status,
+            String message,
+            RecoveryTarget target) {
+    }
+
+    public record RecoveryResult(
+            UUID rowId,
+            String status,
+            String photoKey,
+            String message) {
     }
 }

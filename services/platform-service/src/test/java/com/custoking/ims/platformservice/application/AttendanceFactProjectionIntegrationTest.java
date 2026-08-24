@@ -71,6 +71,7 @@ class AttendanceFactProjectionIntegrationTest {
 
     @AfterAll
     static void tearDown() {
+        com.custoking.ims.platformservice.TestDataSources.close(dataSource);
         if (PG != null) PG.stop();
     }
 

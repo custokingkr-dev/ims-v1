@@ -62,16 +62,43 @@ public class NotificationInboxProcessor {
 
     @Transactional(noRollbackFor = NotificationDeliveryFailedException.class)
     public void process(NotificationInboxEvent event) {
+        NotificationInboxEvent locked = inboxRepository.findByIdForUpdate(event.getEventId()).orElse(null);
+        if (locked == null || terminal(locked)) {
+            return;
+        }
+        if (NotificationInboxEvent.STATUS_FAILED.equals(locked.getStatus())
+                && locked.getNextAttemptAt() != null
+                && locked.getNextAttemptAt().isAfter(OffsetDateTime.now())) {
+            return;
+        }
         traceContextBridge.runInSpan(
-                "notification.process " + safe(event.getEventType(), "event"),
-                event.getTraceParent(),
-                event.getTraceState(),
-                () -> processOne(event));
+                "notification.process " + safe(locked.getEventType(), "event"),
+                locked.getTraceParent(),
+                locked.getTraceState(),
+                () -> processOne(locked));
+    }
+
+    private boolean terminal(NotificationInboxEvent event) {
+        return NotificationInboxEvent.STATUS_PROCESSED.equals(event.getStatus())
+                || NotificationInboxEvent.STATUS_DEAD_LETTER.equals(event.getStatus())
+                || NotificationInboxEvent.STATUS_SUPPRESSED.equals(event.getStatus());
     }
 
     private void processOne(NotificationInboxEvent event) {
         try {
             deliveryService.deliver(event);
+        } catch (NotificationSuppressedException ex) {
+            OffsetDateTime attemptedAt = OffsetDateTime.now();
+            event.setStatus(NotificationInboxEvent.STATUS_SUPPRESSED);
+            event.setProcessedAt(attemptedAt);
+            event.setLastError(ex.reasonCode());
+            event.setAttemptCount(event.getAttemptCount() + 1);
+            event.setLastAttemptAt(attemptedAt);
+            event.setNextAttemptAt(null);
+            event.setDeadLetteredAt(null);
+            inboxRepository.save(event);
+            recordAttempt(event, NotificationDeliveryAttempt.STATUS_SUPPRESSED, ex.reasonCode());
+            return;
         } catch (RuntimeException ex) {
             OffsetDateTime attemptedAt = OffsetDateTime.now();
             int attempts = event.getAttemptCount() + 1;

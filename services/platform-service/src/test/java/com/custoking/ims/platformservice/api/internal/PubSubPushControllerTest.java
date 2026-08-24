@@ -85,6 +85,21 @@ class PubSubPushControllerTest {
     }
 
     @Test
+    void terminalSuppressionAcknowledgesWithoutAnotherProviderAttempt() throws Exception {
+        NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
+        NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
+        PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "push-token");
+        NotificationInboxEvent event = new NotificationInboxEvent();
+        event.setEventId("event-1");
+        event.setStatus(NotificationInboxEvent.STATUS_SUPPRESSED);
+        when(inbox.findById("event-1")).thenReturn(Optional.of(event));
+
+        controller.receiveNotificationRequest("push-token", null, envelopeWithTrace());
+
+        verify(processor, never()).process(event);
+    }
+
+    @Test
     void redeliveryBeforeScheduledRetryDoesNotCallProvider() throws Exception {
         NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
         NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);

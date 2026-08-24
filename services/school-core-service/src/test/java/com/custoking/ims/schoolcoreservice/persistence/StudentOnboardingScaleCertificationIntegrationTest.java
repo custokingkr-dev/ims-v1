@@ -239,6 +239,8 @@ class StudentOnboardingScaleCertificationIntegrationTest {
         long controlSchool = seedSchool("CERT-ERASE-CONTROL", 15, 26);
         confirm(targetSchool, String.valueOf(preview(targetSchool, "ERASE", 0, 20).get("fileToken")));
         confirm(controlSchool, String.valueOf(preview(controlSchool, "CONTROL", 0, 20).get("fileToken")));
+        seedGuardianAndConsent(targetSchool);
+        seedGuardianAndConsent(controlSchool);
 
         Map<String, Long> targetBefore = schoolCoreCounts(targetSchool);
         Map<String, Long> controlBefore = schoolCoreCounts(controlSchool);
@@ -273,12 +275,20 @@ class StudentOnboardingScaleCertificationIntegrationTest {
             return null;
         });
 
+        // A resumed offboarding worker must be safe after an interruption that occurs after
+        // deletion but before completion is recorded. Re-run the test-only dependency-ordered
+        // erase and prove that it remains a no-op for both the target and control tenant.
+        inTransaction(() -> {
+            eraseSchoolCoreTenant(targetSchool);
+            return null;
+        });
+
         Map<String, Long> targetAfter = schoolCoreCounts(targetSchool);
         Map<String, Long> controlAfter = schoolCoreCounts(controlSchool);
         assertThat(targetAfter.values()).allMatch(count -> count == 0L);
         assertThat(controlAfter).isEqualTo(controlBefore);
         System.out.printf(
-                "IMS_ONBOARDING_ERASE_RESULT|synthetic=true|exportRows=%d|sha256=%s|targetBefore=%s|targetAfter=%s|controlBefore=%s|controlAfter=%s%n",
+                "IMS_ONBOARDING_ERASE_RESULT|synthetic=true|idempotent=true|exportRows=%d|sha256=%s|targetBefore=%s|targetAfter=%s|controlBefore=%s|controlAfter=%s%n",
                 exportRows.size(), exportSha256,
                 objectMapper.writeValueAsString(targetBefore), objectMapper.writeValueAsString(targetAfter),
                 objectMapper.writeValueAsString(controlBefore), objectMapper.writeValueAsString(controlAfter));
@@ -375,6 +385,48 @@ class StudentOnboardingScaleCertificationIntegrationTest {
                 .param("jobId", jobId)
                 .param("schoolId", schoolId)
                 .query(Long.class).single();
+    }
+
+    private static void seedGuardianAndConsent(long schoolId) {
+        long studentId = jdbc.sql("""
+                        SELECT id FROM student.students
+                        WHERE school_id = :schoolId
+                        ORDER BY id
+                        LIMIT 1
+                        """)
+                .param("schoolId", schoolId)
+                .query(Long.class).single();
+        String guardianId = "cert-guardian-" + schoolId;
+        jdbc.sql("""
+                        INSERT INTO student.guardians (id, school_id, full_name)
+                        VALUES (:guardianId, :schoolId, 'Synthetic Guardian')
+                        """)
+                .param("guardianId", guardianId)
+                .param("schoolId", schoolId)
+                .update();
+        jdbc.sql("""
+                        INSERT INTO student.student_guardians
+                            (id, school_id, student_id, guardian_id, relationship, is_primary)
+                        VALUES (:linkId, :schoolId, :studentId, :guardianId, 'GUARDIAN', true)
+                        """)
+                .param("linkId", "cert-link-" + schoolId)
+                .param("schoolId", schoolId)
+                .param("studentId", studentId)
+                .param("guardianId", guardianId)
+                .update();
+        jdbc.sql("""
+                        INSERT INTO student.student_consent_events
+                            (id, school_id, student_id, guardian_id, purpose, status,
+                             lawful_basis, notice_version, evidence_source, idempotency_key)
+                        VALUES (:consentId, :schoolId, :studentId, :guardianId, 'STUDENT_PHOTO',
+                                'GRANTED', 'CONSENT', 'synthetic-drill-v1', 'SIGNED_FORM', :idempotencyKey)
+                        """)
+                .param("consentId", "cert-consent-" + schoolId)
+                .param("schoolId", schoolId)
+                .param("studentId", studentId)
+                .param("guardianId", guardianId)
+                .param("idempotencyKey", "cert-consent-key-" + schoolId)
+                .update();
     }
 
     private static Map<String, Long> schoolCoreCounts(long schoolId) {

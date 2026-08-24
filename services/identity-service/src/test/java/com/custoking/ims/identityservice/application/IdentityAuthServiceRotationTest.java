@@ -117,7 +117,7 @@ class IdentityAuthServiceRotationTest {
         AuthSessionEntity activeSession = sessionFixture(AuthSessionEntity.ACTIVE,
                 OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
         stubJwtPrologue();
-        when(sessions.findByRefreshTokenHash(any())).thenReturn(Optional.of(activeSession));
+        when(sessions.findByRefreshTokenHashForUpdate(any())).thenReturn(Optional.of(activeSession));
         when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
         stubTokenGeneration(user);
 
@@ -163,7 +163,7 @@ class IdentityAuthServiceRotationTest {
         AuthSessionEntity rotatedSession = sessionFixture(AuthSessionEntity.ROTATED,
                 OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
         stubJwtPrologue();
-        when(sessions.findByRefreshTokenHash(any())).thenReturn(Optional.of(rotatedSession));
+        when(sessions.findByRefreshTokenHashForUpdate(any())).thenReturn(Optional.of(rotatedSession));
 
         // Act + Assert
         assertThatThrownBy(() -> service.refresh(RAW_TOKEN))
@@ -180,7 +180,7 @@ class IdentityAuthServiceRotationTest {
         AuthSessionEntity revokedSession = sessionFixture(AuthSessionEntity.REVOKED,
                 OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
         stubJwtPrologue();
-        when(sessions.findByRefreshTokenHash(any())).thenReturn(Optional.of(revokedSession));
+        when(sessions.findByRefreshTokenHashForUpdate(any())).thenReturn(Optional.of(revokedSession));
 
         // Act + Assert
         assertThatThrownBy(() -> service.refresh(RAW_TOKEN))
@@ -195,7 +195,7 @@ class IdentityAuthServiceRotationTest {
     void refresh_unknownHash_401_noRevoke() {
         // Arrange: hash not found in DB
         stubJwtPrologue();
-        when(sessions.findByRefreshTokenHash(any())).thenReturn(Optional.empty());
+        when(sessions.findByRefreshTokenHashForUpdate(any())).thenReturn(Optional.empty());
 
         // Act + Assert
         assertThatThrownBy(() -> service.refresh(RAW_TOKEN))
@@ -212,7 +212,7 @@ class IdentityAuthServiceRotationTest {
         AuthSessionEntity expiredSession = sessionFixture(AuthSessionEntity.ACTIVE,
                 OffsetDateTime.now(ZoneOffset.UTC).minusHours(1));
         stubJwtPrologue();
-        when(sessions.findByRefreshTokenHash(any())).thenReturn(Optional.of(expiredSession));
+        when(sessions.findByRefreshTokenHashForUpdate(any())).thenReturn(Optional.of(expiredSession));
 
         // Act + Assert
         assertThatThrownBy(() -> service.refresh(RAW_TOKEN))

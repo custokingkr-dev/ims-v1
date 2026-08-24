@@ -4,17 +4,26 @@ import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClient.DriveFile;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Batch;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.ImportRow;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryPreparation;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryResult;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryTarget;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RowInput;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.imageio.ImageIO;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -421,6 +430,172 @@ class PhotoImportServiceTest {
                 any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024));
         verify(repository, org.mockito.Mockito.times(1))
                 .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"), any(byte[].class));
+    }
+
+    @Test
+    void recoveryReprocessesTheRetainedUnchangedDriveOriginal() {
+        UUID batchId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch completed = batch(batchId, schoolId, "COMPLETED", 0);
+        byte[] original = new byte[]{1, 2, 3};
+        String checksum = "5289df737df57326fcdd22597afb1fac";
+        DriveFile retained = new DriveFile(
+                "drive-photo-1", "DSC5001.jpg", "image/jpeg", 3L,
+                checksum, "2026-07-31T00:00:00Z");
+        RecoveryTarget target = new RecoveryTarget(
+                rowId, batchId, schoolId, 101L, retained.id(), retained.name(), checksum,
+                "cropped-photo-key", "cropped-photo-key", completed.schoolUid());
+        RecoveryPreparation preparation = new RecoveryPreparation(
+                UUID.randomUUID(), "READY", null, target);
+        RecoveryResult recovered = new RecoveryResult(
+                rowId, "RECOVERED", "uncropped-photo-key", "Recovered");
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(completed);
+        when(repository.beginPhotoRecovery(
+                batchId, schoolId, rowId, "fit-without-crop-v1", 42L)).thenReturn(preparation);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(retained));
+        when(repository.sourceFile(batchId, schoolId, retained.id())).thenReturn(retained);
+        when(drive.download(retained, 20L * 1024 * 1024)).thenReturn(original);
+        when(storage.normalizePortrait(
+                original, "image/jpeg", 0.5, 0.5, 20L * 1024 * 1024))
+                .thenReturn(new byte[]{9, 8, 7});
+        when(repository.completePhotoRecovery(
+                preparation, "fit-without-crop-v1", new byte[]{9, 8, 7})).thenReturn(recovered);
+
+        var result = service.recoverAppliedRows(batchId, List.of(rowId));
+
+        assertThat(result.recoveredCount()).isEqualTo(1);
+        assertThat(result.failedCount()).isZero();
+        assertThat(result.rows()).containsExactly(recovered);
+        verify(drive).download(retained, 20L * 1024 * 1024);
+        verify(repository).completePhotoRecovery(
+                preparation, "fit-without-crop-v1", new byte[]{9, 8, 7});
+    }
+
+    @Test
+    void completedRecoveryIsIdempotentAndDoesNotReadDriveAgain() {
+        UUID batchId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch completed = batch(batchId, schoolId, "COMPLETED", 0);
+        RecoveryTarget target = new RecoveryTarget(
+                rowId, batchId, schoolId, 101L, "drive-photo-1", "DSC5001.jpg", null,
+                "uncropped-photo-key", "uncropped-photo-key", completed.schoolUid());
+        RecoveryPreparation preparation = new RecoveryPreparation(
+                UUID.randomUUID(), "ALREADY_RECOVERED", "Already recovered", target);
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(completed);
+        when(repository.beginPhotoRecovery(
+                batchId, schoolId, rowId, "fit-without-crop-v1", 42L)).thenReturn(preparation);
+
+        var result = service.recoverAppliedRows(batchId, List.of(rowId, rowId));
+
+        assertThat(result.selectedCount()).isEqualTo(1);
+        assertThat(result.alreadyRecoveredCount()).isEqualTo(1);
+        verify(drive, never()).listFiles(any());
+        verify(drive, never()).download(any(), anyLong());
+        verify(repository, never()).completePhotoRecovery(any(), any(), any());
+    }
+
+    @Test
+    void changedDriveSourceIsAuditedAsFailedWithoutDownloadingOrOverwriting() {
+        UUID batchId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        UUID recoveryId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch completed = batch(batchId, schoolId, "COMPLETED", 0);
+        DriveFile retained = new DriveFile(
+                "drive-photo-1", "DSC5001.jpg", "image/jpeg", 3L,
+                "5289df737df57326fcdd22597afb1fac", "2026-07-31T00:00:00Z");
+        DriveFile changed = new DriveFile(
+                retained.id(), retained.name(), retained.mimeType(), 4L,
+                "74f10d03afa000a00e2f2552c7356bd1", "2026-08-01T00:00:00Z");
+        RecoveryPreparation preparation = new RecoveryPreparation(
+                recoveryId, "READY", null, new RecoveryTarget(
+                        rowId, batchId, schoolId, 101L, retained.id(), retained.name(),
+                        retained.md5Checksum(), "cropped-key", "cropped-key", completed.schoolUid()));
+        RecoveryResult failed = new RecoveryResult(rowId, "FAILED", null, "Source changed");
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(completed);
+        when(repository.beginPhotoRecovery(
+                batchId, schoolId, rowId, "fit-without-crop-v1", 42L)).thenReturn(preparation);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(changed));
+        when(repository.sourceFile(batchId, schoolId, retained.id())).thenReturn(retained);
+        when(repository.failPhotoRecovery(eq(recoveryId), eq(rowId), eq(schoolId), any()))
+                .thenReturn(failed);
+
+        var result = service.recoverAppliedRows(batchId, List.of(rowId));
+
+        assertThat(result.failedCount()).isEqualTo(1);
+        verify(drive, never()).download(any(), anyLong());
+        verify(repository, never()).completePhotoRecovery(any(), any(), any());
+        verify(repository).failPhotoRecovery(eq(recoveryId), eq(rowId), eq(schoolId),
+                org.mockito.ArgumentMatchers.contains("changed after import"));
+    }
+
+    @Test
+    void driveExecutionPreservesTheCompleteSourceFrame() throws Exception {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch frozen = batch(batchId, schoolId, "FROZEN", 1);
+        Batch executing = batch(batchId, schoolId, "EXECUTING", 1);
+        DriveFile file = new DriveFile(
+                "file-1", "DSC5000.png", "image/png", 100L,
+                "checksum-1", "2026-07-31T00:00:00Z");
+        ImportRow importRow = row(batchId, schoolId, 0, file);
+
+        BufferedImage landscape = new BufferedImage(800, 400, BufferedImage.TYPE_INT_RGB);
+        var graphics = landscape.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 200, 400);
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(200, 0, 400, 400);
+        graphics.setColor(Color.BLUE);
+        graphics.fillRect(600, 0, 200, 400);
+        graphics.dispose();
+        ByteArrayOutputStream source = new ByteArrayOutputStream();
+        ImageIO.write(landscape, "png", source);
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(frozen);
+        when(repository.currentAcademicYearId(schoolId)).thenReturn("ay-2026");
+        when(drive.listFiles("folder-1")).thenReturn(List.of(file));
+        when(drive.snapshotHash(List.of(file))).thenReturn("snapshot-1");
+        when(repository.startExecution(batchId, schoolId, 42L)).thenReturn(executing);
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(importRow));
+        when(drive.download(file, 20L * 1024 * 1024)).thenReturn(source.toByteArray());
+        when(repository.applyPhoto(
+                eq(executing), eq(importRow), any(byte[].class), eq("image/png"), any(byte[].class)))
+                .thenReturn("photo-key");
+        when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
+
+        StudentPhotoStorage realStorage =
+                new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+        PhotoImportService realService =
+                new PhotoImportService(repository, drive, parser, realStorage, folderProvisioning);
+
+        realService.execute(batchId);
+
+        ArgumentCaptor<byte[]> normalized = ArgumentCaptor.forClass(byte[].class);
+        verify(repository).applyPhoto(
+                eq(executing), eq(importRow), eq(source.toByteArray()), eq("image/png"), normalized.capture());
+        BufferedImage stored = ImageIO.read(new ByteArrayInputStream(normalized.getValue()));
+        assertThat(stored.getWidth()).isEqualTo(512);
+        assertThat(stored.getHeight()).isEqualTo(256);
+        assertThat(new Color(stored.getRGB(16, 128)).getRed()).isGreaterThan(200);
+        assertThat(new Color(stored.getRGB(495, 128)).getBlue()).isGreaterThan(200);
     }
 
     private static Batch batch(UUID id, long schoolId, String status, int readyCount) {

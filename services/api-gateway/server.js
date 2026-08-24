@@ -39,7 +39,14 @@ const REFERRER_POLICY = process.env.GATEWAY_REFERRER_POLICY || 'strict-origin-wh
 // 5 MiB file uploads plus multipart envelope overhead.
 const MAX_BODY_BYTES = Number(process.env.GATEWAY_MAX_BODY_BYTES || 8 * 1024 * 1024);
 
-// Global token-bucket rate limit, keyed by bearer token (else client IP). 0 RPS disables it.
+// Global token-bucket rate limit, keyed by a digest of the bearer token (else client IP).
+// Keep bearer credentials out of long-lived process memory and reject unusually large values
+// before either authentication or rate-limit state is allocated.
+const configuredMaxBearerTokenBytes = Number(process.env.GATEWAY_MAX_BEARER_TOKEN_BYTES || 8 * 1024);
+const MAX_BEARER_TOKEN_BYTES = Number.isSafeInteger(configuredMaxBearerTokenBytes)
+  && configuredMaxBearerTokenBytes > 0
+  ? configuredMaxBearerTokenBytes
+  : 8 * 1024;
 const RATE_LIMIT_RPS = Number(process.env.GATEWAY_RATE_LIMIT_RPS || 50);
 const RATE_LIMIT_BURST = Number(process.env.GATEWAY_RATE_LIMIT_BURST || 100);
 const RATE_LIMIT_MAX_KEYS = Number(process.env.GATEWAY_RATE_LIMIT_MAX_KEYS || 50_000);
@@ -249,6 +256,13 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 403, { message: 'Origin not allowed' });
       return;
     }
+    // Refresh and logout authenticate with a SameSite=None cookie. Unlike CORS response
+    // filtering, rejecting a disallowed request Origin prevents a cross-site request from
+    // rotating or revoking a user's refresh-token family.
+    if (corsDecision === 'blocked' && isCookieAuthPath(parsed.pathname)) {
+      sendJson(res, 403, { message: 'Origin not allowed' });
+      return;
+    }
 
     // Global rate limit (token-bucket) before any upstream work.
     const limit = checkRateLimit(req);
@@ -290,6 +304,14 @@ const server = http.createServer(async (req, res) => {
     matchedService = 'frontend';
     await proxyFrontend(req, res, parsed, requestId);
   } catch (error) {
+    if (isPayloadTooLargeError(error)) {
+      if (!res.headersSent) {
+        sendJson(res, 413, { message: 'Payload too large' });
+      } else {
+        res.end();
+      }
+      return;
+    }
     logJson('ERROR', 'gateway.error', {
       requestId,
       path: parsed ? parsed.pathname : undefined,
@@ -351,6 +373,13 @@ function requiresUserAuth(pathname) {
     '/api/v1/auth/refresh',
     '/api/v1/auth/logout',
   ].some((publicPath) => pathname === publicPath || pathname.startsWith(`${publicPath}/`));
+}
+
+function isCookieAuthPath(pathname) {
+  return [
+    '/api/v1/auth/refresh',
+    '/api/v1/auth/logout',
+  ].some((cookiePath) => pathname === cookiePath || pathname.startsWith(`${cookiePath}/`));
 }
 
 const HMAC_JWT_ALGORITHMS = {
@@ -465,7 +494,7 @@ async function proxy(req, res, matched, parsed, requestId, principal) {
   await proxyToUrl(req, res, target, requestId, matched.service, principal);
 }
 
-async function proxyToUrl(req, res, target, requestId, service, principal) {
+async function proxyToUrl(req, res, target, requestId, service, principal, opts = {}) {
   const headers = outboundHeaders(req, requestId);
   if (service) {
     headers[tokenHeaders[service]] = serviceTokens[service];
@@ -489,7 +518,8 @@ async function proxyToUrl(req, res, target, requestId, service, principal) {
     redirect: 'manual',
   };
   if (!['GET', 'HEAD'].includes(req.method)) {
-    init.body = req;
+    const maxBodyBytes = opts.maxBodyBytes !== undefined ? opts.maxBodyBytes : MAX_BODY_BYTES;
+    init.body = boundedRequestBody(req, maxBodyBytes);
     init.duplex = 'half';
   }
 
@@ -633,7 +663,10 @@ function clientIp(req) {
 
 function rateLimitKey(req) {
   const token = parseBearerToken(req.headers.authorization);
-  if (token) return `tok:${token}`;
+  if (token) {
+    const digest = crypto.createHash('sha256').update(token, 'ascii').digest('base64url');
+    return `tok-sha256:${digest}`;
+  }
   return `ip:${clientIp(req)}`;
 }
 
@@ -643,18 +676,28 @@ function checkRateLimit(req, opts = {}) {
   const burst = opts.burst !== undefined ? opts.burst : RATE_LIMIT_BURST;
   const buckets = opts.buckets || rateBuckets;
   const now = opts.now !== undefined ? opts.now : Date.now();
+  const configuredMaxKeys = opts.maxKeys !== undefined ? opts.maxKeys : RATE_LIMIT_MAX_KEYS;
+  const maxKeys = Number.isFinite(configuredMaxKeys) && configuredMaxKeys > 0
+    ? Math.floor(configuredMaxKeys)
+    : 1;
   if (!rps || rps <= 0) return { allowed: true };
 
   const key = rateLimitKey(req);
   let bucket = buckets.get(key);
   if (!bucket) {
-    if (buckets.size >= RATE_LIMIT_MAX_KEYS) pruneRateBuckets(buckets, now);
+    if (buckets.size >= maxKeys) pruneRateBuckets(buckets, now);
+    // A full map can contain only active buckets, so idle pruning alone is not a bound.
+    // Evict least-recently-used buckets until the configured hard cap has room.
+    while (buckets.size >= maxKeys) evictOldestRateBucket(buckets);
     bucket = { tokens: burst, last: now };
     buckets.set(key, bucket);
   }
   const elapsedSeconds = Math.max(0, (now - bucket.last) / 1000);
   bucket.tokens = Math.min(burst, bucket.tokens + elapsedSeconds * rps);
   bucket.last = now;
+  // Map insertion order is the LRU order used for constant-time eviction at capacity.
+  buckets.delete(key);
+  buckets.set(key, bucket);
   if (bucket.tokens >= 1) {
     bucket.tokens -= 1;
     return { allowed: true };
@@ -665,14 +708,50 @@ function checkRateLimit(req, opts = {}) {
 // Drop buckets idle for >60s to bound memory under key churn (e.g. per-token keys).
 function pruneRateBuckets(buckets, now) {
   for (const [key, bucket] of buckets) {
-    if (now - bucket.last > 60_000) buckets.delete(key);
+    if (now - bucket.last <= 60_000) break;
+    buckets.delete(key);
   }
+}
+
+function evictOldestRateBucket(buckets) {
+  const oldestKey = buckets.keys().next().value;
+  if (oldestKey !== undefined) buckets.delete(oldestKey);
 }
 
 function bodyTooLarge(req) {
   if (!MAX_BODY_BYTES || MAX_BODY_BYTES <= 0) return false;
   const length = Number(req.headers['content-length']);
   return Number.isFinite(length) && length > MAX_BODY_BYTES;
+}
+
+class PayloadTooLargeError extends Error {
+  constructor() {
+    super('Request body exceeds the configured gateway limit');
+    this.name = 'PayloadTooLargeError';
+    this.code = 'GATEWAY_PAYLOAD_TOO_LARGE';
+  }
+}
+
+// Count the actual stream bytes so transfer-encoding: chunked requests cannot bypass the
+// Content-Length fast-path. The over-limit chunk is never forwarded to the upstream.
+async function* boundedRequestBody(req, maxBytes = MAX_BODY_BYTES) {
+  let received = 0;
+  for await (const chunk of req) {
+    if (maxBytes && maxBytes > 0) {
+      received += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+      if (received > maxBytes) throw new PayloadTooLargeError();
+    }
+    yield chunk;
+  }
+}
+
+function isPayloadTooLargeError(error) {
+  let current = error;
+  while (current) {
+    if (current.code === 'GATEWAY_PAYLOAD_TOO_LARGE') return true;
+    current = current.cause;
+  }
+  return false;
 }
 
 function sendJson(res, status, payload) {
@@ -760,7 +839,7 @@ function parseBearerToken(value) {
   let tokenStart = 7;
   while (tokenStart < value.length && value.charCodeAt(tokenStart) === 0x20) tokenStart += 1;
   const token = value.slice(tokenStart);
-  if (!token) return null;
+  if (!token || token.length > MAX_BEARER_TOKEN_BYTES) return null;
   for (let index = 0; index < token.length; index += 1) {
     const code = token.charCodeAt(index);
     if (code <= 0x20 || code >= 0x7f) return null;
@@ -830,6 +909,7 @@ module.exports = {
   route,
   diagnostic,
   requiresUserAuth,
+  isCookieAuthPath,
   outboundHeaders,
   isRequestHopHeader,
   isResponseHopHeader,
@@ -844,6 +924,8 @@ module.exports = {
   rateLimitKey,
   checkRateLimit,
   bodyTooLarge,
+  boundedRequestBody,
+  isPayloadTooLargeError,
   logJson,
   currentTraceFields,
   cloudLoggingTraceFields,

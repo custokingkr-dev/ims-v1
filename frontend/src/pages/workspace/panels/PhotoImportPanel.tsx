@@ -93,6 +93,22 @@ interface ImportRow {
   sourceObjectKey?: string;
 }
 
+interface RecoveryRowResult {
+  rowId: string;
+  status: 'RECOVERED' | 'ALREADY_RECOVERED' | 'IN_PROGRESS' | 'FAILED';
+  photoKey?: string;
+  message?: string;
+}
+
+interface RecoveryBatchResult {
+  selectedCount: number;
+  recoveredCount: number;
+  alreadyRecoveredCount: number;
+  inProgressCount: number;
+  failedCount: number;
+  rows: RecoveryRowResult[];
+}
+
 const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
 type RowFilter = typeof FILTERS[number];
 const PHOTO_IMPORT_REQUEST_CONFIG = { timeout: 120000 };
@@ -170,6 +186,10 @@ export function PhotoImportPanel() {
   const visibleRows = useMemo(
     () => filter === 'ALL' ? rows : rows.filter(row => row.status === filter),
     [filter, rows],
+  );
+  const appliedRows = useMemo(
+    () => rows.filter(row => row.status === 'APPLIED'),
+    [rows],
   );
 
   const loadContext = async () => {
@@ -408,6 +428,56 @@ export function PhotoImportPanel() {
       link.download = `student-photo-import-${batch.id}.csv`;
       link.click();
       URL.revokeObjectURL(url);
+    } catch (error) {
+      setNotice({ tone: 'bad', text: errorMessage(error) });
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const recoverAppliedPhotos = async () => {
+    if (!batch || appliedRows.length === 0) return;
+    const confirmed = window.confirm(
+      `Restore ${appliedRows.length} applied student photo${appliedRows.length === 1 ? '' : 's'} `
+      + 'from the retained Drive originals? Photos changed after this import will be left untouched.',
+    );
+    if (!confirmed) return;
+
+    setBusy('recover');
+    setNotice(null);
+    try {
+      const totals = {
+        recovered: 0,
+        alreadyRecovered: 0,
+        inProgress: 0,
+        failed: 0,
+      };
+      for (let offset = 0; offset < appliedRows.length; offset += 100) {
+        const rowIds = appliedRows.slice(offset, offset + 100).map(row => row.id);
+        const response = await api.post<RecoveryBatchResult>(
+          `/student-photo-imports/${batch.id}/recover`,
+          { rowIds },
+          PHOTO_IMPORT_REQUEST_CONFIG,
+        );
+        totals.recovered += response.data.recoveredCount;
+        totals.alreadyRecovered += response.data.alreadyRecoveredCount;
+        totals.inProgress += response.data.inProgressCount;
+        totals.failed += response.data.failedCount;
+      }
+
+      await refreshDetail(batch.id, { showError: false });
+      const successful = totals.recovered + totals.alreadyRecovered;
+      const requiresAttention = totals.failed + totals.inProgress;
+      setNotice({
+        tone: requiresAttention > 0 ? 'bad' : 'ok',
+        text: requiresAttention > 0
+          ? `Full-frame recovery completed for ${successful} photo${successful === 1 ? '' : 's'}; `
+            + `${totals.failed} could not be safely replaced and ${totals.inProgress} `
+            + `${totals.inProgress === 1 ? 'is' : 'are'} already in progress. `
+            + 'Retry after reviewing Drive access and source files.'
+          : `Full-frame recovery completed for ${successful} photo${successful === 1 ? '' : 's'}. `
+            + 'Existing newer photo changes were protected.',
+      });
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
@@ -728,10 +798,20 @@ export function PhotoImportPanel() {
                       </>
                     )}
                     {['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) && (
-                      <button className="ck-btn ck-btn-ghost" onClick={downloadResult} disabled={!!busy}>
-                        {busy === 'result' ? <LoaderCircle className="pi-spin" size={16} /> : <Download size={16} />}
-                        Download result
-                      </button>
+                      <>
+                        {appliedRows.length > 0 && (
+                          <button className="ck-btn ck-btn-g" onClick={recoverAppliedPhotos} disabled={!!busy}>
+                            {busy === 'recover'
+                              ? <LoaderCircle className="pi-spin" size={16} />
+                              : <RefreshCw size={16} />}
+                            Restore full-frame photos
+                          </button>
+                        )}
+                        <button className="ck-btn ck-btn-ghost" onClick={downloadResult} disabled={!!busy}>
+                          {busy === 'result' ? <LoaderCircle className="pi-spin" size={16} /> : <Download size={16} />}
+                          Download result
+                        </button>
+                      </>
                     )}
                     {['DRAFT', 'REVIEW', 'FROZEN', 'PARTIAL', 'FAILED'].includes(batch.status) && (
                       <button className="ck-btn ck-btn-ghost pi-danger-action" onClick={cancelBatch} disabled={!!busy}>
@@ -824,7 +904,7 @@ export function PhotoImportPanel() {
                                   <button
                                     className="pi-icon-button"
                                     aria-label={`Preview portrait for ${row.workbookName}`}
-                                    title="Preview normalized portrait"
+                                    title="Preview preserved photo"
                                     disabled={!row.driveFileName || busy === `preview:${row.id}`}
                                     onClick={() => openPreview(row)}
                                   >
@@ -836,7 +916,7 @@ export function PhotoImportPanel() {
                                     <button
                                       className="pi-icon-button"
                                       aria-label={`Review mapping for ${row.workbookName}`}
-                                      title="Review mapping and crop"
+                                      title="Review mapping"
                                       onClick={() => setEditing({
                                         row,
                                         admissionNo: row.admissionNo || '',
@@ -894,12 +974,12 @@ export function PhotoImportPanel() {
           URL.revokeObjectURL(preview.url);
           setPreview(null);
         }}>
-          <div className="pi-preview-dialog" role="dialog" aria-modal="true" aria-label="Normalized portrait preview" onMouseDown={event => event.stopPropagation()}>
+          <div className="pi-preview-dialog" role="dialog" aria-modal="true" aria-label="Full-frame photo preview" onMouseDown={event => event.stopPropagation()}>
             <div>
               <strong>{preview.row.workbookName}</strong>
               <span>Admission {preview.row.admissionNo} / {preview.row.driveFileName}</span>
             </div>
-            <img src={preview.url} alt={`Normalized portrait for ${preview.row.workbookName}`} />
+            <img src={preview.url} alt={`Full-frame photo for ${preview.row.workbookName}`} />
             <button className="ck-btn ck-btn-ghost" onClick={() => {
               URL.revokeObjectURL(preview.url);
               setPreview(null);
@@ -935,16 +1015,7 @@ export function PhotoImportPanel() {
               <Ban size={16} aria-hidden />
               <span>Exclude this row from the import</span>
             </label>
-            <div className="pi-crop-controls">
-              <label>
-                <span>Horizontal crop focus <strong>{Math.round(editing.cropX * 100)}%</strong></span>
-                <input type="range" min="0" max="1" step="0.01" value={editing.cropX} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, cropX: Number(event.target.value) }))} />
-              </label>
-              <label>
-                <span>Vertical crop focus <strong>{Math.round(editing.cropY * 100)}%</strong></span>
-                <input type="range" min="0" max="1" step="0.01" value={editing.cropY} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, cropY: Number(event.target.value) }))} />
-              </label>
-            </div>
+            <div className="ts">The complete source frame is preserved; no automatic crop is applied.</div>
             <div className="pi-dialog-actions">
               <button className="ck-btn ck-btn-ghost" onClick={() => setEditing(null)} disabled={!!busy}>Cancel</button>
               <button className="ck-btn ck-btn-ghost" onClick={() => saveRowReview(true)} disabled={!!busy || editing.excluded || !editing.imageNo.trim()}>

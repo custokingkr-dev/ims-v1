@@ -1,7 +1,7 @@
 param(
   [ValidateSet("source", "dev", "prod")]
   [string]$Environment = "source",
-  [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { throw "ProjectId is required: pass -ProjectId explicitly or set GCP_PROJECT_ID. It used to default to the pre-split project, which is being deleted." }),
+  [string]$ProjectId = $(if ($env:GCP_PROJECT_ID) { $env:GCP_PROJECT_ID } else { "" }),
   [string]$Region = "asia-south2",
   [string]$PgStatSslEvidencePath = "",
   [ValidateRange(1, 1440)]
@@ -12,6 +12,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+if ($Environment -ne "source" -and [string]::IsNullOrWhiteSpace($ProjectId)) {
+  throw "ProjectId is required for a live dev/prod audit. Pass -ProjectId explicitly or set GCP_PROJECT_ID."
+}
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $violations = [System.Collections.Generic.List[string]]::new()
 $sourceResults = [System.Collections.Generic.List[object]]::new()
@@ -99,13 +102,21 @@ foreach ($relativePath in $jobConstructorFiles) {
   if ($mustReconcileExistingJob -and $updateMatches.Count -eq 1) {
     $updateBlock = [string]$updateMatches[0].Groups["block"].Value
     $hasExactTlsMerge = $updateBlock -match '(?m)^\s*--update-env-vars=PGSSLMODE=require(?:\s*`)?\s*(?:\|\s*(?:Write-Output|Out-Null))?\s*$'
+    $requiresDedicatedIdentity = $relativePath -eq "scripts/invoke-scale-fixture.ps1"
+    $hasDedicatedIdentityMerge = -not $requiresDedicatedIdentity -or
+      $updateBlock -match '(?m)^\s*--service-account=\$JobServiceAccount(?:\s*`)?\s*$'
     $updateFlags = @([regex]::Matches($updateBlock, '(?m)^\s*(?<flag>--[a-z0-9-]+)(?:=|\s|`)') |
       ForEach-Object { [string]$_.Groups["flag"].Value } |
       Sort-Object -Unique)
+    $allowedUpdateFlags = @("--project", "--region", "--update-env-vars")
+    if ($requiresDedicatedIdentity) {
+      $allowedUpdateFlags += "--service-account"
+    }
     $unexpectedUpdateFlags = @($updateFlags | Where-Object {
-        $_ -notin @("--project", "--region", "--update-env-vars")
+        $_ -notin $allowedUpdateFlags
       })
-    $reconcilesExistingJob = $hasExactTlsMerge -and $unexpectedUpdateFlags.Count -eq 0
+    $reconcilesExistingJob = $hasExactTlsMerge -and $hasDedicatedIdentityMerge -and
+      $unexpectedUpdateFlags.Count -eq 0
   }
   $null = $sourceResults.Add([ordered]@{
       type = "psql-job-constructor"
@@ -117,7 +128,7 @@ foreach ($relativePath in $jobConstructorFiles) {
     $null = $violations.Add("$relativePath must set PGSSLMODE=require or stronger and must not permit plaintext fallback.")
   }
   if ($mustReconcileExistingJob -and -not $reconcilesExistingJob) {
-    $null = $violations.Add("$relativePath must reconcile an existing job with only --update-env-vars=PGSSLMODE=require.")
+    $null = $violations.Add("$relativePath must merge --update-env-vars=PGSSLMODE=require without replacing other environment variables; the scale fixture must also reconcile only its dedicated --service-account identity.")
   }
 }
 

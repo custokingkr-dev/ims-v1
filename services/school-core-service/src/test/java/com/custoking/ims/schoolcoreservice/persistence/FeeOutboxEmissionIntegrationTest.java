@@ -63,6 +63,9 @@ class FeeOutboxEmissionIntegrationTest {
             st.execute("DELETE FROM fee.fee_items");
             st.execute("DELETE FROM fee.fee_bands");
             st.execute("DELETE FROM tenant_school.outbox_events");
+            st.execute("DELETE FROM student.student_consent_events");
+            st.execute("DELETE FROM student.student_guardians");
+            st.execute("DELETE FROM student.guardians");
             st.execute("DELETE FROM student.students");
             st.execute("DELETE FROM tenant_school.academic_years");
             try (PreparedStatement ps = c.prepareStatement(
@@ -291,6 +294,68 @@ class FeeOutboxEmissionIntegrationTest {
         assertThatThrownBy(() -> repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Student not found");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void feeReminderFailsClosedAndAuditsReasonWithoutGuardianPolicy() {
+        repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
+        jdbc.sql("UPDATE fee.fee_assignments SET assigned_at = now() - interval '2 days'").update();
+
+        Map<String, Object> result = repo.feeReminderRequests("c1", "s1", null, 10L, 99L);
+
+        assertThat((java.util.List<Map<String, Object>>) result.get("content")).isEmpty();
+        assertThat(result.get("suppressedCount")).isEqualTo(1);
+        java.util.List<Map<String, Object>> suppressed =
+                (java.util.List<Map<String, Object>>) result.get("suppressed");
+        assertThat(suppressed).hasSize(1);
+        assertThat(suppressed.getFirst())
+                .containsEntry("studentId", 1L)
+                .containsEntry("reason", "NO_PRIMARY_GUARDIAN")
+                .doesNotContainKeys("destination");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void feeReminderCarriesAuthoritativeGuardianConsentEvidence() {
+        repo.assignFeePlan(Map.of("studentId", 1L, "bandId", "band-1", "schedule", "Annual"));
+        jdbc.sql("UPDATE fee.fee_assignments SET assigned_at = now() - interval '2 days'").update();
+        jdbc.sql("""
+                INSERT INTO student.guardians
+                    (id, school_id, full_name, phone, contact_verified_at, status)
+                VALUES ('guardian-1', 10, 'Test Guardian', '919999999999', now(), 'ACTIVE')
+                """).update();
+        jdbc.sql("""
+                INSERT INTO student.student_guardians
+                    (id, school_id, student_id, guardian_id, relationship, is_primary, receives_notifications)
+                VALUES ('link-1', 10, 1, 'guardian-1', 'GUARDIAN', TRUE, TRUE)
+                """).update();
+        jdbc.sql("""
+                INSERT INTO student.student_consent_events
+                    (id, school_id, student_id, guardian_id, purpose, status, notice_version, evidence_source)
+                VALUES ('consent-1', 10, 1, 'guardian-1', 'SCHOOL_COMMUNICATIONS', 'GRANTED',
+                        'notice-v1', 'SIGNED_FORM')
+                """).update();
+
+        Map<String, Object> result = repo.feeReminderRequests("c1", "s1", null, 10L, 99L);
+        Map<String, Object> request = ((java.util.List<Map<String, Object>>) result.get("content")).getFirst();
+        Map<String, Object> evidence = (Map<String, Object>) request.get("policyEvidence");
+
+        assertThat(result.get("queued")).isEqualTo(1);
+        assertThat(result.get("suppressedCount")).isEqualTo(0);
+        assertThat(request)
+                .containsEntry("destination", "919999999999")
+                .containsEntry("recipientType", "GUARDIAN")
+                .containsEntry("recipientId", "guardian-1");
+        assertThat(evidence)
+                .containsEntry("consentEventId", "consent-1")
+                .containsEntry("consentNoticeVersion", "notice-v1")
+                .containsEntry("schoolId", 10L)
+                .containsEntry("studentId", 1L)
+                .containsEntry("sourceEventId", request.get("sourceEventId"))
+                .containsEntry("policyVersion", "guardian-communications.v2");
+        assertThat(evidence.get("destinationSha256"))
+                .isEqualTo(GuardianCommunicationPolicy.destinationSha256("SMS", "919999999999"));
     }
 
     @Test

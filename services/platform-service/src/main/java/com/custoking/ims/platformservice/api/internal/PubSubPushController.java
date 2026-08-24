@@ -95,7 +95,8 @@ public class PubSubPushController {
         NotificationInboxEvent existing = inboxRepository.findById(eventId).orElse(null);
         if (existing != null) {
             if (NotificationInboxEvent.STATUS_PROCESSED.equals(existing.getStatus())
-                    || NotificationInboxEvent.STATUS_DEAD_LETTER.equals(existing.getStatus())) {
+                    || NotificationInboxEvent.STATUS_DEAD_LETTER.equals(existing.getStatus())
+                    || NotificationInboxEvent.STATUS_SUPPRESSED.equals(existing.getStatus())) {
                 return;
             }
             if (NotificationInboxEvent.STATUS_FAILED.equals(existing.getStatus())

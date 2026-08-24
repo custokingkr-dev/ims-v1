@@ -551,7 +551,8 @@
   color: var(--g);
   font-size: 9px;
   font-weight: 800;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 .ck-att-avatar {
   width: 36px;

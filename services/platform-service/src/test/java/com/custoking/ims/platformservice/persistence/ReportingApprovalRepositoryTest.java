@@ -70,6 +70,7 @@ class ReportingApprovalRepositoryTest {
 
     @AfterAll
     static void tearDownContainer() {
+        com.custoking.ims.platformservice.TestDataSources.close(dataSource);
         if (PG != null) {
             PG.stop();
         }

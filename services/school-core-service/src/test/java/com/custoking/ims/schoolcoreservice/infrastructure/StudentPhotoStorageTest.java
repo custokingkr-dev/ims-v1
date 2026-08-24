@@ -52,21 +52,51 @@ class StudentPhotoStorageTest {
     }
 
     @Test
-    void normalizesLandscapePhotoToSquarePortrait() throws Exception {
+    void normalizesLandscapePhotoWithoutCroppingTheFrame() throws Exception {
         BufferedImage landscape = new BufferedImage(800, 400, BufferedImage.TYPE_INT_RGB);
         var graphics = landscape.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 200, 400);
         graphics.setColor(Color.WHITE);
-        graphics.fillRect(0, 0, 800, 400);
+        graphics.fillRect(200, 0, 400, 400);
+        graphics.setColor(Color.BLUE);
+        graphics.fillRect(600, 0, 200, 400);
         graphics.dispose();
         ByteArrayOutputStream input = new ByteArrayOutputStream();
-        ImageIO.write(landscape, "jpg", input);
+        ImageIO.write(landscape, "png", input);
 
         StudentPhotoStorage storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
-        byte[] normalized = storage.normalizePortrait(input.toByteArray(), "image/jpeg");
+        byte[] normalized = storage.normalizePortrait(input.toByteArray(), "image/png");
         BufferedImage result = ImageIO.read(new ByteArrayInputStream(normalized));
 
         assertThat(result.getWidth()).isEqualTo(512);
+        assertThat(result.getHeight()).isEqualTo(256);
+        assertThat(new Color(result.getRGB(16, 128)).getRed()).isGreaterThan(200);
+        assertThat(new Color(result.getRGB(495, 128)).getBlue()).isGreaterThan(200);
+    }
+
+    @Test
+    void normalizesPortraitWithoutCroppingTheTopOrBottom() throws Exception {
+        BufferedImage portrait = new BufferedImage(400, 800, BufferedImage.TYPE_INT_RGB);
+        var graphics = portrait.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 400, 200);
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(0, 200, 400, 400);
+        graphics.setColor(Color.BLUE);
+        graphics.fillRect(0, 600, 400, 200);
+        graphics.dispose();
+        ByteArrayOutputStream input = new ByteArrayOutputStream();
+        ImageIO.write(portrait, "png", input);
+
+        StudentPhotoStorage storage = new StudentPhotoStorage("", 60, 512, 5 * 1024 * 1024, "");
+        byte[] normalized = storage.normalizePortrait(input.toByteArray(), "image/png");
+        BufferedImage result = ImageIO.read(new ByteArrayInputStream(normalized));
+
+        assertThat(result.getWidth()).isEqualTo(256);
         assertThat(result.getHeight()).isEqualTo(512);
+        assertThat(new Color(result.getRGB(128, 16)).getRed()).isGreaterThan(200);
+        assertThat(new Color(result.getRGB(128, 495)).getBlue()).isGreaterThan(200);
     }
 
     @Test
@@ -90,7 +120,7 @@ class StudentPhotoStorageTest {
     }
 
     @Test
-    void cropFocusSelectsTheRequestedSideOfALandscapePhoto() throws Exception {
+    void legacyCropFocusCannotDiscardEitherSideOfALandscapePhoto() throws Exception {
         BufferedImage landscape = new BufferedImage(800, 400, BufferedImage.TYPE_INT_RGB);
         var graphics = landscape.createGraphics();
         graphics.setColor(Color.RED);
@@ -107,10 +137,14 @@ class StudentPhotoStorageTest {
         BufferedImage right = ImageIO.read(new ByteArrayInputStream(
                 storage.normalizePortrait(input.toByteArray(), "image/png", 1, 0.5)));
 
-        Color leftCenter = new Color(left.getRGB(256, 256));
-        Color rightCenter = new Color(right.getRGB(256, 256));
-        assertThat(leftCenter.getRed()).isGreaterThan(leftCenter.getBlue());
-        assertThat(rightCenter.getBlue()).isGreaterThan(rightCenter.getRed());
+        assertThat(left.getWidth()).isEqualTo(512);
+        assertThat(left.getHeight()).isEqualTo(256);
+        assertThat(right.getWidth()).isEqualTo(512);
+        assertThat(right.getHeight()).isEqualTo(256);
+        assertThat(new Color(left.getRGB(16, 128)).getRed()).isGreaterThan(200);
+        assertThat(new Color(left.getRGB(495, 128)).getBlue()).isGreaterThan(200);
+        assertThat(new Color(right.getRGB(16, 128)).getRed()).isGreaterThan(200);
+        assertThat(new Color(right.getRGB(495, 128)).getBlue()).isGreaterThan(200);
     }
 
     @Test

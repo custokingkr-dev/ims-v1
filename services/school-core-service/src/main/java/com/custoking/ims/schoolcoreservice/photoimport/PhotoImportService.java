@@ -5,6 +5,8 @@ import com.custoking.ims.schoolcoreservice.photoimport.DriveFolderProvisioningRe
 import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClient.DriveFile;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Batch;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.ImportRow;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryPreparation;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryResult;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RowInput;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.SourceInput;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.StudentMatch;
@@ -16,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.text.Normalizer;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -24,12 +27,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.HexFormat;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
 public class PhotoImportService {
     private static final long MAX_SOURCE_IMAGE_BYTES = 20L * 1024 * 1024;
+    private static final String PHOTO_RECOVERY_VERSION = "fit-without-crop-v1";
     private static final int EXECUTION_CHUNK_SIZE = 1;
     private static final Map<String, Integer> ROMAN_CLASSES = Map.ofEntries(
             Map.entry("I", 1), Map.entry("II", 2), Map.entry("III", 3),
@@ -337,6 +342,87 @@ public class PhotoImportService {
         return repository.finishExecution(id, schoolId);
     }
 
+    /**
+     * Rebuilds selected, previously applied portraits from the immutable Drive file ids retained
+     * by the import scan. Recovery is deliberately explicit and versioned: it never touches rows
+     * that were not selected, and it refuses to overwrite a photo changed after the original
+     * import. Repeating the same request returns the completed audit record without another write.
+     */
+    public RecoveryBatchResult recoverAppliedRows(UUID id, List<UUID> requestedRowIds) {
+        long schoolId = authorizedBatchSchool(id);
+        Batch batch = repository.batch(id, schoolId);
+        if (requestedRowIds == null || requestedRowIds.isEmpty()) {
+            throw new IllegalArgumentException("At least one photo-import row id is required");
+        }
+        if (requestedRowIds.stream().anyMatch(java.util.Objects::isNull)) {
+            throw new IllegalArgumentException("Photo-import row ids cannot be null");
+        }
+        List<UUID> rowIds = requestedRowIds.stream().distinct().toList();
+        if (rowIds.size() > 100) {
+            throw new IllegalArgumentException("At most 100 photo-import rows can be recovered per request");
+        }
+
+        List<RecoveryResult> results = new ArrayList<>();
+        List<RecoveryPreparation> ready = new ArrayList<>();
+        for (UUID rowId : rowIds) {
+            try {
+                RecoveryPreparation preparation = repository.beginPhotoRecovery(
+                        id, schoolId, rowId, PHOTO_RECOVERY_VERSION, TenantContext.get().userId());
+                switch (preparation.status()) {
+                    case "READY" -> ready.add(preparation);
+                    case "ALREADY_RECOVERED" -> results.add(new RecoveryResult(
+                            rowId, "ALREADY_RECOVERED", preparation.target().finalPhotoKey(),
+                            preparation.message()));
+                    case "IN_PROGRESS" -> results.add(new RecoveryResult(
+                            rowId, "IN_PROGRESS", null, preparation.message()));
+                    default -> results.add(new RecoveryResult(
+                            rowId, "FAILED", null, preparation.message()));
+                }
+            } catch (Exception ex) {
+                results.add(new RecoveryResult(rowId, "FAILED", null, safeRecoveryError(ex)));
+            }
+        }
+        if (ready.isEmpty()) {
+            return recoverySummary(id, schoolId, results);
+        }
+
+        Map<String, DriveFile> currentById;
+        try {
+            currentById = drive.listFiles(batch.driveFolderId()).stream()
+                    .collect(Collectors.toMap(DriveFile::id, Function.identity(), (left, right) -> left));
+        } catch (Exception ex) {
+            for (RecoveryPreparation preparation : ready) {
+                results.add(repository.failPhotoRecovery(
+                        preparation.recoveryId(), preparation.target().rowId(), schoolId,
+                        "Retained Drive originals are not accessible: " + safeRecoveryError(ex)));
+            }
+            return recoverySummary(id, schoolId, results);
+        }
+
+        for (RecoveryPreparation preparation : ready) {
+            UUID rowId = preparation.target().rowId();
+            try {
+                DriveFile retained = repository.sourceFile(
+                        id, schoolId, preparation.target().driveFileId());
+                DriveFile current = currentById.get(preparation.target().driveFileId());
+                if (current == null) {
+                    throw new IllegalArgumentException("The retained Drive original is no longer present");
+                }
+                requireUnchangedRecoverySource(retained, current);
+                byte[] sourceBytes = drive.download(current, MAX_SOURCE_IMAGE_BYTES);
+                requireDownloadedChecksum(retained.md5Checksum(), sourceBytes);
+                byte[] normalized = photoStorage.normalizePortrait(
+                        sourceBytes, current.mimeType(), 0.5, 0.5, MAX_SOURCE_IMAGE_BYTES);
+                results.add(repository.completePhotoRecovery(
+                        preparation, PHOTO_RECOVERY_VERSION, normalized));
+            } catch (Exception ex) {
+                results.add(repository.failPhotoRecovery(
+                        preparation.recoveryId(), rowId, schoolId, safeRecoveryError(ex)));
+            }
+        }
+        return recoverySummary(id, schoolId, results);
+    }
+
     public Preview preview(UUID batchId, UUID rowId) {
         long schoolId = authorizedBatchSchool(batchId);
         ImportRow row = repository.rows(batchId, schoolId).stream()
@@ -505,6 +591,64 @@ public class PhotoImportService {
         return cleaned.matches("[0-9]+") ? DscImageNumber.canonical(cleaned) : null;
     }
 
+    private static void requireUnchangedRecoverySource(DriveFile retained, DriveFile current) {
+        if (!current.isSupportedImage()) {
+            throw new IllegalArgumentException("The retained Drive source is no longer a supported image");
+        }
+        if (retained.size() != null && current.size() != null
+                && !retained.size().equals(current.size())) {
+            throw new IllegalArgumentException("The retained Drive original changed after import");
+        }
+        if (retained.md5Checksum() != null && current.md5Checksum() != null
+                && !retained.md5Checksum().equalsIgnoreCase(current.md5Checksum())) {
+            throw new IllegalArgumentException("The retained Drive original changed after import");
+        }
+        if (retained.md5Checksum() == null
+                && (retained.modifiedTime() == null || current.modifiedTime() == null
+                || !retained.modifiedTime().equals(current.modifiedTime()))) {
+            throw new IllegalArgumentException("The retained Drive original cannot be verified safely");
+        }
+    }
+
+    private static void requireDownloadedChecksum(String expectedMd5, byte[] sourceBytes) {
+        if (expectedMd5 == null || expectedMd5.isBlank()) {
+            return;
+        }
+        try {
+            String actual = HexFormat.of().formatHex(
+                    MessageDigest.getInstance("MD5").digest(sourceBytes));
+            if (!expectedMd5.equalsIgnoreCase(actual)) {
+                throw new IllegalArgumentException("The downloaded Drive original failed checksum verification");
+            }
+        } catch (java.security.NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("MD5 checksum support is unavailable", ex);
+        }
+    }
+
+    private static String safeRecoveryError(Exception ex) {
+        String message = ex.getMessage();
+        return message == null || message.isBlank()
+                ? "Photo recovery failed"
+                : message.replaceAll("[\\r\\n]+", " ");
+    }
+
+    private static RecoveryBatchResult recoverySummary(
+            UUID batchId, long schoolId, List<RecoveryResult> results) {
+        return new RecoveryBatchResult(
+                batchId,
+                schoolId,
+                results.size(),
+                countRecoveryStatus(results, "RECOVERED"),
+                countRecoveryStatus(results, "ALREADY_RECOVERED"),
+                countRecoveryStatus(results, "IN_PROGRESS"),
+                countRecoveryStatus(results, "FAILED"),
+                List.copyOf(results));
+    }
+
+    private static long countRecoveryStatus(List<RecoveryResult> results, String status) {
+        return results.stream().filter(result -> status.equals(result.status())).count();
+    }
+
     private static double cropCoordinate(Double requested, double current, String field) {
         double value = requested == null ? current : requested;
         if (!Double.isFinite(value) || value < 0 || value > 1) {
@@ -584,6 +728,17 @@ public class PhotoImportService {
     }
 
     public record Preview(byte[] bytes, String contentType) {
+    }
+
+    public record RecoveryBatchResult(
+            UUID batchId,
+            long schoolId,
+            int selectedCount,
+            long recoveredCount,
+            long alreadyRecoveredCount,
+            long inProgressCount,
+            long failedCount,
+            List<RecoveryResult> rows) {
     }
 
     public record RowReviewUpdate(

@@ -131,6 +131,23 @@ variable "dashboard_oauth_client_id" {
   default     = ""
 }
 
+variable "dashboard_public_url" {
+  description = <<-EOT
+    Public origin the dashboard builds its OAuth redirect_uri from, e.g. https://custoking-dashboard-prod-xxxx-em.a.run.app.
+    Pinning it keeps a client-supplied Host header out of the sign-in URL. Empty falls back to request
+    headers, which is correct for local use. Must match a redirect URI registered on the OAuth client.
+  EOT
+  type        = string
+  default     = ""
+
+  validation {
+    # An http origin would be sent to Google as the callback and rejected, and the resulting
+    # redirect_uri_mismatch says nothing about the scheme being the cause.
+    condition     = var.dashboard_public_url == "" || startswith(var.dashboard_public_url, "https://")
+    error_message = "dashboard_public_url must be empty or an https:// origin."
+  }
+}
+
 variable "dashboard_allowed_emails" {
   description = <<-DESC
     Email addresses permitted to open the dashboard.
@@ -475,6 +492,63 @@ variable "cloud_sql_connection_threshold" {
   description = "PostgreSQL backend count that opens an incident; 140 is 70% of max_connections=200."
   type        = number
   default     = 140
+}
+
+variable "enable_attendance_growth_monitoring" {
+  description = <<-DESC
+    Create DATA-01 attendance relation log metrics and alert policies.
+
+    This defaults to false deliberately. Repository review and a Terraform plan must precede activation;
+    adding the collector to school-core-service must not silently create live alerting resources. Enable
+    first in development, verify emitted structured logs and distribution values, then make a separately
+    approved production apply.
+  DESC
+  type        = bool
+  default     = false
+}
+
+variable "attendance_partition_prepare_rows" {
+  description = "Approximate attendance fact rows at which partition rollout preparation becomes urgent."
+  type        = number
+  default     = 10000000
+
+  validation {
+    condition     = var.attendance_partition_prepare_rows > 1000000 && var.attendance_partition_prepare_rows < 20000000
+    error_message = "attendance_partition_prepare_rows must be greater than 1M and less than 20M."
+  }
+}
+
+variable "attendance_partition_execute_rows" {
+  description = "Approximate attendance fact rows at which the approved partition rollout must be scheduled before 25M."
+  type        = number
+  default     = 20000000
+
+  validation {
+    condition     = var.attendance_partition_execute_rows > 10000000 && var.attendance_partition_execute_rows <= 25000000
+    error_message = "attendance_partition_execute_rows must be greater than 10M and no more than the 25M hard boundary."
+  }
+}
+
+variable "attendance_index_bytes_threshold" {
+  description = "Attendance index bytes that trigger an index-growth and write-amplification review."
+  type        = number
+  default     = 8589934592
+
+  validation {
+    condition     = var.attendance_index_bytes_threshold > 4294967296 && var.attendance_index_bytes_threshold < 17179869184
+    error_message = "attendance_index_bytes_threshold must be greater than 4 GiB and less than 16 GiB."
+  }
+}
+
+variable "attendance_full_scan_equivalents_milli_threshold" {
+  description = "Sequential tuples read per reporting interval divided by table rows, in thousandths; 1000 is one full-table equivalent."
+  type        = number
+  default     = 1000
+
+  validation {
+    condition     = var.attendance_full_scan_equivalents_milli_threshold > 500 && var.attendance_full_scan_equivalents_milli_threshold < 2000
+    error_message = "attendance_full_scan_equivalents_milli_threshold must be greater than 500 and less than 2000."
+  }
 }
 
 variable "pubsub_subscription_ids" {

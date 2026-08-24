@@ -15,6 +15,7 @@ public class NotificationDeliveryAttempt {
 
     public static final String STATUS_DELIVERED = "DELIVERED";
     public static final String STATUS_FAILED = "FAILED";
+    public static final String STATUS_SUPPRESSED = "SUPPRESSED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

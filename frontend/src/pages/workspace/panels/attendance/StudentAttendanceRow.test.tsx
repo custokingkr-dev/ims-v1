@@ -1,8 +1,12 @@
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { afterEach, describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import type { ComponentProps } from 'react';
 import { StudentAttendanceRow } from './StudentAttendanceRow';
 import type { StudentAttendanceRecord } from '../../../../types/attendance';
+
+vi.mock('../../../../services/api', () => ({
+  default: { get: vi.fn() },
+}));
 
 afterEach(cleanup);
 
@@ -27,6 +31,26 @@ function renderRow(props: ComponentProps<typeof StudentAttendanceRow>) {
 }
 
 describe('StudentAttendanceRow', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('uses the shared full-frame student photo contract', async () => {
+    renderRow({
+      student: { ...student, photoUrl: 'https://photos.example/asha.jpg' },
+      status: null,
+      remarks: '',
+      locked: false,
+      onStatusChange: vi.fn(),
+      onRemarksChange: vi.fn(),
+    });
+
+    await waitFor(() => expect(screen.getByRole('img', { name: 'Asha Rao' })).toHaveClass(
+      'ck-att-avatar',
+      'ck-student-photo-full-frame',
+    ));
+  });
+
   it('sets the tapped status', () => {
     const onStatusChange = vi.fn();
     renderRow({

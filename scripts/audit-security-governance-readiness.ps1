@@ -226,7 +226,8 @@ $backendServices = @(Invoke-GcloudJson compute backend-services list "--project=
 $serverlessNegs = @(Invoke-GcloudJson compute network-endpoint-groups list "--project=$ProjectId")
 
 $repo = Invoke-GhApiJson -Endpoint "repos/$Repository"
-$rulesets = @(Invoke-GhApiJson -Endpoint "repos/$Repository/rulesets")
+$rulesets = @(Invoke-GhApiJson -Endpoint "repos/$Repository/rulesets" |
+  Where-Object { $null -ne $_ -and $null -ne $_.id })
 $mainProtection = Invoke-GhApiJson -Endpoint "repos/$Repository/branches/main/protection" -AllowFailure
 $devProtection = Invoke-GhApiJson -Endpoint "repos/$Repository/branches/dev/protection" -AllowFailure
 $environments = Invoke-GhApiJson -Endpoint "repos/$Repository/environments"
