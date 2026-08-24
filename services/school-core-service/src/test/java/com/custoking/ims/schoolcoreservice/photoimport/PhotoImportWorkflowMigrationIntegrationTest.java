@@ -68,6 +68,10 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                     connection,
                     new ClassPathResource(
                             "db/migration/student/V20__photo_import_recovery_audit.sql"));
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                            "db/migration/student/V21__photo_import_recovery_progress.sql"));
         }
     }
 
@@ -183,5 +187,31 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                 .param("batchId", batchId)
                 .update())
                 .hasMessageContaining("uq_photo_import_recovery_version");
+
+        UUID protectedRowId = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_rows (id, batch_id, school_id)
+                VALUES (:id, :batchId, 1)
+                """)
+                .param("id", protectedRowId)
+                .param("batchId", batchId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_recoveries
+                    (id, row_id, batch_id, school_id, student_id, recovery_version, status,
+                     drive_file_id, message)
+                VALUES (:id, :rowId, :batchId, 1, 102, 'fit-without-crop-v1', 'PROTECTED',
+                        'drive-file-2', 'Student photo changed after this import')
+                """)
+                .param("id", UUID.randomUUID())
+                .param("rowId", protectedRowId)
+                .param("batchId", batchId)
+                .update();
+        assertThat(jdbc.sql("""
+                SELECT status FROM student.photo_import_recoveries WHERE row_id = :rowId
+                """)
+                .param("rowId", protectedRowId)
+                .query(String.class)
+                .single()).isEqualTo("PROTECTED");
     }
 }

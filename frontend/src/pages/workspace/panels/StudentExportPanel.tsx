@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Download, FileSpreadsheet, Images, LoaderCircle, ShieldCheck } from 'lucide-react';
 import api from '../../../services/api';
-import { downloadStudentExport } from '../../../features/students';
+import { downloadStudentExport, type StudentExportProgress } from '../../../features/students';
+import { TransferProgress } from '../../../components/TransferProgress';
 import { Field, ModuleShell } from '../ui';
 
 interface ExportSchool {
@@ -27,11 +28,17 @@ function errorMessage(error: any): string {
   return error?.response?.data?.message || error?.message || 'Unable to prepare the student export.';
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(0, bytes / 1024).toFixed(bytes >= 1024 ? 1 : 0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function StudentExportPanel() {
   const [context, setContext] = useState<ExportContext | null>(null);
   const [schoolId, setSchoolId] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [exportProgress, setExportProgress] = useState<StudentExportProgress | null>(null);
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
 
   useEffect(() => {
@@ -52,20 +59,52 @@ export function StudentExportPanel() {
     [context?.schools, schoolId],
   );
   const missingPhotos = selected ? Math.max(0, selected.studentCount - selected.photoCount) : 0;
+  const exportPercent = exportProgress?.percent
+    ?? (exportProgress?.totalBytes
+      ? (exportProgress.loadedBytes / exportProgress.totalBytes) * 100
+      : exportProgress?.phase === 'saving' && !downloading ? 100 : undefined);
+
+  const progressLabel = exportProgress?.serverPhase === 'PHOTOS'
+    ? 'Packing student photos'
+    : exportProgress?.serverPhase === 'WORKBOOK' ? 'Building Excel workbook'
+      : exportProgress?.serverPhase === 'FINALIZING' ? 'Finalizing secure archive'
+        : exportProgress?.serverPhase === 'COMPLETED' ? 'Student export complete'
+          : exportProgress?.serverPhase === 'FAILED' ? 'Student export stopped'
+          : exportProgress?.phase === 'preparing' ? 'Preparing secure archive'
+            : exportProgress?.phase === 'downloading' ? 'Downloading archive' : 'Saving archive';
 
   const download = async () => {
     if (!selected || downloading) return;
     setDownloading(true);
+    setExportProgress({ phase: 'preparing', loadedBytes: 0 });
     setNotice(null);
     try {
-      const result = await downloadStudentExport(selected.id, safeArchiveName(selected.shortCode));
+      const result = await downloadStudentExport(
+        selected.id,
+        safeArchiveName(selected.shortCode),
+        progress => setExportProgress(progress),
+      );
       if (result === 'saved') {
+        setExportProgress(current => ({
+          phase: 'saving',
+          loadedBytes: current?.totalBytes || current?.loadedBytes || 0,
+          totalBytes: current?.totalBytes,
+          percent: 100,
+          serverPhase: 'COMPLETED',
+          processedStudents: current?.totalStudents,
+          totalStudents: current?.totalStudents,
+          exportedPhotos: current?.exportedPhotos,
+          missingPhotos: current?.missingPhotos,
+        }));
         setNotice({
           tone: 'ok',
           text: `Downloaded ${selected.name}: ${selected.studentCount.toLocaleString()} student rows and up to ${selected.photoCount.toLocaleString()} photos.`,
         });
+      } else {
+        setExportProgress(null);
       }
     } catch (error) {
+      setExportProgress(current => current ? { ...current, serverPhase: 'FAILED' } : null);
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
       setDownloading(false);
@@ -93,7 +132,11 @@ export function StudentExportPanel() {
           ) : context?.schools.length ? (
             <>
               <Field label="School">
-                <select aria-label="School" value={schoolId} onChange={event => setSchoolId(event.target.value ? Number(event.target.value) : '')}>
+                <select aria-label="School" value={schoolId} onChange={event => {
+                  setSchoolId(event.target.value ? Number(event.target.value) : '');
+                  setExportProgress(null);
+                  setNotice(null);
+                }}>
                   <option value="">Select a school</option>
                   {context.schools.map(school => (
                     <option key={school.id} value={school.id}>
@@ -133,6 +176,30 @@ export function StudentExportPanel() {
                   {downloading ? 'Preparing and downloading…' : 'Download Excel and all photos'}
                 </button>
               </div>
+              {exportProgress ? (
+                <TransferProgress
+                  label={progressLabel}
+                  value={exportPercent}
+                  valueLabel={exportPercent == null ? undefined : `${Math.round(exportPercent)}%`}
+                  detail={exportProgress.serverPhase === 'PHOTOS' && exportProgress.totalStudents
+                    ? `${exportProgress.processedStudents?.toLocaleString() || 0} of ${exportProgress.totalStudents.toLocaleString()} student records packed; `
+                      + `${exportProgress.exportedPhotos?.toLocaleString() || 0} photos added and ${exportProgress.missingPhotos?.toLocaleString() || 0} missing.`
+                    : exportProgress.serverPhase === 'WORKBOOK'
+                      ? 'Photos are packed. Building the student-details workbook…'
+                      : exportProgress.serverPhase === 'FINALIZING'
+                        ? 'Closing the ZIP archive and verifying its final entries…'
+                        : exportProgress.phase === 'preparing'
+                          ? `Gathering ${selected?.studentCount.toLocaleString() || 0} rows and up to ${selected?.photoCount.toLocaleString() || 0} photos…`
+                          : exportProgress.phase === 'downloading'
+                      ? exportProgress.totalBytes
+                        ? `${formatBytes(exportProgress.loadedBytes)} of ${formatBytes(exportProgress.totalBytes)} transferred directly to your selected file.`
+                        : 'The server is streaming the archive directly to your selected file; its final size is not known yet.'
+                      : downloading ? 'Finishing the ZIP file on disk…' : 'The ZIP file is ready on disk.'}
+                  tone={exportProgress.serverPhase === 'FAILED'
+                    ? 'error'
+                    : !downloading && notice?.tone === 'ok' ? 'complete' : 'active'}
+                />
+              ) : null}
             </>
           ) : (
             <div>No active schools are available for export. Operators should ask a Superadmin to check their school assignments.</div>

@@ -42,6 +42,8 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
     static PhotoImportRepository repository;
     static UUID batchId;
     static UUID rowId;
+    static UUID protectedBatchId;
+    static UUID protectedRowId;
 
     @BeforeAll
     static void setUp() throws Exception {
@@ -58,6 +60,8 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
 
         batchId = UUID.randomUUID();
         rowId = UUID.randomUUID();
+        protectedBatchId = UUID.randomUUID();
+        protectedRowId = UUID.randomUUID();
         try (Connection connection = java.sql.DriverManager.getConnection(
                 PG.getJdbcUrl(), PG.getUsername(), PG.getPassword());
              Statement sql = connection.createStatement()) {
@@ -80,6 +84,13 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
                             'ay-recovery', 'cropped-photo-key')
                     """);
             sql.execute("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id,
+                         academic_year_id, photo_url)
+                    VALUES (302, 'REC-2', 'Protected Recovery Student', 201, '9', 'section-recovery',
+                            'ay-recovery', 'newer-manual-photo-key')
+                    """);
+            sql.execute("""
                     INSERT INTO student.photo_import_batches
                         (id, school_id, school_uid, academic_year_id, drive_folder_id,
                          drive_folder_name, status, snapshot_hash)
@@ -87,6 +98,14 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
                            'Recovery originals', 'COMPLETED', 'snapshot-1'
                     FROM tenant_school.schools WHERE id = 201
                     """.formatted(batchId));
+            sql.execute("""
+                    INSERT INTO student.photo_import_batches
+                        (id, school_id, school_uid, academic_year_id, drive_folder_id,
+                         drive_folder_name, status, snapshot_hash)
+                    SELECT '%s', id, school_uid, 'ay-recovery', 'protected-recovery-folder',
+                           'Protected recovery originals', 'COMPLETED', 'snapshot-2'
+                    FROM tenant_school.schools WHERE id = 201
+                    """.formatted(protectedBatchId));
             sql.execute("""
                     INSERT INTO student.photo_import_sources
                         (id, batch_id, school_id, drive_file_id, file_name, mime_type,
@@ -104,6 +123,15 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
                             'DSC5001.jpg', 301, 'APPLIED', 'cropped-photo-key',
                             '5289df737df57326fcdd22597afb1fac', now())
                     """.formatted(rowId, batchId));
+            sql.execute("""
+                    INSERT INTO student.photo_import_rows
+                        (id, batch_id, school_id, excel_row, admission_no, image_no,
+                         drive_file_id, drive_file_name, student_id, status, final_photo_key,
+                         source_checksum, applied_at)
+                    VALUES ('%s', '%s', 201, 2, 'REC-2', '5002', 'drive-photo-2',
+                            'DSC5002.jpg', 302, 'APPLIED', 'import-photo-key',
+                            'checksum-2', now())
+                    """.formatted(protectedRowId, protectedBatchId));
         }
 
         dataSource = new HikariDataSource();
@@ -147,6 +175,15 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
         assertThat(completed.status()).isEqualTo("RECOVERED");
         assertThat(completed.photoKey()).isEqualTo("uncropped-photo-key");
 
+        var progress = repository.photoRecoveryProgress(batchId, 201L, version);
+        assertThat(progress.totalCount()).isEqualTo(1);
+        assertThat(progress.processedCount()).isEqualTo(1);
+        assertThat(progress.recoveredCount()).isEqualTo(1);
+        assertThat(progress.protectedCount()).isZero();
+        assertThat(progress.pendingCount()).isZero();
+        assertThat(progress.percentComplete()).isEqualTo(100);
+        assertThat(progress.resumable()).isFalse();
+
         var repeated = repository.beginPhotoRecovery(batchId, 201L, rowId, version, 1L);
         assertThat(repeated.status()).isEqualTo("ALREADY_RECOVERED");
         assertThat(repeated.target().finalPhotoKey()).isEqualTo("uncropped-photo-key");
@@ -172,5 +209,40 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
                 org.mockito.ArgumentMatchers.eq("301"),
                 org.mockito.ArgumentMatchers.eq(201L),
                 org.mockito.ArgumentMatchers.anyMap());
+    }
+
+    @Test
+    void newerStudentPhotoIsDurablyClassifiedAsProtectedWithoutRepeatedAttempts() {
+        TenantContext.set(new TenantContext(1L, "superadmin@example.com", "SUPERADMIN", null, null,
+                Set.of(), Set.of()));
+        String version = "fit-without-crop-v1";
+
+        var protectedResult = repository.beginPhotoRecovery(
+                protectedBatchId, 201L, protectedRowId, version, 1L);
+        assertThat(protectedResult.status()).isEqualTo("PROTECTED");
+        assertThat(protectedResult.message()).contains("did not overwrite");
+
+        var repeated = repository.beginPhotoRecovery(
+                protectedBatchId, 201L, protectedRowId, version, 1L);
+        assertThat(repeated.status()).isEqualTo("PROTECTED");
+
+        var audit = jdbc.sql("""
+                SELECT status, attempt_count, completed_at IS NOT NULL AS completed
+                FROM student.photo_import_recoveries
+                WHERE row_id = :rowId AND recovery_version = :version
+                """)
+                .param("rowId", protectedRowId)
+                .param("version", version)
+                .query((rs, rowNum) -> new Object[]{
+                        rs.getString("status"), rs.getInt("attempt_count"), rs.getBoolean("completed")})
+                .single();
+        assertThat(audit).containsExactly("PROTECTED", 1, true);
+
+        var progress = repository.photoRecoveryProgress(protectedBatchId, 201L, version);
+        assertThat(progress.protectedCount()).isEqualTo(1);
+        assertThat(progress.failedCount()).isZero();
+        assertThat(progress.percentComplete()).isEqualTo(100);
+        assertThat(jdbc.sql("SELECT photo_url FROM student.students WHERE id = 302")
+                .query(String.class).single()).isEqualTo("newer-manual-photo-key");
     }
 }

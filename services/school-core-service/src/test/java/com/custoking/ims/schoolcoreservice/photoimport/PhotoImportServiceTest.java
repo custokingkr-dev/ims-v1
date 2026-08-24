@@ -5,6 +5,7 @@ import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportCli
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Batch;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.ImportRow;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryPreparation;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryProgress;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryResult;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryTarget;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RowInput;
@@ -502,6 +503,41 @@ class PhotoImportServiceTest {
         verify(drive, never()).listFiles(any());
         verify(drive, never()).download(any(), anyLong());
         verify(repository, never()).completePhotoRecovery(any(), any(), any());
+    }
+
+    @Test
+    void newerStudentPhotoIsReportedAsProtectedAndPersistedProgressIsReturned() {
+        UUID batchId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch completed = batch(batchId, schoolId, "COMPLETED", 0);
+        RecoveryTarget target = new RecoveryTarget(
+                rowId, batchId, schoolId, 101L, "drive-photo-1", "DSC5001.jpg", null,
+                "import-photo-key", "newer-manual-photo-key", completed.schoolUid());
+        RecoveryPreparation preparation = new RecoveryPreparation(
+                UUID.randomUUID(), "PROTECTED",
+                "Student photo changed after this import; recovery did not overwrite it", target);
+        RecoveryProgress progress = new RecoveryProgress(
+                batchId, schoolId, 1, 1, 0, 1, 0, 0, 0, 100, false,
+                OffsetDateTime.parse("2026-08-24T00:00:00Z"));
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(completed);
+        when(repository.beginPhotoRecovery(
+                batchId, schoolId, rowId, "fit-without-crop-v1", 42L)).thenReturn(preparation);
+        when(repository.photoRecoveryProgress(
+                batchId, schoolId, "fit-without-crop-v1")).thenReturn(progress);
+
+        var result = service.recoverAppliedRows(batchId, List.of(rowId));
+
+        assertThat(result.protectedCount()).isEqualTo(1);
+        assertThat(result.failedCount()).isZero();
+        assertThat(result.progress()).isSameAs(progress);
+        assertThat(result.rows().getFirst().status()).isEqualTo("PROTECTED");
+        verify(drive, never()).listFiles(any());
+        verify(drive, never()).download(any(), anyLong());
     }
 
     @Test

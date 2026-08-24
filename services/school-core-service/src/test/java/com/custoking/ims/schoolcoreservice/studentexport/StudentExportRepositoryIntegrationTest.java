@@ -103,7 +103,22 @@ class StudentExportRepositoryIntegrationTest {
                 .containsExactly("ADM-101");
 
         var auditId = repository.startAudit(101L, null, data.students().size());
+        repository.updateProgress(auditId, 101L, 1, 1, 0, 90, "PHOTOS");
+        assertThat(repository.progress(auditId, 101L))
+                .satisfies(progress -> {
+                    assertThat(progress.percent()).isEqualTo(90);
+                    assertThat(progress.phase()).isEqualTo("PHOTOS");
+                    assertThat(progress.processedStudents()).isEqualTo(1);
+                    assertThat(progress.exportedPhotos()).isEqualTo(1);
+                });
         repository.finishAudit(auditId, 101L, "COMPLETED", 1, 0, null);
+
+        assertThat(repository.progress(auditId, 101L))
+                .satisfies(progress -> {
+                    assertThat(progress.status()).isEqualTo("COMPLETED");
+                    assertThat(progress.percent()).isEqualTo(100);
+                    assertThat(progress.phase()).isEqualTo("COMPLETED");
+                });
 
         JdbcClient jdbc = JdbcClient.create(dataSource);
         assertThat(jdbc.sql("SELECT status FROM student.student_export_audit WHERE id = :id")

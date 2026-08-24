@@ -824,6 +824,10 @@ public class PhotoImportRepository {
         if (existing != null && "COMPLETED".equals(existing.status())) {
             return new RecoveryPreparation(existing.id(), "ALREADY_RECOVERED", existing.message(), target);
         }
+        if (existing != null && "PROTECTED".equals(existing.status())
+                && !Objects.equals(target.finalPhotoKey(), target.currentPhotoKey())) {
+            return new RecoveryPreparation(existing.id(), "PROTECTED", existing.message(), target);
+        }
         if (existing != null && "EXECUTING".equals(existing.status())
                 && existing.updatedAt().isAfter(OffsetDateTime.now().minusMinutes(15))) {
             return new RecoveryPreparation(existing.id(), "IN_PROGRESS",
@@ -832,9 +836,9 @@ public class PhotoImportRepository {
 
         UUID recoveryId = existing == null ? UUID.randomUUID() : existing.id();
         if (!Objects.equals(target.finalPhotoKey(), target.currentPhotoKey())) {
-            upsertRecovery(recoveryId, target, recoveryVersion, requestedBy, "FAILED",
+            upsertRecovery(recoveryId, target, recoveryVersion, requestedBy, "PROTECTED",
                     "Student photo changed after this import; recovery did not overwrite it");
-            return new RecoveryPreparation(recoveryId, "FAILED",
+            return new RecoveryPreparation(recoveryId, "PROTECTED",
                     "Student photo changed after this import; recovery did not overwrite it", target);
         }
 
@@ -978,6 +982,69 @@ public class PhotoImportRepository {
         return new RecoveryResult(rowId, "FAILED", null, safeMessage);
     }
 
+    @Transactional
+    public RecoveryResult protectPhotoRecovery(UUID recoveryId, UUID rowId, long schoolId, String message) {
+        selectSchoolScope(schoolId);
+        String safeMessage = truncate(message, 800);
+        jdbc.sql("""
+                UPDATE student.photo_import_recoveries
+                SET status = 'PROTECTED', message = :message, completed_at = now(), updated_at = now()
+                WHERE id = :id AND row_id = :rowId AND school_id = :schoolId
+                  AND status = 'EXECUTING'
+                """)
+                .param("message", safeMessage)
+                .param("id", recoveryId)
+                .param("rowId", rowId)
+                .param("schoolId", schoolId)
+                .update();
+        return new RecoveryResult(rowId, "PROTECTED", null, safeMessage);
+    }
+
+    /**
+     * Returns persisted, batch-wide recovery progress. The row audit is the durable resume
+     * cursor: callers can safely submit the original selection again after a refresh because
+     * completed and protected rows are returned without another Drive read or photo write.
+     */
+    @Transactional(readOnly = true)
+    public RecoveryProgress photoRecoveryProgress(UUID batchId, long schoolId, String recoveryVersion) {
+        selectSchoolScope(schoolId);
+        return jdbc.sql("""
+                SELECT count(*) AS total_count,
+                       count(*) FILTER (WHERE recovery.status = 'COMPLETED') AS recovered_count,
+                       count(*) FILTER (WHERE recovery.status = 'PROTECTED') AS protected_count,
+                       count(*) FILTER (WHERE recovery.status = 'FAILED') AS failed_count,
+                       count(*) FILTER (WHERE recovery.status = 'EXECUTING') AS in_progress_count,
+                       max(recovery.updated_at) AS updated_at
+                FROM student.photo_import_rows import_row
+                LEFT JOIN student.photo_import_recoveries recovery
+                  ON recovery.row_id = import_row.id
+                 AND recovery.school_id = import_row.school_id
+                 AND recovery.recovery_version = :recoveryVersion
+                WHERE import_row.batch_id = :batchId AND import_row.school_id = :schoolId
+                  AND import_row.status = 'APPLIED'
+                """)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .param("recoveryVersion", recoveryVersion)
+                .query((rs, rowNum) -> {
+                    long total = rs.getLong("total_count");
+                    long recovered = rs.getLong("recovered_count");
+                    long protectedCount = rs.getLong("protected_count");
+                    long failed = rs.getLong("failed_count");
+                    long inProgress = rs.getLong("in_progress_count");
+                    long processed = recovered + protectedCount + failed;
+                    long pending = Math.max(0, total - processed - inProgress);
+                    int percentage = total == 0
+                            ? 100
+                            : (int) Math.min(100, Math.round(processed * 100.0 / total));
+                    return new RecoveryProgress(
+                            batchId, schoolId, total, processed, recovered, protectedCount,
+                            failed, inProgress, pending, percentage,
+                            pending > 0 || failed > 0, rs.getObject("updated_at", OffsetDateTime.class));
+                })
+                .single();
+    }
+
     private Optional<RecoveryAudit> recoveryAudit(
             UUID rowId, long schoolId, String recoveryVersion, boolean forUpdate) {
         String locking = forUpdate ? " FOR UPDATE" : "";
@@ -1014,7 +1081,7 @@ public class PhotoImportRepository {
                 VALUES
                     (:id, :rowId, :batchId, :schoolId, :studentId, :recoveryVersion, :status,
                      :requestedBy, :driveFileId, :sourceChecksum, :priorPhotoKey, :message,
-                     CASE WHEN :status = 'FAILED' THEN now() ELSE NULL END)
+                     CASE WHEN :status IN ('FAILED', 'PROTECTED') THEN now() ELSE NULL END)
                 ON CONFLICT (row_id, recovery_version) DO UPDATE
                 SET status = EXCLUDED.status,
                     requested_by = EXCLUDED.requested_by,
@@ -1025,7 +1092,7 @@ public class PhotoImportRepository {
                     message = EXCLUDED.message,
                     attempt_count = student.photo_import_recoveries.attempt_count + 1,
                     requested_at = now(),
-                    completed_at = CASE WHEN EXCLUDED.status = 'FAILED' THEN now() ELSE NULL END,
+                    completed_at = CASE WHEN EXCLUDED.status IN ('FAILED', 'PROTECTED') THEN now() ELSE NULL END,
                     updated_at = now()
                 """)
                 .param("id", recoveryId)
@@ -1338,5 +1405,20 @@ public class PhotoImportRepository {
             String status,
             String photoKey,
             String message) {
+    }
+
+    public record RecoveryProgress(
+            UUID batchId,
+            long schoolId,
+            long totalCount,
+            long processedCount,
+            long recoveredCount,
+            long protectedCount,
+            long failedCount,
+            long inProgressCount,
+            long pendingCount,
+            int percentComplete,
+            boolean resumable,
+            OffsetDateTime updatedAt) {
     }
 }

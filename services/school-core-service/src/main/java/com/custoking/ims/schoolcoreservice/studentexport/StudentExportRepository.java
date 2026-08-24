@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.studentexport;
 
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import com.custoking.ims.schoolcoreservice.studentexport.StudentExportService.ExportProgress;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Repository;
@@ -174,8 +175,11 @@ public class StudentExportRepository {
         jdbc.sql("""
                 UPDATE student.student_export_audit
                 SET status = :status,
-                    exported_photo_count = :exportedPhotos,
-                    missing_photo_count = :missingPhotos,
+                    exported_photo_count = CASE WHEN :status = 'COMPLETED' THEN :exportedPhotos ELSE exported_photo_count END,
+                    missing_photo_count = CASE WHEN :status = 'COMPLETED' THEN :missingPhotos ELSE missing_photo_count END,
+                    processed_student_count = CASE WHEN :status = 'COMPLETED' THEN student_count ELSE processed_student_count END,
+                    progress_percent = CASE WHEN :status = 'COMPLETED' THEN 100 ELSE progress_percent END,
+                    progress_phase = CASE WHEN :status = 'COMPLETED' THEN 'COMPLETED' ELSE 'FAILED' END,
                     failure_reason = :failureReason,
                     completed_at = now()
                 WHERE id = :auditId AND school_id = :schoolId
@@ -187,6 +191,57 @@ public class StudentExportRepository {
                 .param("auditId", auditId)
                 .param("schoolId", schoolId)
                 .update();
+    }
+
+    @Transactional
+    public void updateProgress(UUID auditId, long schoolId, int processedStudents,
+                               int exportedPhotos, int missingPhotos, int percent, String phase) {
+        selectSchoolScope(schoolId);
+        jdbc.sql("""
+                UPDATE student.student_export_audit
+                SET processed_student_count = LEAST(student_count, GREATEST(processed_student_count, :processedStudents)),
+                    exported_photo_count = GREATEST(exported_photo_count, :exportedPhotos),
+                    missing_photo_count = GREATEST(missing_photo_count, :missingPhotos),
+                    progress_percent = LEAST(99, GREATEST(progress_percent, :percent)),
+                    progress_phase = :phase
+                WHERE id = :auditId
+                  AND school_id = :schoolId
+                  AND status = 'STARTED'
+                """)
+                .param("processedStudents", processedStudents)
+                .param("exportedPhotos", exportedPhotos)
+                .param("missingPhotos", missingPhotos)
+                .param("percent", percent)
+                .param("phase", truncate(phase, 32))
+                .param("auditId", auditId)
+                .param("schoolId", schoolId)
+                .update();
+    }
+
+    @Transactional(readOnly = true)
+    public ExportProgress progress(UUID auditId, long schoolId) {
+        selectSchoolScope(schoolId);
+        return jdbc.sql("""
+                SELECT id, status, progress_percent, progress_phase,
+                       processed_student_count, student_count,
+                       exported_photo_count, missing_photo_count, failure_reason
+                FROM student.student_export_audit
+                WHERE id = :auditId AND school_id = :schoolId
+                """)
+                .param("auditId", auditId)
+                .param("schoolId", schoolId)
+                .query((rs, rowNum) -> new ExportProgress(
+                        rs.getObject("id", UUID.class),
+                        rs.getString("status"),
+                        rs.getInt("progress_percent"),
+                        rs.getString("progress_phase"),
+                        rs.getInt("processed_student_count"),
+                        rs.getInt("student_count"),
+                        rs.getInt("exported_photo_count"),
+                        rs.getInt("missing_photo_count"),
+                        rs.getString("failure_reason")))
+                .optional()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student export not found"));
     }
 
     private void selectSchoolScope(long schoolId) {

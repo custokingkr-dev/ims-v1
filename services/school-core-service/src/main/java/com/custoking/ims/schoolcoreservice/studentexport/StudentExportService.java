@@ -57,7 +57,8 @@ public class StudentExportService {
     public Result write(PreparedExport prepared, OutputStream output) throws IOException {
         long started = System.nanoTime();
         try {
-            Result result = archiveWriter.write(prepared.data(), output);
+            Result result = archiveWriter.write(prepared.data(), output, progress ->
+                    updateProgress(prepared, progress));
             finishAudit(prepared, "COMPLETED", result.exportedPhotoCount(), result.missingPhotoCount(), null);
             log.info("student_export_completed schoolId={} requestedBy={} students={} exportedPhotos={} missingPhotos={} durationMs={}",
                     prepared.data().school().id(), TenantContext.get().userId(), result.studentCount(),
@@ -69,6 +70,27 @@ public class StudentExportService {
                     prepared.data().school().id(), TenantContext.get().userId(), elapsedMillis(started),
                     ex.getClass().getSimpleName());
             throw ex;
+        }
+    }
+
+    public ExportProgress progress(UUID auditId, long schoolId) {
+        return repository.progress(auditId, schoolId);
+    }
+
+    private void updateProgress(PreparedExport prepared, StudentExportArchiveWriter.Progress progress) {
+        try {
+            repository.updateProgress(
+                    prepared.auditId(),
+                    prepared.data().school().id(),
+                    progress.processedStudents(),
+                    progress.exportedPhotoCount(),
+                    progress.missingPhotoCount(),
+                    progress.percent(),
+                    progress.phase());
+        } catch (RuntimeException progressError) {
+            // Progress reporting must never corrupt an otherwise valid downloadable archive.
+            log.warn("student_export_progress_update_failed auditId={} schoolId={} phase={}",
+                    prepared.auditId(), prepared.data().school().id(), progress.phase(), progressError);
         }
     }
 
@@ -107,4 +129,15 @@ public class StudentExportService {
             if (closed.compareAndSet(false, true)) slots.release();
         }
     }
+
+    public record ExportProgress(
+            UUID exportId,
+            String status,
+            int percent,
+            String phase,
+            int processedStudents,
+            int totalStudents,
+            int exportedPhotos,
+            int missingPhotos,
+            String failureReason) {}
 }

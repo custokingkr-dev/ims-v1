@@ -4,6 +4,7 @@ import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import com.custoking.ims.schoolcoreservice.studentexport.StudentExportRepository.SchoolOption;
 import com.custoking.ims.schoolcoreservice.studentexport.StudentExportService;
 import com.custoking.ims.schoolcoreservice.studentexport.StudentExportService.PreparedExport;
+import com.custoking.ims.schoolcoreservice.studentexport.StudentExportService.ExportProgress;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -23,6 +25,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/students/export")
@@ -70,8 +73,22 @@ public class StudentExportController {
             response.setHeader(HttpHeaders.PRAGMA, "no-cache");
             response.setHeader("X-Content-Type-Options", "nosniff");
             response.setHeader("X-Student-Count", String.valueOf(prepared.data().students().size()));
+            response.setHeader("X-Student-Export-Id", prepared.auditId().toString());
             exports.write(prepared, response.getOutputStream());
         }
+    }
+
+    @GetMapping("/{exportId}/progress")
+    public ExportProgress progress(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID exportId,
+            @RequestParam Long schoolId) {
+        authorize(token);
+        Long scope = TenantScope.resolvePlatformReadScope(schoolId);
+        if (scope == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "schoolId is required");
+        }
+        return exports.progress(exportId, scope);
     }
 
     private void authorize(String token) {

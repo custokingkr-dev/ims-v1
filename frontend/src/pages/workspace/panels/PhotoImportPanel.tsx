@@ -21,6 +21,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import api from '../../../services/api';
+import { TransferProgress } from '../../../components/TransferProgress';
 import { ModuleShell } from '../ui';
 
 interface SchoolContext {
@@ -95,9 +96,22 @@ interface ImportRow {
 
 interface RecoveryRowResult {
   rowId: string;
-  status: 'RECOVERED' | 'ALREADY_RECOVERED' | 'IN_PROGRESS' | 'FAILED';
+  status: 'RECOVERED' | 'ALREADY_RECOVERED' | 'IN_PROGRESS' | 'PROTECTED' | 'FAILED';
   photoKey?: string;
   message?: string;
+}
+
+interface RecoveryProgress {
+  totalCount: number;
+  processedCount: number;
+  recoveredCount: number;
+  protectedCount: number;
+  failedCount: number;
+  inProgressCount: number;
+  pendingCount: number;
+  percentComplete: number;
+  resumable: boolean;
+  updatedAt?: string;
 }
 
 interface RecoveryBatchResult {
@@ -105,8 +119,18 @@ interface RecoveryBatchResult {
   recoveredCount: number;
   alreadyRecoveredCount: number;
   inProgressCount: number;
+  protectedCount: number;
   failedCount: number;
   rows: RecoveryRowResult[];
+  progress: RecoveryProgress;
+}
+
+interface OperationProgress {
+  label: string;
+  detail: string;
+  value?: number;
+  valueLabel?: string;
+  tone?: 'active' | 'complete' | 'error';
 }
 
 const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
@@ -143,6 +167,22 @@ function workflowStep(status?: string): number {
   return 4;
 }
 
+function executionOperationProgress(current: ImportBatch): OperationProgress {
+  const processed = current.appliedCount + current.failedCount;
+  const total = processed + current.readyCount;
+  const complete = current.status !== 'EXECUTING' && current.readyCount === 0;
+  const value = total === 0 ? 100 : (processed / total) * 100;
+  return {
+    label: complete ? 'Photo import complete' : 'Applying student photos',
+    detail: complete
+      ? `${current.appliedCount} applied; ${current.failedCount} failed.`
+      : `${processed} of ${total} executable rows processed; ${current.readyCount} remain.`,
+    value,
+    valueLabel: `${Math.round(value)}%`,
+    tone: complete ? (current.failedCount > 0 ? 'error' : 'complete') : 'active',
+  };
+}
+
 function duplicateSchoolNames(schools: SchoolContext[]): Set<string> {
   const counts = new Map<string, number>();
   schools.forEach(school => counts.set(school.name, (counts.get(school.name) || 0) + 1));
@@ -171,6 +211,8 @@ export function PhotoImportPanel() {
   const [preview, setPreview] = useState<{ row: ImportRow; url: string } | null>(null);
   const [executionConfirmed, setExecutionConfirmed] = useState(false);
   const [access, setAccess] = useState<AccessState | null>(null);
+  const [recoveryProgress, setRecoveryProgress] = useState<RecoveryProgress | null>(null);
+  const [operationProgress, setOperationProgress] = useState<OperationProgress | null>(null);
   const [editing, setEditing] = useState<{
     row: ImportRow;
     admissionNo: string;
@@ -224,13 +266,21 @@ export function PhotoImportPanel() {
   const refreshDetail = async (id: string, options: { resetFilter?: boolean; showBusy?: boolean; showError?: boolean } = {}) => {
     if (options.showBusy) setBusy('detail');
     try {
-      const response = await api.get<{ batch: ImportBatch; rows: ImportRow[]; access: AccessState }>(
+      const response = await api.get<{
+        batch: ImportBatch;
+        rows: ImportRow[];
+        access: AccessState;
+        recoveryProgress?: RecoveryProgress;
+      }>(
         `/student-photo-imports/${id}`,
         PHOTO_IMPORT_REQUEST_CONFIG,
       );
       setBatch(response.data.batch);
       setRows(response.data.rows || []);
       setAccess(response.data.access || null);
+      if (response.data.recoveryProgress !== undefined) {
+        setRecoveryProgress(response.data.recoveryProgress || null);
+      }
       if (options.resetFilter) setFilter('ALL');
       return response.data.batch;
     } catch (error) {
@@ -242,6 +292,8 @@ export function PhotoImportPanel() {
   };
 
   const loadDetail = async (id: string) => {
+    setRecoveryProgress(null);
+    setOperationProgress(null);
     try {
       await refreshDetail(id, { resetFilter: true, showBusy: true });
     } catch {
@@ -262,11 +314,17 @@ export function PhotoImportPanel() {
     setBatch(null);
     setRows([]);
     setAccess(null);
+    setRecoveryProgress(null);
+    setOperationProgress(null);
   }, [schoolId]);
 
   useEffect(() => {
     setExecutionConfirmed(false);
   }, [batch?.id, batch?.status]);
+
+  useEffect(() => {
+    setOperationProgress(null);
+  }, [batch?.id]);
 
   useEffect(() => {
     if (!batch || batch.status !== 'EXECUTING') return undefined;
@@ -297,6 +355,8 @@ export function PhotoImportPanel() {
       setBatch(response.data);
       setRows([]);
       setAccess(null);
+      setRecoveryProgress(null);
+      setOperationProgress(null);
       setDriveFolderUrl('');
       await loadBatches(selectedSchool.id);
       setNotice({ tone: 'ok', text: 'Managed Drive folder bound. The batch is ready to scan.' });
@@ -347,6 +407,14 @@ export function PhotoImportPanel() {
     if (action === 'execute' && !executionConfirmed) return;
     setBusy(action);
     setNotice(null);
+    setOperationProgress(action === 'execute'
+      ? executionOperationProgress(batch)
+      : {
+          label: action === 'scan' ? 'Scanning Drive source' : 'Freezing source snapshot',
+          detail: action === 'scan'
+            ? 'Validating the workbook, image matches, and source checksums…'
+            : 'Confirming the reviewed files have not changed…',
+        });
     try {
       const postAction = () => api.post<ImportBatch>(
         `/student-photo-imports/${batch.id}/${action}`,
@@ -360,6 +428,7 @@ export function PhotoImportPanel() {
         if (action !== 'execute' || !isTimeoutError(error)) throw error;
         current = await refreshDetail(batch.id, { showError: false });
       }
+      if (action === 'execute') setOperationProgress(executionOperationProgress(current));
       while (action === 'execute' && current.status === 'EXECUTING') {
         setBatch(current);
         try {
@@ -368,8 +437,10 @@ export function PhotoImportPanel() {
           if (!isTimeoutError(error)) throw error;
           current = await refreshDetail(batch.id, { showError: false });
         }
+        setOperationProgress(executionOperationProgress(current));
       }
       await loadDetail(batch.id);
+      if (action === 'execute') setOperationProgress(executionOperationProgress(current));
       await loadBatches(batch.schoolId);
       setNotice({
         tone: 'ok',
@@ -379,9 +450,25 @@ export function PhotoImportPanel() {
             ? 'Source snapshot frozen. The batch is ready for execution.'
             : 'Execution finished. Review the applied and failed totals.',
       });
+      if (action !== 'execute') {
+        setOperationProgress({
+          label: action === 'scan' ? 'Drive scan complete' : 'Source snapshot frozen',
+          detail: action === 'scan'
+            ? 'Workbook and image validation results are ready for review.'
+            : 'The reviewed source is locked and ready to execute.',
+          value: 100,
+          valueLabel: '100%',
+          tone: 'complete',
+        });
+      }
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
       if (action === 'execute') await loadDetail(batch.id);
+      setOperationProgress(current => current ? {
+        ...current,
+        detail: `The operation stopped: ${errorMessage(error)}`,
+        tone: 'error',
+      } : null);
     } finally {
       setBusy('');
     }
@@ -421,9 +508,24 @@ export function PhotoImportPanel() {
   const downloadResult = async () => {
     if (!batch) return;
     setBusy('result');
+    setOperationProgress({
+      label: 'Downloading reconciliation result',
+      detail: 'Preparing the batch CSV…',
+    });
     try {
       const response = await api.get(`/student-photo-imports/${batch.id}/result`, {
         responseType: 'blob',
+        onDownloadProgress: event => {
+          const value = event.total ? (event.loaded / event.total) * 100 : undefined;
+          setOperationProgress({
+            label: 'Downloading reconciliation result',
+            detail: event.total
+              ? `${event.loaded.toLocaleString()} of ${event.total.toLocaleString()} bytes received.`
+              : `${event.loaded.toLocaleString()} bytes received; final size is not known yet.`,
+            value,
+            valueLabel: value == null ? `${event.loaded.toLocaleString()} bytes` : `${Math.round(value)}%`,
+          });
+        },
       });
       const url = URL.createObjectURL(response.data);
       const link = document.createElement('a');
@@ -431,8 +533,20 @@ export function PhotoImportPanel() {
       link.download = `student-photo-import-${batch.id}.csv`;
       link.click();
       URL.revokeObjectURL(url);
+      setOperationProgress({
+        label: 'Reconciliation result downloaded',
+        detail: 'The batch CSV is ready in your downloads.',
+        value: 100,
+        valueLabel: '100%',
+        tone: 'complete',
+      });
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
+      setOperationProgress({
+        label: 'Result download stopped',
+        detail: errorMessage(error),
+        tone: 'error',
+      });
     } finally {
       setBusy('');
     }
@@ -448,11 +562,24 @@ export function PhotoImportPanel() {
 
     setBusy('recover');
     setNotice(null);
+    setOperationProgress(null);
+    setRecoveryProgress(current => current || {
+      totalCount: appliedRows.length,
+      processedCount: 0,
+      recoveredCount: 0,
+      protectedCount: 0,
+      failedCount: 0,
+      inProgressCount: 0,
+      pendingCount: appliedRows.length,
+      percentComplete: 0,
+      resumable: true,
+    });
     try {
       const totals = {
         recovered: 0,
         alreadyRecovered: 0,
         inProgress: 0,
+        protected: 0,
         failed: 0,
       };
       for (let offset = 0; offset < appliedRows.length; offset += PHOTO_RECOVERY_CHUNK_SIZE) {
@@ -467,7 +594,20 @@ export function PhotoImportPanel() {
         totals.recovered += response.data.recoveredCount;
         totals.alreadyRecovered += response.data.alreadyRecoveredCount;
         totals.inProgress += response.data.inProgressCount;
+        totals.protected += response.data.protectedCount || 0;
         totals.failed += response.data.failedCount;
+        const locallyProcessed = Math.min(offset + rowIds.length, appliedRows.length);
+        setRecoveryProgress(response.data.progress || {
+          totalCount: appliedRows.length,
+          processedCount: locallyProcessed,
+          recoveredCount: totals.recovered + totals.alreadyRecovered,
+          protectedCount: totals.protected,
+          failedCount: totals.failed,
+          inProgressCount: totals.inProgress,
+          pendingCount: Math.max(0, appliedRows.length - locallyProcessed),
+          percentComplete: Math.round(locallyProcessed * 100 / appliedRows.length),
+          resumable: locallyProcessed < appliedRows.length || totals.failed > 0,
+        });
       }
 
       await refreshDetail(batch.id, { showError: false });
@@ -477,14 +617,18 @@ export function PhotoImportPanel() {
         tone: requiresAttention > 0 ? 'bad' : 'ok',
         text: requiresAttention > 0
           ? `Full-frame recovery completed for ${successful} photo${successful === 1 ? '' : 's'}; `
-            + `${totals.failed} could not be safely replaced and ${totals.inProgress} `
+            + `${totals.protected} newer photo${totals.protected === 1 ? ' was' : 's were'} protected, `
+            + `${totals.failed} failed, and ${totals.inProgress} `
             + `${totals.inProgress === 1 ? 'is' : 'are'} already in progress. `
-            + 'Retry after reviewing Drive access and source files.'
+            + 'Only failed rows need Drive/source review; in-progress rows can be resumed shortly.'
           : `Full-frame recovery completed for ${successful} photo${successful === 1 ? '' : 's'}. `
-            + 'Existing newer photo changes were protected.',
+            + (totals.protected > 0
+              ? `${totals.protected} newer photo${totals.protected === 1 ? ' was' : 's were'} kept untouched.`
+              : 'No newer photo changes were overwritten.'),
       });
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
+      setRecoveryProgress(current => current ? { ...current, resumable: true } : current);
     } finally {
       setBusy('');
     }
@@ -809,7 +953,9 @@ export function PhotoImportPanel() {
                             {busy === 'recover'
                               ? <LoaderCircle className="pi-spin" size={16} />
                               : <RefreshCw size={16} />}
-                            Restore full-frame photos
+                            {recoveryProgress?.resumable && recoveryProgress.processedCount > 0
+                              ? 'Resume full-frame recovery'
+                              : 'Restore full-frame photos'}
                           </button>
                         )}
                         <button className="ck-btn ck-btn-ghost" onClick={downloadResult} disabled={!!busy}>
@@ -824,11 +970,45 @@ export function PhotoImportPanel() {
                         Cancel import
                       </button>
                     )}
-                    <button className="ck-btn ck-btn-ghost" onClick={() => { setBatch(null); setRows([]); setAccess(null); }} disabled={!!busy}>
+                    <button className="ck-btn ck-btn-ghost" onClick={() => {
+                      setBatch(null);
+                      setRows([]);
+                      setAccess(null);
+                      setRecoveryProgress(null);
+                      setOperationProgress(null);
+                    }} disabled={!!busy}>
                       New batch
                     </button>
                   </div>
                 </section>
+
+                {operationProgress && (
+                  <TransferProgress
+                    label={operationProgress.label}
+                    detail={operationProgress.detail}
+                    value={operationProgress.value}
+                    valueLabel={operationProgress.valueLabel}
+                    tone={operationProgress.tone}
+                  />
+                )}
+
+                {recoveryProgress && recoveryProgress.totalCount > 0 && (
+                  <TransferProgress
+                    label={busy === 'recover'
+                      ? 'Restoring full-frame photos'
+                      : recoveryProgress.resumable ? 'Full-frame recovery can resume' : 'Full-frame recovery complete'}
+                    detail={`${recoveryProgress.processedCount} of ${recoveryProgress.totalCount} reviewed: `
+                      + `${recoveryProgress.recoveredCount} restored, ${recoveryProgress.protectedCount} protected, `
+                      + `${recoveryProgress.failedCount} failed, ${recoveryProgress.pendingCount} pending.`}
+                    value={recoveryProgress.percentComplete}
+                    valueLabel={`${recoveryProgress.percentComplete}%`}
+                    tone={busy === 'recover'
+                      ? 'active'
+                      : recoveryProgress.failedCount > 0 ? 'error'
+                        : recoveryProgress.pendingCount === 0 && recoveryProgress.inProgressCount === 0
+                          ? 'complete' : 'active'}
+                  />
+                )}
 
                 {(['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) || access?.overdue) && (
                   <section className={`pi-access-band ${access?.overdue ? 'overdue' : ''}`}>

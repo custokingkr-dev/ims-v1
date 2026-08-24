@@ -1,5 +1,6 @@
 import { DragEvent, useRef, useState } from 'react';
 import api from '../../../services/api';
+import { TransferProgress } from '../../../components/TransferProgress';
 import { ModuleShell } from '../ui';
 import type { PanelKey } from '../config';
 import { StudentModuleTabs } from './StudentModuleTabs';
@@ -216,6 +217,7 @@ export function buildSkippedRowsCsv(rows: SkippedImportRow[]): string {
 export async function attachPhotos(
   insertedStudents: Array<{ admissionNo: string; studentId: number }>,
   stagedByAdmission: Map<string, StagedPhoto>,
+  onProgress?: (progress: { processed: number; total: number; attached: number; skipped: number; pct: number }) => void,
 ): Promise<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> }> {
   const idByAdmission = new Map(insertedStudents.map((s) => [String(s.admissionNo), s.studentId]));
   const jobs: Array<{ admissionNo: string; studentId: number; photo: StagedPhoto }> = [];
@@ -226,7 +228,9 @@ export async function attachPhotos(
   }
 
   let attached = 0;
+  let processed = 0;
   const skipped: Array<{ admissionNo: string; reason: string }> = [];
+  onProgress?.({ processed: 0, total: jobs.length, attached: 0, skipped: 0, pct: jobs.length === 0 ? 100 : 0 });
   const CONCURRENCY = 4;
   let cursor = 0;
   async function worker() {
@@ -246,6 +250,15 @@ export async function attachPhotos(
         const reason = (err as { response?: { data?: { reason?: string } } })?.response?.data?.reason
           || (err instanceof Error ? err.message : 'failed');
         skipped.push({ admissionNo: job.admissionNo, reason });
+      } finally {
+        processed += 1;
+        onProgress?.({
+          processed,
+          total: jobs.length,
+          attached,
+          skipped: skipped.length,
+          pct: jobs.length === 0 ? 100 : Math.round((processed / jobs.length) * 100),
+        });
       }
     }
   }
@@ -264,8 +277,9 @@ export function BulkImportPanel({
   const [bulkImportError, setBulkImportError] = useState('');
   const [bulkImportWarning, setBulkImportWarning] = useState('');
   const [bulkImportFileName, setBulkImportFileName] = useState('');
-  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; dateOfBirth?: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
-  const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; pct?: number; inserted?: number; skipped?: number; skippedRows?: SkippedImportRow[] } | null>(null);
+  const [bulkImportPreview, setBulkImportPreview] = useState<{ fileToken?: string; batchId?: string; jobId?: string; originalFileStored?: boolean; structure?: ImportStructurePreview; rows?: { rowNumber: number; name: string; className: string; sectionName: string; admissionNo: string; dateOfBirth?: string; phone: string; status: string; statusTone: string; description?: string; message?: string }[]; validCount?: number; errorCount?: number; warningCount?: number } | null>(null);
+  const [bulkImportProgress, setBulkImportProgress] = useState<{ done?: boolean; failed?: boolean; status?: string; phase?: string; pct?: number; processedRows?: number; totalRows?: number; inserted?: number; skipped?: number; message?: string; skippedRows?: SkippedImportRow[] } | null>(null);
+  const [photoUploadProgress, setPhotoUploadProgress] = useState<{ processed: number; total: number; attached: number; skipped: number; pct: number } | null>(null);
   const [bulkImportToast, setBulkImportToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoReport, setPhotoReport] = useState<{ attached: number; skipped: Array<{ admissionNo: string; reason: string }> } | null>(null);
   const [saving, setSaving] = useState('');
@@ -311,6 +325,7 @@ export function BulkImportPanel({
     setBulkImportWarning('');
     setBulkImportToast(null);
     setBulkImportProgress(null);
+    setPhotoUploadProgress(null);
     setPhotoReport(null);
     if (!(ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.ods') || ext.endsWith('.csv'))) { setBulkImportError('Only .xlsx, .xls, .ods, and .csv files are supported.'); return; }
     if (file.size > 50 * 1024 * 1024) { setBulkImportError('Maximum file size is 50 MB.'); return; }
@@ -416,8 +431,43 @@ export function BulkImportPanel({
     try {
       setSaving('bulk-import-confirm');
       setBulkImportToast(null);
-      const confirmRes = await api.post<{ jobId?: string }>('/students/import/confirm', { fileToken: bulkImportPreview.fileToken });
-      const jobId = (confirmRes.data as { jobId?: string })?.jobId;
+      const previewJobId = bulkImportPreview.jobId;
+      let settled = false;
+      const trackedConfirm = api.post<{ jobId?: string }>('/students/import/confirm', { fileToken: bulkImportPreview.fileToken })
+        .then(response => {
+          settled = true;
+          return { response, error: null as unknown };
+        }, error => {
+          settled = true;
+          return { response: null, error };
+        });
+      if (previewJobId) {
+        setBulkImportProgress({
+          done: false,
+          status: 'RUNNING',
+          phase: 'IMPORTING',
+          pct: 0,
+          processedRows: 0,
+          totalRows: bulkImportPreview.rows?.length || 0,
+          inserted: 0,
+          skipped: 0,
+        });
+        while (!settled) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+          if (settled) break;
+          const statusRes = await api.get<typeof bulkImportProgress>(
+            `/students/import/status/${encodeURIComponent(previewJobId)}`,
+          );
+          if (statusRes.data) setBulkImportProgress(statusRes.data);
+          if (statusRes.data?.failed) {
+            throw new Error(statusRes.data.message || 'Import failed.');
+          }
+        }
+      }
+      const confirmOutcome = await trackedConfirm;
+      if (confirmOutcome.error) throw confirmOutcome.error;
+      const confirmRes = confirmOutcome.response!;
+      const jobId = (confirmRes.data as { jobId?: string })?.jobId || previewJobId;
       const insertedStudents = (confirmRes.data as { insertedStudents?: Array<{ admissionNo: string; studentId: number }> })?.insertedStudents || [];
       if (!jobId) {
         // Backend returned a synchronous inline result — no job polling needed
@@ -439,8 +489,9 @@ export function BulkImportPanel({
       await onRefresh();
       if (stagedPhotosRef.current.size > 0 && insertedStudents.length > 0) {
         setSaving('photos');
+        setPhotoUploadProgress({ processed: 0, total: insertedStudents.length, attached: 0, skipped: 0, pct: 0 });
         try {
-          const report = await attachPhotos(insertedStudents, stagedPhotosRef.current);
+          const report = await attachPhotos(insertedStudents, stagedPhotosRef.current, setPhotoUploadProgress);
           setPhotoReport(report);
         } catch (photoErr: unknown) {
           setPhotoReport({ attached: 0, skipped: [{ admissionNo: '', reason: 'photo upload failed' }] });
@@ -578,7 +629,30 @@ export function BulkImportPanel({
           </div>
         </div>
       ) : null}
-      {bulkImportProgress ? <div className="ck-card" style={{ marginTop: 16 }}><div className="ck-form-body"><div className="ck-progress-wrap"><div className="ck-progress-label"><span>Import progress</span><strong>{bulkImportProgress.pct}%</strong></div><div className="ck-progress-bar"><div className="ck-progress-fill" style={{ width: `${bulkImportProgress.pct || 0}%` }} /></div></div>{bulkImportProgress.done ? <div className="ts">Done · {bulkImportProgress.inserted} inserted · {bulkImportProgress.skipped} skipped</div> : null}</div></div> : null}
+      {bulkImportProgress ? (
+        <div style={{ marginTop: 16 }}>
+          <TransferProgress
+            label="Student import progress"
+            value={bulkImportProgress.pct ?? 0}
+            ariaValueText={`${bulkImportProgress.processedRows ?? 0} of ${bulkImportProgress.totalRows ?? bulkImportPreview?.rows?.length ?? 0} rows processed`}
+            detail={bulkImportProgress.done
+              ? `${bulkImportProgress.inserted ?? 0} inserted · ${bulkImportProgress.skipped ?? 0} skipped`
+              : `${bulkImportProgress.processedRows ?? 0} of ${bulkImportProgress.totalRows ?? bulkImportPreview?.rows?.length ?? 0} rows processed`}
+            tone={bulkImportProgress.failed ? 'error' : bulkImportProgress.done ? 'complete' : 'active'}
+          />
+        </div>
+      ) : null}
+      {photoUploadProgress ? (
+        <div style={{ marginTop: 16 }}>
+          <TransferProgress
+            label="Student photo upload progress"
+            value={photoUploadProgress.pct}
+            ariaValueText={`${photoUploadProgress.processed} of ${photoUploadProgress.total} photos processed`}
+            detail={`${photoUploadProgress.processed} of ${photoUploadProgress.total} photos · ${photoUploadProgress.attached} attached · ${photoUploadProgress.skipped} skipped`}
+            tone={photoUploadProgress.pct === 100 ? 'complete' : 'active'}
+          />
+        </div>
+      ) : null}
       {bulkImportPreview ? (
         <div className="ck-card ck-import-preview" style={{ marginTop: 16 }}>
           <div className="ck-card-h">

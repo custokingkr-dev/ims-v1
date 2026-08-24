@@ -148,13 +148,62 @@ describe('BulkImportPanel Excel format', () => {
     ]);
     const inserted = [{ admissionNo: 'A-1', studentId: 11 }, { admissionNo: 'A-2', studentId: 22 }];
 
-    const report = await attachPhotos(inserted, stagedByAdmission);
+    const progress: Array<{ processed: number; total: number; attached: number; skipped: number; pct: number }> = [];
+    const report = await attachPhotos(inserted, stagedByAdmission, update => progress.push(update));
 
     expect(report.attached).toBe(2);
     // embedded -> multipart to /students/11/photo
     expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData), expect.objectContaining({ headers: expect.any(Object) }));
     // link -> /students/22/photo-from-url
     expect(api.post).toHaveBeenCalledWith('/students/22/photo-from-url', { url: 'https://cdn/x.jpg' });
+    expect(progress[progress.length - 1]).toEqual({ processed: 2, total: 2, attached: 2, skipped: 0, pct: 100 });
+  });
+
+  it('shows exact row progress while the confirmation request is still running', async () => {
+    vi.mocked(api.post).mockReset();
+    vi.mocked(api.get).mockReset();
+    let finishConfirm: ((value: { data: Record<string, unknown> }) => void) | undefined;
+    const confirmPending = new Promise<{ data: Record<string, unknown> }>(resolve => {
+      finishConfirm = resolve;
+    });
+    vi.mocked(api.post).mockImplementation((url: string) => {
+      if (url === '/students/import/upload-preview') {
+        return Promise.resolve({
+          data: {
+            rows: [{ rowNumber: 2, name: 'Aya', className: '1', sectionName: 'A', admissionNo: 'A-1', phone: '', status: 'Valid', statusTone: 'sg' }],
+            validCount: 1,
+            errorCount: 0,
+            warningCount: 0,
+            fileToken: 'preview-token',
+            jobId: 'job-live',
+          },
+        });
+      }
+      if (url === '/students/import/confirm') return confirmPending;
+      return Promise.resolve({ data: {} });
+    });
+    vi.mocked(api.get).mockResolvedValue({
+      data: { done: false, status: 'RUNNING', phase: 'IMPORTING', pct: 40, processedRows: 2, totalRows: 5, inserted: 2, skipped: 0 },
+    });
+
+    render(<BulkImportPanel onRefresh={vi.fn()} />);
+    await userEvent.upload(
+      document.querySelector('input[type=file]') as HTMLInputElement,
+      new File(['Name,Class,Section,AdmissionNo\nAya,1,A,A-1'], 'roster.csv', { type: 'text/csv' }),
+    );
+    await userEvent.click(await screen.findByRole('button', { name: /import 1 valid rows/i }));
+
+    await waitFor(() => expect(api.get).toHaveBeenCalledWith('/students/import/status/job-live'));
+    const progressbar = screen.getByRole('progressbar', { name: 'Student import progress' });
+    expect(progressbar).toHaveAttribute('aria-valuenow', '40');
+    expect(progressbar).toHaveAttribute('aria-valuetext', '2 of 5 rows processed');
+
+    vi.mocked(api.get).mockResolvedValue({
+      data: { done: true, status: 'COMPLETED', phase: 'COMPLETED', pct: 100, processedRows: 5, totalRows: 5, inserted: 5, skipped: 0 },
+    });
+    finishConfirm?.({ data: { jobId: 'job-live', inserted: 5, skipped: 0, insertedStudents: [] } });
+
+    await waitFor(() => expect(progressbar).toHaveAttribute('aria-valuenow', '100'));
   });
 
   it('uses PhotoUrl when the optional Photo column is blank', async () => {
@@ -244,6 +293,6 @@ describe('BulkImportPanel Excel format', () => {
     await userEvent.click(screen.getByRole('button', { name: /import 1 valid rows/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/students/11/photo', expect.any(FormData), expect.any(Object)));
-    await screen.findByText(/1 photo/i); // photo report line
+    expect((await screen.findAllByText(/1 photo/i)).length).toBeGreaterThan(0);
   });
 });

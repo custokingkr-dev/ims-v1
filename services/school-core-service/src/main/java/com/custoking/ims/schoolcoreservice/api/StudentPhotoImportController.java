@@ -156,6 +156,14 @@ public class StudentPhotoImportController {
         return service.recoverAppliedRows(id, request.rowIds());
     }
 
+    @GetMapping("/{id}/recovery-progress")
+    public Object recoveryProgress(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable UUID id) {
+        requireToken(token, "student:read");
+        return service.recoveryProgress(id);
+    }
+
     @GetMapping("/{batchId}/rows/{rowId}/preview")
     public ResponseEntity<byte[]> preview(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,

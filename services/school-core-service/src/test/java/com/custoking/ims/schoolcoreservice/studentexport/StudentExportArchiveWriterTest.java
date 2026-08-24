@@ -14,6 +14,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -107,6 +108,30 @@ class StudentExportArchiveWriterTest {
         assertThat(StudentExportArchiveWriter.safeFileStem(" ADM/42:*? ", 9L)).isEqualTo("ADM_42___");
         assertThat(StudentExportArchiveWriter.safeFileStem("NUL", 9L)).isEqualTo("_NUL");
         assertThat(StudentExportArchiveWriter.safeFileStem("   ", 9L)).isEqualTo("student-9");
+    }
+
+    @Test
+    void reportsBoundedPhotoWorkbookAndFinalizationProgress() throws Exception {
+        StudentPhotoStorage storage = mock(StudentPhotoStorage.class);
+        ExportData data = new ExportData(
+                new School(7L, "Green Valley School", "GVS"),
+                List.of(
+                        student(1L, "ADM-001", "Aarav Rao", null),
+                        student(2L, "ADM-002", "Diya Shah", null)));
+        List<StudentExportArchiveWriter.Progress> progress = new ArrayList<>();
+
+        new StudentExportArchiveWriter(storage).write(data, new ByteArrayOutputStream(), progress::add);
+
+        assertThat(progress).isNotEmpty();
+        assertThat(progress)
+                .extracting(StudentExportArchiveWriter.Progress::phase)
+                .contains("PHOTOS", "WORKBOOK", "FINALIZING");
+        assertThat(progress.getLast().percent()).isEqualTo(98);
+        assertThat(progress.getLast().processedStudents()).isEqualTo(2);
+        assertThat(progress.getLast().missingPhotoCount()).isEqualTo(2);
+        assertThat(progress)
+                .extracting(StudentExportArchiveWriter.Progress::percent)
+                .allMatch(percent -> percent >= 0 && percent <= 98);
     }
 
     private static Student student(long id, String admission, String name, String photo) {

@@ -4,6 +4,7 @@ import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -45,11 +46,17 @@ public class StudentReadRepository {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
+    private StudentImportProgressStore importProgress;
 
     public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
+    }
+
+    @Autowired(required = false)
+    void setImportProgress(StudentImportProgressStore importProgress) {
+        this.importProgress = importProgress;
     }
 
     public List<StudentRow> list(Long schoolId, String classId, String sectionId, int limit) {
@@ -771,6 +778,7 @@ public class StudentReadRepository {
         if (rawRows.size() > 500) throw new IllegalArgumentException("Maximum 500 rows per import");
 
         String batchId = UUID.randomUUID().toString();
+        String jobId = UUID.randomUUID().toString();
         String fileToken = UUID.randomUUID().toString();
         ImportFileEvidence fileEvidence = importFileEvidence(schoolStorageId, batchId, request);
         Map<String, Object> structure = importStructureAnalysis(rawRows, schoolId);
@@ -814,18 +822,19 @@ public class StudentReadRepository {
         }
         jdbc.sql("""
                         INSERT INTO student.import_batches
-                            (id, file_token, total_rows, valid_count, error_count, warning_count,
+                            (id, file_token, job_id, total_rows, valid_count, error_count, warning_count,
                              status, pct, inserted, skipped, created_at, school_id,
                              original_file_name, original_file_sha256, original_file_size,
                              original_file_content_type, original_file_object_path, uploaded_by)
                         VALUES
-                            (:id, :fileToken, :totalRows, :validCount, :errorCount, :warningCount,
+                            (:id, :fileToken, :jobId, :totalRows, :validCount, :errorCount, :warningCount,
                              'PREVIEWED', 0, 0, 0, :createdAt, :schoolId,
                              :originalFileName, :originalFileSha256, :originalFileSize,
                              :originalFileContentType, :originalFileObjectPath, :uploadedBy)
                         """)
                 .param("id", batchId)
                 .param("fileToken", fileToken)
+                .param("jobId", jobId)
                 .param("totalRows", rawRows.size())
                 .param("validCount", valid)
                 .param("errorCount", errors)
@@ -838,6 +847,18 @@ public class StudentReadRepository {
                 .param("originalFileContentType", fileEvidence.contentType())
                 .param("originalFileObjectPath", fileEvidence.objectPath())
                 .param("uploadedBy", actorId())
+                .update();
+        jdbc.sql("""
+                        INSERT INTO student.import_job_progress (
+                            job_id, batch_id, school_id, status, phase, total_rows,
+                            processed_rows, inserted, skipped, percent_complete)
+                        VALUES (:jobId, :batchId, :schoolId, 'READY', 'READY', :totalRows,
+                                0, 0, 0, 0)
+                        """)
+                .param("jobId", jobId)
+                .param("batchId", batchId)
+                .param("schoolId", schoolId)
+                .param("totalRows", rawRows.size())
                 .update();
         for (int i = 0; i < rawRows.size(); i++) {
             Map<String, Object> normalized = normalizedRows.get(i);
@@ -864,7 +885,7 @@ public class StudentReadRepository {
                     .param("schoolId", schoolId)
                     .update();
         }
-        return row("rows", previewRows, "fileToken", fileToken,
+        return row("rows", previewRows, "fileToken", fileToken, "jobId", jobId,
                 "validCount", valid, "errorCount", errors, "warningCount", warnings,
                 "batchId", batchId,
                 "originalFileStored", fileEvidence.objectPath() != null,
@@ -909,14 +930,19 @@ public class StudentReadRepository {
                 .param("batchId", batchId)
                 .update();
         List<ImportRow> rows = importRows(schoolId, batchId, null, 1000);
+        startImportProgress(jobId, batchId, schoolId, rows.size());
+        registerImportProgressFailureOnRollback(jobId, schoolId);
         int inserted = 0;
         int skipped = 0;
+        int processed = 0;
         List<Map<String, Object>> skippedRows = new ArrayList<>();
         List<Map<String, Object>> insertedStudents = new ArrayList<>();
         for (ImportRow row : rows) {
             if (!"Valid".equalsIgnoreCase(row.status()) && !"Warning".equalsIgnoreCase(row.status())) {
                 skipped++;
                 skippedRows.add(importSkippedRow(row, row.message()));
+                processed++;
+                updateImportProgress(jobId, schoolId, rows.size(), processed, inserted, skipped);
                 continue;
             }
             try {
@@ -952,6 +978,8 @@ public class StudentReadRepository {
                         .update();
                 skippedRows.add(importSkippedRow(row, reason));
             }
+            processed++;
+            updateImportProgress(jobId, schoolId, rows.size(), processed, inserted, skipped);
         }
         jdbc.sql("""
                         UPDATE student.import_batches
@@ -967,6 +995,7 @@ public class StudentReadRepository {
                 .param("verifiedStudentCount", inserted)
                 .param("batchId", batchId)
                 .update();
+        completeImportProgressAfterCommit(jobId, schoolId, rows.size(), inserted, skipped);
         return row("batchId", batchId,
                 "jobId", jobId,
                 "schoolId", schoolId,
@@ -1006,6 +1035,12 @@ public class StudentReadRepository {
     }
 
     public Map<String, Object> importStatus(String jobId, Long schoolId) {
+        if (importProgress != null) {
+            Map<String, Object> live = importProgress.status(jobId, schoolId);
+            if (live != null && !Boolean.TRUE.equals(live.get("done"))) {
+                return live;
+            }
+        }
         ImportBatchRow batch = jdbc.sql("""
                         SELECT id, file_token, job_id, total_rows, valid_count, error_count,
                                warning_count, status, pct, inserted, skipped, skipped_json,
@@ -1022,6 +1057,65 @@ public class StudentReadRepository {
         List<Map<String, Object>> skippedRows = parseSkippedImportRows(batch.skippedJson());
         return row("pct", batch.pct(), "done", "DONE".equalsIgnoreCase(batch.status()),
                 "inserted", batch.inserted(), "skipped", batch.skipped(), "skippedRows", skippedRows);
+    }
+
+    private void startImportProgress(String jobId, String batchId, long schoolId, int totalRows) {
+        if (importProgress == null) return;
+        try {
+            importProgress.start(jobId, batchId, schoolId, totalRows);
+        } catch (RuntimeException ignored) {
+            // Progress reporting must never block the import itself.
+        }
+    }
+
+    private void updateImportProgress(String jobId, long schoolId, int totalRows, int processed,
+                                      int inserted, int skipped) {
+        if (importProgress == null) return;
+        try {
+            importProgress.update(jobId, schoolId, totalRows, processed, inserted, skipped);
+        } catch (RuntimeException ignored) {
+            // The import remains authoritative if a transient progress write fails.
+        }
+    }
+
+    private void completeImportProgressAfterCommit(String jobId, long schoolId, int totalRows,
+                                                   int inserted, int skipped) {
+        Runnable completion = () -> completeImportProgress(jobId, schoolId, totalRows, inserted, skipped);
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    completion.run();
+                }
+            });
+        } else {
+            completion.run();
+        }
+    }
+
+    private void registerImportProgressFailureOnRollback(String jobId, long schoolId) {
+        if (importProgress == null || !TransactionSynchronizationManager.isActualTransactionActive()) return;
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == TransactionSynchronization.STATUS_COMMITTED) return;
+                try {
+                    importProgress.fail(jobId, schoolId, "Import stopped before completion; it can be retried safely");
+                } catch (RuntimeException ignored) {
+                    // The preview and canonical batch remain available even if failure reporting is unavailable.
+                }
+            }
+        });
+    }
+
+    private void completeImportProgress(String jobId, long schoolId, int totalRows,
+                                        int inserted, int skipped) {
+        if (importProgress == null) return;
+        try {
+            importProgress.complete(jobId, schoolId, totalRows, inserted, skipped);
+        } catch (RuntimeException ignored) {
+            // Completion still persists on the canonical import batch row.
+        }
     }
 
     private List<Map<String, Object>> parseSkippedImportRows(String skippedJson) {

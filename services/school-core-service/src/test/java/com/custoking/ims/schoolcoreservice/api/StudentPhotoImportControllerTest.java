@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api;
 
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportService;
+import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryProgress;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -8,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import java.util.List;
 
@@ -60,12 +62,26 @@ class StudentPhotoImportControllerTest {
         UUID rowId = UUID.randomUUID();
         var request = new StudentPhotoImportController.RecoverAppliedPhotosRequest(List.of(rowId));
         var expected = new PhotoImportService.RecoveryBatchResult(
-                batchId, 7L, 1, 1, 0, 0, 0, List.of());
+                batchId, 7L, 1, 1, 0, 0, 0, 0, List.of(), null);
         when(service.recoverAppliedRows(batchId, List.of(rowId))).thenReturn(expected);
 
         var result = controller.recover("student-token", batchId, request);
 
         assertThat(result).isSameAs(expected);
         verify(service).recoverAppliedRows(batchId, List.of(rowId));
+    }
+
+    @Test
+    void recoveryProgressIsAvailableForRefreshAndResume() {
+        UUID batchId = UUID.randomUUID();
+        var expected = new RecoveryProgress(
+                batchId, 7L, 12, 8, 7, 1, 0, 1, 3, 67, true,
+                OffsetDateTime.parse("2026-08-24T00:00:00Z"));
+        when(service.recoveryProgress(batchId)).thenReturn(expected);
+
+        var result = controller.recoveryProgress("student-token", batchId);
+
+        assertThat(result).isSameAs(expected);
+        verify(service).recoveryProgress(batchId);
     }
 }

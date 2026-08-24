@@ -3,6 +3,7 @@ package com.custoking.ims.schoolcoreservice.api;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.studentexport.StudentExportRepository.SchoolOption;
 import com.custoking.ims.schoolcoreservice.studentexport.StudentExportService;
+import com.custoking.ims.schoolcoreservice.studentexport.StudentExportService.ExportProgress;
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -12,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -82,5 +84,24 @@ class StudentExportControllerTest {
                     assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
                     assertThat(response.getReason()).contains("student:export");
                 });
+    }
+
+    @Test
+    void progressIsScopedToTheOperatorsAssignedSchool() {
+        UUID exportId = UUID.randomUUID();
+        TenantContext.set(new TenantContext(22L, "ops@example.com", "OPERATIONS", null, null,
+                Set.of(7L), Set.of("student:export")));
+        ExportProgress expected = new ExportProgress(
+                exportId, "STARTED", 45, "PHOTOS", 50, 100, 48, 2, null);
+        when(exports.progress(exportId, 7L)).thenReturn(expected);
+
+        assertThat(controller.progress("student-token", exportId, 7L)).isEqualTo(expected);
+        verify(exports).progress(exportId, 7L);
+
+        assertThatThrownBy(() -> controller.progress("student-token", exportId, 8L))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+        verify(exports, never()).progress(exportId, 8L);
     }
 }
