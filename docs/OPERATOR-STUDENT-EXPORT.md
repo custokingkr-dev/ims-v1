@@ -18,7 +18,9 @@ to that operator. The result is suitable for handing to an ID-card photographer:
 
 The Excel file contains one row for every active (not deleted) student. `Photo Filename` is the
 exact corresponding file name and `Photo Status` is `Exported` or `Missing`. A missing photo does
-not remove the student row.
+not remove the student row. Each exported photo is copied from its current private stored object
+byte for byte; export does not resize, crop, re-encode, or otherwise change the image. The file
+extension is selected from the stored content type and the exact filename is recorded in Excel.
 
 ## Verified local worktree state
 
@@ -128,10 +130,11 @@ recorded in the workbook.
   seconds to match school-core; a timeout setting has no standing cost.
 - The gateway already streams upstream response chunks, so it does not buffer the ZIP.
 
-For a 10,000-student school, archive size is dominated by the already-normalized 512-pixel
-portraits. A dev load test with representative production photo sizes and object count is still
-required before production release; source inspection alone cannot prove the actual GCS latency
-distribution.
+For a 10,000-student school, archive size is dominated by the stored portraits. Newly processed
+portraits preserve their source aspect ratio and have a longest edge of at most 512 pixels, and the
+exporter copies those stored bytes unchanged. A dev load test with representative production photo
+sizes and object count is still required before production release; source inspection alone cannot
+prove the actual GCS latency distribution.
 
 ## Audit and privacy
 

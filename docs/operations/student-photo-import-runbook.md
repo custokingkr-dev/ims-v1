@@ -54,12 +54,14 @@ returns `FAILED` or `NOT_CONFIGURED` remains valid but is shown as **Action need
    hidden report/reference sheets are ignored, but multiple visible mapping sheets are
    rejected. CSV and TSV files must use UTF-8. Every format uses the exact headings
    `AdmissionNo`, `Name`, `Class`, `Section`, and `ImageNo`. A batch can contain up to 1000 mapping rows.
-   Each source image can be up to 20 MB; execution reduces the stored student portrait
-   to a normalized JPEG without modifying the original Drive file.
+   Each source image can be up to 20 MB. Execution applies the source EXIF orientation,
+   preserves the complete source frame and aspect ratio, bounds the longest edge to 512 pixels,
+   and stores a metadata-stripped JPEG without modifying the original Drive file.
 4. Start a manual import and scan the folder.
 5. Review the immutable school/year scope and validation totals.
-6. Correct admission/image identifiers, exclude intentionally blank rows, adjust crop
-   focus where necessary, and preview the processed portrait.
+6. Correct admission/image identifiers, exclude intentionally blank rows, and preview the
+   full-frame processed portrait. Legacy crop coordinates can still appear in API/data records
+   for compatibility, but they do not crop the preview or stored photo.
 7. Resolve all errors and freeze the batch. A changed Drive snapshot requires a rescan.
 8. Confirm the displayed school, year, and ready count, then execute. Execution uses
    bounded chunks and can be resumed after an interrupted browser request.
@@ -85,17 +87,32 @@ replace the workbook or images before creating a new job.
 - OAuth `invalid_grant`: generate a new offline refresh token, add a new Secret Manager
   version, redeploy school-core, and disable the compromised/expired secret version.
 
+### Recovering photos imported with the former crop behavior
+
+For a terminal batch with applied rows, use **Restore full-frame photos** in the Photo imports
+screen. Recovery downloads each selected row's retained Drive file ID, verifies the retained
+source metadata and checksum, applies EXIF orientation, and writes a new aspect-ratio-preserving
+JPEG with a longest edge of at most 512 pixels. Requests are sent in batches of at most 100 rows.
+
+Recovery is audited and idempotent: repeating a completed recovery does not download or rewrite
+the photo. It refuses to overwrite a student photo that has changed since that import, and it
+reports a failure when the retained Drive original is missing, changed, or inaccessible. Resolve
+those rows individually; do not replace newer/manual student photos merely to make the recovery
+count reach zero.
+
 Do not delete batch or row records to unblock an import. Cancel the batch through the UI
 so the audit event and operator identity are retained.
 
 ## Evidence And Privacy
 
-The database retains the workbook mapping, Drive metadata, snapshot hash, crop values,
-prior/final photo keys, outcomes, and operator timestamps. When the private photo bucket
-is configured, the original workbook remains under the school-scoped import evidence prefix.
+The database retains the workbook mapping, Drive metadata, snapshot hash, legacy crop values,
+prior/final photo keys, recovery audit, outcomes, and operator timestamps. Legacy crop values are
+retained for compatibility but are not used when processing or recovering photos. When the private
+photo bucket is configured, the original workbook remains under the school-scoped import evidence prefix.
 Applied source images are retained for 14 days under the isolated
 `temporary/photo-imports/` prefix, then deleted by bucket lifecycle. Final student images are
-normalized 512 by 512 JPEGs with metadata removed and remain under
+EXIF-oriented, metadata-stripped JPEGs that preserve the complete source aspect ratio and have a
+longest edge of at most 512 pixels. They remain under
 `schools/<school-storage-id>/students/<student-id>/photos/`; the temporary lifecycle cannot match
 that permanent prefix. The original camera file also remains in the controlled Google Drive
 intake until Operations archives or removes it.
@@ -110,7 +127,7 @@ Before promotion to PROD, complete one 30 to 50 student DEV pilot and attach evi
 
 - correct school and academic-year folder binding;
 - blank and invalid image numbers held without student changes;
-- one manual remap, one exclusion, and left/right crop previews;
+- one manual remap, one exclusion, and portrait/landscape full-frame previews;
 - freeze rejects a changed Drive snapshot;
 - successful execution, CSV export, retry/cancel behavior, and access revocation;
 - no cross-school access using an Operations account assigned to another school;

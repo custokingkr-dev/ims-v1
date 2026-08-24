@@ -546,7 +546,7 @@
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 50%;
+  border-radius: 8px;
   background: var(--g1);
   color: var(--g);
   font-size: 9px;
