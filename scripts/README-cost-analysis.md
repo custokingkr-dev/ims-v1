@@ -27,11 +27,52 @@ So cost is reconstructed from usage instead.
 ## Running it
 
 ```bash
-node scripts/cost-analysis-collect.mjs              # yesterday
-node scripts/cost-analysis-collect.mjs 2026-08-18 2026-08-19   # a range, replaces those days
+python scripts/cost-analysis-collect.py                         # yesterday
+python scripts/cost-analysis-collect.py 2026-08-18 2026-08-19  # selected days
 ```
 
-A single day appends. A range replaces, so re-running corrects rather than duplicates.
+Each selected day is deleted and reloaded independently, so re-running corrects rather than duplicates.
+The production Cloud Run job runs the same Python file daily; workstation and scheduled results therefore
+share one implementation.
+
+## Viewing the report
+
+The current estimate is available without the billing export:
+
+```sql
+SELECT *
+FROM `custoking-prod.cost_analysis.v_daily_cost`
+ORDER BY usage_date DESC
+LIMIT 90;
+
+SELECT *
+FROM `custoking-prod.cost_analysis.v_service_cost`
+ORDER BY inr_per_day DESC
+LIMIT 200;
+```
+
+When the standard usage-cost export is available, this is the authoritative month-to-date cut by
+project, service, and SKU. Replace `BILLING_EXPORT_PROJECT` with the project named in the Billing & Cost
+dashboard's reporting-sources panel:
+
+```sql
+SELECT
+  project.id AS project_id,
+  service.description AS service,
+  sku.description AS sku,
+  currency,
+  ROUND(SUM(cost), 4) AS gross_cost,
+  ROUND(SUM(cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)), 4) AS net_cost,
+  MAX(export_time) AS newest_export
+FROM `BILLING_EXPORT_PROJECT.billing_export.gcp_billing_export_v1_*`
+WHERE DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH)
+GROUP BY 1, 2, 3, 4
+ORDER BY gross_cost DESC;
+```
+
+Do not union these sources into one total. The standard export is invoice-grade Google billing data;
+`cost_analysis` is the explicitly labelled fallback for operational decisions while that source is late
+or unavailable.
 
 ## What it is and is not
 
@@ -53,5 +94,5 @@ Per-service attribution mostly confirms the shape the unit-economics work predic
 ~93% of spend and every application service costs under INR 1.15/day. Optimising application code has
 almost no effect on the bill. The floor is the whole problem.
 
-Rates are pinned to asia-south2 SKU prices as of 2026-08-19, in `scripts/cost-analysis-collect.mjs`
+Rates are pinned to asia-south2 SKU prices as of 2026-08-19, in `scripts/cost-analysis-collect.py`
 and `tools/live-dashboard/cost.mjs`. Re-check them if the pricing export is ever re-enabled.

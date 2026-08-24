@@ -39,6 +39,127 @@ SCOPE="${COST_METRIC_SCOPE_PROJECT:-$PUBLISH_PROJECT}"  # whose spend to report;
 
 echo "read=${BQ_PROJECT}.${DATASET}  scope=${SCOPE}  publish=${PUBLISH_PROJECT}"
 
+# Export health is published even before the standard usage table exists. This is important because a
+# newly configured billing export can take many hours to create gcp_billing_export_v1_*, while a dataset
+# containing only cloud_pricing_export looks deceptively healthy in the BigQuery console. The dashboard
+# can use export_available=0 and export_lag_hours=-1 to show that spend is not ready yet instead of
+# leaving an old cost value on screen with no explanation.
+TOKEN=$(gcloud auth print-access-token)
+export TOKEN
+NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_date; do
+  curl -s -o /dev/null -X POST \
+    "https://monitoring.googleapis.com/v3/projects/${PUBLISH_PROJECT}/metricDescriptors" \
+    -H "Authorization: Bearer ${TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{\"type\":\"custom.googleapis.com/custoking/cost/${SUFFIX}\",
+         \"metricKind\":\"GAUGE\",\"valueType\":\"DOUBLE\",
+         \"description\":\"Billing-export spend (${SUFFIX}) for this project.\",
+         \"labels\":[{\"key\":\"billing_account\",\"valueType\":\"STRING\"},
+                    {\"key\":\"project_id\",\"valueType\":\"STRING\"},
+                    {\"key\":\"currency\",\"valueType\":\"STRING\"}]}" || true
+done
+
+for HEALTH_DESCRIPTOR in \
+  'export_available|1 when standard billing usage data exists for the requested project; otherwise 0.' \
+  'export_lag_hours|Hours since the newest standard billing export row; -1 when no matching row exists.'; do
+  SUFFIX="${HEALTH_DESCRIPTOR%%|*}"
+  DESCRIPTION="${HEALTH_DESCRIPTOR#*|}"
+  curl -s -o /dev/null -X POST \
+    "https://monitoring.googleapis.com/v3/projects/${PUBLISH_PROJECT}/metricDescriptors" \
+    -H "Authorization: Bearer ${TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "{\"type\":\"custom.googleapis.com/custoking/cost/${SUFFIX}\",
+         \"metricKind\":\"GAUGE\",\"valueType\":\"DOUBLE\",
+         \"description\":\"${DESCRIPTION}\",
+         \"labels\":[{\"key\":\"project_id\",\"valueType\":\"STRING\"},
+                    {\"key\":\"read_project\",\"valueType\":\"STRING\"},
+                    {\"key\":\"dataset\",\"valueType\":\"STRING\"}]}" || true
+done
+
+publish_export_health() {
+  local available="$1"
+  local lag_hours="$2"
+  local payload response http_code body
+
+  payload=$(python3 - "${PUBLISH_PROJECT}" "${NOW}" "${SCOPE}" "${BQ_PROJECT}" "${DATASET}" \
+    "${available}" "${lag_hours}" <<'PY'
+import json
+import sys
+
+project, now, scope, read_project, dataset, available, lag_hours = sys.argv[1:]
+labels = {
+    "project_id": scope,
+    "read_project": read_project,
+    "dataset": dataset,
+}
+
+def series(suffix, value):
+    return {
+        "metric": {
+            "type": "custom.googleapis.com/custoking/cost/" + suffix,
+            "labels": labels,
+        },
+        "resource": {"type": "global", "labels": {"project_id": project}},
+        "points": [{"interval": {"endTime": now}, "value": {"doubleValue": float(value)}}],
+    }
+
+print(json.dumps({"timeSeries": [
+    series("export_available", available),
+    series("export_lag_hours", lag_hours),
+]}))
+PY
+  )
+
+  response=$(curl -sS -w $'\n%{http_code}' -X POST \
+    "https://monitoring.googleapis.com/v3/projects/${PUBLISH_PROJECT}/timeSeries" \
+    -H "Authorization: Bearer ${TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "${payload}")
+  http_code="${response##*$'\n'}"
+  body="${response%$'\n'*}"
+  if [ "${http_code}" != "200" ] && [ "${http_code}" != "204" ]; then
+    echo "ERROR: monitoring health write failed (${http_code}): ${body:0:400}" >&2
+    return 1
+  fi
+  echo "published export health: available=${available} lag_hours=${lag_hours}"
+}
+
+# Query INFORMATION_SCHEMA instead of probing the wildcard directly. BigQuery treats a wildcard with no
+# matching table as a hard query error, which previously terminated the job before it could explain that
+# only the pricing export existed. This inventory query remains valid as soon as the dataset exists.
+read -r -d '' INVENTORY_QUERY <<SQL || true
+SELECT
+  COUNTIF(STARTS_WITH(table_name, 'gcp_billing_export_v1_')) AS standard_table_count,
+  COUNTIF(STARTS_WITH(table_name, 'cloud_pricing_export')) AS pricing_table_count
+FROM \`${BQ_PROJECT}.${DATASET}.INFORMATION_SCHEMA.TABLES\`
+SQL
+
+INVENTORY_ERROR=$(mktemp)
+trap 'rm -f "${INVENTORY_ERROR}"' EXIT
+if ! INVENTORY=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet \
+  "${INVENTORY_QUERY}" 2>"${INVENTORY_ERROR}"); then
+  echo "ERROR: unable to inspect billing export dataset ${BQ_PROJECT}.${DATASET}." >&2
+  sed 's/^/       /' "${INVENTORY_ERROR}" >&2
+  publish_export_health 0 -1 || true
+  exit 1
+fi
+
+STANDARD_TABLE_COUNT=$(printf '%s' "${INVENTORY}" | python3 -c \
+  'import json,sys; rows=json.load(sys.stdin); print(int(rows[0]["standard_table_count"]) if rows else 0)')
+PRICING_TABLE_COUNT=$(printf '%s' "${INVENTORY}" | python3 -c \
+  'import json,sys; rows=json.load(sys.stdin); print(int(rows[0]["pricing_table_count"]) if rows else 0)')
+
+if [ "${STANDARD_TABLE_COUNT}" -eq 0 ]; then
+  echo "WARNING: ${BQ_PROJECT}.${DATASET} has no gcp_billing_export_v1_* table" >&2
+  echo "         (pricing tables found: ${PRICING_TABLE_COUNT}). Enable Standard usage cost export for the" >&2
+  echo "         billing account or wait for its first delivery; pricing export alone contains rates, not" >&2
+  echo "         project usage. The standard wildcard will be discovered automatically when it appears." >&2
+  publish_export_health 0 -1
+  exit 0
+fi
+
 
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
@@ -54,7 +175,8 @@ SELECT
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_yesterday,
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH), cost, 0)), 4) AS gross_mtd,
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH),
-    cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd
+    cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd,
+  ROUND(TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(export_time), MINUTE) / 60.0, 2) AS export_lag_hours
 FROM \`${BQ_PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
   AND ("${SCOPE}" = "*" OR project.id = "${SCOPE}")
@@ -65,20 +187,15 @@ SQL
 # qualified either way, so this only decides which project is billed for the query and which needs
 # bigquery.jobUser -- and that should be the project whose service account is running, otherwise every
 # environment needs job-running rights on the project that happens to own the export.
-ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet "${QUERY}")
-
-# Create the metric descriptors up front, before there is anything to publish. A custom metric
-# descriptor is otherwise created implicitly on first write, so a project whose billing export has not
-# yet produced a row has no descriptor at all -- and a dashboard panel referencing it renders "Cannot
-# find metric", an error, rather than an honest empty chart. Creating them is idempotent.
-for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_date; do
-  curl -s -o /dev/null -X POST     "https://monitoring.googleapis.com/v3/projects/${PUBLISH_PROJECT}/metricDescriptors"     -H "Authorization: Bearer $(gcloud auth print-access-token)"     -H "Content-Type: application/json"     -d "{\"type\":\"custom.googleapis.com/custoking/cost/${SUFFIX}\",
-         \"metricKind\":\"GAUGE\",\"valueType\":\"DOUBLE\",
-         \"description\":\"Billing-export spend (${SUFFIX}) for this project.\",
-         \"labels\":[{\"key\":\"billing_account\",\"valueType\":\"STRING\"},
-                    {\"key\":\"project_id\",\"valueType\":\"STRING\"},
-                    {\"key\":\"currency\",\"valueType\":\"STRING\"}]}" || true
-done
+QUERY_ERROR=$(mktemp)
+trap 'rm -f "${INVENTORY_ERROR}" "${QUERY_ERROR}"' EXIT
+if ! ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet \
+  "${QUERY}" 2>"${QUERY_ERROR}"); then
+  echo "ERROR: standard billing export query failed for ${BQ_PROJECT}.${DATASET}." >&2
+  sed 's/^/       /' "${QUERY_ERROR}" >&2
+  publish_export_health 0 -1 || true
+  exit 1
+fi
 
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
   # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its
@@ -99,7 +216,9 @@ if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
     WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
     GROUP BY 1, 2 ORDER BY 3 DESC" 2>/dev/null || echo "")
 
-  if [ -z "${DIAG}" ] || [ "$(printf '%s' "${DIAG}" | wc -l)" -le 1 ]; then
+  # Command substitution removes trailing newlines, so counting newlines misclassified a CSV header plus
+  # one data row as "header only". Inspect the content after the header instead.
+  if [ -z "${DIAG}" ] || ! printf '%s\n' "${DIAG}" | sed '1d' | grep -q '[^[:space:]]'; then
     echo "WARNING: the billing export dataset ${BQ_PROJECT}.${DATASET} contains NO rows for ANY project" >&2
     echo "         in the last 62 days. This is not 'no data yet for us' -- the export itself is producing" >&2
     echo "         nothing. Check that the billing account has an active BigQuery export configured, and" >&2
@@ -110,14 +229,16 @@ if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
     printf '%s
 ' "${DIAG}" | sed 's/^/           /' >&2
   fi
+  publish_export_health 0 -1
   exit 0
 fi
 
-# Exported because the publisher reads it from the environment. A bare shell variable is not visible to
-# the child process, and the write would fail as unauthenticated rather than as a missing variable.
-TOKEN=$(gcloud auth print-access-token)
-export TOKEN
-NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+# Use the freshest matching row across billing-account/currency groups. The per-row lag is derived from
+# export_time (delivery time), not usage_start_time, so it measures the BigQuery pipeline rather than the
+# age of the workload being billed.
+EXPORT_LAG_HOURS=$(printf '%s' "${ROWS}" | python3 -c \
+  'import json,sys; rows=json.load(sys.stdin); lags=[float(r["export_lag_hours"]) for r in rows if r.get("export_lag_hours") is not None]; print(min(lags) if lags else -1)')
+publish_export_health 1 "${EXPORT_LAG_HOURS}"
 
 # Written to a file rather than piped as a heredoc: the row JSON has to arrive on stdin, and a command
 # cannot take both its script and its input that way -- the second redirect silently wins and the script

@@ -13,6 +13,11 @@ output "async_health_dashboard_id" {
   value       = google_monitoring_dashboard.async_health.id
 }
 
+output "billing_cost_dashboard_id" {
+  description = "Cloud Monitoring dashboard ID for billing export health, confirmed spend, and live cost drivers."
+  value       = google_monitoring_dashboard.billing_cost.id
+}
+
 output "uptime_check_ids" {
   description = "Uptime check IDs keyed by service."
   value       = local.uptime_check_ids
