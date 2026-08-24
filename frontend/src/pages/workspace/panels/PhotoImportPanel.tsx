@@ -112,6 +112,9 @@ interface RecoveryBatchResult {
 const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
 type RowFilter = typeof FILTERS[number];
 const PHOTO_IMPORT_REQUEST_CONFIG = { timeout: 120000 };
+// Recovery does several remote and transactional operations per photo. Keep each browser request
+// comfortably below its timeout while the backend's versioned audit makes the chunks resumable.
+const PHOTO_RECOVERY_CHUNK_SIZE = 5;
 
 function isTimeoutError(error: any): boolean {
   return error?.code === 'ECONNABORTED' || String(error?.message || '').toLowerCase().includes('timeout');
@@ -452,8 +455,10 @@ export function PhotoImportPanel() {
         inProgress: 0,
         failed: 0,
       };
-      for (let offset = 0; offset < appliedRows.length; offset += 100) {
-        const rowIds = appliedRows.slice(offset, offset + 100).map(row => row.id);
+      for (let offset = 0; offset < appliedRows.length; offset += PHOTO_RECOVERY_CHUNK_SIZE) {
+        const rowIds = appliedRows
+          .slice(offset, offset + PHOTO_RECOVERY_CHUNK_SIZE)
+          .map(row => row.id);
         const response = await api.post<RecoveryBatchResult>(
           `/student-photo-imports/${batch.id}/recover`,
           { rowIds },

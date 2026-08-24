@@ -341,44 +341,28 @@ describe('PhotoImportPanel', () => {
     expect(await screen.findByText(/row review saved/i)).toBeInTheDocument();
   });
 
-  it('restores applied photos from Drive with current-photo protection', async () => {
+  it('restores applied photos in timeout-bounded chunks with current-photo protection', async () => {
+    const appliedRows = Array.from({ length: 12 }, (_, index) => ({
+      id: `${String(index + 1).padStart(8, '0')}-1111-4111-8111-111111111111`,
+      excelRow: index + 2,
+      admissionNo: `ADM-${index + 1}`,
+      workbookName: `Student ${index + 1}`,
+      className: 'I',
+      sectionName: 'A',
+      imageNo: String(5001 + index),
+      driveFileName: `DSC${5001 + index}.jpg`,
+      status: 'APPLIED',
+      cropX: 0.5,
+      cropY: 0.5,
+      manuallyReviewed: false,
+    }));
     const completedBatch = {
       ...frozenBatch,
       status: 'COMPLETED',
       readyCount: 0,
-      appliedCount: 2,
-      totalRows: 2,
+      appliedCount: appliedRows.length,
+      totalRows: appliedRows.length,
     };
-    const appliedRows = [
-      {
-        id: '11111111-1111-4111-8111-111111111111',
-        excelRow: 2,
-        admissionNo: 'ADM-1',
-        workbookName: 'Student One',
-        className: 'I',
-        sectionName: 'A',
-        imageNo: '5001',
-        driveFileName: 'DSC5001.jpg',
-        status: 'APPLIED',
-        cropX: 0.5,
-        cropY: 0.5,
-        manuallyReviewed: false,
-      },
-      {
-        id: '22222222-2222-4222-8222-222222222222',
-        excelRow: 3,
-        admissionNo: 'ADM-2',
-        workbookName: 'Student Two',
-        className: 'I',
-        sectionName: 'A',
-        imageNo: '5002',
-        driveFileName: 'DSC5002.jpg',
-        status: 'APPLIED',
-        cropX: 0.5,
-        cropY: 0.5,
-        manuallyReviewed: false,
-      },
-    ];
     vi.mocked(api.get).mockImplementation(async (url: string) => {
       if (url === '/student-photo-imports/context') return { data: context } as any;
       if (url === '/student-photo-imports') return { data: [completedBatch] } as any;
@@ -387,28 +371,45 @@ describe('PhotoImportPanel', () => {
       }
       throw new Error(`unexpected GET ${url}`);
     });
-    vi.mocked(api.post).mockResolvedValue({
-      data: {
-        selectedCount: 2,
-        recoveredCount: 2,
-        alreadyRecoveredCount: 0,
-        inProgressCount: 0,
-        failedCount: 0,
-        rows: appliedRows.map(row => ({ rowId: row.id, status: 'RECOVERED' })),
-      },
-    } as any);
+    vi.mocked(api.post).mockImplementation(async (_url: string, requestBody?: unknown) => {
+      const rowIds = (requestBody as { rowIds: string[] }).rowIds;
+      return {
+        data: {
+          selectedCount: rowIds.length,
+          recoveredCount: rowIds.length,
+          alreadyRecoveredCount: 0,
+          inProgressCount: 0,
+          failedCount: 0,
+          rows: rowIds.map(rowId => ({ rowId, status: 'RECOVERED' })),
+        },
+      } as any;
+    });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     render(<PhotoImportPanel />);
     fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
     fireEvent.click(await screen.findByRole('button', { name: /restore full-frame photos/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(3));
+    expect(api.post).toHaveBeenNthCalledWith(
+      1,
       '/student-photo-imports/batch-2/recover',
-      { rowIds: appliedRows.map(row => row.id) },
+      { rowIds: appliedRows.slice(0, 5).map(row => row.id) },
       expect.objectContaining({ timeout: 120000 }),
-    ));
-    expect(await screen.findByText(/full-frame recovery completed for 2 photos/i)).toBeInTheDocument();
+    );
+    expect(api.post).toHaveBeenNthCalledWith(
+      2,
+      '/student-photo-imports/batch-2/recover',
+      { rowIds: appliedRows.slice(5, 10).map(row => row.id) },
+      expect.objectContaining({ timeout: 120000 }),
+    );
+    expect(api.post).toHaveBeenNthCalledWith(
+      3,
+      '/student-photo-imports/batch-2/recover',
+      { rowIds: appliedRows.slice(10).map(row => row.id) },
+      expect.objectContaining({ timeout: 120000 }),
+    );
+    expect(await screen.findByText(/full-frame recovery completed for 12 photos/i)).toBeInTheDocument();
     expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/changed after this import will be left untouched/i));
   });
 });
