@@ -17,7 +17,7 @@ The project already has most of the base architecture required for this feature:
 - Review items already contain field-level flags for photo, full name, admission number, class/section, roll number, father name, father contact, address, and blood group.
 - The gateway already routes `/api/v1/students/**`, `/api/v1/student-review-items/**`, and `/api/v1/student-photo-imports/**` to school-core.
 - The frontend already has `StudentReviewDrawer` with ID-card and full-name tabs, and `StudentPhotoAvatar` resolves protected `/students/{id}/photo/content` references through authenticated API calls.
-- Student photo import already supports controlled Google Drive intake, import batches, row review, crop focus, applied/failed counts, and result export.
+- Student photo import already supports controlled Google Drive intake, import batches, row review, full-frame aspect-ratio-preserving previews, applied/failed counts, recovery from retained Drive originals, and result export.
 
 The proposed implementation should reuse `student_review_campaigns` and `student_review_items`; it should not create a separate verification subsystem.
 
@@ -175,7 +175,7 @@ Priority 2:
 
 - Add assign-to-teacher and class-section workload splits using the existing `assigned_to_user_id`.
 - Add correction export CSV for office staff.
-- Add photo quality checks for file type, size, dimensions, crop center, and optionally face-present detection. Do not add biometric identity matching by default.
+- Add photo quality checks for file type, size, dimensions, framing/subject position, and optionally face-present detection. Quality checks must not introduce destructive cropping. Do not add biometric identity matching by default.
 - Add audit timeline per review item: created, assigned, verified, correction requested, photo replaced, completed.
 
 Priority 3:
