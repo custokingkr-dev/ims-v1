@@ -48,7 +48,7 @@ $iamOnlyControllerContracts = @{
 # continue to fail closed on the service token, actor role, and dedicated permission.
 $centralizedScopedGuardContracts = @{
     "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentExportController.java" = @{
-        MappedMethodCount = 2
+        MappedMethodCount = 3
         Invocation = 'authorize(token);'
         RequiredPatterns = @(
             'private\s+void\s+authorize\s*\(\s*String\s+token\s*\)',
