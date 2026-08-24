@@ -60,6 +60,15 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                     new ClassPathResource(
                             "db/migration/student/V13__production_photo_import_workflow.sql"));
         }
+        jdbc.sql("ALTER TABLE student.photo_import_batches ADD COLUMN school_id BIGINT NOT NULL DEFAULT 1").update();
+        jdbc.sql("ALTER TABLE student.photo_import_batches ADD CONSTRAINT uq_test_batch_school UNIQUE (id, school_id)").update();
+        jdbc.sql("ALTER TABLE student.photo_import_rows ADD COLUMN batch_id UUID, ADD COLUMN school_id BIGINT").update();
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                            "db/migration/student/V20__photo_import_recovery_audit.sql"));
+        }
     }
 
     @AfterAll
@@ -130,5 +139,49 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                 .param("id", rowId)
                 .update())
                 .hasMessageContaining("chk_photo_import_row_crop_x");
+    }
+
+    @Test
+    void recoveryAuditIsVersionedPerAppliedRowAndConstrained() {
+        UUID batchId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_batches
+                    (id, drive_folder_id, status, school_id)
+                VALUES (:id, 'recovery-folder', 'COMPLETED', 1)
+                """)
+                .param("id", batchId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_rows (id, batch_id, school_id)
+                VALUES (:id, :batchId, 1)
+                """)
+                .param("id", rowId)
+                .param("batchId", batchId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_recoveries
+                    (id, row_id, batch_id, school_id, student_id, recovery_version, status,
+                     drive_file_id, prior_photo_key)
+                VALUES (:id, :rowId, :batchId, 1, 101, 'fit-without-crop-v1', 'COMPLETED',
+                        'drive-file-1', 'cropped-key')
+                """)
+                .param("id", UUID.randomUUID())
+                .param("rowId", rowId)
+                .param("batchId", batchId)
+                .update();
+
+        assertThatThrownBy(() -> jdbc.sql("""
+                        INSERT INTO student.photo_import_recoveries
+                            (id, row_id, batch_id, school_id, student_id, recovery_version, status,
+                             drive_file_id)
+                        VALUES (:id, :rowId, :batchId, 1, 101, 'fit-without-crop-v1', 'COMPLETED',
+                                'drive-file-1')
+                        """)
+                .param("id", UUID.randomUUID())
+                .param("rowId", rowId)
+                .param("batchId", batchId)
+                .update())
+                .hasMessageContaining("uq_photo_import_recovery_version");
     }
 }

@@ -8,6 +8,8 @@ import com.custoking.ims.schoolcoreservice.studentexport.StudentExportRepository
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
@@ -18,11 +20,46 @@ import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import javax.imageio.ImageIO;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class StudentExportArchiveWriterTest {
+
+    @Test
+    void exportsPhotoBytesWithoutCroppingOrChangingAspectRatio() throws Exception {
+        BufferedImage landscape = new BufferedImage(800, 400, BufferedImage.TYPE_INT_RGB);
+        var graphics = landscape.createGraphics();
+        graphics.setColor(Color.RED);
+        graphics.fillRect(0, 0, 200, 400);
+        graphics.setColor(Color.WHITE);
+        graphics.fillRect(200, 0, 400, 400);
+        graphics.setColor(Color.BLUE);
+        graphics.fillRect(600, 0, 200, 400);
+        graphics.dispose();
+        ByteArrayOutputStream photo = new ByteArrayOutputStream();
+        ImageIO.write(landscape, "png", photo);
+
+        StudentPhotoStorage storage = mock(StudentPhotoStorage.class);
+        when(storage.readStoredPhoto("landscape-photo"))
+                .thenReturn(Optional.of(new StoredPhoto(photo.toByteArray(), "image/png")));
+        ExportData data = new ExportData(
+                new School(7L, "Green Valley School", "GVS"),
+                List.of(student(1L, "ADM-001", "Aarav Rao", "landscape-photo")));
+
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        new StudentExportArchiveWriter(storage).write(data, output);
+
+        byte[] exported = unzip(output.toByteArray()).get("photos/ADM-001.png");
+        assertThat(exported).isEqualTo(photo.toByteArray());
+        BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(exported));
+        assertThat(decoded.getWidth()).isEqualTo(800);
+        assertThat(decoded.getHeight()).isEqualTo(400);
+        assertThat(new Color(decoded.getRGB(20, 200))).isEqualTo(Color.RED);
+        assertThat(new Color(decoded.getRGB(780, 200))).isEqualTo(Color.BLUE);
+    }
 
     @Test
     void writesPlainWorkbookAndAdmissionNumberPhotoMapping() throws Exception {

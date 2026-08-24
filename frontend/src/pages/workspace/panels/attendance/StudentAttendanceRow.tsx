@@ -1,4 +1,5 @@
 import type { StudentAttendanceRecord, EditableAttendanceStatus } from '../../../../types/attendance';
+import { StudentPhotoAvatar } from '../../../../features/students';
 
 const STATUSES: Array<{
   code: Exclude<EditableAttendanceStatus, null>;
@@ -33,14 +34,6 @@ export function StudentAttendanceRow({
   onStatusChange,
   onRemarksChange,
 }: Props) {
-  const initials = student.fullName
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
   return (
     <tr className={status ? `ck-att-student-row ck-att-student-row--${status.toLowerCase()}` : 'ck-att-student-row'}>
       <td className="ck-att-check-cell">
@@ -55,11 +48,12 @@ export function StudentAttendanceRow({
       </td>
       <td>
         <div className="ck-att-student-cell">
-          {student.photoUrl ? (
-            <img className="ck-att-avatar" src={student.photoUrl} alt="" />
-          ) : (
-            <span className="ck-att-avatar" aria-hidden="true">{initials || 'ST'}</span>
-          )}
+          <StudentPhotoAvatar
+            photoUrl={student.photoUrl}
+            name={student.fullName}
+            className="ck-att-avatar"
+            fallbackClassName="ck-att-avatar"
+          />
           <div>
             <strong>{student.fullName}</strong>
             <span>{student.admissionNo}</span>

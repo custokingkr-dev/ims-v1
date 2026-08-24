@@ -41,9 +41,6 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   const [photoError, setPhotoError] = useState('');
   const [photoFeedback, setPhotoFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [photoDragActive, setPhotoDragActive] = useState(false);
-  const [photoZoom, setPhotoZoom] = useState(1);
-  const [photoOffsetX, setPhotoOffsetX] = useState(0);
-  const [photoOffsetY, setPhotoOffsetY] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const photoPreviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const photoBitmapRef = useRef<ImageBitmap | null>(null);
@@ -101,7 +98,7 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
 
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
-    const baseScale = Math.max(canvas.width / photoBitmap.width, canvas.height / photoBitmap.height);
+    const baseScale = Math.min(canvas.width / photoBitmap.width, canvas.height / photoBitmap.height);
     const drawWidth = photoBitmap.width * baseScale;
     const drawHeight = photoBitmap.height * baseScale;
     context.drawImage(
@@ -135,9 +132,6 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     setPhotoFile(null);
     setPhotoError('');
     setPhotoDragActive(false);
-    setPhotoZoom(1);
-    setPhotoOffsetX(0);
-    setPhotoOffsetY(0);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -172,9 +166,6 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       setPhotoFile(file);
       setPhotoError('');
       setPhotoFeedback(null);
-      setPhotoZoom(1);
-      setPhotoOffsetX(0);
-      setPhotoOffsetY(0);
     } catch (err: unknown) {
       if (selection !== photoSelectionRef.current) return;
       photoBitmapRef.current?.close();
@@ -190,26 +181,6 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     setPhotoDragActive(false);
     const file = event.dataTransfer.files?.[0];
     if (file) void selectPhoto(file);
-  };
-
-  const createCroppedImageBlob = async (): Promise<Blob | null> => {
-    if (!photoBitmap || !photoFile) return null;
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const context = canvas.getContext('2d');
-    if (!context) throw new Error('Could not prepare the photo for upload.');
-    context.fillStyle = '#ffffff';
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    const baseScale = Math.max(canvas.width / photoBitmap.width, canvas.height / photoBitmap.height);
-    const finalScale = baseScale * photoZoom;
-    const drawWidth = photoBitmap.width * finalScale;
-    const drawHeight = photoBitmap.height * finalScale;
-    context.drawImage(photoBitmap, (canvas.width - drawWidth) / 2 + photoOffsetX, (canvas.height - drawHeight) / 2 + photoOffsetY, drawWidth, drawHeight);
-    const mimeType = photoFile.type === 'image/png' ? 'image/png' : photoFile.type === 'image/webp' ? 'image/webp' : 'image/jpeg';
-    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, mimeType, 0.92));
-    if (!blob) throw new Error('Could not generate cropped photo.');
-    return blob;
   };
 
   const handleSaveStudent = async () => {
@@ -230,12 +201,8 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       );
       const createdStudent = (studentResponse.data as { student?: { id: number }; id?: number })?.student || studentResponse.data;
       if (photoFile) {
-        const croppedBlob = await createCroppedImageBlob();
-        if (!croppedBlob) throw new Error('Photo preview is not ready yet.');
-        const ext = photoFile.name.split('.').pop() || (photoFile.type === 'image/png' ? 'png' : photoFile.type === 'image/webp' ? 'webp' : 'jpg');
-        const uploadFile = new File([croppedBlob], `student-photo.${ext}`, { type: croppedBlob.type || photoFile.type });
         const formData = new FormData();
-        formData.append('file', uploadFile);
+        formData.append('file', photoFile);
         await api.post(`/students/${(createdStudent as { id: number }).id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
         setPhotoFeedback({ type: 'success', message: 'Student saved and photo uploaded successfully.' });
       } else {
@@ -338,7 +305,7 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
               <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoBitmap ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
                 <div className="ck-photo-drop-icon"><ImagePlus size={24} aria-hidden="true" /></div>
                 <div className="ck-photo-drop-title">Drop the student photo here</div>
-                <div className="ck-photo-drop-sub">The photo can be cropped before it is saved.</div>
+                <div className="ck-photo-drop-sub">The complete photo frame is preserved when it is saved.</div>
                 <div className="ck-actions-inline">
                   <button type="button" className="ck-btn ck-btn-g ck-icon-label" onClick={() => fileInputRef.current?.click()}><ImagePlus size={15} />Choose photo</button>
                   {photoFile ? <button type="button" className="ck-btn ck-btn-ghost" onClick={resetPhotoState}>Remove</button> : null}
@@ -349,15 +316,11 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
                 <div className="ck-photo-editor">
                   <div>
                     <div className="ck-photo-frame">
-                      <canvas ref={photoPreviewCanvasRef} width="512" height="512" role="img" aria-label="Student preview" className="ck-photo-preview-image" style={{ transform: `translate(${photoOffsetX}px, ${photoOffsetY}px) scale(${photoZoom})` }} />
+                      <canvas ref={photoPreviewCanvasRef} width="512" height="512" role="img" aria-label="Student preview" className="ck-photo-preview-image" />
                     </div>
                     <div className="ck-photo-help">Photo preview</div>
                   </div>
-                  <div className="ck-photo-controls">
-                    <Field label="Zoom"><input type="range" min="1" max="2.5" step="0.01" value={photoZoom} onChange={(e) => setPhotoZoom(Number(e.target.value))} /></Field>
-                    <Field label="Move left / right"><input type="range" min="-140" max="140" step="1" value={photoOffsetX} onChange={(e) => setPhotoOffsetX(Number(e.target.value))} /></Field>
-                    <Field label="Move up / down"><input type="range" min="-140" max="140" step="1" value={photoOffsetY} onChange={(e) => setPhotoOffsetY(Number(e.target.value))} /></Field>
-                  </div>
+                  <div className="ck-photo-controls ts">Full-frame preview; no automatic crop is applied.</div>
                 </div>
               ) : null}
             </div>

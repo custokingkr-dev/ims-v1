@@ -273,7 +273,7 @@ describe('PhotoImportPanel', () => {
     expect(await screen.findByText('permission required: student:photo-import')).toBeInTheDocument();
   });
 
-  it('lets an operator correct a row mapping and crop during review', async () => {
+  it('lets an operator correct a row mapping without destructive crop controls', async () => {
     const reviewBatch = { ...frozenBatch, id: 'batch-review', status: 'REVIEW', readyCount: 0, errorCount: 1 };
     const row = {
       id: 'row-1',
@@ -324,9 +324,8 @@ describe('PhotoImportPanel', () => {
     fireEvent.click(await screen.findByRole('button', { name: /review mapping for student one/i }));
     fireEvent.change(screen.getByLabelText('Admission number'), { target: { value: 'ADM-1' } });
     fireEvent.change(screen.getByLabelText('Image number'), { target: { value: '6001' } });
-    const sliders = screen.getAllByRole('slider');
-    fireEvent.change(sliders[0], { target: { value: '0.25' } });
-    fireEvent.change(sliders[1], { target: { value: '0.75' } });
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.getByText(/complete source frame is preserved/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /save review/i }));
 
     await waitFor(() => expect(api.post).toHaveBeenCalledWith(
@@ -335,10 +334,81 @@ describe('PhotoImportPanel', () => {
         admissionNo: 'ADM-1',
         imageNo: '6001',
         excluded: false,
-        cropX: 0.25,
-        cropY: 0.75,
+        cropX: 0.5,
+        cropY: 0.5,
       },
     ));
     expect(await screen.findByText(/row review saved/i)).toBeInTheDocument();
+  });
+
+  it('restores applied photos from Drive with current-photo protection', async () => {
+    const completedBatch = {
+      ...frozenBatch,
+      status: 'COMPLETED',
+      readyCount: 0,
+      appliedCount: 2,
+      totalRows: 2,
+    };
+    const appliedRows = [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        excelRow: 2,
+        admissionNo: 'ADM-1',
+        workbookName: 'Student One',
+        className: 'I',
+        sectionName: 'A',
+        imageNo: '5001',
+        driveFileName: 'DSC5001.jpg',
+        status: 'APPLIED',
+        cropX: 0.5,
+        cropY: 0.5,
+        manuallyReviewed: false,
+      },
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        excelRow: 3,
+        admissionNo: 'ADM-2',
+        workbookName: 'Student Two',
+        className: 'I',
+        sectionName: 'A',
+        imageNo: '5002',
+        driveFileName: 'DSC5002.jpg',
+        status: 'APPLIED',
+        cropX: 0.5,
+        cropY: 0.5,
+        manuallyReviewed: false,
+      },
+    ];
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [completedBatch] } as any;
+      if (url === '/student-photo-imports/batch-2') {
+        return { data: { batch: completedBatch, rows: appliedRows, access: null } } as any;
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockResolvedValue({
+      data: {
+        selectedCount: 2,
+        recoveredCount: 2,
+        alreadyRecoveredCount: 0,
+        inProgressCount: 0,
+        failedCount: 0,
+        rows: appliedRows.map(row => ({ rowId: row.id, status: 'RECOVERED' })),
+      },
+    } as any);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /restore full-frame photos/i }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+      '/student-photo-imports/batch-2/recover',
+      { rowIds: appliedRows.map(row => row.id) },
+      expect.objectContaining({ timeout: 120000 }),
+    ));
+    expect(await screen.findByText(/full-frame recovery completed for 2 photos/i)).toBeInTheDocument();
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringMatching(/changed after this import will be left untouched/i));
   });
 });

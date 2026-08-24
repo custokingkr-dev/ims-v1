@@ -75,13 +75,13 @@ export function StudentExportPanel() {
   return (
     <ModuleShell
       title="Student details & photos"
-      subtitle="Download one assigned school's current student records and portraits for ID-card production."
+      subtitle="Download a school's current student records and portraits for ID-card production."
     >
       <div className="ck-card" style={{ maxWidth: 820 }}>
         <div className="ck-card-h">
           <div>
-            <div className="ck-card-t">Assigned-school export</div>
-            <div className="ck-card-sub">School access is checked again by the server when the archive is requested.</div>
+            <div className="ck-card-t">School export</div>
+            <div className="ck-card-sub">Your school access is checked again by the server when the archive is requested.</div>
           </div>
           <ShieldCheck size={24} aria-hidden="true" />
         </div>
@@ -94,7 +94,7 @@ export function StudentExportPanel() {
             <>
               <Field label="School">
                 <select aria-label="School" value={schoolId} onChange={event => setSchoolId(event.target.value ? Number(event.target.value) : '')}>
-                  <option value="">Select an assigned school</option>
+                  <option value="">Select a school</option>
                   {context.schools.map(school => (
                     <option key={school.id} value={school.id}>
                       {school.name} ({school.shortCode})
@@ -135,7 +135,7 @@ export function StudentExportPanel() {
               </div>
             </>
           ) : (
-            <div>No active schools are assigned to this operator. Ask a Superadmin to add an operator-school assignment.</div>
+            <div>No active schools are available for export. Operators should ask a Superadmin to check their school assignments.</div>
           )}
           {notice ? (
             <div role="status" style={{ color: notice.tone === 'ok' ? '#087443' : '#b42318' }}>{notice.text}</div>

@@ -9,6 +9,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -51,5 +52,20 @@ class StudentPhotoImportControllerTest {
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
 
         verify(service, never()).resultCsv(batchId);
+    }
+
+    @Test
+    void recoveryForwardsOnlyExplicitlySelectedRowsAfterTokenValidation() {
+        UUID batchId = UUID.randomUUID();
+        UUID rowId = UUID.randomUUID();
+        var request = new StudentPhotoImportController.RecoverAppliedPhotosRequest(List.of(rowId));
+        var expected = new PhotoImportService.RecoveryBatchResult(
+                batchId, 7L, 1, 1, 0, 0, 0, List.of());
+        when(service.recoverAppliedRows(batchId, List.of(rowId))).thenReturn(expected);
+
+        var result = controller.recover("student-token", batchId, request);
+
+        assertThat(result).isSameAs(expected);
+        verify(service).recoverAppliedRows(batchId, List.of(rowId));
     }
 }

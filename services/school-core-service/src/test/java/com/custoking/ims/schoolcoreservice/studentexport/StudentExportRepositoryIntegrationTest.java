@@ -111,4 +111,14 @@ class StudentExportRepositoryIntegrationTest {
                 .query(String.class)
                 .single()).isEqualTo("COMPLETED");
     }
+
+    @Test
+    void superadminCanSelectAnyActiveSchoolForExport() {
+        TenantContext.set(new TenantContext(1L, "superadmin@example.com", "SUPERADMIN", null, null,
+                Set.of(), Set.of()));
+
+        assertThat(repository.allowedSchools())
+                .extracting(StudentExportRepository.SchoolOption::id)
+                .containsExactly(101L, 102L);
+    }
 }

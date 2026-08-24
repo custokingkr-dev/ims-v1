@@ -44,6 +44,20 @@ class StudentExportControllerTest {
     }
 
     @Test
+    void contextAllowsSuperadminToUseThePlatformWideSchoolList() {
+        TenantContext.set(new TenantContext(1L, "superadmin@example.com", "SUPERADMIN", null, null,
+                Set.of(), Set.of()));
+        when(exports.allowedSchools()).thenReturn(List.of(
+                new SchoolOption(7L, "Green Valley School", "GVS", 1000, 980),
+                new SchoolOption(8L, "Lake View School", "LVS", 500, 500)));
+
+        Map<String, Object> response = controller.context("student-token");
+
+        assertThat(response.get("schools")).asList().hasSize(2);
+        verify(exports).allowedSchools();
+    }
+
+    @Test
     void archiveRejectsSchoolOutsideOperatorAssignmentBeforePreparingData() {
         TenantContext.set(new TenantContext(22L, "ops@example.com", "OPERATIONS", null, null,
                 Set.of(7L), Set.of("student:export")));
