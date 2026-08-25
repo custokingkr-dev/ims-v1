@@ -7,16 +7,47 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: gcp-governance-audit-prod
   cancel-in-progress: false
 
 jobs:
+  activation-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.gate.outputs.enabled }}
+    env:
+      GCP_PROJECT_ID: custoking-prod
+      ASSET_BASELINE: deploy/gcp/governance/cloud-assets-prod.baseline.json
+      ENABLEMENT_CONFIG: deploy/gcp/governance/gcp-governance-audit-enablement.json
+      REPOSITORY_ENABLED: ${{ vars.GCP_GOVERNANCE_AUDIT_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Validate staged activation before requesting any cloud credential
+        id: gate
+        shell: bash
+        run: |
+          gate_json="$(python3 scripts/validate-gcp-governance-audit-enablement.py \
+            --config "$ENABLEMENT_CONFIG" \
+            --baseline "$ASSET_BASELINE" \
+            --project "$GCP_PROJECT_ID" \
+            --repository-enabled "$REPOSITORY_ENABLED")"
+          echo "$gate_json"
+          enabled="$(python3 -c 'import json,sys; print(str(json.loads(sys.argv[1])["enabled"]).lower())' "$gate_json")"
+          reason="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["reason"])' "$gate_json")"
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "GCP governance audit activation: $reason" >> "$GITHUB_STEP_SUMMARY"
+
   read-only-governance:
+    needs: activation-gate
+    if: needs.activation-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
     env:
       GCP_PROJECT_ID: custoking-prod
       GCP_REGION: asia-south2

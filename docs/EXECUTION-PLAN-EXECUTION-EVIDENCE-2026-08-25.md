@@ -201,6 +201,11 @@ approximately INR 3,128/month; the minimum observed dedicated regional-HA option
   missing resources and Monitoring query/API errors, uses a dedicated exact-workflow WIF identity and
   read-only custom role, and retains redacted evidence. The Terraform identity/WIF change and repository
   variable remain unapplied external setup; no GCP resource was mutated by this repository batch.
+- Staged that workflow's activation behind a reviewed repository config and a separate repository variable.
+  The checked-in config is disabled, and a premature variable value fails before cloud authentication.
+  After Terraform provisions the tracked governance service account and custom role, operators must capture
+  and approve a new post-provision baseline/config together before setting the variable to `true`. The gate
+  therefore cannot begin scheduled comparisons with the necessarily stale pre-provision inventory.
 - Executed the production cost-metric exporter successfully and published fresh grade/availability/lag
   series. The exporter truthfully reported grade `0`, standard `0`, detailed `0`, and both usage/export lag
   as `-1` because no usage table exists yet.

@@ -119,16 +119,39 @@ references fail the run.
 
 The workflow has no deployment Environment and no mutation command. It uses a dedicated
 `github-governance-auditor` identity whose custom role contains only the exact list/get/search permissions
-needed by the audits. Before the first scheduled run, apply the reviewed CI/CD Terraform and set repository
-variable `GOVERNANCE_AUDITOR_SERVICE_ACCOUNT` from Terraform output
-`governance_auditor_service_account`. This one-time identity/WIF provisioning is an external change and was
-not performed by this repository batch.
+needed by the audits. Cloud authentication is additionally behind a staged dual gate: the reviewed
+repository config `deploy/gcp/governance/gcp-governance-audit-enablement.json` and repository variable
+`GCP_GOVERNANCE_AUDIT_ENABLED` must both enable the run. The checked-in config is intentionally disabled;
+setting the variable early fails the activation job before an OIDC token is requested.
+
+Use this exact activation sequence. Do not combine provisioning and activation:
+
+1. Keep `GCP_GOVERNANCE_AUDIT_ENABLED` unset or `false`, and keep the enablement config disabled.
+2. Review and apply the CI/CD Terraform. Set `GOVERNANCE_AUDITOR_SERVICE_ACCOUNT` from Terraform output
+   `governance_auditor_service_account`, but do not enable the audit yet.
+3. Capture a fresh, full read-only Cloud Asset inventory after provisioning. It must include the new
+   governance service account and custom role, plus any provider-managed metadata change.
+4. Reconcile that protected full diff and generate a candidate baseline using the documented candidate
+   command. Approve the candidate only through a reviewed pull request.
+5. In that same reviewed pull request, replace the baseline and change the enablement config to
+   `enabled: true`, `status: approved`, the exact new `assetDigestSha256`, and a non-empty
+   `activationReviewReference`. Its tracked counts must prove at least two custom IAM roles and 23 service
+   accounts so the pre-provision baseline cannot pass accidentally.
+6. After the pull request merges to `main`, run the enablement validator and focused tests while the
+   repository variable is still false. Only then set `GCP_GOVERNANCE_AUDIT_ENABLED=true`.
+7. Dispatch the workflow once and review both retained reports before relying on the weekly schedule.
+
+To suspend the audit without changing its reviewed evidence, set `GCP_GOVERNANCE_AUDIT_ENABLED=false`.
+The scheduled job then stops before authentication. The current pre-provision baseline remains valid for
+offline comparison, but is deliberately ineligible for scheduled activation because Terraform will add the
+tracked governance identity and role. This repository batch does not apply Terraform, change repository
+variables, or mutate GCP.
 
 ## Repository verification
 
 ```powershell
 node --test tools/live-dashboard/*.test.mjs
-python -m unittest scripts.tests.test_audit_gcp_observability scripts.tests.test_export_gcp_asset_drift
+python -m unittest scripts.tests.test_audit_gcp_observability scripts.tests.test_export_gcp_asset_drift scripts.tests.test_validate_gcp_governance_audit_enablement
 pwsh -File scripts/audit-security-governance-controls.ps1
 pwsh -File scripts/tests/report-billing-export-health-test.ps1
 & 'C:\Program Files\Git\bin\bash.exe' scripts/tests/cost-metric-exporter-test.sh

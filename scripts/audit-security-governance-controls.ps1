@@ -9,6 +9,9 @@ param(
   [string]$GcpObservabilityAudit = "scripts/audit-gcp-observability.py",
   [string]$GcpObservabilityTest = "scripts/tests/test_audit_gcp_observability.py",
   [string]$GcpAssetBaseline = "deploy/gcp/governance/cloud-assets-prod.baseline.json",
+  [string]$GcpGovernanceEnablement = "deploy/gcp/governance/gcp-governance-audit-enablement.json",
+  [string]$GcpGovernanceEnablementValidator = "scripts/validate-gcp-governance-audit-enablement.py",
+  [string]$GcpGovernanceEnablementTest = "scripts/tests/test_validate_gcp_governance_audit_enablement.py",
   [string]$RuntimeConfigurator = "scripts/configure-runtime-service-accounts.ps1",
   [string]$ReportingConfigurator = "scripts/configure-reporting-pubsub-push-oidc.ps1",
   [string]$SecretRotationAudit = "scripts/audit-secret-rotation-policy.ps1",
@@ -51,6 +54,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
   $GitHubExactCheckVerifierTest, $GcpGovernanceWorkflow, $GcpAssetDriftAudit,
   $GcpAssetDriftTest, $GcpObservabilityAudit, $GcpObservabilityTest, $GcpAssetBaseline,
+  $GcpGovernanceEnablement, $GcpGovernanceEnablementValidator, $GcpGovernanceEnablementTest,
   $RuntimeConfigurator,
   $ReportingConfigurator, $SecretRotationAudit, $SecretRotationPolicy, $RecoveryBucketRole,
   $CloudDeployDevTargets, $CloudDeployProdTargets, $CloudDeployRenderer,
@@ -146,6 +150,11 @@ Require-Text $GitHubExactCheckVerifierTest @(
 )
 
 Require-Text $GcpGovernanceWorkflow @(
+  'activation-gate:',
+  'Validate staged activation before requesting any cloud credential',
+  'GCP_GOVERNANCE_AUDIT_ENABLED',
+  'needs: activation-gate',
+  "if: needs.activation-gate.outputs.enabled == 'true'",
   'GCP_PROJECT_ID: custoking-prod',
   'GCP_REGION: asia-south2',
   'GOVERNANCE_AUDITOR_SERVICE_ACCOUNT',
@@ -160,6 +169,23 @@ Require-Text $GcpGovernanceWorkflow @(
   'MONITORING_OUTCOME',
   'never update the baseline automatically'
 )
+$activationGateIndex = $contents[$GcpGovernanceWorkflow].IndexOf('activation-gate:')
+$readOnlyJobIndex = $contents[$GcpGovernanceWorkflow].IndexOf('read-only-governance:')
+$cloudAuthenticationIndex = $contents[$GcpGovernanceWorkflow].IndexOf('google-github-actions/auth@')
+if ($activationGateIndex -lt 0 -or $readOnlyJobIndex -lt 0 -or $cloudAuthenticationIndex -lt 0 -or
+    $activationGateIndex -gt $readOnlyJobIndex -or $readOnlyJobIndex -gt $cloudAuthenticationIndex) {
+  $violations.Add("GCP governance activation gate must execute before cloud authentication.") | Out-Null
+} else {
+  $activationJob = $contents[$GcpGovernanceWorkflow].Substring(
+    $activationGateIndex,
+    $readOnlyJobIndex - $activationGateIndex
+  )
+  if ($activationJob.Contains('id-token: write') -or
+      $activationJob.Contains('google-github-actions/auth@') -or
+      $activationJob.Contains('google-github-actions/setup-gcloud@')) {
+    $violations.Add("GCP governance activation gate must remain credential-free.") | Out-Null
+  }
+}
 if ($contents[$GcpGovernanceWorkflow] -match '(?m)^\s*environment\s*:') {
   $violations.Add("Read-only GCP governance audit must not enter a deployment Environment.") | Out-Null
 }
@@ -193,6 +219,29 @@ Require-Text $GcpAssetBaseline @(
   '"assetDigestSha256":',
   '"ignoredAssetTypes":'
 )
+Require-Text $GcpGovernanceEnablement @(
+  '"configVersion": 1',
+  '"enabled": false',
+  '"status": "disabled-pending-post-provision-baseline"',
+  '"projectId": "custoking-prod"',
+  '"baselinePath": "deploy/gcp/governance/cloud-assets-prod.baseline.json"',
+  '"iam.googleapis.com/Role": 2',
+  '"iam.googleapis.com/ServiceAccount": 23'
+)
+Require-Text $GcpGovernanceEnablementValidator @(
+  "Repository enable flag is true before the post-provision baseline/config review is approved",
+  "Enablement config digest does not match the approved baseline",
+  "Approved baseline predates required provisioned asset count",
+  '"enabled": repository_enabled'
+)
+Require-Text $GcpGovernanceEnablementTest @(
+  'test_checked_in_state_is_safely_disabled',
+  'test_premature_repository_flag_fails_before_authentication',
+  'test_activation_rejects_pre_provision_baseline_counts',
+  'test_post_provision_count_contract_cannot_be_lowered',
+  'test_dual_approval_gate_enables_only_after_post_provision_baseline'
+)
+Require-Text $CiWorkflow @('test_validate_gcp_governance_audit_enablement')
 
 Require-Text $CiWorkflow @(
   'promotion-source-policy:',
