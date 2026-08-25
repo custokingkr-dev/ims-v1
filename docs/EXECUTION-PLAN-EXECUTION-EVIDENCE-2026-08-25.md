@@ -14,17 +14,17 @@ The work established the Java build foundation, generated an auditable API route
 non-destructive database consolidation and repair paths, hardened the live-dashboard authentication code,
 improved billing/observability evidence, and decomposed representative frontend and backend hotspots.
 
-The full multi-week program is not operationally complete. Standard/detailed Cloud Billing export, Cloud SQL
-availability, repository governance, provider canaries, destructive database retirement, and a representative
-school-day certification require external authority or evidence that engineering cannot invent. Those gates
-are listed explicitly below.
+The full multi-week program is not operationally complete. First-delivery verification for the newly enabled
+Cloud Billing exports, Cloud SQL availability, repository governance, provider canaries, destructive database
+retirement, and a representative school-day certification require external authority or evidence that
+engineering cannot invent. Those gates are listed explicitly below.
 
 ## Phase status
 
 | Phase | Repository result | Remaining gate |
 | --- | --- | --- |
 | 0 — Baseline | Complete for this batch | Run generated read-only evidence against each promotion candidate |
-| 1 — Production blockers | Repository-owned fixes and production promotion complete | Billing-account export, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation |
+| 1 — Production blockers | Repository-owned fixes, production promotion, and Billing export enablement complete | First Billing table delivery/reconciliation, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation |
 | 2 — Engineering foundation | Root reactor, parent, versions, Enforcer, convergence and CI/build catalog complete | Shared-source extraction remains deferred because the candidates alter Spring discovery/type identity; the drift guard remains active |
 | 3 — API contracts | Machine-readable inventory, ownership checks, compatibility telemetry and deprecation headers complete | OpenAPI/typed-client migration and route deletion require staged client migration plus a measured zero-traffic window |
 | 4 — Database consolidation | Non-destructive bridges, ledgers, parity views, projection repair and evidence queries complete | Production backfill review, retention window, reconciliation evidence and separately approved destructive DDL |
@@ -90,10 +90,11 @@ are listed explicitly below.
 
 Initial read-only production evidence found 12 dashboards, 73 enabled alert policies, 107 unique Monitoring
 filters, 95 filters with series, 12 valid filters with no data, and zero filter query errors. The corrected
-alert and billing dashboard are now live. Billing remains `ESTIMATED_ONLY`: pricing export exists, but
-standard and detailed usage export tables do not. The signed-in Billing console independently confirmed both
-usage exports are disabled and exposed enable controls; an account-verification warning must be acknowledged
-before those controls can be completed.
+alert and billing dashboard are now live. Standard and detailed usage cost exports were enabled on 2026-08-25,
+both targeting `custoking-prod.billing_export`. Immediately after enablement, BigQuery still contained only
+`cloud_pricing_export`, so billing correctly remained `ESTIMATED_ONLY` pending Google's asynchronous first
+delivery. A manual exporter execution completed successfully and published grade `0`; the enabled hourly
+Scheduler will automatically discover the standard/detailed wildcard tables when they appear.
 
 ### Frontend and backend hotspot work
 
@@ -138,9 +139,9 @@ No major dependency was mixed into this batch.
 
 ## Governed production actions still required
 
-1. A Billing Account Administrator/Costs Manager must acknowledge the Billing account verification warning,
-   enable standard and detailed usage export to `custoking-prod.billing_export`, and verify the first tables.
-   New exports do not backfill earlier history.
+1. Verify the first standard and detailed usage tables in `custoking-prod.billing_export`, rerun/review the
+   exporter grade, and reconcile initial totals. Both exports are enabled; table creation and first delivery
+   are asynchronous. New exports do not backfill earlier history.
 2. The production owner must approve and fund either regional HA on a supported dedicated-core Cloud SQL
    tier or temporary pilot-risk acceptance with explicit RTO/RPO and tested restore evidence.
 3. A GitHub repository administrator must apply branch/ruleset and Environment controls using exact check
