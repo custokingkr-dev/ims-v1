@@ -3,6 +3,7 @@ import {
   Download,
   LoaderCircle,
   LockKeyhole,
+  Pause,
   Play,
   RefreshCw,
   ScanSearch,
@@ -24,11 +25,13 @@ interface Props {
   appliedRowCount: number;
   busy: string;
   executionConfirmed: boolean;
+  executionPauseRequested: boolean;
   operationProgress: OperationProgress | null;
   recoveryProgress: RecoveryProgress | null;
   access: AccessState | null;
   onExecutionConfirmedChange: (confirmed: boolean) => void;
   onRunAction: (action: 'scan' | 'freeze' | 'execute') => void;
+  onPauseExecution: () => void;
   onRecover: () => void;
   onDownloadResult: () => void;
   onCancel: () => void;
@@ -43,11 +46,13 @@ export function PhotoImportBatchSummary({
   appliedRowCount,
   busy,
   executionConfirmed,
+  executionPauseRequested,
   operationProgress,
   recoveryProgress,
   access,
   onExecutionConfirmedChange,
   onRunAction,
+  onPauseExecution,
   onRecover,
   onDownloadResult,
   onCancel,
@@ -148,6 +153,18 @@ export function PhotoImportBatchSummary({
                   ? 'Execute import'
                   : batch.status === 'EXECUTING' ? 'Resume import' : 'Retry failed'}
               </button>
+              {busy === 'execute' && (
+                <button
+                  className="ck-btn ck-btn-ghost"
+                  onClick={onPauseExecution}
+                  disabled={executionPauseRequested}
+                >
+                  {executionPauseRequested
+                    ? <LoaderCircle className="pi-spin" size={16} />
+                    : <Pause size={16} />}
+                  {executionPauseRequested ? 'Pausing after current chunk' : 'Pause after current chunk'}
+                </button>
+              )}
             </>
           )}
           {finished && (
