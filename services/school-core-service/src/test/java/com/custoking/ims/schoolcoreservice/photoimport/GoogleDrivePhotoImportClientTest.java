@@ -1,5 +1,6 @@
 package com.custoking.ims.schoolcoreservice.photoimport;
 
+import com.custoking.ims.schoolcoreservice.photoimport.GoogleDrivePhotoImportClient.DriveFile;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
@@ -137,6 +138,34 @@ class GoogleDrivePhotoImportClientTest {
         assertThat(new GoogleDrivePhotoImportClient.DriveFile(
                 "folder", "mapping.csv", "application/vnd.google-apps.folder", null, null, null)
                 .isMappingFile()).isFalse();
+    }
+
+    @Test
+    void snapshotFingerprintUsesDriveSha256EvenWhenLegacyMd5MetadataMatches() {
+        var client = client(true, "root-folder", "client-id", "client-secret", "refresh-token");
+        DriveFile original = new DriveFile(
+                "file-1", "DSC5236.jpg", "image/jpeg", 100L,
+                "same-legacy-md5", "a".repeat(64), "2026-07-31T00:00:00Z");
+        DriveFile collisionAttempt = new DriveFile(
+                original.id(), original.name(), original.mimeType(), original.size(),
+                original.md5Checksum(), "b".repeat(64), original.modifiedTime());
+
+        assertThat(client.snapshotHash(List.of(original)))
+                .isNotEqualTo(client.snapshotHash(List.of(collisionAttempt)));
+    }
+
+    @Test
+    void snapshotFingerprintTreatsLegacyMd5AsDiagnosticOnly() {
+        var client = client(true, "root-folder", "client-id", "client-secret", "refresh-token");
+        DriveFile original = new DriveFile(
+                "file-1", "DSC5236.jpg", "image/jpeg", 100L,
+                "legacy-md5-one", "a".repeat(64), "2026-07-31T00:00:00Z");
+        DriveFile diagnosticMetadataChange = new DriveFile(
+                original.id(), original.name(), original.mimeType(), original.size(),
+                "legacy-md5-two", original.sha256Checksum(), original.modifiedTime());
+
+        assertThat(client.snapshotHash(List.of(original)))
+                .isEqualTo(client.snapshotHash(List.of(diagnosticMetadataChange)));
     }
 
     private static GoogleDrivePhotoImportClient client(

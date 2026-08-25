@@ -81,6 +81,29 @@ FROM student.guardian_legacy_parity;
 
 All three counts must remain zero for the full compatibility-route observation window.
 
+### Guarded missing-link creation
+
+V25 exposes one owner-only, versioned planner for the narrow case where an active student has legacy
+father/mother data and zero normalized guardian links. V26 can create only the exact reviewed plan. It never
+merges, updates or reactivates an identity; never changes consent; grants no notification, academic, fee or
+pickup authority; and records its domain writes, profile-review invalidation and outbox events atomically.
+
+Validate the disposable runner locally first:
+
+```powershell
+./scripts/invoke-guardian-repair-cloudsql.ps1
+```
+
+This dry run contacts neither GCP nor PostgreSQL. Production execution remains prohibited until V25/V26 are
+deployed, a new read-only evidence run supplies the contract-aware hash, the pinned approval gate is updated
+through review, and the exact write is separately authorized. The runner's current old plan hash is an
+intentional fail-closed control, not an instruction to bypass the new evidence run.
+
+The database ledger is operational evidence and includes the approval reference, deployed source revision,
+runner payload digest, job name and database role. Preserve the corresponding Cloud Audit/Run logs and
+repository approval record as the immutable audit source; the PostgreSQL owner can administer owner-held
+ledger tables.
+
 ## 4. Evidence bundle
 
 Run `scripts/database-consolidation-evidence.sql` with the owner/migration identity. Capture its output in

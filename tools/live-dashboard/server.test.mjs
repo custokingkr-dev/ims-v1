@@ -17,7 +17,7 @@ test("server binds sign-in state, rejects unbound callbacks, and clears logout c
   const origin = `http://127.0.0.1:${address.port}`;
   const signIn = await fetch(`${origin}/ops`, { redirect: "manual" });
   assert.equal(signIn.status, 302);
-  assert.match(signIn.headers.get("set-cookie"), /ck_oauth_state=.*HttpOnly/);
+  assert.match(signIn.headers.get("set-cookie"), /ck_auth_flow=.*HttpOnly/);
   const authorization = new URL(signIn.headers.get("location"));
   assert.equal(authorization.hostname, "accounts.google.com");
   assert.equal(authorization.searchParams.get("code_challenge_method"), "S256");
@@ -42,6 +42,6 @@ test("server binds sign-in state, rejects unbound callbacks, and clears logout c
   assert.equal(response.status, 303);
   assert.equal(response.headers.get("location"), "/owner");
   assert.match(response.headers.get("set-cookie"), /ck_session=.*Max-Age=0/);
-  assert.match(response.headers.get("set-cookie"), /ck_oauth_state=.*Max-Age=0/);
+  assert.match(response.headers.get("set-cookie"), /ck_auth_flow=.*Max-Age=0/);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });

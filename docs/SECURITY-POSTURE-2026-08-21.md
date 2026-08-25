@@ -12,7 +12,7 @@ Every image now has **zero fixable vulnerabilities**, once PR #142 lands.
 |---|---|---|---|---|
 | api-gateway | 0 | 0 | 0 | 0 |
 | frontend | 0 | 0 | 0 | 0 |
-| dashboard (`v10`) | 0 | 0 | 0 | 0 |
+| dashboard (`v11`) | 0 | 0 | 0 | 0 |
 | 5 × Java service — **in production today** | 26 each | 0 | 0 | 9 each |
 | 5 × Java service — **PR #142** | 17 each | 0 | 0 | **0** |
 
@@ -70,9 +70,9 @@ the session expiry check to fail closed on a non-numeric value.
   document is the explanation for it.
 - **`js/user-controlled-bypass` (high) on the session check.** Dismissed as a false positive with
   written justification. The guarded value is a session cookie — user-provided by definition — and
-  `auth.mjs` `readSession` verifies an HMAC-SHA256 signature with `timingSafeEqual`, then re-checks
-  expiry and the allowlist, before returning any identity. CodeQL does not model signature verification
-  as a sanitizer.
+  `auth.mjs` `readSession` authenticates and decrypts an AES-256-GCM cookie, then re-checks
+  expiry and the allowlist, before returning any identity. The cookie payload is not treated as identity
+  until authenticated decryption succeeds.
 
 ## Where the gates are now
 
@@ -103,7 +103,7 @@ docker run --rm -v //var/run/docker.sock:/var/run/docker.sock aquasec/trivy:late
   image --quiet --severity LOW,MEDIUM,HIGH,CRITICAL --scanners vuln "$IMAGE_REF"
 
 # Dashboard: build, scan, push. Refuses to push on HIGH/CRITICAL.
-./tools/live-dashboard/release.sh v11
+./tools/live-dashboard/release.sh v12
 ```
 
 A zero from Trivy is worth one extra check: confirm `Metadata.OS` was detected and that the `Results`

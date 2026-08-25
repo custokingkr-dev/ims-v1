@@ -34,19 +34,26 @@ const CLIENT_SECRET = process.env.OAUTH_CLIENT_SECRET || "";
 // should lock the door, not remove it.
 const ALLOWED = (process.env.DASHBOARD_ALLOWED_EMAILS || "")
   .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-// Signs the session cookie. Generated per revision when unset, which logs everyone out on deploy --
+// Encrypts and authenticates browser cookies. Generated per revision when unset, which logs everyone out on deploy --
 // acceptable for a dashboard, and far better than a hardcoded default that would let anyone who read
 // this file mint their own session.
 const COOKIE_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const COOKIE_KEY = crypto.createSecretKey(Buffer.from(crypto.hkdfSync(
+  "sha256",
+  Buffer.from(COOKIE_SECRET, "utf8"),
+  Buffer.from("custoking-live-dashboard-cookie-v1", "utf8"),
+  Buffer.from("authenticated-browser-cookies", "utf8"),
+  32,
+)));
 
 const SESSION_HOURS = 12;
-const OAUTH_STATE_MINUTES = 10;
+const AUTHORIZATION_TTL_MINUTES = 10;
 const configuredTimeout = Number(process.env.DASHBOARD_AUTH_UPSTREAM_TIMEOUT_MS || 10_000);
 const UPSTREAM_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
   ? configuredTimeout : 10_000;
 const MAX_JSON_BYTES = 1024 * 1024;
 
-const consumedOAuthStates = new Map();
+const consumedAuthorizationStates = new Map();
 const revokedSessions = new Map();
 
 let jwksCache = { keys: [], fetchedAt: 0 };
@@ -123,10 +130,39 @@ export function isAllowed(email) {
   return ALLOWED.includes(String(email).toLowerCase());
 }
 
+export function pkceChallenge(verifier) {
+  return crypto.createHash("sha256").update(verifier).digest("base64url");
+}
+
 // --- session cookie ---------------------------------------------------------------------------------
 
-function sign(value) {
-  return crypto.createHmac("sha256", COOKIE_SECRET).update(value).digest("base64url");
+function encryptCookiePayload(purpose, value) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", COOKIE_KEY, iv);
+  cipher.setAAD(Buffer.from(purpose, "utf8"));
+  const ciphertext = Buffer.concat([cipher.update(value, "utf8"), cipher.final()]);
+  return [iv, ciphertext, cipher.getAuthTag()].map((part) => part.toString("base64url")).join(".");
+}
+
+function decryptCookiePayload(purpose, value) {
+  try {
+    if (typeof value !== "string" || value.length > 4096) return null;
+    const parts = value.split(".");
+    if (parts.length !== 3) return null;
+    const iv = Buffer.from(parts[0], "base64url");
+    const ciphertext = Buffer.from(parts[1], "base64url");
+    const tag = Buffer.from(parts[2], "base64url");
+    if (iv.length !== 12 || tag.length !== 16) return null;
+    if (parts[0] !== iv.toString("base64url")
+        || parts[1] !== ciphertext.toString("base64url")
+        || parts[2] !== tag.toString("base64url")) return null;
+    const decipher = crypto.createDecipheriv("aes-256-gcm", COOKIE_KEY, iv);
+    decipher.setAAD(Buffer.from(purpose, "utf8"));
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
+  } catch {
+    return null;
+  }
 }
 
 function safeEqual(left, right) {
@@ -149,78 +185,74 @@ function purgeExpired(map) {
 export function makeSession(email) {
   const expires = Date.now() + SESSION_HOURS * 3600_000;
   const sessionId = crypto.randomBytes(18).toString("base64url");
-  const value = `${Buffer.from(email).toString("base64url")}.${expires}.${sessionId}`;
-  return `${value}.${sign(value)}`;
+  return encryptCookiePayload("session", JSON.stringify({ email, expires, sessionId }));
 }
 
 export function readSession(cookieHeader) {
   purgeExpired(revokedSessions);
   const raw = cookieValue(cookieHeader, "ck_session");
   if (!raw) return null;
-  const parts = raw.split(".");
-  if (parts.length !== 4) return null;
-  const value = `${parts[0]}.${parts[1]}.${parts[2]}`;
-  // timingSafeEqual rather than === so the comparison does not leak the signature a byte at a time.
-  const expected = sign(value);
-  if (!safeEqual(parts[3], expected) || revokedSessions.has(parts[3])) return null;
-  // Written as "not in the future" rather than "in the past" so a non-numeric expiry fails CLOSED.
-  // Number("abc") is NaN, and NaN < Date.now() is false -- the past-tense form would have accepted a
-  // session that never expires. Unreachable today, because the expiry is inside the signed value and
-  // the HMAC above has already passed, but it costs one operator and it stops being unreachable the
-  // moment someone moves the expiry out of the signature.
-  if (!(Number(parts[1]) > Date.now())) return null;
-  const email = Buffer.from(parts[0], "base64url").toString("utf8");
+  if (revokedSessions.has(raw)) return null;
+  const plaintext = decryptCookiePayload("session", raw);
+  if (!plaintext) return null;
+  let session;
+  try {
+    session = JSON.parse(plaintext);
+  } catch {
+    return null;
+  }
+  if (!session || typeof session.email !== "string" || typeof session.sessionId !== "string"
+      || !(Number(session.expires) > Date.now())) return null;
   // Re-checked on every request, not just at sign-in: removing someone from the allowlist must take
   // effect on their next page load, not twelve hours later when their cookie expires.
-  return isAllowed(email) ? email : null;
+  return isAllowed(session.email) ? session.email : null;
 }
 
 export function revokeSession(cookieHeader) {
   const raw = cookieValue(cookieHeader, "ck_session");
   if (!raw) return;
-  const parts = raw.split(".");
-  if (parts.length !== 4) return;
-  const value = `${parts[0]}.${parts[1]}.${parts[2]}`;
-  if (!safeEqual(parts[3], sign(value))) return;
-  const expiresAt = Number(parts[1]);
-  if (expiresAt > Date.now()) revokedSessions.set(parts[3], expiresAt);
+  const plaintext = decryptCookiePayload("session", raw);
+  if (!plaintext) return;
+  try {
+    const session = JSON.parse(plaintext);
+    const expiresAt = Number(session.expires);
+    if (expiresAt > Date.now()) revokedSessions.set(raw, expiresAt);
+  } catch {
+    // Invalid cookies are already unauthenticated and need no server-side revocation entry.
+  }
 }
 
 export const clearSessionCookie =
   "ck_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0";
-export const clearOAuthStateCookie =
-  "ck_oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=0";
+export const expireAuthorizationCookie =
+  "ck_auth_flow=; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=0";
 
 // --- oauth ------------------------------------------------------------------------------------------
 
-export function beginOAuth(destination) {
-  purgeExpired(consumedOAuthStates);
+export function beginAuthorization(destination) {
+  purgeExpired(consumedAuthorizationStates);
   const nonce = crypto.randomBytes(24).toString("base64url");
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
-  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
-  const expiresAt = Date.now() + OAUTH_STATE_MINUTES * 60_000;
-  const payload = Buffer.from(JSON.stringify({ nonce, destination, codeVerifier, expiresAt }))
-    .toString("base64url");
-  const value = `${payload}.${sign(payload)}`;
+  const codeChallenge = pkceChallenge(codeVerifier);
+  const expiresAt = Date.now() + AUTHORIZATION_TTL_MINUTES * 60_000;
+  const value = encryptCookiePayload(
+    "authorization-state", JSON.stringify({ nonce, destination, codeVerifier, expiresAt }));
   return {
     state: nonce,
     codeChallenge,
-    cookie: `ck_oauth_state=${value}; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=${OAUTH_STATE_MINUTES * 60}`,
+    cookie: `ck_auth_flow=${value}; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=${AUTHORIZATION_TTL_MINUTES * 60}`,
   };
 }
 
-export function consumeOAuth(cookieHeader, receivedState) {
-  purgeExpired(consumedOAuthStates);
-  const raw = cookieValue(cookieHeader, "ck_oauth_state");
+export function consumeAuthorization(cookieHeader, receivedState) {
+  purgeExpired(consumedAuthorizationStates);
+  const raw = cookieValue(cookieHeader, "ck_auth_flow");
   if (!raw) throw new Error("OAuth state cookie is missing or expired");
-  const parts = raw.split(".");
-  if (parts.length !== 2 || !safeEqual(parts[1], sign(parts[0]))) {
-    throw new Error("OAuth state cookie is invalid");
-  }
-
+  const plaintext = decryptCookiePayload("authorization-state", raw);
+  if (!plaintext) throw new Error("OAuth state cookie is invalid");
   let payload;
   try {
-    payload = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8"));
+    payload = JSON.parse(plaintext);
   } catch {
     throw new Error("OAuth state cookie is malformed");
   }
@@ -229,8 +261,8 @@ export function consumeOAuth(cookieHeader, receivedState) {
     throw new Error("OAuth state cookie is missing required data or expired");
   }
   if (!safeEqual(receivedState, payload.nonce)) throw new Error("OAuth state did not match");
-  if (consumedOAuthStates.has(payload.nonce)) throw new Error("OAuth state was already used");
-  consumedOAuthStates.set(payload.nonce, Number(payload.expiresAt));
+  if (consumedAuthorizationStates.has(payload.nonce)) throw new Error("OAuth state was already used");
+  consumedAuthorizationStates.set(payload.nonce, Number(payload.expiresAt));
   return { destination: payload.destination, codeVerifier: payload.codeVerifier, nonce: payload.nonce };
 }
 

@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -30,10 +31,18 @@ public class GuardianConsentRepository {
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
+    private final StudentReviewInvalidationService reviewInvalidation;
 
     public GuardianConsentRepository(JdbcClient jdbc, OutboxWriter outbox) {
+        this(jdbc, outbox, new StudentReviewInvalidationService(jdbc, outbox));
+    }
+
+    @Autowired
+    public GuardianConsentRepository(JdbcClient jdbc, OutboxWriter outbox,
+                                     StudentReviewInvalidationService reviewInvalidation) {
         this.jdbc = jdbc;
         this.outbox = outbox;
+        this.reviewInvalidation = reviewInvalidation;
     }
 
     public Map<String, Object> overview(Long studentId) {
@@ -41,7 +50,7 @@ public class GuardianConsentRepository {
         List<Map<String, Object>> guardians = jdbc.sql("""
                 SELECT g.id, g.full_name, g.phone, g.email, g.preferred_language,
                        g.contact_verified_at, g.status, g.version,
-                       sg.relationship, sg.is_primary, sg.receives_notifications,
+                       sg.relationship, sg.is_primary, sg.receives_notifications, sg.version AS link_version,
                        sg.can_view_academic, sg.can_manage_fees, sg.pickup_authorized
                 FROM student.student_guardians sg
                 JOIN student.guardians g ON g.id = sg.guardian_id
@@ -59,6 +68,7 @@ public class GuardianConsentRepository {
                         "contactVerifiedAt", rs.getObject("contact_verified_at", OffsetDateTime.class),
                         "status", rs.getString("status"),
                         "version", rs.getLong("version"),
+                        "linkVersion", rs.getLong("link_version"),
                         "relationship", rs.getString("relationship"),
                         "primary", rs.getBoolean("is_primary"),
                         "receivesNotifications", rs.getBoolean("receives_notifications"),
@@ -135,7 +145,7 @@ public class GuardianConsentRepository {
         }
 
         boolean primary = bool(request.get("primary"), false);
-        if (primary) clearPrimary(studentId);
+        if (primary) clearPrimary(studentId, guardianId);
         try {
             jdbc.sql("""
                     INSERT INTO student.student_guardians
@@ -158,8 +168,8 @@ public class GuardianConsentRepository {
         } catch (DataIntegrityViolationException ex) {
             throw new IllegalArgumentException("This guardian is already linked to the student", ex);
         }
-        syncLegacyParents(studentId);
-        invalidateProfileVerification(studentId);
+        emitStudentProjectionUpdates(syncLegacyParents(studentId));
+        reviewInvalidation.invalidateProfile(studentId);
         emit("student.guardian.upserted.v1", guardianId, schoolId, studentId,
                 row("guardianId", guardianId, "studentId", studentId, "relationship", relationship));
         return overview(studentId);
@@ -169,10 +179,13 @@ public class GuardianConsentRepository {
     public Map<String, Object> updateGuardian(Long studentId, String guardianId, Map<String, Object> request) {
         Long schoolId = schoolId(studentId);
         requireLinkedGuardian(studentId, guardianId, schoolId);
+        long linkVersion = longValue(request.get("linkVersion"), -1L);
+        requireLinkVersion(studentId, guardianId, schoolId, linkVersion);
+        List<Long> affectedStudentIds = linkedStudentIds(guardianId, schoolId);
         String fullName = required(request.get("fullName"), "Guardian name is required");
         String relationship = allowed(request.get("relationship"), RELATIONSHIPS, "relationship");
         boolean primary = bool(request.get("primary"), false);
-        if (primary) clearPrimary(studentId);
+        if (primary) clearPrimary(studentId, guardianId);
         OffsetDateTime now = OffsetDateTime.now();
         int updated = jdbc.sql("""
                 UPDATE student.guardians
@@ -195,7 +208,7 @@ public class GuardianConsentRepository {
                 .param("schoolId", schoolId).param("version", longValue(request.get("version"), -1L)).update();
         if (updated == 0) throw new IllegalArgumentException("Guardian changed since it was loaded; refresh and try again");
 
-        jdbc.sql("""
+        int linkUpdated = jdbc.sql("""
                 UPDATE student.student_guardians
                 SET relationship = :relationship, is_primary = :primary,
                     receives_notifications = :receivesNotifications,
@@ -203,6 +216,7 @@ public class GuardianConsentRepository {
                     pickup_authorized = :pickupAuthorized, updated_by = :actorId,
                     updated_at = :now, version = version + 1
                 WHERE student_id = :studentId AND guardian_id = :guardianId AND school_id = :schoolId
+                  AND version = :linkVersion
                 """)
                 .param("relationship", relationship).param("primary", primary)
                 .param("receivesNotifications", bool(request.get("receivesNotifications"), true))
@@ -210,9 +224,13 @@ public class GuardianConsentRepository {
                 .param("canManageFees", bool(request.get("canManageFees"), false))
                 .param("pickupAuthorized", bool(request.get("pickupAuthorized"), false))
                 .param("actorId", actorId()).param("now", now).param("studentId", studentId)
-                .param("guardianId", guardianId).param("schoolId", schoolId).update();
-        syncLegacyParents(studentId);
-        invalidateProfileVerification(studentId);
+                .param("guardianId", guardianId).param("schoolId", schoolId)
+                .param("linkVersion", linkVersion).update();
+        if (linkUpdated == 0) {
+            throw new IllegalArgumentException("Guardian permissions changed since they were loaded; refresh and try again");
+        }
+        emitStudentProjectionUpdates(syncLegacyParentsForGuardian(guardianId, schoolId));
+        affectedStudentIds.forEach(reviewInvalidation::invalidateProfile);
         emit("student.guardian.upserted.v1", guardianId, schoolId, studentId,
                 row("guardianId", guardianId, "studentId", studentId, "relationship", relationship));
         return overview(studentId);
@@ -231,8 +249,8 @@ public class GuardianConsentRepository {
                   AND NOT EXISTS (SELECT 1 FROM student.student_guardians WHERE guardian_id = :guardianId)
                 """)
                 .param("guardianId", guardianId).param("actorId", actorId()).update();
-        syncLegacyParents(studentId);
-        invalidateProfileVerification(studentId);
+        emitStudentProjectionUpdates(syncLegacyParents(studentId));
+        reviewInvalidation.invalidateProfile(studentId);
         emit("student.guardian.unlinked.v1", guardianId, schoolId, studentId,
                 row("guardianId", guardianId, "studentId", studentId));
         return overview(studentId);
@@ -329,14 +347,66 @@ public class GuardianConsentRepository {
         if (count == 0) throw new IllegalArgumentException("Guardian is not linked to this student");
     }
 
-    private void clearPrimary(Long studentId) {
-        jdbc.sql("UPDATE student.student_guardians SET is_primary = false, updated_at = now() WHERE student_id = :studentId AND is_primary")
-                .param("studentId", studentId).update();
+    private void requireLinkVersion(Long studentId, String guardianId, Long schoolId, long linkVersion) {
+        long count = jdbc.sql("""
+                        SELECT count(*) FROM student.student_guardians
+                        WHERE student_id = :studentId AND guardian_id = :guardianId
+                          AND school_id = :schoolId AND version = :linkVersion
+                        """)
+                .param("studentId", studentId).param("guardianId", guardianId)
+                .param("schoolId", schoolId).param("linkVersion", linkVersion)
+                .query(Long.class).single();
+        if (count == 0) {
+            throw new IllegalArgumentException(
+                    "Guardian permissions changed since they were loaded; refresh and try again");
+        }
     }
 
-    private void syncLegacyParents(Long studentId) {
+    private void clearPrimary(Long studentId, String selectedGuardianId) {
         jdbc.sql("""
-                WITH parent_values AS (
+                        UPDATE student.student_guardians
+                        SET is_primary = false, updated_at = now(), version = version + 1
+                        WHERE student_id = :studentId AND is_primary AND guardian_id <> :selectedGuardianId
+                        """)
+                .param("studentId", studentId)
+                .param("selectedGuardianId", selectedGuardianId)
+                .update();
+    }
+
+    private List<Long> linkedStudentIds(String guardianId, Long schoolId) {
+        return jdbc.sql("""
+                        SELECT DISTINCT student_id
+                        FROM student.student_guardians
+                        WHERE guardian_id = :guardianId AND school_id = :schoolId
+                        ORDER BY student_id
+                        """)
+                .param("guardianId", guardianId)
+                .param("schoolId", schoolId)
+                .query(Long.class)
+                .list();
+    }
+
+    private List<Long> syncLegacyParentsForGuardian(String guardianId, Long schoolId) {
+        return syncLegacyParents("""
+                SELECT DISTINCT student_id
+                FROM student.student_guardians
+                WHERE guardian_id = :guardianId AND school_id = :schoolId
+                """, spec -> spec.param("guardianId", guardianId).param("schoolId", schoolId));
+    }
+
+    private List<Long> syncLegacyParents(Long studentId) {
+        return syncLegacyParents("SELECT :studentId::bigint AS student_id",
+                spec -> spec.param("studentId", studentId));
+    }
+
+    private List<Long> syncLegacyParents(
+            String affectedStudentsSql,
+            java.util.function.UnaryOperator<JdbcClient.StatementSpec> bind) {
+        String sql = """
+                WITH affected_students AS (
+                    %s
+                ),
+                parent_values AS (
                     SELECT s.id,
                            (SELECT g.full_name FROM student.student_guardians sg
                             JOIN student.guardians g ON g.id = sg.guardian_id
@@ -350,28 +420,48 @@ public class GuardianConsentRepository {
                             JOIN student.guardians g ON g.id = sg.guardian_id
                             WHERE sg.student_id = s.id AND sg.relationship = 'MOTHER' AND g.status = 'ACTIVE'
                             ORDER BY sg.is_primary DESC, sg.updated_at DESC, sg.id LIMIT 1) AS mother_name
-                    FROM student.students s WHERE s.id = :studentId
+                    FROM student.students s
+                    JOIN affected_students affected ON affected.student_id = s.id
                 )
                 UPDATE student.students s
                 SET father_name = p.father_name, father_contact = p.father_phone,
                     mother_name = p.mother_name, updated_at = now()
-                FROM parent_values p WHERE s.id = p.id
-                """).param("studentId", studentId).update();
+                FROM parent_values p
+                WHERE s.id = p.id
+                  AND (s.father_name, s.father_contact, s.mother_name)
+                      IS DISTINCT FROM (p.father_name, p.father_phone, p.mother_name)
+                RETURNING s.id
+                """.formatted(affectedStudentsSql);
+        return bind.apply(jdbc.sql(sql)).query(Long.class).list();
     }
 
-    private void invalidateProfileVerification(Long studentId) {
-        jdbc.sql("""
-                UPDATE student.student_review_items i
-                SET verified_full_name = false, verified_admission_no = false,
-                    verified_class_section = false, verified_roll_no = false,
-                    verified_father_name = false, verified_father_contact = false,
-                    verified_address = false, verified_blood_group = false,
-                    status = 'PENDING', correction_requested = false, correction_notes = NULL,
-                    completed_at = NULL, updated_at = now()
-                FROM student.student_review_campaigns c
-                WHERE i.campaign_id = c.id AND i.student_id = :studentId
-                  AND c.review_type = 'PROFILE_VERIFICATION' AND c.status = 'ACTIVE'
-                """).param("studentId", studentId).update();
+    private void emitStudentProjectionUpdates(List<Long> studentIds) {
+        for (Long studentId : studentIds) {
+            Map<String, Object> student = jdbc.sql("""
+                            SELECT id, school_id, admission_no, full_name, roll_no, class_id, section_id,
+                                   father_contact, phone, deleted_at, attendance_percent, father_name
+                            FROM student.students
+                            WHERE id = :studentId
+                            """)
+                    .param("studentId", studentId)
+                    .query((rs, n) -> row(
+                            "id", rs.getLong("id"),
+                            "schoolId", rs.getLong("school_id"),
+                            "admissionNo", rs.getString("admission_no"),
+                            "fullName", rs.getString("full_name"),
+                            "rollNo", rs.getString("roll_no"),
+                            "classId", rs.getString("class_id"),
+                            "sectionId", rs.getString("section_id"),
+                            "parentContact", rs.getString("father_contact"),
+                            "phone", rs.getString("phone"),
+                            "active", rs.getObject("deleted_at") == null,
+                            "attendancePercent", rs.getObject("attendance_percent", Double.class),
+                            "fatherName", rs.getString("father_name")))
+                    .single();
+            Long schoolId = ((Number) student.get("schoolId")).longValue();
+            outbox.append("student.upserted.v1", "StudentUpserted:" + studentId,
+                    "Student", String.valueOf(studentId), schoolId, student);
+        }
     }
 
     private void emit(String eventType, String aggregateId, Long schoolId, Long studentId, Map<String, Object> payload) {

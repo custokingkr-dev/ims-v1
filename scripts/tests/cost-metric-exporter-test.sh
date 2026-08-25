@@ -28,6 +28,12 @@ EOF
 
 cat > "${TEST_TMP}/bin/python3" <<'EOF'
 #!/usr/bin/env bash
+if [ "${1:-}" != "-c" ] && [ -f "${1:-}" ] && grep -q 'METRICS = ' "$1"; then
+  # Windows Python resolves curl.exe ahead of the extensionless Git Bash mock. The fallback behavior
+  # under test ends once the selected rows reach the publisher, so keep this unit test network-free.
+  printf 'published 4 series\n'
+  exit 0
+fi
 exec "${TEST_PYTHON}" "$@"
 EOF
 
@@ -60,6 +66,9 @@ if [[ "${query}" == *'INFORMATION_SCHEMA.TABLES'* ]]; then
   case "${SCENARIO}" in
     missing) printf '[{"standard_table_count":"0","detailed_table_count":"0","pricing_table_count":"1"}]\n' ;;
     detailed_scope_empty) printf '[{"standard_table_count":"0","detailed_table_count":"1","pricing_table_count":"1"}]\n' ;;
+    detailed_empty_standard_rows|detailed_stale_standard_fresh|detailed_fresh_standard_stale|both_empty|detailed_success_standard_error|detailed_error_standard_success|detailed_error_standard_empty)
+      printf '[{"standard_table_count":"1","detailed_table_count":"1","pricing_table_count":"1"}]\n'
+      ;;
     *) printf '[{"standard_table_count":"1","detailed_table_count":"0","pricing_table_count":"1"}]\n' ;;
   esac
   exit 0
@@ -71,7 +80,52 @@ if [[ "${query}" == *'ROUND(TIMESTAMP_DIFF'* ]]; then
       printf 'Access Denied: test failure\n' >&2
       exit 1
       ;;
-    scope_empty|detailed_scope_empty) printf '[]\n' ;;
+    scope_empty|detailed_scope_empty|both_empty) printf '[]\n' ;;
+    detailed_error_standard_empty)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf 'Access Denied: detailed test failure\n' >&2
+        exit 1
+      else
+        printf '[]\n'
+      fi
+      ;;
+    detailed_success_standard_error)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      else
+        printf 'Access Denied: standard test failure\n' >&2
+        exit 1
+      fi
+      ;;
+    detailed_error_standard_success)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf 'Access Denied: detailed test failure\n' >&2
+        exit 1
+      else
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      fi
+      ;;
+    detailed_empty_standard_rows)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf '[]\n'
+      else
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      fi
+      ;;
+    detailed_stale_standard_fresh)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"0","net_yesterday":"0","gross_mtd":"1","net_mtd":"1","export_lag_hours":"48.0","usage_lag_hours":"50.0"}]\n'
+      else
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      fi
+      ;;
+    detailed_fresh_standard_stale)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      else
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"0","net_yesterday":"0","gross_mtd":"1","net_mtd":"1","export_lag_hours":"48.0","usage_lag_hours":"50.0"}]\n'
+      fi
+      ;;
   esac
   exit 0
 fi
@@ -95,6 +149,7 @@ run_exporter() {
     COST_METRIC_PUBLISH_PROJECT=report-project \
     COST_METRIC_SCOPE_PROJECT=report-project \
       bash "${EXPORTER}" >"${output_file}" 2>&1; then
+    sed 's/^/  /' "${output_file}" >&2
     return 1
   fi
 }
@@ -104,6 +159,16 @@ assert_contains() {
   local expected="$2"
   if ! grep -Fq -- "${expected}" "${file}"; then
     echo "Expected '${expected}' in ${file}:" >&2
+    sed 's/^/  /' "${file}" >&2
+    exit 1
+  fi
+}
+
+assert_not_contains() {
+  local file="$1"
+  local unexpected="$2"
+  if grep -Fq -- "${unexpected}" "${file}"; then
+    echo "Did not expect '${unexpected}' in ${file}:" >&2
     sed 's/^/  /' "${file}" >&2
     exit 1
   fi
@@ -124,12 +189,65 @@ assert_contains "${CURL_LOG}" '"doubleValue": 0.0'
 empty_output="${TEST_TMP}/empty.out"
 run_exporter scope_empty "${empty_output}"
 assert_contains "${empty_output}" "none of it matches scope='report-project'"
-assert_contains "${empty_output}" 'published export health: available=0 grade=1 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${empty_output}" 'published export health: available=0 grade=0 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
 
 detailed_output="${TEST_TMP}/detailed.out"
 run_exporter detailed_scope_empty "${detailed_output}"
-assert_contains "${detailed_output}" 'published export health: available=0 grade=2 standard=0 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${detailed_output}" 'published export health: available=0 grade=0 standard=0 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
 assert_contains "${BQ_LOG}" 'gcp_billing_export_resource_v1_*'
+
+both_empty_output="${TEST_TMP}/both-empty.out"
+run_exporter both_empty "${both_empty_output}"
+assert_contains "${both_empty_output}" 'published export health: available=0 grade=0 standard=1 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
+
+fallback_output="${TEST_TMP}/fallback.out"
+run_exporter detailed_empty_standard_rows "${fallback_output}"
+assert_contains "${fallback_output}" 'detailed export has no matching rows; checking standard invoice-grade fallback'
+assert_not_contains "${fallback_output}" 'standard export is fresher than detailed'
+assert_contains "${fallback_output}" 'published export health: available=1 grade=1 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+assert_contains "${fallback_output}" 'published 4 series'
+assert_contains "${BQ_LOG}" 'gcp_billing_export_resource_v1_*'
+assert_contains "${BQ_LOG}" 'gcp_billing_export_v1_*'
+
+fresh_standard_output="${TEST_TMP}/fresh-standard.out"
+run_exporter detailed_stale_standard_fresh "${fresh_standard_output}"
+assert_contains "${fresh_standard_output}" 'standard export is fresher than detailed; using standard invoice-grade rows'
+assert_not_contains "${fresh_standard_output}" 'detailed export has no matching rows'
+assert_contains "${fresh_standard_output}" 'published export health: available=1 grade=1 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+
+fresh_detailed_output="${TEST_TMP}/fresh-detailed.out"
+run_exporter detailed_fresh_standard_stale "${fresh_detailed_output}"
+assert_contains "${fresh_detailed_output}" 'published export health: available=1 grade=2 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+assert_not_contains "${fresh_detailed_output}" 'detailed export has no matching rows'
+assert_not_contains "${fresh_detailed_output}" 'standard export is fresher than detailed'
+
+detailed_partial_output="${TEST_TMP}/detailed-partial.out"
+if run_exporter detailed_success_standard_error "${detailed_partial_output}"; then
+  echo 'Expected a partial standard query failure to return non-zero' >&2
+  exit 1
+fi
+assert_contains "${detailed_partial_output}" 'standard billing export query failed'
+assert_contains "${detailed_partial_output}" 'published export health: available=1 grade=2 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+assert_contains "${detailed_partial_output}" 'published 4 series'
+
+standard_partial_output="${TEST_TMP}/standard-partial.out"
+if run_exporter detailed_error_standard_success "${standard_partial_output}"; then
+  echo 'Expected a partial detailed query failure to return non-zero' >&2
+  exit 1
+fi
+assert_contains "${standard_partial_output}" 'detailed billing export query failed'
+assert_contains "${standard_partial_output}" 'published export health: available=1 grade=1 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+assert_contains "${standard_partial_output}" 'published 4 series'
+
+unknown_output="${TEST_TMP}/unknown.out"
+if run_exporter detailed_error_standard_empty "${unknown_output}"; then
+  echo 'Expected failed detailed evidence with an empty standard fallback to return non-zero' >&2
+  exit 1
+fi
+assert_contains "${unknown_output}" 'scoped billing evidence could not be determined because one or more usage queries failed'
+assert_contains "${unknown_output}" 'published export health: available=0 grade=0 standard=1 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
+assert_not_contains "${unknown_output}" 'none of it matches scope'
+assert_not_contains "${unknown_output}" 'contains NO rows for ANY project'
 
 error_output="${TEST_TMP}/error.out"
 if run_exporter query_error "${error_output}"; then
@@ -138,5 +256,9 @@ if run_exporter query_error "${error_output}"; then
 fi
 assert_contains "${error_output}" 'standard billing export query failed'
 assert_contains "${error_output}" 'Access Denied: test failure'
+assert_contains "${error_output}" 'published export health: available=0 grade=0 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${error_output}" 'scoped billing evidence could not be determined because one or more usage queries failed'
+assert_not_contains "${error_output}" 'none of it matches scope'
+assert_not_contains "${error_output}" 'contains NO rows for ANY project'
 
 echo 'cost-metric-exporter tests passed'

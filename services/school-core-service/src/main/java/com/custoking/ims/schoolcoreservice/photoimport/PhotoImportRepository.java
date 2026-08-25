@@ -3,7 +3,9 @@ package com.custoking.ims.schoolcoreservice.photoimport;
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.persistence.AcademicCalendarAccess;
+import com.custoking.ims.schoolcoreservice.persistence.StudentReviewInvalidationService;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +24,19 @@ public class PhotoImportRepository {
     private final JdbcClient jdbc;
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
+    private final StudentReviewInvalidationService reviewInvalidation;
 
     public PhotoImportRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
+        this(jdbc, photoStorage, outbox, new StudentReviewInvalidationService(jdbc, outbox));
+    }
+
+    @Autowired
+    public PhotoImportRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox,
+                                 StudentReviewInvalidationService reviewInvalidation) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
+        this.reviewInvalidation = reviewInvalidation;
     }
 
     @Transactional
@@ -194,10 +204,10 @@ public class PhotoImportRepository {
             jdbc.sql("""
                     INSERT INTO student.photo_import_sources
                         (id, batch_id, school_id, drive_file_id, file_name, mime_type,
-                         byte_size, checksum, modified_time, source_type, image_no)
+                         byte_size, checksum, sha256_checksum, modified_time, source_type, image_no)
                     VALUES
                         (:id, :batchId, :schoolId, :driveFileId, :fileName, :mimeType,
-                         :byteSize, :checksum, :modifiedTime, :sourceType, :imageNo)
+                         :byteSize, :checksum, :sha256Checksum, :modifiedTime, :sourceType, :imageNo)
                     """)
                     .param("id", UUID.randomUUID())
                     .param("batchId", batchId)
@@ -207,6 +217,7 @@ public class PhotoImportRepository {
                     .param("mimeType", source.mimeType())
                     .param("byteSize", source.byteSize())
                     .param("checksum", source.checksum())
+                    .param("sha256Checksum", source.sha256Checksum())
                     .param("modifiedTime", source.modifiedTime())
                     .param("sourceType", source.sourceType())
                     .param("imageNo", source.imageNo())
@@ -223,11 +234,11 @@ public class PhotoImportRepository {
                     INSERT INTO student.photo_import_rows
                         (id, batch_id, school_id, excel_row, admission_no, workbook_name,
                          class_name, section_name, image_no, drive_file_id, drive_file_name,
-                         student_id, status, message, prior_photo_key, source_checksum)
+                         student_id, status, message, prior_photo_key, source_checksum, source_sha256)
                     VALUES
                         (:id, :batchId, :schoolId, :excelRow, :admissionNo, :workbookName,
                          :className, :sectionName, :imageNo, :driveFileId, :driveFileName,
-                         :studentId, :status, :message, :priorPhotoKey, :sourceChecksum)
+                         :studentId, :status, :message, :priorPhotoKey, :sourceChecksum, :sourceSha256)
                     """)
                     .param("id", UUID.randomUUID())
                     .param("batchId", batchId)
@@ -245,6 +256,7 @@ public class PhotoImportRepository {
                     .param("message", row.message())
                     .param("priorPhotoKey", row.priorPhotoKey())
                     .param("sourceChecksum", row.sourceChecksum())
+                    .param("sourceSha256", row.sourceSha256())
                     .update();
         }
         jdbc.sql("""
@@ -286,7 +298,7 @@ public class PhotoImportRepository {
                 SELECT id, batch_id, school_id, excel_row, admission_no, workbook_name,
                        class_name, section_name, image_no, drive_file_id, drive_file_name,
                        student_id, status, message, prior_photo_key, final_photo_key,
-                       source_checksum, crop_x, crop_y, manually_reviewed,
+                       source_checksum, source_sha256, crop_x, crop_y, manually_reviewed,
                        source_object_key, applied_at
                 FROM student.photo_import_rows
                 WHERE batch_id = :batchId AND school_id = :schoolId
@@ -302,7 +314,8 @@ public class PhotoImportRepository {
     public List<GoogleDrivePhotoImportClient.DriveFile> sourceFiles(UUID batchId, long schoolId) {
         selectSchoolScope(schoolId);
         return jdbc.sql("""
-                SELECT drive_file_id, file_name, mime_type, byte_size, checksum, modified_time
+                SELECT drive_file_id, file_name, mime_type, byte_size, checksum,
+                       sha256_checksum, modified_time
                 FROM student.photo_import_sources
                 WHERE batch_id = :batchId AND school_id = :schoolId
                 ORDER BY file_name, drive_file_id
@@ -315,6 +328,7 @@ public class PhotoImportRepository {
                         rs.getString("mime_type"),
                         (Long) rs.getObject("byte_size"),
                         rs.getString("checksum"),
+                        rs.getString("sha256_checksum"),
                         rs.getString("modified_time")))
                 .list();
     }
@@ -401,6 +415,7 @@ public class PhotoImportRepository {
                     message = :message,
                     prior_photo_key = :priorPhotoKey,
                     source_checksum = :sourceChecksum,
+                    source_sha256 = :sourceSha256,
                     crop_x = :cropX,
                     crop_y = :cropY,
                     manually_reviewed = true,
@@ -417,6 +432,7 @@ public class PhotoImportRepository {
                 .param("message", row.message())
                 .param("priorPhotoKey", row.priorPhotoKey())
                 .param("sourceChecksum", row.sourceChecksum())
+                .param("sourceSha256", row.sourceSha256())
                 .param("cropX", cropX)
                 .param("cropY", cropY)
                 .param("rowId", rowId)
@@ -632,7 +648,7 @@ public class PhotoImportRepository {
                 .param("studentId", currentRow.studentId())
                 .param("schoolId", batch.schoolId())
                 .update();
-        invalidateActivePhotoVerification(currentRow.studentId(), batch.schoolId());
+        reviewInvalidation.invalidatePhoto(currentRow.studentId());
         jdbc.sql("""
                 UPDATE student.photo_import_rows
                 SET status = 'APPLIED', final_photo_key = :key, applied_at = now(),
@@ -658,50 +674,6 @@ public class PhotoImportRepository {
                         "photoKey", key,
                         "photoImportBatchId", batch.id().toString()));
         return key;
-    }
-
-    private void invalidateActivePhotoVerification(long studentId, long schoolId) {
-        List<Map<String, Object>> items = jdbc.sql("""
-                        SELECT i.id, i.campaign_id
-                        FROM student.student_review_items i
-                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
-                        WHERE i.student_id = :studentId
-                          AND i.school_id = :schoolId
-                          AND c.review_type = 'PHOTO_VERIFICATION'
-                          AND c.status = 'ACTIVE'
-                        """)
-                .param("studentId", studentId)
-                .param("schoolId", schoolId)
-                .query((rs, rowNum) -> Map.<String, Object>of(
-                        "id", rs.getString("id"),
-                        "campaignId", rs.getString("campaign_id")))
-                .list();
-        if (items.isEmpty()) return;
-        List<String> itemIds = items.stream().map(item -> String.valueOf(item.get("id"))).toList();
-
-        jdbc.sql("""
-                        UPDATE student.student_review_items
-                        SET verified_photo = false,
-                            status = 'PENDING',
-                            correction_requested = false,
-                            correction_notes = NULL,
-                            completed_at = NULL,
-                            updated_at = now()
-                        WHERE id IN (:itemIds)
-                        """)
-                .param("itemIds", itemIds)
-                .update();
-        items.forEach(item -> outbox.append(
-                "student-review-item.upserted.v1",
-                "StudentReviewItemUpserted:" + item.get("id"),
-                "StudentReviewItem",
-                String.valueOf(item.get("id")),
-                schoolId,
-                Map.of(
-                        "id", item.get("id"),
-                        "schoolId", schoolId,
-                        "campaignId", item.get("campaignId"),
-                        "status", "PENDING")));
     }
 
     @Transactional
@@ -784,7 +756,7 @@ public class PhotoImportRepository {
         selectSchoolScope(schoolId);
         RecoveryTarget target = jdbc.sql("""
                 SELECT r.id AS row_id, r.batch_id, r.school_id, r.student_id,
-                       r.drive_file_id, r.drive_file_name, r.source_checksum,
+                       r.drive_file_id, r.drive_file_name, r.source_checksum, r.source_sha256,
                        r.final_photo_key, s.photo_url AS current_photo_key,
                        b.school_uid::text AS school_uid
                 FROM student.photo_import_rows r
@@ -807,6 +779,7 @@ public class PhotoImportRepository {
                         rs.getString("drive_file_id"),
                         rs.getString("drive_file_name"),
                         rs.getString("source_checksum"),
+                        rs.getString("source_sha256"),
                         rs.getString("final_photo_key"),
                         rs.getString("current_photo_key"),
                         rs.getString("school_uid")))
@@ -856,7 +829,7 @@ public class PhotoImportRepository {
         selectSchoolScope(target.schoolId());
         RecoveryTarget current = jdbc.sql("""
                 SELECT r.id AS row_id, r.batch_id, r.school_id, r.student_id,
-                       r.drive_file_id, r.drive_file_name, r.source_checksum,
+                       r.drive_file_id, r.drive_file_name, r.source_checksum, r.source_sha256,
                        r.final_photo_key, s.photo_url AS current_photo_key,
                        b.school_uid::text AS school_uid
                 FROM student.photo_import_rows r
@@ -879,6 +852,7 @@ public class PhotoImportRepository {
                         rs.getString("drive_file_id"),
                         rs.getString("drive_file_name"),
                         rs.getString("source_checksum"),
+                        rs.getString("source_sha256"),
                         rs.getString("final_photo_key"),
                         rs.getString("current_photo_key"),
                         rs.getString("school_uid")))
@@ -932,7 +906,7 @@ public class PhotoImportRepository {
             throw new IllegalArgumentException("Photo-import row changed while recovery was being saved");
         }
         if (!Objects.equals(recoveredKey, current.finalPhotoKey())) {
-            invalidateActivePhotoVerification(current.studentId(), current.schoolId());
+            reviewInvalidation.invalidatePhoto(current.studentId());
         }
         String message = Objects.equals(recoveredKey, current.finalPhotoKey())
                 ? "Original was reprocessed; the stored photo was already equivalent"
@@ -1076,17 +1050,20 @@ public class PhotoImportRepository {
         jdbc.sql("""
                 INSERT INTO student.photo_import_recoveries
                     (id, row_id, batch_id, school_id, student_id, recovery_version, status,
-                     requested_by, drive_file_id, source_checksum, prior_photo_key, message,
+                     requested_by, drive_file_id, source_checksum, source_sha256,
+                     prior_photo_key, message,
                      completed_at)
                 VALUES
                     (:id, :rowId, :batchId, :schoolId, :studentId, :recoveryVersion, :status,
-                     :requestedBy, :driveFileId, :sourceChecksum, :priorPhotoKey, :message,
+                     :requestedBy, :driveFileId, :sourceChecksum, :sourceSha256,
+                     :priorPhotoKey, :message,
                      CASE WHEN :status IN ('FAILED', 'PROTECTED') THEN now() ELSE NULL END)
                 ON CONFLICT (row_id, recovery_version) DO UPDATE
                 SET status = EXCLUDED.status,
                     requested_by = EXCLUDED.requested_by,
                     drive_file_id = EXCLUDED.drive_file_id,
                     source_checksum = EXCLUDED.source_checksum,
+                    source_sha256 = EXCLUDED.source_sha256,
                     prior_photo_key = EXCLUDED.prior_photo_key,
                     recovered_photo_key = NULL,
                     message = EXCLUDED.message,
@@ -1105,6 +1082,7 @@ public class PhotoImportRepository {
                 .param("requestedBy", requestedBy)
                 .param("driveFileId", target.driveFileId())
                 .param("sourceChecksum", target.sourceChecksum())
+                .param("sourceSha256", target.sourceSha256())
                 .param("priorPhotoKey", target.finalPhotoKey())
                 .param("message", message)
                 .update();
@@ -1114,7 +1092,8 @@ public class PhotoImportRepository {
     public GoogleDrivePhotoImportClient.DriveFile sourceFile(UUID batchId, long schoolId, String driveFileId) {
         selectSchoolScope(schoolId);
         return jdbc.sql("""
-                SELECT drive_file_id, file_name, mime_type, byte_size, checksum, modified_time
+                SELECT drive_file_id, file_name, mime_type, byte_size, checksum,
+                       sha256_checksum, modified_time
                 FROM student.photo_import_sources
                 WHERE batch_id = :batchId AND school_id = :schoolId AND drive_file_id = :driveFileId
                 """)
@@ -1127,6 +1106,7 @@ public class PhotoImportRepository {
                         rs.getString("mime_type"),
                         (Long) rs.getObject("byte_size"),
                         rs.getString("checksum"),
+                        rs.getString("sha256_checksum"),
                         rs.getString("modified_time")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Drive source file not found"));
@@ -1152,7 +1132,7 @@ public class PhotoImportRepository {
                 SELECT id, batch_id, school_id, excel_row, admission_no, workbook_name,
                        class_name, section_name, image_no, drive_file_id, drive_file_name,
                        student_id, status, message, prior_photo_key, final_photo_key,
-                       source_checksum, crop_x, crop_y, manually_reviewed,
+                       source_checksum, source_sha256, crop_x, crop_y, manually_reviewed,
                        source_object_key, applied_at
                 FROM student.photo_import_rows
                 WHERE id = :id AND school_id = :schoolId
@@ -1231,6 +1211,7 @@ public class PhotoImportRepository {
                 rs.getString("prior_photo_key"),
                 rs.getString("final_photo_key"),
                 rs.getString("source_checksum"),
+                rs.getString("source_sha256"),
                 rs.getDouble("crop_x"),
                 rs.getDouble("crop_y"),
                 rs.getBoolean("manually_reviewed"),
@@ -1324,6 +1305,7 @@ public class PhotoImportRepository {
             String mimeType,
             Long byteSize,
             String checksum,
+            String sha256Checksum,
             String modifiedTime,
             String sourceType,
             String imageNo) {
@@ -1342,7 +1324,26 @@ public class PhotoImportRepository {
             String status,
             String message,
             String priorPhotoKey,
-            String sourceChecksum) {
+            String sourceChecksum,
+            String sourceSha256) {
+        public RowInput(
+                int excelRow,
+                String admissionNo,
+                String workbookName,
+                String className,
+                String sectionName,
+                String imageNo,
+                String driveFileId,
+                String driveFileName,
+                Long studentId,
+                String status,
+                String message,
+                String priorPhotoKey,
+                String sourceChecksum) {
+            this(excelRow, admissionNo, workbookName, className, sectionName, imageNo,
+                    driveFileId, driveFileName, studentId, status, message, priorPhotoKey,
+                    sourceChecksum, null);
+        }
     }
 
     public record ImportRow(
@@ -1363,11 +1364,40 @@ public class PhotoImportRepository {
             String priorPhotoKey,
             String finalPhotoKey,
             String sourceChecksum,
+            String sourceSha256,
             double cropX,
             double cropY,
             boolean manuallyReviewed,
             String sourceObjectKey,
             OffsetDateTime appliedAt) {
+        public ImportRow(
+                UUID id,
+                UUID batchId,
+                long schoolId,
+                int excelRow,
+                String admissionNo,
+                String workbookName,
+                String className,
+                String sectionName,
+                String imageNo,
+                String driveFileId,
+                String driveFileName,
+                Long studentId,
+                String status,
+                String message,
+                String priorPhotoKey,
+                String finalPhotoKey,
+                String sourceChecksum,
+                double cropX,
+                double cropY,
+                boolean manuallyReviewed,
+                String sourceObjectKey,
+                OffsetDateTime appliedAt) {
+            this(id, batchId, schoolId, excelRow, admissionNo, workbookName, className,
+                    sectionName, imageNo, driveFileId, driveFileName, studentId, status,
+                    message, priorPhotoKey, finalPhotoKey, sourceChecksum, null, cropX, cropY,
+                    manuallyReviewed, sourceObjectKey, appliedAt);
+        }
     }
 
     public record StudentMatch(
@@ -1388,9 +1418,24 @@ public class PhotoImportRepository {
             String driveFileId,
             String driveFileName,
             String sourceChecksum,
+            String sourceSha256,
             String finalPhotoKey,
             String currentPhotoKey,
             String schoolUid) {
+        public RecoveryTarget(
+                UUID rowId,
+                UUID batchId,
+                long schoolId,
+                long studentId,
+                String driveFileId,
+                String driveFileName,
+                String sourceChecksum,
+                String finalPhotoKey,
+                String currentPhotoKey,
+                String schoolUid) {
+            this(rowId, batchId, schoolId, studentId, driveFileId, driveFileName,
+                    sourceChecksum, null, finalPhotoKey, currentPhotoKey, schoolUid);
+        }
     }
 
     public record RecoveryPreparation(

@@ -218,10 +218,17 @@ def main() -> int:
 
     if args.fixture:
         fixture_results = fixture.get("timeSeriesByFilter", {})
-        queries = [
-            {"filter": item, "seriesPresent": bool(fixture_results.get(item)), "error": None}
-            for item in unique_filters
-        ]
+        queries = []
+        for item in unique_filters:
+            fixture_result = fixture_results.get(item)
+            if isinstance(fixture_result, dict):
+                queries.append({
+                    "filter": item,
+                    "seriesPresent": bool(fixture_result.get("seriesPresent")),
+                    "error": fixture_result.get("error"),
+                })
+            else:
+                queries.append({"filter": item, "seriesPresent": bool(fixture_result), "error": None})
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             queries = list(executor.map(

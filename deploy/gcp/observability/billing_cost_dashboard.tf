@@ -33,8 +33,8 @@ locals {
     "",
     "**Confirmed spend** comes from `${local.billing_cost_read_project}.billing_export` and is delayed by",
     "Cloud Billing. Check **export available** and **source lag** before trusting a money panel.",
-    "The **billing data grade** is explicit: `0` = estimated only, `1` = standard invoice-grade export,",
-    "and `2` = detailed resource-level invoice-grade export.",
+    "The **billing data grade** describes usable scoped evidence: `0` = no matching invoice rows (estimated",
+    "signals only), `1` = standard invoice-grade rows, and `2` = detailed resource-level invoice-grade rows.",
     "",
     "**Live cost drivers** come directly from Cloud Monitoring. They remain current when billing export is",
     "delayed, but they are usage signals rather than invoice amounts.",
@@ -77,7 +77,7 @@ resource "google_monitoring_dashboard" "billing_cost" {
           }
         },
         {
-          title = "Billing data grade (0 estimate, 1 standard, 2 detailed)"
+          title = "Usable billing evidence (0 none, 1 standard, 2 detailed)"
           scorecard = {
             timeSeriesQuery = {
               timeSeriesFilter = {

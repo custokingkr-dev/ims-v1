@@ -258,11 +258,13 @@ class StudentOutboxEmissionIntegrationTest {
                     (id, campaign_id, student_id, school_id, status, verified_photo,
                      verified_full_name, verified_admission_no, verified_class_section,
                      verified_roll_no, verified_father_name, verified_father_contact,
-                     verified_address, completed_at)
+                     verified_address, current_full_name, suggested_full_name, completed_at)
                 VALUES (:profileItem, :profileCampaign, :studentId, :schoolId, 'COMPLETED', false,
-                        true, true, true, true, true, true, true, now()),
+                        true, true, true, true, true, true, true,
+                        'Verified Student', 'Rejected Name', now()),
                        (:photoItem, :photoCampaign, :studentId, :schoolId, 'COMPLETED', true,
-                        false, false, false, false, false, false, false, now())
+                        false, false, false, false, false, false, false,
+                        'Verified Student', NULL, now())
                 """)
                 .param("profileItem", profileItem)
                 .param("profileCampaign", profileCampaign)
@@ -271,6 +273,7 @@ class StudentOutboxEmissionIntegrationTest {
                 .param("studentId", id)
                 .param("schoolId", schoolId)
                 .update();
+        jdbc.sql("DELETE FROM tenant_school.outbox_events").update();
 
         studentRepo.updateStudent(id, Map.of(
                 "schoolId", schoolId,
@@ -281,20 +284,30 @@ class StudentOutboxEmissionIntegrationTest {
                 "phone", "9876500000"));
 
         Map<String, Object> profile = jdbc.sql("""
-                        SELECT status, verified_full_name, completed_at
+                        SELECT status, verified_full_name, current_full_name, completed_at
                         FROM student.student_review_items WHERE id = :id
                         """)
                 .param("id", profileItem)
                 .query((rs, n) -> Map.<String, Object>of(
                         "status", rs.getString("status"),
                         "verified", rs.getBoolean("verified_full_name"),
+                        "currentFullName", rs.getString("current_full_name"),
                         "completed", rs.getObject("completed_at") != null))
                 .single();
         assertThat(profile).containsEntry("status", "PENDING")
                 .containsEntry("verified", false)
+                .containsEntry("currentFullName", "Updated Student")
                 .containsEntry("completed", false);
+        assertThat(jdbc.sql("SELECT suggested_full_name FROM student.student_review_items WHERE id = :id")
+                .param("id", profileItem).query(String.class).optional()).isEmpty();
         assertThat(jdbc.sql("SELECT status FROM student.student_review_items WHERE id = :id")
                 .param("id", photoItem).query(String.class).single()).isEqualTo("COMPLETED");
+        assertThat(jdbc.sql("""
+                        SELECT aggregate_id || '|' || (payload->>'status')
+                        FROM tenant_school.outbox_events
+                        WHERE event_type = 'student-review-item.upserted.v1'
+                        """).query(String.class).list())
+                .containsExactly(profileItem + "|PENDING");
 
         Map<String, Object> listRow = ((java.util.List<Map<String, Object>>) studentRepo
                 .workspaceStudents(schoolId, "All", "All", "All", 0, 50)

@@ -1,0 +1,11 @@
+[
+  {
+    "standard_table_count": "1",
+    "detailed_table_count": "0",
+    "pricing_table_count": "1",
+    "table_names": [
+      "cloud_pricing_export",
+      "gcp_billing_export_v1_000000_000000_000000"
+    ]
+  }
+]

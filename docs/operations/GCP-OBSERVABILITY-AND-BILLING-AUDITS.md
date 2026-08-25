@@ -41,36 +41,118 @@ The report uses an explicit evidence grade:
 | Grade | Meaning |
 | ---: | --- |
 | 0 | `ESTIMATED_ONLY`: pricing or modeled run-rate only; never invoice-grade |
-| 1 | `INVOICE_GRADE_STANDARD`: standard usage-cost export exists |
-| 2 | `INVOICE_GRADE_DETAILED`: resource-level detailed usage export exists |
+| 1 | `INVOICE_GRADE_STANDARD`: at least one scoped standard usage-cost row is available |
+| 2 | `INVOICE_GRADE_DETAILED`: at least one scoped resource-level detailed usage row is available |
 
 For grades 1 and 2 it reports both delivery lag (`export_time`) and newest billed-usage age
 (`usage_end_time`), scoped row count, gross/net month-to-date values, and currency. A pricing export by
 itself remains grade 0 because it contains rates, not this project's billed usage.
 
+`capabilityGradeCode` separately records which usage tables are configured. During initial backfill it can
+be 1 or 2 while the evidence `gradeCode` remains 0 and freshness is `NO_MATCHING_PROJECT_ROWS`; this means
+the export is enabled but no invoice-grade scoped evidence has arrived yet.
+
 Enabling standard or detailed Cloud Billing export requires billing-account authority outside this
-repository. A newly enabled export does not backfill usage from before enablement.
+repository. A first-time export to a US/EU multi-region dataset backfills from the start of the previous
+month and can take up to five days to catch up; a supported regional dataset starts at enablement. Moving
+or re-enabling an export does not automatically restore data from the previous location or disabled gap.
 
 ## Cloud Asset Inventory drift
 
 ```powershell
 python scripts/export-gcp-asset-drift.py `
   --project custoking-prod `
-  --baseline artifacts/baselines/gcp-assets-prod.json `
+  --baseline deploy/gcp/governance/cloud-assets-prod.baseline.json `
+  --require-reviewed-baseline `
+  --redact-assets `
+  --fail-on-drift `
   --output-json artifacts/gcp-assets-prod.json `
   --output-markdown artifacts/gcp-assets-prod.md
 ```
 
 The script creates a canonical asset snapshot and compares asset additions, removals, and selected field
 changes with an optional baseline. It deliberately refuses to enable `cloudasset.googleapis.com` or grant
-`cloudasset.assets.searchAllResources`; those are separately approved owner/IAM actions. An initial run
-without `--baseline` establishes the candidate baseline for review.
+`cloudasset.assets.searchAllResources`; those are separately reviewed owner/IAM actions.
+
+The approved production baseline is the privacy-safe manifest at
+`deploy/gcp/governance/cloud-assets-prod.baseline.json`. It contains a SHA-256 and aggregate counts for
+tracked resources, not production resource names. High-churn execution history, revisions, releases,
+images, secret versions and backups are excluded only through the explicit versioned list in that file;
+stable services, jobs, pipelines, targets, IAM identities, networks, APIs, buckets, databases, dashboards,
+alerts and notification channels remain tracked.
+
+The scheduled comparison is fail-closed and redacted:
+
+```powershell
+python scripts/export-gcp-asset-drift.py `
+  --project custoking-prod `
+  --baseline deploy/gcp/governance/cloud-assets-prod.baseline.json `
+  --require-reviewed-baseline `
+  --redact-assets `
+  --fail-on-drift
+```
+
+Never copy the current output over the approved baseline. For an explained infrastructure change, retain
+the full current snapshot in protected operator storage, review its exact additions/removals/changes, then
+generate a non-approved candidate using the existing approved ignore policy:
+
+```powershell
+python scripts/export-gcp-asset-drift.py `
+  --project custoking-prod `
+  --baseline deploy/gcp/governance/cloud-assets-prod.baseline.json `
+  --require-reviewed-baseline `
+  --write-baseline-candidate artifacts/cloud-assets-prod.baseline.candidate.json `
+  --review-reference <approved-change-or-pull-request-reference>
+```
+
+The generated manifest has `status: candidate`; scheduled automation rejects it. A reviewed pull request
+must reconcile the protected full diff, preserve or explicitly justify every ignored asset type, and change
+the status to `approved`. Baseline approval and scheduled comparison are deliberately separate operations.
+
+## Scheduled governance audit
+
+`.github/workflows/gcp-governance-audit.yml` runs every Monday at 03:20 UTC and can also be dispatched from
+`main`. It independently runs Cloud Asset drift and Monitoring dashboard/alert resource-filter validation,
+retains both privacy-safe reports for 14 days, and fails if either audit fails. A Monitoring filter with no
+recent data remains a reported diagnostic; malformed/unauthorized queries and missing exact resource
+references fail the run.
+
+The workflow has no deployment Environment and no mutation command. It uses a dedicated
+`github-governance-auditor` identity whose custom role contains only the exact list/get/search permissions
+needed by the audits. Cloud authentication is additionally behind a staged dual gate: the reviewed
+repository config `deploy/gcp/governance/gcp-governance-audit-enablement.json` and repository variable
+`GCP_GOVERNANCE_AUDIT_ENABLED` must both enable the run. The checked-in config is intentionally disabled;
+setting the variable early fails the activation job before an OIDC token is requested.
+
+Use this exact activation sequence. Do not combine provisioning and activation:
+
+1. Keep `GCP_GOVERNANCE_AUDIT_ENABLED` unset or `false`, and keep the enablement config disabled.
+2. Review and apply the CI/CD Terraform. Set `GOVERNANCE_AUDITOR_SERVICE_ACCOUNT` from Terraform output
+   `governance_auditor_service_account`, but do not enable the audit yet.
+3. Capture a fresh, full read-only Cloud Asset inventory after provisioning. It must include the new
+   governance service account and custom role, plus any provider-managed metadata change.
+4. Reconcile that protected full diff and generate a candidate baseline using the documented candidate
+   command. Approve the candidate only through a reviewed pull request.
+5. In that same reviewed pull request, replace the baseline and change the enablement config to
+   `enabled: true`, `status: approved`, the exact new `assetDigestSha256`, and a non-empty
+   `activationReviewReference`. Its tracked counts must prove at least two custom IAM roles and 23 service
+   accounts so the pre-provision baseline cannot pass accidentally.
+6. After the pull request merges to `main`, run the enablement validator and focused tests while the
+   repository variable is still false. Only then set `GCP_GOVERNANCE_AUDIT_ENABLED=true`.
+7. Dispatch the workflow once and review both retained reports before relying on the weekly schedule.
+
+To suspend the audit without changing its reviewed evidence, set `GCP_GOVERNANCE_AUDIT_ENABLED=false`.
+The scheduled job then stops before authentication. The current pre-provision baseline remains valid for
+offline comparison, but is deliberately ineligible for scheduled activation because Terraform will add the
+tracked governance identity and role. This repository batch does not apply Terraform, change repository
+variables, or mutate GCP.
 
 ## Repository verification
 
 ```powershell
 node --test tools/live-dashboard/*.test.mjs
-python -m unittest scripts.tests.test_audit_gcp_observability scripts.tests.test_export_gcp_asset_drift
+python -m unittest scripts.tests.test_audit_gcp_observability scripts.tests.test_export_gcp_asset_drift scripts.tests.test_validate_gcp_governance_audit_enablement
+pwsh -File scripts/audit-security-governance-controls.ps1
 pwsh -File scripts/tests/report-billing-export-health-test.ps1
 & 'C:\Program Files\Git\bin\bash.exe' scripts/tests/cost-metric-exporter-test.sh
 terraform -chdir=deploy/gcp/observability fmt -check

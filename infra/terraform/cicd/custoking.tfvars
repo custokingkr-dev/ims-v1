@@ -6,8 +6,9 @@ project_number = "305630109861"
 region         = "asia-south2"
 environments   = ["prod"]
 
-enable_dev_identities    = false
-enable_recovery_bindings = false
+enable_dev_identities      = false
+enable_recovery_bindings   = false
+recovery_validation_bucket = "custoking-db-snapshots"
 
 runtime_service_account_emails = {
   prod = [
