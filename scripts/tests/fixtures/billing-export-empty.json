@@ -1,0 +1,12 @@
+[
+  {
+    "row_count": "0",
+    "latest_export_time": null,
+    "latest_usage_end": null,
+    "export_lag_hours": null,
+    "usage_lag_hours": null,
+    "gross_mtd": null,
+    "net_mtd": null,
+    "currencies": []
+  }
+]

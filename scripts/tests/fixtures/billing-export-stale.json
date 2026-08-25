@@ -1,0 +1,12 @@
+[
+  {
+    "row_count": "40",
+    "latest_export_time": "2026-08-23T07:00:00Z",
+    "latest_usage_end": "2026-08-23T06:00:00Z",
+    "export_lag_hours": "48.0",
+    "usage_lag_hours": "50.0",
+    "gross_mtd": "10.00",
+    "net_mtd": "8.00",
+    "currencies": ["INR"]
+  }
+]

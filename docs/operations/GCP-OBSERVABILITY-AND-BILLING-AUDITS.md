@@ -49,7 +49,9 @@ For grades 1 and 2 it reports both delivery lag (`export_time`) and newest bille
 itself remains grade 0 because it contains rates, not this project's billed usage.
 
 Enabling standard or detailed Cloud Billing export requires billing-account authority outside this
-repository. A newly enabled export does not backfill usage from before enablement.
+repository. A first-time export to a US/EU multi-region dataset backfills from the start of the previous
+month and can take up to five days to catch up; a supported regional dataset starts at enablement. Moving
+or re-enabling an export does not automatically restore data from the previous location or disabled gap.
 
 ## Cloud Asset Inventory drift
 
