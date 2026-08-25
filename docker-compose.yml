@@ -23,7 +23,8 @@ services:
   identity-service:
     profiles: ["core", "full"]
     build:
-      context: ./services/identity-service
+      context: .
+      dockerfile: services/identity-service/Dockerfile
     container_name: custoking-identity-service
     restart: unless-stopped
     mem_limit: 768m
@@ -59,7 +60,8 @@ services:
   school-core-service:
     profiles: ["core", "full"]
     build:
-      context: ./services/school-core-service
+      context: .
+      dockerfile: services/school-core-service/Dockerfile
     container_name: custoking-school-core-service
     restart: unless-stopped
     mem_limit: 900m
@@ -93,7 +95,8 @@ services:
   operations-service:
     profiles: ["full"]
     build:
-      context: ./services/operations-service
+      context: .
+      dockerfile: services/operations-service/Dockerfile
     container_name: custoking-operations-service
     restart: unless-stopped
     mem_limit: 640m
@@ -126,7 +129,8 @@ services:
   platform-service:
     profiles: ["full"]
     build:
-      context: ./services/platform-service
+      context: .
+      dockerfile: services/platform-service/Dockerfile
     container_name: custoking-platform-service
     restart: unless-stopped
     mem_limit: 768m
@@ -165,7 +169,8 @@ services:
   billing-service:
     profiles: ["full"]
     build:
-      context: ./services/billing-service
+      context: .
+      dockerfile: services/billing-service/Dockerfile
     container_name: custoking-billing-service
     restart: unless-stopped
     mem_limit: 640m

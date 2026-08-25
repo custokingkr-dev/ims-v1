@@ -40,6 +40,10 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT = process.env.DASHBOARD_PROJECT || "custoking-prod";
 const PORT = Number(process.env.PORT || 8787);
 const ON_CLOUD_RUN = Boolean(process.env.K_SERVICE);
+const configuredUpstreamTimeout = Number(process.env.DASHBOARD_UPSTREAM_TIMEOUT_MS || 10_000);
+const UPSTREAM_TIMEOUT_MS = Number.isFinite(configuredUpstreamTimeout) && configuredUpstreamTimeout > 0
+  ? configuredUpstreamTimeout : 10_000;
+const MAX_API_RESPONSE_BYTES = 10 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------------------------------
 // Credentials
@@ -65,10 +69,19 @@ function metadataToken() {
       },
       (res) => {
         let body = "";
-        res.on("data", (c) => (body += c));
+        res.on("data", (c) => {
+          body += c;
+          if (Buffer.byteLength(body) > MAX_API_RESPONSE_BYTES) {
+            req.destroy(new Error("metadata token response exceeded the size limit"));
+          }
+        });
         res.on("end", () => {
           try {
-            resolve(JSON.parse(body).access_token);
+            const parsed = JSON.parse(body);
+            if (res.statusCode < 200 || res.statusCode >= 300 || !parsed.access_token) {
+              return reject(new Error(`metadata token request returned HTTP ${res.statusCode}`));
+            }
+            resolve(parsed.access_token);
           } catch {
             reject(new Error("metadata server returned a token response that did not parse"));
           }
@@ -76,6 +89,8 @@ function metadataToken() {
       },
     );
     req.on("error", reject);
+    req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
+      req.destroy(new Error(`metadata token request timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
     req.end();
   });
 }
@@ -83,7 +98,11 @@ function metadataToken() {
 function gcloudToken() {
   return new Promise((resolve, reject) => {
     // shell:true because gcloud is a .cmd shim on Windows and will not exec directly.
-    execFile("gcloud", ["auth", "print-access-token"], { shell: true }, (err, stdout, stderr) => {
+    execFile("gcloud", ["auth", "print-access-token"], {
+      shell: true,
+      timeout: UPSTREAM_TIMEOUT_MS,
+      maxBuffer: MAX_API_RESPONSE_BYTES,
+    }, (err, stdout, stderr) => {
       if (err) {
         return reject(
           new Error(
@@ -106,7 +125,12 @@ function monitoringRequest(urlPath, token) {
       { host: "monitoring.googleapis.com", path: urlPath, headers: { Authorization: `Bearer ${token}` } },
       (res) => {
         let body = "";
-        res.on("data", (c) => (body += c));
+        res.on("data", (c) => {
+          body += c;
+          if (Buffer.byteLength(body) > MAX_API_RESPONSE_BYTES) {
+            req.destroy(new Error("monitoring API response exceeded the size limit"));
+          }
+        });
         res.on("end", () => {
           let parsed;
           try {
@@ -114,12 +138,17 @@ function monitoringRequest(urlPath, token) {
           } catch {
             return reject(new Error(`monitoring API returned non-JSON (HTTP ${res.statusCode})`));
           }
-          if (parsed.error) return reject(new Error(parsed.error.message || "monitoring API error"));
+          if (res.statusCode < 200 || res.statusCode >= 300 || parsed.error) {
+            return reject(new Error(
+              parsed.error?.message || `monitoring API returned HTTP ${res.statusCode}`));
+          }
           resolve(parsed);
         });
       },
     );
     req.on("error", reject);
+    req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
+      req.destroy(new Error(`monitoring API timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
     req.end();
   });
 }
@@ -375,8 +404,18 @@ function externalOrigin(req) {
   return `${proto}://${req.headers.host}`;
 }
 
-const server = http.createServer(async (req, res) => {
+export const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
+
+  if (url.pathname === "/auth/logout") {
+    auth.revokeSession(req.headers.cookie);
+    res.writeHead(303, {
+      "set-cookie": [auth.clearSessionCookie, auth.expireAuthorizationCookie],
+      "cache-control": "no-store",
+      location: "/owner",
+    });
+    return res.end();
+  }
 
   if (AUTH_REQUIRED) {
     const redirectUri = `${externalOrigin(req)}/auth/callback`;
@@ -390,35 +429,51 @@ const server = http.createServer(async (req, res) => {
       try {
         const code = url.searchParams.get("code");
         if (!code) throw new Error("no code");
-        const tokens = await auth.exchangeCode(code, redirectUri);
-        const email = await auth.verifyIdToken(tokens.id_token);
+        const transaction = auth.consumeAuthorization(req.headers.cookie, url.searchParams.get("state"));
+        const tokens = await auth.exchangeCode(code, redirectUri, transaction.codeVerifier);
+        const email = await auth.verifyIdToken(tokens.id_token, transaction.nonce);
         if (!auth.isAllowed(email)) {
-          res.writeHead(403, { "content-type": "text/html; charset=utf-8" });
+          res.writeHead(403, {
+            "content-type": "text/html; charset=utf-8",
+            "set-cookie": auth.expireAuthorizationCookie,
+            "cache-control": "no-store",
+          });
           return res.end(`<p style="font:16px system-ui;padding:2rem">
             <strong>${email}</strong> is not on the allowlist for this dashboard.<br>
             Ask the owner to add you, then sign in again.</p>`);
         }
-        const dest = safeDest(url.searchParams.get("state"));
+        const dest = safeDest(transaction.destination);
         res.writeHead(302, {
-          "set-cookie": `ck_session=${auth.makeSession(email)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`,
+          "set-cookie": [
+            `ck_session=${auth.makeSession(email)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`,
+            auth.expireAuthorizationCookie,
+          ],
+          "cache-control": "no-store",
           location: dest,
         });
         return res.end();
       } catch (err) {
-        res.writeHead(400, { "content-type": "text/plain" });
+        res.writeHead(400, {
+          "content-type": "text/plain",
+          "set-cookie": auth.expireAuthorizationCookie,
+          "cache-control": "no-store",
+        });
         return res.end(`Sign-in failed: ${err.message}`);
       }
     }
 
-    // CodeQL flags this as js/user-controlled-bypass: a condition guarding a sensitive action, driven
-    // by a user-provided value. The value is a cookie, and a session cookie is user-provided by
-    // definition -- the query cannot see that readSession verifies an HMAC-SHA256 signature with
-    // timingSafeEqual before returning anything, so signature checks read to it as no check at all.
-    // Reviewed and dismissed on the alert rather than worked around here; see auth.mjs.
+    // readSession accepts the identity only after AES-GCM authenticates and decrypts the cookie, then
+    // re-checks expiry, shape, revocation, and the current email allowlist. Treating the raw browser
+    // cookie as an identity here would turn this branch into an authentication bypass.
     if (!auth.readSession(req.headers.cookie)) {
       // Constrained on the way OUT as well as on the way back. Putting an arbitrary pathname into
       // state and validating only on return means the check has exactly one place to be wrong in.
-      res.writeHead(302, { location: auth.authUrl(redirectUri, safeDest(url.pathname)) });
+      const transaction = auth.beginAuthorization(safeDest(url.pathname));
+      res.writeHead(302, {
+        "set-cookie": transaction.cookie,
+        "cache-control": "no-store",
+        location: auth.authUrl(redirectUri, transaction.state, transaction.codeChallenge),
+      });
       return res.end();
     }
   }
@@ -466,7 +521,10 @@ const server = http.createServer(async (req, res) => {
   res.end("not found");
 });
 
-server.listen(PORT, () => {
-  console.log(`live dashboard  →  http://localhost:${PORT}`);
-  console.log(`project ${PROJECT}   auth: ${ON_CLOUD_RUN ? "metadata server" : "gcloud"}`);
-});
+const IS_MAIN = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (IS_MAIN) {
+  server.listen(PORT, () => {
+    console.log(`live dashboard  →  http://localhost:${PORT}`);
+    console.log(`project ${PROJECT}   auth: ${ON_CLOUD_RUN ? "metadata server" : "gcloud"}`);
+  });
+}

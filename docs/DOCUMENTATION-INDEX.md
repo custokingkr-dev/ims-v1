@@ -116,6 +116,9 @@ business approval exists.
 These answer what happened at the stated time. Reconciled banners link to current state; numeric test results
 and deployment history must remain unchanged.
 
+- `EXECUTION-PLAN-EXECUTION-EVIDENCE-2026-08-25.md` — repository implementation and verification companion
+  to the deep analysis plan; separates the green local batch from governed production applies, destructive
+  retirement, billing-account enablement, and real-school certification that were not performed.
 - `DEV-SCALE-VALIDATION-2026-08-10.md`
 - `GCP-BUDGET-INCIDENT-2026-08-11.md`
 - `PRODUCTION-DEPLOYMENT-2026-08-11.md`
@@ -134,6 +137,9 @@ and deployment history must remain unchanged.
 These remain useful context but are not current topology or live-state claims unless adopted by an
 authoritative current document.
 
+- `PROJECT-DEEP-ANALYSIS-AND-EXECUTION-PLAN-2026-08-25.md` — dated repository, API, database, dependency,
+  live GCP, billing, observability, and production-readiness analysis with a gated eight-phase execution
+  plan. Its measurements are a 2026-08-25 snapshot; newer live inventory takes precedence.
 - `CHANGELOG-architecture-hardening.md`
 - `frontend-design-audit.md`
 - `GCP-COST-OPTIMIZATION-PLAN-2026-08.md` — its 2026-08-12 banner provides current deltas.

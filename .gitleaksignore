@@ -2,3 +2,10 @@
 # configuration categories and contains no credential. Keep this suppression tied
 # to its original commit, file, rule, and line so all other findings still fail.
 624c038d1863b3589f267b4f73b731b91ab20c2c:docs/SUPERSEDED-GCP-IN-PLACE-PROJECT-MIGRATION-RUNBOOK-2026-08-16.md:generic-api-key:508
+
+# Verified dashboard test-fixture false positives. The original commit used a
+# deterministic 64-character placeholder to exercise minimum session-secret
+# length validation; the current tests generate their test-only value at runtime.
+# Keep these suppressions bound to the exact historical findings.
+f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/auth.test.mjs:generic-api-key:8
+f185f3e923b73d01b5b32b87a15482667b591e42:tools/live-dashboard/server.test.mjs:generic-api-key:8

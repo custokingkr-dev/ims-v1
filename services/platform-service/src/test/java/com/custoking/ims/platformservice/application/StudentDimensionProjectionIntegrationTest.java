@@ -278,4 +278,46 @@ class StudentDimensionProjectionIntegrationTest {
                         WHERE student_id = 42
                         """).query(Long.class).single());
     }
+
+    @Test
+    void reconciliationViewDetectsAndOwnerRequeueRepairsStaleProjection() throws Exception {
+        feedStudentEvent(UUID.randomUUID().toString(), 42L, 7L, "Jane Doe");
+        assertEquals(1, processor.processBatch());
+        jdbcClient.sql("UPDATE reporting.dim_student SET full_name = 'Stale name' WHERE id = 42").update();
+
+        assertEquals("STUDENT_PROJECTION_STALE", jdbcClient.sql("""
+                        SELECT issue
+                        FROM reporting.student_projection_reconciliation
+                        WHERE student_id = 42
+                        """).query(String.class).single());
+        assertTrue(jdbcClient.sql("SELECT reporting.requeue_student_projection(42)")
+                .query(Boolean.class).single());
+
+        assertEquals(1, processor.processBatch());
+        assertEquals("Jane Doe", jdbcClient.sql("SELECT full_name FROM reporting.dim_student WHERE id = 42")
+                .query(String.class).single());
+        assertEquals(0L, jdbcClient.sql("""
+                        SELECT count(*)
+                        FROM reporting.student_projection_reconciliation
+                        WHERE student_id = 42 AND issue IS NOT NULL
+                        """).query(Long.class).single());
+    }
+
+    @Test
+    void ownerRepairNeverReplaysOlderEventAheadOfNewerPendingEvent() throws Exception {
+        OffsetDateTime first = OffsetDateTime.now().minusMinutes(1);
+        feedStudentEvent(UUID.randomUUID().toString(), 42L, 7L, "First value", first);
+        assertEquals(1, processor.processBatch());
+
+        feedStudentEvent(UUID.randomUUID().toString(), 42L, 7L, "New pending value",
+                first.plusSeconds(30));
+
+        assertEquals(false, jdbcClient.sql("SELECT reporting.requeue_student_projection(42)")
+                .query(Boolean.class).single());
+        assertEquals(1L, jdbcClient.sql("""
+                        SELECT count(*)
+                        FROM reporting.reporting_event_inbox
+                        WHERE aggregate_id = '42' AND status = 'RECEIVED'
+                        """).query(Long.class).single());
+    }
 }

@@ -1,202 +1,45 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  Ban,
   Check,
   Copy,
-  Download,
-  Eye,
   ExternalLink,
   FolderCog,
   FolderSearch,
   Link2,
   LoaderCircle,
   LockKeyhole,
-  Play,
-  Pencil,
   RefreshCw,
-  ScanSearch,
   ShieldCheck,
-  ShieldOff,
-  XCircle,
 } from 'lucide-react';
 import api from '../../../services/api';
-import { TransferProgress } from '../../../components/TransferProgress';
 import { ModuleShell } from '../ui';
+import { PhotoImportDialogs } from './photo-import/PhotoImportDialogs';
+import {
+  PHOTO_IMPORT_REQUEST_CONFIG,
+  PHOTO_RECOVERY_CHUNK_SIZE,
+  type AccessState,
+  type EditingState,
+  type ImportBatch,
+  type ImportContext,
+  type ImportRow,
+  type OperationProgress,
+  type PreviewState,
+  type RecoveryBatchResult,
+  type RecoveryProgress,
+  type RowFilter,
+  duplicateSchoolNames,
+  errorMessage,
+  executionOperationProgress,
+  isTimeoutError,
+  schoolOptionLabel,
+  statusTone,
+} from './photo-import/model';
 
-interface SchoolContext {
-  id: number;
-  schoolUid: string;
-  name: string;
-  shortCode: string;
-  academicYearId: string;
-  academicYearLabel: string;
-  driveFolderStatus: 'NOT_PROVISIONED' | 'PROVISIONING' | 'READY' | 'FAILED';
-  driveFolderId?: string;
-  driveFolderName?: string;
-  driveFolderUrl?: string;
-  driveFolderError?: string;
-}
-
-interface ImportContext {
-  driveConfigured: boolean;
-  managedDriveConfigured: boolean;
-  schools: SchoolContext[];
-  mappingColumns: string[];
-  mappingFileFormats: string[];
-  mappingRowLimit?: number;
-  imageFileLimit?: string;
-  fileNameRule: string;
-}
-
-interface ImportBatch {
-  id: string;
-  schoolId: number;
-  schoolName: string;
-  academicYearId: string;
-  academicYearLabel: string;
-  driveFolderId: string;
-  driveFolderName?: string;
-  workbookFileName?: string;
-  status: string;
-  totalRows: number;
-  readyCount: number;
-  heldCount: number;
-  errorCount: number;
-  appliedCount: number;
-  failedCount: number;
-  createdAt: string;
-  photographerAccessExpiresAt?: string;
-  photographerAccessRevokedAt?: string;
-}
-
-interface AccessState {
-  expiresAt?: string;
-  revokedAt?: string;
-  overdue: boolean;
-}
-
-interface ImportRow {
-  id: string;
-  excelRow: number;
-  admissionNo: string;
-  workbookName: string;
-  className: string;
-  sectionName: string;
-  imageNo?: string;
-  driveFileName?: string;
-  studentId?: number;
-  status: 'READY' | 'HELD' | 'ERROR' | 'EXCLUDED' | 'APPLIED' | 'FAILED';
-  message?: string;
-  cropX: number;
-  cropY: number;
-  manuallyReviewed: boolean;
-  sourceObjectKey?: string;
-}
-
-interface RecoveryRowResult {
-  rowId: string;
-  status: 'RECOVERED' | 'ALREADY_RECOVERED' | 'IN_PROGRESS' | 'PROTECTED' | 'FAILED';
-  photoKey?: string;
-  message?: string;
-}
-
-interface RecoveryProgress {
-  totalCount: number;
-  processedCount: number;
-  recoveredCount: number;
-  protectedCount: number;
-  failedCount: number;
-  inProgressCount: number;
-  pendingCount: number;
-  percentComplete: number;
-  resumable: boolean;
-  updatedAt?: string;
-}
-
-interface RecoveryBatchResult {
-  selectedCount: number;
-  recoveredCount: number;
-  alreadyRecoveredCount: number;
-  inProgressCount: number;
-  protectedCount: number;
-  failedCount: number;
-  rows: RecoveryRowResult[];
-  progress: RecoveryProgress;
-}
-
-interface OperationProgress {
-  label: string;
-  detail: string;
-  value?: number;
-  valueLabel?: string;
-  tone?: 'active' | 'complete' | 'error';
-}
-
-const FILTERS = ['ALL', 'READY', 'HELD', 'ERROR', 'APPLIED', 'FAILED'] as const;
-type RowFilter = typeof FILTERS[number];
-const PHOTO_IMPORT_REQUEST_CONFIG = { timeout: 120000 };
-// Recovery does several remote and transactional operations per photo. Keep each browser request
-// comfortably below its timeout while the backend's versioned audit makes the chunks resumable.
-const PHOTO_RECOVERY_CHUNK_SIZE = 5;
-
-function isTimeoutError(error: any): boolean {
-  return error?.code === 'ECONNABORTED' || String(error?.message || '').toLowerCase().includes('timeout');
-}
-
-function errorMessage(error: any): string {
-  const data = error?.response?.data;
-  if (typeof data === 'string' && data.trim()) return data;
-  if (data?.message) return data.message;
-  if (data?.detail) return data.detail;
-  if (data?.code) return data.code;
-  return error?.message || 'The request could not be completed.';
-}
-
-function statusTone(status: string): string {
-  if (status === 'READY' || status === 'COMPLETED' || status === 'APPLIED') return 'ok';
-  if (status === 'HELD' || status === 'FROZEN' || status === 'EXECUTING') return 'warn';
-  if (status === 'ERROR' || status === 'FAILED' || status === 'PARTIAL') return 'bad';
-  return 'neutral';
-}
-
-function workflowStep(status?: string): number {
-  if (!status || status === 'DRAFT') return 1;
-  if (status === 'REVIEW') return 2;
-  if (status === 'FROZEN') return 3;
-  return 4;
-}
-
-function executionOperationProgress(current: ImportBatch): OperationProgress {
-  const processed = current.appliedCount + current.failedCount;
-  const total = processed + current.readyCount;
-  const complete = current.status !== 'EXECUTING' && current.readyCount === 0;
-  const value = total === 0 ? 100 : (processed / total) * 100;
-  return {
-    label: complete ? 'Photo import complete' : 'Applying student photos',
-    detail: complete
-      ? `${current.appliedCount} applied; ${current.failedCount} failed.`
-      : `${processed} of ${total} executable rows processed; ${current.readyCount} remain.`,
-    value,
-    valueLabel: `${Math.round(value)}%`,
-    tone: complete ? (current.failedCount > 0 ? 'error' : 'complete') : 'active',
-  };
-}
-
-function duplicateSchoolNames(schools: SchoolContext[]): Set<string> {
-  const counts = new Map<string, number>();
-  schools.forEach(school => counts.set(school.name, (counts.get(school.name) || 0) + 1));
-  return new Set([...counts.entries()]
-    .filter(([, count]) => count > 1)
-    .map(([name]) => name));
-}
-
-function schoolOptionLabel(school: SchoolContext, duplicateNames: Set<string>): string {
-  if (!duplicateNames.has(school.name)) {
-    return `${school.name} (${school.shortCode})`;
-  }
-  return `${school.name} (${school.shortCode}, #${school.id})`;
-}
+const PhotoImportBatchSummary = lazy(() => import('./photo-import/PhotoImportBatchSummary')
+  .then(module => ({ default: module.PhotoImportBatchSummary })));
+const PhotoImportReviewTable = lazy(() => import('./photo-import/PhotoImportReviewTable')
+  .then(module => ({ default: module.PhotoImportReviewTable })));
 
 export function PhotoImportPanel() {
   const [context, setContext] = useState<ImportContext | null>(null);
@@ -208,26 +51,18 @@ export function PhotoImportPanel() {
   const [filter, setFilter] = useState<RowFilter>('ALL');
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
-  const [preview, setPreview] = useState<{ row: ImportRow; url: string } | null>(null);
+  const [preview, setPreview] = useState<PreviewState | null>(null);
   const [executionConfirmed, setExecutionConfirmed] = useState(false);
   const [access, setAccess] = useState<AccessState | null>(null);
   const [recoveryProgress, setRecoveryProgress] = useState<RecoveryProgress | null>(null);
   const [operationProgress, setOperationProgress] = useState<OperationProgress | null>(null);
-  const [editing, setEditing] = useState<{
-    row: ImportRow;
-    admissionNo: string;
-    imageNo: string;
-    excluded: boolean;
-    cropX: number;
-    cropY: number;
-  } | null>(null);
+  const [editing, setEditing] = useState<EditingState | null>(null);
 
   const selectedSchool = context?.schools.find(school => school.id === Number(schoolId));
   const duplicateNames = useMemo(
     () => duplicateSchoolNames(context?.schools || []),
     [context?.schools],
   );
-  const currentStep = workflowStep(batch?.status);
   const visibleRows = useMemo(
     () => filter === 'ALL' ? rows : rows.filter(row => row.status === filter),
     [filter, rows],
@@ -251,14 +86,17 @@ export function PhotoImportPanel() {
     }
   };
 
-  const loadBatches = async (selectedId: number) => {
+  const loadBatches = async (selectedId: number, signal?: AbortSignal) => {
     try {
       const response = await api.get<ImportBatch[]>('/student-photo-imports', {
         ...PHOTO_IMPORT_REQUEST_CONFIG,
+        signal,
         params: { schoolId: selectedId },
       });
+      if (signal?.aborted) return;
       setBatches(response.data || []);
     } catch (error) {
+      if (signal?.aborted || (error as { code?: string })?.code === 'ERR_CANCELED') return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     }
   };
@@ -310,12 +148,14 @@ export function PhotoImportPanel() {
   }, [preview?.url]);
 
   useEffect(() => {
-    if (schoolId) void loadBatches(Number(schoolId));
+    const controller = new AbortController();
+    if (schoolId) void loadBatches(Number(schoolId), controller.signal);
     setBatch(null);
     setRows([]);
     setAccess(null);
     setRecoveryProgress(null);
     setOperationProgress(null);
+    return () => controller.abort();
   }, [schoolId]);
 
   useEffect(() => {
@@ -678,6 +518,11 @@ export function PhotoImportPanel() {
     }
   };
 
+  const closePreview = () => {
+    if (preview) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+  };
+
   return (
     <ModuleShell
       title="Student photo import"
@@ -688,7 +533,7 @@ export function PhotoImportPanel() {
         </button>
       )}
     >
-      <div className="pi-workspace">
+      <div className="pi-workspace" aria-busy={!!busy}>
         {notice && (
           <div className={`pi-notice ${notice.tone}`} role={notice.tone === 'bad' ? 'alert' : 'status'}>
             {notice.tone === 'bad' ? <AlertTriangle size={17} /> : <Check size={17} />}
@@ -852,279 +697,42 @@ export function PhotoImportPanel() {
             )}
 
             {batch && (
-              <>
-                <section className="pi-progress" aria-label="Import progress">
-                  {[
-                    ['Source', 'Folder bound'],
-                    ['Review', 'Workbook matched'],
-                    ['Freeze', 'Files locked'],
-                    ['Execute', 'Portraits applied'],
-                  ].map(([label, detail], index) => {
-                    const number = index + 1;
-                    const complete = number < currentStep || (number === 4 && batch.status === 'COMPLETED');
-                    return (
-                      <div className={`pi-step ${number === currentStep ? 'active' : ''} ${complete ? 'complete' : ''}`} key={label}>
-                        <span className="pi-step-number">{complete ? <Check size={14} /> : number}</span>
-                        <span><strong>{label}</strong><small>{detail}</small></span>
-                      </div>
-                    );
-                  })}
-                </section>
-
-                <section className="pi-batch-head">
-                  <div>
-                    <div className="pi-eyebrow">{batch.driveFolderName || 'Drive folder'}</div>
-                    <h2>{batch.schoolName} / {batch.academicYearLabel}</h2>
-                    <p>{batch.workbookFileName || 'Workbook not scanned'} <span>Batch {batch.id.slice(0, 8)}</span></p>
-                  </div>
-                  <span className={`pi-status ${statusTone(batch.status)}`}>{batch.status}</span>
-                </section>
-
-                <section className="pi-metrics" aria-label="Batch totals">
-                  {[
-                    ['Rows', batch.totalRows],
-                    ['Ready', batch.readyCount],
-                    ['Held', batch.heldCount],
-                    ['Errors', batch.errorCount],
-                    ['Applied', batch.appliedCount],
-                    ['Failed', batch.failedCount],
-                  ].map(([label, value]) => (
-                    <div key={label}><span>{label}</span><strong>{value}</strong></div>
-                  ))}
-                </section>
-
-                <section className="pi-action-band">
-                  <div>
-                    <strong>
-                      {batch.status === 'DRAFT' && 'Scan Drive and validate the workbook.'}
-                      {batch.status === 'REVIEW' && 'Review every held or error row before freezing.'}
-                      {batch.status === 'FROZEN' && 'The source snapshot is unchanged and ready.'}
-                      {batch.status === 'EXECUTING' && 'Execution can safely resume from the remaining ready rows.'}
-                      {['COMPLETED', 'PARTIAL', 'FAILED'].includes(batch.status) && 'Execution result is recorded per row.'}
-                    </strong>
-                    <span>{batch.readyCount} ready, {batch.heldCount} held, {batch.errorCount} blocking errors</span>
-                  </div>
-                  <div className="pi-actions">
-                    {['DRAFT', 'REVIEW'].includes(batch.status) && (
-                      <button className="ck-btn ck-btn-ghost" onClick={() => runAction('scan')} disabled={!!busy}>
-                        {busy === 'scan' ? <LoaderCircle className="pi-spin" size={16} /> : <ScanSearch size={16} />}
-                        {batch.status === 'DRAFT' ? 'Scan folder' : 'Rescan'}
-                      </button>
-                    )}
-                    {batch.status === 'REVIEW' && (
-                      <button
-                        className="ck-btn ck-btn-g"
-                        onClick={() => runAction('freeze')}
-                        disabled={!!busy || batch.errorCount > 0 || batch.readyCount === 0}
-                      >
-                        {busy === 'freeze' ? <LoaderCircle className="pi-spin" size={16} /> : <LockKeyhole size={16} />}
-                        Freeze source
-                      </button>
-                    )}
-                    {['FROZEN', 'EXECUTING', 'PARTIAL', 'FAILED'].includes(batch.status) && (
-                      <>
-                        <label className="pi-execute-confirm">
-                          <input
-                            type="checkbox"
-                            checked={executionConfirmed}
-                            onChange={event => setExecutionConfirmed(event.target.checked)}
-                            disabled={!!busy}
-                          />
-                          <span>
-                            Confirm {batch.schoolName}, {batch.academicYearLabel}, and {batch.readyCount} ready portraits
-                          </span>
-                        </label>
-                        <button
-                          className="ck-btn ck-btn-g"
-                          onClick={() => runAction('execute')}
-                          disabled={!!busy || !executionConfirmed}
-                        >
-                          {busy === 'execute' ? <LoaderCircle className="pi-spin" size={16} /> : <Play size={16} />}
-                          {batch.status === 'FROZEN'
-                            ? 'Execute import'
-                            : batch.status === 'EXECUTING' ? 'Resume import' : 'Retry failed'}
-                        </button>
-                      </>
-                    )}
-                    {['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) && (
-                      <>
-                        {appliedRows.length > 0 && (
-                          <button className="ck-btn ck-btn-g" onClick={recoverAppliedPhotos} disabled={!!busy}>
-                            {busy === 'recover'
-                              ? <LoaderCircle className="pi-spin" size={16} />
-                              : <RefreshCw size={16} />}
-                            {recoveryProgress?.resumable && recoveryProgress.processedCount > 0
-                              ? 'Resume full-frame recovery'
-                              : 'Restore full-frame photos'}
-                          </button>
-                        )}
-                        <button className="ck-btn ck-btn-ghost" onClick={downloadResult} disabled={!!busy}>
-                          {busy === 'result' ? <LoaderCircle className="pi-spin" size={16} /> : <Download size={16} />}
-                          Download result
-                        </button>
-                      </>
-                    )}
-                    {['DRAFT', 'REVIEW', 'FROZEN', 'PARTIAL', 'FAILED'].includes(batch.status) && (
-                      <button className="ck-btn ck-btn-ghost pi-danger-action" onClick={cancelBatch} disabled={!!busy}>
-                        {busy === 'cancel' ? <LoaderCircle className="pi-spin" size={16} /> : <XCircle size={16} />}
-                        Cancel import
-                      </button>
-                    )}
-                    <button className="ck-btn ck-btn-ghost" onClick={() => {
-                      setBatch(null);
-                      setRows([]);
-                      setAccess(null);
-                      setRecoveryProgress(null);
-                      setOperationProgress(null);
-                    }} disabled={!!busy}>
-                      New batch
-                    </button>
-                  </div>
-                </section>
-
-                {operationProgress && (
-                  <TransferProgress
-                    label={operationProgress.label}
-                    detail={operationProgress.detail}
-                    value={operationProgress.value}
-                    valueLabel={operationProgress.valueLabel}
-                    tone={operationProgress.tone}
-                  />
-                )}
-
-                {recoveryProgress && recoveryProgress.totalCount > 0 && (
-                  <TransferProgress
-                    label={busy === 'recover'
-                      ? 'Restoring full-frame photos'
-                      : recoveryProgress.resumable ? 'Full-frame recovery can resume' : 'Full-frame recovery complete'}
-                    detail={`${recoveryProgress.processedCount} of ${recoveryProgress.totalCount} reviewed: `
-                      + `${recoveryProgress.recoveredCount} restored, ${recoveryProgress.protectedCount} protected, `
-                      + `${recoveryProgress.failedCount} failed, ${recoveryProgress.pendingCount} pending.`}
-                    value={recoveryProgress.percentComplete}
-                    valueLabel={`${recoveryProgress.percentComplete}%`}
-                    tone={busy === 'recover'
-                      ? 'active'
-                      : recoveryProgress.failedCount > 0 ? 'error'
-                        : recoveryProgress.pendingCount === 0 && recoveryProgress.inProgressCount === 0
-                          ? 'complete' : 'active'}
-                  />
-                )}
-
-                {(['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) || access?.overdue) && (
-                  <section className={`pi-access-band ${access?.overdue ? 'overdue' : ''}`}>
-                    <ShieldOff size={18} aria-hidden />
-                    <div>
-                      <strong>{access?.revokedAt
-                        ? 'Photographer access closed'
-                        : ['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status)
-                          ? 'Revoke photographer Drive access'
-                          : 'Photographer access is overdue'}</strong>
-                      <span>
-                        {access?.revokedAt
-                          ? `Recorded ${new Date(access.revokedAt).toLocaleString()}`
-                          : access?.expiresAt
-                            ? `Reminder due ${new Date(access.expiresAt).toLocaleDateString()}`
-                            : 'Remove the photographer as an Editor after delivery.'}
-                      </span>
-                    </div>
-                    {!access?.revokedAt && ['COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED'].includes(batch.status) && (
-                      <button className="ck-btn ck-btn-ghost" onClick={markAccessRevoked} disabled={!!busy}>
-                        {busy === 'revoke' ? <LoaderCircle className="pi-spin" size={16} /> : <Check size={16} />}
-                        Mark revoked
-                      </button>
-                    )}
-                  </section>
-                )}
-
+              <Suspense fallback={<div className="pi-loading"><LoaderCircle className="pi-spin" size={18} /> Loading batch workspace…</div>}>
+                <PhotoImportBatchSummary
+                  batch={batch}
+                  appliedRowCount={appliedRows.length}
+                  busy={busy}
+                  executionConfirmed={executionConfirmed}
+                  operationProgress={operationProgress}
+                  recoveryProgress={recoveryProgress}
+                  access={access}
+                  onExecutionConfirmedChange={setExecutionConfirmed}
+                  onRunAction={action => { void runAction(action); }}
+                  onRecover={() => { void recoverAppliedPhotos(); }}
+                  onDownloadResult={() => { void downloadResult(); }}
+                  onCancel={() => { void cancelBatch(); }}
+                  onMarkAccessRevoked={() => { void markAccessRevoked(); }}
+                  onNewBatch={() => {
+                    setBatch(null);
+                    setRows([]);
+                    setAccess(null);
+                    setRecoveryProgress(null);
+                    setOperationProgress(null);
+                  }}
+                />
                 {rows.length > 0 && (
-                  <section className="pi-review">
-                    <div className="pi-review-toolbar">
-                      <div>
-                        <h2>Mapping review</h2>
-                        <p>{visibleRows.length} of {rows.length} rows</p>
-                      </div>
-                      <div className="pi-segments" aria-label="Row status filter">
-                        {FILTERS.map(value => (
-                          <button
-                            key={value}
-                            className={filter === value ? 'active' : ''}
-                            onClick={() => setFilter(value)}
-                          >
-                            {value}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="pi-table-wrap">
-                      <table className="pi-table">
-                        <thead>
-                          <tr>
-                            <th>Row</th>
-                            <th>Student</th>
-                            <th>Class</th>
-                            <th>Image mapping</th>
-                            <th>Status</th>
-                            <th aria-label="Preview" />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {visibleRows.map(row => (
-                            <tr key={row.id}>
-                              <td>{row.excelRow}</td>
-                              <td>
-                                <strong>{row.workbookName || '-'}</strong>
-                                <span>Admission {row.admissionNo || '-'}</span>
-                              </td>
-                              <td>{row.className || '-'} / {row.sectionName || '-'}</td>
-                              <td>
-                                <strong>{row.imageNo ? `Image ${row.imageNo}` : 'No image number'}</strong>
-                                <span>{row.driveFileName || row.message || 'Not mapped'}</span>
-                              </td>
-                              <td>
-                                <span className={`pi-status ${statusTone(row.status)}`}>{row.status}</span>
-                                {row.message && <small>{row.message}</small>}
-                              </td>
-                              <td>
-                                <div className="pi-row-actions">
-                                  <button
-                                    className="pi-icon-button"
-                                    aria-label={`Preview portrait for ${row.workbookName}`}
-                                    title="Preview preserved photo"
-                                    disabled={!row.driveFileName || busy === `preview:${row.id}`}
-                                    onClick={() => openPreview(row)}
-                                  >
-                                    {busy === `preview:${row.id}`
-                                      ? <LoaderCircle className="pi-spin" size={16} />
-                                      : <Eye size={16} />}
-                                  </button>
-                                  {batch.status === 'REVIEW' && (
-                                    <button
-                                      className="pi-icon-button"
-                                      aria-label={`Review mapping for ${row.workbookName}`}
-                                      title="Review mapping"
-                                      onClick={() => setEditing({
-                                        row,
-                                        admissionNo: row.admissionNo || '',
-                                        imageNo: row.imageNo || '',
-                                        excluded: row.status === 'EXCLUDED',
-                                        cropX: row.cropX ?? 0.5,
-                                        cropY: row.cropY ?? 0.5,
-                                      })}
-                                      disabled={!!busy}
-                                    >
-                                      <Pencil size={16} />
-                                    </button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </section>
+                  <PhotoImportReviewTable
+                    batch={batch}
+                    rows={rows}
+                    visibleRows={visibleRows}
+                    filter={filter}
+                    busy={busy}
+                    onFilterChange={setFilter}
+                    onOpenPreview={row => { void openPreview(row); }}
+                    onEdit={setEditing}
+                  />
                 )}
-              </>
+              </Suspense>
             )}
 
             {!batch && batches.length > 0 && (
@@ -1135,7 +743,7 @@ export function PhotoImportPanel() {
                 </div>
                 <div className="pi-history-list">
                   {batches.map(item => (
-                    <button key={item.id} onClick={() => loadDetail(item.id)}>
+                    <button key={item.id} onClick={() => loadDetail(item.id)} disabled={!!busy}>
                       <span>
                         <strong>{item.driveFolderName || 'Drive folder'}</strong>
                         <small>{item.academicYearLabel} / {item.id.slice(0, 8)}</small>
@@ -1154,66 +762,14 @@ export function PhotoImportPanel() {
         )}
       </div>
 
-      {preview && (
-        <div className="pi-preview-backdrop" role="presentation" onMouseDown={() => {
-          URL.revokeObjectURL(preview.url);
-          setPreview(null);
-        }}>
-          <div className="pi-preview-dialog" role="dialog" aria-modal="true" aria-label="Full-frame photo preview" onMouseDown={event => event.stopPropagation()}>
-            <div>
-              <strong>{preview.row.workbookName}</strong>
-              <span>Admission {preview.row.admissionNo} / {preview.row.driveFileName}</span>
-            </div>
-            <img src={preview.url} alt={`Full-frame photo for ${preview.row.workbookName}`} />
-            <button className="ck-btn ck-btn-ghost" onClick={() => {
-              URL.revokeObjectURL(preview.url);
-              setPreview(null);
-            }}>Close</button>
-          </div>
-        </div>
-      )}
-
-      {editing && (
-        <div className="pi-preview-backdrop" role="presentation" onMouseDown={() => setEditing(null)}>
-          <div className="pi-review-dialog" role="dialog" aria-modal="true" aria-label="Review photo mapping" onMouseDown={event => event.stopPropagation()}>
-            <div className="pi-dialog-head">
-              <div>
-                <strong>{editing.row.workbookName || 'Workbook row'}</strong>
-                <span>Excel row {editing.row.excelRow}</span>
-              </div>
-              <button className="pi-icon-button" aria-label="Close review" onClick={() => setEditing(null)}>
-                <XCircle size={16} />
-              </button>
-            </div>
-            <div className="pi-review-fields">
-              <label>
-                <span>Admission number</span>
-                <input type="text" value={editing.admissionNo} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, admissionNo: event.target.value }))} />
-              </label>
-              <label>
-                <span>Image number</span>
-                <input type="text" value={editing.imageNo} disabled={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, imageNo: event.target.value }))} />
-              </label>
-            </div>
-            <label className="pi-exclude-control">
-              <input type="checkbox" checked={editing.excluded} onChange={event => setEditing(current => current && ({ ...current, excluded: event.target.checked }))} />
-              <Ban size={16} aria-hidden />
-              <span>Exclude this row from the import</span>
-            </label>
-            <div className="ts">The complete source frame is preserved; no automatic crop is applied.</div>
-            <div className="pi-dialog-actions">
-              <button className="ck-btn ck-btn-ghost" onClick={() => setEditing(null)} disabled={!!busy}>Cancel</button>
-              <button className="ck-btn ck-btn-ghost" onClick={() => saveRowReview(true)} disabled={!!busy || editing.excluded || !editing.imageNo.trim()}>
-                <Eye size={16} /> Save and preview
-              </button>
-              <button className="ck-btn ck-btn-g" onClick={() => saveRowReview(false)} disabled={!!busy}>
-                {busy === `edit:${editing.row.id}` ? <LoaderCircle className="pi-spin" size={16} /> : <Check size={16} />}
-                Save review
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PhotoImportDialogs
+        preview={preview}
+        editing={editing}
+        busy={busy}
+        onClosePreview={closePreview}
+        onEditingChange={setEditing}
+        onSaveReview={previewAfterSave => { void saveRowReview(previewAfterSave); }}
+      />
     </ModuleShell>
   );
 }

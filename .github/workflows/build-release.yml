@@ -256,6 +256,7 @@ jobs:
           $sourceArguments = @{
             CommitSha = "${{ needs.resolve-target.outputs.commit_sha }}"
             Context = "${{ matrix.context }}"
+            SourcePaths = "${{ matrix.source_paths }}"
             BuildArgs = [string]$env:BUILD_ARGS
           }
           $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json
@@ -310,6 +311,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: true
           tags: |
             ${{ steps.source.outputs.source_ref }}
@@ -462,6 +464,7 @@ jobs:
             $sourceArguments = @{
               CommitSha = $sha
               Context = [string]$entry.context
+              SourcePaths = [string]$entry.source_paths
               BuildArgs = [string]$entry.build_args
             }
             $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json

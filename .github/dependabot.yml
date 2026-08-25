@@ -77,6 +77,10 @@ updates:
 
   - package-ecosystem: maven
     directories:
+      # The repository parent owns Spring Boot, Java, Google Cloud, gRPC,
+      # PostgreSQL, logging, auth, and Enforcer versions. Keep it in the update
+      # graph as well as service-local dependencies.
+      - /
       - /services/billing-service
       - /services/identity-service
       - /services/operations-service
