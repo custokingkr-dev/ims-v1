@@ -396,24 +396,41 @@ class StudentOnboardingScaleCertificationIntegrationTest {
                         """)
                 .param("schoolId", schoolId)
                 .query(Long.class).single();
-        String guardianId = "cert-guardian-" + schoolId;
-        jdbc.sql("""
-                        INSERT INTO student.guardians (id, school_id, full_name)
-                        VALUES (:guardianId, :schoolId, 'Synthetic Guardian')
+        // Student import now forward-synchronizes legacy parent fields and can already have created
+        // the unique primary guardian. Reuse that normalized identity so the privacy drill exercises
+        // consent/export/erasure behavior without manufacturing an invalid second primary link.
+        String guardianId = jdbc.sql("""
+                        SELECT guardian_id
+                        FROM student.student_guardians
+                        WHERE student_id = :studentId AND school_id = :schoolId
+                        ORDER BY is_primary DESC, updated_at DESC, id
+                        LIMIT 1
                         """)
-                .param("guardianId", guardianId)
-                .param("schoolId", schoolId)
-                .update();
-        jdbc.sql("""
-                        INSERT INTO student.student_guardians
-                            (id, school_id, student_id, guardian_id, relationship, is_primary)
-                        VALUES (:linkId, :schoolId, :studentId, :guardianId, 'GUARDIAN', true)
-                        """)
-                .param("linkId", "cert-link-" + schoolId)
-                .param("schoolId", schoolId)
                 .param("studentId", studentId)
-                .param("guardianId", guardianId)
-                .update();
+                .param("schoolId", schoolId)
+                .query(String.class)
+                .optional()
+                .orElseGet(() -> {
+                    String createdGuardianId = "cert-guardian-" + schoolId;
+                    jdbc.sql("""
+                                    INSERT INTO student.guardians (id, school_id, full_name)
+                                    VALUES (:guardianId, :schoolId, 'Synthetic Guardian')
+                                    """)
+                            .param("guardianId", createdGuardianId)
+                            .param("schoolId", schoolId)
+                            .update();
+                    jdbc.sql("""
+                                    INSERT INTO student.student_guardians
+                                        (id, school_id, student_id, guardian_id, relationship, is_primary)
+                                    VALUES (:linkId, :schoolId, :studentId, :guardianId, 'GUARDIAN', true)
+                                    """)
+                            .param("linkId", "cert-link-" + schoolId)
+                            .param("schoolId", schoolId)
+                            .param("studentId", studentId)
+                            .param("guardianId", createdGuardianId)
+                            .update();
+                    return createdGuardianId;
+                });
         jdbc.sql("""
                         INSERT INTO student.student_consent_events
                             (id, school_id, student_id, guardian_id, purpose, status,
