@@ -5,7 +5,7 @@ process.env.DASHBOARD_AUTH = "on";
 process.env.OAUTH_CLIENT_ID = "dashboard-test-client";
 process.env.OAUTH_CLIENT_SECRET = "dashboard-test-secret";
 process.env.DASHBOARD_ALLOWED_EMAILS = "owner@example.com";
-process.env.SESSION_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+process.env.SESSION_SECRET = "test-only-".repeat(8);
 
 const { server } = await import("./server.mjs?server-regression-tests");
 

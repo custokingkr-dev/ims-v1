@@ -5,7 +5,7 @@ import test from "node:test";
 process.env.OAUTH_CLIENT_ID = "dashboard-test-client";
 process.env.OAUTH_CLIENT_SECRET = "dashboard-test-secret";
 process.env.DASHBOARD_ALLOWED_EMAILS = "owner@example.com";
-process.env.SESSION_SECRET = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+process.env.SESSION_SECRET = "test-only-".repeat(8);
 
 const auth = await import("./auth.mjs?auth-regression-tests");
 
