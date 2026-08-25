@@ -23,6 +23,9 @@ $requiredRunnerFragments = @(
     '[string]$Database = "custoking_prod"',
     '[string]$PasswordSecret = "db-password-prod"',
     'BEGIN READ ONLY;',
+    '[IO.Compression.GZipStream]::new(',
+    '$encodedSql.Length -gt 30000',
+    '| base64 -d | gzip -dc > /tmp/evidence.sql',
     'psql -X -q -v ON_ERROR_STOP=1',
     "export PGOPTIONS='-c default_transaction_read_only=on'",
     'name = "PGSSLMODE"; value = "require"',
@@ -93,6 +96,42 @@ foreach ($aggregateMarker in @(
     if (-not $sql.Contains($aggregateMarker)) {
         throw "Evidence SQL is missing expected aggregate/metadata marker: $aggregateMarker"
     }
+}
+
+# The production runner transports the read-only bundle through one Cloud Run environment value. Verify
+# the current SQL round-trips through gzip and remains below the runner's guarded 30,000-character limit.
+$wrappedSql = "\set ON_ERROR_STOP on`nBEGIN READ ONLY;`n$sql`nCOMMIT;"
+$inputBytes = [Text.Encoding]::UTF8.GetBytes($wrappedSql)
+$compressed = [IO.MemoryStream]::new()
+$compressor = [IO.Compression.GZipStream]::new(
+    $compressed,
+    [IO.Compression.CompressionMode]::Compress,
+    $true
+)
+try {
+    $compressor.Write($inputBytes, 0, $inputBytes.Length)
+} finally {
+    $compressor.Dispose()
+}
+$compressedBytes = $compressed.ToArray()
+$encoded = [Convert]::ToBase64String($compressedBytes)
+if ($encoded.Length -gt 30000) {
+    throw "Compressed evidence fixture exceeds the guarded Cloud Run transport envelope: $($encoded.Length)"
+}
+$compressed.Position = 0
+$decompressor = [IO.Compression.GZipStream]::new(
+    $compressed,
+    [IO.Compression.CompressionMode]::Decompress
+)
+$reader = [IO.StreamReader]::new($decompressor, [Text.Encoding]::UTF8)
+try {
+    $roundTrip = $reader.ReadToEnd()
+} finally {
+    $reader.Dispose()
+    $compressed.Dispose()
+}
+if ($roundTrip -ne $wrappedSql) {
+    throw "Compressed evidence fixture did not round-trip exactly."
 }
 
 $dryRunOutput = @(& $runnerPath 6>&1 | ForEach-Object { [string]$_ })
