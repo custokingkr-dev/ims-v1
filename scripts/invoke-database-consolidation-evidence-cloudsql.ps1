@@ -68,7 +68,25 @@ BEGIN READ ONLY;
 $evidenceSql
 COMMIT;
 "@
-$encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($wrappedSql))
+$wrappedSqlBytes = [Text.Encoding]::UTF8.GetBytes($wrappedSql)
+$compressedSqlStream = [IO.MemoryStream]::new()
+$gzip = [IO.Compression.GZipStream]::new(
+    $compressedSqlStream,
+    [IO.Compression.CompressionMode]::Compress,
+    $true
+)
+try {
+    $gzip.Write($wrappedSqlBytes, 0, $wrappedSqlBytes.Length)
+} finally {
+    $gzip.Dispose()
+}
+$encodedSql = [Convert]::ToBase64String($compressedSqlStream.ToArray())
+$compressedSqlStream.Dispose()
+# Cloud Run caps one environment-variable value at 32 KiB. Leave headroom for platform validation and
+# fail locally before resource creation if future evidence growth stops compressing within the envelope.
+if ($encodedSql.Length -gt 30000) {
+    throw "The compressed evidence bundle exceeds the safe Cloud Run environment-value envelope."
+}
 $jobName = "ims-db-evidence-$([datetime]::UtcNow.ToString('yyyyMMddHHmmss'))-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $manifestPath = [IO.Path]::GetFullPath((Join-Path $tempRoot "$jobName.json"))
@@ -134,7 +152,7 @@ try {
     # The password is never read by this process or placed on a command line. Cloud Run resolves
     # the named Secret Manager version directly into the container's PGPASSWORD environment.
     # A temporary manifest also keeps the evidence SQL below Windows' command-line length limit.
-    $containerCommand = "umask 077 && printf '%s' `"`$EVIDENCE_SQL_B64`" | base64 -d > /tmp/evidence.sql && export PGOPTIONS='-c default_transaction_read_only=on' && exec psql -X -q -v ON_ERROR_STOP=1 -h '$HostAddress' -p '$Port' -U '$DatabaseUser' -d '$Database' -f /tmp/evidence.sql"
+    $containerCommand = "umask 077 && printf '%s' `"`$EVIDENCE_SQL_B64`" | base64 -d | gzip -dc > /tmp/evidence.sql && export PGOPTIONS='-c default_transaction_read_only=on' && exec psql -X -q -v ON_ERROR_STOP=1 -h '$HostAddress' -p '$Port' -U '$DatabaseUser' -d '$Database' -f /tmp/evidence.sql"
     $manifest = [ordered]@{
         apiVersion = "run.googleapis.com/v1"
         kind = "Job"
