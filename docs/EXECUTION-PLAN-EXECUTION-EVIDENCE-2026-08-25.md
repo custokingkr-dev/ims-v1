@@ -1,11 +1,11 @@
 # Execution Plan — Repository Execution Evidence — 2026-08-25
 
-Status: repository changes implemented and locally verified; not committed, deployed, or applied to GCP.
+Status: repository changes implemented, promoted, and selectively applied to production; governed gates remain.
 
 This is the execution companion to `PROJECT-DEEP-ANALYSIS-AND-EXECUTION-PLAN-2026-08-25.md`.
-It records what was completed in the repository, what was verified against read-only live inventory, and
-which acceptance gates still require authority, spending, destructive-change approval, or a real operating
-window. It must not be used as evidence that production was changed.
+It records what was completed in the repository, what was promoted through the production canary, what was
+selectively applied to GCP, and which acceptance gates still require authority, spending, destructive-change
+approval, or a real operating window.
 
 ## Executive result
 
@@ -14,22 +14,22 @@ The work established the Java build foundation, generated an auditable API route
 non-destructive database consolidation and repair paths, hardened the live-dashboard authentication code,
 improved billing/observability evidence, and decomposed representative frontend and backend hotspots.
 
-The full multi-week program is not operationally complete. Cloud Billing export, Cloud SQL availability,
-repository governance, provider canaries, production deployment, destructive database retirement, and a
-representative school-day certification require external authority or evidence that engineering cannot
-invent. Those gates are listed explicitly below.
+The full multi-week program is not operationally complete. Standard/detailed Cloud Billing export, Cloud SQL
+availability, repository governance, provider canaries, destructive database retirement, and a representative
+school-day certification require external authority or evidence that engineering cannot invent. Those gates
+are listed explicitly below.
 
 ## Phase status
 
 | Phase | Repository result | Remaining gate |
 | --- | --- | --- |
 | 0 — Baseline | Complete for this batch | Run generated read-only evidence against each promotion candidate |
-| 1 — Production blockers | Repository-owned fixes complete | Billing-account export, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation, deployment |
+| 1 — Production blockers | Repository-owned fixes and production promotion complete | Billing-account export, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation |
 | 2 — Engineering foundation | Root reactor, parent, versions, Enforcer, convergence and CI/build catalog complete | Shared-source extraction remains deferred because the candidates alter Spring discovery/type identity; the drift guard remains active |
 | 3 — API contracts | Machine-readable inventory, ownership checks, compatibility telemetry and deprecation headers complete | OpenAPI/typed-client migration and route deletion require staged client migration plus a measured zero-traffic window |
 | 4 — Database consolidation | Non-destructive bridges, ledgers, parity views, projection repair and evidence queries complete | Production backfill review, retention window, reconciliation evidence and separately approved destructive DDL |
 | 5 — Code/client performance | Representative frontend/backend hotspots decomposed; spreadsheet actions remain lazy | Remaining hotspot backlog and Web Worker migration require exact embedded-image/workbook browser-worker fixtures |
-| 6 — GCP/observability | Terraform correction and read-only validation/reporting tools complete | Reviewed apply/deployment, incident-owner testing, Cloud Asset API/permission, VPC design approval |
+| 6 — GCP/observability | Dashboard, exporter, billing panels and corrected storage alert applied | Incident-owner testing, Cloud Asset API/permission, VPC design approval; Google API normalization leaves a non-functional dashboard JSON plan diff |
 | 7 — Dependencies | Upgrade families and rollback boundaries audited | Execute one major family per isolated pull request; not mixed into the database/API batch |
 | 8 — Certification | Automated local portions pass | Restore/PITR, optional HA failover, provider delivery, named-school canary and full school-day observation |
 
@@ -82,12 +82,18 @@ invent. Those gates are listed explicitly below.
   run-rate from invoice-grade standard/detailed usage export.
 - Added read-only billing export health, Monitoring resource/filter validation, and Cloud Asset drift tools
   with JSON/Markdown output and fixtures.
+- Executed the production cost-metric exporter successfully and published fresh grade/availability/lag
+  series. The exporter truthfully reported grade `0`, standard `0`, detailed `0`, and both usage/export lag
+  as `-1` because no usage table exists yet.
+- Applied the billing dashboard panels and replaced the stale storage-growth alert with policy
+  `12758936125964704877`, filtered on the live `custoking-prod-student-photos` bucket.
 
-Read-only production evidence at execution time found 12 dashboards, 73 enabled alert policies, 107 unique
-Monitoring filters, 95 filters with series, 12 valid filters with no data, and zero filter query errors. The
-deployed alert still references the nonexistent `custoking-student-photos-prod` bucket until Terraform is
-reviewed and applied. Billing is `ESTIMATED_ONLY`: pricing export exists, but standard and detailed usage
-export tables do not.
+Initial read-only production evidence found 12 dashboards, 73 enabled alert policies, 107 unique Monitoring
+filters, 95 filters with series, 12 valid filters with no data, and zero filter query errors. The corrected
+alert and billing dashboard are now live. Billing remains `ESTIMATED_ONLY`: pricing export exists, but
+standard and detailed usage export tables do not. The signed-in Billing console independently confirmed both
+usage exports are disabled and exposed enable controls; an account-verification warning must be acknowledged
+before those controls can be completed.
 
 ### Frontend and backend hotspot work
 
@@ -112,7 +118,7 @@ export tables do not.
 | School-core service | 562 tests, including PostgreSQL 16 catalog consolidation |
 | API gateway | 78 tests; contract inventory current |
 | Frontend | 160 tests across 31 files; TypeScript and production build passed |
-| Live dashboard | 5 authentication/server tests |
+| Live dashboard | 6 authentication/server tests; CodeQL Java/Kotlin and JavaScript/TypeScript passed |
 | GCP audit Python tests | 3 tests |
 | Billing health PowerShell tests | Passed |
 | Cost exporter shell tests | Passed with Git Bash |
@@ -132,14 +138,16 @@ No major dependency was mixed into this batch.
 
 ## Governed production actions still required
 
-1. A Billing Account Administrator/Costs Manager must enable and verify standard or detailed Cloud Billing
-   usage export. New exports do not backfill earlier history.
+1. A Billing Account Administrator/Costs Manager must acknowledge the Billing account verification warning,
+   enable standard and detailed usage export to `custoking-prod.billing_export`, and verify the first tables.
+   New exports do not backfill earlier history.
 2. The production owner must approve and fund either regional HA on a supported dedicated-core Cloud SQL
    tier or temporary pilot-risk acceptance with explicit RTO/RPO and tested restore evidence.
 3. A GitHub repository administrator must apply branch/ruleset and Environment controls using exact check
    names confirmed by a fresh pull request.
-4. A release owner must review/apply Terraform and deploy/promote the dashboard, exporter, gateway, frontend,
-   Java services, and database migrations through the normal canary path.
+4. Future application changes must continue through the normal canary path; the execution-plan batch is
+   already deployed and its seven application services, dashboard `v11`, exporter, billing dashboard and
+   corrected storage alert were independently verified in production.
 5. Cloud Asset API enablement and organization/project permission are required before canonical live drift
    snapshots can be generated.
 6. A real notification canary needs an approved sender, template, recipient and business authorization.
@@ -148,4 +156,5 @@ No major dependency was mixed into this batch.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
 
-No production resource was mutated and no external message was sent while producing this evidence.
+Production mutations were limited to the reviewed release and the four targeted observability resources
+described above. No external notification message was sent.
