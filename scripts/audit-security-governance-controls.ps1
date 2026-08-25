@@ -12,11 +12,13 @@ param(
   [string]$CloudDeployPipelineRenderer = "scripts/render-clouddeploy-pipelines.ps1",
   [string]$AffectedResolver = "scripts/resolve-affected-ci-targets.ps1",
   [string]$BuildReleaseWorkflow = ".github/workflows/build-release.yml",
+  [string]$CiWorkflow = ".github/workflows/ci-pr.yml",
   [string]$DetectWorkflow = ".github/workflows/_detect-changes.yml",
   [string]$ConfigWorkflow = ".github/workflows/reconcile-deployment-config.yml",
   [string]$RollbackWorkflow = ".github/workflows/rollback.yml",
   [string]$RecoveryWorkflow = ".github/workflows/recovery-drill.yml",
   [string]$RestoreDrillScript = "scripts/invoke-cloudsql-restore-drill.ps1",
+  [string]$RecoveryPrerequisiteAudit = "scripts/audit-cloudsql-recovery-prerequisites.ps1",
   [string]$DeadLetterReplayScript = "scripts/replay-pubsub-dead-letter.ps1",
   [string]$AsyncSchedulerConfigurator = "scripts/configure-async-relay-scheduler.ps1",
   [string]$NotificationResilienceConfigurator = "scripts/configure-notification-pubsub-push-oidc.ps1",
@@ -42,8 +44,8 @@ $paths = @($ReadinessAudit, $GovernanceConfigurator, $RuntimeConfigurator,
   $ReportingConfigurator, $SecretRotationAudit, $SecretRotationPolicy, $RecoveryBucketRole,
   $CloudDeployDevTargets, $CloudDeployProdTargets, $CloudDeployRenderer,
   $CloudDeployPipelineRenderer, $AffectedResolver,
-  $BuildReleaseWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
-  $RecoveryWorkflow, $RestoreDrillScript, $CloudSqlTransportAudit, $CloudSqlTransportSql,
+  $BuildReleaseWorkflow, $CiWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
+  $RecoveryWorkflow, $RestoreDrillScript, $RecoveryPrerequisiteAudit, $CloudSqlTransportAudit, $CloudSqlTransportSql,
   $CloudSqlTransportCapture, $DeadLetterReplayScript, $AsyncSchedulerConfigurator,
   $NotificationResilienceConfigurator, $ReportingResilienceConfigurator,
   $ScaleFixtureScript, $LoadCertificationScript,
@@ -111,6 +113,17 @@ Require-Text $GovernanceConfigurator @(
   "required_conversation_resolution",
   "Validate every production-environment invariant before making any external change"
 )
+
+Require-Text $CiWorkflow @(
+  'promotion-source-policy:',
+  'BASE_REF: ${{ github.base_ref }}',
+  'HEAD_REF: ${{ github.head_ref }}',
+  'Pull requests to main must be promoted from dev',
+  'needs: [promotion-source-policy, detect, duplicate-class-drift'
+)
+if ($contents[$BuildReleaseWorkflow] -match '(?m)^\s*packages:\s*write\s*$') {
+  $violations.Add("GCP image builds must not retain the unused GitHub Packages write permission.") | Out-Null
+}
 $governancePreflightIndex = $contents[$GovernanceConfigurator].IndexOf(
   'if ($applyEnvironmentPolicyRequested)'
 )
@@ -295,7 +308,9 @@ Require-Text $RestoreDrillScript @(
   '$evidence["temporaryBucketIamRemoved"]',
   '$evidence["temporaryInstanceRemoved"]',
   '$allCleanupConfirmed = (',
-  'if ($drillSucceeded -and -not $allCleanupConfirmed)'
+  'if ($drillSucceeded -and -not $allCleanupConfirmed)',
+  'audit-cloudsql-recovery-prerequisites.ps1',
+  '$ValidationBucket = "$ProjectId-db-snapshots"'
 )
 if ($contents[$RestoreDrillScript].Contains('roles/storage.objectAdmin')) {
   $violations.Add("Recovery helper must grant the temporary clone only Storage Object Creator.") | Out-Null
@@ -310,7 +325,21 @@ Require-Text $RecoveryWorkflow @(
   "-Environment prod",
   "PROD_CLOUDSQL_INSTANCE",
   '-SourceInstance "$env:SOURCE_INSTANCE"',
+  'RECOVERY_VALIDATION_BUCKET=$($env:GCP_PROJECT_ID)-db-snapshots',
+  'audit-cloudsql-recovery-prerequisites.ps1',
+  '-ValidationBucket "$env:RECOVERY_VALIDATION_BUCKET"',
   "-AllowProductionRecoveryDrill"
+)
+Require-Text $RecoveryPrerequisiteAudit @(
+  '$ValidationBucket = "$ProjectId-db-snapshots"',
+  'Recovery must run as',
+  'testIamPermissions',
+  'cloudsql.instances.clone',
+  'cloudsql.instances.delete',
+  'serviceusage.services.use',
+  'storage.buckets.setIamPolicy',
+  'recovery-drills/',
+  'No clone was created'
 )
 Require-Text $CloudSqlTransportAudit @(
   '[ValidateSet("source", "dev", "prod")]',

@@ -1,0 +1,178 @@
+param(
+    [string]$ProjectId = "custoking-prod",
+    [string]$Region = "asia-south2",
+    [string]$HostAddress = "10.92.0.3",
+    [int]$Port = 5432,
+    [string]$Database = "custoking_prod",
+    [string]$DatabaseUser = "appuser",
+    [string]$PasswordSecret = "db-password-prod",
+    [string]$MigrationOperatorServiceAccount = "",
+    [string]$Network = "default",
+    [string]$Subnet = "default",
+    [switch]$Apply,
+    [switch]$ConfirmProductionReadOnly,
+    [string]$Gcloud = $(if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" })
+)
+
+$ErrorActionPreference = "Stop"
+
+if ($ProjectId -ne "custoking-prod") {
+    throw "This runner is restricted to the custoking-prod project."
+}
+if ([string]::IsNullOrWhiteSpace($MigrationOperatorServiceAccount)) {
+    $MigrationOperatorServiceAccount = "migration-operator@$ProjectId.iam.gserviceaccount.com"
+}
+$expectedServiceAccount = "migration-operator@$ProjectId.iam.gserviceaccount.com"
+if ($MigrationOperatorServiceAccount -ne $expectedServiceAccount) {
+    throw "The evidence job must use the dedicated production migration-operator service account."
+}
+
+$safeDnsOrIpv4 = '^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$'
+$safeIdentifier = '^[A-Za-z_][A-Za-z0-9_-]{0,62}$'
+$safeResourceName = '^[A-Za-z0-9][A-Za-z0-9_-]{0,254}$'
+if ($HostAddress -notmatch $safeDnsOrIpv4) { throw "HostAddress contains unsupported characters." }
+if ($Port -lt 1 -or $Port -gt 65535) { throw "Port must be between 1 and 65535." }
+if ($Database -notmatch $safeIdentifier) { throw "Database contains unsupported characters." }
+if ($DatabaseUser -notmatch $safeIdentifier) { throw "DatabaseUser contains unsupported characters." }
+if ($PasswordSecret -notmatch $safeResourceName) { throw "PasswordSecret contains unsupported characters." }
+if ($Network -notmatch $safeResourceName) { throw "Network contains unsupported characters." }
+if ($Subnet -notmatch $safeResourceName) { throw "Subnet contains unsupported characters." }
+
+$sqlPath = Join-Path $PSScriptRoot "database-consolidation-evidence.sql"
+if (-not (Test-Path -LiteralPath $sqlPath -PathType Leaf)) {
+    throw "Database consolidation evidence SQL was not found: $sqlPath"
+}
+$evidenceSql = Get-Content -LiteralPath $sqlPath -Raw
+
+# Keep this reusable runner structurally incapable of executing a mutating evidence bundle.
+# PostgreSQL read-only mode is still enforced independently below, so this check is defense in depth.
+$forbiddenSql = '(?im)^\s*(INSERT|UPDATE|DELETE|MERGE|CREATE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|COPY|CALL|DO|VACUUM|REINDEX|CLUSTER|REFRESH)\b'
+if ($evidenceSql -match $forbiddenSql) {
+    throw "The evidence SQL contains a statement outside the aggregate/read-only allowlist: $($Matches[1])."
+}
+if ($evidenceSql -notmatch '(?im)^\s*SELECT\b') {
+    throw "The evidence SQL contains no SELECT evidence queries."
+}
+$unsupportedMetaCommands = @(
+    [regex]::Matches($evidenceSql, '(?im)^\s*\\([A-Za-z]+)\b') |
+        ForEach-Object { $_.Groups[1].Value.ToLowerInvariant() } |
+        Where-Object { $_ -notin @('echo', 'pset') }
+)
+if ($unsupportedMetaCommands.Count -gt 0) {
+    throw "The evidence SQL contains an unsupported psql meta-command: $($unsupportedMetaCommands[0])."
+}
+
+$wrappedSql = @"
+\set ON_ERROR_STOP on
+BEGIN READ ONLY;
+$evidenceSql
+COMMIT;
+"@
+$encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($wrappedSql))
+$jobName = "ims-db-evidence-$([datetime]::UtcNow.ToString('yyyyMMddHHmmss'))-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+
+if (-not $Apply) {
+    Write-Host "Dry run passed: aggregate-only SQL and production safety invariants validated."
+    Write-Host "No Google Cloud resource was created. Re-run with -Apply -ConfirmProductionReadOnly after review."
+    return
+}
+if (-not $ConfirmProductionReadOnly) {
+    throw "Production execution requires both -Apply and -ConfirmProductionReadOnly."
+}
+
+function Invoke-GcloudCaptured {
+    param(
+        [Parameter(Mandatory)] [string]$Operation,
+        [Parameter(Mandatory)] [string[]]$Arguments
+    )
+
+    $output = @(& $Gcloud @Arguments 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        # Intentionally omit command output and the container command from the exception. This
+        # prevents a future gcloud diagnostic change from copying environment values into a log.
+        throw "gcloud failed while attempting to $Operation."
+    }
+    return $output
+}
+
+function Test-JobAbsent {
+    $priorErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $description = @(& $Gcloud run jobs describe $jobName `
+            "--project=$ProjectId" "--region=$Region" --format="value(name)" 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $priorErrorActionPreference
+        $global:LASTEXITCODE = 0
+    }
+
+    if ($exitCode -eq 0) { return $false }
+    $message = ($description | ForEach-Object { [string]$_ }) -join "`n"
+    if ($message -match '(?i)(404|not found|cannot find|does not exist)') { return $true }
+    throw "Could not confirm removal of the disposable evidence job."
+}
+
+$operationFailure = $null
+$cleanupFailure = $null
+try {
+    $serviceAccountJson = (Invoke-GcloudCaptured -Operation "inspect the migration-operator service account" `
+        -Arguments @(
+            "iam", "service-accounts", "describe", $MigrationOperatorServiceAccount,
+            "--project=$ProjectId", "--format=json"
+        )) -join "`n"
+    $serviceAccount = $serviceAccountJson | ConvertFrom-Json
+    if ($serviceAccount.disabled -eq $true) {
+        throw "The dedicated migration-operator service account is disabled; do not substitute another identity."
+    }
+
+    # The password is never read by this process or placed on a command line. Cloud Run resolves
+    # the named Secret Manager version directly into the container's PGPASSWORD environment.
+    $containerCommand = "umask 077 && printf '%s' '$encodedSql' | base64 -d > /tmp/evidence.sql && exec psql -X -q -v ON_ERROR_STOP=1 -h '$HostAddress' -p '$Port' -U '$DatabaseUser' -d '$Database' -f /tmp/evidence.sql"
+    $jobArgs = "-c,$containerCommand"
+
+    Invoke-GcloudCaptured -Operation "create the disposable read-only evidence job" -Arguments @(
+        "run", "jobs", "create", $jobName,
+        "--project=$ProjectId", "--region=$Region",
+        "--image=postgres:16-alpine", "--command=sh", "--args=$jobArgs",
+        "--service-account=$MigrationOperatorServiceAccount",
+        "--set-env-vars=PGSSLMODE=require,PGOPTIONS=-c default_transaction_read_only=on",
+        "--set-secrets=PGPASSWORD=${PasswordSecret}:latest",
+        "--network=$Network", "--subnet=$Subnet", "--vpc-egress=private-ranges-only",
+        "--tasks=1", "--parallelism=1", "--max-retries=0", "--task-timeout=15m",
+        "--labels=purpose=database-consolidation-evidence,lifecycle=disposable",
+        "--quiet"
+    ) | Out-Null
+
+    Invoke-GcloudCaptured -Operation "execute the read-only evidence job" -Arguments @(
+        "run", "jobs", "execute", $jobName,
+        "--project=$ProjectId", "--region=$Region", "--wait", "--quiet"
+    ) | Out-Null
+} catch {
+    $operationFailure = $_
+} finally {
+    $priorErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        & $Gcloud run jobs delete $jobName `
+            "--project=$ProjectId" "--region=$Region" --quiet *> $null
+        $global:LASTEXITCODE = 0
+        if (-not (Test-JobAbsent)) {
+            $cleanupFailure = "The disposable evidence job still exists after deletion."
+        }
+    } catch {
+        $cleanupFailure = $_.Exception.Message
+    } finally {
+        $ErrorActionPreference = $priorErrorActionPreference
+    }
+}
+
+if ($null -ne $cleanupFailure) {
+    throw "Production evidence job cleanup could not be confirmed: $cleanupFailure"
+}
+if ($null -ne $operationFailure) {
+    throw $operationFailure
+}
+
+Write-Host "Production database consolidation evidence completed in enforced read-only mode."
+Write-Host "Disposable Cloud Run job deletion was confirmed. Aggregate results are available in Cloud Logging."

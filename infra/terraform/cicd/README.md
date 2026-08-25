@@ -19,6 +19,12 @@ Repository-name-only and workflow-file-only trust are intentionally not modeled.
 
 The live project already has some of these resources from the retired pipeline. Import existing resources before applying, otherwise Terraform will try to create duplicates.
 
+`recovery_validation_bucket` is intentionally required in every project tfvars file. Use the exact
+project-scoped `<project_id>-db-snapshots` bucket; the module has no legacy cross-project default.
+The split-project values are `custoking-dev-db-snapshots` and `custoking-prod-db-snapshots`.
+Configuring the bucket name does not enable recovery IAM: `enable_recovery_bindings` remains a
+separate security-owner gate.
+
 ## First-Time Import
 
 ```powershell
