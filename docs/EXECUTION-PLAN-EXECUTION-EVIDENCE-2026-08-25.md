@@ -44,6 +44,14 @@ repository-owned blockers:
   Artifact Registry images, 73 Cloud Run revisions, 308 Cloud Run job executions, 73 alert policies and 11
   custom dashboard resources. The `custoking` Artifact Registry repository held approximately 4.47 GB and
   already had a seven-day delete policy plus a keep-most-recent-three rule.
+- Re-ran the read-only Cloud Asset Inventory after the reviewed Billing export and observability changes.
+  The only tracked count changes were the two standard/detailed Billing export tables, the
+  `Custoking prod - Billing & Cost` dashboard and the already-recorded `cloudasset.googleapis.com`
+  enablement. The inventory also normalized the existing zonal Cloud SQL instance location from region
+  `asia-south2` to its unchanged exact zone `asia-south2-b`; the instance was not recreated or moved.
+  The reviewed aggregate baseline now contains 376 tracked assets with digest
+  `3d20d05e07bcfcdda5be35e8abca2fb29bd02e99ef4974cac2e8f3460b7bae74`; volatile delivery revisions,
+  executions, backup objects and secret versions remain explicitly excluded from drift decisions.
 - Took on-demand Cloud SQL backup `1787656491610` successfully before the consolidation evidence run and
   changed production `custoking-db-prod` to `ENCRYPTED_ONLY`. The gateway health check and all 31 gateway
   routes passed after the change; no SSL or connection errors appeared in the verification window.
