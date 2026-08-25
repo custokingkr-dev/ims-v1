@@ -127,6 +127,10 @@ repository-owned blockers:
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
   server-side ruleset cannot be applied from this identity.
+- Added a read-only, immutable-SHA GitHub governance verifier that proves the three reviewed check names
+  succeeded and exactly match strict classic-protection or active-ruleset contexts on both `main` and
+  `dev`. Fixture coverage fails closed on stale SHAs, failed checks, case/typing drift, extra contexts,
+  non-strict policy, excluded rulesets and `evaluate`-only rulesets; no GitHub setting is changed.
 
 Cloud SQL utilization does not justify a larger instance for capacity: CPU averaged 6.72% and peaked at
 15.91%, memory averaged 43.96% and peaked at 50.83%, hourly p95 connections peaked at nine, and disk usage

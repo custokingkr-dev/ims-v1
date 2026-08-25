@@ -1,0 +1,74 @@
+{
+  "repository": {
+    "default_branch": "main"
+  },
+  "checkRuns": {
+    "total_count": 3,
+    "check_runs": [
+      {
+        "id": 101,
+        "name": "summary",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-08-26T10:00:00Z",
+        "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
+      },
+      {
+        "id": 102,
+        "name": "analyze (java-kotlin)",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-08-26T10:01:00Z",
+        "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
+      },
+      {
+        "id": 103,
+        "name": "analyze (javascript-typescript)",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-08-26T10:02:00Z",
+        "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
+      }
+    ]
+  },
+  "branchProtection": {
+    "main": {
+      "required_status_checks": {
+        "strict": true,
+        "contexts": [
+          "summary",
+          "analyze (java-kotlin)",
+          "analyze (javascript-typescript)"
+        ]
+      }
+    },
+    "dev": null
+  },
+  "rulesets": [
+    {
+      "id": 501,
+      "name": "dev exact checks",
+      "target": "branch",
+      "enforcement": "active",
+      "conditions": {
+        "ref_name": {
+          "include": ["refs/heads/*"],
+          "exclude": ["refs/heads/main"]
+        }
+      },
+      "rules": [
+        {
+          "type": "required_status_checks",
+          "parameters": {
+            "strict_required_status_checks_policy": true,
+            "required_status_checks": [
+              { "context": "summary" },
+              { "context": "analyze (java-kotlin)" },
+              { "context": "analyze (javascript-typescript)" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

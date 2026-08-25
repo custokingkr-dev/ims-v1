@@ -73,6 +73,8 @@ jobs:
           ./scripts/audit-microservice-test-catalog.ps1
           ./scripts/audit-microservice-build-catalog.ps1
           ./scripts/audit-security-governance-controls.ps1
+      - name: Test immutable GitHub governance check verification
+        run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
 
   privacy-technical-controls:
     name: privacy-technical-controls

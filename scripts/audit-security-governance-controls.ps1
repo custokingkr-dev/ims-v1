@@ -1,6 +1,8 @@
 param(
   [string]$ReadinessAudit = "scripts/audit-security-governance-readiness.ps1",
   [string]$GovernanceConfigurator = "scripts/configure-security-governance-controls.ps1",
+  [string]$GitHubExactCheckVerifier = "scripts/verify-github-governance-checks.py",
+  [string]$GitHubExactCheckVerifierTest = "scripts/tests/test_verify_github_governance_checks.py",
   [string]$RuntimeConfigurator = "scripts/configure-runtime-service-accounts.ps1",
   [string]$ReportingConfigurator = "scripts/configure-reporting-pubsub-push-oidc.ps1",
   [string]$SecretRotationAudit = "scripts/audit-secret-rotation-policy.ps1",
@@ -40,7 +42,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$paths = @($ReadinessAudit, $GovernanceConfigurator, $RuntimeConfigurator,
+$paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
+  $GitHubExactCheckVerifierTest, $RuntimeConfigurator,
   $ReportingConfigurator, $SecretRotationAudit, $SecretRotationPolicy, $RecoveryBucketRole,
   $CloudDeployDevTargets, $CloudDeployProdTargets, $CloudDeployRenderer,
   $CloudDeployPipelineRenderer, $AffectedResolver,
@@ -112,6 +115,23 @@ Require-Text $GovernanceConfigurator @(
   "analyze (javascript-typescript)",
   "required_conversation_resolution",
   "Validate every production-environment invariant before making any external change"
+)
+
+Require-Text $GitHubExactCheckVerifier @(
+  "Immutable 40-character commit SHA",
+  "filter=latest&per_page=100",
+  "required_status_checks",
+  "strict_required_status_checks_policy",
+  'ruleset.get("enforcement") != "active"',
+  "unexpected required contexts",
+  '"readOnly": True'
+)
+Require-Text $GitHubExactCheckVerifierTest @(
+  "test_classic_and_active_ruleset_exact_contexts_are_ready",
+  "test_missing_failed_and_mistyped_contexts_fail_closed",
+  "test_excluded_or_evaluate_rulesets_do_not_count_as_enforcement",
+  "test_unsupported_ruleset_pattern_fails_closed",
+  "test_cli_requires_immutable_sha_and_fixture_path_never_calls_github"
 )
 
 Require-Text $CiWorkflow @(
