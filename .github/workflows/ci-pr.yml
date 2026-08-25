@@ -109,6 +109,69 @@ jobs:
         shell: pwsh
         run: ./scripts/invoke-privacy-export-erasure-drill.ps1
 
+  maven-wrapper-validation:
+    name: maven-wrapper-validation (${{ matrix.os }})
+    needs: detect
+    if: >-
+      ${{
+        contains(needs.detect.outputs.changed_files, 'mvnw') ||
+        contains(needs.detect.outputs.changed_files, '.mvn/wrapper/')
+      }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            wrapper: ./mvnw
+          - os: windows-latest
+            wrapper: .\mvnw.cmd
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+      - name: Verify pinned wrapper from an empty wrapper home
+        shell: pwsh
+        env:
+          MAVEN_USER_HOME: ${{ runner.temp }}/maven-wrapper-${{ matrix.os }}
+        run: |
+          $properties = Get-Content -Raw .mvn/wrapper/maven-wrapper.properties | ConvertFrom-StringData
+          if ($properties.wrapperVersion -ne "3.3.4") {
+            throw "Expected Maven Wrapper 3.3.4; found '$($properties.wrapperVersion)'."
+          }
+          if ($properties.distributionType -ne "only-script") {
+            throw "Maven Wrapper must retain only-script distribution type."
+          }
+          if ($properties.distributionSha256Sum -notmatch '^[0-9a-f]{64}$') {
+            throw "Maven distribution must have a lowercase SHA-256 pin."
+          }
+          if (Test-Path -LiteralPath $env:MAVEN_USER_HOME) {
+            throw "Cold wrapper home unexpectedly exists: $env:MAVEN_USER_HOME"
+          }
+          $versionOutput = & "${{ matrix.wrapper }}" --version 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            throw "Maven Wrapper version command failed: $($versionOutput -join [Environment]::NewLine)"
+          }
+          $versionText = $versionOutput -join [Environment]::NewLine
+          $versionText
+          if ($versionText -notmatch '(?m)^Apache Maven 3\.9\.16(?:\s|$)') {
+            throw "Expected Apache Maven 3.9.16 from the wrapper."
+          }
+      - name: Run representative reactor tests through the wrapper
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        shell: bash
+        env:
+          MAVEN_USER_HOME: ${{ runner.temp }}/maven-wrapper-${{ matrix.os }}
+        run: >-
+          ./mvnw -B -pl services/identity-service
+          -Dtest=JwtServiceTest,TenantScopeTest
+          -Dmaven.repo.local="$HOME/.m2/repository"
+          test --no-transfer-progress
+
   service-test:
     name: service-test (${{ matrix.name }})
     needs: detect
@@ -203,7 +266,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   summary:
-    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, service-test, docker-build, secret-scan]
+    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, maven-wrapper-validation, service-test, docker-build, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -219,6 +282,7 @@ jobs:
             echo "- Duplicate class drift: ${{ needs.duplicate-class-drift.result }}"
             echo "- Static architecture audits: ${{ needs.static-architecture-audits.result }}"
             echo "- Privacy technical controls: ${{ needs.privacy-technical-controls.result }}"
+            echo "- Maven wrapper validation: ${{ needs.maven-wrapper-validation.result }}"
             echo "- Secret scan: ${{ needs.secret-scan.result }}"
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Enforce required job results
@@ -231,6 +295,7 @@ jobs:
             "${{ needs.duplicate-class-drift.result }}" \
             "${{ needs.static-architecture-audits.result }}" \
             "${{ needs.privacy-technical-controls.result }}" \
+            "${{ needs.maven-wrapper-validation.result }}" \
             "${{ needs.service-test.result }}" \
             "${{ needs.docker-build.result }}" \
             "${{ needs.secret-scan.result }}"; do
