@@ -41,12 +41,16 @@ The report uses an explicit evidence grade:
 | Grade | Meaning |
 | ---: | --- |
 | 0 | `ESTIMATED_ONLY`: pricing or modeled run-rate only; never invoice-grade |
-| 1 | `INVOICE_GRADE_STANDARD`: standard usage-cost export exists |
-| 2 | `INVOICE_GRADE_DETAILED`: resource-level detailed usage export exists |
+| 1 | `INVOICE_GRADE_STANDARD`: at least one scoped standard usage-cost row is available |
+| 2 | `INVOICE_GRADE_DETAILED`: at least one scoped resource-level detailed usage row is available |
 
 For grades 1 and 2 it reports both delivery lag (`export_time`) and newest billed-usage age
 (`usage_end_time`), scoped row count, gross/net month-to-date values, and currency. A pricing export by
 itself remains grade 0 because it contains rates, not this project's billed usage.
+
+`capabilityGradeCode` separately records which usage tables are configured. During initial backfill it can
+be 1 or 2 while the evidence `gradeCode` remains 0 and freshness is `NO_MATCHING_PROJECT_ROWS`; this means
+the export is enabled but no invoice-grade scoped evidence has arrived yet.
 
 Enabling standard or detailed Cloud Billing export requires billing-account authority outside this
 repository. A first-time export to a US/EU multi-region dataset backfills from the start of the previous

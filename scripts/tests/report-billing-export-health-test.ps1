@@ -44,6 +44,33 @@ try {
 
     & $script -ProjectId "custoking-prod" `
         -MockInventoryJson (Join-Path $fixtures "billing-export-detailed.json") `
+        -MockDetailedFreshnessJson (Join-Path $fixtures "billing-export-empty.json") `
+        -MockStandardFreshnessJson (Join-Path $fixtures "billing-export-empty.json") `
+        -OutputJson (Join-Path $output "configured-empty.json") `
+        -OutputMarkdown (Join-Path $output "configured-empty.md")
+    $configuredEmpty = Get-Content -Raw (Join-Path $output "configured-empty.json") | ConvertFrom-Json
+    if ($configuredEmpty.grade -ne "ESTIMATED_ONLY" -or $configuredEmpty.gradeCode -ne 0 `
+        -or $configuredEmpty.capabilityGradeCode -ne 2 -or $configuredEmpty.invoiceGrade `
+        -or $configuredEmpty.resourceLevelDetail -or $null -ne $configuredEmpty.selectedUsageTablePrefix `
+        -or $configuredEmpty.freshnessStatus -ne "NO_MATCHING_PROJECT_ROWS" `
+        -or $configuredEmpty.externalActionRequired) {
+        throw "Configured but empty usage exports were incorrectly presented as invoice-grade evidence"
+    }
+
+    & $script -ProjectId "custoking-prod" `
+        -MockInventoryJson (Join-Path $fixtures "billing-export-standard.json") `
+        -MockFreshnessJson (Join-Path $fixtures "billing-export-empty.json") `
+        -OutputJson (Join-Path $output "standard-empty.json") `
+        -OutputMarkdown (Join-Path $output "standard-empty.md")
+    $standardEmpty = Get-Content -Raw (Join-Path $output "standard-empty.json") | ConvertFrom-Json
+    if ($standardEmpty.gradeCode -ne 0 -or $standardEmpty.capabilityGradeCode -ne 1 `
+        -or $standardEmpty.invoiceGrade -or $standardEmpty.freshnessStatus -ne "NO_MATCHING_PROJECT_ROWS" `
+        -or $standardEmpty.externalActionRequired) {
+        throw "Configured but empty standard export was incorrectly presented as usable evidence"
+    }
+
+    & $script -ProjectId "custoking-prod" `
+        -MockInventoryJson (Join-Path $fixtures "billing-export-detailed.json") `
         -MockDetailedFreshnessJson (Join-Path $fixtures "billing-export-stale.json") `
         -MockStandardFreshnessJson (Join-Path $fixtures "billing-export-fresh.json") `
         -OutputJson (Join-Path $output "fresh-standard.json") `

@@ -62,10 +62,10 @@ for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_dat
 done
 
 for HEALTH_DESCRIPTOR in \
-  'export_available|1 when an invoice-grade standard or detailed billing usage export exists; otherwise 0.' \
+  'export_available|1 when a standard or detailed billing export has usable rows for the requested scope; otherwise 0.' \
   'standard_export_available|1 when the standard billing usage export exists; otherwise 0.' \
   'detailed_export_available|1 when the resource-level detailed billing usage export exists; otherwise 0.' \
-  'billing_data_grade|0 means estimated-only, 1 standard invoice-grade, 2 detailed invoice-grade.' \
+  'billing_data_grade|Usable scoped evidence: 0 no matching invoice rows, 1 standard invoice-grade, 2 detailed invoice-grade.' \
   'export_lag_hours|Hours since the newest selected billing export delivery; -1 when no matching row exists.' \
   'usage_lag_hours|Hours since usage_end_time in the newest selected billing row; -1 when no matching row exists.'; do
   SUFFIX="${HEALTH_DESCRIPTOR%%|*}"
@@ -196,11 +196,12 @@ fi
 # detailed table as authoritative would hide usable standard invoice-grade data and leave the dashboard
 # unavailable even though a valid export had arrived.
 USAGE_TABLE_PREFIX="${USAGE_TABLE_PREFIXES[0]}"
-BILLING_DATA_GRADE="${USAGE_TABLE_GRADES[0]}"
+BILLING_DATA_GRADE=0
 ROWS="[]"
 SELECTED_USAGE_LAG=""
 SELECTED_EXPORT_LAG=""
 DETAILED_MATCHING_ROWS=0
+QUERY_FAILURES=0
 
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
@@ -239,9 +240,8 @@ SQL
     "${QUERY}" 2>"${QUERY_ERROR}"); then
     echo "ERROR: ${CANDIDATE_LABEL} billing export query failed for ${BQ_PROJECT}.${DATASET}." >&2
     sed 's/^/       /' "${QUERY_ERROR}" >&2
-    publish_export_health 0 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
-      "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" "${CANDIDATE_GRADE}" -1 -1 || true
-    exit 1
+    QUERY_FAILURES=$((QUERY_FAILURES + 1))
+    continue
   fi
 
   if [ -n "${CANDIDATE_ROWS}" ] && [ "${CANDIDATE_ROWS}" != "[]" ]; then
@@ -277,6 +277,13 @@ if [ -n "${ROWS}" ] && [ "${ROWS}" != "[]" ] && [ "${BILLING_DATA_GRADE}" -eq 1 
 fi
 
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
+  if [ "${QUERY_FAILURES}" -gt 0 ]; then
+    echo "ERROR: scoped billing evidence could not be determined because one or more usage queries failed." >&2
+    publish_export_health 0 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
+      "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" 0 -1 -1 || true
+    exit 1
+  fi
+
   # An empty result is a legitimate state, not a failure: a first-time US/EU multi-region export can take
   # up to five days to work through its chronological previous-month backfill before current usage appears.
   # Exiting non-zero here would produce a job that alerts every hour about a condition nobody can act on.
@@ -399,6 +406,12 @@ for row in rows:
 PUBLISHER_EOF
 
 printf '%s' "${ROWS}" | python3 "${PUBLISHER}" "${PUBLISH_PROJECT}" "${NOW}"
+
+# A partial source-query failure must remain operationally visible, but it must not erase a usable result
+# from the other export. Publish the best successful evidence first, then fail the job for investigation.
+if [ "${QUERY_FAILURES}" -gt 0 ]; then
+  exit 1
+fi
 
 # Deployed as Cloud Run job `ims-cost-metric-prod` in custoking-prod/asia-south2, running as
 # cost-metric-exporter@custoking-prod (bigquery.jobUser, bigquery.dataViewer, monitoring.metricWriter),
