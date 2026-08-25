@@ -47,13 +47,13 @@ const COOKIE_KEY = crypto.createSecretKey(Buffer.from(crypto.hkdfSync(
 )));
 
 const SESSION_HOURS = 12;
-const OAUTH_STATE_MINUTES = 10;
+const AUTHORIZATION_TTL_MINUTES = 10;
 const configuredTimeout = Number(process.env.DASHBOARD_AUTH_UPSTREAM_TIMEOUT_MS || 10_000);
 const UPSTREAM_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
   ? configuredTimeout : 10_000;
 const MAX_JSON_BYTES = 1024 * 1024;
 
-const consumedOAuthStates = new Map();
+const consumedAuthorizationStates = new Map();
 const revokedSessions = new Map();
 
 let jwksCache = { keys: [], fetchedAt: 0 };
@@ -128,6 +128,10 @@ export async function verifyIdToken(idToken, expectedNonce) {
 
 export function isAllowed(email) {
   return ALLOWED.includes(String(email).toLowerCase());
+}
+
+export function pkceChallenge(verifier) {
+  return crypto.createHash("sha256").update(verifier).digest("base64url");
 }
 
 // --- session cookie ---------------------------------------------------------------------------------
@@ -226,22 +230,22 @@ export const expireAuthorizationCookie =
 // --- oauth ------------------------------------------------------------------------------------------
 
 export function beginAuthorization(destination) {
-  purgeExpired(consumedOAuthStates);
+  purgeExpired(consumedAuthorizationStates);
   const nonce = crypto.randomBytes(24).toString("base64url");
   const codeVerifier = crypto.randomBytes(32).toString("base64url");
-  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
-  const expiresAt = Date.now() + OAUTH_STATE_MINUTES * 60_000;
+  const codeChallenge = pkceChallenge(codeVerifier);
+  const expiresAt = Date.now() + AUTHORIZATION_TTL_MINUTES * 60_000;
   const value = encryptCookiePayload(
     "authorization-state", JSON.stringify({ nonce, destination, codeVerifier, expiresAt }));
   return {
     state: nonce,
     codeChallenge,
-    cookie: `ck_auth_flow=${value}; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=${OAUTH_STATE_MINUTES * 60}`,
+    cookie: `ck_auth_flow=${value}; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=${AUTHORIZATION_TTL_MINUTES * 60}`,
   };
 }
 
 export function consumeAuthorization(cookieHeader, receivedState) {
-  purgeExpired(consumedOAuthStates);
+  purgeExpired(consumedAuthorizationStates);
   const raw = cookieValue(cookieHeader, "ck_auth_flow");
   if (!raw) throw new Error("OAuth state cookie is missing or expired");
   const plaintext = decryptCookiePayload("authorization-state", raw);
@@ -257,8 +261,8 @@ export function consumeAuthorization(cookieHeader, receivedState) {
     throw new Error("OAuth state cookie is missing required data or expired");
   }
   if (!safeEqual(receivedState, payload.nonce)) throw new Error("OAuth state did not match");
-  if (consumedOAuthStates.has(payload.nonce)) throw new Error("OAuth state was already used");
-  consumedOAuthStates.set(payload.nonce, Number(payload.expiresAt));
+  if (consumedAuthorizationStates.has(payload.nonce)) throw new Error("OAuth state was already used");
+  consumedAuthorizationStates.set(payload.nonce, Number(payload.expiresAt));
   return { destination: payload.destination, codeVerifier: payload.codeVerifier, nonce: payload.nonce };
 }
 

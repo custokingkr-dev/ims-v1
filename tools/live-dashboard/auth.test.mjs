@@ -8,6 +8,13 @@ process.env.SESSION_SECRET = "test-only-".repeat(8);
 
 const auth = await import("./auth.mjs?auth-regression-tests");
 
+test("PKCE S256 matches the RFC 7636 interoperability vector", () => {
+  assert.equal(
+    auth.pkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"),
+    "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+  );
+});
+
 function cookieHeader(setCookie) {
   return setCookie.split(";", 1)[0];
 }
