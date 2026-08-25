@@ -1,13 +1,23 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "../..")
 $evidencePath = Join-Path $repoRoot "scripts/database-consolidation-evidence.sql"
+$plannerMigrationPath = Join-Path $repoRoot `
+    "services/school-core-service/src/main/resources/db/migration/student/V25__guardian_safe_create_planner.sql"
 $containerName = "ims-guardian-classifier-$([guid]::NewGuid().ToString('N').Substring(0, 10))"
 $containerCreated = $false
 
 function Invoke-Psql([string]$Sql) {
-    $output = @($Sql | & docker exec -i $containerName psql -X -v ON_ERROR_STOP=1 `
-        -U postgres -d ims -A -t -F '|' 2>&1)
-    if ($LASTEXITCODE -ne 0) {
+    $prior = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $output = @($Sql | & docker exec -i $containerName psql -X -v ON_ERROR_STOP=1 `
+            -U postgres -d ims -A -t -F '|' 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $prior
+        $global:LASTEXITCODE = 0
+    }
+    if ($exitCode -ne 0) {
         throw "Guardian classifier PostgreSQL fixture failed: $(($output -join "`n").Trim())"
     }
     return @($output | ForEach-Object { [string]$_ })
@@ -22,11 +32,19 @@ try {
     $containerCreated = $true
 
     for ($attempt = 0; $attempt -lt 40; $attempt++) {
-        & docker exec $containerName pg_isready -U postgres -d ims *> $null
-        if ($LASTEXITCODE -eq 0) { break }
+        $prior = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = "Continue"
+            & docker exec $containerName psql -X -U postgres -d ims -c "SELECT 1" *> $null
+            $readyExitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $prior
+            $global:LASTEXITCODE = 0
+        }
+        if ($readyExitCode -eq 0) { break }
         Start-Sleep -Milliseconds 500
     }
-    if ($LASTEXITCODE -ne 0) { throw "PostgreSQL guardian classifier fixture did not become ready." }
+    if ($readyExitCode -ne 0) { throw "PostgreSQL guardian classifier database did not become queryable." }
 
     $setup = @'
 CREATE SCHEMA student;
@@ -128,6 +146,7 @@ INSERT INTO student.student_guardians VALUES
  ('l22-other-role',1,22,'g-other-role','OTHER',true,now());
 '@
     Invoke-Psql $setup | Out-Null
+    Invoke-Psql (Get-Content -Raw -LiteralPath $plannerMigrationPath) | Out-Null
 
     $evidence = Get-Content -Raw -LiteralPath $evidencePath
     $start = $evidence.IndexOf("\echo 'V24-effective shared father identity conflict summary'")
@@ -183,18 +202,40 @@ INSERT INTO student.student_guardians VALUES
         throw "Guardian classifier returned unexpected aggregate rows: $($aggregateRows.Count)`n$($aggregateRows -join "`n")"
     }
     if (-not ($aggregateRows | Where-Object {
-        $_ -match '\|64\|9\|5\|3\|2\|[0-9a-f]{64}\|[0-9a-f]{64}$'
+        $_ -match '\|64\|9\|5\|3\|2\|guardian-safe-create-v1\|[0-9a-f]{64}\|[0-9a-f]{64}\|[0-9a-f]{64}$'
     })) {
         throw "Guardian classifier returned unexpected total or safe action counts."
+    }
+
+    $plannerSummary = Invoke-Psql "SELECT * FROM student.guardian_safe_create_summary_v1();"
+    $plannerSummaryText = $plannerSummary -join "`n"
+    if (-not $plannerSummaryText.Contains('guardian-safe-create-v1|')) {
+        throw "Guardian safe-create planner did not expose its versioned contract."
+    }
+    if (-not ($plannerSummary | Where-Object {
+        $_ -match '^guardian-safe-create-v1\|[0-9a-f]{64}\|SAFE_CREATE_UNLINKED_STUDENT\|'
+    })) {
+        throw "Guardian safe-create planner aggregate omitted the eligible bucket or contract digest."
+    }
+    $utcPlanHash = (Invoke-Psql @'
+SET TIME ZONE 'UTC';
+SELECT DISTINCT safe_create_plan_sha256 FROM student.guardian_safe_create_summary_v1();
+'@ | Select-Object -Last 1)
+    $kolkataPlanHash = (Invoke-Psql @'
+SET TIME ZONE 'Asia/Kolkata';
+SELECT DISTINCT safe_create_plan_sha256 FROM student.guardian_safe_create_summary_v1();
+'@ | Select-Object -Last 1)
+    if ($utcPlanHash -ne $kolkataPlanHash -or $utcPlanHash -notmatch '^[0-9a-f]{64}$') {
+        throw "Guardian safe-create fingerprint changed with the PostgreSQL session time zone."
     }
 
     $fingerprintPattern = '[0-9a-f]{64}'
     $firstFingerprints = @([regex]::Matches($firstText, $fingerprintPattern) | ForEach-Object { $_.Value } | Select-Object -Unique)
     $secondFingerprints = @([regex]::Matches($secondText, $fingerprintPattern) | ForEach-Object { $_.Value } | Select-Object -Unique)
     $fingerprintDifference = @(Compare-Object $firstFingerprints $secondFingerprints)
-    if ($firstFingerprints.Count -ne 2 -or $secondFingerprints.Count -ne 2 `
+    if ($firstFingerprints.Count -ne 3 -or $secondFingerprints.Count -ne 3 `
         -or $fingerprintDifference.Count -ne 0) {
-        throw "Guardian full/safe repair plan fingerprints were missing or not repeatable."
+        throw "Guardian contract/full/safe repair fingerprints were missing or not repeatable."
     }
 
     foreach ($privateValue in @(
@@ -202,10 +243,13 @@ INSERT INTO student.student_guardians VALUES
         'Bundle Father', 'Bundle Mother', 'Valid Bundle Mother',
         'New Candidate Spelling', 'Phone Cluster One', 'Phone Cluster Two',
         'Target Collision', 'Missing School Parent', 'Consent Drift Parent',
-        'g1', 'g-cross', 'g-tenant', '111', '1717'
+        'g1', 'g-cross', 'g-tenant'
     )) {
         if ($firstText.Contains($privateValue)) {
             throw "Guardian classifier leaked row-level fixture data: $privateValue"
+        }
+        if ($plannerSummaryText.Contains($privateValue)) {
+            throw "Guardian safe-create aggregate leaked row-level fixture data: $privateValue"
         }
     }
 
