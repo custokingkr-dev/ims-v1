@@ -26,6 +26,30 @@ $expectedServiceAccount = "migration-operator@$ProjectId.iam.gserviceaccount.com
 if ($MigrationOperatorServiceAccount -ne $expectedServiceAccount) {
     throw "The evidence job must use the dedicated production migration-operator service account."
 }
+if ($Region -ne "asia-south2") {
+    throw "The evidence job region must be asia-south2."
+}
+if ($HostAddress -ne "10.92.0.3") {
+    throw "The evidence job host must be the reviewed production private address."
+}
+if ($Port -ne 5432) {
+    throw "The evidence job port must be 5432."
+}
+if ($Database -ne "custoking_prod") {
+    throw "The evidence job database must be custoking_prod."
+}
+if ($DatabaseUser -ne "appuser") {
+    throw "The evidence job must use the production database owner account."
+}
+if ($PasswordSecret -ne "db-password-prod") {
+    throw "The evidence job must use db-password-prod."
+}
+if ($Network -ne "default") {
+    throw "The evidence job network must be default."
+}
+if ($Subnet -ne "default") {
+    throw "The evidence job subnet must be default."
+}
 
 $safeDnsOrIpv4 = '^[A-Za-z0-9][A-Za-z0-9.-]{0,252}$'
 $safeIdentifier = '^[A-Za-z_][A-Za-z0-9_-]{0,62}$'
@@ -136,8 +160,24 @@ function Test-JobAbsent {
     throw "Could not confirm removal of the disposable evidence job."
 }
 
+function Disable-MigrationOperator {
+    Invoke-GcloudCaptured -Operation "disable the migration-operator service account" -Arguments @(
+        "iam", "service-accounts", "disable", $MigrationOperatorServiceAccount,
+        "--project=$ProjectId", "--quiet"
+    ) | Out-Null
+    $disabled = ((Invoke-GcloudCaptured -Operation "verify the migration-operator service account is disabled" `
+        -Arguments @(
+            "iam", "service-accounts", "describe", $MigrationOperatorServiceAccount,
+            "--project=$ProjectId", "--format=value(disabled)"
+        )) -join "`n").Trim()
+    if ($disabled -notmatch '^(?i:true)$') {
+        throw "The migration-operator service account disablement could not be verified."
+    }
+}
+
 $operationFailure = $null
 $cleanupFailure = $null
+$identityDisableFailure = $null
 try {
     $serviceAccountJson = (Invoke-GcloudCaptured -Operation "inspect the migration-operator service account" `
         -Arguments @(
@@ -233,8 +273,19 @@ try {
         }
         $ErrorActionPreference = $priorErrorActionPreference
     }
+    try {
+        Disable-MigrationOperator
+    } catch {
+        $identityDisableFailure = $_.Exception.Message
+    }
 }
 
+if ($null -ne $identityDisableFailure -and $null -ne $cleanupFailure) {
+    throw "Production evidence cleanup failed to remove the job and disable the migration identity: job=$cleanupFailure identity=$identityDisableFailure"
+}
+if ($null -ne $identityDisableFailure) {
+    throw "Production evidence cleanup could not disable the migration-operator identity: $identityDisableFailure"
+}
 if ($null -ne $cleanupFailure) {
     throw "Production evidence job cleanup could not be confirmed: $cleanupFailure"
 }
@@ -243,4 +294,4 @@ if ($null -ne $operationFailure) {
 }
 
 Write-Host "Production database consolidation evidence completed in enforced read-only mode."
-Write-Host "Disposable Cloud Run job deletion was confirmed. Aggregate results are available in Cloud Logging."
+Write-Host "Disposable Cloud Run job deletion and migration-operator disablement were confirmed. Aggregate results are available in Cloud Logging."
