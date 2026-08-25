@@ -1,7 +1,7 @@
 # Execution Plan — Repository Execution Evidence — 2026-08-25
 
 Status: repository changes implemented, promoted, and selectively applied to production; the continuation
-batch is locally verified and awaiting the normal dev-to-production promotion path; governed gates remain.
+batch passed the normal dev-to-production promotion path and is live; governed gates remain.
 
 This is the execution companion to `PROJECT-DEEP-ANALYSIS-AND-EXECUTION-PLAN-2026-08-25.md`.
 It records what was completed in the repository, what was promoted through the production canary, what was
@@ -63,7 +63,11 @@ repository-owned blockers:
   guardian relationships. Existing guardian/link identities, consent references, permissions and primary
   flags are preserved, and normalized mother contact data is not erased by the legacy API. The complete
   school-core suite passed with 565 tests; a separate PostgreSQL 16 integration test proves exact parity on
-  all three write paths.
+  all three write paths. PR 157 merged as `2a16e1df40344a7fdf2ab44ed356a160381b6705`; production release
+  `rel-prod-2a16e1df4034-1` serves 100% on revision
+  `custoking-school-core-service-prod-mt8m8se6`. Production CodeQL, Trivy, Cloud Deploy verification and an
+  independent 31-route gateway smoke all passed, with no post-release school-core error logs in the checked
+  window.
 - Removed an unnecessary `packages: write` grant from the GCP image build and added an enforced CI policy
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
@@ -200,13 +204,16 @@ No major dependency was mixed into this batch.
    guardian columns, compatibility routes, or candidate indexes are removed.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
-9. Deploy the guardian forward-sync continuation batch, then execute a separately reviewed repair of the 462
-   existing mismatched students. Preserve normalized guardian IDs, consent references and normalized-only
-   fields; require parity to reach zero before any legacy parent column retirement.
+9. Guardian forward synchronization is deployed. Execute a separately reviewed repair of the 462 existing
+   mismatched students. Preserve normalized guardian IDs, consent references and normalized-only fields;
+   require parity to reach zero before any legacy parent column retirement.
 10. Review the single missing reporting projection by identifier in the protected evidence channel before
     invoking the existing one-student idempotent requeue function. Do not bulk requeue projections.
 11. Processed outbox retention and the duplicate identity index remain observation-only evidence until
     DATA-02 and a representative query/index window authorize deletion.
 
-Production mutations were limited to the reviewed release and the four targeted observability resources
-described above. No external notification message was sent.
+Production mutations were limited to reviewed releases; the targeted observability resources; Cloud Asset
+Inventory API enablement; on-demand backup `1787656491610`; and Cloud SQL `ENCRYPTED_ONLY` enforcement.
+The dedicated migration operator was returned to disabled state after the read-only evidence run. No
+external notification message was sent, no recovery IAM was enabled, and no database row or index was
+deleted by this continuation batch.
