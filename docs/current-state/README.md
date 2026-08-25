@@ -15,6 +15,7 @@ This documentation bundle captures the current project state after the dev/prod 
 - [gcp-infrastructure.md](gcp-infrastructure.md) - live GCP services, Cloud Run, Cloud SQL, Pub/Sub, IAM, WIF, Artifact Registry, buckets, secrets, and drift.
 - [deployment-cicd.md](deployment-cicd.md) - active branch-owned GitHub Actions and Cloud Deploy implementation.
 - [codebase-conventions.md](codebase-conventions.md) - repository layout, Java/Node/React conventions, service config, route ownership, testing, and local dev.
+- [api-contracts.md](api-contracts.md) - generated route ownership, canonical OpenAPI slices, typed clients, and compatibility migration boundaries.
 - [event-models.md](event-models.md) - event envelope, transactional outbox, Pub/Sub push ingress, projection projectors, event types, and idempotency.
 - [school-student-lifecycle.md](school-student-lifecycle.md) - implemented school onboarding readiness, localization lineage, student date handling, and import semantics.
 - [observability-operations.md](observability-operations.md) - dashboards, uptime, alerts, log metrics, traces, runtime evidence, and operations checks.

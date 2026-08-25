@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -56,6 +56,8 @@ export function PhotoImportPanel() {
   const [access, setAccess] = useState<AccessState | null>(null);
   const [recoveryProgress, setRecoveryProgress] = useState<RecoveryProgress | null>(null);
   const [operationProgress, setOperationProgress] = useState<OperationProgress | null>(null);
+  const [executionPauseRequested, setExecutionPauseRequested] = useState(false);
+  const executionPauseRequestedRef = useRef(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
 
   const selectedSchool = context?.schools.find(school => school.id === Number(schoolId));
@@ -164,6 +166,8 @@ export function PhotoImportPanel() {
 
   useEffect(() => {
     setOperationProgress(null);
+    executionPauseRequestedRef.current = false;
+    setExecutionPauseRequested(false);
   }, [batch?.id]);
 
   useEffect(() => {
@@ -245,6 +249,10 @@ export function PhotoImportPanel() {
   const runAction = async (action: 'scan' | 'freeze' | 'execute') => {
     if (!batch) return;
     if (action === 'execute' && !executionConfirmed) return;
+    if (action === 'execute') {
+      executionPauseRequestedRef.current = false;
+      setExecutionPauseRequested(false);
+    }
     setBusy(action);
     setNotice(null);
     setOperationProgress(action === 'execute'
@@ -269,7 +277,11 @@ export function PhotoImportPanel() {
         current = await refreshDetail(batch.id, { showError: false });
       }
       if (action === 'execute') setOperationProgress(executionOperationProgress(current));
-      while (action === 'execute' && current.status === 'EXECUTING') {
+      while (
+        action === 'execute'
+        && current.status === 'EXECUTING'
+        && !executionPauseRequestedRef.current
+      ) {
         setBatch(current);
         try {
           current = (await postAction()).data;
@@ -279,12 +291,29 @@ export function PhotoImportPanel() {
         }
         setOperationProgress(executionOperationProgress(current));
       }
+      const executionPaused = action === 'execute'
+        && current.status === 'EXECUTING'
+        && executionPauseRequestedRef.current;
       await loadDetail(batch.id);
-      if (action === 'execute') setOperationProgress(executionOperationProgress(current));
+      if (action === 'execute') {
+        setOperationProgress(executionPaused
+          ? {
+              label: 'Photo import paused',
+              detail: `${current.appliedCount} applied; ${current.failedCount} failed; `
+                + `${current.readyCount} remain. Confirm the scope again when you are ready to resume.`,
+              value: executionOperationProgress(current).value,
+              valueLabel: executionOperationProgress(current).valueLabel,
+              tone: 'active',
+            }
+          : executionOperationProgress(current));
+      }
       await loadBatches(batch.schoolId);
       setNotice({
         tone: 'ok',
-        text: action === 'scan'
+        text: executionPaused
+          ? `Execution paused after the current chunk. ${current.readyCount} portrait`
+            + `${current.readyCount === 1 ? ' remains' : 's remain'} and can be resumed safely.`
+          : action === 'scan'
           ? 'Drive and workbook scan completed.'
           : action === 'freeze'
             ? 'Source snapshot frozen. The batch is ready for execution.'
@@ -310,6 +339,7 @@ export function PhotoImportPanel() {
         tone: 'error',
       } : null);
     } finally {
+      if (action === 'execute') setExecutionPauseRequested(false);
       setBusy('');
     }
   };
@@ -472,6 +502,19 @@ export function PhotoImportPanel() {
     } finally {
       setBusy('');
     }
+  };
+
+  const pauseExecution = () => {
+    if (busy !== 'execute' || executionPauseRequestedRef.current) return;
+    executionPauseRequestedRef.current = true;
+    setExecutionPauseRequested(true);
+    setOperationProgress(current => ({
+      label: 'Pausing photo import',
+      detail: 'The current atomic chunk will finish; no additional chunk will be scheduled.',
+      value: current?.value,
+      valueLabel: current?.valueLabel,
+      tone: 'active',
+    }));
   };
 
   const saveRowReview = async (previewAfterSave = false) => {
@@ -703,11 +746,13 @@ export function PhotoImportPanel() {
                   appliedRowCount={appliedRows.length}
                   busy={busy}
                   executionConfirmed={executionConfirmed}
+                  executionPauseRequested={executionPauseRequested}
                   operationProgress={operationProgress}
                   recoveryProgress={recoveryProgress}
                   access={access}
                   onExecutionConfirmedChange={setExecutionConfirmed}
                   onRunAction={action => { void runAction(action); }}
+                  onPauseExecution={pauseExecution}
                   onRecover={() => { void recoverAppliedPhotos(); }}
                   onDownloadResult={() => { void downloadResult(); }}
                   onCancel={() => { void cancelBatch(); }}

@@ -27,27 +27,29 @@ locals {
   # filtered out by default and this module stays a truthful record of the project.
   dev_identity_keys = ["release_dev", "rollback_dev", "config_dev"]
 
-  # Which environment each identity key belongs to. Keys absent from this map (cost_controller,
-  # recovery) are environment-agnostic and are owned by whichever project runs them.
+  # Which environment each identity key belongs to. Cost control is the only environment-agnostic
+  # identity; governance inventory and recovery are production-only.
   identity_environment = {
-    release_dev   = "dev"
-    release_prod  = "prod"
-    rollback_dev  = "dev"
-    rollback_prod = "prod"
-    config_dev    = "dev"
-    config_prod   = "prod"
-    recovery      = "prod"
+    release_dev        = "dev"
+    release_prod       = "prod"
+    rollback_dev       = "dev"
+    rollback_prod      = "prod"
+    config_dev         = "dev"
+    config_prod        = "prod"
+    governance_auditor = "prod"
+    recovery           = "prod"
   }
 
   github_service_accounts_all = {
-    release_dev     = "github-release-dev"
-    release_prod    = "github-release-prod"
-    rollback_dev    = "github-rollback-dev"
-    rollback_prod   = "github-rollback-prod"
-    config_dev      = "github-config-dev"
-    config_prod     = "github-config-prod"
-    cost_controller = "github-cost-controller"
-    recovery        = "custoking-recovery-operator"
+    release_dev        = "github-release-dev"
+    release_prod       = "github-release-prod"
+    rollback_dev       = "github-rollback-dev"
+    rollback_prod      = "github-rollback-prod"
+    config_dev         = "github-config-dev"
+    config_prod        = "github-config-prod"
+    cost_controller    = "github-cost-controller"
+    governance_auditor = "github-governance-auditor"
+    recovery           = "custoking-recovery-operator"
   }
 
   github_service_accounts = {
@@ -70,14 +72,15 @@ locals {
   # Service-account impersonation is branch-specific. Provider-level allowlisting alone is not
   # sufficient because a workflow changed on dev must never be able to request a prod identity.
   github_service_account_workflow_refs_all = {
-    release_dev     = toset(["${var.github_repository}/.github/workflows/build-release.yml@refs/heads/dev"])
-    release_prod    = toset(["${var.github_repository}/.github/workflows/build-release.yml@refs/heads/main"])
-    rollback_dev    = toset(["${var.github_repository}/.github/workflows/rollback.yml@refs/heads/dev"])
-    rollback_prod   = toset(["${var.github_repository}/.github/workflows/rollback.yml@refs/heads/main"])
-    config_dev      = toset(["${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/dev"])
-    config_prod     = toset(["${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/main"])
-    cost_controller = toset(["${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main"])
-    recovery        = toset(["${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main"])
+    release_dev        = toset(["${var.github_repository}/.github/workflows/build-release.yml@refs/heads/dev"])
+    release_prod       = toset(["${var.github_repository}/.github/workflows/build-release.yml@refs/heads/main"])
+    rollback_dev       = toset(["${var.github_repository}/.github/workflows/rollback.yml@refs/heads/dev"])
+    rollback_prod      = toset(["${var.github_repository}/.github/workflows/rollback.yml@refs/heads/main"])
+    config_dev         = toset(["${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/dev"])
+    config_prod        = toset(["${var.github_repository}/.github/workflows/reconcile-deployment-config.yml@refs/heads/main"])
+    cost_controller    = toset(["${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main"])
+    governance_auditor = toset(["${var.github_repository}/.github/workflows/gcp-governance-audit.yml@refs/heads/main"])
+    recovery           = toset(["${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main"])
   }
 
   github_service_account_workflow_refs = {
@@ -107,6 +110,7 @@ locals {
   # that owns production.
   maintenance_workflow_claims = concat(
     [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main" }],
+    contains(var.environments, "prod") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-governance-audit.yml@refs/heads/main" }] : [],
     contains(var.environments, "prod") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main" }] : []
   )
 
@@ -512,6 +516,45 @@ resource "google_project_iam_member" "cost_controller_roles" {
   project = var.project_id
   role    = each.value
   member  = "serviceAccount:${google_service_account.github["cost_controller"].email}"
+}
+
+# Read-only scheduled inventory must not borrow a deploy, rollback, recovery, or cost-mutation
+# identity. This custom role is limited to the exact list/get/search calls used by the two
+# repository governance audits; it contains no create, update, delete, setIamPolicy, or secret-data
+# permission.
+resource "google_project_iam_custom_role" "governance_auditor" {
+  count = contains(var.environments, "prod") ? 1 : 0
+
+  project     = var.project_id
+  role_id     = "imsGovernanceAuditor"
+  title       = "IMS governance inventory auditor"
+  description = "Read-only Cloud Asset and Monitoring/resource inventory for scheduled governance audits."
+  permissions = [
+    "cloudasset.assets.searchAllResources",
+    "cloudsql.instances.get",
+    "cloudsql.instances.list",
+    "monitoring.alertPolicies.get",
+    "monitoring.alertPolicies.list",
+    "monitoring.dashboards.get",
+    "monitoring.dashboards.list",
+    "monitoring.timeSeries.list",
+    "pubsub.subscriptions.get",
+    "pubsub.subscriptions.list",
+    "resourcemanager.projects.get",
+    "run.services.get",
+    "run.services.list",
+    "serviceusage.services.use",
+    "storage.buckets.get",
+    "storage.buckets.list",
+  ]
+}
+
+resource "google_project_iam_member" "governance_auditor_role" {
+  count = contains(var.environments, "prod") ? 1 : 0
+
+  project = var.project_id
+  role    = google_project_iam_custom_role.governance_auditor[0].name
+  member  = "serviceAccount:${google_service_account.github["governance_auditor"].email}"
 }
 
 # Clone and delete are intentionally absent from roles/cloudsql.editor. Keep recovery on a

@@ -27,6 +27,402 @@ SELECT
     count(*) FILTER (WHERE NOT mother_name_matches) AS mother_name_mismatches
 FROM student.guardian_legacy_parity;
 
+\echo 'guardian mismatch anatomy'
+SELECT
+    count(*) FILTER (
+        WHERE NOT father_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_father_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_father_name, '')), '') IS NULL
+    ) AS father_name_missing_normalized,
+    count(*) FILTER (
+        WHERE NOT father_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_father_name, '')), '') IS NULL
+          AND NULLIF(btrim(COALESCE(normalized_father_name, '')), '') IS NOT NULL
+    ) AS father_name_missing_legacy,
+    count(*) FILTER (
+        WHERE NOT father_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_father_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_father_name, '')), '') IS NOT NULL
+    ) AS father_name_value_different,
+    count(*) FILTER (
+        WHERE NOT father_contact_matches
+          AND regexp_replace(COALESCE(legacy_father_contact, ''), '[^0-9]', '', 'g') <> ''
+          AND regexp_replace(COALESCE(normalized_father_contact, ''), '[^0-9]', '', 'g') = ''
+    ) AS father_contact_missing_normalized,
+    count(*) FILTER (
+        WHERE NOT father_contact_matches
+          AND regexp_replace(COALESCE(legacy_father_contact, ''), '[^0-9]', '', 'g') = ''
+          AND regexp_replace(COALESCE(normalized_father_contact, ''), '[^0-9]', '', 'g') <> ''
+    ) AS father_contact_missing_legacy,
+    count(*) FILTER (
+        WHERE NOT father_contact_matches
+          AND regexp_replace(COALESCE(legacy_father_contact, ''), '[^0-9]', '', 'g') <> ''
+          AND regexp_replace(COALESCE(normalized_father_contact, ''), '[^0-9]', '', 'g') <> ''
+    ) AS father_contact_value_different,
+    count(*) FILTER (
+        WHERE NOT mother_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_mother_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_mother_name, '')), '') IS NULL
+    ) AS mother_name_missing_normalized,
+    count(*) FILTER (
+        WHERE NOT mother_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_mother_name, '')), '') IS NULL
+          AND NULLIF(btrim(COALESCE(normalized_mother_name, '')), '') IS NOT NULL
+    ) AS mother_name_missing_legacy,
+    count(*) FILTER (
+        WHERE NOT mother_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_mother_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_mother_name, '')), '') IS NOT NULL
+    ) AS mother_name_value_different
+FROM student.guardian_legacy_parity;
+
+\echo 'V24-effective shared father identity conflict summary'
+WITH ranked_father_links AS (
+    SELECT
+        student_row.id AS student_id,
+        link.guardian_id,
+        student_row.father_name,
+        student_row.father_contact,
+        row_number() OVER (
+            PARTITION BY student_row.id
+            ORDER BY link.is_primary DESC, link.updated_at DESC, link.id
+        ) AS effective_rank
+    FROM student.students student_row
+    JOIN student.student_guardians link ON link.student_id = student_row.id
+    JOIN student.guardians guardian ON guardian.id = link.guardian_id
+    WHERE student_row.deleted_at IS NULL
+      AND link.relationship = 'FATHER'
+      AND guardian.status = 'ACTIVE'
+),
+father_identity AS (
+    SELECT
+        guardian_id,
+        count(DISTINCT student_id) AS linked_students,
+        count(DISTINCT jsonb_build_array(NULLIF(btrim(COALESCE(father_name, '')), '')))
+            AS distinct_legacy_names,
+        count(DISTINCT jsonb_build_array(NULLIF(
+            regexp_replace(COALESCE(father_contact, ''), '[^0-9]', '', 'g'), '')))
+            AS distinct_legacy_contacts
+    FROM ranked_father_links
+    WHERE effective_rank = 1
+    GROUP BY guardian_id
+)
+SELECT
+    count(*) FILTER (WHERE linked_students > 1) AS shared_father_guardians,
+    count(*) FILTER (
+        WHERE linked_students > 1
+          AND (distinct_legacy_names > 1 OR distinct_legacy_contacts > 1)
+    ) AS shared_guardians_with_conflicting_legacy_values,
+    COALESCE(max(linked_students), 0) AS maximum_students_per_father_guardian
+FROM father_identity;
+
+\echo 'guardian repair planning buckets'
+WITH active_students AS (
+    SELECT
+        student_row.id,
+        student_row.school_id,
+        student_row.father_name,
+        student_row.father_contact,
+        student_row.mother_name,
+        student_row.version,
+        student_row.updated_at,
+        school.id IS NOT NULL AS school_exists,
+        COALESCE(school.active, false) AS school_is_active
+    FROM student.students student_row
+    LEFT JOIN tenant_school.schools school ON school.id = student_row.school_id
+    WHERE student_row.deleted_at IS NULL
+),
+all_active_student_link_hazards AS (
+    SELECT
+        link.guardian_id,
+        bool_or(
+            link.school_id IS DISTINCT FROM student_row.school_id
+            OR guardian.school_id IS DISTINCT FROM student_row.school_id
+        ) AS tenant_or_link_anomaly
+    FROM active_students student_row
+    JOIN student.student_guardians link ON link.student_id = student_row.id
+    JOIN student.guardians guardian ON guardian.id = link.guardian_id
+    GROUP BY link.guardian_id
+),
+active_student_link_counts AS (
+    SELECT
+        student_row.id AS student_id,
+        count(link.id) AS total_student_links
+    FROM active_students student_row
+    LEFT JOIN student.student_guardians link ON link.student_id = student_row.id
+    GROUP BY student_row.id
+),
+-- Versioned guardian repair planning buckets emitted by guardian_safe_create_plan_v1:
+-- SAFE_CREATE_UNLINKED_STUDENT
+-- REVIEW_UNLINKED_SCHOOL_MISSING_OR_INACTIVE
+-- REVIEW_UNLINKED_INVALID_OR_UNAPPROVED_LEGACY_VALUE
+-- REVIEW_UNLINKED_GUARDIAN_CONSENT
+-- REVIEW_UNLINKED_DETERMINISTIC_ID_EXISTS
+-- REVIEW_UNLINKED_IDENTITY_CANDIDATE
+-- REVIEW_UNLINKED_SHARED_LEGACY_CLUSTER
+unlinked_safe_create_plan AS (
+    SELECT * FROM student.guardian_safe_create_plan_v1()
+),
+ranked_links AS (
+    SELECT
+        student_row.id AS student_id,
+        student_row.school_id AS student_school_id,
+        link.relationship,
+        link.guardian_id,
+        link.school_id AS link_school_id,
+        guardian.school_id AS guardian_school_id,
+        guardian.full_name,
+        guardian.phone,
+        row_number() OVER (
+            PARTITION BY student_row.id, link.relationship
+            ORDER BY link.is_primary DESC, link.updated_at DESC, link.id
+        ) AS effective_rank,
+        count(*) OVER (
+            PARTITION BY student_row.id, link.relationship
+        ) AS active_relationship_links
+    FROM active_students student_row
+    JOIN student.student_guardians link ON link.student_id = student_row.id
+    JOIN student.guardians guardian ON guardian.id = link.guardian_id
+    WHERE link.relationship IN ('FATHER', 'MOTHER')
+      AND guardian.status = 'ACTIVE'
+),
+effective_links AS (
+    SELECT * FROM ranked_links WHERE effective_rank = 1
+),
+projected_uses AS (
+    SELECT
+        effective.student_id,
+        effective.student_school_id,
+        effective.relationship,
+        effective.guardian_id,
+        effective.link_school_id,
+        effective.guardian_school_id,
+        effective.active_relationship_links,
+        'name'::text AS field_name,
+        CASE effective.relationship
+            WHEN 'FATHER' THEN NULLIF(btrim(COALESCE(student_row.father_name, '')), '')
+            ELSE NULLIF(btrim(COALESCE(student_row.mother_name, '')), '')
+        END AS legacy_value
+    FROM effective_links effective
+    JOIN active_students student_row ON student_row.id = effective.student_id
+
+    UNION ALL
+
+    SELECT
+        effective.student_id,
+        effective.student_school_id,
+        effective.relationship,
+        effective.guardian_id,
+        effective.link_school_id,
+        effective.guardian_school_id,
+        effective.active_relationship_links,
+        'contact'::text,
+        NULLIF(regexp_replace(COALESCE(student_row.father_contact, ''), '[^0-9]', '', 'g'), '')
+    FROM effective_links effective
+    JOIN active_students student_row ON student_row.id = effective.student_id
+    WHERE effective.relationship = 'FATHER'
+),
+guardian_hazards AS (
+    SELECT
+        projected.guardian_id,
+        bool_or(projected.active_relationship_links <> 1)
+            OR COALESCE(bool_or(link_hazard.tenant_or_link_anomaly), false)
+            AS tenant_or_link_anomaly,
+        count(DISTINCT jsonb_build_array(projected.legacy_value))
+            FILTER (WHERE field_name = 'name') > 1 AS name_divergent,
+        count(DISTINCT jsonb_build_array(projected.legacy_value))
+            FILTER (WHERE field_name = 'contact') > 1 AS contact_divergent
+    FROM projected_uses projected
+    LEFT JOIN all_active_student_link_hazards link_hazard
+      ON link_hazard.guardian_id = projected.guardian_id
+    GROUP BY projected.guardian_id
+),
+student_fields AS (
+    SELECT
+        student_row.id AS student_id,
+        student_row.school_id,
+        field.relationship,
+        field.field_name,
+        field.legacy_value
+    FROM active_students student_row
+    CROSS JOIN LATERAL (
+        VALUES
+            ('FATHER'::text, 'name'::text,
+             NULLIF(btrim(COALESCE(student_row.father_name, '')), '')),
+            ('FATHER'::text, 'contact'::text,
+             NULLIF(regexp_replace(COALESCE(student_row.father_contact, ''), '[^0-9]', '', 'g'), '')),
+            ('MOTHER'::text, 'name'::text,
+             NULLIF(btrim(COALESCE(student_row.mother_name, '')), ''))
+    ) AS field(relationship, field_name, legacy_value)
+),
+field_state AS (
+    SELECT
+        field.student_id,
+        field.school_id,
+        field.relationship,
+        field.field_name,
+        field.legacy_value,
+        CASE field.field_name
+            WHEN 'contact' THEN NULLIF(regexp_replace(COALESCE(effective.phone, ''), '[^0-9]', '', 'g'), '')
+            ELSE NULLIF(btrim(COALESCE(effective.full_name, '')), '')
+        END AS normalized_value,
+        effective.guardian_id,
+        link_count.total_student_links,
+        student_row.version AS student_version,
+        student_row.updated_at AS student_updated_at,
+        student_row.father_name AS legacy_father_name_raw,
+        student_row.father_contact AS legacy_father_contact_raw,
+        student_row.mother_name AS legacy_mother_name_raw,
+        student_row.school_exists,
+        student_row.school_is_active,
+        unlinked_plan.expected_v14_guardian_id,
+        unlinked_plan.expected_v14_link_id,
+        unlinked_plan.target_guardian_id,
+        unlinked_plan.target_link_id,
+        unlinked_plan.eligibility_bucket AS unlinked_eligibility_bucket,
+        unlinked_plan.intended_relationships,
+        unlinked_plan.guardian_bound_consents,
+        unlinked_plan.same_school_identity_candidates,
+        unlinked_plan.maximum_identity_cluster_size,
+        unlinked_plan.contract_version AS safe_create_contract_version,
+        unlinked_plan.contract_digest AS safe_create_contract_digest,
+        unlinked_plan.fingerprint_record AS unlinked_fingerprint_record,
+        COALESCE(hazard.tenant_or_link_anomaly, false) AS tenant_or_link_anomaly,
+        CASE field.field_name
+            WHEN 'contact' THEN COALESCE(hazard.contact_divergent, false)
+            ELSE COALESCE(hazard.name_divergent, false)
+        END AS global_identity_divergent
+    FROM student_fields field
+    LEFT JOIN effective_links effective
+      ON effective.student_id = field.student_id
+     AND effective.relationship = field.relationship
+    JOIN active_student_link_counts link_count ON link_count.student_id = field.student_id
+    JOIN active_students student_row ON student_row.id = field.student_id
+    LEFT JOIN unlinked_safe_create_plan unlinked_plan
+      ON unlinked_plan.student_id = field.student_id
+     AND unlinked_plan.relationship = field.relationship
+     AND unlinked_plan.field_name = field.field_name
+    LEFT JOIN guardian_hazards hazard ON hazard.guardian_id = effective.guardian_id
+),
+classified AS (
+    SELECT
+        *,
+        CASE
+            WHEN legacy_value IS NOT DISTINCT FROM normalized_value THEN NULL
+            WHEN guardian_id IS NULL
+             AND total_student_links = 0
+             AND legacy_value IS NOT NULL THEN unlinked_eligibility_bucket
+            WHEN guardian_id IS NULL THEN 'REVIEW_INACTIVE_OR_MISSING_EFFECTIVE_LINK'
+            WHEN tenant_or_link_anomaly THEN 'REVIEW_TENANT_OR_LINK_ANOMALY'
+            WHEN global_identity_divergent THEN 'REVIEW_SHARED_DIVERGENCE'
+            WHEN legacy_value IS NOT NULL AND normalized_value IS NULL THEN 'SAFE_LEGACY_ONLY'
+            WHEN legacy_value IS NOT NULL AND normalized_value IS NOT NULL
+                THEN 'REVIEW_BOTH_PRESENT_DIFFERENT'
+            WHEN legacy_value IS NULL AND normalized_value IS NOT NULL THEN 'REVIEW_NORMALIZED_ONLY'
+            ELSE 'REVIEW_INACTIVE_OR_MISSING_EFFECTIVE_LINK'
+        END AS repair_bucket
+    FROM field_state
+),
+mismatched_plan_state AS (
+    SELECT *
+    FROM classified
+    WHERE repair_bucket IS NOT NULL
+),
+fingerprint_records AS (
+    SELECT
+        *,
+        COALESCE(unlinked_fingerprint_record, jsonb_build_object(
+            'student_id', student_id,
+            'school_id', school_id,
+            'student_version', student_version,
+            'student_updated_at', to_char(
+                student_updated_at AT TIME ZONE 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+            ),
+            'school_exists', school_exists,
+            'school_is_active', school_is_active,
+            'legacy_father_name_raw', legacy_father_name_raw,
+            'legacy_father_contact_raw', legacy_father_contact_raw,
+            'legacy_mother_name_raw', legacy_mother_name_raw,
+            'relationship', relationship,
+            'field_name', field_name,
+            'guardian_id', guardian_id,
+            'legacy_value', legacy_value,
+            'normalized_value', normalized_value,
+            'total_student_links', total_student_links,
+            'expected_v14_guardian_id', expected_v14_guardian_id,
+            'expected_v14_link_id', expected_v14_link_id,
+            'target_guardian_id', target_guardian_id,
+            'target_link_id', target_link_id,
+            'unlinked_eligibility_bucket', unlinked_eligibility_bucket,
+            'intended_relationships', intended_relationships,
+            'guardian_bound_consents', guardian_bound_consents,
+            'same_school_identity_candidates', same_school_identity_candidates,
+            'maximum_identity_cluster_size', maximum_identity_cluster_size,
+            'repair_bucket', repair_bucket
+        )) AS fingerprint_record
+    FROM mismatched_plan_state
+),
+bucket_summary AS (
+    SELECT
+        repair_bucket,
+        relationship,
+        field_name,
+        count(*) AS field_actions,
+        count(DISTINCT student_id) AS distinct_students,
+        count(DISTINCT guardian_id) FILTER (WHERE guardian_id IS NOT NULL) AS guardian_actions
+    FROM fingerprint_records
+    GROUP BY repair_bucket, relationship, field_name
+),
+plan_fingerprint AS (
+    SELECT
+        count(*) AS planned_field_actions,
+        count(*) FILTER (WHERE repair_bucket = 'SAFE_LEGACY_ONLY') AS safe_legacy_only_actions,
+        count(*) FILTER (WHERE repair_bucket = 'SAFE_CREATE_UNLINKED_STUDENT')
+            AS safe_create_unlinked_actions,
+        count(DISTINCT (student_id, relationship))
+            FILTER (WHERE repair_bucket = 'SAFE_CREATE_UNLINKED_STUDENT')
+            AS safe_create_relationship_actions,
+        count(DISTINCT student_id)
+            FILTER (WHERE repair_bucket = 'SAFE_CREATE_UNLINKED_STUDENT')
+            AS safe_create_students,
+        encode(sha256(convert_to(COALESCE(
+            jsonb_agg(
+                fingerprint_record
+                ORDER BY student_id, relationship, field_name
+            )::text,
+            '[]'
+        ), 'UTF8')), 'hex') AS plan_sha256
+        ,encode(sha256(convert_to(COALESCE(
+            jsonb_agg(
+                fingerprint_record
+                ORDER BY student_id, relationship, field_name
+            ) FILTER (WHERE repair_bucket = 'SAFE_CREATE_UNLINKED_STUDENT')::text,
+            '[]'
+        ), 'UTF8')), 'hex') AS safe_create_plan_sha256
+    FROM fingerprint_records
+)
+SELECT
+    summary.repair_bucket,
+    summary.relationship,
+    summary.field_name,
+    COALESCE(summary.field_actions, 0) AS field_actions,
+    COALESCE(summary.distinct_students, 0) AS distinct_students,
+    COALESCE(summary.guardian_actions, 0) AS guardian_actions,
+    fingerprint.planned_field_actions,
+    fingerprint.safe_legacy_only_actions,
+    fingerprint.safe_create_unlinked_actions,
+    fingerprint.safe_create_relationship_actions,
+    fingerprint.safe_create_students,
+    contract.contract_version AS safe_create_contract_version,
+    contract.contract_digest AS safe_create_contract_digest,
+    fingerprint.plan_sha256,
+    fingerprint.safe_create_plan_sha256
+FROM plan_fingerprint fingerprint
+CROSS JOIN student.guardian_safe_create_contract_v1() contract
+LEFT JOIN bucket_summary summary ON true
+ORDER BY summary.repair_bucket, summary.relationship, summary.field_name;
+
 \echo 'reporting student projection parity'
 SELECT * FROM reporting.student_projection_reconciliation_summary;
 SELECT issue, count(*) AS rows

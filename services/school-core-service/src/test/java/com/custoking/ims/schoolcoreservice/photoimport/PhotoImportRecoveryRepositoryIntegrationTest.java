@@ -16,6 +16,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 
@@ -109,19 +111,21 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
             sql.execute("""
                     INSERT INTO student.photo_import_sources
                         (id, batch_id, school_id, drive_file_id, file_name, mime_type,
-                         byte_size, checksum, modified_time, source_type, image_no)
+                         byte_size, checksum, sha256_checksum, modified_time, source_type, image_no)
                     VALUES (gen_random_uuid(), '%s', 201, 'drive-photo-1', 'DSC5001.jpg',
                             'image/jpeg', 3, '5289df737df57326fcdd22597afb1fac',
+                            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
                             '2026-07-31T00:00:00Z', 'IMAGE', '5001')
                     """.formatted(batchId));
             sql.execute("""
                     INSERT INTO student.photo_import_rows
                         (id, batch_id, school_id, excel_row, admission_no, image_no,
                          drive_file_id, drive_file_name, student_id, status, final_photo_key,
-                         source_checksum, applied_at)
+                         source_checksum, source_sha256, applied_at)
                     VALUES ('%s', '%s', 201, 2, 'REC-1', '5001', 'drive-photo-1',
                             'DSC5001.jpg', 301, 'APPLIED', 'cropped-photo-key',
-                            '5289df737df57326fcdd22597afb1fac', now())
+                            '5289df737df57326fcdd22597afb1fac',
+                            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now())
                     """.formatted(rowId, batchId));
             sql.execute("""
                     INSERT INTO student.photo_import_rows
@@ -160,6 +164,26 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
         TenantContext.set(new TenantContext(1L, "superadmin@example.com", "SUPERADMIN", null, null,
                 Set.of(), Set.of()));
         String version = "fit-without-crop-v1";
+        String campaignId = UUID.randomUUID().toString();
+        String reviewItemId = UUID.randomUUID().toString();
+        jdbc.sql("""
+                INSERT INTO student.student_review_campaigns
+                    (id, school_id, academic_year_id, review_type, title, status)
+                VALUES (:campaignId, 201, 'ay-recovery', 'PHOTO_VERIFICATION',
+                        'Recovery photo verification', 'ACTIVE')
+                """).param("campaignId", campaignId).update();
+        jdbc.sql("""
+                INSERT INTO student.student_review_items
+                    (id, campaign_id, student_id, school_id, status, verified_photo,
+                     verified_full_name, current_full_name, suggested_full_name,
+                     correction_requested, correction_notes, completed_at)
+                VALUES (:itemId, :campaignId, 301, 201, 'COMPLETED', true,
+                        true, 'Recovery Student', 'Candidate Name', true,
+                        'Old correction', now())
+                """)
+                .param("itemId", reviewItemId)
+                .param("campaignId", campaignId)
+                .update();
         byte[] normalized = new byte[]{9, 8, 7};
         when(storage.uploadNormalizedPortrait(
                 anyString(), eq(301L), same(normalized)))
@@ -167,6 +191,8 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
 
         var claimed = repository.beginPhotoRecovery(batchId, 201L, rowId, version, 1L);
         assertThat(claimed.status()).isEqualTo("READY");
+        assertThat(claimed.target().sourceSha256())
+                .isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         var inProgress = repository.beginPhotoRecovery(batchId, 201L, rowId, version, 1L);
         assertThat(inProgress.status()).isEqualTo("IN_PROGRESS");
@@ -191,7 +217,7 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
         assertThat(jdbc.sql("SELECT photo_url FROM student.students WHERE id = 301")
                 .query(String.class).single()).isEqualTo("uncropped-photo-key");
         var audit = jdbc.sql("""
-                SELECT status, prior_photo_key, recovered_photo_key, attempt_count
+                SELECT status, prior_photo_key, recovered_photo_key, source_sha256, attempt_count
                 FROM student.photo_import_recoveries
                 WHERE row_id = :rowId AND recovery_version = :version
                 """)
@@ -199,9 +225,26 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
                 .param("version", version)
                 .query((rs, rowNum) -> new Object[]{
                         rs.getString("status"), rs.getString("prior_photo_key"),
-                        rs.getString("recovered_photo_key"), rs.getInt("attempt_count")})
+                        rs.getString("recovered_photo_key"), rs.getString("source_sha256"),
+                        rs.getInt("attempt_count")})
                 .single();
-        assertThat(audit).containsExactly("COMPLETED", "cropped-photo-key", "uncropped-photo-key", 1);
+        assertThat(audit).containsExactly(
+                "COMPLETED", "cropped-photo-key", "uncropped-photo-key",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 1);
+        assertThat(jdbc.sql("""
+                        SELECT status || '|' || verified_photo || '|' || verified_full_name || '|' ||
+                               correction_requested || '|' || (correction_notes IS NULL) || '|' ||
+                               (suggested_full_name IS NULL) || '|' || (completed_at IS NULL)
+                        FROM student.student_review_items
+                        WHERE id = :itemId
+                        """)
+                .param("itemId", reviewItemId)
+                .query(String.class)
+                .single()).isEqualTo("PENDING|false|true|false|true|true|true");
+        verify(outbox).appendAll(argThat(events -> events.size() == 1
+                && "student-review-item.upserted.v1".equals(events.getFirst().eventType())
+                && reviewItemId.equals(events.getFirst().aggregateId())
+                && "PENDING".equals(events.getFirst().payload().get("status"))));
         verify(outbox).append(
                 org.mockito.ArgumentMatchers.eq("student.photo-recovered.v1"),
                 org.mockito.ArgumentMatchers.eq("student.photo-recovered.v1:" + rowId + ":" + version),
@@ -244,5 +287,107 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
         assertThat(progress.percentComplete()).isEqualTo(100);
         assertThat(jdbc.sql("SELECT photo_url FROM student.students WHERE id = 302")
                 .query(String.class).single()).isEqualTo("newer-manual-photo-key");
+    }
+
+    @Test
+    void applyPhotoUsesUnifiedPhotoReviewInvalidationAndOutboxEvent() {
+        TenantContext.set(new TenantContext(1L, "superadmin@example.com", "SUPERADMIN", null, null,
+                Set.of(), Set.of()));
+        UUID applyBatchId = UUID.randomUUID();
+        UUID applyRowId = UUID.randomUUID();
+        String campaignId = UUID.randomUUID().toString();
+        String reviewItemId = UUID.randomUUID().toString();
+        jdbc.sql("""
+                INSERT INTO student.students
+                    (id, admission_no, full_name, school_id, class_id, section_id,
+                     academic_year_id, photo_url)
+                VALUES (303, 'REC-3', 'Imported Photo Student', 201, '9', 'section-recovery',
+                        'ay-recovery', 'batch-old-photo')
+                """).update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_batches
+                    (id, school_id, school_uid, academic_year_id, drive_folder_id,
+                     drive_folder_name, status, snapshot_hash)
+                SELECT :batchId, id, school_uid, 'ay-recovery', 'apply-folder',
+                       'Apply originals', 'EXECUTING', 'apply-snapshot'
+                FROM tenant_school.schools WHERE id = 201
+                """).param("batchId", applyBatchId).update();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_rows
+                    (id, batch_id, school_id, excel_row, admission_no, image_no,
+                     drive_file_id, drive_file_name, student_id, status, prior_photo_key,
+                     source_checksum)
+                VALUES (:rowId, :batchId, 201, 2, 'REC-3', '5003', 'drive-photo-3',
+                        'batch-photo.jpg', 303, 'READY', 'batch-old-photo', 'checksum-3')
+                """)
+                .param("rowId", applyRowId)
+                .param("batchId", applyBatchId)
+                .update();
+        jdbc.sql("""
+                INSERT INTO student.student_review_campaigns
+                    (id, school_id, academic_year_id, review_type, title, status)
+                VALUES (:campaignId, 201, 'ay-recovery', 'PHOTO_VERIFICATION',
+                        'Photo verification', 'ACTIVE')
+                """).param("campaignId", campaignId).update();
+        jdbc.sql("""
+                INSERT INTO student.student_review_items
+                    (id, campaign_id, student_id, school_id, status, verified_photo,
+                     verified_full_name, current_full_name, suggested_full_name,
+                     correction_requested, correction_notes, completed_at)
+                VALUES (:itemId, :campaignId, 303, 201, 'COMPLETED', true,
+                        true, 'Imported Photo Student', 'Candidate Name', true,
+                        'Old correction', now())
+                """)
+                .param("itemId", reviewItemId)
+                .param("campaignId", campaignId)
+                .update();
+
+        byte[] source = new byte[]{1, 2, 3};
+        byte[] normalized = new byte[]{4, 5, 6};
+        when(storage.uploadTemporaryPhotoImportFile(
+                anyString(), anyString(), same(source), eq("image/jpeg"), eq("batch-photo.jpg")))
+                .thenReturn("source-object-key");
+        when(storage.uploadNormalizedPortrait(anyString(), eq(303L), same(normalized)))
+                .thenReturn("normalized-photo-key");
+
+        PhotoImportRepository.Batch batch = repository.batch(applyBatchId, 201L);
+        PhotoImportRepository.ImportRow row = repository.rows(applyBatchId, 201L).getFirst();
+        assertThat(repository.applyPhoto(batch, row, source, "image/jpeg", normalized))
+                .isEqualTo("normalized-photo-key");
+
+        Map<String, Object> review = jdbc.sql("""
+                        SELECT status, verified_photo, verified_full_name, current_full_name,
+                               correction_requested, correction_notes, suggested_full_name,
+                               completed_at
+                        FROM student.student_review_items
+                        WHERE id = :itemId
+                        """)
+                .param("itemId", reviewItemId)
+                .query((rs, rowNum) -> {
+                    Map<String, Object> values = new java.util.LinkedHashMap<>();
+                    values.put("status", rs.getString("status"));
+                    values.put("verifiedPhoto", rs.getBoolean("verified_photo"));
+                    values.put("verifiedFullName", rs.getBoolean("verified_full_name"));
+                    values.put("currentFullName", rs.getString("current_full_name"));
+                    values.put("correctionRequested", rs.getBoolean("correction_requested"));
+                    values.put("correctionNotes", rs.getString("correction_notes"));
+                    values.put("suggestedFullName", rs.getString("suggested_full_name"));
+                    values.put("completed", rs.getObject("completed_at") != null);
+                    return values;
+                })
+                .single();
+        assertThat(review)
+                .containsEntry("status", "PENDING")
+                .containsEntry("verifiedPhoto", false)
+                .containsEntry("verifiedFullName", true)
+                .containsEntry("currentFullName", "Imported Photo Student")
+                .containsEntry("correctionRequested", false)
+                .containsEntry("correctionNotes", null)
+                .containsEntry("suggestedFullName", null)
+                .containsEntry("completed", false);
+        verify(outbox).appendAll(argThat(events -> events.size() == 1
+                && "student-review-item.upserted.v1".equals(events.getFirst().eventType())
+                && reviewItemId.equals(events.getFirst().aggregateId())
+                && "PENDING".equals(events.getFirst().payload().get("status"))));
     }
 }

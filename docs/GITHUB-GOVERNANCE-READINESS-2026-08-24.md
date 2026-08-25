@@ -100,6 +100,24 @@ After applying, export both branch protection documents and both Environment doc
 test direct push, force push, branch deletion, failing-check merge and production self-review. Do not
 weaken review or force-push controls merely to repair a mistyped check context.
 
+The repository now makes the exact-check handoff executable without changing GitHub. Run the verifier
+against the immutable SHA of the fresh pull request after its CI and CodeQL workflows finish:
+
+```powershell
+python scripts/verify-github-governance-checks.py `
+  --repository custokingkr-dev/ims-v1 `
+  --commit <full-40-character-commit-sha>
+```
+
+The verifier uses only read-only GitHub endpoints. It requires all three exact checks to be completed
+successfully on that SHA, and requires both `main` and `dev` to have exactly those contexts with strict
+up-to-date checking through classic protection, active rulesets, or their effective union. Missing,
+mistyped, unexpected, non-strict, `evaluate`-only, excluded, or stale-SHA evidence fails closed. The JSON
+report defaults to `artifacts/github-governance-checks.json`; use `--report-only` only for evidence
+collection, never as the administrator apply gate. The verifier supports the documented exact, `*`, `**`,
+`?`, `~ALL` and `~DEFAULT_BRANCH` ref conditions; less common character-class or escaped patterns fail
+closed for human review instead of being guessed.
+
 ## Data lifecycle policy status
 
 No retention, erasure or school-offboarding policy was approved or fabricated during this work. The

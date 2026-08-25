@@ -144,7 +144,7 @@ public class GoogleDrivePhotoImportClient {
         requireEnabled();
         String folderId = DriveFolderId.parse(rawFolder);
         Map<String, Object> metadata = fileMetadata(
-                folderId, "id,name,mimeType,size,md5Checksum,modifiedTime,trashed");
+                folderId, "id,name,mimeType,size,md5Checksum,sha256Checksum,modifiedTime,trashed");
         DriveFile folder = toDriveFile(metadata);
         if (booleanValue(metadata.get("trashed")) || !FOLDER_MIME.equals(folder.mimeType())) {
             throw new DrivePhotoImportException("not_a_folder", "The Drive link does not point to a folder");
@@ -191,7 +191,8 @@ public class GoogleDrivePhotoImportClient {
                     .append("&pageSize=1000")
                     .append("&supportsAllDrives=true")
                     .append("&includeItemsFromAllDrives=true")
-                    .append("&fields=").append(encode("nextPageToken,files(id,name,mimeType,size,md5Checksum,modifiedTime,trashed)"));
+                    .append("&fields=").append(encode(
+                            "nextPageToken,files(id,name,mimeType,size,md5Checksum,sha256Checksum,modifiedTime,trashed)"));
             if (pageToken != null) {
                 uri.append("&pageToken=").append(encode(pageToken));
             }
@@ -240,7 +241,7 @@ public class GoogleDrivePhotoImportClient {
         String manifest = files.stream()
                 .sorted(Comparator.comparing(DriveFile::id))
                 .map(file -> String.join("|", file.id(), file.name(), string(file.size()),
-                        string(file.md5Checksum()), string(file.modifiedTime())))
+                        string(file.sha256Checksum()), string(file.modifiedTime())))
                 .reduce("", (left, right) -> left + right + "\n");
         try {
             return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
@@ -363,6 +364,7 @@ public class GoogleDrivePhotoImportClient {
                 string(row.get("mimeType")),
                 longValue(row.get("size")),
                 string(row.get("md5Checksum")),
+                string(row.get("sha256Checksum")),
                 string(row.get("modifiedTime")));
     }
 
@@ -554,7 +556,18 @@ public class GoogleDrivePhotoImportClient {
             String mimeType,
             Long size,
             String md5Checksum,
+            String sha256Checksum,
             String modifiedTime) {
+        public DriveFile(
+                String id,
+                String name,
+                String mimeType,
+                Long size,
+                String md5Checksum,
+                String modifiedTime) {
+            this(id, name, mimeType, size, md5Checksum, null, modifiedTime);
+        }
+
         public boolean isMappingFile() {
             return name != null
                     && name.toLowerCase(Locale.ROOT).matches(".*\\.(xlsx|xls|csv|tsv)$")

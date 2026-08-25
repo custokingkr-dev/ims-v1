@@ -62,10 +62,10 @@ for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_dat
 done
 
 for HEALTH_DESCRIPTOR in \
-  'export_available|1 when an invoice-grade standard or detailed billing usage export exists; otherwise 0.' \
+  'export_available|1 when a standard or detailed billing export has usable rows for the requested scope; otherwise 0.' \
   'standard_export_available|1 when the standard billing usage export exists; otherwise 0.' \
   'detailed_export_available|1 when the resource-level detailed billing usage export exists; otherwise 0.' \
-  'billing_data_grade|0 means estimated-only, 1 standard invoice-grade, 2 detailed invoice-grade.' \
+  'billing_data_grade|Usable scoped evidence: 0 no matching invoice rows, 1 standard invoice-grade, 2 detailed invoice-grade.' \
   'export_lag_hours|Hours since the newest selected billing export delivery; -1 when no matching row exists.' \
   'usage_lag_hours|Hours since usage_end_time in the newest selected billing row; -1 when no matching row exists.'; do
   SUFFIX="${HEALTH_DESCRIPTOR%%|*}"
@@ -177,19 +177,47 @@ if [ "${STANDARD_TABLE_COUNT}" -eq 0 ] && [ "${DETAILED_TABLE_COUNT}" -eq 0 ]; t
   exit 0
 fi
 
+USAGE_TABLE_PREFIXES=()
+USAGE_TABLE_GRADES=()
+USAGE_TABLE_LABELS=()
 if [ "${DETAILED_TABLE_COUNT}" -gt 0 ]; then
-  USAGE_TABLE_PREFIX="gcp_billing_export_resource_v1_"
-  BILLING_DATA_GRADE=2
-else
-  USAGE_TABLE_PREFIX="gcp_billing_export_v1_"
-  BILLING_DATA_GRADE=1
+  USAGE_TABLE_PREFIXES+=("gcp_billing_export_resource_v1_")
+  USAGE_TABLE_GRADES+=(2)
+  USAGE_TABLE_LABELS+=("detailed")
 fi
+if [ "${STANDARD_TABLE_COUNT}" -gt 0 ]; then
+  USAGE_TABLE_PREFIXES+=("gcp_billing_export_v1_")
+  USAGE_TABLE_GRADES+=(1)
+  USAGE_TABLE_LABELS+=("standard")
+fi
+
+# Prefer resource-level detail only when it has rows for the requested scope. During initial export
+# backfill Google can populate the two tables at different times. Treating the existence of an empty
+# detailed table as authoritative would hide usable standard invoice-grade data and leave the dashboard
+# unavailable even though a valid export had arrived.
+USAGE_TABLE_PREFIX="${USAGE_TABLE_PREFIXES[0]}"
+BILLING_DATA_GRADE=0
+ROWS="[]"
+SELECTED_USAGE_LAG=""
+SELECTED_EXPORT_LAG=""
+DETAILED_MATCHING_ROWS=0
+QUERY_FAILURES=0
 
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
 # history because free-trial credit covered it, hiding the real consumption that becomes payable the
 # moment that credit ends.
-read -r -d '' QUERY <<SQL || true
+# The query job runs in the PUBLISHING project, not the one holding the data. The table is fully
+# qualified either way, so this only decides which project is billed for the query and which needs
+# bigquery.jobUser -- and that should be the project whose service account is running, otherwise every
+# environment needs job-running rights on the project that happens to own the export.
+QUERY_ERROR=$(mktemp)
+trap 'rm -f "${INVENTORY_ERROR}" "${QUERY_ERROR}"' EXIT
+for i in "${!USAGE_TABLE_PREFIXES[@]}"; do
+  CANDIDATE_PREFIX="${USAGE_TABLE_PREFIXES[$i]}"
+  CANDIDATE_GRADE="${USAGE_TABLE_GRADES[$i]}"
+  CANDIDATE_LABEL="${USAGE_TABLE_LABELS[$i]}"
+  read -r -d '' QUERY <<SQL || true
 SELECT
   _TABLE_SUFFIX AS billing_account,
   IFNULL(project.id, "(unattributed)") AS project_id,
@@ -202,55 +230,98 @@ SELECT
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd,
   ROUND(TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(export_time), MINUTE) / 60.0, 2) AS export_lag_hours,
   ROUND(TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(usage_end_time), MINUTE) / 60.0, 2) AS usage_lag_hours
-FROM \`${BQ_PROJECT}.${DATASET}.${USAGE_TABLE_PREFIX}*\`
+FROM \`${BQ_PROJECT}.${DATASET}.${CANDIDATE_PREFIX}*\`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
   AND ("${SCOPE}" = "*" OR project.id = "${SCOPE}")
 GROUP BY 1, 2, 3
 SQL
 
-# The query job runs in the PUBLISHING project, not the one holding the data. The table is fully
-# qualified either way, so this only decides which project is billed for the query and which needs
-# bigquery.jobUser -- and that should be the project whose service account is running, otherwise every
-# environment needs job-running rights on the project that happens to own the export.
-QUERY_ERROR=$(mktemp)
-trap 'rm -f "${INVENTORY_ERROR}" "${QUERY_ERROR}"' EXIT
-if ! ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet \
-  "${QUERY}" 2>"${QUERY_ERROR}"); then
-  echo "ERROR: standard billing export query failed for ${BQ_PROJECT}.${DATASET}." >&2
-  sed 's/^/       /' "${QUERY_ERROR}" >&2
-  publish_export_health 0 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
-    "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" "${BILLING_DATA_GRADE}" -1 -1 || true
-  exit 1
+  if ! CANDIDATE_ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=json --quiet \
+    "${QUERY}" 2>"${QUERY_ERROR}"); then
+    echo "ERROR: ${CANDIDATE_LABEL} billing export query failed for ${BQ_PROJECT}.${DATASET}." >&2
+    sed 's/^/       /' "${QUERY_ERROR}" >&2
+    QUERY_FAILURES=$((QUERY_FAILURES + 1))
+    continue
+  fi
+
+  if [ -n "${CANDIDATE_ROWS}" ] && [ "${CANDIDATE_ROWS}" != "[]" ]; then
+    if [ "${CANDIDATE_LABEL}" = "detailed" ]; then
+      DETAILED_MATCHING_ROWS=1
+    fi
+    CANDIDATE_USAGE_LAG=$(printf '%s' "${CANDIDATE_ROWS}" | python3 -c \
+      'import json,sys; rows=json.load(sys.stdin); x=[float(r["usage_lag_hours"]) for r in rows if r.get("usage_lag_hours") is not None]; print(min(x) if x else 1e99)')
+    CANDIDATE_EXPORT_LAG=$(printf '%s' "${CANDIDATE_ROWS}" | python3 -c \
+      'import json,sys; rows=json.load(sys.stdin); x=[float(r["export_lag_hours"]) for r in rows if r.get("export_lag_hours") is not None]; print(min(x) if x else 1e99)')
+    SHOULD_SELECT=$(python3 -c \
+      'import sys; cur_u,cur_e,new_u,new_e,cur_g,new_g=sys.argv[1:]; print(1 if not cur_u or (float(new_u),float(new_e),-int(new_g)) < (float(cur_u),float(cur_e),-int(cur_g)) else 0)' \
+      "${SELECTED_USAGE_LAG}" "${SELECTED_EXPORT_LAG}" "${CANDIDATE_USAGE_LAG}" "${CANDIDATE_EXPORT_LAG}" \
+      "${BILLING_DATA_GRADE}" "${CANDIDATE_GRADE}")
+    if [ "${SHOULD_SELECT}" -eq 1 ]; then
+      USAGE_TABLE_PREFIX="${CANDIDATE_PREFIX}"
+      BILLING_DATA_GRADE="${CANDIDATE_GRADE}"
+      ROWS="${CANDIDATE_ROWS}"
+      SELECTED_USAGE_LAG="${CANDIDATE_USAGE_LAG}"
+      SELECTED_EXPORT_LAG="${CANDIDATE_EXPORT_LAG}"
+    fi
+  fi
+
+  if [ "${CANDIDATE_LABEL}" = "detailed" ] && [ "${DETAILED_MATCHING_ROWS}" -eq 0 ] \
+      && [ "${STANDARD_TABLE_COUNT}" -gt 0 ]; then
+    echo "INFO: detailed export has no matching rows; checking standard invoice-grade fallback." >&2
+  fi
+done
+
+if [ -n "${ROWS}" ] && [ "${ROWS}" != "[]" ] && [ "${BILLING_DATA_GRADE}" -eq 1 ] \
+    && [ "${DETAILED_MATCHING_ROWS}" -eq 1 ]; then
+  echo "INFO: standard export is fresher than detailed; using standard invoice-grade rows." >&2
 fi
 
 if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
-  # An empty result is a legitimate state, not a failure: a newly enabled export writes nothing until its
-  # first table appears, which can take a day. Exiting non-zero here would produce a job that alerts every
-  # hour about a condition nobody can act on.
+  if [ "${QUERY_FAILURES}" -gt 0 ]; then
+    echo "ERROR: scoped billing evidence could not be determined because one or more usage queries failed." >&2
+    publish_export_health 0 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
+      "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" 0 -1 -1 || true
+    exit 1
+  fi
+
+  # An empty result is a legitimate state, not a failure: a first-time US/EU multi-region export can take
+  # up to five days to work through its chronological previous-month backfill before current usage appears.
+  # Exiting non-zero here would produce a job that alerts every hour about a condition nobody can act on.
   #
   # But "legitimate" is not the same as "fine", and the difference is diagnosable. This job ran hourly and
   # reported success for 19 hours while publishing nothing, because the scope filter matched zero rows and
   # both cases took this same silent branch. The cost panels sat on stale data and the exit code said 0.
   # So before exiting, establish WHICH empty this is -- the export has produced nothing at all, or it has
   # produced data that this scope excludes. Those need completely different fixes.
-  DIAG=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=csv --quiet "
-    SELECT _TABLE_SUFFIX AS billing_account,
-           IFNULL(project.id, '(unattributed)') AS project_id,
-           COUNT(*) AS rows_62d,
-           CAST(MAX(DATE(usage_start_time)) AS STRING) AS newest_usage
-    FROM \`${BQ_PROJECT}.${DATASET}.${USAGE_TABLE_PREFIX}*\`
-    WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
-    GROUP BY 1, 2 ORDER BY 3 DESC" 2>/dev/null || echo "")
+  DIAG=""
+  DIAG_LABEL=""
+  for i in "${!USAGE_TABLE_PREFIXES[@]}"; do
+    CANDIDATE_PREFIX="${USAGE_TABLE_PREFIXES[$i]}"
+    CANDIDATE_LABEL="${USAGE_TABLE_LABELS[$i]}"
+    CANDIDATE_DIAG=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --format=csv --quiet "
+      SELECT _TABLE_SUFFIX AS billing_account,
+             IFNULL(project.id, '(unattributed)') AS project_id,
+             COUNT(*) AS rows_62d,
+             CAST(MAX(DATE(usage_start_time)) AS STRING) AS newest_usage
+      FROM \`${BQ_PROJECT}.${DATASET}.${CANDIDATE_PREFIX}*\`
+      WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
+      GROUP BY 1, 2 ORDER BY 3 DESC" 2>/dev/null || echo "")
+    if [ -n "${CANDIDATE_DIAG}" ] && printf '%s\n' "${CANDIDATE_DIAG}" | sed '1d' | grep -q '[^[:space:]]'; then
+      DIAG="${CANDIDATE_DIAG}"
+      DIAG_LABEL="${CANDIDATE_LABEL}"
+      break
+    fi
+  done
 
   # Command substitution removes trailing newlines, so counting newlines misclassified a CSV header plus
   # one data row as "header only". Inspect the content after the header instead.
   if [ -z "${DIAG}" ] || ! printf '%s\n' "${DIAG}" | sed '1d' | grep -q '[^[:space:]]'; then
     echo "WARNING: the billing export dataset ${BQ_PROJECT}.${DATASET} contains NO rows for ANY project" >&2
     echo "         in the last 62 days. This is not 'no data yet for us' -- the export itself is producing" >&2
-    echo "         nothing. Check that the billing account has an active BigQuery export configured, and" >&2
-    echo "         note that a newly enabled export does not backfill." >&2
+    echo "         nothing. Check that the billing account has an active BigQuery export configured. For a" >&2
+    echo "         first-time US/EU multi-region export, initial chronological backfill can take up to five days." >&2
   else
-    echo "WARNING: the export HAS data, but none of it matches scope='${SCOPE}'. Spend for this project is" >&2
+    echo "WARNING: the ${DIAG_LABEL} export HAS data, but none of it matches scope='${SCOPE}'. Spend for this project is" >&2
     echo "         not being published and the dashboard will show stale figures. What the export holds:" >&2
     printf '%s
 ' "${DIAG}" | sed 's/^/           /' >&2
@@ -336,9 +407,15 @@ PUBLISHER_EOF
 
 printf '%s' "${ROWS}" | python3 "${PUBLISHER}" "${PUBLISH_PROJECT}" "${NOW}"
 
+# A partial source-query failure must remain operationally visible, but it must not erase a usable result
+# from the other export. Publish the best successful evidence first, then fail the job for investigation.
+if [ "${QUERY_FAILURES}" -gt 0 ]; then
+  exit 1
+fi
+
 # Deployed as Cloud Run job `ims-cost-metric-prod` in custoking-prod/asia-south2, running as
 # cost-metric-exporter@custoking-prod (bigquery.jobUser, bigquery.dataViewer, monitoring.metricWriter),
-# triggered every three hours by Cloud Scheduler job `cost-metric-export-prod`. The schedule lives in
+# triggered hourly by Cloud Scheduler job `cost-metric-export-prod`. The schedule lives in
 # asia-south1 because Cloud Scheduler is not offered in asia-south2; the trigger's region has no bearing
 # on where the work runs. The script is delivered to the job base64-encoded in SCRIPT_B64 so no container
 # image has to be built or maintained for it.

@@ -53,6 +53,16 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($env:GCP_PROJECT_ID)) {
             throw "GCP_PROJECT_ID is not configured in the prod GitHub environment."
           }
+          "RECOVERY_VALIDATION_BUCKET=$($env:GCP_PROJECT_ID)-db-snapshots" >> $env:GITHUB_ENV
+
+      - name: Audit recovery identity and bucket prerequisites
+        shell: pwsh
+        run: |
+          ./scripts/audit-cloudsql-recovery-prerequisites.ps1 `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -SourceInstance "$env:SOURCE_INSTANCE" `
+            -ValidationBucket "$env:RECOVERY_VALIDATION_BUCKET" `
+            -RecoveryOperatorServiceAccount "$env:RECOVERY_OPERATOR_SERVICE_ACCOUNT"
 
       - name: Execute isolated PITR restore drill
         shell: pwsh
@@ -63,6 +73,8 @@ jobs:
             -Environment prod `
             -SourceInstance "$env:SOURCE_INSTANCE" `
             -Database $env:PROD_DB_NAME `
+            -ValidationBucket "$env:RECOVERY_VALIDATION_BUCKET" `
+            -RecoveryOperatorServiceAccount "$env:RECOVERY_OPERATOR_SERVICE_ACCOUNT" `
             -Apply `
             -AllowProductionRecoveryDrill
 

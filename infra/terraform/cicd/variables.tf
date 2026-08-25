@@ -88,9 +88,8 @@ variable "runtime_service_account_emails" {
 }
 
 variable "recovery_validation_bucket" {
-  description = "Existing bucket used only for temporary recovery-drill validation exports."
+  description = "Existing project-scoped bucket used only for temporary recovery-drill validation exports. Set this explicitly to <project_id>-db-snapshots; there is deliberately no cross-project default."
   type        = string
-  default     = "custoking-db-snapshots"
 }
 
 variable "scan_evidence_bucket" {

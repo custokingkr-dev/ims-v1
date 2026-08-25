@@ -46,12 +46,22 @@ public class StudentReadRepository {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
+    private final StudentReviewInvalidationService reviewInvalidation;
+    private final LegacyGuardianSynchronizer guardianSynchronizer;
     private StudentImportProgressStore importProgress;
 
     public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
+        this(jdbc, photoStorage, outbox, new StudentReviewInvalidationService(jdbc, outbox));
+    }
+
+    @Autowired
+    public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox,
+                                 StudentReviewInvalidationService reviewInvalidation) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
+        this.reviewInvalidation = reviewInvalidation;
+        this.guardianSynchronizer = new LegacyGuardianSynchronizer(jdbc);
     }
 
     @Autowired(required = false)
@@ -444,6 +454,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        guardianSynchronizer.syncFromLegacy(id);
         recordEnrollmentFromCurrentStudent(id, "Enrolled", "STUDENT_CREATE", String.valueOf(id));
         emitStudentUpserted(id);
         return studentDetail(id);
@@ -547,6 +558,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        LegacyGuardianSynchronizer.SyncResult guardianSync = guardianSynchronizer.syncFromLegacy(id);
         if (!classId.equals(str(current.get("classId"), ""))
                 || !sectionId.equals(str(current.get("sectionId"), ""))) {
             closeActiveEnrollment(id, "Placement changed from student profile edit");
@@ -556,8 +568,15 @@ public class StudentReadRepository {
         } else {
             refreshActiveEnrollmentRollNo(id, str(request.get("rollNo"), ""));
         }
-        invalidateActiveVerification(id, "PROFILE_VERIFICATION");
+        reviewInvalidation.invalidateProfile(id);
         emitStudentUpserted(id);
+        guardianSync.affectedStudentIds().stream()
+                .filter(affectedStudentId -> !affectedStudentId.equals(id))
+                .forEach(affectedStudentId ->
+                        reviewInvalidation.invalidateProfile(affectedStudentId));
+        guardianSync.projectionChangedStudentIds().stream()
+                .filter(affectedStudentId -> !affectedStudentId.equals(id))
+                .forEach(this::emitStudentUpserted);
         return studentDetail(id);
     }
 
@@ -718,53 +737,8 @@ public class StudentReadRepository {
                 .param("photoUrl", key)
                 .param("updatedAt", OffsetDateTime.now())
                 .update();
-        invalidateActiveVerification(id, "PHOTO_VERIFICATION");
+        reviewInvalidation.invalidatePhoto(id);
         return studentDetail(id);
-    }
-
-    private void invalidateActiveVerification(Long studentId, String reviewType) {
-        List<String> itemIds = jdbc.sql("""
-                        SELECT i.id
-                        FROM student.student_review_items i
-                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
-                        WHERE i.student_id = :studentId
-                          AND c.review_type = :reviewType
-                          AND c.status = 'ACTIVE'
-                        """)
-                .param("studentId", studentId)
-                .param("reviewType", reviewType)
-                .query(String.class)
-                .list();
-        if (itemIds.isEmpty()) return;
-
-        String verificationReset = "PHOTO_VERIFICATION".equals(reviewType)
-                ? "verified_photo = false"
-                : """
-                  verified_full_name = false,
-                  verified_admission_no = false,
-                  verified_class_section = false,
-                  verified_roll_no = false,
-                  verified_father_name = false,
-                  verified_father_contact = false,
-                  verified_address = false,
-                  verified_blood_group = false,
-                  current_full_name = (SELECT full_name FROM student.students WHERE id = :studentId)
-                  """;
-        jdbc.sql("""
-                        UPDATE student.student_review_items
-                        SET %s,
-                            status = 'PENDING',
-                            correction_requested = false,
-                            correction_notes = NULL,
-                            suggested_full_name = NULL,
-                            completed_at = NULL,
-                            updated_at = now()
-                        WHERE id IN (:itemIds)
-                        """.formatted(verificationReset))
-                .param("studentId", studentId)
-                .param("itemIds", itemIds)
-                .update();
-        itemIds.forEach(this::emitReviewItemUpserted);
     }
 
     @Transactional
@@ -948,6 +922,7 @@ public class StudentReadRepository {
             try {
                 Map<String, Object> normalized = objectMapper.readValue(row.normalizedJson(), new TypeReference<>() {});
                 Long studentId = insertImportedStudent(normalized, schoolId, batchId);
+                guardianSynchronizer.syncFromLegacy(studentId);
                 jdbc.sql("UPDATE student.students SET imported_at = :importedAt, import_batch_id = :batchId WHERE id = :studentId")
                         .param("importedAt", OffsetDateTime.now())
                         .param("batchId", batchId)
@@ -1937,7 +1912,7 @@ public class StudentReadRepository {
                 .param("correctionNotes", correctionNotes)
                 .param("status", status)
                 .update();
-        emitReviewItemUpserted(itemId);
+        reviewInvalidation.emitUpserted(itemId);
         return reviewItemDetail(itemId, schoolId).orElseThrow();
     }
 
@@ -1999,7 +1974,7 @@ public class StudentReadRepository {
                     .param("correctionNotes", str(request.get("correctionNotes"), null))
                     .update();
         }
-        emitReviewItemUpserted(itemId);
+        reviewInvalidation.emitUpserted(itemId);
         return reviewItemDetail(itemId, schoolId).orElseThrow();
     }
 
@@ -2605,7 +2580,7 @@ public class StudentReadRepository {
                 .param("currentFullName", fullName)
                 .update();
         String resolvedItemId = activeStudentReviewItemId(studentId, schoolId, reviewTypeForCampaign(campaignId)).orElse(itemId);
-        emitReviewItemUpserted(resolvedItemId);
+        reviewInvalidation.emitUpserted(resolvedItemId);
         return resolvedItemId;
     }
 
@@ -2622,37 +2597,6 @@ public class StudentReadRepository {
         if (count == null || count == 0) {
             throw new IllegalArgumentException("Student not found");
         }
-    }
-
-    /**
-     * Emits {@code student-review-item.upserted.v1} for the reporting
-     * fact_student_review_item projection (SP7 student-review). school_id already lives
-     * directly on student_review_items (denormalized at insert time), so no campaign join
-     * is needed to resolve it.
-     */
-    private void emitReviewItemUpserted(String itemId) {
-        Optional<Map<String, Object>> found = jdbc.sql("""
-                SELECT id, school_id, campaign_id, status
-                FROM student.student_review_items
-                WHERE id = :id
-                """)
-                .param("id", itemId)
-                .query((rs, n) -> {
-                    Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("id", rs.getString("id"));
-                    m.put("schoolId", rs.getLong("school_id"));
-                    m.put("campaignId", rs.getString("campaign_id"));
-                    m.put("status", rs.getString("status"));
-                    return m;
-                })
-                .optional();
-        if (found.isEmpty()) {
-            return;
-        }
-        Map<String, Object> row = found.get();
-        Long schoolId = ((Number) row.get("schoolId")).longValue();
-        outbox.append("student-review-item.upserted.v1", "StudentReviewItemUpserted:" + itemId,
-                "StudentReviewItem", itemId, schoolId, row);
     }
 
     private Map<String, Object> idCardStatus(String campaignId) {

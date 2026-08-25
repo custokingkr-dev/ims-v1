@@ -6,7 +6,9 @@ param(
   [string]$SourceInstance = "custoking-db-dev",
   [string]$Database = "custoking_dev",
   [string]$EvidenceDirectory = "artifacts/recovery",
-  [string]$ValidationBucket = "custoking-db-snapshots",
+  [string]$ValidationBucket = "",
+  [string]$RecoveryOperatorServiceAccount = "",
+  [string]$RecoveryBucketIamRoleId = "custokingRecoveryBucketIamOperator",
   [datetime]$PointInTimeUtc = [datetime]::UtcNow.AddMinutes(-5),
   [switch]$Apply,
   [switch]$AllowDevRecoveryCost,
@@ -16,6 +18,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 $gcloud = if ($env:OS -eq "Windows_NT") { "gcloud.cmd" } else { "gcloud" }
+if ([string]::IsNullOrWhiteSpace($ValidationBucket)) {
+  $ValidationBucket = "$ProjectId-db-snapshots"
+}
+if ([string]::IsNullOrWhiteSpace($RecoveryOperatorServiceAccount)) {
+  $RecoveryOperatorServiceAccount = "custoking-recovery-operator@$ProjectId.iam.gserviceaccount.com"
+}
 $stamp = [datetime]::UtcNow.ToString("yyyyMMddHHmmss")
 $isProduction = $Environment -eq "prod"
 $target = "custoking-$Environment-restore-drill-$stamp"
@@ -200,6 +208,15 @@ Write-Host "Validation export mode: $validationMode"
 if (-not $Apply) {
   Write-Host "Dry run only. Re-run with the environment-specific authorization switch and -Apply."
   exit 0
+}
+
+if ($isProduction) {
+  & (Join-Path $PSScriptRoot "audit-cloudsql-recovery-prerequisites.ps1") `
+    -ProjectId $ProjectId `
+    -SourceInstance $SourceInstance `
+    -ValidationBucket $ValidationBucket `
+    -RecoveryOperatorServiceAccount $RecoveryOperatorServiceAccount `
+    -RecoveryBucketIamRoleId $RecoveryBucketIamRoleId
 }
 
 try {
