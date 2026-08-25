@@ -11,6 +11,7 @@
         "status": "completed",
         "conclusion": "success",
         "completed_at": "2026-08-26T10:00:00Z",
+        "app": { "id": 1001, "slug": "github-actions" },
         "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
       },
       {
@@ -19,6 +20,7 @@
         "status": "completed",
         "conclusion": "success",
         "completed_at": "2026-08-26T10:01:00Z",
+        "app": { "id": 1002, "slug": "github-code-scanning" },
         "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
       },
       {
@@ -27,6 +29,7 @@
         "status": "completed",
         "conclusion": "success",
         "completed_at": "2026-08-26T10:02:00Z",
+        "app": { "id": 1002, "slug": "github-code-scanning" },
         "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
       }
     ]
@@ -39,6 +42,11 @@
           "summary",
           "analyze (java-kotlin)",
           "analyze (javascript-typescript)"
+        ],
+        "checks": [
+          { "context": "summary", "app_id": 1001 },
+          { "context": "analyze (java-kotlin)", "app_id": 1002 },
+          { "context": "analyze (javascript-typescript)", "app_id": 1002 }
         ]
       }
     },
@@ -62,9 +70,9 @@
           "parameters": {
             "strict_required_status_checks_policy": true,
             "required_status_checks": [
-              { "context": "summary" },
-              { "context": "analyze (java-kotlin)" },
-              { "context": "analyze (javascript-typescript)" }
+              { "context": "summary", "integration_id": 1001 },
+              { "context": "analyze (java-kotlin)", "integration_id": 1002 },
+              { "context": "analyze (javascript-typescript)", "integration_id": 1002 }
             ]
           }
         }

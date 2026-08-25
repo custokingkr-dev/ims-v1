@@ -44,6 +44,7 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
         evidence = copy.deepcopy(self.fixture)
         evidence["checkRuns"]["check_runs"][0]["conclusion"] = "failure"
         evidence["branchProtection"]["main"]["required_status_checks"]["contexts"][0] = "Summary"
+        evidence["branchProtection"]["main"]["required_status_checks"]["checks"][0]["context"] = "Summary"
         result = self.module.verify(
             evidence,
             "custokingkr-dev/ims-v1",
@@ -55,6 +56,82 @@ class GitHubGovernanceChecksTest(unittest.TestCase):
         self.assertIn("required check 'summary' is not completed successfully", result["blockers"])
         self.assertIn("branch 'main' is missing required contexts: summary", result["blockers"])
         self.assertIn("branch 'main' has unexpected required contexts: Summary", result["blockers"])
+
+    def test_wrong_or_missing_check_run_producer_fails_closed(self):
+        wrong = copy.deepcopy(self.fixture)
+        wrong["checkRuns"]["check_runs"][0]["app"]["id"] = 9001
+        wrong_result = self.module.verify(
+            wrong,
+            "custokingkr-dev/ims-v1",
+            COMMIT,
+            ["main", "dev"],
+            list(self.module.DEFAULT_REQUIRED_CHECKS),
+        )
+        self.assertFalse(wrong_result["ready"])
+        self.assertIn(
+            "required check 'summary' was produced by app(s) 9001; configured app is 1001",
+            wrong_result["blockers"],
+        )
+
+        missing = copy.deepcopy(self.fixture)
+        missing["checkRuns"]["check_runs"][0].pop("app")
+        missing_result = self.module.verify(
+            missing,
+            "custokingkr-dev/ims-v1",
+            COMMIT,
+            ["main", "dev"],
+            list(self.module.DEFAULT_REQUIRED_CHECKS),
+        )
+        self.assertFalse(missing_result["ready"])
+        self.assertIn("required check 'summary' has no check-run producer app id", missing_result["blockers"])
+
+    def test_missing_or_ambiguous_configured_producer_fails_closed(self):
+        missing = copy.deepcopy(self.fixture)
+        missing["branchProtection"]["main"]["required_status_checks"]["checks"][0].pop("app_id")
+        missing_result = self.module.verify(
+            missing,
+            "custokingkr-dev/ims-v1",
+            COMMIT,
+            ["main"],
+            list(self.module.DEFAULT_REQUIRED_CHECKS),
+        )
+        self.assertFalse(missing_result["ready"])
+        self.assertIn(
+            "branch 'main' required context 'summary' has no configured producer app/integration id",
+            missing_result["blockers"],
+        )
+
+        partially_missing = copy.deepcopy(self.fixture)
+        partially_missing["branchProtection"]["main"]["required_status_checks"]["checks"].append({
+            "context": "summary",
+        })
+        partially_missing_result = self.module.verify(
+            partially_missing,
+            "custokingkr-dev/ims-v1",
+            COMMIT,
+            ["main"],
+            list(self.module.DEFAULT_REQUIRED_CHECKS),
+        )
+        self.assertFalse(partially_missing_result["ready"])
+        self.assertIn(
+            "branch 'main' required context 'summary' has missing or invalid producer metadata",
+            partially_missing_result["blockers"],
+        )
+
+        ambiguous = copy.deepcopy(self.fixture)
+        ambiguous["rulesets"][0]["rules"][0]["parameters"]["required_status_checks"][0]["integration_id"] = 9001
+        ambiguous_result = self.module.verify(
+            ambiguous,
+            "custokingkr-dev/ims-v1",
+            COMMIT,
+            ["main", "dev"],
+            list(self.module.DEFAULT_REQUIRED_CHECKS),
+        )
+        self.assertFalse(ambiguous_result["ready"])
+        self.assertIn(
+            "required context 'summary' has inconsistent configured producers across branches: 1001, 9001",
+            ambiguous_result["blockers"],
+        )
 
     def test_excluded_or_evaluate_rulesets_do_not_count_as_enforcement(self):
         for enforcement in ("evaluate", "active"):

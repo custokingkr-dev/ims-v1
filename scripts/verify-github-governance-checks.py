@@ -160,16 +160,16 @@ def classic_status_source(protection: dict[str, Any] | None) -> dict[str, Any] |
     required = protection.get("required_status_checks")
     if not required:
         return None
+    checks = list(required.get("checks") or [])
     contexts = {str(item) for item in required.get("contexts") or []}
-    contexts.update(
-        str(item.get("context"))
-        for item in required.get("checks") or []
-        if item.get("context")
-    )
+    contexts.update(str(item.get("context")) for item in checks if item.get("context"))
+    producer_ids, invalid_producer_contexts = producer_configuration(checks, "app_id")
     return {
         "kind": "classic",
         "name": "classic branch protection",
         "contexts": sorted(contexts),
+        "producerIds": producer_ids,
+        "invalidProducerContexts": invalid_producer_contexts,
         "strict": required.get("strict") is True,
     }
 
@@ -191,38 +191,73 @@ def ruleset_status_sources(
             if rule.get("type") != "required_status_checks":
                 continue
             parameters = rule.get("parameters") or {}
-            contexts = sorted({
-                str(item.get("context"))
-                for item in parameters.get("required_status_checks") or []
-                if item.get("context")
-            })
+            checks = list(parameters.get("required_status_checks") or [])
+            contexts = sorted({str(item.get("context")) for item in checks if item.get("context")})
+            producer_ids, invalid_producer_contexts = producer_configuration(checks, "integration_id")
             sources.append({
                 "kind": "ruleset",
                 "id": ruleset.get("id"),
                 "name": str(ruleset.get("name") or ruleset.get("id") or "unnamed ruleset"),
                 "contexts": contexts,
+                "producerIds": producer_ids,
+                "invalidProducerContexts": invalid_producer_contexts,
                 "strict": parameters.get("strict_required_status_checks_policy") is True,
             })
     return sources, pattern_errors
 
 
-def latest_runs_by_name(check_runs: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    selected: dict[str, dict[str, Any]] = {}
+def producer_id(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def producer_configuration(
+    checks: list[dict[str, Any]], field: str,
+) -> tuple[dict[str, list[int]], list[str]]:
+    producers: dict[str, set[int]] = {}
+    invalid_contexts: set[str] = set()
+    for check in checks:
+        context = str(check.get("context") or "")
+        if not context:
+            continue
+        producers.setdefault(context, set())
+        configured = producer_id(check.get(field))
+        if configured is None:
+            invalid_contexts.add(context)
+        else:
+            producers[context].add(configured)
+    return (
+        {context: sorted(values) for context, values in sorted(producers.items())},
+        sorted(invalid_contexts),
+    )
+
+
+def latest_runs_by_name_and_producer(
+    check_runs: list[dict[str, Any]],
+) -> dict[tuple[str, int], dict[str, Any]]:
+    selected: dict[tuple[str, int], dict[str, Any]] = {}
     for run in check_runs:
         name = str(run.get("name") or "")
-        if not name:
+        run_producer = producer_id((run.get("app") or {}).get("id"))
+        if not name or run_producer is None:
             continue
+        key = (name, run_producer)
         rank = (
             str(run.get("completed_at") or run.get("started_at") or run.get("created_at") or ""),
             int(run.get("id") or 0),
         )
-        existing = selected.get(name)
+        existing = selected.get(key)
         existing_rank = (
             str(existing.get("completed_at") or existing.get("started_at") or existing.get("created_at") or ""),
             int(existing.get("id") or 0),
         ) if existing else ("", -1)
         if rank > existing_rank:
-            selected[name] = run
+            selected[key] = run
     return selected
 
 
@@ -236,35 +271,11 @@ def verify(
     if not default_branch:
         blockers.append("repository default branch is unavailable")
 
-    latest = latest_runs_by_name(list((evidence.get("checkRuns") or {}).get("check_runs") or []))
-    checks: list[dict[str, Any]] = []
-    for name in required_checks:
-        run = latest.get(name)
-        conclusion = str((run or {}).get("conclusion") or "")
-        status = str((run or {}).get("status") or "")
-        head_sha = str(((run or {}).get("check_suite") or {}).get("head_sha") or (run or {}).get("head_sha") or "")
-        exists = run is not None
-        immutable_match = exists and head_sha.lower() == commit.lower()
-        successful = status == "completed" and conclusion == "success" and immutable_match
-        if not exists:
-            blockers.append(f"commit is missing required check '{name}'")
-        elif not immutable_match:
-            blockers.append(f"required check '{name}' is not bound to commit {commit}")
-        elif not successful:
-            blockers.append(f"required check '{name}' is not completed successfully")
-        checks.append({
-            "name": name,
-            "present": exists,
-            "status": status or None,
-            "conclusion": conclusion or None,
-            "headShaMatches": immutable_match,
-            "successful": successful,
-        })
-
     expected = set(required_checks)
     protections = evidence.get("branchProtection") or {}
     rulesets = list(evidence.get("rulesets") or [])
     branch_results: list[dict[str, Any]] = []
+    expected_producers: dict[str, set[int]] = {name: set() for name in required_checks}
     for branch in branches:
         sources: list[dict[str, Any]] = []
         classic = classic_status_source(protections.get(branch))
@@ -276,9 +287,38 @@ def verify(
         missing = sorted(expected - configured)
         unexpected = sorted(configured - expected)
         strict = bool(sources) and all(source["strict"] for source in sources)
-        exact = bool(sources) and not missing and not unexpected and strict
+        configured_producers = {
+            context: sorted({
+                producer
+                for source in sources
+                for producer in source["producerIds"].get(context, [])
+            })
+            for context in sorted(configured)
+        }
+        producer_errors: list[str] = []
+        for context, producers in configured_producers.items():
+            if not producers:
+                producer_errors.append(
+                    f"branch '{branch}' required context '{context}' has no configured producer app/integration id"
+                )
+                continue
+            invalid_metadata = any(
+                context in source["invalidProducerContexts"] for source in sources
+            )
+            if invalid_metadata:
+                producer_errors.append(
+                    f"branch '{branch}' required context '{context}' has missing or invalid producer metadata"
+                )
+            if len(producers) > 1:
+                producer_errors.append(
+                    f"branch '{branch}' has ambiguous configured producers for context '{context}': "
+                    + ", ".join(str(item) for item in producers)
+                )
+            elif not invalid_metadata and context in expected:
+                expected_producers[context].add(producers[0])
         for pattern_error in pattern_errors:
             blockers.append(f"branch '{branch}' cannot evaluate {pattern_error}")
+        blockers.extend(producer_errors)
         if not sources:
             blockers.append(f"branch '{branch}' has no active required-status-check protection")
         if missing:
@@ -293,9 +333,75 @@ def verify(
             "configuredContexts": sorted(configured),
             "missingContexts": missing,
             "unexpectedContexts": unexpected,
+            "configuredProducers": configured_producers,
             "strict": strict,
             "patternErrors": pattern_errors,
-            "exact": exact and not pattern_errors,
+            "producerErrors": producer_errors,
+            "exact": bool(sources) and not missing and not unexpected and strict
+            and not pattern_errors and not producer_errors,
+        })
+
+    resolved_producers: dict[str, int | None] = {}
+    for name in required_checks:
+        producers = sorted(expected_producers[name])
+        if not producers:
+            blockers.append(f"required context '{name}' has no unambiguous configured producer")
+            resolved_producers[name] = None
+        elif len(producers) > 1:
+            blockers.append(
+                f"required context '{name}' has inconsistent configured producers across branches: "
+                + ", ".join(str(item) for item in producers)
+            )
+            resolved_producers[name] = None
+        else:
+            resolved_producers[name] = producers[0]
+
+    check_runs = list((evidence.get("checkRuns") or {}).get("check_runs") or [])
+    latest = latest_runs_by_name_and_producer(check_runs)
+    checks: list[dict[str, Any]] = []
+    for name in required_checks:
+        configured_producer = resolved_producers[name]
+        run = latest.get((name, configured_producer)) if configured_producer is not None else None
+        conclusion = str((run or {}).get("conclusion") or "")
+        status = str((run or {}).get("status") or "")
+        head_sha = str(((run or {}).get("check_suite") or {}).get("head_sha") or (run or {}).get("head_sha") or "")
+        exists = run is not None
+        immutable_match = exists and head_sha.lower() == commit.lower()
+        successful = status == "completed" and conclusion == "success" and immutable_match
+        named_runs = [candidate for candidate in check_runs if str(candidate.get("name") or "") == name]
+        observed_producers = sorted({
+            parsed
+            for candidate in named_runs
+            if (parsed := producer_id((candidate.get("app") or {}).get("id"))) is not None
+        })
+        has_missing_producer = any(
+            producer_id((candidate.get("app") or {}).get("id")) is None for candidate in named_runs
+        )
+        if configured_producer is not None and not exists:
+            if named_runs and not observed_producers:
+                blockers.append(f"required check '{name}' has no check-run producer app id")
+            elif named_runs:
+                blockers.append(
+                    f"required check '{name}' was produced by app(s) "
+                    + ", ".join(str(item) for item in observed_producers)
+                    + f"; configured app is {configured_producer}"
+                )
+            else:
+                blockers.append(f"commit is missing required check '{name}'")
+        elif exists and not immutable_match:
+            blockers.append(f"required check '{name}' is not bound to commit {commit}")
+        elif exists and not successful:
+            blockers.append(f"required check '{name}' is not completed successfully")
+        checks.append({
+            "name": name,
+            "configuredProducerId": configured_producer,
+            "observedProducerIds": observed_producers,
+            "missingProducerMetadataObserved": has_missing_producer,
+            "present": exists,
+            "status": status or None,
+            "conclusion": conclusion or None,
+            "headShaMatches": immutable_match,
+            "successful": successful,
         })
 
     return {
