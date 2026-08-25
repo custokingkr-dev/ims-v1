@@ -908,7 +908,8 @@ commit SHA and retain a readable version comment. No local composite action file
 `.github/actions`; local reusable workflow references continue to use `./.github/workflows/...` and
 are therefore tied to the checked-out repository commit.
 
-The following mapping was resolved on 2026-08-11 directly through GitHub's authoritative Git data:
+The following mapping was initially resolved on 2026-08-11 and each changed entry was revalidated
+directly through GitHub's authoritative Git data (most recently Buildx and CodeQL on 2026-08-26):
 `GET /repos/{owner}/{repo}/git/ref/tags/{tag}`, followed by
 `GET /repos/{owner}/{repo}/git/tags/{objectSha}` when the ref pointed to an annotated tag, and then
 `GET /repos/{owner}/{repo}/commits/{commitSha}`. The Trivy and CodeQL refs are annotated tags; their
@@ -925,8 +926,8 @@ tag-object SHA is not executable source and was correctly dereferenced to the te
 | `aquasecurity/trivy-action@v0.36.0` | annotated tag `a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8` | [`ed142fd0673e97e23eac54620cfb913e5ce36c25`](https://github.com/aquasecurity/trivy-action/commit/ed142fd0673e97e23eac54620cfb913e5ce36c25) |
 | `docker/build-push-action@v7` | `53b7df96c91f9c12dcc8a07bcb9ccacbed38856a` | [`53b7df96c91f9c12dcc8a07bcb9ccacbed38856a`](https://github.com/docker/build-push-action/commit/53b7df96c91f9c12dcc8a07bcb9ccacbed38856a) |
 | `docker/login-action@v4` | `dbcb813823bdd20940b903addbd779551569679f` | [`dbcb813823bdd20940b903addbd779551569679f`](https://github.com/docker/login-action/commit/dbcb813823bdd20940b903addbd779551569679f) |
-| `docker/setup-buildx-action@v4` | `bb05f3f5519dd87d3ba754cc423b652a5edd6d2c` | [`bb05f3f5519dd87d3ba754cc423b652a5edd6d2c`](https://github.com/docker/setup-buildx-action/commit/bb05f3f5519dd87d3ba754cc423b652a5edd6d2c) |
-| `github/codeql-action@v4` (`init`, `analyze`, `upload-sarif`) | annotated tag `24c7eb380a2dc368f2d129e4c65e51d172983a1e` | [`5595ccaf912efad79be6eef63a5619ff05969be3`](https://github.com/github/codeql-action/commit/5595ccaf912efad79be6eef63a5619ff05969be3) |
+| `docker/setup-buildx-action@v4` (release `v4.3.0`) | `37fe631027851001ddb9b187196cc803df7f5f0e` | [`37fe631027851001ddb9b187196cc803df7f5f0e`](https://github.com/docker/setup-buildx-action/commit/37fe631027851001ddb9b187196cc803df7f5f0e) |
+| `github/codeql-action@v4` (`init`, `analyze`, `upload-sarif`; release `v4.37.7`) | annotated tag `faaa5d804fc648d0fdb28822a8e36cf7d0a6132c` | [`ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd`](https://github.com/github/codeql-action/commit/ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd) |
 | `gitleaks/gitleaks-action@v3` | `e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e` | [`e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e`](https://github.com/gitleaks/gitleaks-action/commit/e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e) |
 | `google-github-actions/auth@v3` | `7c6bc770dae815cd3e89ee6cdf493a5fab2cc093` | [`7c6bc770dae815cd3e89ee6cdf493a5fab2cc093`](https://github.com/google-github-actions/auth/commit/7c6bc770dae815cd3e89ee6cdf493a5fab2cc093) |
 | `google-github-actions/setup-gcloud@v3` | `aa5489c8933f4cc7a4f7d45035b3b1440c9c10db` | [`aa5489c8933f4cc7a4f7d45035b3b1440c9c10db`](https://github.com/google-github-actions/setup-gcloud/commit/aa5489c8933f4cc7a4f7d45035b3b1440c9c10db) |
