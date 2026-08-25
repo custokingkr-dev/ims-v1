@@ -11,6 +11,7 @@ interface GuardianRecord {
   contactVerifiedAt?: string;
   status: string;
   version: number;
+  linkVersion: number;
   relationship: string;
   primary: boolean;
   receivesNotifications: boolean;
@@ -45,7 +46,7 @@ interface Props {
 const emptyGuardian = (primary: boolean) => ({
   fullName: '', phone: '', email: '', preferredLanguage: 'en', relationship: 'GUARDIAN',
   primary, receivesNotifications: true, canViewAcademic: true, canManageFees: false,
-  pickupAuthorized: false, contactVerified: false, version: 0,
+  pickupAuthorized: false, contactVerified: false, version: 0, linkVersion: 0,
 });
 
 const purposeLabel = (value: string) => value.toLowerCase().split('_').map((part) =>
@@ -108,7 +109,7 @@ export function GuardianConsentCard({ studentId, canManage, onProfileChanged }: 
       primary: guardian.primary, receivesNotifications: guardian.receivesNotifications,
       canViewAcademic: guardian.canViewAcademic, canManageFees: guardian.canManageFees,
       pickupAuthorized: guardian.pickupAuthorized, contactVerified: Boolean(guardian.contactVerifiedAt),
-      version: guardian.version,
+      version: guardian.version, linkVersion: guardian.linkVersion,
     });
     setGuardianFormOpen(true);
   };

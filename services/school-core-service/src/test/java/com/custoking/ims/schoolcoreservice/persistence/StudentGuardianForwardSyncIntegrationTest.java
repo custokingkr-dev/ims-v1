@@ -146,6 +146,100 @@ class StudentGuardianForwardSyncIntegrationTest {
     }
 
     @Test
+    void legacyUpdateOfSharedFatherFansOutWithoutChangingLinksOrConsentHistory() {
+        long schoolId = seedSchool();
+        Map<String, Object> first = students.createStudent(Map.of(
+                "schoolId", schoolId,
+                "fullName", "First Sibling",
+                "admissionNumber", "SYNC-SHARED-1",
+                "gradeLevel", "1",
+                "sectionName", "A",
+                "phone", "9999900011",
+                "fatherName", "Shared Father",
+                "fatherContact", "9876500011"));
+        Map<String, Object> second = students.createStudent(Map.of(
+                "schoolId", schoolId,
+                "fullName", "Second Sibling",
+                "admissionNumber", "SYNC-SHARED-2",
+                "gradeLevel", "1",
+                "sectionName", "A",
+                "phone", "9999900012",
+                "fatherName", "Shared Father",
+                "fatherContact", "9876500011"));
+        long firstId = ((Number) first.get("id")).longValue();
+        long secondId = ((Number) second.get("id")).longValue();
+        String sharedGuardianId = String.valueOf(guardian(firstId, "FATHER").get("id"));
+        String replacedGuardianId = String.valueOf(guardian(secondId, "FATHER").get("id"));
+
+        jdbc.sql("DELETE FROM student.student_guardians WHERE student_id = :studentId AND guardian_id = :guardianId")
+                .param("studentId", secondId).param("guardianId", replacedGuardianId).update();
+        jdbc.sql("DELETE FROM student.guardians WHERE id = :guardianId")
+                .param("guardianId", replacedGuardianId).update();
+        jdbc.sql("""
+                        INSERT INTO student.student_guardians
+                            (id, school_id, student_id, guardian_id, relationship, is_primary,
+                             receives_notifications, can_view_academic, can_manage_fees,
+                             pickup_authorized, created_at, updated_at, version)
+                        VALUES
+                            ('shared-father-second-link', :schoolId, :studentId, :guardianId,
+                             'FATHER', true, false, true, true, true, now(), now(), 7)
+                        """)
+                .param("schoolId", schoolId).param("studentId", secondId)
+                .param("guardianId", sharedGuardianId).update();
+        jdbc.sql("UPDATE student.guardians SET contact_verified_at = now() WHERE id = :guardianId")
+                .param("guardianId", sharedGuardianId).update();
+        jdbc.sql("""
+                        INSERT INTO student.student_consent_events
+                            (id, school_id, student_id, guardian_id, purpose, status,
+                             lawful_basis, notice_version, evidence_source)
+                        VALUES
+                            ('shared-consent-1', :schoolId, :firstId, :guardianId,
+                             'SCHOOL_COMMUNICATIONS', 'GRANTED', 'CONSENT', 'notice-1', 'SIGNED_FORM'),
+                            ('shared-consent-2', :schoolId, :secondId, :guardianId,
+                             'SCHOOL_COMMUNICATIONS', 'GRANTED', 'CONSENT', 'notice-1', 'SIGNED_FORM')
+                        """)
+                .param("schoolId", schoolId).param("firstId", firstId).param("secondId", secondId)
+                .param("guardianId", sharedGuardianId).update();
+
+        String firstLinkBefore = linkState(firstId, sharedGuardianId);
+        String secondLinkBefore = linkState(secondId, sharedGuardianId);
+        String consentsBefore = consentSnapshot();
+        jdbc.sql("DELETE FROM tenant_school.outbox_events").update();
+
+        students.updateStudent(firstId, Map.of(
+                "schoolId", schoolId,
+                "fullName", "First Sibling",
+                "admissionNumber", "SYNC-SHARED-1",
+                "classId", first.get("classId"),
+                "sectionId", first.get("sectionId"),
+                "phone", "9999900011",
+                "fatherName", "Updated Shared Father",
+                "fatherContact", "9876500099"));
+
+        assertThat(guardian(firstId, "FATHER"))
+                .containsEntry("id", sharedGuardianId)
+                .containsEntry("fullName", "Updated Shared Father")
+                .containsEntry("phone", "9876500099");
+        assertThat(guardian(secondId, "FATHER"))
+                .containsEntry("id", sharedGuardianId)
+                .containsEntry("fullName", "Updated Shared Father")
+                .containsEntry("phone", "9876500099");
+        assertThat(linkState(firstId, sharedGuardianId)).isEqualTo(firstLinkBefore);
+        assertThat(linkState(secondId, sharedGuardianId)).isEqualTo(secondLinkBefore);
+        assertThat(consentSnapshot()).isEqualTo(consentsBefore);
+        assertThat(jdbc.sql("SELECT contact_verified_at IS NULL FROM student.guardians WHERE id = :guardianId")
+                .param("guardianId", sharedGuardianId).query(Boolean.class).single()).isTrue();
+        assertThat(jdbc.sql("""
+                        SELECT aggregate_id FROM tenant_school.outbox_events
+                        WHERE event_type = 'student.upserted.v1'
+                        ORDER BY aggregate_id
+                        """).query(String.class).list())
+                .containsExactly(String.valueOf(firstId), String.valueOf(secondId));
+        assertParity(firstId);
+        assertParity(secondId);
+    }
+
+    @Test
     void spreadsheetImportSynchronizesFatherAndExactParity() {
         long schoolId = seedSchool();
         Map<String, Object> preview = students.previewImport(Map.of(
@@ -207,6 +301,24 @@ class StudentGuardianForwardSyncIntegrationTest {
                     return row;
                 })
                 .single();
+    }
+
+    private static String linkState(long studentId, String guardianId) {
+        return jdbc.sql("""
+                        SELECT concat_ws('|', relationship, is_primary, receives_notifications,
+                                         can_view_academic, can_manage_fees, pickup_authorized, version)
+                        FROM student.student_guardians
+                        WHERE student_id = :studentId AND guardian_id = :guardianId
+                        """)
+                .param("studentId", studentId).param("guardianId", guardianId)
+                .query(String.class).single();
+    }
+
+    private static String consentSnapshot() {
+        return jdbc.sql("""
+                        SELECT COALESCE(jsonb_agg(to_jsonb(event) ORDER BY event.id)::text, '[]')
+                        FROM student.student_consent_events event
+                        """).query(String.class).single();
     }
 
     private static void assertParity(long studentId) {

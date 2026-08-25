@@ -550,7 +550,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
-        guardianSynchronizer.syncFromLegacy(id);
+        LegacyGuardianSynchronizer.SyncResult guardianSync = guardianSynchronizer.syncFromLegacy(id);
         if (!classId.equals(str(current.get("classId"), ""))
                 || !sectionId.equals(str(current.get("sectionId"), ""))) {
             closeActiveEnrollment(id, "Placement changed from student profile edit");
@@ -562,6 +562,13 @@ public class StudentReadRepository {
         }
         invalidateActiveVerification(id, "PROFILE_VERIFICATION");
         emitStudentUpserted(id);
+        guardianSync.affectedStudentIds().stream()
+                .filter(affectedStudentId -> !affectedStudentId.equals(id))
+                .forEach(affectedStudentId ->
+                        invalidateActiveVerification(affectedStudentId, "PROFILE_VERIFICATION"));
+        guardianSync.projectionChangedStudentIds().stream()
+                .filter(affectedStudentId -> !affectedStudentId.equals(id))
+                .forEach(this::emitStudentUpserted);
         return studentDetail(id);
     }
 
