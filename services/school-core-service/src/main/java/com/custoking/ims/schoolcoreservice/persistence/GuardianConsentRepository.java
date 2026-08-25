@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -30,10 +31,18 @@ public class GuardianConsentRepository {
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
+    private final StudentReviewInvalidationService reviewInvalidation;
 
     public GuardianConsentRepository(JdbcClient jdbc, OutboxWriter outbox) {
+        this(jdbc, outbox, new StudentReviewInvalidationService(jdbc, outbox));
+    }
+
+    @Autowired
+    public GuardianConsentRepository(JdbcClient jdbc, OutboxWriter outbox,
+                                     StudentReviewInvalidationService reviewInvalidation) {
         this.jdbc = jdbc;
         this.outbox = outbox;
+        this.reviewInvalidation = reviewInvalidation;
     }
 
     public Map<String, Object> overview(Long studentId) {
@@ -160,7 +169,7 @@ public class GuardianConsentRepository {
             throw new IllegalArgumentException("This guardian is already linked to the student", ex);
         }
         emitStudentProjectionUpdates(syncLegacyParents(studentId));
-        invalidateProfileVerification(studentId);
+        reviewInvalidation.invalidateProfile(studentId);
         emit("student.guardian.upserted.v1", guardianId, schoolId, studentId,
                 row("guardianId", guardianId, "studentId", studentId, "relationship", relationship));
         return overview(studentId);
@@ -221,7 +230,7 @@ public class GuardianConsentRepository {
             throw new IllegalArgumentException("Guardian permissions changed since they were loaded; refresh and try again");
         }
         emitStudentProjectionUpdates(syncLegacyParentsForGuardian(guardianId, schoolId));
-        affectedStudentIds.forEach(this::invalidateProfileVerification);
+        affectedStudentIds.forEach(reviewInvalidation::invalidateProfile);
         emit("student.guardian.upserted.v1", guardianId, schoolId, studentId,
                 row("guardianId", guardianId, "studentId", studentId, "relationship", relationship));
         return overview(studentId);
@@ -241,7 +250,7 @@ public class GuardianConsentRepository {
                 """)
                 .param("guardianId", guardianId).param("actorId", actorId()).update();
         emitStudentProjectionUpdates(syncLegacyParents(studentId));
-        invalidateProfileVerification(studentId);
+        reviewInvalidation.invalidateProfile(studentId);
         emit("student.guardian.unlinked.v1", guardianId, schoolId, studentId,
                 row("guardianId", guardianId, "studentId", studentId));
         return overview(studentId);
@@ -453,21 +462,6 @@ public class GuardianConsentRepository {
             outbox.append("student.upserted.v1", "StudentUpserted:" + studentId,
                     "Student", String.valueOf(studentId), schoolId, student);
         }
-    }
-
-    private void invalidateProfileVerification(Long studentId) {
-        jdbc.sql("""
-                UPDATE student.student_review_items i
-                SET verified_full_name = false, verified_admission_no = false,
-                    verified_class_section = false, verified_roll_no = false,
-                    verified_father_name = false, verified_father_contact = false,
-                    verified_address = false, verified_blood_group = false,
-                    status = 'PENDING', correction_requested = false, correction_notes = NULL,
-                    completed_at = NULL, updated_at = now()
-                FROM student.student_review_campaigns c
-                WHERE i.campaign_id = c.id AND i.student_id = :studentId
-                  AND c.review_type = 'PROFILE_VERIFICATION' AND c.status = 'ACTIVE'
-                """).param("studentId", studentId).update();
     }
 
     private void emit(String eventType, String aggregateId, Long schoolId, Long studentId, Map<String, Object> payload) {

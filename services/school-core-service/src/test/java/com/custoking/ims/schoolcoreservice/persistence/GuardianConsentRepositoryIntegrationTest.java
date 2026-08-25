@@ -205,12 +205,14 @@ class GuardianConsentRepositoryIntegrationTest {
                      verified_full_name, verified_admission_no, verified_class_section,
                      verified_roll_no, verified_father_name, verified_father_contact,
                      verified_address, verified_blood_group, correction_requested,
-                     correction_notes, completed_at)
+                     correction_notes, current_full_name, suggested_full_name, completed_at)
                 VALUES
                     ('shared-review-1', 'shared-review', 1, 1, 'COMPLETED',
-                     true, true, true, true, true, true, true, true, true, 'old', now()),
+                     true, true, true, true, true, true, true, true, true, 'old',
+                     'Old Student One', 'Suggested One', now()),
                     ('shared-review-2', 'shared-review', 2, 1, 'COMPLETED',
-                     true, true, true, true, true, true, true, true, true, 'old', now())
+                     true, true, true, true, true, true, true, true, true, 'old',
+                     'Old Student Two', 'Suggested Two', now())
                 """).update();
 
         Map<String, Object> firstLinkBefore = linkSnapshot(1L, guardianId);
@@ -260,10 +262,19 @@ class GuardianConsentRepositoryIntegrationTest {
         assertThat(jdbc.sql("""
                         SELECT student_id || '|' || status || '|' || verified_father_name || '|' ||
                                verified_father_contact || '|' || correction_requested || '|' ||
-                               COALESCE(correction_notes, '') || '|' || (completed_at IS NULL)
+                               COALESCE(correction_notes, '') || '|' || current_full_name || '|' ||
+                               (suggested_full_name IS NULL) || '|' || (completed_at IS NULL)
                         FROM student.student_review_items ORDER BY student_id
                         """).query(String.class).list())
-                .containsExactly("1|PENDING|false|false|false||true", "2|PENDING|false|false|false||true");
+                .containsExactly("1|PENDING|false|false|false||Student One|true|true",
+                        "2|PENDING|false|false|false||Student Two|true|true");
+        assertThat(jdbc.sql("""
+                        SELECT aggregate_id || '|' || (payload->>'status')
+                        FROM tenant_school.outbox_events
+                        WHERE event_type = 'student-review-item.upserted.v1'
+                        ORDER BY aggregate_id
+                        """).query(String.class).list())
+                .containsExactly("shared-review-1|PENDING", "shared-review-2|PENDING");
         assertThat(jdbc.sql("""
                         SELECT aggregate_id || '|' || ((payload::jsonb)->>'fatherName') || '|' ||
                                ((payload::jsonb)->>'parentContact')
