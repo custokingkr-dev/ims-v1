@@ -85,6 +85,27 @@ repository-owned blockers:
   `sha256:2e7d988b2009ace88b90e15342612e475c8a51822b96425886c4caeb93ee0f1b`; both are Ready at 100% traffic.
   Main-branch CodeQL, exact-digest Trivy, workflow gateway health, an independent 31-route smoke, and
   exact-revision error/5xx queries all passed.
+- Added a privacy-safe guardian repair classifier and then hardened it to classify only whole-student,
+  zero-link creation candidates. It rejects inactive/missing schools, unrepresentable legacy values,
+  guardian-bound or anomalous consent, deterministic-ID collisions, same-school identity candidates,
+  repeated legacy identity clusters, global shared-identity hazards, and every non-effective link shape.
+  Output is aggregate counts plus deterministic full/safe-create hashes only; no PII is emitted and the
+  classifier cannot mutate the database.
+- Centralized student review invalidation across guardian consent, manual student edits, photo import and
+  photo recovery. Profile changes preserve photo verification; photo changes preserve profile verification;
+  every invalidation emits the existing `student-review-item.upserted.v1` contract atomically in the caller
+  transaction. PR 163 merged as `243c2ef113f7eeacafdd386eb00cb955d18dc2db`; 30 focused tests and the
+  complete release gates passed. Production release `rel-prod-243c2ef113f7-1` completed 5/25/50/stable
+  canaries and serves 100% on school-core revision `custoking-school-core-service-prod-mt8vr65k`, image
+  index digest `sha256:ef4e00f85e781ab9a343e0f59217365510fd00eb9084bfcd3d92278709b0555b`.
+- The expanded SQL initially exceeded Cloud Run's single environment-value envelope at 36,872 raw-base64
+  characters. PR 165 (`3726d4ccb7e7b825bee7ca7ecef2381d50ebdf06`) gzip-compressed it to 6,720
+  characters, added a 30,000-character pre-resource guard, and retained exact gzip round-trip coverage.
+  Production read-only job `ims-db-evidence-20260825164648-3628c1fc` then exited 0 and was deleted. It found
+  13 eligible whole students, 14 guardian relationships and 15 legacy fields for possible safe creation;
+  the full plan hash is `425d085c2c8fe00c4fca554b0124e6d05e1f16e570226d08307f0e7337cbaf38` and the
+  safe-create hash is `fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492`.
+  No guardian row was written; the migration operator is disabled and zero evidence jobs remain.
 - Removed an unnecessary `packages: write` grant from the GCP image build and added an enforced CI policy
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
@@ -141,8 +162,8 @@ approximately INR 3,128/month; the minimum observed dedicated regional-HA option
 - Documented that logout clears browser cookies and revokes the session only in the current process; rotating
   `SESSION_SECRET` derives the authenticated-encryption key and is the current global invalidation mechanism.
 - Corrected Terraform's photo storage alert target to `custoking-{env}-student-photos`.
-- Added billing export grade, availability, export lag and usage lag signals, distinguishing estimated
-  run-rate from invoice-grade standard/detailed usage export.
+- Added billing export grade, configured capability, availability, export lag and usage lag signals,
+  distinguishing estimated run-rate from actually usable invoice-grade standard/detailed rows.
 - Added read-only billing export health, Monitoring resource/filter validation, and Cloud Asset drift tools
   with JSON/Markdown output and fixtures.
 - Executed the production cost-metric exporter successfully and published fresh grade/availability/lag
@@ -158,8 +179,11 @@ both targeting `custoking-prod.billing_export`. BigQuery subsequently created bo
 `gcp_billing_export_v1_014C0A_C6B9AF_5FABC0` and
 `gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0`. The first reconciliation found zero rows in both
 tables, which is expected during the asynchronous initial population and does not constitute usable cost
-delivery. The enabled hourly exporter discovered both tables and published grade `2`, standard `1`, detailed
-`1`, while correctly retaining availability `0` and both lag values at `-1` until a usage row arrives.
+delivery. PR 164 (`3535416c844bd5f9d1072faca45f0f7c46b261b1`) separated configured capability
+from observed evidence in both the report and Monitoring exporter. The live read-only result is now
+capability grade `2`, evidence grade `0`, standard capability `1`, detailed capability `1`, availability
+`0`, `NO_MATCHING_PROJECT_ROWS`, and both lag values unavailable until a scoped usage row arrives. Partial
+query failures preserve any usable sibling-table evidence while still failing the job for investigation.
 
 ### Frontend and backend hotspot work
 
@@ -187,7 +211,9 @@ delivery. The enabled hourly exporter discovered both tables and published grade
 | Live dashboard | 6 authentication/server tests; CodeQL Java/Kotlin and JavaScript/TypeScript passed |
 | GCP audit Python tests | 3 tests |
 | Billing health PowerShell tests | Passed |
-| Cost exporter shell tests | Passed with Git Bash |
+| Cost exporter shell tests | Passed with Git Bash, including both-empty and all partial-query-failure directions |
+| Guardian classifier PostgreSQL 16 fixture | Passed; deterministic full and safe-create hashes |
+| Cloud SQL evidence transport fixture | Passed; exact gzip round-trip and guarded payload envelope |
 | Terraform | Recursive format check and observability validation passed |
 | Docker Compose | Configuration validation passed |
 | npm production audits | Frontend and gateway: zero reported vulnerabilities |
@@ -224,12 +250,15 @@ No major dependency was mixed into this batch.
    guardian columns, compatibility routes, or candidate indexes are removed.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
-9. Guardian forward synchronization is deployed, and the shared-identity follow-up fans global identity
-   changes out to every linked student's legacy projection while preserving guardian IDs, consent history and
-   link-local permissions. Before repairing the 462 existing mismatched students, classify by `guardian_id`:
-   agreeing shared groups may be repaired once and fanned out, while the 25 divergent groups require reviewed
-   identity resolution. Never process the repair sequentially per student or rewrite consent events. Require
-   parity to reach zero before any legacy parent column retirement.
+9. Guardian forward synchronization and shared-identity fan-out are deployed. Read-only production
+   classification has narrowed the missing-link creation set to 13 whole students / 14 relationships / 15
+   fields, while the other 843 planned fields remain excluded by explicit hazards. Before any write,
+   implement and
+   review a dedicated fingerprint-gated repair service/ledger with deterministic IDs, `SERIALIZABLE`
+   revalidation, no merge/reactivation behavior, atomic outbox emission, idempotent retries and per-student
+   audit results. The safe-create plan hash above must match immediately before execution. The 25 divergent
+   shared groups and every other review bucket remain manual; never sequentially rewrite shared guardians or
+   consent events. Require parity to reach zero before any legacy parent column retirement.
 10. Review the single missing reporting projection by identifier in the protected evidence channel before
     invoking the existing one-student idempotent requeue function. Do not bulk requeue projections.
 11. Processed outbox retention and the duplicate identity index remain observation-only evidence until
@@ -237,6 +266,7 @@ No major dependency was mixed into this batch.
 
 Production mutations were limited to reviewed releases; the targeted observability resources; Cloud Asset
 Inventory API enablement; on-demand backup `1787656491610`; and Cloud SQL `ENCRYPTED_ONLY` enforcement.
-The dedicated migration operator was returned to disabled state after the read-only evidence run. No
+The dedicated migration operator was returned to disabled state after each read-only evidence attempt; the
+successful classifier job exited 0 and its disposable job was deleted. No
 external notification message was sent, no recovery IAM was enabled, and no database row or index was
 deleted by this continuation batch.
