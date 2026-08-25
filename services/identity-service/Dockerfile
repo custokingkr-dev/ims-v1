@@ -1,12 +1,14 @@
 FROM maven:3.9-eclipse-temurin-25@sha256:1b1fc6d0168ea616afd1c861d6f32ec37c9ec2ffe88a0351b3771dd4ad86b0d8 AS build
 WORKDIR /app
-COPY pom.xml .
+COPY pom.xml ./pom.xml
+COPY services/identity-service/pom.xml ./services/identity-service/pom.xml
+WORKDIR /app/services/identity-service
 RUN for attempt in 1 2 3; do \
       mvn -q dependency:go-offline && exit 0; \
       if [ "$attempt" -eq 3 ]; then exit 1; fi; \
       sleep $((attempt * 5)); \
     done
-COPY src ./src
+COPY services/identity-service/src ./src
 RUN mvn -q -Dmaven.test.skip=true package
 
 FROM eclipse-temurin:25-jre-noble@sha256:1a99f30a84d58729f1184c1c693f25fb6f91970ddf05395515540bc5773b8edd
@@ -23,7 +25,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/services/identity-service/target/*.jar app.jar
 RUN chown appuser:appgroup app.jar
 USER appuser
 

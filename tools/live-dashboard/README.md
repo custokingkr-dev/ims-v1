@@ -11,6 +11,27 @@ node server.mjs          # → http://localhost:8787
 Requires `gcloud auth login`. Override with `DASHBOARD_PROJECT` (default `custoking-prod`),
 `DASHBOARD_ENV` (default `prod`), `PORT` (default `8787`).
 
+## Authentication
+
+Cloud Run uses Google OAuth with an email allowlist. Each login creates a cryptographically random,
+ten-minute state nonce bound to an HttpOnly browser cookie, an S256 PKCE verifier/challenge pair, and a
+single-use marker in the serving process. The callback rejects missing, expired, mismatched, tampered, or
+locally reused state before exchanging the authorization code; the authorization code itself remains
+provider-enforced single use across instances. OAuth token and JWKS requests have bounded response sizes,
+HTTP status checks, and ten-second timeouts. `POST /auth/logout` clears both browser cookies and best-effort
+revokes the signed session in the current process. It does not provide cross-instance revocation; rotate
+`SESSION_SECRET` to invalidate every outstanding signed session globally.
+
+Required production variables are `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`,
+`DASHBOARD_ALLOWED_EMAILS`, `SESSION_SECRET`, and the pinned `DASHBOARD_PUBLIC_URL`. Authentication fails
+closed if the OAuth client is absent. `DASHBOARD_AUTH=off` is only for a trusted local workstation.
+
+Run the dependency-free authentication regression suite with:
+
+```bash
+node --test tools/live-dashboard/*.test.mjs
+```
+
 ## Why this rather than a Cloud Monitoring dashboard
 
 The native dashboards are live and unusable: ~76 panels across 10 dashboards with no hierarchy, and --
@@ -46,7 +67,6 @@ At 5 minutes a tab left open all day stays free; at 60 seconds it is ~3.2M serie
 ## Deploying it
 
 It runs unchanged on Cloud Run -- it uses the instance metadata server when `K_SERVICE` is set and
-`gcloud` otherwise. If deployed, put it behind IAP directly on the Cloud Run service (no load balancer
-needed, and IAP itself is free), give it a dedicated service account with `roles/monitoring.viewer`, and
-leave `min-instances` at zero: an idle instance in asia-south2 costs roughly INR 1,000/month, which is a
-fifth of the entire infrastructure floor, to avoid a one-second cold start.
+`gcloud` otherwise. The live deployment uses the OAuth flow above because the consumer Google identity
+could not be admitted reliably through IAP. Give the service a dedicated identity with only
+`roles/monitoring.viewer`, keep the email allowlist narrow, and leave `min-instances` at zero.

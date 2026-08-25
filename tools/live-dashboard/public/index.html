@@ -63,6 +63,7 @@ select, button.ghost {
   background:var(--surface); color:var(--ink); border:1px solid var(--rule-2);
   border-radius:3px; padding:.4rem .6rem; cursor:pointer;
 }
+.controls form { margin:0; }
 select:focus-visible, button.ghost:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 .pulse {
   display:inline-flex; align-items:center; gap:.45em;
@@ -185,6 +186,9 @@ footer {
       <option value="10080">last 7 days</option>
     </select>
     <button class="ghost" id="theme" type="button">theme</button>
+    <form method="post" action="/auth/logout">
+      <button class="ghost" type="submit">sign out</button>
+    </form>
   </div>
 </header>
 
@@ -369,7 +373,8 @@ function renderCost(c) {
   const n = document.createElement("div");
   n.className = "note";
   n.textContent =
-    "Estimate, not an invoice — computed from resource usage priced at asia-south2 SKU rates, " +
+    `${c.evidenceGrade || "ESTIMATED_RUN_RATE"}: estimate, not an invoice — computed from resource usage ` +
+    `priced at ${c.pricingRegion || "asia-south2"} SKU rates, ` +
     "because the billing export is broken at the account level. More current than the export, which " +
     "lags hours by design. Cloud SQL is a measured constant; it is fixed regardless of tenants.";
   el.appendChild(n);

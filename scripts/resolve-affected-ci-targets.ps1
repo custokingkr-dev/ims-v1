@@ -23,7 +23,7 @@ $services = @(Get-MicroserviceTestCatalog | ForEach-Object {
   if (-not $build) {
     throw "Missing build catalog entry for test target: $($_.Name)"
   }
-  $context = $build.Context -replace "\\", "/"
+  $context = $(if ($build.BuildContext) { $build.BuildContext } else { $build.Context }) -replace "\\", "/"
   if (-not $context.StartsWith("./")) {
     $context = "./$context"
   }
@@ -32,6 +32,8 @@ $services = @(Get-MicroserviceTestCatalog | ForEach-Object {
     path = ($_.Path -replace "\\", "/")
     tool = $_.Tool
     context = $context
+    dockerfile = if ($build.Dockerfile) { $build.Dockerfile -replace "\\", "/" } else { "$($build.Context -replace '\\', '/')/Dockerfile" }
+    source_paths = if ($build.SourcePaths) { $build.SourcePaths -join "|" } else { $build.Context -replace "\\", "/" }
     image = $build.Image
     build_args = if ($build.BuildArgs) { $build.BuildArgs -join "`n" } else { "" }
   }
@@ -124,7 +126,9 @@ if ($allAffected) {
 } else {
   foreach ($service in $services) {
     foreach ($file in $changedFiles) {
-      if ($file.StartsWith("$($service.path)/") -or $file -eq "deploy/cloudrun/$($service.name).yaml") {
+      if ($file.StartsWith("$($service.path)/") -or
+          $file -eq "deploy/cloudrun/$($service.name).yaml" -or
+          ($file -eq "pom.xml" -and $service.tool -eq "maven")) {
         $affected.Add($service)
         break
       }
@@ -140,6 +144,8 @@ $dockerMatrix = @{
       @{
         name = $_.name
         context = $_.context
+        dockerfile = $_.dockerfile
+        source_paths = $_.source_paths
         image = $_.image
         build_args = $_.build_args
       }

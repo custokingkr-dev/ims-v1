@@ -194,7 +194,10 @@ Invoke-Step "microservice build catalog audit" {
                         $args += @("--build-arg", $buildArg)
                     }
                 }
-                $args += $build.Context
+                if ($build.Dockerfile) {
+                    $args += @("--file", $build.Dockerfile)
+                }
+                $args += $(if ($build.BuildContext) { $build.BuildContext } else { $build.Context })
                 docker @args
             }
         }

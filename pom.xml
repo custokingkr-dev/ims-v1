@@ -1,0 +1,122 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://www.maven.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.custoking</groupId>
+    <artifactId>custoking-java-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>custoking-java-parent</name>
+    <description>Parent and reactor for Custoking IMS Java services</description>
+
+    <modules>
+        <module>services/billing-service</module>
+        <module>services/identity-service</module>
+        <module>services/operations-service</module>
+        <module>services/platform-service</module>
+        <module>services/school-core-service</module>
+    </modules>
+
+    <properties>
+        <java.version>25</java.version>
+        <maven.minimum.version>3.9.0</maven.minimum.version>
+        <google-cloud-libraries-bom.version>26.86.0</google-cloud-libraries-bom.version>
+        <grpc.version>1.83.1</grpc.version>
+        <postgresql.version>42.7.12</postgresql.version>
+        <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
+        <opentelemetry-gcp-auth-extension.version>1.59.0-alpha</opentelemetry-gcp-auth-extension.version>
+        <google-auth-library.version>1.50.0</google-auth-library.version>
+        <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback-encoder.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.opentelemetry.contrib</groupId>
+                <artifactId>opentelemetry-gcp-auth-extension</artifactId>
+                <version>${opentelemetry-gcp-auth-extension.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.google.auth</groupId>
+                <artifactId>google-auth-library-oauth2-http</artifactId>
+                <version>${google-auth-library.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>${maven-enforcer-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>enforce-build-baseline</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireMavenVersion>
+                                    <version>[${maven.minimum.version},)</version>
+                                </requireMavenVersion>
+                                <requireJavaVersion>
+                                    <version>[${java.version},26)</version>
+                                </requireJavaVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>enforce-dependency-convergence</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <!-- These six artifacts are the explicitly baselined convergence
+                                 debt in the existing Google Cloud/Jackson/POI/OTel graphs. All
+                                 other convergence regressions fail the build. Remove exclusions
+                                 individually as the upstream graphs are reconciled and tested. -->
+                            <rules>
+                                <dependencyConvergence>
+                                    <excludes>
+                                        <exclude>com.google.guava:guava</exclude>
+                                        <exclude>com.google.j2objc:j2objc-annotations</exclude>
+                                        <exclude>com.google.errorprone:error_prone_annotations</exclude>
+                                        <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>
+                                        <exclude>commons-io:commons-io</exclude>
+                                        <exclude>io.opentelemetry.semconv:opentelemetry-semconv</exclude>
+                                    </excludes>
+                                </dependencyConvergence>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-Xshare:off -Duser.timezone=UTC -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "//run.googleapis.com/projects/custoking-prod/locations/asia-south2/services/custoking-api-gateway-prod",
+    "assetType": "run.googleapis.com/Service",
+    "project": "projects/182609177023",
+    "location": "asia-south2",
+    "state": "ACTIVE",
+    "displayName": "custoking-api-gateway-prod"
+  },
+  {
+    "name": "//storage.googleapis.com/custoking-prod-student-photos",
+    "assetType": "storage.googleapis.com/Bucket",
+    "project": "projects/182609177023",
+    "location": "asia-south2",
+    "state": "ACTIVE",
+    "displayName": "custoking-prod-student-photos"
+  }
+]

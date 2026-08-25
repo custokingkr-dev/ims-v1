@@ -1,6 +1,7 @@
 'use strict';
 
 const { flushTracing } = require('./tracing');
+const { classifyCompatibilityRequest, applyDeprecationHeaders } = require('./api-contract');
 
 const http = require('http');
 const crypto = require('crypto');
@@ -176,6 +177,7 @@ const server = http.createServer(async (req, res) => {
   let requestId = req.headers['x-request-id'] || randomUUID();
   let parsed = null;
   let matchedService = null;
+  let compatibility = null;
   // Tenant context for the request log. Set only after a principal is verified, so an unauthenticated
   // 401 is never attributed to a school.
   //
@@ -227,6 +229,9 @@ const server = http.createServer(async (req, res) => {
       status: res.statusCode,
       durationMs: Math.round(durationMs),
       upstreamService: matchedService,
+      compatibilityRouteId: compatibility ? compatibility.id : undefined,
+      compatibilityRouteKind: compatibility ? compatibility.kind : undefined,
+      compatibilitySuccessor: compatibility ? compatibility.successor : undefined,
       schoolId,
       userId,
     }, traceFields);
@@ -281,6 +286,11 @@ const server = http.createServer(async (req, res) => {
     const matched = routes.find((candidate) => candidate.matches(parsed.pathname, req.method));
     if (matched) {
       matchedService = matched.service;
+      compatibility = classifyCompatibilityRequest(parsed.pathname, req.method);
+      if (compatibility) {
+        gatewaySpan.setAttribute('ims.api.compatibility_route', compatibility.id);
+        gatewaySpan.setAttribute('ims.api.compatibility_kind', compatibility.kind);
+      }
       if (requiresUserAuth(parsed.pathname) && AUTH_MODE !== 'permissive') {
         const principal = await authenticate(req, requestId);
         if (!principal) {
@@ -289,10 +299,10 @@ const server = http.createServer(async (req, res) => {
         }
         schoolId = principal.branchId ?? null;
         userId = principal.userId ?? null;
-        await proxy(req, res, matched, parsed, requestId, principal);
+        await proxy(req, res, matched, parsed, requestId, principal, compatibility);
         return;
       }
-      await proxy(req, res, matched, parsed, requestId, null);
+      await proxy(req, res, matched, parsed, requestId, null, compatibility);
       return;
     }
 
@@ -488,10 +498,10 @@ async function proxyFrontend(req, res, parsed, requestId) {
   await proxyToUrl(req, res, target, requestId, null, null);
 }
 
-async function proxy(req, res, matched, parsed, requestId, principal) {
+async function proxy(req, res, matched, parsed, requestId, principal, compatibility = null) {
   const upstream = upstreams[matched.service];
   const target = buildUpstreamTarget(upstream, matched.rewrite(parsed.pathname), parsed.search);
-  await proxyToUrl(req, res, target, requestId, matched.service, principal);
+  await proxyToUrl(req, res, target, requestId, matched.service, principal, { compatibility });
 }
 
 async function proxyToUrl(req, res, target, requestId, service, principal, opts = {}) {
@@ -534,6 +544,7 @@ async function proxyToUrl(req, res, target, requestId, service, principal, opts 
     const cookies = response.headers.getSetCookie();
     if (cookies.length) res.setHeader('set-cookie', cookies);
   }
+  applyDeprecationHeaders(res, opts.compatibility);
   if (response.body) {
     for await (const chunk of response.body) {
       res.write(chunk);

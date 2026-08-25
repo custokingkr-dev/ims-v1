@@ -64,6 +64,7 @@ const {
   flushTracing,
   tracesEndpoint,
 } = require('./tracing');
+const { inventory } = require('./api-contract');
 
 test.after(() => {
   if (server.listening) {
@@ -151,6 +152,29 @@ test('auth classifier treats login refresh and logout as public auth routes', ()
   assert.equal(requiresUserAuth('/api/v1/auth/introspect'), true);
   assert.equal(requiresUserAuth('/reporting-api/v1/dashboard'), true);
   assert.equal(requiresUserAuth('/assets/index.js'), false);
+});
+
+test('every compatibility controller mapping remains reachable through the owning gateway route', () => {
+  const owningGatewayService = {
+    BillingPublicCompatibilityController: 'billing',
+    IdentityPublicCompatibilityController: 'identity',
+    FirefightingPublicCompatibilityController: 'firefighting',
+    AuditPublicCompatibilityController: 'audit',
+    ReportingApprovalsCompatibilityController: 'reporting',
+    ReportingPublicCompatibilityController: 'reporting',
+    CatalogPublicCompatibilityController: 'catalog',
+    FeePublicCompatibilityController: 'fee',
+    StudentWorkspaceCompatibilityController: 'student',
+    TenantSchoolPublicCompatibilityController: 'tenant',
+  };
+
+  for (const endpoint of inventory.endpoints.filter((candidate) => candidate.classification === 'compatibility')) {
+    const samplePath = endpoint.path.replace(/\{[^}]+\}/g, 'sample');
+    const matched = routes.find((candidate) => candidate.matches(samplePath, endpoint.method));
+    assert.ok(matched, `${endpoint.method} ${endpoint.path} is not exposed by the gateway`);
+    assert.equal(matched.service, owningGatewayService[endpoint.controller],
+      `${endpoint.method} ${endpoint.path} routes to ${matched.service}`);
+  }
 });
 
 test('cookie-auth classifier is limited to refresh and logout routes', () => {

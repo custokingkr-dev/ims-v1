@@ -40,18 +40,37 @@ const ALLOWED = (process.env.DASHBOARD_ALLOWED_EMAILS || "")
 const COOKIE_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 
 const SESSION_HOURS = 12;
+const OAUTH_STATE_MINUTES = 10;
+const configuredTimeout = Number(process.env.DASHBOARD_AUTH_UPSTREAM_TIMEOUT_MS || 10_000);
+const UPSTREAM_TIMEOUT_MS = Number.isFinite(configuredTimeout) && configuredTimeout > 0
+  ? configuredTimeout : 10_000;
+const MAX_JSON_BYTES = 1024 * 1024;
+
+const consumedOAuthStates = new Map();
+const revokedSessions = new Map();
 
 let jwksCache = { keys: [], fetchedAt: 0 };
 
 function getJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const req = https.get(url, (res) => {
       let body = "";
-      res.on("data", (c) => (body += c));
+      res.on("data", (c) => {
+        body += c;
+        if (Buffer.byteLength(body) > MAX_JSON_BYTES) {
+          req.destroy(new Error("OAuth upstream response exceeded the size limit"));
+        }
+      });
       res.on("end", () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`OAuth upstream returned HTTP ${res.statusCode}`));
+        }
         try { resolve(JSON.parse(body)); } catch (e) { reject(e); }
       });
-    }).on("error", reject);
+    });
+    req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
+      req.destroy(new Error(`OAuth upstream timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
+    req.on("error", reject);
   });
 }
 
@@ -69,7 +88,7 @@ function b64urlToBuf(s) {
 }
 
 // Verifies signature, issuer, audience and expiry. Returns the email or throws.
-export async function verifyIdToken(idToken) {
+export async function verifyIdToken(idToken, expectedNonce) {
   const [headB64, payloadB64, sigB64] = String(idToken).split(".");
   if (!headB64 || !payloadB64 || !sigB64) throw new Error("malformed id_token");
 
@@ -93,6 +112,7 @@ export async function verifyIdToken(idToken) {
     throw new Error("wrong issuer");
   }
   if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) throw new Error("expired");
+  if (!expectedNonce || !safeEqual(payload.nonce, expectedNonce)) throw new Error("wrong nonce");
   // An unverified email could be attacker-controlled on some account types.
   if (!payload.email || payload.email_verified !== true) throw new Error("unverified email");
 
@@ -109,23 +129,40 @@ function sign(value) {
   return crypto.createHmac("sha256", COOKIE_SECRET).update(value).digest("base64url");
 }
 
+function safeEqual(left, right) {
+  const a = Buffer.from(String(left || ""));
+  const b = Buffer.from(String(right || ""));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function cookieValue(cookieHeader, name) {
+  return new RegExp(`(?:^|;\\s*)${name}=([^;]+)`).exec(cookieHeader || "")?.[1] || null;
+}
+
+function purgeExpired(map) {
+  const now = Date.now();
+  for (const [key, expiresAt] of map) {
+    if (!(expiresAt > now)) map.delete(key);
+  }
+}
+
 export function makeSession(email) {
   const expires = Date.now() + SESSION_HOURS * 3600_000;
-  const value = `${Buffer.from(email).toString("base64url")}.${expires}`;
+  const sessionId = crypto.randomBytes(18).toString("base64url");
+  const value = `${Buffer.from(email).toString("base64url")}.${expires}.${sessionId}`;
   return `${value}.${sign(value)}`;
 }
 
 export function readSession(cookieHeader) {
-  const raw = /(?:^|;\s*)ck_session=([^;]+)/.exec(cookieHeader || "")?.[1];
+  purgeExpired(revokedSessions);
+  const raw = cookieValue(cookieHeader, "ck_session");
   if (!raw) return null;
   const parts = raw.split(".");
-  if (parts.length !== 3) return null;
-  const value = `${parts[0]}.${parts[1]}`;
+  if (parts.length !== 4) return null;
+  const value = `${parts[0]}.${parts[1]}.${parts[2]}`;
   // timingSafeEqual rather than === so the comparison does not leak the signature a byte at a time.
   const expected = sign(value);
-  const a = Buffer.from(parts[2]);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  if (!safeEqual(parts[3], expected) || revokedSessions.has(parts[3])) return null;
   // Written as "not in the future" rather than "in the past" so a non-numeric expiry fails CLOSED.
   // Number("abc") is NaN, and NaN < Date.now() is false -- the past-tense form would have accepted a
   // session that never expires. Unreachable today, because the expiry is inside the signed value and
@@ -138,27 +175,88 @@ export function readSession(cookieHeader) {
   return isAllowed(email) ? email : null;
 }
 
+export function revokeSession(cookieHeader) {
+  const raw = cookieValue(cookieHeader, "ck_session");
+  if (!raw) return;
+  const parts = raw.split(".");
+  if (parts.length !== 4) return;
+  const value = `${parts[0]}.${parts[1]}.${parts[2]}`;
+  if (!safeEqual(parts[3], sign(value))) return;
+  const expiresAt = Number(parts[1]);
+  if (expiresAt > Date.now()) revokedSessions.set(parts[3], expiresAt);
+}
+
+export const clearSessionCookie =
+  "ck_session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0";
+export const clearOAuthStateCookie =
+  "ck_oauth_state=; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=0";
+
 // --- oauth ------------------------------------------------------------------------------------------
 
-export function authUrl(redirectUri, state) {
+export function beginOAuth(destination) {
+  purgeExpired(consumedOAuthStates);
+  const nonce = crypto.randomBytes(24).toString("base64url");
+  const codeVerifier = crypto.randomBytes(32).toString("base64url");
+  const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+  const expiresAt = Date.now() + OAUTH_STATE_MINUTES * 60_000;
+  const payload = Buffer.from(JSON.stringify({ nonce, destination, codeVerifier, expiresAt }))
+    .toString("base64url");
+  const value = `${payload}.${sign(payload)}`;
+  return {
+    state: nonce,
+    codeChallenge,
+    cookie: `ck_oauth_state=${value}; HttpOnly; Secure; SameSite=Lax; Path=/auth/callback; Max-Age=${OAUTH_STATE_MINUTES * 60}`,
+  };
+}
+
+export function consumeOAuth(cookieHeader, receivedState) {
+  purgeExpired(consumedOAuthStates);
+  const raw = cookieValue(cookieHeader, "ck_oauth_state");
+  if (!raw) throw new Error("OAuth state cookie is missing or expired");
+  const parts = raw.split(".");
+  if (parts.length !== 2 || !safeEqual(parts[1], sign(parts[0]))) {
+    throw new Error("OAuth state cookie is invalid");
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(Buffer.from(parts[0], "base64url").toString("utf8"));
+  } catch {
+    throw new Error("OAuth state cookie is malformed");
+  }
+  if (!payload || typeof payload.nonce !== "string" || typeof payload.destination !== "string"
+      || typeof payload.codeVerifier !== "string" || !(Number(payload.expiresAt) > Date.now())) {
+    throw new Error("OAuth state cookie is missing required data or expired");
+  }
+  if (!safeEqual(receivedState, payload.nonce)) throw new Error("OAuth state did not match");
+  if (consumedOAuthStates.has(payload.nonce)) throw new Error("OAuth state was already used");
+  consumedOAuthStates.set(payload.nonce, Number(payload.expiresAt));
+  return { destination: payload.destination, codeVerifier: payload.codeVerifier, nonce: payload.nonce };
+}
+
+export function authUrl(redirectUri, state, codeChallenge) {
   const p = new URLSearchParams({
     client_id: CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "openid email",
     state,
+    nonce: state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
     prompt: "select_account",
   });
   return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
 
-export function exchangeCode(code, redirectUri) {
+export function exchangeCode(code, redirectUri, codeVerifier) {
   const body = new URLSearchParams({
     code,
     client_id: CLIENT_ID,
     client_secret: CLIENT_SECRET,
     redirect_uri: redirectUri,
     grant_type: "authorization_code",
+    code_verifier: codeVerifier,
   }).toString();
 
   return new Promise((resolve, reject) => {
@@ -172,16 +270,27 @@ export function exchangeCode(code, redirectUri) {
       },
     }, (res) => {
       let out = "";
-      res.on("data", (c) => (out += c));
+      res.on("data", (c) => {
+        out += c;
+        if (Buffer.byteLength(out) > MAX_JSON_BYTES) {
+          req.destroy(new Error("OAuth token response exceeded the size limit"));
+        }
+      });
       res.on("end", () => {
         try {
           const parsed = JSON.parse(out);
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            return reject(new Error(
+              parsed.error_description || parsed.error || `OAuth token endpoint returned HTTP ${res.statusCode}`));
+          }
           if (parsed.error) return reject(new Error(parsed.error_description || parsed.error));
           resolve(parsed);
         } catch (e) { reject(e); }
       });
     });
     req.on("error", reject);
+    req.setTimeout(UPSTREAM_TIMEOUT_MS, () =>
+      req.destroy(new Error(`OAuth token exchange timed out after ${UPSTREAM_TIMEOUT_MS}ms`)));
     req.end(body);
   });
 }

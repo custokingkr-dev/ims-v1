@@ -1,6 +1,6 @@
 locals {
   operational_storage_bucket_ids = length(var.storage_bucket_ids) > 0 ? toset(var.storage_bucket_ids) : toset([
-    "custoking-student-photos-${var.env}",
+    "custoking-${var.env}-student-photos",
   ])
 }
 

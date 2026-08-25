@@ -10,7 +10,11 @@ locals {
   billing_cost_read_project = var.cost_metric_bq_project != "" ? var.cost_metric_bq_project : var.project
 
   billing_cost_export_available = "custom.googleapis.com/custoking/cost/export_available"
+  billing_cost_standard_export  = "custom.googleapis.com/custoking/cost/standard_export_available"
+  billing_cost_detailed_export  = "custom.googleapis.com/custoking/cost/detailed_export_available"
+  billing_cost_data_grade       = "custom.googleapis.com/custoking/cost/billing_data_grade"
   billing_cost_export_lag       = "custom.googleapis.com/custoking/cost/export_lag_hours"
+  billing_cost_usage_lag        = "custom.googleapis.com/custoking/cost/usage_lag_hours"
   billing_cost_gross_yesterday  = "custom.googleapis.com/custoking/cost/gross_yesterday"
   billing_cost_net_yesterday    = "custom.googleapis.com/custoking/cost/net_yesterday"
   billing_cost_gross_mtd        = "custom.googleapis.com/custoking/cost/gross_month_to_date"
@@ -29,6 +33,8 @@ locals {
     "",
     "**Confirmed spend** comes from `${local.billing_cost_read_project}.billing_export` and is delayed by",
     "Cloud Billing. Check **export available** and **source lag** before trusting a money panel.",
+    "The **billing data grade** is explicit: `0` = estimated only, `1` = standard invoice-grade export,",
+    "and `2` = detailed resource-level invoice-grade export.",
     "",
     "**Live cost drivers** come directly from Cloud Monitoring. They remain current when billing export is",
     "delayed, but they are usage signals rather than invoice amounts.",
@@ -71,6 +77,25 @@ resource "google_monitoring_dashboard" "billing_cost" {
           }
         },
         {
+          title = "Billing data grade (0 estimate, 1 standard, 2 detailed)"
+          scorecard = {
+            timeSeriesQuery = {
+              timeSeriesFilter = {
+                filter = join(" AND ", [
+                  "metric.type=\"${local.billing_cost_data_grade}\"",
+                  local.billing_cost_project_filter,
+                ])
+                aggregation = {
+                  alignmentPeriod    = "3600s"
+                  perSeriesAligner   = "ALIGN_MEAN"
+                  crossSeriesReducer = "REDUCE_MAX"
+                }
+              }
+            }
+            sparkChartView = { sparkChartType = "SPARK_LINE" }
+          }
+        },
+        {
           title = "Billing export source lag (hours)"
           scorecard = {
             timeSeriesQuery = {
@@ -78,6 +103,26 @@ resource "google_monitoring_dashboard" "billing_cost" {
               timeSeriesFilter = {
                 filter = join(" AND ", [
                   "metric.type=\"${local.billing_cost_export_lag}\"",
+                  local.billing_cost_project_filter,
+                ])
+                aggregation = {
+                  alignmentPeriod    = "3600s"
+                  perSeriesAligner   = "ALIGN_MEAN"
+                  crossSeriesReducer = "REDUCE_MAX"
+                }
+              }
+            }
+            sparkChartView = { sparkChartType = "SPARK_LINE" }
+          }
+        },
+        {
+          title = "Newest exported usage age (hours)"
+          scorecard = {
+            timeSeriesQuery = {
+              unitOverride = "h"
+              timeSeriesFilter = {
+                filter = join(" AND ", [
+                  "metric.type=\"${local.billing_cost_usage_lag}\"",
                   local.billing_cost_project_filter,
                 ])
                 aggregation = {

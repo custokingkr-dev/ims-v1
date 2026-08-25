@@ -148,6 +148,7 @@ jobs:
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           load: true
           tags: ${{ env.IMAGE_REF }}
           build-args: ${{ matrix.build_args }}

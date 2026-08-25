@@ -29,7 +29,6 @@
   gap: 16px;
   padding: 16px;
   border: 1px solid var(--border);
-  border-left: 3px solid var(--g);
   border-radius: 8px;
   background: #fff;
 }
@@ -415,6 +414,19 @@
 .pi-segments button.active { background: var(--g); color: #fff; }
 
 .pi-table-wrap { width: 100%; overflow-x: auto; }
+.pi-table-empty {
+  min-height: 160px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  padding: 24px;
+  color: var(--ink3);
+  text-align: center;
+}
+.pi-table-empty strong { color: var(--ink2); font-size: 13px; }
+.pi-table-empty span { max-width: 48ch; font-size: 12px; }
+.pi-table-empty .ck-btn { margin-top: 6px; }
 .pi-table { width: 100%; min-width: 900px; border-collapse: collapse; table-layout: fixed; }
 .pi-table th {
   padding: 10px 12px;
@@ -517,6 +529,8 @@
 .pi-preview-dialog span { color: var(--ink3); font-size: 11px; overflow-wrap: anywhere; }
 .pi-preview-dialog img { width: 100%; aspect-ratio: 1; border-radius: 6px; object-fit: contain; background: #f4f4f0; }
 .pi-preview-dialog .ck-btn { justify-self: end; }
+.pi-preview-dialog:focus-visible,
+.pi-review-dialog:focus-visible { outline: 2px solid var(--b); outline-offset: 3px; }
 
 .pi-review-dialog {
   width: min(560px, 100%);

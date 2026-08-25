@@ -65,6 +65,10 @@ export function estimateDailyInr(totals) {
   const cloudRunInr = cloudRunUsd * INR_PER_USD;
 
   return {
+    evidenceGrade: "ESTIMATED_RUN_RATE",
+    invoiceGrade: false,
+    pricingRegion: "asia-south2",
+    pricingAsOf: "2026-08-19",
     cloudRunInr,
     cloudSqlInr: INR_PER_DAY_CLOUD_SQL,
     totalInr: cloudRunInr + INR_PER_DAY_CLOUD_SQL,

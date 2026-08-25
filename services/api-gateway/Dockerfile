@@ -4,7 +4,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev \
   && npm cache clean --force \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
-COPY tracing.js server.js ./
+COPY tracing.js api-contract.js api-route-inventory.json server.js ./
 ENV NODE_ENV=production
 ENV PORT=80
 EXPOSE 80

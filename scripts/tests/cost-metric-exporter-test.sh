@@ -54,11 +54,13 @@ EOF
 cat > "${TEST_TMP}/bin/bq" <<'EOF'
 #!/usr/bin/env bash
 query="${*: -1}"
+printf '%s\n' "${query}" >> "${BQ_LOG}"
 
 if [[ "${query}" == *'INFORMATION_SCHEMA.TABLES'* ]]; then
   case "${SCENARIO}" in
-    missing) printf '[{"standard_table_count":"0","pricing_table_count":"1"}]\n' ;;
-    *) printf '[{"standard_table_count":"1","pricing_table_count":"1"}]\n' ;;
+    missing) printf '[{"standard_table_count":"0","detailed_table_count":"0","pricing_table_count":"1"}]\n' ;;
+    detailed_scope_empty) printf '[{"standard_table_count":"0","detailed_table_count":"1","pricing_table_count":"1"}]\n' ;;
+    *) printf '[{"standard_table_count":"1","detailed_table_count":"0","pricing_table_count":"1"}]\n' ;;
   esac
   exit 0
 fi
@@ -69,7 +71,7 @@ if [[ "${query}" == *'ROUND(TIMESTAMP_DIFF'* ]]; then
       printf 'Access Denied: test failure\n' >&2
       exit 1
       ;;
-    scope_empty) printf '[]\n' ;;
+    scope_empty|detailed_scope_empty) printf '[]\n' ;;
   esac
   exit 0
 fi
@@ -85,6 +87,7 @@ run_exporter() {
   local scenario="$1"
   local output_file="$2"
   : > "${CURL_LOG}"
+  : > "${BQ_LOG}"
   if ! SCENARIO="${scenario}" \
     PATH="${TEST_TMP}/bin:${PATH}" \
     COST_METRIC_PROJECT=report-project \
@@ -107,18 +110,26 @@ assert_contains() {
 }
 
 export CURL_LOG="${TEST_TMP}/curl.log"
+export BQ_LOG="${TEST_TMP}/bq.log"
 
 missing_output="${TEST_TMP}/missing.out"
 run_exporter missing "${missing_output}"
-assert_contains "${missing_output}" 'has no gcp_billing_export_v1_* table'
-assert_contains "${missing_output}" 'published export health: available=0 lag_hours=-1'
+assert_contains "${missing_output}" 'has no standard gcp_billing_export_v1_*'
+assert_contains "${missing_output}" 'detailed gcp_billing_export_resource_v1_* usage table'
+assert_contains "${missing_output}" 'published export health: available=0 grade=0 standard=0 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
 assert_contains "${CURL_LOG}" 'custom.googleapis.com/custoking/cost/export_available'
+assert_contains "${CURL_LOG}" 'custom.googleapis.com/custoking/cost/billing_data_grade'
 assert_contains "${CURL_LOG}" '"doubleValue": 0.0'
 
 empty_output="${TEST_TMP}/empty.out"
 run_exporter scope_empty "${empty_output}"
 assert_contains "${empty_output}" "none of it matches scope='report-project'"
-assert_contains "${empty_output}" 'published export health: available=0 lag_hours=-1'
+assert_contains "${empty_output}" 'published export health: available=0 grade=1 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
+
+detailed_output="${TEST_TMP}/detailed.out"
+run_exporter detailed_scope_empty "${detailed_output}"
+assert_contains "${detailed_output}" 'published export health: available=0 grade=2 standard=0 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${BQ_LOG}" 'gcp_billing_export_resource_v1_*'
 
 error_output="${TEST_TMP}/error.out"
 if run_exporter query_error "${error_output}"; then

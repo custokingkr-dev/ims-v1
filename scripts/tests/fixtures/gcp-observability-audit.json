@@ -1,0 +1,41 @@
+{
+  "inventory": {
+    "dashboards": [
+      {
+        "displayName": "Test dashboard",
+        "widgets": [
+          {
+            "scorecard": {
+              "timeSeriesQuery": {
+                "timeSeriesFilter": {
+                  "filter": "resource.type=\"gcs_bucket\" AND resource.labels.bucket_name=\"custoking-prod-student-photos\" AND metric.type=\"storage.googleapis.com/storage/v2/total_bytes\""
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "alertPolicies": [
+      {
+        "displayName": "Gateway requests",
+        "enabled": true,
+        "conditions": [
+          {
+            "conditionThreshold": {
+              "filter": "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"custoking-api-gateway-prod\" AND metric.type=\"run.googleapis.com/request_count\""
+            }
+          }
+        ]
+      }
+    ],
+    "buckets": [{"name": "custoking-prod-student-photos"}],
+    "services": [{"metadata": {"name": "custoking-api-gateway-prod"}}],
+    "subscriptions": [],
+    "sqlInstances": []
+  },
+  "timeSeriesByFilter": {
+    "resource.type=\"gcs_bucket\" AND resource.labels.bucket_name=\"custoking-prod-student-photos\" AND metric.type=\"storage.googleapis.com/storage/v2/total_bytes\"": 1,
+    "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"custoking-api-gateway-prod\" AND metric.type=\"run.googleapis.com/request_count\"": 1
+  }
+}

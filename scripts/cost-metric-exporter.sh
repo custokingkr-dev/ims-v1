@@ -62,8 +62,12 @@ for SUFFIX in gross_yesterday net_yesterday gross_month_to_date net_month_to_dat
 done
 
 for HEALTH_DESCRIPTOR in \
-  'export_available|1 when standard billing usage data exists for the requested project; otherwise 0.' \
-  'export_lag_hours|Hours since the newest standard billing export row; -1 when no matching row exists.'; do
+  'export_available|1 when an invoice-grade standard or detailed billing usage export exists; otherwise 0.' \
+  'standard_export_available|1 when the standard billing usage export exists; otherwise 0.' \
+  'detailed_export_available|1 when the resource-level detailed billing usage export exists; otherwise 0.' \
+  'billing_data_grade|0 means estimated-only, 1 standard invoice-grade, 2 detailed invoice-grade.' \
+  'export_lag_hours|Hours since the newest selected billing export delivery; -1 when no matching row exists.' \
+  'usage_lag_hours|Hours since usage_end_time in the newest selected billing row; -1 when no matching row exists.'; do
   SUFFIX="${HEALTH_DESCRIPTOR%%|*}"
   DESCRIPTION="${HEALTH_DESCRIPTOR#*|}"
   curl -s -o /dev/null -X POST \
@@ -80,15 +84,20 @@ done
 
 publish_export_health() {
   local available="$1"
-  local lag_hours="$2"
+  local standard_available="$2"
+  local detailed_available="$3"
+  local data_grade="$4"
+  local lag_hours="$5"
+  local usage_lag_hours="$6"
   local payload response http_code body
 
   payload=$(python3 - "${PUBLISH_PROJECT}" "${NOW}" "${SCOPE}" "${BQ_PROJECT}" "${DATASET}" \
-    "${available}" "${lag_hours}" <<'PY'
+    "${available}" "${standard_available}" "${detailed_available}" "${data_grade}" \
+    "${lag_hours}" "${usage_lag_hours}" <<'PY'
 import json
 import sys
 
-project, now, scope, read_project, dataset, available, lag_hours = sys.argv[1:]
+project, now, scope, read_project, dataset, available, standard_available, detailed_available, data_grade, lag_hours, usage_lag_hours = sys.argv[1:]
 labels = {
     "project_id": scope,
     "read_project": read_project,
@@ -107,7 +116,11 @@ def series(suffix, value):
 
 print(json.dumps({"timeSeries": [
     series("export_available", available),
+    series("standard_export_available", standard_available),
+    series("detailed_export_available", detailed_available),
+    series("billing_data_grade", data_grade),
     series("export_lag_hours", lag_hours),
+    series("usage_lag_hours", usage_lag_hours),
 ]}))
 PY
   )
@@ -123,7 +136,7 @@ PY
     echo "ERROR: monitoring health write failed (${http_code}): ${body:0:400}" >&2
     return 1
   fi
-  echo "published export health: available=${available} lag_hours=${lag_hours}"
+  echo "published export health: available=${available} grade=${data_grade} standard=${standard_available} detailed=${detailed_available} export_lag_hours=${lag_hours} usage_lag_hours=${usage_lag_hours}"
 }
 
 # Query INFORMATION_SCHEMA instead of probing the wildcard directly. BigQuery treats a wildcard with no
@@ -132,6 +145,7 @@ PY
 read -r -d '' INVENTORY_QUERY <<SQL || true
 SELECT
   COUNTIF(STARTS_WITH(table_name, 'gcp_billing_export_v1_')) AS standard_table_count,
+  COUNTIF(STARTS_WITH(table_name, 'gcp_billing_export_resource_v1_')) AS detailed_table_count,
   COUNTIF(STARTS_WITH(table_name, 'cloud_pricing_export')) AS pricing_table_count
 FROM \`${BQ_PROJECT}.${DATASET}.INFORMATION_SCHEMA.TABLES\`
 SQL
@@ -142,7 +156,7 @@ if ! INVENTORY=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql -
   "${INVENTORY_QUERY}" 2>"${INVENTORY_ERROR}"); then
   echo "ERROR: unable to inspect billing export dataset ${BQ_PROJECT}.${DATASET}." >&2
   sed 's/^/       /' "${INVENTORY_ERROR}" >&2
-  publish_export_health 0 -1 || true
+  publish_export_health 0 0 0 0 -1 -1 || true
   exit 1
 fi
 
@@ -150,16 +164,26 @@ STANDARD_TABLE_COUNT=$(printf '%s' "${INVENTORY}" | python3 -c \
   'import json,sys; rows=json.load(sys.stdin); print(int(rows[0]["standard_table_count"]) if rows else 0)')
 PRICING_TABLE_COUNT=$(printf '%s' "${INVENTORY}" | python3 -c \
   'import json,sys; rows=json.load(sys.stdin); print(int(rows[0]["pricing_table_count"]) if rows else 0)')
+DETAILED_TABLE_COUNT=$(printf '%s' "${INVENTORY}" | python3 -c \
+  'import json,sys; rows=json.load(sys.stdin); print(int(rows[0]["detailed_table_count"]) if rows else 0)')
 
-if [ "${STANDARD_TABLE_COUNT}" -eq 0 ]; then
-  echo "WARNING: ${BQ_PROJECT}.${DATASET} has no gcp_billing_export_v1_* table" >&2
+if [ "${STANDARD_TABLE_COUNT}" -eq 0 ] && [ "${DETAILED_TABLE_COUNT}" -eq 0 ]; then
+  echo "WARNING: ${BQ_PROJECT}.${DATASET} has no standard gcp_billing_export_v1_* or" >&2
+  echo "         detailed gcp_billing_export_resource_v1_* usage table" >&2
   echo "         (pricing tables found: ${PRICING_TABLE_COUNT}). Enable Standard usage cost export for the" >&2
   echo "         billing account or wait for its first delivery; pricing export alone contains rates, not" >&2
   echo "         project usage. The standard wildcard will be discovered automatically when it appears." >&2
-  publish_export_health 0 -1
+  publish_export_health 0 0 0 0 -1 -1
   exit 0
 fi
 
+if [ "${DETAILED_TABLE_COUNT}" -gt 0 ]; then
+  USAGE_TABLE_PREFIX="gcp_billing_export_resource_v1_"
+  BILLING_DATA_GRADE=2
+else
+  USAGE_TABLE_PREFIX="gcp_billing_export_v1_"
+  BILLING_DATA_GRADE=1
+fi
 
 
 # Gross and net are both emitted on purpose. Net alone would have read as ~zero for this project's whole
@@ -176,8 +200,9 @@ SELECT
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH), cost, 0)), 4) AS gross_mtd,
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH),
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd,
-  ROUND(TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(export_time), MINUTE) / 60.0, 2) AS export_lag_hours
-FROM \`${BQ_PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
+  ROUND(TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(export_time), MINUTE) / 60.0, 2) AS export_lag_hours,
+  ROUND(TIMESTAMP_DIFF(CURRENT_TIMESTAMP(), MAX(usage_end_time), MINUTE) / 60.0, 2) AS usage_lag_hours
+FROM \`${BQ_PROJECT}.${DATASET}.${USAGE_TABLE_PREFIX}*\`
 WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
   AND ("${SCOPE}" = "*" OR project.id = "${SCOPE}")
 GROUP BY 1, 2, 3
@@ -193,7 +218,8 @@ if ! ROWS=$(bq query --project_id="${PUBLISH_PROJECT}" --nouse_legacy_sql --form
   "${QUERY}" 2>"${QUERY_ERROR}"); then
   echo "ERROR: standard billing export query failed for ${BQ_PROJECT}.${DATASET}." >&2
   sed 's/^/       /' "${QUERY_ERROR}" >&2
-  publish_export_health 0 -1 || true
+  publish_export_health 0 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
+    "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" "${BILLING_DATA_GRADE}" -1 -1 || true
   exit 1
 fi
 
@@ -212,7 +238,7 @@ if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
            IFNULL(project.id, '(unattributed)') AS project_id,
            COUNT(*) AS rows_62d,
            CAST(MAX(DATE(usage_start_time)) AS STRING) AS newest_usage
-    FROM \`${BQ_PROJECT}.${DATASET}.gcp_billing_export_v1_*\`
+    FROM \`${BQ_PROJECT}.${DATASET}.${USAGE_TABLE_PREFIX}*\`
     WHERE DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
     GROUP BY 1, 2 ORDER BY 3 DESC" 2>/dev/null || echo "")
 
@@ -229,7 +255,8 @@ if [ -z "${ROWS}" ] || [ "${ROWS}" = "[]" ]; then
     printf '%s
 ' "${DIAG}" | sed 's/^/           /' >&2
   fi
-  publish_export_health 0 -1
+  publish_export_health 0 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
+    "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" "${BILLING_DATA_GRADE}" -1 -1
   exit 0
 fi
 
@@ -238,7 +265,11 @@ fi
 # age of the workload being billed.
 EXPORT_LAG_HOURS=$(printf '%s' "${ROWS}" | python3 -c \
   'import json,sys; rows=json.load(sys.stdin); lags=[float(r["export_lag_hours"]) for r in rows if r.get("export_lag_hours") is not None]; print(min(lags) if lags else -1)')
-publish_export_health 1 "${EXPORT_LAG_HOURS}"
+USAGE_LAG_HOURS=$(printf '%s' "${ROWS}" | python3 -c \
+  'import json,sys; rows=json.load(sys.stdin); lags=[float(r["usage_lag_hours"]) for r in rows if r.get("usage_lag_hours") is not None]; print(min(lags) if lags else -1)')
+publish_export_health 1 "$([ "${STANDARD_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" \
+  "$([ "${DETAILED_TABLE_COUNT}" -gt 0 ] && echo 1 || echo 0)" "${BILLING_DATA_GRADE}" \
+  "${EXPORT_LAG_HOURS}" "${USAGE_LAG_HOURS}"
 
 # Written to a file rather than piped as a heredoc: the row JSON has to arrive on stdin, and a command
 # cannot take both its script and its input that way -- the second redirect silently wins and the script

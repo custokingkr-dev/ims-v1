@@ -57,6 +57,8 @@ coverage/
 playwright-report/
 test-results/
 load-tests/fixtures.json
+__pycache__/
+*.py[cod]
 
 # Uploads (local dev only)
 uploads/

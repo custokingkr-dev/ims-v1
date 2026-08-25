@@ -1,11 +1,11 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeParseException;
@@ -24,11 +24,29 @@ public class FeeReadRepository {
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
     private final GuardianCommunicationPolicy guardianCommunicationPolicy;
+    private final FeeReceiptRepository receipts;
+    private final FeeDocumentRenderer documents;
 
     public FeeReadRepository(JdbcClient jdbc, OutboxWriter outbox) {
+        FeeDocumentRenderer documents = new FeeDocumentRenderer();
         this.jdbc = jdbc;
         this.outbox = outbox;
         this.guardianCommunicationPolicy = new GuardianCommunicationPolicy(jdbc);
+        this.receipts = new FeeReceiptRepository(jdbc, documents);
+        this.documents = documents;
+    }
+
+    @Autowired
+    public FeeReadRepository(
+            JdbcClient jdbc,
+            OutboxWriter outbox,
+            FeeReceiptRepository receipts,
+            FeeDocumentRenderer documents) {
+        this.jdbc = jdbc;
+        this.outbox = outbox;
+        this.guardianCommunicationPolicy = new GuardianCommunicationPolicy(jdbc);
+        this.receipts = receipts;
+        this.documents = documents;
     }
 
     public List<FeeBandRow> bands(String academicYearId, Long schoolId) {
@@ -102,7 +120,7 @@ public class FeeReadRepository {
                 .param("academicYearId", year.get("id"))
                 .query(Long.class)
                 .single();
-        return simplePdf("Fee structure " + year.get("label") + " | bands " + (bandCount == null ? 0 : bandCount));
+        return documents.render("Fee structure " + year.get("label") + " | bands " + (bandCount == null ? 0 : bandCount));
     }
 
     @Transactional
@@ -835,19 +853,19 @@ public class FeeReadRepository {
     }
 
     public Map<String, Object> receiptByPaymentId(String paymentId) {
-        return receipt("p.id = :paymentId", spec -> spec.param("paymentId", paymentId), "Payment not found");
+        return receipts.byPaymentId(paymentId);
     }
 
     public Map<String, Object> receiptByReceiptNumber(String receiptNumber) {
-        return receipt("p.receipt_number = :receiptNumber", spec -> spec.param("receiptNumber", receiptNumber), "Receipt not found");
+        return receipts.byReceiptNumber(receiptNumber);
     }
 
     public byte[] receiptPdfByPaymentId(String paymentId) {
-        return receiptPdf(receiptByPaymentId(paymentId));
+        return receipts.pdfByPaymentId(paymentId);
     }
 
     public byte[] receiptPdfByReceiptNumber(String receiptNumber) {
-        return receiptPdf(receiptByReceiptNumber(receiptNumber));
+        return receipts.pdfByReceiptNumber(receiptNumber);
     }
 
     @Transactional
@@ -1137,28 +1155,6 @@ public class FeeReadRepository {
                 "paidAt", paidAt);
     }
 
-    private Map<String, Object> receipt(String predicate, ParamBinder binder, String notFoundMessage) {
-        var spec = jdbc.sql("""
-                        SELECT p.id, p.amount, p.mode, p.paid_at, p.receipt_number,
-                               s.id AS student_id, s.full_name AS student_name
-                        FROM fee.payment_records p
-                        LEFT JOIN student.students s ON s.id = p.student_id
-                        WHERE """ + " " + predicate + " " + """
-                        LIMIT 1
-                        """);
-        return binder.bind(spec)
-                .query((rs, rowNum) -> row(
-                        "paymentId", rs.getString("id"),
-                        "receiptNumber", rs.getString("receipt_number"),
-                        "studentId", rs.getLong("student_id"),
-                        "student", rs.getString("student_name"),
-                        "amount", rs.getLong("amount"),
-                        "mode", rs.getString("mode"),
-                        "paidAt", rs.getObject("paid_at", OffsetDateTime.class)))
-                .optional()
-                .orElseThrow(() -> new IllegalArgumentException(notFoundMessage));
-    }
-
     private List<Map<String, Object>> feeReportRows(
             String classId, String sectionId, String academicYearId, Long schoolId, boolean overdueOnly) {
         refreshLateFeesForClass(schoolId, academicYearId, classId, sectionId);
@@ -1320,11 +1316,6 @@ public class FeeReadRepository {
             Long studentId,
             String assignmentId,
             String student) {
-    }
-
-    private interface ParamBinder {
-        org.springframework.jdbc.core.simple.JdbcClient.StatementSpec bind(
-                org.springframework.jdbc.core.simple.JdbcClient.StatementSpec spec);
     }
 
     private String currentAcademicYearId() {
@@ -2013,59 +2004,6 @@ public class FeeReadRepository {
             digits = digits * 10L + digit;
         }
         return foundDigit ? (int) digits : 0;
-    }
-
-    private byte[] simplePdf(String content) {
-        String safe = escapePdfText(content);
-        String stream = "BT /F1 12 Tf 36 740 Td (" + safe + ") Tj ET\n";
-        List<String> objects = List.of(
-                "<< /Type /Catalog /Pages 2 0 R >>",
-                "<< /Type /Pages /Count 1 /Kids [3 0 R] >>",
-                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-                "<< /Length " + stream.getBytes(StandardCharsets.US_ASCII).length + " >>stream\n"
-                        + stream + "endstream",
-                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
-        );
-
-        StringBuilder pdf = new StringBuilder("%PDF-1.4\n");
-        List<Integer> offsets = new ArrayList<>(objects.size());
-        for (int i = 0; i < objects.size(); i++) {
-            offsets.add(pdf.length());
-            pdf.append(i + 1).append(" 0 obj").append(objects.get(i)).append("endobj\n");
-        }
-        int xrefOffset = pdf.length();
-        pdf.append("xref\n0 ").append(objects.size() + 1).append('\n')
-                .append("0000000000 65535 f \n");
-        for (Integer offset : offsets) {
-            pdf.append(String.format(Locale.ENGLISH, "%010d 00000 n \n", offset));
-        }
-        pdf.append("trailer<< /Size ").append(objects.size() + 1).append(" /Root 1 0 R >>\n")
-                .append("startxref\n").append(xrefOffset).append("\n%%EOF");
-        return pdf.toString().getBytes(StandardCharsets.US_ASCII);
-    }
-
-    private byte[] receiptPdf(Map<String, Object> payment) {
-        return simplePdf("Receipt " + textOrDefault(payment.get("receiptNumber"), "")
-                + " | Student: " + textOrDefault(payment.get("studentName"), textOrDefault(payment.get("student"), ""))
-                + " | Amount: " + textOrDefault(payment.get("amount"), "0")
-                + " | Mode: " + textOrDefault(payment.get("mode"), "")
-                + " | Paid at: " + textOrDefault(payment.get("paidAt"), ""));
-    }
-
-    private String escapePdfText(String content) {
-        if (content == null || content.isBlank()) return "";
-        StringBuilder escaped = new StringBuilder(content.length());
-        for (int i = 0; i < content.length(); i++) {
-            char ch = content.charAt(i);
-            if (ch == '(' || ch == ')' || ch == '\\') {
-                escaped.append('\\').append(ch);
-            } else if (ch >= 32 && ch <= 126) {
-                escaped.append(ch);
-            } else {
-                escaped.append(' ');
-            }
-        }
-        return escaped.toString();
     }
 
     private Map<String, Object> row(Object... kv) {

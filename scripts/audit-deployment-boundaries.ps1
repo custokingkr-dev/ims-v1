@@ -55,7 +55,7 @@ foreach ($service in $catalog) {
     $violations.Add("docker-compose.yml is missing service: $($service.Name)")
   }
 
-  $dockerfilePath = Join-Path $repoRoot "$($service.Context)/Dockerfile"
+  $dockerfilePath = Join-Path $repoRoot $(if ($service.Dockerfile) { $service.Dockerfile } else { "$($service.Context)/Dockerfile" })
   $dockerfile = Get-Content -Raw -Path $dockerfilePath
   foreach ($fromLine in @($dockerfile -split "`r?`n" | Where-Object { $_ -match "^FROM\s" })) {
     if ($fromLine -notmatch "@sha256:[0-9a-f]{64}") {

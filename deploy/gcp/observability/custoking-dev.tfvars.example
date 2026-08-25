@@ -16,6 +16,10 @@ project = "custoking-dev"
 region  = "asia-south2"
 env     = "dev"
 
+# Post-migration bucket naming is custoking-<env>-student-photos. Set this explicitly so a restored
+# state file or older local tfvars cannot recreate an alert against the retired pre-split bucket name.
+storage_bucket_ids = ["custoking-dev-student-photos"]
+
 enable_uptime_checks = true
 
 # The source project had a single channel, which fails the runbook's own primary-and-backup requirement.

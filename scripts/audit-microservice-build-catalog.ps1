@@ -17,7 +17,7 @@ $resolver = Get-Content -Raw -Path $resolverPath
 $verify = Get-Content -Raw -Path $verifyPath
 $violations = New-Object System.Collections.Generic.List[string]
 
-foreach ($required in @("_detect-changes.yml", "service_matrix", "docker_matrix", "fromJSON(needs.detect.outputs.service_matrix)", "fromJSON(needs.detect.outputs.docker_matrix)", "matrix.context", "matrix.image")) {
+foreach ($required in @("_detect-changes.yml", "service_matrix", "docker_matrix", "fromJSON(needs.detect.outputs.service_matrix)", "fromJSON(needs.detect.outputs.docker_matrix)", "matrix.context", "matrix.dockerfile", "matrix.image")) {
     if ($ci -notmatch [regex]::Escape($required)) {
         $violations.Add("CI workflow missing dynamic catalog contract: $required")
     }
@@ -30,12 +30,14 @@ foreach ($required in @("Get-MicroserviceBuildCatalog", "Get-MicroserviceTestCat
 }
 
 foreach ($service in $catalog) {
-    $context = $service.Context
+    $context = if ($service.BuildContext) { $service.BuildContext } else { $service.Context }
     $contextPath = Join-Path $repoRoot $context
+    $dockerfile = if ($service.Dockerfile) { $service.Dockerfile } else { "$($service.Context)/Dockerfile" }
+    $dockerfilePath = Join-Path $repoRoot $dockerfile
     if (-not (Test-Path -LiteralPath $contextPath)) {
         $violations.Add("Build catalog context does not exist for $($service.Name): $context")
-    } elseif (-not (Test-Path -LiteralPath (Join-Path $contextPath "Dockerfile"))) {
-        $violations.Add("Build catalog context has no Dockerfile for $($service.Name): $context")
+    } elseif (-not (Test-Path -LiteralPath $dockerfilePath)) {
+        $violations.Add("Build catalog Dockerfile does not exist for $($service.Name): $dockerfile")
     }
 
     if ($verify -notmatch [regex]::Escape("Get-MicroserviceBuildCatalog")) {
@@ -44,7 +46,7 @@ foreach ($service in $catalog) {
     }
 }
 
-foreach ($required in @("needs.detect.outputs.docker_matrix", "cache-from: type=gha", "cache-to: type=gha", "resolve-image-source-id.ps1", "matrix.context", "matrix.image")) {
+foreach ($required in @("needs.detect.outputs.docker_matrix", "cache-from: type=gha", "cache-to: type=gha", "resolve-image-source-id.ps1", "matrix.context", "matrix.dockerfile", "matrix.source_paths", "matrix.image")) {
     if ($deploy -notmatch [regex]::Escape($required)) {
         $violations.Add("Deployment workflow missing affected-image build contract: $required")
     }
