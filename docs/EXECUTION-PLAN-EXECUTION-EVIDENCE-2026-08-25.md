@@ -53,16 +53,22 @@ repository-owned blockers:
   clone is created. Recovery IAM remains disabled pending security-owner approval.
 - Added a production-only, disposable Cloud Run evidence runner that requires the dedicated migration
   operator, obtains the database password only from Secret Manager, requires TLS, and independently enforces
-  both session and transaction read-only modes. Its production execution completed, its temporary job was
-  deleted and the migration operator was disabled again.
+  both session and transaction read-only modes. The runner submits a temporary manifest so the aggregate SQL
+  never crosses Windows' command-line limit. Its production execution completed, its temporary manifest and
+  job were deleted, and the migration operator was disabled again.
 - The read-only database evidence found zero billing migration issues, zero catalog rows requiring mapping,
   1,498 student rows with 1,036 exact guardian matches, one missing reporting student projection, four
   operations outbox rows and 1,591 school-core outbox rows older than 30 days, and one duplicate identity
   index definition pair. `pg_stat_statements` is not enabled. No rows or indexes were changed.
+- Guardian mismatch anatomy is now explicit: 385 father names and 376 father contacts are present only in
+  legacy columns; 51 father names and 33 contacts differ on both sides; one father name and one contact are
+  present only in the normalized model; and 11 mother names are present only in legacy columns. There are 203
+  normalized father identities linked to multiple students, 25 of which have conflicting sibling legacy
+  values; the largest shared group has four students. Those 25 groups are excluded from automatic repair.
 - Added forward synchronization from student create, update and spreadsheet-import writes into normalized
   guardian relationships. Existing guardian/link identities, consent references, permissions and primary
   flags are preserved, and normalized mother contact data is not erased by the legacy API. The complete
-  school-core suite passed with 565 tests; a separate PostgreSQL 16 integration test proves exact parity on
+  school-core suite passed with 569 tests; separate PostgreSQL 16 integration tests prove exact parity on
   all three write paths. PR 157 merged as `2a16e1df40344a7fdf2ab44ed356a160381b6705`; production release
   `rel-prod-2a16e1df4034-1` serves 100% on revision
   `custoking-school-core-service-prod-mt8m8se6`. Production CodeQL, Trivy, Cloud Deploy verification and an
@@ -204,9 +210,12 @@ No major dependency was mixed into this batch.
    guardian columns, compatibility routes, or candidate indexes are removed.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
-9. Guardian forward synchronization is deployed. Execute a separately reviewed repair of the 462 existing
-   mismatched students. Preserve normalized guardian IDs, consent references and normalized-only fields;
-   require parity to reach zero before any legacy parent column retirement.
+9. Guardian forward synchronization is deployed, and the shared-identity follow-up fans global identity
+   changes out to every linked student's legacy projection while preserving guardian IDs, consent history and
+   link-local permissions. Before repairing the 462 existing mismatched students, classify by `guardian_id`:
+   agreeing shared groups may be repaired once and fanned out, while the 25 divergent groups require reviewed
+   identity resolution. Never process the repair sequentially per student or rewrite consent events. Require
+   parity to reach zero before any legacy parent column retirement.
 10. Review the single missing reporting projection by identifier in the protected evidence channel before
     invoking the existing one-student idempotent requeue function. Do not bulk requeue projections.
 11. Processed outbox retention and the duplicate identity index remain observation-only evidence until

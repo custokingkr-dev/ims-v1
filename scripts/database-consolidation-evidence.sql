@@ -27,6 +27,80 @@ SELECT
     count(*) FILTER (WHERE NOT mother_name_matches) AS mother_name_mismatches
 FROM student.guardian_legacy_parity;
 
+\echo 'guardian mismatch anatomy'
+SELECT
+    count(*) FILTER (
+        WHERE NOT father_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_father_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_father_name, '')), '') IS NULL
+    ) AS father_name_missing_normalized,
+    count(*) FILTER (
+        WHERE NOT father_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_father_name, '')), '') IS NULL
+          AND NULLIF(btrim(COALESCE(normalized_father_name, '')), '') IS NOT NULL
+    ) AS father_name_missing_legacy,
+    count(*) FILTER (
+        WHERE NOT father_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_father_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_father_name, '')), '') IS NOT NULL
+    ) AS father_name_value_different,
+    count(*) FILTER (
+        WHERE NOT father_contact_matches
+          AND regexp_replace(COALESCE(legacy_father_contact, ''), '[^0-9]', '', 'g') <> ''
+          AND regexp_replace(COALESCE(normalized_father_contact, ''), '[^0-9]', '', 'g') = ''
+    ) AS father_contact_missing_normalized,
+    count(*) FILTER (
+        WHERE NOT father_contact_matches
+          AND regexp_replace(COALESCE(legacy_father_contact, ''), '[^0-9]', '', 'g') = ''
+          AND regexp_replace(COALESCE(normalized_father_contact, ''), '[^0-9]', '', 'g') <> ''
+    ) AS father_contact_missing_legacy,
+    count(*) FILTER (
+        WHERE NOT father_contact_matches
+          AND regexp_replace(COALESCE(legacy_father_contact, ''), '[^0-9]', '', 'g') <> ''
+          AND regexp_replace(COALESCE(normalized_father_contact, ''), '[^0-9]', '', 'g') <> ''
+    ) AS father_contact_value_different,
+    count(*) FILTER (
+        WHERE NOT mother_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_mother_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_mother_name, '')), '') IS NULL
+    ) AS mother_name_missing_normalized,
+    count(*) FILTER (
+        WHERE NOT mother_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_mother_name, '')), '') IS NULL
+          AND NULLIF(btrim(COALESCE(normalized_mother_name, '')), '') IS NOT NULL
+    ) AS mother_name_missing_legacy,
+    count(*) FILTER (
+        WHERE NOT mother_name_matches
+          AND NULLIF(btrim(COALESCE(legacy_mother_name, '')), '') IS NOT NULL
+          AND NULLIF(btrim(COALESCE(normalized_mother_name, '')), '') IS NOT NULL
+    ) AS mother_name_value_different
+FROM student.guardian_legacy_parity;
+
+\echo 'shared father identity conflict summary'
+WITH father_identity AS (
+    SELECT
+        link.guardian_id,
+        count(DISTINCT link.student_id) AS linked_students,
+        count(DISTINCT COALESCE(NULLIF(btrim(student_row.father_name), ''), '<empty>'))
+            AS distinct_legacy_names,
+        count(DISTINCT COALESCE(NULLIF(
+            regexp_replace(COALESCE(student_row.father_contact, ''), '[^0-9]', '', 'g'), ''), '<empty>'))
+            AS distinct_legacy_contacts
+    FROM student.student_guardians link
+    JOIN student.students student_row ON student_row.id = link.student_id
+    WHERE link.relationship = 'FATHER'
+      AND student_row.deleted_at IS NULL
+    GROUP BY link.guardian_id
+)
+SELECT
+    count(*) FILTER (WHERE linked_students > 1) AS shared_father_guardians,
+    count(*) FILTER (
+        WHERE linked_students > 1
+          AND (distinct_legacy_names > 1 OR distinct_legacy_contacts > 1)
+    ) AS shared_guardians_with_conflicting_legacy_values,
+    COALESCE(max(linked_students), 0) AS maximum_students_per_father_guardian
+FROM father_identity;
+
 \echo 'reporting student projection parity'
 SELECT * FROM reporting.student_projection_reconciliation_summary;
 SELECT issue, count(*) AS rows

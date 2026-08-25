@@ -70,6 +70,11 @@ COMMIT;
 "@
 $encodedSql = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($wrappedSql))
 $jobName = "ims-db-evidence-$([datetime]::UtcNow.ToString('yyyyMMddHHmmss'))-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+$tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$manifestPath = [IO.Path]::GetFullPath((Join-Path $tempRoot "$jobName.json"))
+if (-not $manifestPath.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "The disposable job manifest path escaped the operating-system temporary directory."
+}
 
 if (-not $Apply) {
     Write-Host "Dry run passed: aggregate-only SQL and production safety invariants validated."
@@ -128,19 +133,61 @@ try {
 
     # The password is never read by this process or placed on a command line. Cloud Run resolves
     # the named Secret Manager version directly into the container's PGPASSWORD environment.
-    $containerCommand = "umask 077 && printf '%s' '$encodedSql' | base64 -d > /tmp/evidence.sql && exec psql -X -q -v ON_ERROR_STOP=1 -h '$HostAddress' -p '$Port' -U '$DatabaseUser' -d '$Database' -f /tmp/evidence.sql"
-    $jobArgs = "-c,$containerCommand"
+    # A temporary manifest also keeps the evidence SQL below Windows' command-line length limit.
+    $containerCommand = "umask 077 && printf '%s' `"`$EVIDENCE_SQL_B64`" | base64 -d > /tmp/evidence.sql && export PGOPTIONS='-c default_transaction_read_only=on' && exec psql -X -q -v ON_ERROR_STOP=1 -h '$HostAddress' -p '$Port' -U '$DatabaseUser' -d '$Database' -f /tmp/evidence.sql"
+    $manifest = [ordered]@{
+        apiVersion = "run.googleapis.com/v1"
+        kind = "Job"
+        metadata = [ordered]@{
+            name = $jobName
+            labels = [ordered]@{ purpose = "database-consolidation-evidence" }
+        }
+        spec = [ordered]@{
+            template = [ordered]@{
+                metadata = [ordered]@{
+                    annotations = [ordered]@{
+                        "run.googleapis.com/execution-environment" = "gen2"
+                        "run.googleapis.com/network-interfaces" = "[{`"network`":`"$Network`",`"subnetwork`":`"$Subnet`"}]"
+                        "run.googleapis.com/vpc-access-egress" = "private-ranges-only"
+                    }
+                }
+                spec = [ordered]@{
+                    taskCount = 1
+                    template = [ordered]@{
+                        spec = [ordered]@{
+                            containers = @([ordered]@{
+                                image = "postgres:16-alpine"
+                                command = @("sh")
+                                args = @("-c", $containerCommand)
+                                env = @(
+                                    [ordered]@{ name = "PGSSLMODE"; value = "require" },
+                                    [ordered]@{ name = "EVIDENCE_SQL_B64"; value = $encodedSql },
+                                    [ordered]@{
+                                        name = "PGPASSWORD"
+                                        valueFrom = [ordered]@{
+                                            secretKeyRef = [ordered]@{ name = $PasswordSecret; key = "latest" }
+                                        }
+                                    }
+                                )
+                            })
+                            maxRetries = 0
+                            serviceAccountName = $MigrationOperatorServiceAccount
+                            timeoutSeconds = "900"
+                        }
+                    }
+                }
+            }
+        }
+    }
+    [IO.File]::WriteAllText(
+        $manifestPath,
+        ($manifest | ConvertTo-Json -Depth 20 -Compress),
+        [Text.UTF8Encoding]::new($false)
+    )
 
     Invoke-GcloudCaptured -Operation "create the disposable read-only evidence job" -Arguments @(
-        "run", "jobs", "create", $jobName,
+        "run", "jobs", "replace", $manifestPath,
         "--project=$ProjectId", "--region=$Region",
-        "--image=postgres:16-alpine", "--command=sh", "--args=$jobArgs",
-        "--service-account=$MigrationOperatorServiceAccount",
-        "--set-env-vars=PGSSLMODE=require,PGOPTIONS=-c default_transaction_read_only=on",
-        "--set-secrets=PGPASSWORD=${PasswordSecret}:latest",
-        "--network=$Network", "--subnet=$Subnet", "--vpc-egress=private-ranges-only",
-        "--tasks=1", "--parallelism=1", "--max-retries=0", "--task-timeout=15m",
-        "--labels=purpose=database-consolidation-evidence,lifecycle=disposable",
         "--quiet"
     ) | Out-Null
 
@@ -163,6 +210,9 @@ try {
     } catch {
         $cleanupFailure = $_.Exception.Message
     } finally {
+        if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+            Remove-Item -LiteralPath $manifestPath -Force
+        }
         $ErrorActionPreference = $priorErrorActionPreference
     }
 }
