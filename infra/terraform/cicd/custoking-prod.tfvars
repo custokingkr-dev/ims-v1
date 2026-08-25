@@ -17,7 +17,9 @@ enable_recovery_bindings = false
 artifact_registry_repository_id = "custoking"
 clouddeploy_source_bucket       = "custoking-prod-github-deploy-source"
 scan_evidence_bucket            = "custoking-prod-scan-evidence"
-recovery_validation_bucket      = "custoking-prod-db-snapshots"
+# Keep the validation bucket project-scoped and explicit. Recovery IAM remains disabled above until
+# the security owner reviews the clone/delete and conditioned bucket-policy permissions.
+recovery_validation_bucket = "custoking-prod-db-snapshots"
 
 # No Cloud Billing export exists in this project yet. The source export lives in custoking and dies with
 # it, so a replacement has to be configured before that project is deleted; until then this grant has

@@ -46,12 +46,14 @@ public class StudentReadRepository {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
+    private final LegacyGuardianSynchronizer guardianSynchronizer;
     private StudentImportProgressStore importProgress;
 
     public StudentReadRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
+        this.guardianSynchronizer = new LegacyGuardianSynchronizer(jdbc);
     }
 
     @Autowired(required = false)
@@ -444,6 +446,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        guardianSynchronizer.syncFromLegacy(id);
         recordEnrollmentFromCurrentStudent(id, "Enrolled", "STUDENT_CREATE", String.valueOf(id));
         emitStudentUpserted(id);
         return studentDetail(id);
@@ -547,6 +550,7 @@ public class StudentReadRepository {
             // Backstop for the (school_id, admission_no) unique constraint.
             throw new IllegalArgumentException("Admission Number already exists");
         }
+        guardianSynchronizer.syncFromLegacy(id);
         if (!classId.equals(str(current.get("classId"), ""))
                 || !sectionId.equals(str(current.get("sectionId"), ""))) {
             closeActiveEnrollment(id, "Placement changed from student profile edit");
@@ -948,6 +952,7 @@ public class StudentReadRepository {
             try {
                 Map<String, Object> normalized = objectMapper.readValue(row.normalizedJson(), new TypeReference<>() {});
                 Long studentId = insertImportedStudent(normalized, schoolId, batchId);
+                guardianSynchronizer.syncFromLegacy(studentId);
                 jdbc.sql("UPDATE student.students SET imported_at = :importedAt, import_batch_id = :batchId WHERE id = :studentId")
                         .param("importedAt", OffsetDateTime.now())
                         .param("batchId", batchId)

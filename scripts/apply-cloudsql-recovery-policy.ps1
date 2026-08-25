@@ -3,7 +3,7 @@ param(
   [string]$Instance = "custoking-db-prod",
   [string]$BackupLocation = "asia-south2",
   [string]$BackupStartTimeUtc = "20:30",
-  [string]$ValidationBucket = "custoking-db-snapshots",
+  [string]$ValidationBucket = "",
   # Derived from the project rather than hardcoded. The literal named the pre-split project, so after the
   # split this pointed at an identity in a project that is being deleted.
   [string]$RecoveryOperatorServiceAccount = "",
@@ -18,6 +18,9 @@ param(
 
 if ([string]::IsNullOrWhiteSpace($RecoveryOperatorServiceAccount)) {
   $RecoveryOperatorServiceAccount = "custoking-recovery-operator@$ProjectId.iam.gserviceaccount.com"
+}
+if ([string]::IsNullOrWhiteSpace($ValidationBucket)) {
+  $ValidationBucket = "$ProjectId-db-snapshots"
 }
 
 $ErrorActionPreference = "Stop"

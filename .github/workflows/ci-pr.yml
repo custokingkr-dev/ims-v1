@@ -15,6 +15,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  promotion-source-policy:
+    name: promotion-source-policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require dev as the source of main promotions
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" && "$BASE_REF" == "main" && "$HEAD_REF" != "dev" ]]; then
+            echo "Pull requests to main must be promoted from dev; received source '$HEAD_REF'." >&2
+            exit 1
+          fi
+
   detect:
     uses: ./.github/workflows/_detect-changes.yml
     with:
@@ -175,7 +192,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   summary:
-    needs: [detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, service-test, docker-build, secret-scan]
+    needs: [promotion-source-policy, detect, duplicate-class-drift, static-architecture-audits, privacy-technical-controls, service-test, docker-build, secret-scan]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -184,6 +201,7 @@ jobs:
           {
             echo "## CI PR Summary"
             echo ""
+            echo "- Promotion source policy: ${{ needs.promotion-source-policy.result }}"
             echo "- Service changes: ${{ needs.detect.outputs.has_service_changes }}"
             echo "- Service tests: ${{ needs.service-test.result }}"
             echo "- Docker builds: ${{ needs.docker-build.result }}"
@@ -197,6 +215,7 @@ jobs:
         run: |
           failed=0
           for result in \
+            "${{ needs.promotion-source-policy.result }}" \
             "${{ needs.detect.result }}" \
             "${{ needs.duplicate-class-drift.result }}" \
             "${{ needs.static-architecture-audits.result }}" \
