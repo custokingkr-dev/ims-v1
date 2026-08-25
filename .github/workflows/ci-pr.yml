@@ -59,6 +59,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+      - name: Verify generated OpenAPI clients are current
+        run: node scripts/generate-openapi-typescript-client.js --check
       - name: Audit offline service boundaries
         shell: pwsh
         run: |
@@ -73,6 +78,12 @@ jobs:
           ./scripts/audit-microservice-test-catalog.ps1
           ./scripts/audit-microservice-build-catalog.ps1
           ./scripts/audit-security-governance-controls.ps1
+      - name: Test immutable GitHub governance check verification
+        run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
+      - name: Test offline GCP governance audits
+        run: python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement
+      - name: Test OpenAPI CI routing invariants
+        run: python3 -m unittest scripts.tests.test_openapi_ci_gate
 
   privacy-technical-controls:
     name: privacy-technical-controls

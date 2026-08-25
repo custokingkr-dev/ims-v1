@@ -44,6 +44,14 @@ repository-owned blockers:
   Artifact Registry images, 73 Cloud Run revisions, 308 Cloud Run job executions, 73 alert policies and 11
   custom dashboard resources. The `custoking` Artifact Registry repository held approximately 4.47 GB and
   already had a seven-day delete policy plus a keep-most-recent-three rule.
+- Re-ran the read-only Cloud Asset Inventory after the reviewed Billing export and observability changes.
+  The only tracked count changes were the two standard/detailed Billing export tables, the
+  `Custoking prod - Billing & Cost` dashboard and the already-recorded `cloudasset.googleapis.com`
+  enablement. The inventory also normalized the existing zonal Cloud SQL instance location from region
+  `asia-south2` to its unchanged exact zone `asia-south2-b`; the instance was not recreated or moved.
+  The reviewed aggregate baseline now contains 376 tracked assets with digest
+  `3d20d05e07bcfcdda5be35e8abca2fb29bd02e99ef4974cac2e8f3460b7bae74`; volatile delivery revisions,
+  executions, backup objects and secret versions remain explicitly excluded from drift decisions.
 - Took on-demand Cloud SQL backup `1787656491610` successfully before the consolidation evidence run and
   changed production `custoking-db-prod` to `ENCRYPTED_ONLY`. The gateway health check and all 31 gateway
   routes passed after the change; no SSL or connection errors appeared in the verification window.
@@ -127,6 +135,10 @@ repository-owned blockers:
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
   server-side ruleset cannot be applied from this identity.
+- Added a read-only, immutable-SHA GitHub governance verifier that proves the three reviewed check names
+  succeeded and exactly match strict classic-protection or active-ruleset contexts on both `main` and
+  `dev`. Fixture coverage fails closed on stale SHAs, failed checks, case/typing drift, extra contexts,
+  non-strict policy, excluded rulesets and `evaluate`-only rulesets; no GitHub setting is changed.
 
 Cloud SQL utilization does not justify a larger instance for capacity: CPU averaged 6.72% and peaked at
 15.91%, memory averaged 43.96% and peaked at 50.83%, hourly p95 connections peaked at nine, and disk usage
@@ -183,6 +195,17 @@ approximately INR 3,128/month; the minimum observed dedicated regional-HA option
   distinguishing estimated run-rate from actually usable invoice-grade standard/detailed rows.
 - Added read-only billing export health, Monitoring resource/filter validation, and Cloud Asset drift tools
   with JSON/Markdown output and fixtures.
+- Added weekly read-only GCP governance automation for Cloud Asset drift and Monitoring dashboard/alert
+  filter validation. Its checked-in baseline is a privacy-safe reviewed digest with explicit volatile-type
+  exclusions; scheduled runs cannot generate or approve a replacement. The workflow fails closed on drift,
+  missing resources and Monitoring query/API errors, uses a dedicated exact-workflow WIF identity and
+  read-only custom role, and retains redacted evidence. The Terraform identity/WIF change and repository
+  variable remain unapplied external setup; no GCP resource was mutated by this repository batch.
+- Staged that workflow's activation behind a reviewed repository config and a separate repository variable.
+  The checked-in config is disabled, and a premature variable value fails before cloud authentication.
+  After Terraform provisions the tracked governance service account and custom role, operators must capture
+  and approve a new post-provision baseline/config together before setting the variable to `true`. The gate
+  therefore cannot begin scheduled comparisons with the necessarily stale pre-provision inventory.
 - Executed the production cost-metric exporter successfully and published fresh grade/availability/lag
   series. The exporter truthfully reported grade `0`, standard `0`, detailed `0`, and both usage/export lag
   as `-1` because no usage table exists yet.

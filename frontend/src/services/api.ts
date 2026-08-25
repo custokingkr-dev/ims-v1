@@ -1,4 +1,5 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { createIdentityAuthClient } from '../generated/identityAuthApi';
 import type { AuthUser } from '../types/auth';
 
 // Access token lives only in this module-level variable — never written to
@@ -28,6 +29,10 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Generated clients share this exact Axios transport so credentials, authorization,
+// timeout, refresh suppression, and every future transport interceptor remain centralized.
+export const identityAuthClient = createIdentityAuthClient(api);
+
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
@@ -44,10 +49,10 @@ let refreshing: Promise<AuthUser | null> | null = null;
  * On failure clears auth state; the caller is responsible for redirecting to /login.
  */
 export async function refreshToken(): Promise<AuthUser | null> {
-  refreshing ??= api.post<AuthUser>('/auth/refresh')
-    .then((res) => {
-      setAccessToken(res.data.accessToken);
-      return res.data;
+  refreshing ??= identityAuthClient.refresh()
+    .then((restored) => {
+      setAccessToken(restored.accessToken);
+      return restored;
     })
     .catch(() => {
       setAccessToken(null);

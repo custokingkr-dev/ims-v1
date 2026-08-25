@@ -30,6 +30,10 @@ output "cost_controller_service_account" {
   value = google_service_account.github["cost_controller"].email
 }
 
+output "governance_auditor_service_account" {
+  value = try(google_service_account.github["governance_auditor"].email, null)
+}
+
 output "recovery_operator_service_account" {
   value = try(google_service_account.github["recovery"].email, null)
 }

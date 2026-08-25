@@ -111,19 +111,21 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
             sql.execute("""
                     INSERT INTO student.photo_import_sources
                         (id, batch_id, school_id, drive_file_id, file_name, mime_type,
-                         byte_size, checksum, modified_time, source_type, image_no)
+                         byte_size, checksum, sha256_checksum, modified_time, source_type, image_no)
                     VALUES (gen_random_uuid(), '%s', 201, 'drive-photo-1', 'DSC5001.jpg',
                             'image/jpeg', 3, '5289df737df57326fcdd22597afb1fac',
+                            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
                             '2026-07-31T00:00:00Z', 'IMAGE', '5001')
                     """.formatted(batchId));
             sql.execute("""
                     INSERT INTO student.photo_import_rows
                         (id, batch_id, school_id, excel_row, admission_no, image_no,
                          drive_file_id, drive_file_name, student_id, status, final_photo_key,
-                         source_checksum, applied_at)
+                         source_checksum, source_sha256, applied_at)
                     VALUES ('%s', '%s', 201, 2, 'REC-1', '5001', 'drive-photo-1',
                             'DSC5001.jpg', 301, 'APPLIED', 'cropped-photo-key',
-                            '5289df737df57326fcdd22597afb1fac', now())
+                            '5289df737df57326fcdd22597afb1fac',
+                            'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', now())
                     """.formatted(rowId, batchId));
             sql.execute("""
                     INSERT INTO student.photo_import_rows
@@ -189,6 +191,8 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
 
         var claimed = repository.beginPhotoRecovery(batchId, 201L, rowId, version, 1L);
         assertThat(claimed.status()).isEqualTo("READY");
+        assertThat(claimed.target().sourceSha256())
+                .isEqualTo("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
         var inProgress = repository.beginPhotoRecovery(batchId, 201L, rowId, version, 1L);
         assertThat(inProgress.status()).isEqualTo("IN_PROGRESS");
@@ -213,7 +217,7 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
         assertThat(jdbc.sql("SELECT photo_url FROM student.students WHERE id = 301")
                 .query(String.class).single()).isEqualTo("uncropped-photo-key");
         var audit = jdbc.sql("""
-                SELECT status, prior_photo_key, recovered_photo_key, attempt_count
+                SELECT status, prior_photo_key, recovered_photo_key, source_sha256, attempt_count
                 FROM student.photo_import_recoveries
                 WHERE row_id = :rowId AND recovery_version = :version
                 """)
@@ -221,9 +225,12 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
                 .param("version", version)
                 .query((rs, rowNum) -> new Object[]{
                         rs.getString("status"), rs.getString("prior_photo_key"),
-                        rs.getString("recovered_photo_key"), rs.getInt("attempt_count")})
+                        rs.getString("recovered_photo_key"), rs.getString("source_sha256"),
+                        rs.getInt("attempt_count")})
                 .single();
-        assertThat(audit).containsExactly("COMPLETED", "cropped-photo-key", "uncropped-photo-key", 1);
+        assertThat(audit).containsExactly(
+                "COMPLETED", "cropped-photo-key", "uncropped-photo-key",
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 1);
         assertThat(jdbc.sql("""
                         SELECT status || '|' || verified_photo || '|' || verified_full_name || '|' ||
                                correction_requested || '|' || (correction_notes IS NULL) || '|' ||

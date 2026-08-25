@@ -133,6 +133,46 @@ describe('PhotoImportPanel', () => {
       .toHaveAttribute('aria-valuenow', '100');
   });
 
+  it('pauses after the active execution chunk without scheduling another chunk', async () => {
+    let detailBatch = frozenBatch;
+    let resolveChunk: ((value: any) => void) | undefined;
+    vi.mocked(api.get).mockImplementation(async (url: string) => {
+      if (url === '/student-photo-imports/context') return { data: context } as any;
+      if (url === '/student-photo-imports') return { data: [detailBatch] } as any;
+      if (url === '/student-photo-imports/batch-2') {
+        return { data: { batch: detailBatch, rows: [], access: null } } as any;
+      }
+      throw new Error(`unexpected GET ${url}`);
+    });
+    vi.mocked(api.post).mockImplementationOnce(() => new Promise(resolve => {
+      resolveChunk = resolve;
+    }));
+
+    render(<PhotoImportPanel />);
+    fireEvent.click(await screen.findByRole('button', { name: /class i photos/i }));
+    fireEvent.click(await screen.findByLabelText(/confirm green valley school, 2026-27, and 18 ready portraits/i));
+    fireEvent.click(await screen.findByRole('button', { name: /execute import/i }));
+
+    fireEvent.click(await screen.findByRole('button', { name: /pause after current chunk/i }));
+    expect(screen.getByRole('button', { name: /pausing after current chunk/i })).toBeDisabled();
+
+    detailBatch = {
+      ...frozenBatch,
+      status: 'EXECUTING',
+      readyCount: 8,
+      appliedCount: 10,
+    };
+    resolveChunk?.({ data: detailBatch });
+
+    expect(await screen.findByText(/execution paused after the current chunk/i)).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('progressbar', { name: /photo import paused/i }))
+      .toHaveAttribute('aria-valuenow', '56');
+    expect(screen.getByRole('button', { name: /resume import/i })).toBeDisabled();
+    expect(screen.getByLabelText(/confirm green valley school, 2026-27, and 8 ready portraits/i))
+      .not.toBeChecked();
+  });
+
   it('continues execution after a transient timeout by refreshing batch progress', async () => {
     let detailBatch = frozenBatch;
     let detailCalls = 0;

@@ -1,0 +1,82 @@
+{
+  "repository": {
+    "default_branch": "main"
+  },
+  "checkRuns": {
+    "total_count": 3,
+    "check_runs": [
+      {
+        "id": 101,
+        "name": "summary",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-08-26T10:00:00Z",
+        "app": { "id": 1001, "slug": "github-actions" },
+        "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
+      },
+      {
+        "id": 102,
+        "name": "analyze (java-kotlin)",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-08-26T10:01:00Z",
+        "app": { "id": 1002, "slug": "github-code-scanning" },
+        "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
+      },
+      {
+        "id": 103,
+        "name": "analyze (javascript-typescript)",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-08-26T10:02:00Z",
+        "app": { "id": 1002, "slug": "github-code-scanning" },
+        "check_suite": { "head_sha": "1111111111111111111111111111111111111111" }
+      }
+    ]
+  },
+  "branchProtection": {
+    "main": {
+      "required_status_checks": {
+        "strict": true,
+        "contexts": [
+          "summary",
+          "analyze (java-kotlin)",
+          "analyze (javascript-typescript)"
+        ],
+        "checks": [
+          { "context": "summary", "app_id": 1001 },
+          { "context": "analyze (java-kotlin)", "app_id": 1002 },
+          { "context": "analyze (javascript-typescript)", "app_id": 1002 }
+        ]
+      }
+    },
+    "dev": null
+  },
+  "rulesets": [
+    {
+      "id": 501,
+      "name": "dev exact checks",
+      "target": "branch",
+      "enforcement": "active",
+      "conditions": {
+        "ref_name": {
+          "include": ["refs/heads/*"],
+          "exclude": ["refs/heads/main"]
+        }
+      },
+      "rules": [
+        {
+          "type": "required_status_checks",
+          "parameters": {
+            "strict_required_status_checks_policy": true,
+            "required_status_checks": [
+              { "context": "summary", "integration_id": 1001 },
+              { "context": "analyze (java-kotlin)", "integration_id": 1002 },
+              { "context": "analyze (javascript-typescript)", "integration_id": 1002 }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

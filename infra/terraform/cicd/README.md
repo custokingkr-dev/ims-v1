@@ -111,6 +111,8 @@ GCP_REGION=asia-south2
 ARTIFACT_REGISTRY_REPOSITORY=custoking
 WORKLOAD_IDENTITY_PROVIDER=<terraform output workload_identity_provider>
 COST_CONTROLLER_SERVICE_ACCOUNT=<terraform output cost_controller_service_account>
+GOVERNANCE_AUDITOR_SERVICE_ACCOUNT=<terraform output governance_auditor_service_account>
+GCP_GOVERNANCE_AUDIT_ENABLED=false
 RECOVERY_OPERATOR_SERVICE_ACCOUNT=<terraform output recovery_operator_service_account>
 ```
 
@@ -127,6 +129,15 @@ prod Environment ROLLBACK_SERVICE_ACCOUNT=<terraform output rollback_prod_servic
 dev Environment DEPLOYMENT_CONFIG_SERVICE_ACCOUNT=<terraform output config_dev_service_account>
 prod Environment DEPLOYMENT_CONFIG_SERVICE_ACCOUNT=<terraform output config_prod_service_account>
 ```
+
+`GOVERNANCE_AUDITOR_SERVICE_ACCOUNT` is repository-scoped because its scheduled workflow runs only from
+`main` and deliberately does not enter the production deployment Environment. Set it only after the
+dedicated account, read-only custom role, exact workflow-ref impersonation binding, and provider condition
+have been reviewed and applied together. Keep `GCP_GOVERNANCE_AUDIT_ENABLED` unset or `false` during that
+apply. Provisioning adds the governance service account and custom role to Cloud Asset Inventory, so the
+pre-provision baseline is guaranteed to be stale afterward. Capture and review the post-provision inventory,
+merge its approved baseline plus enabled repository config, and set the repository variable to `true` only
+as the final activation step. A premature `true` fails before the workflow requests cloud credentials.
 
 The repository release value is required because the dev-only image-build job intentionally runs
 without a GitHub Environment. The prod image-build job is skipped; the protected prod Environment

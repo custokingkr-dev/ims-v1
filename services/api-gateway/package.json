@@ -9,8 +9,8 @@
     "npm": ">=11 <12"
   },
   "scripts": {
-    "contracts:generate": "node ../../scripts/generate-api-route-inventory.js",
-    "contracts:check": "node ../../scripts/generate-api-route-inventory.js --check",
+    "contracts:generate": "node ../../scripts/generate-api-route-inventory.js && node ../../scripts/generate-openapi-typescript-client.js",
+    "contracts:check": "node ../../scripts/generate-api-route-inventory.js --check && node ../../scripts/generate-openapi-typescript-client.js --check",
     "test": "npm run contracts:check && node --test server.test.js api-contract.test.js"
   },
   "dependencies": {

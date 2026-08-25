@@ -1,0 +1,132 @@
+name: Ops / GCP governance audit
+
+on:
+  schedule:
+    - cron: "20 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gcp-governance-audit-prod
+  cancel-in-progress: false
+
+jobs:
+  activation-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      enabled: ${{ steps.gate.outputs.enabled }}
+    env:
+      GCP_PROJECT_ID: custoking-prod
+      ASSET_BASELINE: deploy/gcp/governance/cloud-assets-prod.baseline.json
+      ENABLEMENT_CONFIG: deploy/gcp/governance/gcp-governance-audit-enablement.json
+      REPOSITORY_ENABLED: ${{ vars.GCP_GOVERNANCE_AUDIT_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Validate staged activation before requesting any cloud credential
+        id: gate
+        shell: bash
+        run: |
+          gate_json="$(python3 scripts/validate-gcp-governance-audit-enablement.py \
+            --config "$ENABLEMENT_CONFIG" \
+            --baseline "$ASSET_BASELINE" \
+            --project "$GCP_PROJECT_ID" \
+            --repository-enabled "$REPOSITORY_ENABLED")"
+          echo "$gate_json"
+          enabled="$(python3 -c 'import json,sys; print(str(json.loads(sys.argv[1])["enabled"]).lower())' "$gate_json")"
+          reason="$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["reason"])' "$gate_json")"
+          echo "enabled=$enabled" >> "$GITHUB_OUTPUT"
+          echo "GCP governance audit activation: $reason" >> "$GITHUB_STEP_SUMMARY"
+
+  read-only-governance:
+    needs: activation-gate
+    if: needs.activation-gate.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: custoking-prod
+      GCP_REGION: asia-south2
+      WORKLOAD_IDENTITY_PROVIDER: ${{ vars.WORKLOAD_IDENTITY_PROVIDER }}
+      GOVERNANCE_AUDITOR_SERVICE_ACCOUNT: ${{ vars.GOVERNANCE_AUDITOR_SERVICE_ACCOUNT }}
+      ASSET_BASELINE: deploy/gcp/governance/cloud-assets-prod.baseline.json
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Validate immutable read-only target
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF -ne "refs/heads/main") {
+            throw "GCP governance audit is restricted to refs/heads/main; received '$env:GITHUB_REF'."
+          }
+          $required = @{
+            WORKLOAD_IDENTITY_PROVIDER = $env:WORKLOAD_IDENTITY_PROVIDER
+            GOVERNANCE_AUDITOR_SERVICE_ACCOUNT = $env:GOVERNANCE_AUDITOR_SERVICE_ACCOUNT
+          }
+          $missing = @($required.GetEnumerator() | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Value) } | ForEach-Object Key)
+          if ($missing.Count -gt 0) {
+            throw "Missing repository variable(s): $($missing -join ', ')."
+          }
+          if (-not (Test-Path -LiteralPath $env:ASSET_BASELINE)) {
+            throw "Reviewed Cloud Asset baseline is missing: $env:ASSET_BASELINE"
+          }
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.GOVERNANCE_AUDITOR_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+
+      - name: Compare Cloud Asset Inventory with reviewed baseline
+        id: assets
+        continue-on-error: true
+        run: |
+          python3 scripts/export-gcp-asset-drift.py \
+            --project "$GCP_PROJECT_ID" \
+            --baseline "$ASSET_BASELINE" \
+            --require-reviewed-baseline \
+            --redact-assets \
+            --fail-on-drift \
+            --output-json artifacts/gcp-assets-prod.json \
+            --output-markdown artifacts/gcp-assets-prod.md
+
+      - name: Validate Monitoring dashboards, alerts, resources, and filters
+        id: monitoring
+        continue-on-error: true
+        run: |
+          python3 scripts/audit-gcp-observability.py \
+            --project "$GCP_PROJECT_ID" \
+            --region "$GCP_REGION" \
+            --output-json artifacts/gcp-observability-prod.json \
+            --output-markdown artifacts/gcp-observability-prod.md
+
+      - name: Upload privacy-safe governance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: gcp-governance-audit-${{ github.run_id }}
+          path: |
+            artifacts/gcp-assets-prod.json
+            artifacts/gcp-assets-prod.md
+            artifacts/gcp-observability-prod.json
+            artifacts/gcp-observability-prod.md
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce both read-only audit gates
+        if: always()
+        shell: pwsh
+        env:
+          ASSET_OUTCOME: ${{ steps.assets.outcome }}
+          MONITORING_OUTCOME: ${{ steps.monitoring.outcome }}
+        run: |
+          "Cloud Asset drift: $env:ASSET_OUTCOME" >> $env:GITHUB_STEP_SUMMARY
+          "Monitoring resource/filter validation: $env:MONITORING_OUTCOME" >> $env:GITHUB_STEP_SUMMARY
+          if ($env:ASSET_OUTCOME -ne "success" -or $env:MONITORING_OUTCOME -ne "success") {
+            throw "One or more read-only GCP governance audits failed. Review the retained evidence; never update the baseline automatically."
+          }
