@@ -62,21 +62,74 @@ or re-enabling an export does not automatically restore data from the previous l
 ```powershell
 python scripts/export-gcp-asset-drift.py `
   --project custoking-prod `
-  --baseline artifacts/baselines/gcp-assets-prod.json `
+  --baseline deploy/gcp/governance/cloud-assets-prod.baseline.json `
+  --require-reviewed-baseline `
+  --redact-assets `
+  --fail-on-drift `
   --output-json artifacts/gcp-assets-prod.json `
   --output-markdown artifacts/gcp-assets-prod.md
 ```
 
 The script creates a canonical asset snapshot and compares asset additions, removals, and selected field
 changes with an optional baseline. It deliberately refuses to enable `cloudasset.googleapis.com` or grant
-`cloudasset.assets.searchAllResources`; those are separately approved owner/IAM actions. An initial run
-without `--baseline` establishes the candidate baseline for review.
+`cloudasset.assets.searchAllResources`; those are separately reviewed owner/IAM actions.
+
+The approved production baseline is the privacy-safe manifest at
+`deploy/gcp/governance/cloud-assets-prod.baseline.json`. It contains a SHA-256 and aggregate counts for
+tracked resources, not production resource names. High-churn execution history, revisions, releases,
+images, secret versions and backups are excluded only through the explicit versioned list in that file;
+stable services, jobs, pipelines, targets, IAM identities, networks, APIs, buckets, databases, dashboards,
+alerts and notification channels remain tracked.
+
+The scheduled comparison is fail-closed and redacted:
+
+```powershell
+python scripts/export-gcp-asset-drift.py `
+  --project custoking-prod `
+  --baseline deploy/gcp/governance/cloud-assets-prod.baseline.json `
+  --require-reviewed-baseline `
+  --redact-assets `
+  --fail-on-drift
+```
+
+Never copy the current output over the approved baseline. For an explained infrastructure change, retain
+the full current snapshot in protected operator storage, review its exact additions/removals/changes, then
+generate a non-approved candidate using the existing approved ignore policy:
+
+```powershell
+python scripts/export-gcp-asset-drift.py `
+  --project custoking-prod `
+  --baseline deploy/gcp/governance/cloud-assets-prod.baseline.json `
+  --require-reviewed-baseline `
+  --write-baseline-candidate artifacts/cloud-assets-prod.baseline.candidate.json `
+  --review-reference <approved-change-or-pull-request-reference>
+```
+
+The generated manifest has `status: candidate`; scheduled automation rejects it. A reviewed pull request
+must reconcile the protected full diff, preserve or explicitly justify every ignored asset type, and change
+the status to `approved`. Baseline approval and scheduled comparison are deliberately separate operations.
+
+## Scheduled governance audit
+
+`.github/workflows/gcp-governance-audit.yml` runs every Monday at 03:20 UTC and can also be dispatched from
+`main`. It independently runs Cloud Asset drift and Monitoring dashboard/alert resource-filter validation,
+retains both privacy-safe reports for 14 days, and fails if either audit fails. A Monitoring filter with no
+recent data remains a reported diagnostic; malformed/unauthorized queries and missing exact resource
+references fail the run.
+
+The workflow has no deployment Environment and no mutation command. It uses a dedicated
+`github-governance-auditor` identity whose custom role contains only the exact list/get/search permissions
+needed by the audits. Before the first scheduled run, apply the reviewed CI/CD Terraform and set repository
+variable `GOVERNANCE_AUDITOR_SERVICE_ACCOUNT` from Terraform output
+`governance_auditor_service_account`. This one-time identity/WIF provisioning is an external change and was
+not performed by this repository batch.
 
 ## Repository verification
 
 ```powershell
 node --test tools/live-dashboard/*.test.mjs
 python -m unittest scripts.tests.test_audit_gcp_observability scripts.tests.test_export_gcp_asset_drift
+pwsh -File scripts/audit-security-governance-controls.ps1
 pwsh -File scripts/tests/report-billing-export-health-test.ps1
 & 'C:\Program Files\Git\bin\bash.exe' scripts/tests/cost-metric-exporter-test.sh
 terraform -chdir=deploy/gcp/observability fmt -check

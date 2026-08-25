@@ -187,6 +187,12 @@ approximately INR 3,128/month; the minimum observed dedicated regional-HA option
   distinguishing estimated run-rate from actually usable invoice-grade standard/detailed rows.
 - Added read-only billing export health, Monitoring resource/filter validation, and Cloud Asset drift tools
   with JSON/Markdown output and fixtures.
+- Added weekly read-only GCP governance automation for Cloud Asset drift and Monitoring dashboard/alert
+  filter validation. Its checked-in baseline is a privacy-safe reviewed digest with explicit volatile-type
+  exclusions; scheduled runs cannot generate or approve a replacement. The workflow fails closed on drift,
+  missing resources and Monitoring query/API errors, uses a dedicated exact-workflow WIF identity and
+  read-only custom role, and retains redacted evidence. The Terraform identity/WIF change and repository
+  variable remain unapplied external setup; no GCP resource was mutated by this repository batch.
 - Executed the production cost-metric exporter successfully and published fresh grade/availability/lag
   series. The exporter truthfully reported grade `0`, standard `0`, detailed `0`, and both usage/export lag
   as `-1` because no usage table exists yet.

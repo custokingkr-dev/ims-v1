@@ -3,6 +3,12 @@ param(
   [string]$GovernanceConfigurator = "scripts/configure-security-governance-controls.ps1",
   [string]$GitHubExactCheckVerifier = "scripts/verify-github-governance-checks.py",
   [string]$GitHubExactCheckVerifierTest = "scripts/tests/test_verify_github_governance_checks.py",
+  [string]$GcpGovernanceWorkflow = ".github/workflows/gcp-governance-audit.yml",
+  [string]$GcpAssetDriftAudit = "scripts/export-gcp-asset-drift.py",
+  [string]$GcpAssetDriftTest = "scripts/tests/test_export_gcp_asset_drift.py",
+  [string]$GcpObservabilityAudit = "scripts/audit-gcp-observability.py",
+  [string]$GcpObservabilityTest = "scripts/tests/test_audit_gcp_observability.py",
+  [string]$GcpAssetBaseline = "deploy/gcp/governance/cloud-assets-prod.baseline.json",
   [string]$RuntimeConfigurator = "scripts/configure-runtime-service-accounts.ps1",
   [string]$ReportingConfigurator = "scripts/configure-reporting-pubsub-push-oidc.ps1",
   [string]$SecretRotationAudit = "scripts/audit-secret-rotation-policy.ps1",
@@ -43,7 +49,9 @@ param(
 $ErrorActionPreference = "Stop"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 $paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
-  $GitHubExactCheckVerifierTest, $RuntimeConfigurator,
+  $GitHubExactCheckVerifierTest, $GcpGovernanceWorkflow, $GcpAssetDriftAudit,
+  $GcpAssetDriftTest, $GcpObservabilityAudit, $GcpObservabilityTest, $GcpAssetBaseline,
+  $RuntimeConfigurator,
   $ReportingConfigurator, $SecretRotationAudit, $SecretRotationPolicy, $RecoveryBucketRole,
   $CloudDeployDevTargets, $CloudDeployProdTargets, $CloudDeployRenderer,
   $CloudDeployPipelineRenderer, $AffectedResolver,
@@ -107,6 +115,9 @@ Require-Text $GovernanceConfigurator @(
   "deny-prod-config-identity-from-dev",
   "deny-dev-config-identity-from-main",
   "deny-recovery-identity-from-dev",
+  "allow-governance-auditor-from-main",
+  "deny-governance-auditor-from-dev",
+  ".github/workflows/gcp-governance-audit.yml@refs/heads/main",
   "refs/heads/main",
   "refs/heads/dev",
   'devEnvironmentBranchPolicy = @("dev")',
@@ -132,6 +143,55 @@ Require-Text $GitHubExactCheckVerifierTest @(
   "test_excluded_or_evaluate_rulesets_do_not_count_as_enforcement",
   "test_unsupported_ruleset_pattern_fails_closed",
   "test_cli_requires_immutable_sha_and_fixture_path_never_calls_github"
+)
+
+Require-Text $GcpGovernanceWorkflow @(
+  'GCP_PROJECT_ID: custoking-prod',
+  'GCP_REGION: asia-south2',
+  'GOVERNANCE_AUDITOR_SERVICE_ACCOUNT',
+  'GCP governance audit is restricted to refs/heads/main',
+  'google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093',
+  'google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db',
+  '--require-reviewed-baseline',
+  '--redact-assets',
+  '--fail-on-drift',
+  'audit-gcp-observability.py',
+  'ASSET_OUTCOME',
+  'MONITORING_OUTCOME',
+  'never update the baseline automatically'
+)
+if ($contents[$GcpGovernanceWorkflow] -match '(?m)^\s*environment\s*:') {
+  $violations.Add("Read-only GCP governance audit must not enter a deployment Environment.") | Out-Null
+}
+foreach ($forbiddenMutation in @(
+    'gcloud\s+.*\b(create|delete|deploy|update|set-iam-policy|services\s+enable)\b',
+    'terraform\s+(apply|destroy|import)',
+    '--write-baseline-candidate'
+  )) {
+  if ($contents[$GcpGovernanceWorkflow] -match $forbiddenMutation) {
+    $violations.Add("Read-only GCP governance workflow contains forbidden mutation pattern: $forbiddenMutation") | Out-Null
+  }
+}
+Require-Text $GcpAssetDriftAudit @(
+  '"status": "candidate"',
+  '--require-reviewed-baseline',
+  '--redact-assets',
+  'Ignore policy comes only from the reviewed baseline',
+  'driftDetected'
+)
+Require-Text $GcpAssetDriftTest @(
+  'test_reviewed_manifest_redacts_names_and_fails_on_unexplained_drift',
+  'test_candidate_baseline_is_rejected_by_scheduled_gate'
+)
+Require-Text $GcpObservabilityAudit @('filterQueryErrors', 'missingResourceReferences')
+Require-Text $GcpObservabilityTest @('test_monitoring_query_error_fails_closed')
+Require-Text $GcpAssetBaseline @(
+  '"baselineVersion": 1',
+  '"status": "approved"',
+  '"projectId": "custoking-prod"',
+  '"reviewReference":',
+  '"assetDigestSha256":',
+  '"ignoredAssetTypes":'
 )
 
 Require-Text $CiWorkflow @(
@@ -246,14 +306,16 @@ Require-Text $CicdTerraform @(
   "attribute.repository_owner_id",
   "attribute.workflow_ref",
   "attribute.workflow_file",
-  'release_dev     = "github-release-dev"',
-  'release_prod    = "github-release-prod"',
-  'rollback_dev    = "github-rollback-dev"',
-  'rollback_prod   = "github-rollback-prod"',
-  'config_dev      = "github-config-dev"',
-  'config_prod     = "github-config-prod"',
-  'cost_controller = "github-cost-controller"',
-  'recovery        = "custoking-recovery-operator"',
+  'release_dev        = "github-release-dev"',
+  'release_prod       = "github-release-prod"',
+  'rollback_dev       = "github-rollback-dev"',
+  'rollback_prod      = "github-rollback-prod"',
+  'config_dev         = "github-config-dev"',
+  'config_prod        = "github-config-prod"',
+  'cost_controller    = "github-cost-controller"',
+  'governance_auditor = "github-governance-auditor"',
+  'gcp-governance-audit.yml@refs/heads/main',
+  'recovery           = "custoking-recovery-operator"',
   'attribute.workflow_ref/${each.value.workflow_ref}',
   'roles/clouddeploy.operator',
   'google_project_iam_custom_role" "clouddeploy_config_reconciler',
@@ -276,6 +338,27 @@ Require-Text $CicdTerraform @(
   "roles/clouddeploy.jobRunner",
   "runtime_service_account_bindings"
 )
+$governanceRoleMatch = [regex]::Match(
+  $contents[$CicdTerraform],
+  '(?s)resource\s+"google_project_iam_custom_role"\s+"governance_auditor"\s*\{.*?permissions\s*=\s*\[(?<permissions>.*?)\]\s*\r?\n\}'
+)
+if (-not $governanceRoleMatch.Success) {
+  $violations.Add("CI/CD Terraform must define the read-only governance auditor custom role.") | Out-Null
+} else {
+  $governancePermissions = $governanceRoleMatch.Groups["permissions"].Value
+  foreach ($requiredPermission in @(
+      "cloudasset.assets.searchAllResources", "monitoring.alertPolicies.list",
+      "monitoring.dashboards.list", "monitoring.timeSeries.list", "run.services.list",
+      "storage.buckets.list", "pubsub.subscriptions.list", "cloudsql.instances.list"
+    )) {
+    if (-not $governancePermissions.Contains($requiredPermission)) {
+      $violations.Add("Governance auditor custom role is missing $requiredPermission.") | Out-Null
+    }
+  }
+  if ($governancePermissions -match '(?i)\.(create|update|delete|setIamPolicy|access)"') {
+    $violations.Add("Governance auditor custom role contains a mutating or secret-access permission.") | Out-Null
+  }
+}
 $configRoleMatch = [regex]::Match(
   $contents[$CicdTerraform],
   '(?s)resource\s+"google_project_iam_custom_role"\s+"clouddeploy_config_reconciler"\s*\{.*?permissions\s*=\s*\[(?<permissions>.*?)\]\s*\r?\n\}'
