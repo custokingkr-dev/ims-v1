@@ -12,7 +12,7 @@ Every image now has **zero fixable vulnerabilities**, once PR #142 lands.
 |---|---|---|---|---|
 | api-gateway | 0 | 0 | 0 | 0 |
 | frontend | 0 | 0 | 0 | 0 |
-| dashboard (`v10`) | 0 | 0 | 0 | 0 |
+| dashboard (`v11`) | 0 | 0 | 0 | 0 |
 | 5 × Java service — **in production today** | 26 each | 0 | 0 | 9 each |
 | 5 × Java service — **PR #142** | 17 each | 0 | 0 | **0** |
 
@@ -103,7 +103,7 @@ docker run --rm -v //var/run/docker.sock:/var/run/docker.sock aquasec/trivy:late
   image --quiet --severity LOW,MEDIUM,HIGH,CRITICAL --scanners vuln "$IMAGE_REF"
 
 # Dashboard: build, scan, push. Refuses to push on HIGH/CRITICAL.
-./tools/live-dashboard/release.sh v11
+./tools/live-dashboard/release.sh v12
 ```
 
 A zero from Trivy is worth one extra check: confirm `Metadata.OS` was detected and that the `Results`

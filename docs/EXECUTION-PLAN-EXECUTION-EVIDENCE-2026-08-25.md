@@ -73,6 +73,8 @@ invent. Those gates are listed explicitly below.
 
 - Hardened dashboard OAuth with encrypted browser-bound single-use state, S256 PKCE, OIDC nonce verification,
   upstream status/timeout/size checks, pinned public callback behavior, and logout regression coverage.
+- Released the hardened dashboard as scanned image `v11`; the production Cloud Run revision is ready at
+  100% traffic and its authorization redirect exposes only the encrypted browser-flow cookie.
 - Documented that logout clears browser cookies and revokes the session only in the current process; rotating
   `SESSION_SECRET` derives the authenticated-encryption key and is the current global invalidation mechanism.
 - Corrected Terraform's photo storage alert target to `custoking-{env}-student-photos`.

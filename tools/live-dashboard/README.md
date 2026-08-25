@@ -1,7 +1,7 @@
 # Live dashboard
 
-A single-page operations dashboard that reads the Cloud Monitoring API directly. Zero dependencies, no
-build step, no container image.
+A single-page operations dashboard that reads the Cloud Monitoring API directly. It has zero application
+dependencies and no build step; production packages the same files in a minimal container.
 
 ```bash
 cd tools/live-dashboard
