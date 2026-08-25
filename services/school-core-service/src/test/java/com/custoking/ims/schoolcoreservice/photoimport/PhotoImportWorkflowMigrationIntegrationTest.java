@@ -45,7 +45,14 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                 """).update();
         jdbc.sql("""
                 CREATE TABLE student.photo_import_rows (
-                    id UUID PRIMARY KEY
+                    id UUID PRIMARY KEY,
+                    source_checksum VARCHAR(255)
+                )
+                """).update();
+        jdbc.sql("""
+                CREATE TABLE student.photo_import_sources (
+                    id UUID PRIMARY KEY,
+                    checksum VARCHAR(255)
                 )
                 """).update();
         jdbc.sql("""
@@ -72,6 +79,10 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                     connection,
                     new ClassPathResource(
                             "db/migration/student/V21__photo_import_recovery_progress.sql"));
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                            "db/migration/student/V27__photo_import_sha256_integrity.sql"));
         }
     }
 
@@ -213,5 +224,39 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                 .param("rowId", protectedRowId)
                 .query(String.class)
                 .single()).isEqualTo("PROTECTED");
+    }
+
+    @Test
+    void sha256EvidenceIsNullableForHistoryButStrictlyConstrainedWhenPresent() {
+        UUID sourceId = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_sources (id, checksum, sha256_checksum)
+                VALUES (:id, 'legacy-md5', :sha256)
+                """)
+                .param("id", sourceId)
+                .param("sha256", "a".repeat(64))
+                .update();
+
+        assertThat(jdbc.sql("""
+                SELECT sha256_checksum FROM student.photo_import_sources WHERE id = :id
+                """)
+                .param("id", sourceId)
+                .query(String.class)
+                .single()).isEqualTo("a".repeat(64));
+
+        jdbc.sql("""
+                INSERT INTO student.photo_import_sources (id, checksum, sha256_checksum)
+                VALUES (:id, 'historical-md5', NULL)
+                """)
+                .param("id", UUID.randomUUID())
+                .update();
+
+        assertThatThrownBy(() -> jdbc.sql("""
+                        INSERT INTO student.photo_import_sources (id, checksum, sha256_checksum)
+                        VALUES (:id, 'legacy-md5', 'NOT-A-SHA256')
+                        """)
+                .param("id", UUID.randomUUID())
+                .update())
+                .hasMessageContaining("chk_photo_import_source_sha256");
     }
 }

@@ -81,6 +81,7 @@ $allowedWorkflowClaims = @(
   @{ ref = "refs/heads/dev"; workflow_ref = "$Repository/.github/workflows/reconcile-deployment-config.yml@refs/heads/dev" },
   @{ ref = "refs/heads/main"; workflow_ref = "$Repository/.github/workflows/reconcile-deployment-config.yml@refs/heads/main" },
   @{ ref = "refs/heads/main"; workflow_ref = "$Repository/.github/workflows/gcp-cost-controls.yml@refs/heads/main" },
+  @{ ref = "refs/heads/main"; workflow_ref = "$Repository/.github/workflows/gcp-governance-audit.yml@refs/heads/main" },
   @{ ref = "refs/heads/main"; workflow_ref = "$Repository/.github/workflows/recovery-drill.yml@refs/heads/main" }
 )
 $allowedWorkflowRefs = @($allowedWorkflowClaims | ForEach-Object { $_.workflow_ref })
@@ -92,6 +93,7 @@ $serviceAccountWorkflowRefs = [ordered]@{
   config_dev = @("$Repository/.github/workflows/reconcile-deployment-config.yml@refs/heads/dev")
   config_prod = @("$Repository/.github/workflows/reconcile-deployment-config.yml@refs/heads/main")
   cost_controller = @("$Repository/.github/workflows/gcp-cost-controls.yml@refs/heads/main")
+  governance_auditor = @("$Repository/.github/workflows/gcp-governance-audit.yml@refs/heads/main")
   recovery = @("$Repository/.github/workflows/recovery-drill.yml@refs/heads/main")
 }
 $allowedClaimPairs = @($allowedWorkflowClaims | ForEach-Object {
@@ -227,6 +229,12 @@ $serviceAccountScopeTests = @(
   Test-ExpectedServiceAccountScope -ServiceAccountScope "cost_controller" `
     -WorkflowRef "$Repository/.github/workflows/gcp-cost-controls.yml@refs/heads/dev" `
     -Expected $false -Case "deny-cost-control-identity-from-dev"
+  Test-ExpectedServiceAccountScope -ServiceAccountScope "governance_auditor" `
+    -WorkflowRef "$Repository/.github/workflows/gcp-governance-audit.yml@refs/heads/main" `
+    -Expected $true -Case "allow-governance-auditor-from-main"
+  Test-ExpectedServiceAccountScope -ServiceAccountScope "governance_auditor" `
+    -WorkflowRef "$Repository/.github/workflows/gcp-governance-audit.yml@refs/heads/dev" `
+    -Expected $false -Case "deny-governance-auditor-from-dev"
   Test-ExpectedServiceAccountScope -ServiceAccountScope "recovery" `
     -WorkflowRef "$Repository/.github/workflows/recovery-drill.yml@refs/heads/dev" `
     -Expected $false -Case "deny-recovery-identity-from-dev"

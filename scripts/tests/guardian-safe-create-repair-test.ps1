@@ -4,6 +4,8 @@ $plannerPath = Join-Path $repoRoot `
     "services/school-core-service/src/main/resources/db/migration/student/V25__guardian_safe_create_planner.sql"
 $repairPath = Join-Path $repoRoot `
     "services/school-core-service/src/main/resources/db/migration/student/V26__guardian_safe_create_repair.sql"
+$pinPath = Join-Path $repoRoot `
+    "services/school-core-service/src/main/resources/db/migration/student/V28__guardian_safe_create_plan_pin.sql"
 $containerName = "ims-guardian-repair-$([guid]::NewGuid().ToString('N').Substring(0, 10))"
 $containerCreated = $false
 
@@ -165,11 +167,13 @@ FROM student.guardian_safe_create_summary_v1();
         throw "Guardian repair fixture returned unexpected approved counts: $($summary[0])"
     }
 
-    $productionPlan = 'fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492'
+    $previousProductionPlan = 'fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492'
+    $productionPlan = '05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1'
     $runnerPayload = '6f3a742cf411d2a0829a40ddd580f894a095048a73e2f5095fea3118a114db21'
     $repairSql = Get-Content -Raw -LiteralPath $repairPath
+    $pinSql = Get-Content -Raw -LiteralPath $pinPath
     foreach ($requiredPin in @(
-        $productionPlan,
+        $previousProductionPlan,
         'fa0ca25fd6c2f2e63f9040cebeb3899481415540ca3cc61a331624836012b641',
         'c_approved_students CONSTANT INTEGER := 13;',
         'c_approved_relationships CONSTANT INTEGER := 14;',
@@ -180,9 +184,14 @@ FROM student.guardian_safe_create_summary_v1();
             throw "Guardian repair migration is missing its inert production approval pin: $requiredPin"
         }
     }
-    # Exercise the function against this synthetic plan while keeping the checked-in migration
-    # structurally pinned to the older production evidence tuple.
-    $fixtureRepairSql = $repairSql.Replace($productionPlan, $planSha256).
+    foreach ($requiredPin in @($previousProductionPlan, $productionPlan)) {
+        if (-not $pinSql.Contains($requiredPin)) {
+            throw "Guardian repair repin migration is missing reviewed digest: $requiredPin"
+        }
+    }
+    # Install the original capability with fixture counts, then exercise the repin migration
+    # against the synthetic plan. The checked-in migration remains pinned to production evidence.
+    $fixtureRepairSql = $repairSql.
         Replace('c_approved_students CONSTANT INTEGER := 13;',
             'c_approved_students CONSTANT INTEGER := 3;').
         Replace('c_approved_relationships CONSTANT INTEGER := 14;',
@@ -190,6 +199,8 @@ FROM student.guardian_safe_create_summary_v1();
         Replace('c_approved_fields CONSTANT INTEGER := 15;',
             'c_approved_fields CONSTANT INTEGER := 6;')
     Invoke-Psql $fixtureRepairSql | Out-Null
+    $fixturePinSql = $pinSql.Replace($productionPlan, $planSha256)
+    Invoke-Psql $fixturePinSql | Out-Null
 
     $approvalReference = 'github:guardian-repair-fixture'
     $sourceRevision = '0123456789abcdef0123456789abcdef01234567'

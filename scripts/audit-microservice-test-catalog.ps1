@@ -52,6 +52,20 @@ if ($ci -notmatch "service-test:") {
     $violations.Add("CI missing service-test job.")
 }
 
+foreach ($required in @(
+        "maven-wrapper-validation:",
+        "contains(needs.detect.outputs.changed_files, 'mvnw')",
+        "MAVEN_USER_HOME:",
+        "Expected Maven Wrapper 3.3.4",
+        "Expected Apache Maven 3.9.16",
+        "Run representative reactor tests through the wrapper",
+        "needs.maven-wrapper-validation.result"
+    )) {
+    if ($ci -notmatch [regex]::Escape($required)) {
+        $violations.Add("CI Maven Wrapper validation contract is missing: $required")
+    }
+}
+
 if ($violations.Count -gt 0) {
     Write-Host "Microservice test catalog violations found:"
     $violations | ForEach-Object { Write-Host "  $_" }

@@ -156,6 +156,9 @@ public class PhotoImportService {
                     : "The Drive folder contains multiple mapping files; keep exactly one XLSX, XLS, CSV, or TSV file");
         }
         DriveFile workbook = workbooks.getFirst();
+        files.stream()
+                .filter(file -> file.isMappingFile() || file.isSupportedImage())
+                .forEach(PhotoImportService::requireDriveSha256);
         String snapshotHash = drive.snapshotHash(files);
         if (repository.terminalSnapshotExists(
                 id, schoolId, batch.driveFolderId(), snapshotHash)) {
@@ -164,6 +167,7 @@ public class PhotoImportService {
                     "This exact Drive folder snapshot was already processed; replace the workbook or photos before starting another job");
         }
         byte[] workbookBytes = drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES);
+        requireDownloadedSha256(workbook.sha256Checksum(), workbookBytes);
         var parsed = parser.parse(workbookBytes, workbook.name());
         String workbookObjectKey = photoStorage.uploadImportFile(
                 batch.schoolUid(),
@@ -203,6 +207,7 @@ public class PhotoImportService {
                         file.mimeType(),
                         file.size(),
                         file.md5Checksum(),
+                        normalizedOptionalSha256(file.sha256Checksum()),
                         file.modifiedTime(),
                         file.id().equals(workbook.id()) ? "WORKBOOK"
                                 : (file.isSupportedImage()
@@ -330,12 +335,14 @@ public class PhotoImportService {
                 if (source == null) {
                     throw new IllegalArgumentException("Source image is no longer present");
                 }
-                String currentChecksum = source.md5Checksum();
-                if (row.sourceChecksum() != null && currentChecksum != null
-                        && !row.sourceChecksum().equals(currentChecksum)) {
+                String expectedSha256 = requireSha256(
+                        row.sourceSha256(), "The reviewed source has no certified SHA-256 checksum");
+                String currentSha256 = requireDriveSha256(source);
+                if (!expectedSha256.equals(currentSha256)) {
                     throw new IllegalArgumentException("Source image changed after review");
                 }
                 byte[] sourceBytes = drive.download(source, MAX_SOURCE_IMAGE_BYTES);
+                requireDownloadedSha256(expectedSha256, sourceBytes);
                 byte[] normalized = photoStorage.normalizePortrait(
                         sourceBytes,
                         source.mimeType(),
@@ -418,9 +425,17 @@ public class PhotoImportService {
                 if (current == null) {
                     throw new IllegalArgumentException("The retained Drive original is no longer present");
                 }
+                String certifiedSha256 = requireSha256(
+                        preparation.target().sourceSha256(),
+                        "This historical import has no certified SHA-256 checksum; manual recertification is required");
+                if (!certifiedSha256.equals(requireSha256(
+                        retained.sha256Checksum(),
+                        "The retained Drive original has no certified SHA-256 checksum; manual recertification is required"))) {
+                    throw new IllegalArgumentException("The retained Drive original changed after import");
+                }
                 requireUnchangedRecoverySource(retained, current);
                 byte[] sourceBytes = drive.download(current, MAX_SOURCE_IMAGE_BYTES);
-                requireDownloadedChecksum(retained.md5Checksum(), sourceBytes);
+                requireDownloadedSha256(certifiedSha256, sourceBytes);
                 byte[] normalized = photoStorage.normalizePortrait(
                         sourceBytes, current.mimeType(), 0.5, 0.5, MAX_SOURCE_IMAGE_BYTES);
                 results.add(repository.completePhotoRecovery(
@@ -558,7 +573,8 @@ public class PhotoImportService {
                 status,
                 message,
                 priorPhotoKey,
-                image == null ? null : image.md5Checksum());
+                image == null ? null : image.md5Checksum(),
+                image == null ? null : requireDriveSha256(image));
     }
 
     private static Map<String, List<DriveFile>> imageFilesByNumber(List<DriveFile> files) {
@@ -613,30 +629,52 @@ public class PhotoImportService {
                 && !retained.size().equals(current.size())) {
             throw new IllegalArgumentException("The retained Drive original changed after import");
         }
-        if (retained.md5Checksum() != null && current.md5Checksum() != null
-                && !retained.md5Checksum().equalsIgnoreCase(current.md5Checksum())) {
+        String retainedSha256 = requireSha256(
+                retained.sha256Checksum(),
+                "The retained Drive original has no certified SHA-256 checksum; manual recertification is required");
+        String currentSha256 = requireSha256(
+                current.sha256Checksum(),
+                "The retained Drive original cannot be verified safely with SHA-256");
+        if (!retainedSha256.equals(currentSha256)) {
             throw new IllegalArgumentException("The retained Drive original changed after import");
-        }
-        if (retained.md5Checksum() == null
-                && (retained.modifiedTime() == null || current.modifiedTime() == null
-                || !retained.modifiedTime().equals(current.modifiedTime()))) {
-            throw new IllegalArgumentException("The retained Drive original cannot be verified safely");
         }
     }
 
-    private static void requireDownloadedChecksum(String expectedMd5, byte[] sourceBytes) {
-        if (expectedMd5 == null || expectedMd5.isBlank()) {
-            return;
-        }
+    private static void requireDownloadedSha256(String expectedSha256, byte[] sourceBytes) {
+        String expected = requireSha256(
+                expectedSha256, "The Drive source has no certified SHA-256 checksum");
         try {
             String actual = HexFormat.of().formatHex(
-                    MessageDigest.getInstance("MD5").digest(sourceBytes));
-            if (!expectedMd5.equalsIgnoreCase(actual)) {
+                    MessageDigest.getInstance("SHA-256").digest(sourceBytes));
+            if (!expected.equals(actual)) {
                 throw new IllegalArgumentException("The downloaded Drive original failed checksum verification");
             }
         } catch (java.security.NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("MD5 checksum support is unavailable", ex);
+            throw new IllegalStateException("SHA-256 checksum support is unavailable", ex);
         }
+    }
+
+    private static String requireDriveSha256(DriveFile file) {
+        return requireSha256(
+                file.sha256Checksum(),
+                file.name() + " has no Google Drive SHA-256 checksum and cannot be imported safely");
+    }
+
+    private static String requireSha256(String value, String missingMessage) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(missingMessage);
+        }
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if (!normalized.matches("[0-9a-f]{64}")) {
+            throw new IllegalArgumentException("The Google Drive SHA-256 checksum is malformed");
+        }
+        return normalized;
+    }
+
+    private static String normalizedOptionalSha256(String value) {
+        return value == null || value.isBlank()
+                ? null
+                : requireSha256(value, "The Google Drive SHA-256 checksum is missing");
     }
 
     private static String safeRecoveryError(Exception ex) {

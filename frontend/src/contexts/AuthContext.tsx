@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import api, { refreshToken, setAccessToken } from '../services/api';
+import { identityAuthClient, refreshToken, setAccessToken } from '../services/api';
 import { AuthUser } from '../types/auth';
 
 const LS_KEY = 'custoking_isLoggedIn';
@@ -37,15 +37,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     async login(email: string, password: string) {
-      const res = await api.post<AuthUser>('/auth/login', { email, password });
-      setAccessToken(res.data.accessToken);
-      setUser(res.data);
+      const authenticated = await identityAuthClient.login({ email, password });
+      setAccessToken(authenticated.accessToken);
+      setUser(authenticated);
       localStorage.setItem(LS_KEY, 'true');
     },
     async logout() {
       try {
         // Ask the server to clear the HttpOnly refresh-token cookie.
-        await api.post('/auth/logout');
+        await identityAuthClient.logout();
       } catch {
         // Best-effort — clear client state regardless.
       }

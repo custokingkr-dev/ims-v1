@@ -25,7 +25,7 @@ engineering cannot invent. Those gates are listed explicitly below.
 | Phase | Repository result | Remaining gate |
 | --- | --- | --- |
 | 0 — Baseline | Complete for this batch | Run generated read-only evidence against each promotion candidate |
-| 1 — Production blockers | Repository-owned fixes, production promotion, and Billing export enablement complete | First Billing table delivery/reconciliation, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation |
+| 1 — Production blockers | Repository-owned fixes, production promotion, Billing export enablement and first-delivery reconciliation complete | Billing backfill freshness, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation |
 | 2 — Engineering foundation | Root reactor, parent, versions, Enforcer, convergence and CI/build catalog complete | Shared-source extraction remains deferred because the candidates alter Spring discovery/type identity; the drift guard remains active |
 | 3 — API contracts | Machine-readable inventory, ownership checks, compatibility telemetry and deprecation headers complete | OpenAPI/typed-client migration and route deletion require staged client migration plus a measured zero-traffic window |
 | 4 — Database consolidation | Non-destructive bridges, ledgers, parity views, projection repair and evidence queries complete | Production backfill review, retention window, reconciliation evidence and separately approved destructive DDL |
@@ -44,6 +44,14 @@ repository-owned blockers:
   Artifact Registry images, 73 Cloud Run revisions, 308 Cloud Run job executions, 73 alert policies and 11
   custom dashboard resources. The `custoking` Artifact Registry repository held approximately 4.47 GB and
   already had a seven-day delete policy plus a keep-most-recent-three rule.
+- Re-ran the read-only Cloud Asset Inventory after the reviewed Billing export and observability changes.
+  The only tracked count changes were the two standard/detailed Billing export tables, the
+  `Custoking prod - Billing & Cost` dashboard and the already-recorded `cloudasset.googleapis.com`
+  enablement. The inventory also normalized the existing zonal Cloud SQL instance location from region
+  `asia-south2` to its unchanged exact zone `asia-south2-b`; the instance was not recreated or moved.
+  The reviewed aggregate baseline now contains 376 tracked assets with digest
+  `3d20d05e07bcfcdda5be35e8abca2fb29bd02e99ef4974cac2e8f3460b7bae74`; volatile delivery revisions,
+  executions, backup objects and secret versions remain explicitly excluded from drift decisions.
 - Took on-demand Cloud SQL backup `1787656491610` successfully before the consolidation evidence run and
   changed production `custoking-db-prod` to `ENCRYPTED_ONLY`. The gateway health check and all 31 gateway
   routes passed after the change; no SSL or connection errors appeared in the verification window.
@@ -127,6 +135,29 @@ repository-owned blockers:
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
   server-side ruleset cannot be applied from this identity.
+- Added a read-only, immutable-SHA GitHub governance verifier that proves the three reviewed check names
+  succeeded and exactly match strict classic-protection or active-ruleset contexts on both `main` and
+  `dev`. Fixture coverage fails closed on stale SHAs, failed checks, case/typing drift, extra contexts,
+  non-strict policy, excluded rulesets and `evaluate`-only rulesets; no GitHub setting is changed.
+- PR 170 merged as `ed8d925c762059d7be7b54c64839ee6f952447e3`. It added photo-import pause/resume,
+  renewed scope confirmation, certified Drive/download SHA-256 integrity with V27 fail-closed evidence,
+  the canonical identity login/refresh/logout OpenAPI contract and generated client, producer-bound exact
+  GitHub check verification, and staged read-only GCP governance automation. Dev deployment
+  `32899455975` passed release tests, exact-digest Trivy, changed-service verification, gateway health and
+  production-digest approval; the development database was restored to `STOPPED/NEVER`.
+- Isolated maintenance PRs 149, 147 and 148 then merged as `829d813752d11c7f8aa222f10fc49bf95f88c682`,
+  `b1e145c4d1172b8f5a9f9f0b1506909593b6c450` and
+  `6db9ce8cb64d169f1c921d2efc4d08c5c562b780`. They updated Jackson Databind, frontend test interaction
+  tooling and Maven Enforcer independently. Dev deployments `32901466069`, `32902985965` and
+  `32903605801` passed. The last run retried one platform-service setup job after GitHub's runner could
+  not resolve its own internal action-download host; the retry passed before any application release.
+- Production release `32894400361` was explicitly approved on 2026-08-26 and completed every exact-digest
+  scan, serial Cloud Deploy rollout, Cloud Run verification, gateway smoke and cleanup gate. The required
+  post-V25/V26 aggregate read-only execution `ims-db-evidence-20260825224054-1568283d-mwckd` then exited
+  successfully. Its disposable job was deleted and the migration operator was disabled again. The
+  contract remains `fa0ca25fd6c2f2e63f9040cebeb3899481415540ca3cc61a331624836012b641`; the fresh safe-create tuple is
+  13 students, 14 relationships, 15 fields and plan hash
+  `05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1`. No database row was written.
 
 Cloud SQL utilization does not justify a larger instance for capacity: CPU averaged 6.72% and peaked at
 15.91%, memory averaged 43.96% and peaked at 50.83%, hourly p95 connections peaked at nine, and disk usage
@@ -183,9 +214,20 @@ approximately INR 3,128/month; the minimum observed dedicated regional-HA option
   distinguishing estimated run-rate from actually usable invoice-grade standard/detailed rows.
 - Added read-only billing export health, Monitoring resource/filter validation, and Cloud Asset drift tools
   with JSON/Markdown output and fixtures.
-- Executed the production cost-metric exporter successfully and published fresh grade/availability/lag
-  series. The exporter truthfully reported grade `0`, standard `0`, detailed `0`, and both usage/export lag
-  as `-1` because no usage table exists yet.
+- Added weekly read-only GCP governance automation for Cloud Asset drift and Monitoring dashboard/alert
+  filter validation. Its checked-in baseline is a privacy-safe reviewed digest with explicit volatile-type
+  exclusions; scheduled runs cannot generate or approve a replacement. The workflow fails closed on drift,
+  missing resources and Monitoring query/API errors, uses a dedicated exact-workflow WIF identity and
+  read-only custom role, and retains redacted evidence. The Terraform identity/WIF change and repository
+  variable remain unapplied external setup; no GCP resource was mutated by this repository batch.
+- Staged that workflow's activation behind a reviewed repository config and a separate repository variable.
+  The checked-in config is disabled, and a premature variable value fails before cloud authentication.
+  After Terraform provisions the tracked governance service account and custom role, operators must capture
+  and approve a new post-provision baseline/config together before setting the variable to `true`. The gate
+  therefore cannot begin scheduled comparisons with the necessarily stale pre-provision inventory.
+- Executed the production cost-metric exporter successfully. After first delivery, Monitoring reports
+  export availability `1`, standard availability `1`, detailed availability `1`, and invoice data grade
+  `2`; lag values are non-negative and continue to expose the delayed initial backfill.
 - Applied the billing dashboard panels and replaced the stale storage-growth alert with policy
   `12758936125964704877`, filtered on the live `custoking-prod-student-photos` bucket.
 
@@ -194,13 +236,15 @@ filters, 95 filters with series, 12 valid filters with no data, and zero filter 
 alert and billing dashboard are now live. Standard and detailed usage cost exports were enabled on 2026-08-25,
 both targeting `custoking-prod.billing_export`. BigQuery subsequently created both
 `gcp_billing_export_v1_014C0A_C6B9AF_5FABC0` and
-`gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0`. The first reconciliation found zero rows in both
-tables, which is expected during the asynchronous initial population and does not constitute usable cost
-delivery. PR 164 (`3535416c844bd5f9d1072faca45f0f7c46b261b1`) separated configured capability
-from observed evidence in both the report and Monitoring exporter. The live read-only result is now
-capability grade `2`, evidence grade `0`, standard capability `1`, detailed capability `1`, availability
-`0`, `NO_MATCHING_PROJECT_ROWS`, and both lag values unavailable until a scoped usage row arrives. Partial
-query failures preserve any usable sibling-table evidence while still failing the job for investigation.
+`gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0`. PR 164
+(`3535416c844bd5f9d1072faca45f0f7c46b261b1`) separated configured capability from observed evidence in
+both the report and Monitoring exporter. The 2026-08-25 22:21 UTC read-only reconciliation found 3,307
+standard-table rows and 6,495 detailed-table rows in total; for `custoking-prod`, 1,900 standard and 2,993
+detailed rows cover the identical usage window `2026-08-18 09:00` through `2026-08-19 16:00`, latest
+export `2026-08-19 23:23:29`, gross INR `151.1409`, credits INR `-151.1410`, and net INR approximately
+zero. Evidence grade is now `INVOICE_GRADE_DETAILED`; export and usage lag remain delayed while Google's
+initial chronological backfill continues. Partial query failures preserve any usable sibling-table evidence
+while still failing the job for investigation.
 
 ### Frontend and backend hotspot work
 
@@ -222,11 +266,11 @@ query failures preserve any usable sibling-table evidence while still failing th
 | Identity service | 118 tests |
 | Operations service | 125 tests |
 | Platform service | 244 tests, including PostgreSQL 16 projection reconciliation |
-| School-core service | 572 tests, including PostgreSQL 16 planner/repair migrations and shared-guardian synchronization |
+| School-core service | 578 tests, including PostgreSQL 16 planner/repair/photo SHA-256 migrations and shared-guardian synchronization |
 | API gateway | 78 tests; contract inventory current |
-| Frontend | 160 tests across 31 files; TypeScript and production build passed |
+| Frontend | 169 tests across 33 files; TypeScript and production build passed |
 | Live dashboard | 6 authentication/server tests; CodeQL Java/Kotlin and JavaScript/TypeScript passed |
-| GCP audit Python tests | 3 tests |
+| Governance/OpenAPI Python tests | 22 tests; security-governance static audit passed |
 | Billing health PowerShell tests | Passed |
 | Cost exporter shell tests | Passed with Git Bash, including both-empty and all partial-query-failure directions |
 | Guardian classifier PostgreSQL 16 fixture | Passed; deterministic full and safe-create hashes |
@@ -249,10 +293,10 @@ No major dependency was mixed into this batch.
 
 ## Governed production actions still required
 
-1. Standard and detailed tables now exist in `custoking-prod.billing_export`, but both remain empty. Verify
-   the first non-empty delivery, reconcile standard and detailed row windows and totals, and confirm the
-   exporter changes availability to `1` with non-negative lag. Because this is a first-time export into a
-   US multi-region dataset, Google backfills from the start of the previous month in chronological order;
+1. Standard and detailed first delivery is reconciled and the exporter reports availability `1` with
+   non-negative lag. Continue observing the delayed chronological backfill until recent usage arrives and
+   both lag signals return to their normal operating window. Because this is a first-time export into a US
+   multi-region dataset, Google backfills from the start of the previous month in chronological order;
    recent usage can take up to five days to appear. Re-enabled exports or a move to a new dataset do not
    automatically fill the intervening historical gap.
 2. The production owner must approve and fund either regional HA on a supported dedicated-core Cloud SQL
@@ -270,13 +314,12 @@ No major dependency was mixed into this batch.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
 9. Guardian forward synchronization, shared-identity fan-out, the shared planner, atomic owner-only repair
-   ledger and disposable runner are implemented. The last deployed read-only classification found 13 whole
-   students / 14 relationships / 15 fields, while the other 843 planned fields remain excluded by explicit
-   hazards. Promote V25/V26 through the normal canary, then run the aggregate evidence again in read-only
-   mode. Because the contract is now part of each fingerprint, review and pin the new safe-plan hash before
-   any write; the runner deliberately retains the old hash so it currently fails closed. A separately
-   recorded production-write approval is still required after the exact contract digest, new hash and counts
-   are shown. The 25 divergent shared groups and every other review bucket remain manual; never rewrite
+   ledger and disposable runner are implemented. V25/V26 are deployed and the required post-deployment
+   read-only evidence found 13 whole students / 14 relationships / 15 fields while the other 843 planned
+   fields remain excluded by explicit hazards. V28 pins only the resulting exact contract-aware safe-plan
+   hash and remains fail-closed on function drift. A separately recorded production-write approval is still
+   required after V28 is promoted; the evidence capture and release approval do not authorize the data
+   mutation. The 25 divergent shared groups and every other review bucket remain manual; never rewrite
    shared guardians or consent events. Require parity to reach zero before any legacy parent column
    retirement.
 10. Review the single missing reporting projection by identifier in the protected evidence channel before
