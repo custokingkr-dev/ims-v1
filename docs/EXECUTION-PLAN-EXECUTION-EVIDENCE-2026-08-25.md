@@ -133,10 +133,12 @@ approximately INR 3,128/month; the minimum observed dedicated regional-HA option
 Initial read-only production evidence found 12 dashboards, 73 enabled alert policies, 107 unique Monitoring
 filters, 95 filters with series, 12 valid filters with no data, and zero filter query errors. The corrected
 alert and billing dashboard are now live. Standard and detailed usage cost exports were enabled on 2026-08-25,
-both targeting `custoking-prod.billing_export`. Immediately after enablement, BigQuery still contained only
-`cloud_pricing_export`, so billing correctly remained `ESTIMATED_ONLY` pending Google's asynchronous first
-delivery. A manual exporter execution completed successfully and published grade `0`; the enabled hourly
-Scheduler will automatically discover the standard/detailed wildcard tables when they appear.
+both targeting `custoking-prod.billing_export`. BigQuery subsequently created both
+`gcp_billing_export_v1_014C0A_C6B9AF_5FABC0` and
+`gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0`. The first reconciliation found zero rows in both
+tables, which is expected during the asynchronous initial population and does not constitute usable cost
+delivery. The enabled hourly exporter discovered both tables and published grade `2`, standard `1`, detailed
+`1`, while correctly retaining availability `0` and both lag values at `-1` until a usage row arrives.
 
 ### Frontend and backend hotspot work
 
@@ -181,9 +183,9 @@ No major dependency was mixed into this batch.
 
 ## Governed production actions still required
 
-1. Verify the first standard and detailed usage tables in `custoking-prod.billing_export`, rerun/review the
-   exporter grade, and reconcile initial totals. Both exports are enabled; table creation and first delivery
-   are asynchronous. New exports do not backfill earlier history.
+1. Standard and detailed tables now exist in `custoking-prod.billing_export`, but both remain empty. Verify
+   the first non-empty delivery, reconcile standard and detailed row windows and totals, and confirm the
+   exporter changes availability to `1` with non-negative lag. New exports do not backfill earlier history.
 2. The production owner must approve and fund either regional HA on a supported dedicated-core Cloud SQL
    tier or temporary pilot-risk acceptance with explicit RTO/RPO and tested restore evidence.
 3. A GitHub repository administrator must apply branch/ruleset and Environment controls using exact check
