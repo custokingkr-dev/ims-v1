@@ -74,6 +74,17 @@ repository-owned blockers:
   `custoking-school-core-service-prod-mt8m8se6`. Production CodeQL, Trivy, Cloud Deploy verification and an
   independent 31-route gateway smoke all passed, with no post-release school-core error logs in the checked
   window.
+- Closed the remaining shared-guardian write-path drift in both directions. Global identity changes now fan
+  out to every linked student's legacy projection, while relationship, primary, permissions, link versions,
+  guardian IDs and consent history stay student/link scoped. Optimistic locking now checks the per-student
+  link version separately from the global guardian version. PR 159 merged as
+  `42ac65257394c2084004f7b5dab6adef12ac2c19`; production release `rel-prod-42ac65257394-1` completed both
+  canary rollouts. School-core revision `custoking-school-core-service-prod-mt8omlnl` serves runtime digest
+  `sha256:43d6c3279ea459fbf9f88c8a1a3d8631c1b32f181578c270c98248fa2a21b0df`, and frontend revision
+  `custoking-frontend-prod-mt8or9qo` serves runtime digest
+  `sha256:2e7d988b2009ace88b90e15342612e475c8a51822b96425886c4caeb93ee0f1b`; both are Ready at 100% traffic.
+  Main-branch CodeQL, exact-digest Trivy, workflow gateway health, an independent 31-route smoke, and
+  exact-revision error/5xx queries all passed.
 - Removed an unnecessary `packages: write` grant from the GCP image build and added an enforced CI policy
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
@@ -170,7 +181,7 @@ delivery. The enabled hourly exporter discovered both tables and published grade
 | Identity service | 118 tests |
 | Operations service | 125 tests |
 | Platform service | 244 tests, including PostgreSQL 16 projection reconciliation |
-| School-core service | 565 tests, including PostgreSQL 16 catalog consolidation and guardian forward-sync |
+| School-core service | 569 tests, including PostgreSQL 16 catalog consolidation and shared-guardian synchronization |
 | API gateway | 78 tests; contract inventory current |
 | Frontend | 160 tests across 31 files; TypeScript and production build passed |
 | Live dashboard | 6 authentication/server tests; CodeQL Java/Kotlin and JavaScript/TypeScript passed |
