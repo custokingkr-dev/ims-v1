@@ -14,7 +14,7 @@ export interface AuthResponse {
   userId: number;
   fullName: string;
   email: string;
-  role: string;
+  role: "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER";
   branchId: number | null;
   branchName: string | null;
   zoneId: number | null;

@@ -166,7 +166,17 @@
             "format": "email"
           },
           "role": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SUPERADMIN",
+              "ZONE_ADMIN",
+              "ADMIN",
+              "SCHOOL_ADMIN",
+              "OPERATIONS",
+              "ACCOUNTANT",
+              "TEACHER",
+              "VIEWER"
+            ]
           },
           "branchId": {
             "type": [

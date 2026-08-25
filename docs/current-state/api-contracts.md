@@ -23,8 +23,10 @@ browser code must never receive or model the identity-service token required by 
 `scripts/generate-openapi-typescript-client.js` validates every contracted operation against the checked-in
 controller inventory before generating `frontend/src/generated/identityAuthApi.ts`. The generated client
 accepts the frontend's configured Axios instance, uses paths relative to its `/api/v1` base URL, and returns
-typed response bodies. It is additive in this batch; existing authentication consumers remain unchanged so
-the generated contract can pass build and runtime fixtures before a separately reviewed call-site migration.
+typed response bodies. The login, silent-refresh and logout call sites now use this generated client through
+the existing shared Axios instance. That preserves the configured `/api/v1` base URL, `withCredentials`,
+authorization header injection, single-flight refresh behavior, auth-endpoint retry suppression, in-memory
+access-token lifecycle, local session marker, and best-effort logout cleanup.
 
 Regenerate both route and payload contracts from the API gateway directory:
 
