@@ -66,7 +66,7 @@ if [[ "${query}" == *'INFORMATION_SCHEMA.TABLES'* ]]; then
   case "${SCENARIO}" in
     missing) printf '[{"standard_table_count":"0","detailed_table_count":"0","pricing_table_count":"1"}]\n' ;;
     detailed_scope_empty) printf '[{"standard_table_count":"0","detailed_table_count":"1","pricing_table_count":"1"}]\n' ;;
-    detailed_empty_standard_rows|detailed_stale_standard_fresh|detailed_fresh_standard_stale)
+    detailed_empty_standard_rows|detailed_stale_standard_fresh|detailed_fresh_standard_stale|both_empty|detailed_success_standard_error|detailed_error_standard_success|detailed_error_standard_empty)
       printf '[{"standard_table_count":"1","detailed_table_count":"1","pricing_table_count":"1"}]\n'
       ;;
     *) printf '[{"standard_table_count":"1","detailed_table_count":"0","pricing_table_count":"1"}]\n' ;;
@@ -80,7 +80,31 @@ if [[ "${query}" == *'ROUND(TIMESTAMP_DIFF'* ]]; then
       printf 'Access Denied: test failure\n' >&2
       exit 1
       ;;
-    scope_empty|detailed_scope_empty) printf '[]\n' ;;
+    scope_empty|detailed_scope_empty|both_empty) printf '[]\n' ;;
+    detailed_error_standard_empty)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf 'Access Denied: detailed test failure\n' >&2
+        exit 1
+      else
+        printf '[]\n'
+      fi
+      ;;
+    detailed_success_standard_error)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      else
+        printf 'Access Denied: standard test failure\n' >&2
+        exit 1
+      fi
+      ;;
+    detailed_error_standard_success)
+      if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
+        printf 'Access Denied: detailed test failure\n' >&2
+        exit 1
+      else
+        printf '[{"billing_account":"014C0A","project_id":"report-project","currency":"INR","gross_yesterday":"1.25","net_yesterday":"1.00","gross_mtd":"10.50","net_mtd":"9.50","export_lag_hours":"2.0","usage_lag_hours":"3.0"}]\n'
+      fi
+      ;;
     detailed_empty_standard_rows)
       if [[ "${query}" == *'gcp_billing_export_resource_v1_'* ]]; then
         printf '[]\n'
@@ -165,12 +189,16 @@ assert_contains "${CURL_LOG}" '"doubleValue": 0.0'
 empty_output="${TEST_TMP}/empty.out"
 run_exporter scope_empty "${empty_output}"
 assert_contains "${empty_output}" "none of it matches scope='report-project'"
-assert_contains "${empty_output}" 'published export health: available=0 grade=1 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${empty_output}" 'published export health: available=0 grade=0 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
 
 detailed_output="${TEST_TMP}/detailed.out"
 run_exporter detailed_scope_empty "${detailed_output}"
-assert_contains "${detailed_output}" 'published export health: available=0 grade=2 standard=0 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${detailed_output}" 'published export health: available=0 grade=0 standard=0 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
 assert_contains "${BQ_LOG}" 'gcp_billing_export_resource_v1_*'
+
+both_empty_output="${TEST_TMP}/both-empty.out"
+run_exporter both_empty "${both_empty_output}"
+assert_contains "${both_empty_output}" 'published export health: available=0 grade=0 standard=1 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
 
 fallback_output="${TEST_TMP}/fallback.out"
 run_exporter detailed_empty_standard_rows "${fallback_output}"
@@ -193,6 +221,34 @@ assert_contains "${fresh_detailed_output}" 'published export health: available=1
 assert_not_contains "${fresh_detailed_output}" 'detailed export has no matching rows'
 assert_not_contains "${fresh_detailed_output}" 'standard export is fresher than detailed'
 
+detailed_partial_output="${TEST_TMP}/detailed-partial.out"
+if run_exporter detailed_success_standard_error "${detailed_partial_output}"; then
+  echo 'Expected a partial standard query failure to return non-zero' >&2
+  exit 1
+fi
+assert_contains "${detailed_partial_output}" 'standard billing export query failed'
+assert_contains "${detailed_partial_output}" 'published export health: available=1 grade=2 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+assert_contains "${detailed_partial_output}" 'published 4 series'
+
+standard_partial_output="${TEST_TMP}/standard-partial.out"
+if run_exporter detailed_error_standard_success "${standard_partial_output}"; then
+  echo 'Expected a partial detailed query failure to return non-zero' >&2
+  exit 1
+fi
+assert_contains "${standard_partial_output}" 'detailed billing export query failed'
+assert_contains "${standard_partial_output}" 'published export health: available=1 grade=1 standard=1 detailed=1 export_lag_hours=2.0 usage_lag_hours=3.0'
+assert_contains "${standard_partial_output}" 'published 4 series'
+
+unknown_output="${TEST_TMP}/unknown.out"
+if run_exporter detailed_error_standard_empty "${unknown_output}"; then
+  echo 'Expected failed detailed evidence with an empty standard fallback to return non-zero' >&2
+  exit 1
+fi
+assert_contains "${unknown_output}" 'scoped billing evidence could not be determined because one or more usage queries failed'
+assert_contains "${unknown_output}" 'published export health: available=0 grade=0 standard=1 detailed=1 export_lag_hours=-1 usage_lag_hours=-1'
+assert_not_contains "${unknown_output}" 'none of it matches scope'
+assert_not_contains "${unknown_output}" 'contains NO rows for ANY project'
+
 error_output="${TEST_TMP}/error.out"
 if run_exporter query_error "${error_output}"; then
   echo 'Expected a real BigQuery query failure to return non-zero' >&2
@@ -200,5 +256,9 @@ if run_exporter query_error "${error_output}"; then
 fi
 assert_contains "${error_output}" 'standard billing export query failed'
 assert_contains "${error_output}" 'Access Denied: test failure'
+assert_contains "${error_output}" 'published export health: available=0 grade=0 standard=1 detailed=0 export_lag_hours=-1 usage_lag_hours=-1'
+assert_contains "${error_output}" 'scoped billing evidence could not be determined because one or more usage queries failed'
+assert_not_contains "${error_output}" 'none of it matches scope'
+assert_not_contains "${error_output}" 'contains NO rows for ANY project'
 
 echo 'cost-metric-exporter tests passed'

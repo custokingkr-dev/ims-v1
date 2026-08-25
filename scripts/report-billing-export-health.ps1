@@ -78,8 +78,8 @@ if ($standardCount -gt 0) {
 }
 
 $freshness = $null
-$prefix = if ($candidates.Count -gt 0) { [string]$candidates[0].prefix } else { $null }
-$gradeCode = $capabilityGradeCode
+$prefix = $null
+$gradeCode = 0
 $firstCandidateFreshness = $null
 $candidateResults = @()
 $specificMockMode = -not [string]::IsNullOrWhiteSpace($MockDetailedFreshnessJson) `
@@ -141,8 +141,8 @@ if ($candidateResults.Count -gt 0) {
     $prefix = $selected.prefix
     $gradeCode = $selected.gradeCode
 } else {
-    # Retain the highest configured capability when neither export has matching rows. Availability and
-    # freshness still remain unavailable; once standard rows arrive first, the loop above reports grade 1.
+    # Table existence is capability, not evidence. Keep the evidence grade at zero until a scoped usage
+    # row exists; once standard rows arrive first, the loop above reports grade 1.
     $freshness = $firstCandidateFreshness
 }
 $grade = @("ESTIMATED_ONLY", "INVOICE_GRADE_STANDARD", "INVOICE_GRADE_DETAILED")[$gradeCode]
@@ -154,7 +154,7 @@ $exportLag = if ($freshness -and $null -ne $freshness.export_lag_hours) {
 $usageLag = if ($freshness -and $null -ne $freshness.usage_lag_hours) {
     [double]$freshness.usage_lag_hours
 } else { $null }
-$freshnessStatus = if ($gradeCode -eq 0) {
+$freshnessStatus = if ($capabilityGradeCode -eq 0) {
     "UNAVAILABLE"
 } elseif ($rowCount -eq 0) {
     "NO_MATCHING_PROJECT_ROWS"
@@ -193,15 +193,17 @@ $report = [ordered]@{
         netMonthToDate = if ($null -ne $freshness.net_mtd) { [double]$freshness.net_mtd } else { $null }
         currencies = @($freshness.currencies)
     } } else { $null }
-    interpretation = if ($gradeCode -eq 0) {
+    interpretation = if ($gradeCode -eq 0 -and $capabilityGradeCode -gt 0) {
+        "Billing usage export tables are configured, but no scoped usage row is available yet. There is no invoice-grade cost evidence to report until delivery begins."
+    } elseif ($gradeCode -eq 0) {
         "Only estimator/pricing evidence is available. It is not invoice-grade and must not be presented as billed cost."
     } elseif ($gradeCode -eq 1) {
         "Standard usage export is invoice-grade for project/service/SKU cost reporting, subject to export freshness."
     } else {
         "Detailed usage export is invoice-grade and includes resource-level attribution, subject to export freshness."
     }
-    externalActionRequired = ($gradeCode -eq 0)
-    externalAction = if ($gradeCode -eq 0) {
+    externalActionRequired = ($capabilityGradeCode -eq 0)
+    externalAction = if ($capabilityGradeCode -eq 0) {
         "A Billing Account Administrator or Billing Account Costs Manager must enable standard and detailed BigQuery usage exports. First-time US/EU multi-region exports backfill from the start of the previous month and can take up to five days; supported regional datasets start at enablement. Re-enabled or moved exports do not automatically fill earlier gaps."
     } else { $null }
 }
@@ -212,8 +214,10 @@ if ($jsonParent) { New-Item -ItemType Directory -Force -Path $jsonParent | Out-N
 if ($markdownParent) { New-Item -ItemType Directory -Force -Path $markdownParent | Out-Null }
 $report | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $OutputJson -Encoding utf8
 
-$freshnessText = if ($freshness) {
+$freshnessText = if ($rowCount -gt 0) {
     "Rows for scope: $rowCount; export lag: $($report.freshness.exportLagHours)h; usage lag: $($report.freshness.usageLagHours)h."
+} elseif ($capabilityGradeCode -gt 0) {
+    "Usage export capability is configured, but rows for scope are still 0."
 } else { "No invoice-grade usage table is available." }
 $markdown = @"
 # Billing export health
@@ -225,6 +229,7 @@ Generated: $($report.generatedAtUtc)
 | Read project/dataset | ``$ProjectId.$Dataset`` |
 | Scope project | ``$ScopeProject`` |
 | Evidence grade | **$grade** ($gradeCode) |
+| Configured capability grade | **$capabilityGradeCode** |
 | Freshness | **$freshnessStatus** |
 | Standard usage tables | $standardCount |
 | Detailed usage tables | $detailedCount |
