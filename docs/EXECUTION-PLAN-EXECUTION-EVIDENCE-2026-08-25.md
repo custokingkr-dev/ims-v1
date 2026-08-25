@@ -151,6 +151,13 @@ repository-owned blockers:
   tooling and Maven Enforcer independently. Dev deployments `32901466069`, `32902985965` and
   `32903605801` passed. The last run retried one platform-service setup job after GitHub's runner could
   not resolve its own internal action-download host; the retry passed before any application release.
+- Production release `32894400361` was explicitly approved on 2026-08-26 and completed every exact-digest
+  scan, serial Cloud Deploy rollout, Cloud Run verification, gateway smoke and cleanup gate. The required
+  post-V25/V26 aggregate read-only execution `ims-db-evidence-20260825224054-1568283d-mwckd` then exited
+  successfully. Its disposable job was deleted and the migration operator was disabled again. The
+  contract remains `fa0ca25fd6c2f2e63f9040cebeb3899481415540ca3cc61a331624836012b641`; the fresh safe-create tuple is
+  13 students, 14 relationships, 15 fields and plan hash
+  `05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1`. No database row was written.
 
 Cloud SQL utilization does not justify a larger instance for capacity: CPU averaged 6.72% and peaked at
 15.91%, memory averaged 43.96% and peaked at 50.83%, hourly p95 connections peaked at nine, and disk usage
@@ -307,13 +314,12 @@ No major dependency was mixed into this batch.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
 9. Guardian forward synchronization, shared-identity fan-out, the shared planner, atomic owner-only repair
-   ledger and disposable runner are implemented. The last deployed read-only classification found 13 whole
-   students / 14 relationships / 15 fields, while the other 843 planned fields remain excluded by explicit
-   hazards. Promote V25/V26 through the normal canary, then run the aggregate evidence again in read-only
-   mode. Because the contract is now part of each fingerprint, review and pin the new safe-plan hash before
-   any write; the runner deliberately retains the old hash so it currently fails closed. A separately
-   recorded production-write approval is still required after the exact contract digest, new hash and counts
-   are shown. The 25 divergent shared groups and every other review bucket remain manual; never rewrite
+   ledger and disposable runner are implemented. V25/V26 are deployed and the required post-deployment
+   read-only evidence found 13 whole students / 14 relationships / 15 fields while the other 843 planned
+   fields remain excluded by explicit hazards. V28 pins only the resulting exact contract-aware safe-plan
+   hash and remains fail-closed on function drift. A separately recorded production-write approval is still
+   required after V28 is promoted; the evidence capture and release approval do not authorize the data
+   mutation. The 25 divergent shared groups and every other review bucket remain manual; never rewrite
    shared guardians or consent events. Require parity to reach zero before any legacy parent column
    retirement.
 10. Review the single missing reporting projection by identifier in the protected evidence channel before

@@ -2,7 +2,7 @@ $ErrorActionPreference = "Stop"
 $root = Resolve-Path (Join-Path $PSScriptRoot "../..")
 $runnerPath = Join-Path $root "scripts/invoke-guardian-repair-cloudsql.ps1"
 $contractPath = Join-Path $root "scripts/guardian-repair-contract.sql"
-$approvedPlan = "fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492"
+$approvedPlan = "05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1"
 $approvedContract = "fa0ca25fd6c2f2e63f9040cebeb3899481415540ca3cc61a331624836012b641"
 $approvedPayload = "6f3a742cf411d2a0829a40ddd580f894a095048a73e2f5095fea3118a114db21"
 $approvalReference = "github:guardian-repair-test"
@@ -27,7 +27,7 @@ $requiredRunnerFragments = @(
     '$approvedStudents = 13',
     '$approvedRelationships = 14',
     '$approvedFields = 15',
-    '$approvedPlanSha256 = "fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492"',
+    '$approvedPlanSha256 = "05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1"',
     '$approvedContractDigest = "fa0ca25fd6c2f2e63f9040cebeb3899481415540ca3cc61a331624836012b641"',
     '$approvedPayloadSha256 = "6f3a742cf411d2a0829a40ddd580f894a095048a73e2f5095fea3118a114db21"',
     'BEGIN ISOLATION LEVEL SERIALIZABLE;',

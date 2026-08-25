@@ -25,7 +25,7 @@ $ErrorActionPreference = "Stop"
 
 # These values are the reviewed, read-only production classifier result. Changing any one of them
 # requires a new evidence capture and a reviewed source change; command-line input cannot redefine them.
-$approvedPlanSha256 = "fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492"
+$approvedPlanSha256 = "05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1"
 $approvedStudents = 13
 $approvedRelationships = 14
 $approvedFields = 15
