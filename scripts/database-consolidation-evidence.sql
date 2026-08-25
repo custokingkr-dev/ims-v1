@@ -152,189 +152,16 @@ active_student_link_counts AS (
     LEFT JOIN student.student_guardians link ON link.student_id = student_row.id
     GROUP BY student_row.id
 ),
-student_relationship_intents AS (
-    SELECT
-        student_row.id AS student_id,
-        student_row.school_id,
-        intent.relationship,
-        intent.legacy_name,
-        intent.raw_contact,
-        intent.normalized_contact,
-        CASE
-            WHEN intent.legacy_name IS NOT NULL AND intent.raw_contact IS NOT NULL
-                THEN 'NAME_AND_CONTACT'
-            WHEN intent.legacy_name IS NOT NULL THEN 'NAME_ONLY'
-            ELSE 'CONTACT_ONLY'
-        END AS intent_shape,
-        CASE intent.relationship
-            WHEN 'FATHER' THEN 'legacy-' || md5(
-                student_row.school_id::text || ':father:'
-                || lower(COALESCE(intent.legacy_name, '')) || ':'
-                || CASE WHEN intent.raw_contact IS NULL
-                    THEN student_row.id::text ELSE intent.normalized_contact END)
-            ELSE 'legacy-' || md5(
-                student_row.school_id::text || ':mother:'
-                || lower(intent.legacy_name) || ':' || student_row.id::text)
-        END AS expected_v14_guardian_id,
-        'legacy-link-' || md5(
-            student_row.id::text || ':' || lower(intent.relationship))
-            AS expected_v14_link_id,
-        'guardian-repair-v1-' || md5(
-            student_row.id::text || ':' || lower(intent.relationship))
-            AS target_guardian_id,
-        'guardian-link-repair-v1-' || md5(
-            student_row.id::text || ':' || lower(intent.relationship))
-            AS target_link_id,
-        CASE
-            WHEN intent.relationship = 'FATHER' AND intent.raw_contact IS NOT NULL
-                THEN jsonb_build_array(
-                    student_row.school_id, intent.relationship,
-                    'PHONE', intent.normalized_contact)
-            ELSE jsonb_build_array(
-                student_row.school_id, intent.relationship,
-                'NAME', lower(intent.legacy_name))
-        END AS identity_key
-    FROM active_students student_row
-    CROSS JOIN LATERAL (
-        VALUES
-            (
-                'FATHER'::text,
-                NULLIF(btrim(COALESCE(student_row.father_name, '')), ''),
-                NULLIF(btrim(COALESCE(student_row.father_contact, '')), ''),
-                NULLIF(regexp_replace(COALESCE(student_row.father_contact, ''), '[^0-9]', '', 'g'), '')
-            ),
-            (
-                'MOTHER'::text,
-                NULLIF(btrim(COALESCE(student_row.mother_name, '')), ''),
-                NULL::text,
-                NULL::text
-            )
-    ) AS intent(relationship, legacy_name, raw_contact, normalized_contact)
-    WHERE intent.legacy_name IS NOT NULL OR intent.raw_contact IS NOT NULL
-),
-student_intent_validation AS (
-    SELECT
-        intent.student_id,
-        bool_or(
-            length(intent.legacy_name) > 255
-            OR (
-                intent.relationship = 'FATHER'
-                AND (
-                    intent.legacy_name IS NULL
-                    OR length(intent.raw_contact) > 32
-                    OR (
-                        intent.raw_contact IS NOT NULL
-                        AND (
-                            intent.normalized_contact IS NULL
-                            OR length(intent.normalized_contact) NOT BETWEEN 10 AND 15
-                        )
-                    )
-                )
-            )
-        ) AS invalid_or_unapproved_value,
-        max(cluster.cluster_size) AS maximum_identity_cluster_size,
-        count(*) AS intended_relationships
-    FROM student_relationship_intents intent
-    JOIN (
-        SELECT
-            student_id,
-            relationship,
-            count(*) OVER (PARTITION BY identity_key) AS cluster_size
-        FROM student_relationship_intents
-    ) cluster
-      ON cluster.student_id = intent.student_id
-     AND cluster.relationship = intent.relationship
-    GROUP BY intent.student_id
-),
-student_consent_state AS (
-    SELECT
-        student_row.id AS student_id,
-        count(consent.id) FILTER (WHERE consent.guardian_id IS NOT NULL)
-            AS guardian_bound_consents,
-        bool_or(
-            consent.id IS NOT NULL
-            AND (
-                consent.school_id IS DISTINCT FROM student_row.school_id
-                OR (
-                    consent.guardian_id IS NOT NULL
-                    AND guardian.id IS NULL
-                )
-                OR (
-                    consent.guardian_id IS NOT NULL
-                    AND guardian.school_id IS DISTINCT FROM student_row.school_id
-                )
-            )
-        ) AS consent_graph_anomaly
-    FROM active_students student_row
-    LEFT JOIN student.student_consent_events consent ON consent.student_id = student_row.id
-    LEFT JOIN student.guardians guardian ON guardian.id = consent.guardian_id
-    GROUP BY student_row.id
-),
-student_identity_candidate_state AS (
-    SELECT
-        intent.student_id,
-        count(guardian.id) AS same_school_identity_candidates
-    FROM student_relationship_intents intent
-    LEFT JOIN student.guardians guardian
-      ON guardian.school_id = intent.school_id
-     AND CASE
-        WHEN intent.relationship = 'MOTHER' THEN
-            lower(btrim(guardian.full_name)) = lower(intent.legacy_name)
-        WHEN intent.raw_contact IS NOT NULL THEN
-            NULLIF(regexp_replace(COALESCE(guardian.phone, ''), '[^0-9]', '', 'g'), '')
-                IS NOT DISTINCT FROM intent.normalized_contact
-        ELSE
-            lower(btrim(guardian.full_name)) = lower(intent.legacy_name)
-     END
-    GROUP BY intent.student_id
-),
-student_expected_id_state AS (
-    SELECT
-        intent.student_id,
-        bool_or(v14_guardian.id IS NOT NULL OR v14_link.id IS NOT NULL)
-            AS expected_v14_id_exists,
-        bool_or(target_guardian.id IS NOT NULL OR target_link.id IS NOT NULL)
-            AS target_id_exists
-    FROM student_relationship_intents intent
-    LEFT JOIN student.guardians v14_guardian
-      ON v14_guardian.id = intent.expected_v14_guardian_id
-    LEFT JOIN student.student_guardians v14_link
-      ON v14_link.id = intent.expected_v14_link_id
-    LEFT JOIN student.guardians target_guardian
-      ON target_guardian.id = intent.target_guardian_id
-    LEFT JOIN student.student_guardians target_link
-      ON target_link.id = intent.target_link_id
-    GROUP BY intent.student_id
-),
-unlinked_student_eligibility AS (
-    SELECT
-        student_row.id AS student_id,
-        validation.intended_relationships,
-        consent.guardian_bound_consents,
-        candidate.same_school_identity_candidates,
-        validation.maximum_identity_cluster_size,
-        CASE
-            WHEN NOT student_row.school_exists OR NOT student_row.school_is_active
-                THEN 'REVIEW_UNLINKED_SCHOOL_MISSING_OR_INACTIVE'
-            WHEN validation.invalid_or_unapproved_value
-                THEN 'REVIEW_UNLINKED_INVALID_OR_UNAPPROVED_LEGACY_VALUE'
-            WHEN consent.consent_graph_anomaly OR consent.guardian_bound_consents > 0
-                THEN 'REVIEW_UNLINKED_GUARDIAN_CONSENT'
-            WHEN expected_id.expected_v14_id_exists OR expected_id.target_id_exists
-                THEN 'REVIEW_UNLINKED_DETERMINISTIC_ID_EXISTS'
-            WHEN candidate.same_school_identity_candidates > 0
-                THEN 'REVIEW_UNLINKED_IDENTITY_CANDIDATE'
-            WHEN validation.maximum_identity_cluster_size > 1
-                THEN 'REVIEW_UNLINKED_SHARED_LEGACY_CLUSTER'
-            ELSE 'SAFE_CREATE_UNLINKED_STUDENT'
-        END AS eligibility_bucket
-    FROM active_students student_row
-    JOIN active_student_link_counts link_count ON link_count.student_id = student_row.id
-    JOIN student_intent_validation validation ON validation.student_id = student_row.id
-    JOIN student_consent_state consent ON consent.student_id = student_row.id
-    JOIN student_identity_candidate_state candidate ON candidate.student_id = student_row.id
-    JOIN student_expected_id_state expected_id ON expected_id.student_id = student_row.id
-    WHERE link_count.total_student_links = 0
+-- Versioned guardian repair planning buckets emitted by guardian_safe_create_plan_v1:
+-- SAFE_CREATE_UNLINKED_STUDENT
+-- REVIEW_UNLINKED_SCHOOL_MISSING_OR_INACTIVE
+-- REVIEW_UNLINKED_INVALID_OR_UNAPPROVED_LEGACY_VALUE
+-- REVIEW_UNLINKED_GUARDIAN_CONSENT
+-- REVIEW_UNLINKED_DETERMINISTIC_ID_EXISTS
+-- REVIEW_UNLINKED_IDENTITY_CANDIDATE
+-- REVIEW_UNLINKED_SHARED_LEGACY_CLUSTER
+unlinked_safe_create_plan AS (
+    SELECT * FROM student.guardian_safe_create_plan_v1()
 ),
 ranked_links AS (
     SELECT
@@ -448,15 +275,18 @@ field_state AS (
         student_row.mother_name AS legacy_mother_name_raw,
         student_row.school_exists,
         student_row.school_is_active,
-        intent.expected_v14_guardian_id,
-        intent.expected_v14_link_id,
-        intent.target_guardian_id,
-        intent.target_link_id,
-        eligibility.eligibility_bucket AS unlinked_eligibility_bucket,
-        eligibility.intended_relationships,
-        eligibility.guardian_bound_consents,
-        eligibility.same_school_identity_candidates,
-        eligibility.maximum_identity_cluster_size,
+        unlinked_plan.expected_v14_guardian_id,
+        unlinked_plan.expected_v14_link_id,
+        unlinked_plan.target_guardian_id,
+        unlinked_plan.target_link_id,
+        unlinked_plan.eligibility_bucket AS unlinked_eligibility_bucket,
+        unlinked_plan.intended_relationships,
+        unlinked_plan.guardian_bound_consents,
+        unlinked_plan.same_school_identity_candidates,
+        unlinked_plan.maximum_identity_cluster_size,
+        unlinked_plan.contract_version AS safe_create_contract_version,
+        unlinked_plan.contract_digest AS safe_create_contract_digest,
+        unlinked_plan.fingerprint_record AS unlinked_fingerprint_record,
         COALESCE(hazard.tenant_or_link_anomaly, false) AS tenant_or_link_anomaly,
         CASE field.field_name
             WHEN 'contact' THEN COALESCE(hazard.contact_divergent, false)
@@ -468,10 +298,10 @@ field_state AS (
      AND effective.relationship = field.relationship
     JOIN active_student_link_counts link_count ON link_count.student_id = field.student_id
     JOIN active_students student_row ON student_row.id = field.student_id
-    LEFT JOIN student_relationship_intents intent
-      ON intent.student_id = field.student_id
-     AND intent.relationship = field.relationship
-    LEFT JOIN unlinked_student_eligibility eligibility ON eligibility.student_id = field.student_id
+    LEFT JOIN unlinked_safe_create_plan unlinked_plan
+      ON unlinked_plan.student_id = field.student_id
+     AND unlinked_plan.relationship = field.relationship
+     AND unlinked_plan.field_name = field.field_name
     LEFT JOIN guardian_hazards hazard ON hazard.guardian_id = effective.guardian_id
 ),
 classified AS (
@@ -501,11 +331,14 @@ mismatched_plan_state AS (
 fingerprint_records AS (
     SELECT
         *,
-        jsonb_build_object(
+        COALESCE(unlinked_fingerprint_record, jsonb_build_object(
             'student_id', student_id,
             'school_id', school_id,
             'student_version', student_version,
-            'student_updated_at', student_updated_at,
+            'student_updated_at', to_char(
+                student_updated_at AT TIME ZONE 'UTC',
+                'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'
+            ),
             'school_exists', school_exists,
             'school_is_active', school_is_active,
             'legacy_father_name_raw', legacy_father_name_raw,
@@ -527,7 +360,7 @@ fingerprint_records AS (
             'same_school_identity_candidates', same_school_identity_candidates,
             'maximum_identity_cluster_size', maximum_identity_cluster_size,
             'repair_bucket', repair_bucket
-        ) AS fingerprint_record
+        )) AS fingerprint_record
     FROM mismatched_plan_state
 ),
 bucket_summary AS (
@@ -581,9 +414,12 @@ SELECT
     fingerprint.safe_create_unlinked_actions,
     fingerprint.safe_create_relationship_actions,
     fingerprint.safe_create_students,
+    contract.contract_version AS safe_create_contract_version,
+    contract.contract_digest AS safe_create_contract_digest,
     fingerprint.plan_sha256,
     fingerprint.safe_create_plan_sha256
 FROM plan_fingerprint fingerprint
+CROSS JOIN student.guardian_safe_create_contract_v1() contract
 LEFT JOIN bucket_summary summary ON true
 ORDER BY summary.repair_bucket, summary.relationship, summary.field_name;
 
