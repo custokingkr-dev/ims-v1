@@ -185,8 +185,10 @@ class StudentImportPhotoIntegrationTest {
                 .update();
         jdbc.sql("""
                 INSERT INTO student.student_review_items
-                    (id, campaign_id, student_id, school_id, status, verified_photo, completed_at)
-                VALUES (:id, :campaignId, :studentId, :schoolId, 'COMPLETED', true, now())
+                    (id, campaign_id, student_id, school_id, status, verified_photo,
+                     verified_full_name, current_full_name, suggested_full_name, completed_at)
+                VALUES (:id, :campaignId, :studentId, :schoolId, 'COMPLETED', true,
+                        true, 'Photo Student', 'Candidate Name', now())
                 """)
                 .param("id", itemId)
                 .param("campaignId", campaignId)
@@ -203,18 +205,33 @@ class StudentImportPhotoIntegrationTest {
                 .single();
         assertThat(stored).isEqualTo(key);
         Map<String, Object> verification = jdbc.sql("""
-                        SELECT status, verified_photo, completed_at
+                        SELECT status, verified_photo, verified_full_name, current_full_name, completed_at
                         FROM student.student_review_items WHERE id = :id
                         """)
                 .param("id", itemId)
                 .query((rs, n) -> Map.<String, Object>of(
                         "status", rs.getString("status"),
                         "verified", rs.getBoolean("verified_photo"),
+                        "profileVerified", rs.getBoolean("verified_full_name"),
+                        "currentFullName", rs.getString("current_full_name"),
                         "completed", rs.getObject("completed_at") != null))
                 .single();
         assertThat(verification).containsEntry("status", "PENDING")
                 .containsEntry("verified", false)
+                .containsEntry("profileVerified", true)
+                .containsEntry("currentFullName", "Photo Student")
                 .containsEntry("completed", false);
+        assertThat(jdbc.sql("SELECT suggested_full_name FROM student.student_review_items WHERE id = :id")
+                .param("id", itemId).query(String.class).optional()).isEmpty();
+        assertThat(jdbc.sql("""
+                        SELECT aggregate_id || '|' || (payload->>'status')
+                        FROM tenant_school.outbox_events
+                        WHERE event_type = 'student-review-item.upserted.v1'
+                          AND aggregate_id = :itemId
+                        """)
+                .param("itemId", itemId)
+                .query(String.class)
+                .list()).containsExactly(itemId + "|PENDING");
     }
 
     @Test

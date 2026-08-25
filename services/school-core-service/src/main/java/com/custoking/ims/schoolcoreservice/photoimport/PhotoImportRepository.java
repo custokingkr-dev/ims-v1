@@ -3,7 +3,9 @@ package com.custoking.ims.schoolcoreservice.photoimport;
 import com.custoking.ims.schoolcoreservice.infrastructure.StudentPhotoStorage;
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.persistence.AcademicCalendarAccess;
+import com.custoking.ims.schoolcoreservice.persistence.StudentReviewInvalidationService;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +24,19 @@ public class PhotoImportRepository {
     private final JdbcClient jdbc;
     private final StudentPhotoStorage photoStorage;
     private final OutboxWriter outbox;
+    private final StudentReviewInvalidationService reviewInvalidation;
 
     public PhotoImportRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox) {
+        this(jdbc, photoStorage, outbox, new StudentReviewInvalidationService(jdbc, outbox));
+    }
+
+    @Autowired
+    public PhotoImportRepository(JdbcClient jdbc, StudentPhotoStorage photoStorage, OutboxWriter outbox,
+                                 StudentReviewInvalidationService reviewInvalidation) {
         this.jdbc = jdbc;
         this.photoStorage = photoStorage;
         this.outbox = outbox;
+        this.reviewInvalidation = reviewInvalidation;
     }
 
     @Transactional
@@ -632,7 +642,7 @@ public class PhotoImportRepository {
                 .param("studentId", currentRow.studentId())
                 .param("schoolId", batch.schoolId())
                 .update();
-        invalidateActivePhotoVerification(currentRow.studentId(), batch.schoolId());
+        reviewInvalidation.invalidatePhoto(currentRow.studentId());
         jdbc.sql("""
                 UPDATE student.photo_import_rows
                 SET status = 'APPLIED', final_photo_key = :key, applied_at = now(),
@@ -658,50 +668,6 @@ public class PhotoImportRepository {
                         "photoKey", key,
                         "photoImportBatchId", batch.id().toString()));
         return key;
-    }
-
-    private void invalidateActivePhotoVerification(long studentId, long schoolId) {
-        List<Map<String, Object>> items = jdbc.sql("""
-                        SELECT i.id, i.campaign_id
-                        FROM student.student_review_items i
-                        JOIN student.student_review_campaigns c ON c.id = i.campaign_id
-                        WHERE i.student_id = :studentId
-                          AND i.school_id = :schoolId
-                          AND c.review_type = 'PHOTO_VERIFICATION'
-                          AND c.status = 'ACTIVE'
-                        """)
-                .param("studentId", studentId)
-                .param("schoolId", schoolId)
-                .query((rs, rowNum) -> Map.<String, Object>of(
-                        "id", rs.getString("id"),
-                        "campaignId", rs.getString("campaign_id")))
-                .list();
-        if (items.isEmpty()) return;
-        List<String> itemIds = items.stream().map(item -> String.valueOf(item.get("id"))).toList();
-
-        jdbc.sql("""
-                        UPDATE student.student_review_items
-                        SET verified_photo = false,
-                            status = 'PENDING',
-                            correction_requested = false,
-                            correction_notes = NULL,
-                            completed_at = NULL,
-                            updated_at = now()
-                        WHERE id IN (:itemIds)
-                        """)
-                .param("itemIds", itemIds)
-                .update();
-        items.forEach(item -> outbox.append(
-                "student-review-item.upserted.v1",
-                "StudentReviewItemUpserted:" + item.get("id"),
-                "StudentReviewItem",
-                String.valueOf(item.get("id")),
-                schoolId,
-                Map.of(
-                        "id", item.get("id"),
-                        "schoolId", schoolId,
-                        "campaignId", item.get("campaignId"),
-                        "status", "PENDING")));
     }
 
     @Transactional
@@ -932,7 +898,7 @@ public class PhotoImportRepository {
             throw new IllegalArgumentException("Photo-import row changed while recovery was being saved");
         }
         if (!Objects.equals(recoveredKey, current.finalPhotoKey())) {
-            invalidateActivePhotoVerification(current.studentId(), current.schoolId());
+            reviewInvalidation.invalidatePhoto(current.studentId());
         }
         String message = Objects.equals(recoveredKey, current.finalPhotoKey())
                 ? "Original was reprocessed; the stored photo was already equivalent"
