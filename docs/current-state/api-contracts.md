@@ -43,6 +43,10 @@ npm run contracts:check
 The gate fails when the OpenAPI path no longer exists on the named canonical controller, an operation ID is
 missing or duplicated, or the checked-in TypeScript output differs from the contract.
 
+Pull-request CI runs this command in the always-run `static-architecture-audits` job, independently of the
+affected-service matrix. A contract-only change therefore cannot skip generation validation, and an
+`IdentityAuthService`-only change runs both the identity-service tests and the same cross-service drift gate.
+
 ## Remaining migration boundary
 
 OpenAPI coverage is not yet repository-wide. Add one service workflow per reviewed batch, generate its typed
