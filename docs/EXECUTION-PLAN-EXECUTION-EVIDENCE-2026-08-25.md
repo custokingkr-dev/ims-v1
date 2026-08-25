@@ -106,6 +106,23 @@ repository-owned blockers:
   the full plan hash is `425d085c2c8fe00c4fca554b0124e6d05e1f16e570226d08307f0e7337cbaf38` and the
   safe-create hash is `fe0425a615d15a1444cd8cbd9b3bbe64a5360a6b8a3a9f33e5b6110be7684492`.
   No guardian row was written; the migration operator is disabled and zero evidence jobs remain.
+- Added the governed guardian safe-create capability without executing it. V25 is the single owner-only
+  planner used by both evidence and execution; its semantic contract pins deterministic IDs, create-only
+  behavior, least-privilege links, no consent changes, profile-only review invalidation, exact outbox events,
+  locking, and ledger replay. V26 adds the owner-only atomic repair and audit ledger. It requires a
+  `SERIALIZABLE` transaction, a matching contract/plan/count tuple, a transaction advisory lock, and
+  fail-fast `SHARE MODE NOWAIT` locks across every classifier and review source. The disposable Cloud Run
+  runner defaults to local validation, uses the disabled migration operator and owner credential only,
+  pins the exact region/private host/database/secret/network/subnet and PostgreSQL image digest, sets
+  `maxRetries=0`, deletes its job, and disables the operator after success or failure. The database function
+  itself compiles the old reviewed hash/count tuple, so direct owner invocation and the runner both remain
+  inert after V25 changes the fingerprint. A later reviewed migration must replace that pin from fresh
+  post-deployment read-only evidence. The operational ledger records approval reference, deployed source
+  revision, runner payload digest, Cloud Run job name and database user; Cloud Logging and repository
+  approvals remain the immutable provenance because the database owner can administer owner-held tables.
+  The final repository contract digest is
+  `fa0ca25fd6c2f2e63f9040cebeb3899481415540ca3cc61a331624836012b641`; no production guardian row was
+  mutated by this implementation pass.
 - Removed an unnecessary `packages: write` grant from the GCP image build and added an enforced CI policy
   that rejects promotions to `main` from any branch other than `dev`. Live GitHub evidence still shows no
   branch protections or rulesets; the current operator has repository `WRITE`, not `ADMIN`, so the final
@@ -205,7 +222,7 @@ query failures preserve any usable sibling-table evidence while still failing th
 | Identity service | 118 tests |
 | Operations service | 125 tests |
 | Platform service | 244 tests, including PostgreSQL 16 projection reconciliation |
-| School-core service | 569 tests, including PostgreSQL 16 catalog consolidation and shared-guardian synchronization |
+| School-core service | 572 tests, including PostgreSQL 16 planner/repair migrations and shared-guardian synchronization |
 | API gateway | 78 tests; contract inventory current |
 | Frontend | 160 tests across 31 files; TypeScript and production build passed |
 | Live dashboard | 6 authentication/server tests; CodeQL Java/Kotlin and JavaScript/TypeScript passed |
@@ -213,6 +230,8 @@ query failures preserve any usable sibling-table evidence while still failing th
 | Billing health PowerShell tests | Passed |
 | Cost exporter shell tests | Passed with Git Bash, including both-empty and all partial-query-failure directions |
 | Guardian classifier PostgreSQL 16 fixture | Passed; deterministic full and safe-create hashes |
+| Guardian repair PostgreSQL 16 fixture | Passed; stale-plan and concurrent-writer rejection, least-privilege create, atomic outbox/review/ledger, runtime denial and replay |
+| Guardian repair Cloud Run fixture | Passed; dry-run isolation, exact digest/count gates, compressed transport, failure cleanup and operator disablement |
 | Cloud SQL evidence transport fixture | Passed; exact gzip round-trip and guarded payload envelope |
 | Terraform | Recursive format check and observability validation passed |
 | Docker Compose | Configuration validation passed |
@@ -250,15 +269,16 @@ No major dependency was mixed into this batch.
    guardian columns, compatibility routes, or candidate indexes are removed.
 8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
    profile/ID-card/export validation, and rollback observation.
-9. Guardian forward synchronization and shared-identity fan-out are deployed. Read-only production
-   classification has narrowed the missing-link creation set to 13 whole students / 14 relationships / 15
-   fields, while the other 843 planned fields remain excluded by explicit hazards. Before any write,
-   implement and
-   review a dedicated fingerprint-gated repair service/ledger with deterministic IDs, `SERIALIZABLE`
-   revalidation, no merge/reactivation behavior, atomic outbox emission, idempotent retries and per-student
-   audit results. The safe-create plan hash above must match immediately before execution. The 25 divergent
-   shared groups and every other review bucket remain manual; never sequentially rewrite shared guardians or
-   consent events. Require parity to reach zero before any legacy parent column retirement.
+9. Guardian forward synchronization, shared-identity fan-out, the shared planner, atomic owner-only repair
+   ledger and disposable runner are implemented. The last deployed read-only classification found 13 whole
+   students / 14 relationships / 15 fields, while the other 843 planned fields remain excluded by explicit
+   hazards. Promote V25/V26 through the normal canary, then run the aggregate evidence again in read-only
+   mode. Because the contract is now part of each fingerprint, review and pin the new safe-plan hash before
+   any write; the runner deliberately retains the old hash so it currently fails closed. A separately
+   recorded production-write approval is still required after the exact contract digest, new hash and counts
+   are shown. The 25 divergent shared groups and every other review bucket remain manual; never rewrite
+   shared guardians or consent events. Require parity to reach zero before any legacy parent column
+   retirement.
 10. Review the single missing reporting projection by identifier in the protected evidence channel before
     invoking the existing one-student idempotent requeue function. Do not bulk requeue projections.
 11. Processed outbox retention and the duplicate identity index remain observation-only evidence until
