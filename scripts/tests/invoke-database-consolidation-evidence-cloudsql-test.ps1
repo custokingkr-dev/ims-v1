@@ -70,6 +70,14 @@ foreach ($aggregateMarker in @(
     'migration_summary',
     'migration_readiness',
     'reconciliation_summary',
+    'guardian repair planning buckets',
+    'SAFE_LEGACY_ONLY',
+    'REVIEW_SHARED_DIVERGENCE',
+    'REVIEW_BOTH_PRESENT_DIFFERENT',
+    'REVIEW_NORMALIZED_ONLY',
+    'REVIEW_INACTIVE_OR_MISSING_EFFECTIVE_LINK',
+    'REVIEW_TENANT_OR_LINK_ANOMALY',
+    'plan_sha256',
     'pg_stat_user_tables',
     'pg_stat_user_indexes'
 )) {
