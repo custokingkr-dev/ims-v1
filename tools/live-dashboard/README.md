@@ -19,8 +19,8 @@ single-use marker in the serving process. The callback rejects missing, expired,
 locally reused state before exchanging the authorization code; the authorization code itself remains
 provider-enforced single use across instances. OAuth token and JWKS requests have bounded response sizes,
 HTTP status checks, and ten-second timeouts. `POST /auth/logout` clears both browser cookies and best-effort
-revokes the signed session in the current process. It does not provide cross-instance revocation; rotate
-`SESSION_SECRET` to invalidate every outstanding signed session globally.
+revokes the encrypted session in the current process. It does not provide cross-instance revocation; rotate
+`SESSION_SECRET` to invalidate every outstanding encrypted session globally.
 
 Required production variables are `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET`,
 `DASHBOARD_ALLOWED_EMAILS`, `SESSION_SECRET`, and the pinned `DASHBOARD_PUBLIC_URL`. Authentication fails

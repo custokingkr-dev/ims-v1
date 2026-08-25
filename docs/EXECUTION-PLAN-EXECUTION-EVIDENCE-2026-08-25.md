@@ -71,10 +71,10 @@ invent. Those gates are listed explicitly below.
 
 ### Billing, GCP observability and dashboard security
 
-- Hardened dashboard OAuth with signed browser-bound single-use state, S256 PKCE, OIDC nonce verification,
+- Hardened dashboard OAuth with encrypted browser-bound single-use state, S256 PKCE, OIDC nonce verification,
   upstream status/timeout/size checks, pinned public callback behavior, and logout regression coverage.
 - Documented that logout clears browser cookies and revokes the session only in the current process; rotating
-  `SESSION_SECRET` is the current global invalidation mechanism.
+  `SESSION_SECRET` derives the authenticated-encryption key and is the current global invalidation mechanism.
 - Corrected Terraform's photo storage alert target to `custoking-{env}-student-photos`.
 - Added billing export grade, availability, export lag and usage lag signals, distinguishing estimated
   run-rate from invoice-grade standard/detailed usage export.

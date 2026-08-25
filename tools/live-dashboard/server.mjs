@@ -410,7 +410,7 @@ export const server = http.createServer(async (req, res) => {
   if (url.pathname === "/auth/logout") {
     auth.revokeSession(req.headers.cookie);
     res.writeHead(303, {
-      "set-cookie": [auth.clearSessionCookie, auth.clearOAuthStateCookie],
+      "set-cookie": [auth.clearSessionCookie, auth.expireAuthorizationCookie],
       "cache-control": "no-store",
       location: "/owner",
     });
@@ -429,24 +429,24 @@ export const server = http.createServer(async (req, res) => {
       try {
         const code = url.searchParams.get("code");
         if (!code) throw new Error("no code");
-        const oauth = auth.consumeOAuth(req.headers.cookie, url.searchParams.get("state"));
-        const tokens = await auth.exchangeCode(code, redirectUri, oauth.codeVerifier);
-        const email = await auth.verifyIdToken(tokens.id_token, oauth.nonce);
+        const transaction = auth.consumeAuthorization(req.headers.cookie, url.searchParams.get("state"));
+        const tokens = await auth.exchangeCode(code, redirectUri, transaction.codeVerifier);
+        const email = await auth.verifyIdToken(tokens.id_token, transaction.nonce);
         if (!auth.isAllowed(email)) {
           res.writeHead(403, {
             "content-type": "text/html; charset=utf-8",
-            "set-cookie": auth.clearOAuthStateCookie,
+            "set-cookie": auth.expireAuthorizationCookie,
             "cache-control": "no-store",
           });
           return res.end(`<p style="font:16px system-ui;padding:2rem">
             <strong>${email}</strong> is not on the allowlist for this dashboard.<br>
             Ask the owner to add you, then sign in again.</p>`);
         }
-        const dest = safeDest(oauth.destination);
+        const dest = safeDest(transaction.destination);
         res.writeHead(302, {
           "set-cookie": [
             `ck_session=${auth.makeSession(email)}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=43200`,
-            auth.clearOAuthStateCookie,
+            auth.expireAuthorizationCookie,
           ],
           "cache-control": "no-store",
           location: dest,
@@ -455,26 +455,24 @@ export const server = http.createServer(async (req, res) => {
       } catch (err) {
         res.writeHead(400, {
           "content-type": "text/plain",
-          "set-cookie": auth.clearOAuthStateCookie,
+          "set-cookie": auth.expireAuthorizationCookie,
           "cache-control": "no-store",
         });
         return res.end(`Sign-in failed: ${err.message}`);
       }
     }
 
-    // CodeQL flags this as js/user-controlled-bypass: a condition guarding a sensitive action, driven
-    // by a user-provided value. The value is a cookie, and a session cookie is user-provided by
-    // definition -- the query cannot see that readSession verifies an HMAC-SHA256 signature with
-    // timingSafeEqual before returning anything, so signature checks read to it as no check at all.
-    // Reviewed and dismissed on the alert rather than worked around here; see auth.mjs.
+    // readSession accepts the identity only after AES-GCM authenticates and decrypts the cookie, then
+    // re-checks expiry, shape, revocation, and the current email allowlist. Treating the raw browser
+    // cookie as an identity here would turn this branch into an authentication bypass.
     if (!auth.readSession(req.headers.cookie)) {
       // Constrained on the way OUT as well as on the way back. Putting an arbitrary pathname into
       // state and validating only on return means the check has exactly one place to be wrong in.
-      const oauth = auth.beginOAuth(safeDest(url.pathname));
+      const transaction = auth.beginAuthorization(safeDest(url.pathname));
       res.writeHead(302, {
-        "set-cookie": oauth.cookie,
+        "set-cookie": transaction.cookie,
         "cache-control": "no-store",
-        location: auth.authUrl(redirectUri, oauth.state, oauth.codeChallenge),
+        location: auth.authUrl(redirectUri, transaction.state, transaction.codeChallenge),
       });
       return res.end();
     }
