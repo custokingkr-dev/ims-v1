@@ -7,7 +7,9 @@ param(
     [string]$OutputMarkdown = "artifacts/billing-export-health.md",
     [string]$BqPath = "bq",
     [string]$MockInventoryJson = "",
-    [string]$MockFreshnessJson = ""
+    [string]$MockFreshnessJson = "",
+    [string]$MockDetailedFreshnessJson = "",
+    [string]$MockStandardFreshnessJson = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,16 +60,31 @@ if ($null -eq $inventory) { throw "Billing export inventory query returned no ro
 $standardCount = [int]$inventory.standard_table_count
 $detailedCount = [int]$inventory.detailed_table_count
 $pricingCount = [int]$inventory.pricing_table_count
-$gradeCode = if ($detailedCount -gt 0) { 2 } elseif ($standardCount -gt 0) { 1 } else { 0 }
-$grade = @("ESTIMATED_ONLY", "INVOICE_GRADE_STANDARD", "INVOICE_GRADE_DETAILED")[$gradeCode]
-$prefix = if ($detailedCount -gt 0) {
-    "gcp_billing_export_resource_v1_"
-} elseif ($standardCount -gt 0) {
-    "gcp_billing_export_v1_"
-} else { $null }
+$capabilityGradeCode = if ($detailedCount -gt 0) { 2 } elseif ($standardCount -gt 0) { 1 } else { 0 }
+$candidates = @()
+if ($detailedCount -gt 0) {
+    $candidates += [ordered]@{
+        prefix = "gcp_billing_export_resource_v1_"
+        gradeCode = 2
+        mock = $MockDetailedFreshnessJson
+    }
+}
+if ($standardCount -gt 0) {
+    $candidates += [ordered]@{
+        prefix = "gcp_billing_export_v1_"
+        gradeCode = 1
+        mock = $MockStandardFreshnessJson
+    }
+}
 
 $freshness = $null
-if ($prefix) {
+$prefix = if ($candidates.Count -gt 0) { [string]$candidates[0].prefix } else { $null }
+$gradeCode = $capabilityGradeCode
+$firstCandidateFreshness = $null
+$candidateResults = @()
+$specificMockMode = -not [string]::IsNullOrWhiteSpace($MockDetailedFreshnessJson) `
+    -or -not [string]::IsNullOrWhiteSpace($MockStandardFreshnessJson)
+foreach ($candidate in $candidates) {
     $safeScope = $ScopeProject.Replace("'", "''")
     $freshnessSql = @"
 SELECT
@@ -80,27 +97,68 @@ SELECT
   ROUND(SUM(IF(DATE(usage_start_time) >= DATE_TRUNC(CURRENT_DATE(), MONTH),
     cost + IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0), 0)), 4) AS net_mtd,
   ARRAY_AGG(DISTINCT currency IGNORE NULLS ORDER BY currency) AS currencies
-FROM ``$ProjectId.$Dataset.${prefix}*``
+FROM ``$ProjectId.$Dataset.$($candidate.prefix)*``
 WHERE project.id = '$safeScope'
   AND DATE(usage_start_time) >= DATE_SUB(CURRENT_DATE(), INTERVAL 62 DAY)
 "@
-    $freshnessRows = if ($MockFreshnessJson) {
-        @(Get-Content -Raw -LiteralPath $MockFreshnessJson | ConvertFrom-Json)
+    $candidateMock = if ($specificMockMode) {
+        if (-not $candidate.mock) {
+            throw "Candidate-specific mock mode requires a freshness fixture for every configured export table."
+        }
+        [string]$candidate.mock
+    } elseif ($MockFreshnessJson) {
+        $MockFreshnessJson
+    } else { "" }
+    $freshnessRows = if ($candidateMock) {
+        @(Get-Content -Raw -LiteralPath $candidateMock | ConvertFrom-Json)
     } else {
         @(Invoke-BqJson $freshnessSql)
     }
-    $freshness = @($freshnessRows)[0]
+    $candidateFreshness = @($freshnessRows)[0]
+    if ($null -eq $firstCandidateFreshness) {
+        $firstCandidateFreshness = $candidateFreshness
+    }
+    if ($candidateFreshness -and [long]$candidateFreshness.row_count -gt 0) {
+        $candidateResults += [pscustomobject]@{
+            prefix = [string]$candidate.prefix
+            gradeCode = [int]$candidate.gradeCode
+            freshness = $candidateFreshness
+            usageLagHours = if ($null -ne $candidateFreshness.usage_lag_hours) {
+                [double]$candidateFreshness.usage_lag_hours
+            } else { [double]::PositiveInfinity }
+            exportLagHours = if ($null -ne $candidateFreshness.export_lag_hours) {
+                [double]$candidateFreshness.export_lag_hours
+            } else { [double]::PositiveInfinity }
+        }
+    }
 }
+if ($candidateResults.Count -gt 0) {
+    # Initial standard and detailed backfills can advance at different rates. Prefer the candidate with
+    # the newest usage, then newest delivery; use detailed only as the tie-breaker.
+    $selected = $candidateResults | Sort-Object usageLagHours, exportLagHours,
+        @{ Expression = "gradeCode"; Descending = $true } | Select-Object -First 1
+    $freshness = $selected.freshness
+    $prefix = $selected.prefix
+    $gradeCode = $selected.gradeCode
+} else {
+    # Retain the highest configured capability when neither export has matching rows. Availability and
+    # freshness still remain unavailable; once standard rows arrive first, the loop above reports grade 1.
+    $freshness = $firstCandidateFreshness
+}
+$grade = @("ESTIMATED_ONLY", "INVOICE_GRADE_STANDARD", "INVOICE_GRADE_DETAILED")[$gradeCode]
 
 $rowCount = if ($freshness) { [long]$freshness.row_count } else { 0L }
 $exportLag = if ($freshness -and $null -ne $freshness.export_lag_hours) {
     [double]$freshness.export_lag_hours
 } else { $null }
+$usageLag = if ($freshness -and $null -ne $freshness.usage_lag_hours) {
+    [double]$freshness.usage_lag_hours
+} else { $null }
 $freshnessStatus = if ($gradeCode -eq 0) {
     "UNAVAILABLE"
 } elseif ($rowCount -eq 0) {
     "NO_MATCHING_PROJECT_ROWS"
-} elseif ($exportLag -le 24) {
+} elseif ($null -ne $exportLag -and $null -ne $usageLag -and $exportLag -le 24 -and $usageLag -le 24) {
     "FRESH"
 } else {
     "DELAYED"
@@ -114,6 +172,8 @@ $report = [ordered]@{
     scopeProject = $ScopeProject
     grade = $grade
     gradeCode = $gradeCode
+    capabilityGradeCode = $capabilityGradeCode
+    selectedUsageTablePrefix = $prefix
     invoiceGrade = ($gradeCode -gt 0)
     resourceLevelDetail = ($gradeCode -eq 2)
     freshnessStatus = $freshnessStatus
@@ -128,7 +188,7 @@ $report = [ordered]@{
         latestExportTime = $freshness.latest_export_time
         latestUsageEnd = $freshness.latest_usage_end
         exportLagHours = $exportLag
-        usageLagHours = if ($null -ne $freshness.usage_lag_hours) { [double]$freshness.usage_lag_hours } else { $null }
+        usageLagHours = $usageLag
         grossMonthToDate = if ($null -ne $freshness.gross_mtd) { [double]$freshness.gross_mtd } else { $null }
         netMonthToDate = if ($null -ne $freshness.net_mtd) { [double]$freshness.net_mtd } else { $null }
         currencies = @($freshness.currencies)
@@ -142,7 +202,7 @@ $report = [ordered]@{
     }
     externalActionRequired = ($gradeCode -eq 0)
     externalAction = if ($gradeCode -eq 0) {
-        "A Billing Account Administrator or Billing Account Costs Manager must enable standard and detailed BigQuery usage exports. New exports do not backfill earlier usage."
+        "A Billing Account Administrator or Billing Account Costs Manager must enable standard and detailed BigQuery usage exports. First-time US/EU multi-region exports backfill from the start of the previous month and can take up to five days; supported regional datasets start at enablement. Re-enabled or moved exports do not automatically fill earlier gaps."
     } else { $null }
 }
 

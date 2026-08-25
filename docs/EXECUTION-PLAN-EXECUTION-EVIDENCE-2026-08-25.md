@@ -206,7 +206,10 @@ No major dependency was mixed into this batch.
 
 1. Standard and detailed tables now exist in `custoking-prod.billing_export`, but both remain empty. Verify
    the first non-empty delivery, reconcile standard and detailed row windows and totals, and confirm the
-   exporter changes availability to `1` with non-negative lag. New exports do not backfill earlier history.
+   exporter changes availability to `1` with non-negative lag. Because this is a first-time export into a
+   US multi-region dataset, Google backfills from the start of the previous month in chronological order;
+   recent usage can take up to five days to appear. Re-enabled exports or a move to a new dataset do not
+   automatically fill the intervening historical gap.
 2. The production owner must approve and fund either regional HA on a supported dedicated-core Cloud SQL
    tier or temporary pilot-risk acceptance with explicit RTO/RPO and tested restore evidence.
 3. A GitHub repository administrator must apply branch/ruleset and Environment controls using exact check
