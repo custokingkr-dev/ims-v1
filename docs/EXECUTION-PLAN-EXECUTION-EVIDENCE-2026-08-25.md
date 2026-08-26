@@ -431,3 +431,23 @@ The resulting execution order is deliberately two-phase: deploy and use the revi
 derive a new immutable production write plan only from explicit current decisions. Any later guardian-value
 write still requires its exact digest and counts to be approved; broad release approval cannot substitute
 for that data-write approval.
+
+### Guardian-review production promotion evidence
+
+- Feature PR 180 merged to `dev` as `2955322b68f889dcc50eb0cac6029a559e5505f2` after the full CI,
+  CodeQL, privacy, authorization-boundary, container and HIGH/CRITICAL image gates passed. Development
+  deployment run 32957451275 completed successfully, including schema migration, three service rollouts,
+  gateway health smoke and immutable digest approval for production.
+- Promotion PR 181 was restricted to `dev` → `main` and merged as
+  `280eda9103dcb318fece3d37a71e11a8c3a31ef1` after its independent protected checks passed. Production
+  deployment run 32959075733 was approved for the exact `prod` environment and completed successfully.
+- Cloud Deploy release `rel-prod-280eda9103dc-1` completed the school-core, API gateway and frontend
+  canaries successfully. Revisions `custoking-school-core-service-prod-mt9yxurs`,
+  `custoking-api-gateway-prod-mt9z2xf4` and `custoking-frontend-prod-mt9z76la` are ready at 100% traffic.
+- Production startup evidence records Flyway applying exactly one student migration, `v29 - guardian data
+  review workflow`, in 82 ms and advancing the student schema from version 28 to 29. The new school-core
+  revision then passed its startup/liveness probes and confirmed that runtime queries remain on the
+  RLS-subject `app_rt` database role.
+- No guardian, student, relationship, consent or projection value was changed by this release. Review
+  decisions are the next execution input; a later writer must still derive and present an immutable digest
+  and exact counts for separate approval.
