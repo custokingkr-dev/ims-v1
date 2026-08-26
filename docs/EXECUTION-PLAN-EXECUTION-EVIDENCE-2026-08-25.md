@@ -401,3 +401,33 @@ deleted by this continuation batch.
 - Every disposable writer/evidence job was removed and the dedicated migration operator was verified
   disabled. No production identifier was emitted. The guarded projection runner and its contract test are
   retained in the repository as the auditable fail-closed execution path.
+
+## Governed guardian-review execution — 2026-08-26
+
+- The 843 residual guardian-field differences were preserved for explicit review rather than treated as
+  bulk-safe writes. Aggregate evidence partitions them into 742 placeholder-contamination fields, 52
+  substantive linked conflicts, 32 case-only linked-name differences, seven missing-mother relationship
+  fields, six fields on incomplete records, two projection-only fields and two fields on one plausible
+  singleton identity. These categories are evidence labels, not permission to mutate a record.
+- Added a tenant-isolated, school-scoped guardian review queue with stable case IDs and snapshot digests.
+  School administrators are confined to their own school, Operations users to assigned schools, and
+  Superadmins can select a school explicitly. Summary, filtering, pagination and progress reporting do not
+  expose cross-school data.
+- Added append-only review decisions with snapshot-bound stale-write rejection. Runtime roles can read the
+  queue and insert an audited decision but cannot update or delete decisions, and the workflow does not
+  directly update student, guardian, relationship, consent or projection records.
+- Added the Guardian Data Review workspace for Administrators, Operations and Superadmins. It reports
+  field-level evidence, impact warnings, review status and completion percentage while keeping execution
+  behind a separate exact-plan approval boundary.
+- Updated gateway routing and the canonical API inventory for the three review endpoints. The schema,
+  repository and UI distinguish a singleton identity candidate from a repeated placeholder phone rather
+  than assuming every repeated value is a guardian identity.
+- Verification passed with 584 school-core tests across 96 suites, including PostgreSQL 16 migration/RLS,
+  snapshot-staleness and classifier fixtures; 78 gateway tests; 177 frontend tests across 35 files; the
+  school-core package build; the frontend production build; and the Git whitespace check. All reported
+  failures, errors and skips were zero.
+
+The resulting execution order is deliberately two-phase: deploy and use the review workflow first, then
+derive a new immutable production write plan only from explicit current decisions. Any later guardian-value
+write still requires its exact digest and counts to be approved; broad release approval cannot substitute
+for that data-write approval.
