@@ -76,7 +76,7 @@ export function withDerivedModuleGroups(moduleCodes: Iterable<string>): Set<stri
 
 export type PanelKey =
   | 'home' | 'students' | 'fees' | 'feestructure' | 'attendance' | 'timetable'
-  | 'addstudent' | 'bulkimport' | 'photoimport' | 'studentexport' | 'staff' | 'catalog' | 'orders' | 'planning' | 'classsetup'
+  | 'addstudent' | 'bulkimport' | 'photoimport' | 'studentexport' | 'guardianreview' | 'staff' | 'catalog' | 'orders' | 'planning' | 'classsetup'
   | 'ff-dashboard' | 'ff-new' | 'ff-approvals' | 'ff-orders'
   | 'sa-all-orders' | 'sa-new-order' | 'sa-invoices'
   | 'sa-schools' | 'sa-erp' | 'sa-revenue' | 'sa-catalog'
@@ -133,6 +133,7 @@ export const ADMIN_NAV_SECTIONS: WorkspaceNavSection[] = [
     title: 'ERP',
     items: [
       { key: 'photoimport', label: 'Student photo import', icon: '', module: 'ERP' },
+      { key: 'guardianreview', label: 'Guardian data review', icon: '', module: 'ERP' },
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
       { key: 'timetable',  label: 'Timetable',   icon: '📅', module: 'ERP' },
@@ -160,6 +161,7 @@ export const OPERATIONS_NAV_SECTIONS: WorkspaceNavSection[] = [
     items: [
       { key: 'photoimport', label: 'Student photo import', icon: '' },
       { key: 'studentexport', label: 'Student data export', icon: '' },
+      { key: 'guardianreview', label: 'Guardian data review', icon: '' },
       { key: 'students',   label: 'Students',    icon: '🎓', module: 'ERP' },
       { key: 'attendance', label: 'Attendance',  icon: '✓', module: 'ERP' },
     ],
@@ -226,6 +228,7 @@ export const SUPERADMIN_NAV_SECTIONS: Array<{
     items: [
       { key: 'photoimport', label: 'Student photo import', icon: '' },
       { key: 'studentexport', label: 'Student data export', icon: '' },
+      { key: 'guardianreview', label: 'Guardian data review', icon: '' },
       { key: 'orders', label: 'Order approvals', icon: '📦' },
       { key: 'sa-all-orders', label: 'All orders', icon: '📋' },
       { key: 'sa-new-order', label: 'New order request', icon: '✏️' },
@@ -267,6 +270,7 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   bulkimport: 'Bulk import',
   photoimport: 'Student photo import',
   studentexport: 'Student details & photos',
+  guardianreview: 'Guardian data review',
   staff: 'Staff & HR',
   classsetup: 'Class & section setup',
   catalog: 'Catalog',
