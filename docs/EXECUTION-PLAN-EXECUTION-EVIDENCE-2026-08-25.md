@@ -376,22 +376,7 @@ No major dependency was mixed into this batch.
 8. Named-school owners must supply the exact school, support window, acceptance owner and rollback owner,
    then schedule the canary, representative school day and photo profile/ID-card/export validation. The
    one-time protected PITR restore has passed; recurring recovery drills still require security-approved IAM.
-9. Guardian forward synchronization, shared-identity fan-out, the shared planner, atomic owner-only repair
-   ledger and disposable runner are implemented. V25/V26 are deployed and the required post-deployment
-   read-only evidence found 13 whole students / 14 relationships / 15 fields while the other 843 planned
-   fields remain excluded by explicit hazards. V28 pins only the resulting exact contract-aware safe-plan
-   hash and remains fail-closed on function drift. V28 is now promoted and live. A separately recorded
-   production-write approval for the exact 13/14/15 tuple and plan hash is still required; evidence capture,
-   release approval and this closeout request do not authorize the data mutation. The 25 divergent shared
-   groups and every other review bucket remain manual; never rewrite
-   shared guardians or consent events. Require parity to reach zero before any legacy parent column
-   retirement.
-10. The single missing reporting projection has passed protected latest-event review. A separate production
-    write approval must cite approval reference
-    `projection-requeue-v1:3fb7f7a0c94560561684f02754e9dec824feb6ae1c2e032664d88949de28fb17`
-    before invoking the existing one-student idempotent requeue function and re-running read-only parity.
-    Do not expose its identifier or bulk requeue projections.
-11. Processed outbox retention and the duplicate identity index remain observation-only evidence until
+9. Processed outbox retention and the duplicate identity index remain observation-only evidence until
     DATA-02 and a representative query/index window authorize deletion.
 
 Production mutations were limited to reviewed releases; the targeted observability resources; Cloud Asset
@@ -400,3 +385,19 @@ The dedicated migration operator was returned to disabled state after each read-
 successful classifier job exited 0 and its disposable job was deleted. No
 external notification message was sent, no recovery IAM was enabled, and no database row or index was
 deleted by this continuation batch.
+
+## Approved database-write closeout — 2026-08-26
+
+- The exact guardian approval for plan
+  `05743ca971b91f82879e13383258bfed3f3c131d6130ab4d5bf1996da6f8e6e1` was recorded and the owner-only
+  serializable repair completed for 13 students, 14 relationships and 15 fields. Post-write evidence reports
+  zero remaining safe-create students, relationships or fields. The other 843 planned fields remain in their
+  explicit manual-review buckets; shared guardians and consent events were not rewritten.
+- The exact projection approval
+  `projection-requeue-v1:3fb7f7a0c94560561684f02754e9dec824feb6ae1c2e032664d88949de28fb17` was recorded. The disposable,
+  fingerprint-bound runner requeued only the approved latest processed event through
+  `reporting.requeue_student_projection`, and the normal projector completed it. Final read-only parity is
+  1,498 expected, 1,498 reconciled and zero issues.
+- Every disposable writer/evidence job was removed and the dedicated migration operator was verified
+  disabled. No production identifier was emitted. The guarded projection runner and its contract test are
+  retained in the repository as the auditable fail-closed execution path.
