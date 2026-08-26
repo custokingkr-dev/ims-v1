@@ -93,6 +93,7 @@ describe('workspace nav module filtering', () => {
     expect(items).not.toContainEqual(expect.objectContaining({ key: 'home' }));
     expect(items).toContainEqual(expect.objectContaining({ key: 'photoimport' }));
     expect(items).toContainEqual(expect.objectContaining({ key: 'studentexport' }));
+    expect(items).toContainEqual(expect.objectContaining({ key: 'guardianreview' }));
   });
 
   it('exposes the student export workflow to platform superadmins', () => {
@@ -101,6 +102,10 @@ describe('workspace nav module filtering', () => {
     expect(items).toContainEqual(expect.objectContaining({
       key: 'studentexport',
       label: 'Student data export',
+    }));
+    expect(items).toContainEqual(expect.objectContaining({
+      key: 'guardianreview',
+      label: 'Guardian data review',
     }));
   });
 });
