@@ -3,6 +3,8 @@
 .gdr-command-bar h2 { margin: 7px 0 3px; font-family: Fraunces, Georgia, serif; font-size: clamp(24px, 3vw, 38px); line-height: 1; letter-spacing: -.02em; }
 .gdr-command-bar p { margin: 0; color: var(--ink2); font-size: 13px; }
 .gdr-eyebrow { display: inline-flex; gap: 7px; align-items: center; color: var(--g); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.gdr-command-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.gdr-bulk-action { min-width: 180px; box-shadow: 0 8px 22px rgba(23, 61, 44, .14); }
 .gdr-progress-card { padding: 18px 22px; border: 1px solid #d9ded8; background: #fff; }
 .gdr-progress-copy { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 10px; font-size: 13px; color: var(--ink2); }
 .gdr-progress-copy strong { color: var(--ink); font-size: 15px; }
@@ -51,6 +53,8 @@
 @keyframes gdr-spin { to { transform: rotate(360deg); } }
 @media (max-width: 760px) {
   .gdr-command-bar, .gdr-filters, .gdr-footer { align-items: stretch; flex-direction: column; }
+  .gdr-command-actions { justify-content: stretch; }
+  .gdr-command-actions .ck-btn { width: 100%; justify-content: center; }
   .gdr-stat-grid { grid-template-columns: repeat(2, 1fr); }
   .gdr-progress-copy { flex-direction: column; gap: 3px; }
 }

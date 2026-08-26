@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -75,5 +76,32 @@ class GuardianDataReviewControllerTest {
 
         verify(modules).requireModuleEnabled(12L, "STUDENTS");
         verify(reviews).decide(12L, caseId, request, "request-1");
+    }
+
+    @Test
+    void superadminCanRecordAnExactCrossSchoolBulkDecision() {
+        TenantContext.set(new TenantContext(1L, "root@platform.test", "SUPERADMIN", null, null,
+                Set.of(), Set.of("platform:admin")));
+        var request = new GuardianDataReviewController.BulkDecisionRequest(
+                "KEEP_LEGACY", "School confirmed legacy", List.of(
+                new GuardianDataReviewController.BulkDecisionCaseRequest(
+                        12L, "a".repeat(64), "b".repeat(64)),
+                new GuardianDataReviewController.BulkDecisionCaseRequest(
+                        13L, "c".repeat(64), "d".repeat(64))));
+        Map<String, Object> expected = Map.of("processed", 2);
+        when(reviews.decideBulk(org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.eq("KEEP_LEGACY"),
+                org.mockito.ArgumentMatchers.eq("School confirmed legacy"),
+                org.mockito.ArgumentMatchers.eq("bulk-request"))).thenReturn(expected);
+
+        assertThat(controller.decideBulk("student-token", "bulk-request", request))
+                .isSameAs(expected);
+
+        verify(modules).requireModuleEnabled(12L, "STUDENTS");
+        verify(modules).requireModuleEnabled(13L, "STUDENTS");
+        verify(reviews).decideBulk(org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.eq("KEEP_LEGACY"),
+                org.mockito.ArgumentMatchers.eq("School confirmed legacy"),
+                org.mockito.ArgumentMatchers.eq("bulk-request"));
     }
 }

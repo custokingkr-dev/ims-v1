@@ -3,11 +3,15 @@ package com.custoking.ims.schoolcoreservice.persistence;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,6 +36,8 @@ public class GuardianDataReviewRepository {
     public GuardianDataReviewRepository(JdbcClient jdbc) {
         this.jdbc = jdbc;
     }
+
+    public record BulkDecisionCase(long schoolId, String caseId, String caseSnapshotSha256) {}
 
     public Map<String, Object> summary(Long schoolId) {
         String where = schoolId == null ? "" : " WHERE school_id = :schoolId";
@@ -154,6 +160,72 @@ public class GuardianDataReviewRepository {
             throw new IllegalArgumentException("Review case changed since it was loaded; refresh and review again");
         }
 
+        insertDecision(schoolId, safeCaseId, expectedSnapshot, decision, notes, safeIdempotencyKey);
+        return caseById(schoolId, safeCaseId);
+    }
+
+    @Transactional(isolation = Isolation.SERIALIZABLE)
+    public Map<String, Object> decideBulk(List<BulkDecisionCase> requestedCases,
+                                          String requestedDecision, String requestedNotes,
+                                          String idempotencyKey) {
+        if (requestedCases == null || requestedCases.isEmpty()) {
+            throw new IllegalArgumentException("At least one review case is required");
+        }
+        if (requestedCases.size() > 1000) {
+            throw new IllegalArgumentException("Bulk decisions are limited to 1000 cases");
+        }
+        String decision = allowed(requestedDecision, DECISIONS, "decision");
+        String notes = text(requestedNotes);
+        if (notes != null && notes.length() > 2000) {
+            throw new IllegalArgumentException("Decision notes must be 2000 characters or fewer");
+        }
+        String safeIdempotencyKey = text(idempotencyKey);
+        if (safeIdempotencyKey == null || safeIdempotencyKey.length() > 64) {
+            throw new IllegalArgumentException(
+                    "Idempotency-Key is required and must be 64 characters or fewer for bulk decisions");
+        }
+
+        List<BulkDecisionCase> validated = new ArrayList<>(requestedCases.size());
+        Set<String> uniqueCases = new HashSet<>();
+        for (BulkDecisionCase requested : requestedCases) {
+            if (requested == null || requested.schoolId() <= 0) {
+                throw new IllegalArgumentException("Every bulk decision case requires a schoolId");
+            }
+            String caseId = hash(requested.caseId(), "caseId");
+            String snapshot = hash(requested.caseSnapshotSha256(), "caseSnapshotSha256");
+            if (!uniqueCases.add(requested.schoolId() + ":" + caseId)) {
+                throw new IllegalArgumentException("Bulk decisions cannot contain duplicate review cases");
+            }
+            String currentSnapshot = jdbc.sql("""
+                    SELECT case_snapshot_sha256
+                    FROM student.guardian_data_review_queue_v1
+                    WHERE case_id = :caseId AND school_id = :schoolId
+                    """).param("caseId", caseId).param("schoolId", requested.schoolId())
+                    .query(String.class).optional().orElseThrow(() -> new IllegalArgumentException(
+                            "A bulk review case no longer exists; refresh the queue"));
+            if (!snapshot.equals(currentSnapshot)) {
+                throw new IllegalArgumentException(
+                        "A bulk review case changed since it was loaded; refresh and review again");
+            }
+            validated.add(new BulkDecisionCase(requested.schoolId(), caseId, snapshot));
+        }
+
+        int inserted = 0;
+        for (BulkDecisionCase reviewCase : validated) {
+            String caseIdempotencyKey = "bulk:" + UUID.nameUUIDFromBytes((safeIdempotencyKey + ":"
+                    + reviewCase.schoolId() + ":" + reviewCase.caseId())
+                    .getBytes(StandardCharsets.UTF_8));
+            if (insertDecision(reviewCase.schoolId(), reviewCase.caseId(),
+                    reviewCase.caseSnapshotSha256(), decision, notes, caseIdempotencyKey)) {
+                inserted++;
+            }
+        }
+        return row("processed", validated.size(), "decision", decision,
+                "recordsMutated", 0, "reviewDecisionsInserted", inserted);
+    }
+
+    private boolean insertDecision(long schoolId, String caseId, String snapshot,
+                                   String decision, String notes, String idempotencyKey) {
         String decisionId = UUID.randomUUID().toString();
         int inserted = jdbc.sql("""
                 INSERT INTO student.guardian_data_review_decisions
@@ -164,9 +236,9 @@ public class GuardianDataReviewRepository {
                      :idempotencyKey, :actorId)
                 ON CONFLICT (school_id, idempotency_key) DO NOTHING
                 """).param("id", decisionId).param("schoolId", schoolId)
-                .param("caseId", safeCaseId).param("snapshot", expectedSnapshot)
+                .param("caseId", caseId).param("snapshot", snapshot)
                 .param("decision", decision).param("notes", notes)
-                .param("idempotencyKey", safeIdempotencyKey)
+                .param("idempotencyKey", idempotencyKey)
                 .param("actorId", TenantContext.get().userId()).update();
 
         if (inserted == 0) {
@@ -174,19 +246,19 @@ public class GuardianDataReviewRepository {
                     SELECT case_id, case_snapshot_sha256, decision, notes
                     FROM student.guardian_data_review_decisions
                     WHERE school_id = :schoolId AND idempotency_key = :idempotencyKey
-                    """).param("schoolId", schoolId).param("idempotencyKey", safeIdempotencyKey)
+                    """).param("schoolId", schoolId).param("idempotencyKey", idempotencyKey)
                     .query((rs, n) -> row("caseId", rs.getString("case_id"),
                             "snapshot", rs.getString("case_snapshot_sha256"),
                             "decision", rs.getString("decision"), "notes", rs.getString("notes")))
                     .single();
-            if (!safeCaseId.equals(existing.get("caseId"))
-                    || !expectedSnapshot.equals(existing.get("snapshot"))
+            if (!caseId.equals(existing.get("caseId"))
+                    || !snapshot.equals(existing.get("snapshot"))
                     || !decision.equals(existing.get("decision"))
                     || !java.util.Objects.equals(notes, existing.get("notes"))) {
                 throw new IllegalArgumentException("Idempotency-Key was already used for a different decision");
             }
         }
-        return caseById(schoolId, safeCaseId);
+        return inserted == 1;
     }
 
     private Map<String, Object> caseById(Long schoolId, String caseId) {

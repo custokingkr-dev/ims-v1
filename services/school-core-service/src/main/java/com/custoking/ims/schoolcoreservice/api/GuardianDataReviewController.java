@@ -17,7 +17,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/guardian-data-review")
@@ -76,6 +80,35 @@ public class GuardianDataReviewController {
         return execute(() -> reviews.decide(scope, caseId, request, idempotencyKey));
     }
 
+    @PostMapping("/decisions/bulk")
+    public Map<String, Object> decideBulk(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestBody BulkDecisionRequest request) {
+        requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        if (request == null || request.cases() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "At least one review case is required");
+        }
+
+        List<GuardianDataReviewRepository.BulkDecisionCase> scopedCases =
+                new ArrayList<>(request.cases().size());
+        Set<Long> checkedSchools = new HashSet<>();
+        for (BulkDecisionCaseRequest reviewCase : request.cases()) {
+            if (reviewCase == null || reviewCase.schoolId() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Every bulk decision case requires a schoolId");
+            }
+            Long scope = writeScope(reviewCase.schoolId());
+            if (checkedSchools.add(scope)) requireModule(scope);
+            scopedCases.add(new GuardianDataReviewRepository.BulkDecisionCase(
+                    scope, reviewCase.caseId(), reviewCase.caseSnapshotSha256()));
+        }
+        return execute(() -> reviews.decideBulk(scopedCases, request.decision(),
+                request.notes(), idempotencyKey));
+    }
+
     private Long readScope(Long requested) {
         return TenantScope.resolvePlatformReadScope(requested);
     }
@@ -110,4 +143,10 @@ public class GuardianDataReviewController {
     private interface Command {
         Map<String, Object> run();
     }
+
+    public record BulkDecisionRequest(String decision, String notes,
+                                      List<BulkDecisionCaseRequest> cases) {}
+
+    public record BulkDecisionCaseRequest(Long schoolId, String caseId,
+                                          String caseSnapshotSha256) {}
 }
