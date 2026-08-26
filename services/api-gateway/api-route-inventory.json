@@ -12,8 +12,8 @@
   "summary": {
     "services": 5,
     "controllers": 39,
-    "endpoints": 386,
-    "canonicalEndpoints": 290,
+    "endpoints": 387,
+    "canonicalEndpoints": 291,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 6,
     "diagnosticAliases": 12,
@@ -1889,7 +1889,7 @@
       "basePaths": [
         "/api/v1/guardian-data-review"
       ],
-      "endpointCount": 3,
+      "endpointCount": 4,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java"
     },
     {
@@ -4078,7 +4078,7 @@
       "path": "/api/v1/guardian-data-review/cases",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 49
+      "line": 53
     },
     {
       "service": "school-core-service",
@@ -4087,7 +4087,16 @@
       "path": "/api/v1/guardian-data-review/cases/{caseId}/decisions",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 65
+      "line": 69
+    },
+    {
+      "service": "school-core-service",
+      "controller": "GuardianDataReviewController",
+      "method": "POST",
+      "path": "/api/v1/guardian-data-review/decisions/bulk",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
+      "line": 83
     },
     {
       "service": "school-core-service",
@@ -4096,7 +4105,7 @@
       "path": "/api/v1/guardian-data-review/summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 38
+      "line": 42
     },
     {
       "service": "school-core-service",

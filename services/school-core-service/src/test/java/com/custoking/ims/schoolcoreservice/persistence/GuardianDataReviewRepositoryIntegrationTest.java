@@ -147,6 +147,56 @@ class GuardianDataReviewRepositoryIntegrationTest {
                 .containsEntry("totalElements", 2L);
     }
 
+    @Test
+    void classifiesCompleteLegacyClustersWithoutMaskingIncompleteRelationships() {
+        jdbc.sql("DELETE FROM student.student_guardians").update();
+        jdbc.sql("DELETE FROM student.guardians").update();
+        for (int index = 100; index < 110; index++) {
+            jdbc.sql("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id,
+                         academic_year_id, father_name, father_contact)
+                    VALUES (:id, :admission, :studentName, 1, 'c1', 's1', 'ay1',
+                            :fatherName, '1111111111')
+                    """).param("id", index).param("admission", "R-" + index)
+                    .param("studentName", "Repeated Student " + index)
+                    .param("fatherName", "Repeated Parent " + index).update();
+        }
+        jdbc.sql("""
+                INSERT INTO student.students
+                    (id, admission_no, full_name, school_id, class_id, section_id,
+                     academic_year_id, father_contact, mother_name)
+                VALUES (110, 'I-110', 'Incomplete Student', 1, 'c1', 's1', 'ay1',
+                        '1111111111', 'Incomplete Mother')
+                """).update();
+
+        assertThat(repository.cases(1L, "PLACEHOLDER_CLUSTER", "PENDING", "R-", 0, 100))
+                .containsEntry("totalElements", 20L);
+        assertThat(repository.cases(1L, "MISSING_RELATIONSHIP", "PENDING", "I-110", 0, 100))
+                .containsEntry("totalElements", 2L);
+    }
+
+    @Test
+    void recordsBulkDecisionsAtomicallyAndIdempotently() {
+        Map<String, Object> reviewCase = cases(
+                repository.cases(1L, "CASE_ONLY", "PENDING", null, 0, 25)).getFirst();
+        var requested = List.of(new GuardianDataReviewRepository.BulkDecisionCase(
+                1L, String.valueOf(reviewCase.get("caseId")),
+                String.valueOf(reviewCase.get("caseSnapshotSha256"))));
+
+        assertThat(repository.decideBulk(requested, "KEEP_LEGACY",
+                "School confirmed legacy", "bulk-request-1"))
+                .containsEntry("processed", 1)
+                .containsEntry("recordsMutated", 0);
+        assertThat(repository.cases(1L, "CASE_ONLY", "DECIDED", null, 0, 25))
+                .containsEntry("totalElements", 1L);
+
+        repository.decideBulk(requested, "KEEP_LEGACY",
+                "School confirmed legacy", "bulk-request-1");
+        assertThat(jdbc.sql("SELECT count(*) FROM student.guardian_data_review_decisions")
+                .query(Long.class).single()).isEqualTo(1L);
+    }
+
     @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> cases(Map<String, Object> page) {
         return (List<Map<String, Object>>) page.get("content");
