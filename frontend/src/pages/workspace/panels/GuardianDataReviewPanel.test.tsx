@@ -85,4 +85,48 @@ describe('GuardianDataReviewPanel', () => {
     ));
     expect(await screen.findByText(/no student or guardian value was changed automatically/i)).toBeInTheDocument();
   });
+
+  it('records an exact pending bucket through the snapshot-bound bulk endpoint', async () => {
+    const clusteredCase = {
+      ...reviewCase,
+      issueBucket: 'PLACEHOLDER_CLUSTER',
+      recommendedDecision: 'ESCALATE',
+    };
+    vi.mocked(api.get).mockImplementation(async (url: string, config?: any) => {
+      if (url === '/guardian-data-review/summary') return { data: {
+        totalCases: 1, distinctStudents: 1, reviewed: 0, remaining: 1,
+        decided: 0, deferred: 0, escalated: 0, progressPercent: 0,
+        buckets: [{ bucket: 'PLACEHOLDER_CLUSTER', status: 'PENDING', cases: 1, students: 1 }],
+      } } as any;
+      if (url === '/guardian-data-review/cases') return { data: {
+        content: config?.params?.bucket === 'PLACEHOLDER_CLUSTER' ? [clusteredCase] : [reviewCase],
+        page: 0, size: config?.params?.size || 25, totalElements: 1, totalPages: 1, last: true,
+      } } as any;
+      throw new Error(`Unexpected GET ${url}`);
+    });
+    const confirm = vi.spyOn(globalThis, 'confirm').mockReturnValue(true);
+
+    render(<GuardianDataReviewPanel />);
+    await screen.findByText('Anika Rao');
+    fireEvent.click(screen.getByRole('button', { name: /Placeholder cluster/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep legacy for 1' }));
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+      '/guardian-data-review/decisions/bulk',
+      {
+        decision: 'KEEP_LEGACY',
+        notes: 'School confirmed the legacy record is genuine and should be retained.',
+        cases: [{
+          schoolId: 7,
+          caseId: clusteredCase.caseId,
+          caseSnapshotSha256: clusteredCase.caseSnapshotSha256,
+        }],
+      },
+      expect.objectContaining({
+        headers: expect.objectContaining({ 'Idempotency-Key': expect.any(String) }),
+      }),
+    ));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('exactly 1 pending Placeholder Cluster fields'));
+    confirm.mockRestore();
+  });
 });

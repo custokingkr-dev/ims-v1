@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, RefreshCw, ShieldCheck } from 'lucide-react';
 import api from '../../../services/api';
 import { usePermissions } from '../../../hooks/usePermissions';
@@ -57,6 +57,9 @@ const BUCKETS = [
   'MISSING_RELATIONSHIP', 'PROJECTION_MISSING', 'CASE_ONLY',
 ];
 const STATUSES: ReviewStatus[] = ['PENDING', 'STALE', 'ESCALATED', 'DEFERRED', 'DECIDED'];
+const BULK_KEEP_LEGACY_BUCKETS = new Set([
+  'PLACEHOLDER_CLUSTER', 'PLACEHOLDER_CANDIDATE', 'IDENTITY_CANDIDATE', 'LINKED_CONFLICT',
+]);
 const DECISIONS = [
   ['ACCEPT_NORMALIZED', 'Approve canonical value'],
   ['KEEP_LEGACY', 'Keep legacy value'],
@@ -91,9 +94,11 @@ export function GuardianDataReviewPanel() {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [savingCaseId, setSavingCaseId] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [drafts, setDrafts] = useState<Record<string, { decision: string; notes: string }>>({});
+  const loadSequence = useRef(0);
 
   const params = useMemo(() => ({
     ...(schoolId ? { schoolId } : {}),
@@ -114,6 +119,7 @@ export function GuardianDataReviewPanel() {
   }, [multiSchool, user?.role]);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
     setError('');
     try {
@@ -121,12 +127,13 @@ export function GuardianDataReviewPanel() {
         api.get('/guardian-data-review/summary'),
         api.get('/guardian-data-review/cases', { params }),
       ]);
+      if (sequence !== loadSequence.current) return;
       setSummary(summaryResponse.data as ReviewSummary);
       setPageData(casesResponse.data as CasePage);
     } catch (err) {
-      setError(errorMessage(err));
+      if (sequence === loadSequence.current) setError(errorMessage(err));
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   }, [params]);
 
@@ -171,6 +178,58 @@ export function GuardianDataReviewPanel() {
     }
   };
 
+  const bulkKeepLegacy = async () => {
+    if (!canManage || !BULK_KEEP_LEGACY_BUCKETS.has(bucket) || status !== 'PENDING' || search) return;
+    const expectedCount = pageData?.totalElements || 0;
+    if (expectedCount <= 0) return;
+    const scopeLabel = schoolId
+      ? schools.find((school) => school.id === schoolId)?.name || `School ${schoolId}`
+      : 'all authorized schools';
+    const confirmed = globalThis.confirm(
+      `Record Keep legacy for exactly ${expectedCount} pending ${humanize(bucket)} fields across ${scopeLabel}?\n\n`
+      + 'This adds audited review decisions only. It does not modify student or guardian values.',
+    );
+    if (!confirmed) return;
+
+    setBulkSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const cases: ReviewCase[] = [];
+      const pages = Math.ceil(expectedCount / 100);
+      for (let pageIndex = 0; pageIndex < pages; pageIndex += 1) {
+        const response = await api.get('/guardian-data-review/cases', {
+          params: { ...params, page: pageIndex, size: 100 },
+        });
+        const result = response.data as CasePage;
+        cases.push(...result.content);
+      }
+      if (cases.length !== expectedCount
+          || cases.some((reviewCase) => reviewCase.reviewStatus !== 'PENDING'
+            || reviewCase.issueBucket !== bucket)) {
+        throw new Error('The pending review scope changed while it was loading. Refresh and review it again.');
+      }
+      await api.post('/guardian-data-review/decisions/bulk', {
+        decision: 'KEEP_LEGACY',
+        notes: 'School confirmed the legacy record is genuine and should be retained.',
+        cases: cases.map((reviewCase) => ({
+          schoolId: reviewCase.schoolId,
+          caseId: reviewCase.caseId,
+          caseSnapshotSha256: reviewCase.caseSnapshotSha256,
+        })),
+      }, {
+        headers: { 'Idempotency-Key': globalThis.crypto?.randomUUID?.() || String(Date.now()) },
+      });
+      setNotice(`${expectedCount} Keep legacy decisions recorded. No student or guardian value was changed.`);
+      setPage(0);
+      await load();
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
   return (
     <ModuleShell
       title="Guardian data review"
@@ -183,9 +242,18 @@ export function GuardianDataReviewPanel() {
             <h2>{summary?.remaining ?? '—'} fields require a decision</h2>
             <p>{summary?.distinctStudents ?? '—'} affected students · decisions never mutate records directly</p>
           </div>
-          <button className="ck-btn ck-btn-ghost" onClick={() => void load()} disabled={loading}>
-            <RefreshCw size={15} className={loading ? 'gdr-spin' : ''} /> Refresh evidence
-          </button>
+          <div className="gdr-command-actions">
+            {canManage && BULK_KEEP_LEGACY_BUCKETS.has(bucket) && status === 'PENDING' && !search && (
+              <button className="ck-btn ck-btn-primary gdr-bulk-action"
+                      onClick={() => void bulkKeepLegacy()} disabled={loading || bulkSaving || !pageData?.totalElements}>
+                <ShieldCheck size={15} />
+                {bulkSaving ? 'Recording exact scope…' : `Keep legacy for ${pageData?.totalElements || 0}`}
+              </button>
+            )}
+            <button className="ck-btn ck-btn-ghost" onClick={() => void load()} disabled={loading || bulkSaving}>
+              <RefreshCw size={15} className={loading ? 'gdr-spin' : ''} /> Refresh evidence
+            </button>
+          </div>
         </div>
 
         <div className="gdr-progress-card">
