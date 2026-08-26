@@ -39,7 +39,7 @@ public class GuardianDataReviewController {
     public Map<String, Object> summary(
             @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
             @RequestParam(required = false) Long schoolId) {
-        authorizeToken(token);
+        requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = readScope(schoolId);
         requireModule(scope);
@@ -55,7 +55,7 @@ public class GuardianDataReviewController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "25") int size) {
-        authorizeToken(token);
+        requireToken(token, "student:read");
         TenantScope.requirePermissionIfAuthenticated("student:read");
         Long scope = readScope(schoolId);
         requireModule(scope);
@@ -69,7 +69,7 @@ public class GuardianDataReviewController {
             @RequestParam Long schoolId,
             @PathVariable String caseId,
             @RequestBody Map<String, Object> request) {
-        authorizeToken(token);
+        requireToken(token, "student:write");
         TenantScope.requirePermissionIfAuthenticated("student:update");
         Long scope = writeScope(schoolId);
         requireModule(scope);
@@ -91,8 +91,10 @@ public class GuardianDataReviewController {
         if (schoolId != null) moduleGuard.requireModuleEnabled(schoolId, "STUDENTS");
     }
 
-    private void authorizeToken(String token) {
-        if (!StringUtils.hasText(studentToken) || !studentToken.equals(token)) {
+    private void requireToken(String token, String requiredScope) {
+        if (!StringUtils.hasText(requiredScope)
+                || !StringUtils.hasText(studentToken)
+                || !studentToken.equals(token)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "invalid student service token");
         }
     }
