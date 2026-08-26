@@ -1,6 +1,16 @@
 # Gaps, Drift, and Missing Verification
 
-Last reconciled: 2026-08-24 against current source and executed migration evidence.
+Last reconciled: 2026-08-26 against current source, live GCP/GitHub state and executed migration evidence.
+
+**26 August delta:** PR 175 promoted `2031865a8238c87af16a23a84589e0a402832b98`; production deployment
+run `32910938691` completed all seven exact-digest canaries and CodeQL run `32910938525` passed. Flyway
+confirmed student schema version 28. Billing standard/detailed exports are invoice-grade and advancing but
+remain approximately 73–76 hours behind during first chronological backfill. A fresh Cloud Asset comparison
+has zero governed drift. All 24 actionable Monitoring policies route to both enabled production email
+channels; 49 drill-down/SLO diagnostic policies are intentionally non-paging. GitHub branch protection and
+rulesets remain absent because the authenticated principal is `WRITE`, not repository `ADMIN`; both
+Environment branch policies are already correct. Guardian repair, notification delivery, retention/deletion,
+regional HA and named-school operations remain separately governed as detailed in the execution evidence.
 
 **24 August delta:** MIG-01 is complete. Development runs in `custoking-dev` and production runs in
 `custoking-prod`; production passed the full relation digest, object, durable-event, smoke, and repaired
@@ -168,7 +178,8 @@ Verified:
 
 Remaining gaps:
 
-- GitHub `dev` Environment branch restriction still needs a repository admin to add `dev` as the only allowed deployment branch in the GitHub UI.
+- GitHub `dev` is already restricted to the `dev` deployment branch and `prod` to `main`. Repository-admin
+  access is still required to apply branch/ruleset enforcement and disable production self-review.
 - Stage target templates exist, but stage promotion is not active until a real stage database, GitHub Environment, and `-stage` secrets exist.
 - Release workflow verifies every changed Cloud Run revision, exact digest, 100 percent traffic, changed frontend HTTP response, and gateway health. Authenticated business-flow smokes are still not automatic.
 - Deploy service account still has broad legacy roles, including `roles/cloudbuild.builds.editor` and `roles/storage.admin`.
@@ -326,8 +337,9 @@ Required follow-up:
 
 ### GCP Service Account Strategy Is Broad
 
-All fourteen dev/prod Cloud Run services now use dedicated per-service identities. Eight of nine Cloud
-Run jobs and all seven live dev Cloud Deploy targets still use the default Compute service account.
+All fourteen dev/prod Cloud Run services now use dedicated per-service identities. All seven live dev Cloud
+Deploy targets use `clouddeploy-dev-deployer`; all production targets use `clouddeploy-prod-deployer`.
+Some older Cloud Run jobs and broad default-Compute project roles remain separate cleanup candidates.
 
 Dev and production reporting Pub/Sub push callers use dedicated service accounts distinct from the
 platform runtime identity.
@@ -339,22 +351,24 @@ Impact:
 
 Required follow-up:
 
-- Move the remaining jobs and live dev Cloud Deploy targets to their dedicated identities.
+- Move any remaining regular jobs off the default Compute identity after a fresh per-project job inventory.
 - Remove the legacy platform invoker binding and broad default-compute permissions after those cutovers
   have been observed and rollback evidence exists.
 
-### Dev and Prod Share One Project
+### Dev and Prod Are Split Across Projects
 
-The verified design intentionally uses one project with env suffixes.
+Development runs in `custoking-dev` and production runs in `custoking-prod`. The former mixed source project
+is retained only for explicitly tracked continuity/deletion dependencies.
 
 Impact:
 
-- Simpler setup and promotion.
-- IAM, quota, logs, and billing are shared at project level.
+- IAM, quotas, logs and runtime databases are isolated by environment project.
+- Remaining source-project dependencies require governed custody and eventual deletion evidence.
 
 Required follow-up:
 
-- If stricter isolation is required later, plan project split intentionally rather than ad hoc.
+- Close the remaining source-project continuity dependencies, preserve required evidence and complete its
+  already-governed deletion lifecycle; do not recreate cross-project runtime coupling.
 
 ### Platform-Service Min Instances Not Set
 

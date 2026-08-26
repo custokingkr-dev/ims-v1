@@ -1,7 +1,8 @@
 # Execution Plan — Repository Execution Evidence — 2026-08-25
 
 Status: repository changes implemented, promoted, and selectively applied to production; the continuation
-batch passed the normal dev-to-production promotion path and is live; governed gates remain.
+batch and its V28 guardian-plan pin passed the normal dev-to-production promotion path and are live;
+externally governed gates remain.
 
 This is the execution companion to `PROJECT-DEEP-ANALYSIS-AND-EXECUTION-PLAN-2026-08-25.md`.
 It records what was completed in the repository, what was promoted through the production canary, what was
@@ -15,24 +16,25 @@ The work established the Java build foundation, generated an auditable API route
 non-destructive database consolidation and repair paths, hardened the live-dashboard authentication code,
 improved billing/observability evidence, and decomposed representative frontend and backend hotspots.
 
-The full multi-week program is not operationally complete. First-delivery verification for the newly enabled
-Cloud Billing exports, Cloud SQL availability, repository governance, provider canaries, destructive database
-retirement, and a representative school-day certification require external authority or evidence that
-engineering cannot invent. Those gates are listed explicitly below.
+The full multi-week program is not operationally complete. Billing first delivery and a protected Cloud SQL
+PITR restore are now verified. Repository governance, the Cloud SQL availability-risk decision, provider
+canaries, destructive database retirement, retention ownership and a representative school-day certification
+still require external authority or evidence that engineering cannot invent. Those gates are listed explicitly
+below.
 
 ## Phase status
 
 | Phase | Repository result | Remaining gate |
 | --- | --- | --- |
 | 0 — Baseline | Complete for this batch | Run generated read-only evidence against each promotion candidate |
-| 1 — Production blockers | Repository-owned fixes, production promotion, Billing export enablement and first-delivery reconciliation complete | Billing backfill freshness, SQL RTO/RPO decision, GitHub admin controls, provider canary, approvals, school-day observation |
+| 1 — Production blockers | Repository-owned fixes, production promotion, Billing export enablement, first-delivery reconciliation and protected restore complete | Billing backfill freshness, SQL HA/risk decision, GitHub admin controls, provider canary, approvals, school-day observation |
 | 2 — Engineering foundation | Root reactor, parent, versions, Enforcer, convergence and CI/build catalog complete | Shared-source extraction remains deferred because the candidates alter Spring discovery/type identity; the drift guard remains active |
 | 3 — API contracts | Machine-readable inventory, ownership checks, compatibility telemetry and deprecation headers complete | OpenAPI/typed-client migration and route deletion require staged client migration plus a measured zero-traffic window |
 | 4 — Database consolidation | Non-destructive bridges, ledgers, parity views, projection repair and evidence queries complete | Production backfill review, retention window, reconciliation evidence and separately approved destructive DDL |
 | 5 — Code/client performance | Representative frontend/backend hotspots decomposed; spreadsheet actions remain lazy | Remaining hotspot backlog and Web Worker migration require exact embedded-image/workbook browser-worker fixtures |
-| 6 — GCP/observability | Dashboard, exporter, billing panels and corrected storage alert applied | Incident-owner testing, Cloud Asset API/permission, VPC design approval; Google API normalization leaves a non-functional dashboard JSON plan diff |
-| 7 — Dependencies | Upgrade families and rollback boundaries audited | Execute one major family per isolated pull request; not mixed into the database/API batch |
-| 8 — Certification | Automated local portions pass | Restore/PITR, optional HA failover, provider delivery, named-school canary and full school-day observation |
+| 6 — GCP/observability | Dashboard, exporter, billing panels, corrected storage alert and Cloud Asset baseline applied; 24 actionable policies route to both production email channels | Activate scheduled drift audit with owner-approved IAM, incident-owner testing and VPC design approval; 49 drill-down/SLO diagnostic policies intentionally remain non-paging |
+| 7 — Dependencies | Upgrade families and rollback boundaries audited; two safe frontend patch upgrades completed | Execute one major family per isolated pull request; not mixed into the database/API batch |
+| 8 — Certification | Automated local portions and a 603.96-second protected PITR restore pass | Optional HA failover, recurring recovery-drill authority, provider delivery, named-school canary and full school-day observation |
 
 ## Continuation execution — 2026-08-25
 
@@ -165,6 +167,60 @@ peaked at 0.178 GiB. Availability is the unresolved issue. The current shared-co
 approximately INR 3,128/month; the minimum observed dedicated regional-HA option is approximately INR
 11,708/month. That spend/RTO choice is intentionally not made by automation.
 
+## Final closeout reconciliation — 2026-08-26
+
+- PR 174 merged the exact V28 post-deployment guardian-plan pin into `dev` as
+  `66741e877976fb5f879b19c62a88ebd12b887f98`. Dev deployment run `32908954435`, CI run `32910654557`
+  and CodeQL run `32910654203` passed. PR 175 then promoted `dev` to `main` as
+  `2031865a8238c87af16a23a84589e0a402832b98`; production deployment run `32910938691` and CodeQL run
+  `32910938525` passed. All seven production services completed their exact-digest canaries and health
+  checks. Production Flyway logs confirm V27 and V28 were applied and schema `student` reached version 28.
+- The 2026-08-26 00:21 UTC Billing reconciliation remains invoice-grade and internally consistent. Standard
+  and detailed exports cover the same scoped usage window through 2026-08-22 20:00 UTC with latest export
+  2026-08-22 23:29:40 UTC, 9,957 standard rows, 14,015 detailed rows, gross INR 551.7969 and net
+  approximately zero after credits. Export and usage lag remain delayed at approximately 73.05 and 76.53
+  hours while the first chronological backfill advances. The hourly exporter is healthy; its latest checked
+  execution completed successfully.
+- `custoking-db-prod` remains a zonal PostgreSQL 16 Enterprise `db-g1-small`, private-IP-only and
+  `ENCRYPTED_ONLY`, with automated backups, 14 retained backups, seven-day PITR logs and deletion protection.
+  The latest checked automated backup succeeded on 2026-08-25. The protected PITR drill produced a runnable
+  clone in 576.27 seconds, completed schema-only validation in 603.96 seconds and proved zero clone or grant
+  residue after cleanup. Recurring recovery automation remains disabled because its production IAM grants
+  require separate security/owner authority.
+- The live Cloud Asset comparison has 1,283 total assets and 376 governed assets. Its governed digest remains
+  exactly `3d20d05e07bcfcdda5be35e8abca2fb29bd02e99ef4974cac2e8f3460b7bae74`, with zero additions,
+  removals or changes. Scheduled governance remains deliberately disabled until its dedicated read-only IAM
+  role and repository enablement variables are approved and provisioned.
+- Monitoring validation found 12 dashboards, 73 enabled policies, 109 unique filters, 99 filters with data,
+  10 healthy no-event filters and zero query errors or missing resources. All 24 actionable policies route to
+  both production email channels. The other 49 per-service drill-down and low-traffic SLO policies are
+  intentionally non-paging under the checked-in production configuration. A non-locking production
+  Terraform plan reported `0 add, 5 change, 0 destroy`: zero policy/channel changes, one provider-metadata
+  normalization on the cost exporter and four API-owned dashboard JSON normalizations. Because the embedded
+  exporter script and dashboard content are identical, no no-op apply or new job revision was created.
+- Live GitHub governance still has zero rulesets and no classic protection on `main` or `dev`. A guarded
+  apply attempt stopped before mutation because the authenticated principal has repository `WRITE`, not
+  `ADMIN`. The production Environment remains `main`-only with two required reviewers and no admin bypass;
+  development remains `dev`-only. The exact required checks `summary`, `analyze (java-kotlin)` and
+  `analyze (javascript-typescript)` are successful on the promoted production SHA. Applying server-side
+  branch enforcement requires authentication as repository administrator `custokingkr-dev` or an equivalent
+  admin grant.
+- Production notification transport remains intentionally safe: OIDC push, bounded retry and DLQ topology
+  are active, while delivery remains `logging` with `MSG91_DRY_RUN=true`. No approved sender flow/template,
+  consented canary recipient, send limit or business authorization is configured, so no external message was
+  sent. No named-school canary ID, owner window, acceptance owner or rollback owner is configured either.
+- A protected session-and-transaction read-only projection lookup isolated the one missing student projection
+  without emitting its identifier. Its exact `student.upserted.v1` event is the latest event, is already
+  `PROCESSED`, and the projection remains missing. The privacy-safe approval reference is
+  `projection-requeue-v1:3fb7f7a0c94560561684f02754e9dec824feb6ae1c2e032664d88949de28fb17`.
+  Disposable job `ims-db-evidence-20260826003009-50dc6d80` exited successfully, was deleted and left the
+  migration operator disabled. No record was requeued.
+- Completed the two remaining safe frontend patch upgrades: `@testing-library/user-event` 14.6.5 to 14.6.6
+  and `lucide-react` 1.31.0 to 1.34.0. Added direct export-client failure-control tests for picker
+  cancellation, writable-stream abort, refreshed-auth retry, JSON/text server errors and terminal failed
+  progress. The full frontend suite now passes 175 tests across 34 files; production build and production
+  dependency audit also pass with zero reported vulnerabilities.
+
 ## Implemented repository changes
 
 ### Java build and delivery foundation
@@ -268,7 +324,7 @@ while still failing the job for investigation.
 | Platform service | 244 tests, including PostgreSQL 16 projection reconciliation |
 | School-core service | 578 tests, including PostgreSQL 16 planner/repair/photo SHA-256 migrations and shared-guardian synchronization |
 | API gateway | 78 tests; contract inventory current |
-| Frontend | 169 tests across 33 files; TypeScript and production build passed |
+| Frontend | 175 tests across 34 files; TypeScript and production build passed |
 | Live dashboard | 6 authentication/server tests; CodeQL Java/Kotlin and JavaScript/TypeScript passed |
 | Governance/OpenAPI Python tests | 22 tests; security-governance static audit passed |
 | Billing health PowerShell tests | Passed |
@@ -285,8 +341,8 @@ while still failing the job for investigation.
 
 ## Dependency execution boundaries
 
-Safe patch candidates observed were `@testing-library/user-event` 14.6.4 → 14.6.6 and `lucide-react`
-1.31.0 → 1.34.0. Major families must remain atomic: React/types 18 → 19, Vite/plugin 6/4 → 8/6,
+Safe patch candidates `@testing-library/user-event` 14.6.5 → 14.6.6 and `lucide-react`
+1.31.0 → 1.34.0 were completed in the final closeout. Major families must remain atomic: React/types 18 → 19, Vite/plugin 6/4 → 8/6,
 Vitest/coverage 3 → 4, jsdom 26 → 30, and TypeScript 5.9 → 7. Java major candidates such as Google
 authentication libraries, OpenPDF, and the Logstash encoder likewise remain separate compatibility work.
 No major dependency was mixed into this batch.
@@ -294,36 +350,47 @@ No major dependency was mixed into this batch.
 ## Governed production actions still required
 
 1. Standard and detailed first delivery is reconciled and the exporter reports availability `1` with
-   non-negative lag. Continue observing the delayed chronological backfill until recent usage arrives and
-   both lag signals return to their normal operating window. Because this is a first-time export into a US
-   multi-region dataset, Google backfills from the start of the previous month in chronological order;
-   recent usage can take up to five days to appear. Re-enabled exports or a move to a new dataset do not
-   automatically fill the intervening historical gap.
-2. The production owner must approve and fund either regional HA on a supported dedicated-core Cloud SQL
-   tier or temporary pilot-risk acceptance with explicit RTO/RPO and tested restore evidence.
-3. A GitHub repository administrator must apply branch/ruleset and Environment controls using exact check
-   names confirmed by a fresh pull request.
+   non-negative lag. At the final check, the matched scoped usage window had advanced through
+   2026-08-22 20:00 UTC but remained 73.05/76.53 hours behind. Continue observing the delayed chronological
+   backfill until recent usage arrives and both lag signals return to their normal operating window. Because
+   this is a first-time export into a US multi-region dataset, Google backfills chronologically and recent
+   usage can take several days to appear.
+2. Capacity evidence supports retaining the current tier; availability is an owner decision. Approve and
+   fund either regional HA on a supported dedicated-core tier or temporary pilot-risk acceptance. The latter
+   can cite the tested 603.96-second schema-validation restore, but its formal RTO/RPO and accountable owner
+   must still be recorded.
+3. A GitHub repository administrator must apply branch/ruleset enforcement. The guarded command has already
+   verified the exact three successful contexts and stopped before mutation under the current `WRITE`-only
+   identity. Authenticate as `custokingkr-dev` or grant equivalent repository-admin authority, then rerun
+   `scripts/configure-security-governance-controls.ps1` with its reviewed guarded apply switches.
 4. Future application changes must continue through the normal canary path; the execution-plan batch is
    already deployed and its seven application services, dashboard `v11`, exporter, billing dashboard and
    corrected storage alert were independently verified in production.
-5. The first Cloud Asset Inventory baseline is now captured. Future runs must compare against the approved
-   baseline and alert on unexplained additions, removals or configuration changes.
+5. The Cloud Asset baseline is captured and a fresh comparison is zero-drift. Activating recurring checks
+   requires approval for the dedicated governance service-account/custom-role bindings and repository
+   enablement variables; scheduled runs must continue to compare against the approved digest rather than
+   auto-approve a replacement.
 6. A real notification canary needs an approved sender, template, recipient and business authorization.
 7. DATA-02 must supply the retention/legal-basis decision before processed outbox rows, legacy source tables,
    guardian columns, compatibility routes, or candidate indexes are removed.
-8. Named-school owners must schedule the canary, representative school day, restore/PITR exercise, photo
-   profile/ID-card/export validation, and rollback observation.
+8. Named-school owners must supply the exact school, support window, acceptance owner and rollback owner,
+   then schedule the canary, representative school day and photo profile/ID-card/export validation. The
+   one-time protected PITR restore has passed; recurring recovery drills still require security-approved IAM.
 9. Guardian forward synchronization, shared-identity fan-out, the shared planner, atomic owner-only repair
    ledger and disposable runner are implemented. V25/V26 are deployed and the required post-deployment
    read-only evidence found 13 whole students / 14 relationships / 15 fields while the other 843 planned
    fields remain excluded by explicit hazards. V28 pins only the resulting exact contract-aware safe-plan
-   hash and remains fail-closed on function drift. A separately recorded production-write approval is still
-   required after V28 is promoted; the evidence capture and release approval do not authorize the data
-   mutation. The 25 divergent shared groups and every other review bucket remain manual; never rewrite
+   hash and remains fail-closed on function drift. V28 is now promoted and live. A separately recorded
+   production-write approval for the exact 13/14/15 tuple and plan hash is still required; evidence capture,
+   release approval and this closeout request do not authorize the data mutation. The 25 divergent shared
+   groups and every other review bucket remain manual; never rewrite
    shared guardians or consent events. Require parity to reach zero before any legacy parent column
    retirement.
-10. Review the single missing reporting projection by identifier in the protected evidence channel before
-    invoking the existing one-student idempotent requeue function. Do not bulk requeue projections.
+10. The single missing reporting projection has passed protected latest-event review. A separate production
+    write approval must cite approval reference
+    `projection-requeue-v1:3fb7f7a0c94560561684f02754e9dec824feb6ae1c2e032664d88949de28fb17`
+    before invoking the existing one-student idempotent requeue function and re-running read-only parity.
+    Do not expose its identifier or bulk requeue projections.
 11. Processed outbox retention and the duplicate identity index remain observation-only evidence until
     DATA-02 and a representative query/index window authorize deletion.
 
