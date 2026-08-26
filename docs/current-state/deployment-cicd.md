@@ -1,18 +1,19 @@
 # CI/CD Current State
 
-Last reconciled: 2026-08-14 against active workflows, deployment templates, GitHub environment policy,
-and live Cloud Deploy targets.
+Last reconciled: 2026-08-26 against active workflows, deployment templates, GitHub environment policy,
+live Cloud Deploy targets and the final execution-plan production promotion.
 
-Live drift: all production targets use `clouddeploy-prod-deployer`, but all seven live dev targets still
-use the default Compute service account. Source templates already specify `clouddeploy-dev-deployer`; a
-guarded target reconciliation is still required. The public repository has no visible ruleset or classic
-branch protection on `main` or `dev`. The `prod` Environment requires review and disallows admin bypass,
-but currently permits self-review.
+All seven development targets use `clouddeploy-dev-deployer@custoking-dev.iam.gserviceaccount.com` for both
+render and deploy; all production targets use `clouddeploy-prod-deployer`. Every external GitHub Action
+reference is pinned to a reviewed 40-character commit SHA. The repository still has no ruleset or classic
+branch protection on `main` or `dev`. The `prod` Environment is `main`-only, requires one of two reviewers
+and disallows admin bypass, but currently permits self-review. The `dev` Environment is `dev`-only.
 
-Production evidence: promotion PR `#108` merged as `754f0417`; CD run `31820051376` passed exact-digest
-Trivy gates, seven serialized Cloud Deploy rollouts, revision/digest/traffic verification, and gateway smoke.
-The cost-control status run `31823448382` passed, and `custoking-db-dev` remained stopped. See
-`../PRODUCTION-DEPLOYMENT-2026-08-14.md`.
+Latest production evidence: PR 175 promoted reviewed `dev` commit `66741e877976fb5f879b19c62a88ebd12b887f98`
+to `main` as `2031865a8238c87af16a23a84589e0a402832b98`. CD run `32910938691` passed exact-digest
+Trivy gates, seven serialized Cloud Deploy rollouts, revision/digest/traffic verification and gateway smoke;
+CodeQL run `32910938525` also passed. Development database `custoking-db-dev` was restored to
+`STOPPED/NEVER`. See `../EXECUTION-PLAN-EXECUTION-EVIDENCE-2026-08-25.md`.
 
 ## Status
 
@@ -213,8 +214,9 @@ Prod rollback remains Cloud Deploy target rollback and waits for the resulting r
 
 ## Remaining Hardening
 
-- Add the `dev` Environment branch restriction in GitHub settings when repository-admin access is available.
-- Pin third-party actions by commit SHA.
+- Apply classic protection or an active ruleset to `main` and `dev`, and disable production self-review,
+  after authenticating a repository administrator. The reviewed required checks are `summary`,
+  `analyze (java-kotlin)` and `analyze (javascript-typescript)`.
 - Replace broad legacy deploy-account roles with the intended least-privilege role.
 - Add Cloud Monitoring SLO verification to production canary phases.
 - Add authenticated business-flow smoke through short-lived test identities rather than stored user tokens.
