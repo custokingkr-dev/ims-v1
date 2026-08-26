@@ -113,16 +113,25 @@ The unused-index section is observational. Collect at least 30 representative da
 foreign-key, query-plan, and Query Insights evidence before proposing a concurrent index removal.
 
 The reporting migration V29 compares `dim_student` with the newest successfully processed durable event.
-If it reports a mismatch, an owner may requeue that one student's latest event through the normal leased,
-idempotent projector:
+If a reviewed mismatch is approved, use the fingerprint-bound disposable runner rather than exposing a
+student identifier or issuing an ad hoc database update:
 
-```sql
-SELECT * FROM reporting.student_projection_reconciliation WHERE issue IS NOT NULL;
-SELECT reporting.requeue_student_projection(:reviewed_student_id);
+```powershell
+# Local validation only; contacts neither GCP nor PostgreSQL.
+./scripts/invoke-student-projection-requeue-cloudsql.ps1
+
+# Production execution additionally requires the exact recorded approval and deployed source revision.
+./scripts/invoke-student-projection-requeue-cloudsql.ps1 `
+  -ApprovalReference '<approved-projection-reference>' `
+  -SourceRevision '<40-character-deployed-git-revision>' `
+  -Apply -ConfirmProductionWrite
 ```
 
-This is not a cross-schema overwrite. The normal projection processor applies the event and retains its
-retry, tombstone, and dead-letter behavior.
+The runner is serializable, locks the inbox against concurrent writers, requires exactly one current issue
+and exactly one approved fingerprint, invokes only the owner-held requeue function, verifies the clean
+`RECEIVED` state, deletes its disposable job, and disables the migration identity. This is not a
+cross-schema overwrite. The normal projection processor applies the event and retains its retry, tombstone,
+and dead-letter behavior. Re-run read-only parity and require zero issues before closeout.
 
 ## 5. Retirement gate
 
