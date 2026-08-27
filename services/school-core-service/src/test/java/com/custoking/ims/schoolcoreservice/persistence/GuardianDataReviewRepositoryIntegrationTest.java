@@ -148,7 +148,7 @@ class GuardianDataReviewRepositoryIntegrationTest {
     }
 
     @Test
-    void classifiesCompleteLegacyClustersWithoutMaskingIncompleteRelationships() {
+    void separatesLargeLegacyClustersFromCandidatesWithoutMaskingIncompleteRelationships() {
         jdbc.sql("DELETE FROM student.student_guardians").update();
         jdbc.sql("DELETE FROM student.guardians").update();
         for (int index = 100; index < 110; index++) {
@@ -162,6 +162,17 @@ class GuardianDataReviewRepositoryIntegrationTest {
                     .param("studentName", "Repeated Student " + index)
                     .param("fatherName", "Repeated Parent " + index).update();
         }
+        for (int index = 200; index < 300; index++) {
+            jdbc.sql("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id,
+                         academic_year_id, father_name, father_contact)
+                    VALUES (:id, :admission, :studentName, 1, 'c1', 's1', 'ay1',
+                            :fatherName, '2222222222')
+                    """).param("id", index).param("admission", "L-" + index)
+                    .param("studentName", "Large Cluster Student " + index)
+                    .param("fatherName", "Large Cluster Parent " + index).update();
+        }
         jdbc.sql("""
                 INSERT INTO student.students
                     (id, admission_no, full_name, school_id, class_id, section_id,
@@ -170,10 +181,35 @@ class GuardianDataReviewRepositoryIntegrationTest {
                         '1111111111', 'Incomplete Mother')
                 """).update();
 
-        assertThat(repository.cases(1L, "PLACEHOLDER_CLUSTER", "PENDING", "R-", 0, 100))
+        assertThat(repository.cases(1L, "PLACEHOLDER_CANDIDATE", "PENDING", "R-", 0, 100))
                 .containsEntry("totalElements", 20L);
+        assertThat(repository.cases(1L, "PLACEHOLDER_CLUSTER", "PENDING", "L-", 0, 250))
+                .containsEntry("totalElements", 200L);
         assertThat(repository.cases(1L, "MISSING_RELATIONSHIP", "PENDING", "I-110", 0, 100))
                 .containsEntry("totalElements", 2L);
+    }
+
+    @Test
+    void appliesProjectionAndCaseOnlyPrecedenceBeforeLinkedClusterRisk() {
+        addNineStudentsLinkedToSeedGuardian();
+
+        assertThat(repository.cases(1L, "CASE_ONLY", "PENDING", "A1", 0, 25))
+                .containsEntry("totalElements", 1L);
+
+        jdbc.sql("UPDATE student.students SET father_name = ' ' WHERE id = 1").update();
+        assertThat(repository.cases(1L, "PROJECTION_MISSING", "PENDING", "A1", 0, 25))
+                .containsEntry("totalElements", 1L);
+    }
+
+    @Test
+    void keepsSubstantiveLinkedDifferenceOutOfPlaceholderCluster() {
+        addNineStudentsLinkedToSeedGuardian();
+        jdbc.sql("UPDATE student.students SET father_name = 'Different Parent' WHERE id = 1").update();
+
+        assertThat(repository.cases(1L, "LINKED_CONFLICT", "PENDING", "A1", 0, 25))
+                .containsEntry("totalElements", 1L);
+        assertThat(repository.cases(1L, "PLACEHOLDER_CLUSTER", "PENDING", "A1", 0, 25))
+                .containsEntry("totalElements", 0L);
     }
 
     @Test
@@ -195,6 +231,24 @@ class GuardianDataReviewRepositoryIntegrationTest {
                 "School confirmed legacy", "bulk-request-1");
         assertThat(jdbc.sql("SELECT count(*) FROM student.guardian_data_review_decisions")
                 .query(Long.class).single()).isEqualTo(1L);
+    }
+
+    private static void addNineStudentsLinkedToSeedGuardian() {
+        for (int index = 2; index <= 10; index++) {
+            jdbc.sql("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id,
+                         academic_year_id, father_name, father_contact)
+                    VALUES (:id, :admission, :studentName, 1, 'c1', 's1', 'ay1',
+                            'RAJ RAO', '9876543210')
+                    """).param("id", index).param("admission", "S-" + index)
+                    .param("studentName", "Shared Student " + index).update();
+            jdbc.sql("""
+                    INSERT INTO student.student_guardians
+                        (id, school_id, student_id, guardian_id, relationship, is_primary)
+                    VALUES (:id, 1, :studentId, 'guardian-1', 'FATHER', true)
+                    """).param("id", "link-" + index).param("studentId", index).update();
+        }
     }
 
     @SuppressWarnings("unchecked")
