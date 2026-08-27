@@ -273,6 +273,65 @@ class PhotoImportServiceTest {
     }
 
     @Test
+    void scansBinaryDriveFilesUsingStableRevisionWhenSha256MetadataIsUnavailable() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch draft = batch(batchId, schoolId, "DRAFT", 0);
+        Batch review = batch(batchId, schoolId, "REVIEW", 1);
+        byte[] workbookBytes = "workbook".getBytes(StandardCharsets.UTF_8);
+        DriveFile workbook = new DriveFile(
+                "workbook-file", "mapping.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                (long) workbookBytes.length, "workbook-md5", null,
+                "workbook-revision", "15", "2026-08-27T11:28:19.954Z");
+        DriveFile image = new DriveFile(
+                "photo-file", "DSC5236.jpg", "image/jpeg",
+                100L, "photo-md5", null,
+                "photo-revision", "7", "2026-08-27T11:28:20.000Z");
+        var parsed = new PhotoImportWorkbookParser.ParsedWorkbook(
+                "Sheet1",
+                List.of(new PhotoImportWorkbookParser.WorkbookRow(
+                        2, "ADM-1", "Student One", "I", "A", "5236")),
+                List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"));
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(draft);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(workbook, image));
+        when(drive.snapshotHash(List.of(workbook, image))).thenReturn("snapshot-1");
+        when(drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES))
+                .thenReturn(workbookBytes);
+        when(parser.parse(workbookBytes, "mapping.xlsx")).thenReturn(parsed);
+        when(repository.studentByAdmission(schoolId, "ay-2026", "ADM-1"))
+                .thenReturn(java.util.Optional.of(new PhotoImportRepository.StudentMatch(
+                        101L, "ADM-1", "Student One", "I", 1, "A", null)));
+        when(repository.replaceScan(
+                eq(batchId), eq(schoolId), eq(workbook.id()), eq(workbook.name()),
+                isNull(), eq("snapshot-1"), any(), any())).thenReturn(review);
+
+        service.scan(batchId);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<PhotoImportRepository.SourceInput>> sources =
+                ArgumentCaptor.forClass(List.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<RowInput>> rows = ArgumentCaptor.forClass(List.class);
+        verify(repository).replaceScan(
+                eq(batchId), eq(schoolId), eq(workbook.id()), eq(workbook.name()),
+                isNull(), eq("snapshot-1"), sources.capture(), rows.capture());
+        assertThat(rows.getValue()).singleElement().satisfies(row -> {
+            assertThat(row.status()).isEqualTo("READY");
+            assertThat(row.sourceSha256()).isNull();
+        });
+        assertThat(sources.getValue()).anySatisfy(source -> {
+            assertThat(source.driveFileId()).isEqualTo(workbook.id());
+            assertThat(source.sha256Checksum()).isEqualTo(sha256(workbookBytes));
+            assertThat(source.driveHeadRevisionId()).isEqualTo("workbook-revision");
+            assertThat(source.driveVersion()).isEqualTo("15");
+        });
+    }
+
+    @Test
     void rejectsPreviouslyProcessedDriveSnapshotBeforeDownloadingAnything() {
         UUID batchId = UUID.randomUUID();
         long schoolId = 7L;
@@ -316,7 +375,7 @@ class PhotoImportServiceTest {
         when(drive.listFiles("folder-1")).thenReturn(List.of(missing));
         assertThatThrownBy(() -> service.scan(batchId))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("no Google Drive SHA-256 checksum");
+                .hasMessageContaining("no stable Google Drive revision evidence");
 
         DriveFile malformed = new DriveFile(
                 missing.id(), missing.name(), missing.mimeType(), missing.size(),
@@ -459,7 +518,8 @@ class PhotoImportServiceTest {
                 any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024)))
                 .thenReturn(new byte[]{9, 8, 7});
         when(repository.applyPhoto(
-                eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"), any(byte[].class)))
+                eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"),
+                any(String.class), any(byte[].class)))
                 .thenReturn("photo-key");
         when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
 
@@ -470,7 +530,8 @@ class PhotoImportServiceTest {
         verify(storage, org.mockito.Mockito.times(1)).normalizePortrait(
                 any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024));
         verify(repository, org.mockito.Mockito.times(1))
-                .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"), any(byte[].class));
+                .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"),
+                        any(String.class), any(byte[].class));
     }
 
     @Test
@@ -501,7 +562,47 @@ class PhotoImportServiceTest {
         verify(repository).markRowFailed(
                 importRow.id(), schoolId, "The downloaded Drive original failed checksum verification");
         verify(storage, never()).normalizePortrait(any(), any(), anyDouble(), anyDouble(), anyLong());
-        verify(repository, never()).applyPhoto(any(), any(), any(), any(), any());
+        verify(repository, never()).applyPhoto(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void executionCertifiesDownloadedBytesWhenDriveOnlyProvidesStableRevisionEvidence() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch frozen = batch(batchId, schoolId, "FROZEN", 1);
+        Batch executing = batch(batchId, schoolId, "EXECUTING", 1);
+        byte[] downloaded = new byte[]{1, 2, 3};
+        DriveFile file = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", null, "stable-revision", "9", "2026-08-27T11:28:20Z");
+        ImportRow importRow = row(batchId, schoolId, 0, file);
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(frozen);
+        when(repository.currentAcademicYearId(schoolId)).thenReturn("ay-2026");
+        when(drive.listFiles("folder-1")).thenReturn(List.of(file));
+        when(drive.snapshotHash(List.of(file))).thenReturn("snapshot-1");
+        when(repository.startExecution(batchId, schoolId, 42L)).thenReturn(executing);
+        when(repository.sourceFiles(batchId, schoolId)).thenReturn(List.of(file));
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(importRow));
+        when(drive.download(file, 20L * 1024 * 1024)).thenReturn(downloaded);
+        when(storage.normalizePortrait(
+                downloaded, "image/jpeg", 0.5, 0.5, 20L * 1024 * 1024))
+                .thenReturn(new byte[]{9, 8, 7});
+        when(repository.applyPhoto(
+                eq(executing), eq(importRow), eq(downloaded), eq("image/jpeg"),
+                eq(sha256(downloaded)), any(byte[].class)))
+                .thenReturn("photo-key");
+        when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
+
+        service.execute(batchId);
+
+        verify(repository).applyPhoto(
+                eq(executing), eq(importRow), eq(downloaded), eq("image/jpeg"),
+                eq(sha256(downloaded)), any(byte[].class));
+        verify(repository, never()).markRowFailed(any(), anyLong(), any());
     }
 
     @Test
@@ -727,7 +828,8 @@ class PhotoImportServiceTest {
         when(repository.rows(batchId, schoolId)).thenReturn(List.of(importRow));
         when(drive.download(file, 20L * 1024 * 1024)).thenReturn(source.toByteArray());
         when(repository.applyPhoto(
-                eq(executing), eq(importRow), any(byte[].class), eq("image/png"), any(byte[].class)))
+                eq(executing), eq(importRow), any(byte[].class), eq("image/png"),
+                any(String.class), any(byte[].class)))
                 .thenReturn("photo-key");
         when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
 
@@ -740,7 +842,8 @@ class PhotoImportServiceTest {
 
         ArgumentCaptor<byte[]> normalized = ArgumentCaptor.forClass(byte[].class);
         verify(repository).applyPhoto(
-                eq(executing), eq(importRow), eq(source.toByteArray()), eq("image/png"), normalized.capture());
+                eq(executing), eq(importRow), eq(source.toByteArray()), eq("image/png"),
+                eq(sha256(source.toByteArray())), normalized.capture());
         BufferedImage stored = ImageIO.read(new ByteArrayInputStream(normalized.getValue()));
         assertThat(stored.getWidth()).isEqualTo(512);
         assertThat(stored.getHeight()).isEqualTo(256);

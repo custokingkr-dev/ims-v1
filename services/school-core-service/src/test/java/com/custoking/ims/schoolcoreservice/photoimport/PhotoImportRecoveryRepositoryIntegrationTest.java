@@ -352,7 +352,10 @@ class PhotoImportRecoveryRepositoryIntegrationTest {
 
         PhotoImportRepository.Batch batch = repository.batch(applyBatchId, 201L);
         PhotoImportRepository.ImportRow row = repository.rows(applyBatchId, 201L).getFirst();
-        assertThat(repository.applyPhoto(batch, row, source, "image/jpeg", normalized))
+        assertThat(repository.applyPhoto(
+                batch, row, source, "image/jpeg",
+                "039058c6f2c0cb492c533b0a4d14ef77cc0f78abccced5287d84a1a2011cfb81",
+                normalized))
                 .isEqualTo("normalized-photo-key");
 
         Map<String, Object> review = jdbc.sql("""
