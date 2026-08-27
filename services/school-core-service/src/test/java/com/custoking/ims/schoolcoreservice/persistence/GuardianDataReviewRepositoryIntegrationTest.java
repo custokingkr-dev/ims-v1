@@ -190,6 +190,47 @@ class GuardianDataReviewRepositoryIntegrationTest {
     }
 
     @Test
+    void linkedStudentsDoNotInflateAnUnlinkedCandidateIntoACluster() {
+        jdbc.sql("DELETE FROM student.student_guardians").update();
+        jdbc.sql("DELETE FROM student.guardians").update();
+        for (int index = 100; index < 111; index++) {
+            jdbc.sql("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id,
+                         academic_year_id, father_name, father_contact)
+                    VALUES (:id, :admission, :studentName, 1, 'c1', 's1', 'ay1',
+                            :fatherName, '3333333333')
+                    """).param("id", index).param("admission", "U-" + index)
+                    .param("studentName", "Unlinked Student " + index)
+                    .param("fatherName", "Unlinked Parent " + index).update();
+        }
+        jdbc.sql("""
+                INSERT INTO student.guardians(id, school_id, full_name, phone, status)
+                VALUES ('shared-linked-guardian', 1, 'Shared Linked Parent', '3333333333', 'ACTIVE')
+                """).update();
+        for (int index = 200; index < 300; index++) {
+            jdbc.sql("""
+                    INSERT INTO student.students
+                        (id, admission_no, full_name, school_id, class_id, section_id,
+                         academic_year_id, father_name, father_contact)
+                    VALUES (:id, :admission, :studentName, 1, 'c1', 's1', 'ay1',
+                            'Shared Linked Parent', '3333333333')
+                    """).param("id", index).param("admission", "K-" + index)
+                    .param("studentName", "Linked Student " + index).update();
+            jdbc.sql("""
+                    INSERT INTO student.student_guardians
+                        (id, school_id, student_id, guardian_id, relationship, is_primary)
+                    VALUES (:id, 1, :studentId, 'shared-linked-guardian', 'FATHER', true)
+                    """).param("id", "shared-link-" + index).param("studentId", index).update();
+        }
+
+        assertThat(repository.cases(1L, "PLACEHOLDER_CANDIDATE", "PENDING", "U-", 0, 100))
+                .containsEntry("totalElements", 22L);
+        assertThat(repository.cases(1L, "PLACEHOLDER_CLUSTER", "PENDING", "U-", 0, 100))
+                .containsEntry("totalElements", 0L);
+    }
+
+    @Test
     void appliesProjectionAndCaseOnlyPrecedenceBeforeLinkedClusterRisk() {
         addNineStudentsLinkedToSeedGuardian();
 
