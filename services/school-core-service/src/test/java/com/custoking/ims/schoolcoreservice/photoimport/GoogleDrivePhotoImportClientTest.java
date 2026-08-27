@@ -168,6 +168,20 @@ class GoogleDrivePhotoImportClientTest {
                 .isEqualTo(client.snapshotHash(List.of(diagnosticMetadataChange)));
     }
 
+    @Test
+    void snapshotFingerprintUsesDriveRevisionWhenSha256IsUnavailable() {
+        var client = client(true, "root-folder", "client-id", "client-secret", "refresh-token");
+        DriveFile original = new DriveFile(
+                "file-1", "DSC5236.jpg", "image/jpeg", 100L,
+                "same-legacy-md5", null, "revision-1", "15", "2026-08-27T11:28:19Z");
+        DriveFile changedRevision = new DriveFile(
+                original.id(), original.name(), original.mimeType(), original.size(),
+                original.md5Checksum(), null, "revision-2", "16", original.modifiedTime());
+
+        assertThat(client.snapshotHash(List.of(original)))
+                .isNotEqualTo(client.snapshotHash(List.of(changedRevision)));
+    }
+
     private static GoogleDrivePhotoImportClient client(
             boolean enabled,
             String rootFolder,

@@ -83,6 +83,10 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                     connection,
                     new ClassPathResource(
                             "db/migration/student/V27__photo_import_sha256_integrity.sql"));
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource(
+                            "db/migration/student/V34__photo_import_drive_revision_evidence.sql"));
         }
     }
 
@@ -258,5 +262,25 @@ class PhotoImportWorkflowMigrationIntegrationTest {
                 .param("id", UUID.randomUUID())
                 .update())
                 .hasMessageContaining("chk_photo_import_source_sha256");
+    }
+
+    @Test
+    void driveRevisionEvidenceCanBeStoredWhenDriveOmitsSha256() {
+        UUID sourceId = UUID.randomUUID();
+        jdbc.sql("""
+                INSERT INTO student.photo_import_sources
+                    (id, checksum, sha256_checksum, drive_head_revision_id, drive_version)
+                VALUES (:id, 'legacy-md5', NULL, 'head-revision-1', '15')
+                """)
+                .param("id", sourceId)
+                .update();
+
+        assertThat(jdbc.sql("""
+                SELECT drive_head_revision_id || ':' || drive_version
+                FROM student.photo_import_sources WHERE id = :id
+                """)
+                .param("id", sourceId)
+                .query(String.class)
+                .single()).isEqualTo("head-revision-1:15");
     }
 }

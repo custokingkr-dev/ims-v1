@@ -204,10 +204,12 @@ public class PhotoImportRepository {
             jdbc.sql("""
                     INSERT INTO student.photo_import_sources
                         (id, batch_id, school_id, drive_file_id, file_name, mime_type,
-                         byte_size, checksum, sha256_checksum, modified_time, source_type, image_no)
+                         byte_size, checksum, sha256_checksum, drive_head_revision_id, drive_version,
+                         modified_time, source_type, image_no)
                     VALUES
                         (:id, :batchId, :schoolId, :driveFileId, :fileName, :mimeType,
-                         :byteSize, :checksum, :sha256Checksum, :modifiedTime, :sourceType, :imageNo)
+                         :byteSize, :checksum, :sha256Checksum, :driveHeadRevisionId, :driveVersion,
+                         :modifiedTime, :sourceType, :imageNo)
                     """)
                     .param("id", UUID.randomUUID())
                     .param("batchId", batchId)
@@ -218,6 +220,8 @@ public class PhotoImportRepository {
                     .param("byteSize", source.byteSize())
                     .param("checksum", source.checksum())
                     .param("sha256Checksum", source.sha256Checksum())
+                    .param("driveHeadRevisionId", source.driveHeadRevisionId())
+                    .param("driveVersion", source.driveVersion())
                     .param("modifiedTime", source.modifiedTime())
                     .param("sourceType", source.sourceType())
                     .param("imageNo", source.imageNo())
@@ -315,7 +319,7 @@ public class PhotoImportRepository {
         selectSchoolScope(schoolId);
         return jdbc.sql("""
                 SELECT drive_file_id, file_name, mime_type, byte_size, checksum,
-                       sha256_checksum, modified_time
+                       sha256_checksum, drive_head_revision_id, drive_version, modified_time
                 FROM student.photo_import_sources
                 WHERE batch_id = :batchId AND school_id = :schoolId
                 ORDER BY file_name, drive_file_id
@@ -329,6 +333,8 @@ public class PhotoImportRepository {
                         (Long) rs.getObject("byte_size"),
                         rs.getString("checksum"),
                         rs.getString("sha256_checksum"),
+                        rs.getString("drive_head_revision_id"),
+                        rs.getString("drive_version"),
                         rs.getString("modified_time")))
                 .list();
     }
@@ -601,6 +607,7 @@ public class PhotoImportRepository {
             ImportRow row,
             byte[] sourceData,
             String sourceContentType,
+            String certifiedSha256,
             byte[] normalizedPortrait) {
         selectSchoolScope(batch.schoolId());
         ImportRow currentRow = rowInTransaction(row.id(), batch.schoolId());
@@ -653,13 +660,26 @@ public class PhotoImportRepository {
                 UPDATE student.photo_import_rows
                 SET status = 'APPLIED', final_photo_key = :key, applied_at = now(),
                     source_object_key = :sourceObjectKey,
+                    source_sha256 = :sourceSha256,
                     message = 'Portrait imported', updated_at = now()
                 WHERE id = :rowId AND school_id = :schoolId
                 """)
                 .param("key", key)
                 .param("sourceObjectKey", sourceObjectKey)
+                .param("sourceSha256", certifiedSha256)
                 .param("rowId", currentRow.id())
                 .param("schoolId", batch.schoolId())
+                .update();
+        jdbc.sql("""
+                UPDATE student.photo_import_sources
+                SET sha256_checksum = :sourceSha256
+                WHERE batch_id = :batchId AND school_id = :schoolId
+                  AND drive_file_id = :driveFileId
+                """)
+                .param("sourceSha256", certifiedSha256)
+                .param("batchId", batch.id())
+                .param("schoolId", batch.schoolId())
+                .param("driveFileId", currentRow.driveFileId())
                 .update();
         outbox.append(
                 "student.photo-imported.v1",
@@ -1093,7 +1113,7 @@ public class PhotoImportRepository {
         selectSchoolScope(schoolId);
         return jdbc.sql("""
                 SELECT drive_file_id, file_name, mime_type, byte_size, checksum,
-                       sha256_checksum, modified_time
+                       sha256_checksum, drive_head_revision_id, drive_version, modified_time
                 FROM student.photo_import_sources
                 WHERE batch_id = :batchId AND school_id = :schoolId AND drive_file_id = :driveFileId
                 """)
@@ -1107,6 +1127,8 @@ public class PhotoImportRepository {
                         (Long) rs.getObject("byte_size"),
                         rs.getString("checksum"),
                         rs.getString("sha256_checksum"),
+                        rs.getString("drive_head_revision_id"),
+                        rs.getString("drive_version"),
                         rs.getString("modified_time")))
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Drive source file not found"));
@@ -1306,6 +1328,8 @@ public class PhotoImportRepository {
             Long byteSize,
             String checksum,
             String sha256Checksum,
+            String driveHeadRevisionId,
+            String driveVersion,
             String modifiedTime,
             String sourceType,
             String imageNo) {
