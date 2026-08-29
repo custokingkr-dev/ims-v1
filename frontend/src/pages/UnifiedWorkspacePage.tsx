@@ -29,7 +29,6 @@ const SchoolStructurePanel = lazy(() => import('./workspace/panels/SchoolStructu
 const BulkImportPanel = lazy(() => import('./workspace/panels/BulkImportPanel').then((module) => ({ default: module.BulkImportPanel })));
 const PhotoImportPanel = lazy(() => import('./workspace/panels/PhotoImportPanel').then((module) => ({ default: module.PhotoImportPanel })));
 const StudentExportPanel = lazy(() => import('./workspace/panels/StudentExportPanel').then((module) => ({ default: module.StudentExportPanel })));
-const GuardianDataReviewPanel = lazy(() => import('./workspace/panels/GuardianDataReviewPanel').then((module) => ({ default: module.GuardianDataReviewPanel })));
 const FirefightingDashboardPanel = lazy(() => import('./workspace/panels/FirefightingDashboardPanel').then((module) => ({ default: module.FirefightingDashboardPanel })));
 const FirefightingNewPanel = lazy(() => import('./workspace/panels/FirefightingNewPanel').then((module) => ({ default: module.FirefightingNewPanel })));
 const FirefightingApprovalsPanel = lazy(() => import('./workspace/panels/FirefightingApprovalsPanel').then((module) => ({ default: module.FirefightingApprovalsPanel })));
@@ -335,7 +334,6 @@ export default function UnifiedWorkspacePage() {
       case 'bulkimport': return ['student:import'];
       case 'photoimport': return ['student:photo-import'];
       case 'studentexport': return ['student:export'];
-      case 'guardianreview': return ['student:read'];
       case 'attendance': return ['attendance:read'];
       case 'timetable': return ['timetable:read'];
       case 'staff': return ['staff:read'];
@@ -566,7 +564,6 @@ export default function UnifiedWorkspacePage() {
           {panelAllowed && panel === 'photoimport' && <PhotoImportPanel />}
 
           {panelAllowed && panel === 'studentexport' && <StudentExportPanel />}
-          {panelAllowed && panel === 'guardianreview' && <GuardianDataReviewPanel />}
 
           {panelAllowed && panel === 'attendance' && <AttendanceModulePanel onRefresh={refresh} schoolScopedParams={schoolScopedParams} />}
 
