@@ -332,6 +332,52 @@ class PhotoImportServiceTest {
     }
 
     @Test
+    void scansNativeGoogleSheetUsingVersionedXlsxExport() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch draft = batch(batchId, schoolId, "DRAFT", 0);
+        Batch review = batch(batchId, schoolId, "REVIEW", 1);
+        byte[] exportedXlsx = "exported-xlsx".getBytes(StandardCharsets.UTF_8);
+        DriveFile workbook = new DriveFile(
+                "sheet-file", "Adm_No_Image_map", "application/vnd.google-apps.spreadsheet",
+                11_108L, null, null, null, "9", "2026-08-28T21:52:31.834Z");
+        DriveFile image = new DriveFile(
+                "photo-file", "DSC5236.jpg", "image/jpeg", 100L,
+                "photo-md5", sha256("photo"), "2026-08-28T21:45:11.000Z");
+        var parsed = new PhotoImportWorkbookParser.ParsedWorkbook(
+                "Sheet1",
+                List.of(new PhotoImportWorkbookParser.WorkbookRow(
+                        2, "ADM-1", "Student One", "I", "A", "5236")),
+                List.of("AdmissionNo", "Name", "Class", "Section", "ImageNo"));
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(draft);
+        when(drive.listFiles("folder-1")).thenReturn(List.of(workbook, image));
+        when(drive.snapshotHash(List.of(workbook, image))).thenReturn("snapshot-1");
+        when(drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES))
+                .thenReturn(exportedXlsx);
+        when(parser.parse(exportedXlsx, "Adm_No_Image_map.xlsx")).thenReturn(parsed);
+        when(repository.studentByAdmission(schoolId, "ay-2026", "ADM-1"))
+                .thenReturn(java.util.Optional.of(new PhotoImportRepository.StudentMatch(
+                        101L, "ADM-1", "Student One", "I", 1, "A", null)));
+        when(repository.replaceScan(
+                eq(batchId), eq(schoolId), eq(workbook.id()), eq("Adm_No_Image_map.xlsx"),
+                isNull(), eq("snapshot-1"), any(), any())).thenReturn(review);
+
+        service.scan(batchId);
+
+        verify(parser).parse(exportedXlsx, "Adm_No_Image_map.xlsx");
+        verify(storage).uploadImportFile(
+                any(), any(), eq(exportedXlsx),
+                eq("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                eq("Adm_No_Image_map.xlsx"));
+        verify(repository).replaceScan(
+                eq(batchId), eq(schoolId), eq(workbook.id()), eq("Adm_No_Image_map.xlsx"),
+                isNull(), eq("snapshot-1"), any(), any());
+    }
+
+    @Test
     void rejectsPreviouslyProcessedDriveSnapshotBeforeDownloadingAnything() {
         UUID batchId = UUID.randomUUID();
         long schoolId = 7L;
