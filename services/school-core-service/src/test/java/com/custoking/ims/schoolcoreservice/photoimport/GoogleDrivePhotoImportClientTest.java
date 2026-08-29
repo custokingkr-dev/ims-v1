@@ -141,6 +141,19 @@ class GoogleDrivePhotoImportClientTest {
     }
 
     @Test
+    void recognizesNativeGoogleSheetsAndAssignsDeterministicXlsxExportMetadata() {
+        DriveFile googleSheet = new DriveFile(
+                "sheet-1", "Adm_No_Image_map", "application/vnd.google-apps.spreadsheet",
+                11_108L, null, null, null, "9", "2026-08-28T21:52:31.834Z");
+
+        assertThat(googleSheet.isMappingFile()).isTrue();
+        assertThat(googleSheet.isGoogleSheet()).isTrue();
+        assertThat(googleSheet.importedWorkbookName()).isEqualTo("Adm_No_Image_map.xlsx");
+        assertThat(googleSheet.importedWorkbookMimeType()).isEqualTo(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    }
+
+    @Test
     void snapshotFingerprintUsesDriveSha256EvenWhenLegacyMd5MetadataMatches() {
         var client = client(true, "root-folder", "client-id", "client-secret", "refresh-token");
         DriveFile original = new DriveFile(

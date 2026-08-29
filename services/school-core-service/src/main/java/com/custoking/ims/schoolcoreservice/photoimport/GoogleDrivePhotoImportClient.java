@@ -28,6 +28,9 @@ import java.util.Map;
 public class GoogleDrivePhotoImportClient {
     private static final String API = "https://www.googleapis.com/drive/v3/files";
     private static final String FOLDER_MIME = "application/vnd.google-apps.folder";
+    private static final String GOOGLE_SHEETS_MIME = "application/vnd.google-apps.spreadsheet";
+    private static final String XLSX_MIME =
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     private static final long DEFAULT_MAX_DOWNLOAD_BYTES = 20L * 1024 * 1024;
     /**
      * The importer lists and downloads files that photographers uploaded, which this application did not
@@ -217,7 +220,10 @@ public class GoogleDrivePhotoImportClient {
             throw new DrivePhotoImportException("file_too_large",
                     file.name() + " is larger than " + (effectiveMax / (1024 * 1024)) + " MB");
         }
-        HttpRequest request = request(API + "/" + encode(file.id()) + "?alt=media&supportsAllDrives=true");
+        String uri = file.isGoogleSheet()
+                ? API + "/" + encode(file.id()) + "/export?mimeType=" + encode(XLSX_MIME)
+                : API + "/" + encode(file.id()) + "?alt=media&supportsAllDrives=true";
+        HttpRequest request = request(uri);
         try {
             HttpResponse<byte[]> response = http.send(request, HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() != 200) {
@@ -585,9 +591,24 @@ public class GoogleDrivePhotoImportClient {
         }
 
         public boolean isMappingFile() {
-            return name != null
-                    && name.toLowerCase(Locale.ROOT).matches(".*\\.(xlsx|xls|csv|tsv)$")
-                    && !"application/vnd.google-apps.folder".equals(mimeType);
+            return isGoogleSheet()
+                    || (name != null
+                            && name.toLowerCase(Locale.ROOT).matches(".*\\.(xlsx|xls|csv|tsv)$")
+                            && !FOLDER_MIME.equals(mimeType));
+        }
+
+        public boolean isGoogleSheet() {
+            return GOOGLE_SHEETS_MIME.equals(mimeType);
+        }
+
+        public String importedWorkbookName() {
+            return isGoogleSheet() && name != null && !name.toLowerCase(Locale.ROOT).endsWith(".xlsx")
+                    ? name + ".xlsx"
+                    : name;
+        }
+
+        public String importedWorkbookMimeType() {
+            return isGoogleSheet() ? XLSX_MIME : mimeType;
         }
 
         public boolean isSupportedImage() {

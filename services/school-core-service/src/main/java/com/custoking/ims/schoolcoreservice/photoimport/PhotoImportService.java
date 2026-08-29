@@ -152,10 +152,11 @@ public class PhotoImportService {
         List<DriveFile> workbooks = files.stream().filter(DriveFile::isMappingFile).toList();
         if (workbooks.size() != 1) {
             throw new IllegalArgumentException(workbooks.isEmpty()
-                    ? "The Drive folder must contain one XLSX, XLS, CSV, or TSV mapping file"
-                    : "The Drive folder contains multiple mapping files; keep exactly one XLSX, XLS, CSV, or TSV file");
+                    ? "The Drive folder must contain one Google Sheet, XLSX, XLS, CSV, or TSV mapping file"
+                    : "The Drive folder contains multiple mapping files; keep exactly one Google Sheet, XLSX, XLS, CSV, or TSV file");
         }
         DriveFile workbook = workbooks.getFirst();
+        String importedWorkbookName = workbook.importedWorkbookName();
         files.stream()
                 .filter(file -> file.isMappingFile() || file.isSupportedImage())
                 .forEach(PhotoImportService::requireStableRevisionEvidence);
@@ -169,13 +170,13 @@ public class PhotoImportService {
         byte[] workbookBytes = drive.download(workbook, PhotoImportWorkbookParser.MAX_WORKBOOK_BYTES);
         String workbookSha256 = sha256(workbookBytes);
         verifyOptionalDriveSha256(workbook, workbookSha256);
-        var parsed = parser.parse(workbookBytes, workbook.name());
+        var parsed = parser.parse(workbookBytes, importedWorkbookName);
         String workbookObjectKey = photoStorage.uploadImportFile(
                 batch.schoolUid(),
                 "photo-import-" + id,
                 workbookBytes,
-                workbook.mimeType(),
-                workbook.name());
+                workbook.importedWorkbookMimeType(),
+                importedWorkbookName);
 
         Map<String, List<DriveFile>> imagesByNumber = new LinkedHashMap<>();
         for (DriveFile file : files) {
@@ -226,7 +227,7 @@ public class PhotoImportService {
                 id,
                 schoolId,
                 workbook.id(),
-                workbook.name(),
+                importedWorkbookName,
                 workbookObjectKey,
                 snapshotHash,
                 sources,
@@ -687,6 +688,11 @@ public class PhotoImportService {
         }
         if (file.headRevisionId() == null || file.headRevisionId().isBlank()
                 || file.driveVersion() == null || file.driveVersion().isBlank()) {
+            if (file.isGoogleSheet()
+                    && file.driveVersion() != null && !file.driveVersion().isBlank()
+                    && file.modifiedTime() != null && !file.modifiedTime().isBlank()) {
+                return;
+            }
             throw new IllegalArgumentException(
                     file.name() + " has no stable Google Drive revision evidence and cannot be imported safely");
         }
