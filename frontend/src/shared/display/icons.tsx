@@ -5,7 +5,7 @@ import {
   CalendarCheck, Clock, UserPlus, FileUp, Users, Package, ShoppingCart,
   CalendarDays, AlertCircle, Plus, ClipboardCheck, Truck,
   ClipboardList, FilePlus, Receipt, Building2, BarChart2,
-  TrendingUp, Globe, Package2, School, Images, ShieldCheck,
+  TrendingUp, Globe, Package2, School, Images, FileDown,
 } from 'lucide-react';
 
 const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
@@ -18,7 +18,7 @@ const PANEL_ICONS: Record<string, ComponentType<LucideProps>> = {
   addstudent:      UserPlus,
   bulkimport:      FileUp,
   photoimport:     Images,
-  guardianreview:  ShieldCheck,
+  studentexport:   FileDown,
   staff:           Users,
   catalog:         Package,
   orders:          ShoppingCart,

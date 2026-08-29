@@ -11,13 +11,13 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 39,
-    "endpoints": 387,
-    "canonicalEndpoints": 291,
+    "controllers": 38,
+    "endpoints": 383,
+    "canonicalEndpoints": 287,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 6,
     "diagnosticAliases": 12,
-    "gatewayRoutes": 69,
+    "gatewayRoutes": 67,
     "frontendCompatibilityCalls": 90,
     "frontendCompatibilityFiles": 19
   },
@@ -317,7 +317,7 @@
       "service": "student",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/guardian-data-review/",
+      "matcher": "/api/v1/student-photo-imports/",
       "methods": [
         "ANY"
       ],
@@ -329,7 +329,7 @@
       "service": "student",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/guardian-data-review",
+      "matcher": "/api/v1/student-photo-imports",
       "methods": [
         "ANY"
       ],
@@ -338,10 +338,10 @@
     },
     {
       "order": 19,
-      "service": "student",
+      "service": "firefighting",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/student-photo-imports/",
+      "matcher": "/api/v1/workspace/firefighting",
       "methods": [
         "ANY"
       ],
@@ -350,10 +350,10 @@
     },
     {
       "order": 20,
-      "service": "student",
+      "service": "tenant",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/student-photo-imports",
+      "matcher": "/api/v1/workspace/staff",
       "methods": [
         "ANY"
       ],
@@ -362,10 +362,10 @@
     },
     {
       "order": 21,
-      "service": "firefighting",
+      "service": "tenant",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/workspace/firefighting",
+      "matcher": "/api/v1/timetable/",
       "methods": [
         "ANY"
       ],
@@ -377,7 +377,7 @@
       "service": "tenant",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/workspace/staff",
+      "matcher": "/api/v1/timetable",
       "methods": [
         "ANY"
       ],
@@ -386,30 +386,6 @@
     },
     {
       "order": 23,
-      "service": "tenant",
-      "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/timetable/",
-      "methods": [
-        "ANY"
-      ],
-      "source": "services/api-gateway/server.js",
-      "line": 128
-    },
-    {
-      "order": 24,
-      "service": "tenant",
-      "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/timetable",
-      "methods": [
-        "ANY"
-      ],
-      "source": "services/api-gateway/server.js",
-      "line": 129
-    },
-    {
-      "order": 25,
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
@@ -418,10 +394,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 130
+      "line": 128
     },
     {
-      "order": 26,
+      "order": 24,
       "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
@@ -430,10 +406,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 131
+      "line": 129
     },
     {
-      "order": 27,
+      "order": 25,
       "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
@@ -442,14 +418,38 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 132
+      "line": 130
     },
     {
-      "order": 28,
+      "order": 26,
       "service": "attendance",
       "kind": "public",
       "matcherType": "prefix",
       "matcher": "/api/v1/attendance/",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 131
+    },
+    {
+      "order": 27,
+      "service": "fee",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/fee-structure",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 132
+    },
+    {
+      "order": 28,
+      "service": "fee",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/fee-assignments",
       "methods": [
         "ANY"
       ],
@@ -461,7 +461,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/fee-structure",
+      "matcher": "/api/v1/payments",
       "methods": [
         "ANY"
       ],
@@ -473,7 +473,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/fee-assignments",
+      "matcher": "/api/v1/fees/",
       "methods": [
         "ANY"
       ],
@@ -485,7 +485,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/payments",
+      "matcher": "/api/v1/receipts/",
       "methods": [
         "ANY"
       ],
@@ -494,10 +494,10 @@
     },
     {
       "order": 32,
-      "service": "fee",
+      "service": "catalog",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/fees/",
+      "matcher": "/api/v1/supply/",
       "methods": [
         "ANY"
       ],
@@ -506,10 +506,10 @@
     },
     {
       "order": 33,
-      "service": "fee",
+      "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/receipts/",
+      "matcher": "/api/v1/sa/invoices/",
       "methods": [
         "ANY"
       ],
@@ -518,10 +518,10 @@
     },
     {
       "order": 34,
-      "service": "catalog",
+      "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/supply/",
+      "matcher": "/api/v1/sa/invoices",
       "methods": [
         "ANY"
       ],
@@ -533,7 +533,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/sa/invoices/",
+      "matcher": "/api/v1/customers/",
       "methods": [
         "ANY"
       ],
@@ -545,7 +545,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/sa/invoices",
+      "matcher": "/api/v1/customers",
       "methods": [
         "ANY"
       ],
@@ -557,7 +557,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/customers/",
+      "matcher": "/api/v1/invoices/",
       "methods": [
         "ANY"
       ],
@@ -569,7 +569,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/customers",
+      "matcher": "/api/v1/invoices",
       "methods": [
         "ANY"
       ],
@@ -581,7 +581,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/invoices/",
+      "matcher": "/api/v1/billing-payments/",
       "methods": [
         "ANY"
       ],
@@ -593,7 +593,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/invoices",
+      "matcher": "/api/v1/billing-payments",
       "methods": [
         "ANY"
       ],
@@ -602,30 +602,6 @@
     },
     {
       "order": 41,
-      "service": "billing",
-      "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/billing-payments/",
-      "methods": [
-        "ANY"
-      ],
-      "source": "services/api-gateway/server.js",
-      "line": 146
-    },
-    {
-      "order": 42,
-      "service": "billing",
-      "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/billing-payments",
-      "methods": [
-        "ANY"
-      ],
-      "source": "services/api-gateway/server.js",
-      "line": 147
-    },
-    {
-      "order": 43,
       "service": "catalog",
       "kind": "public",
       "matcherType": "prefix",
@@ -634,10 +610,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 148
+      "line": 146
     },
     {
-      "order": 44,
+      "order": 42,
       "service": "tenant",
       "kind": "public",
       "matcherType": "prefix",
@@ -646,10 +622,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 149
+      "line": 147
     },
     {
-      "order": 45,
+      "order": 43,
       "service": "workflow",
       "kind": "public",
       "matcherType": "prefix",
@@ -658,10 +634,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 150
+      "line": 148
     },
     {
-      "order": 46,
+      "order": 44,
       "service": "firefighting",
       "kind": "public",
       "matcherType": "prefix",
@@ -670,10 +646,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 151
+      "line": 149
     },
     {
-      "order": 47,
+      "order": 45,
       "service": "audit",
       "kind": "public",
       "matcherType": "prefix",
@@ -682,10 +658,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 152
+      "line": 150
     },
     {
-      "order": 48,
+      "order": 46,
       "service": "notification",
       "kind": "public",
       "matcherType": "prefix",
@@ -694,10 +670,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 153
+      "line": 151
     },
     {
-      "order": 49,
+      "order": 47,
       "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
@@ -706,10 +682,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 154
+      "line": 152
     },
     {
-      "order": 50,
+      "order": 48,
       "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
@@ -718,10 +694,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 155
+      "line": 153
     },
     {
-      "order": 51,
+      "order": 49,
       "service": "catalog",
       "kind": "public",
       "matcherType": "regex",
@@ -730,10 +706,10 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 156
+      "line": 154
     },
     {
-      "order": 52,
+      "order": 50,
       "service": "firefighting",
       "kind": "public",
       "matcherType": "regex",
@@ -742,14 +718,38 @@
         "ANY"
       ],
       "source": "services/api-gateway/server.js",
-      "line": 157
+      "line": 155
     },
     {
-      "order": 53,
+      "order": 51,
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
       "matcher": "/api/v1/dashboard/finance/fee-defaulters/reminders",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 156
+    },
+    {
+      "order": 52,
+      "service": "reporting",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/dashboard/",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 157
+    },
+    {
+      "order": 53,
+      "service": "reporting",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/dashboard",
       "methods": [
         "ANY"
       ],
@@ -761,7 +761,7 @@
       "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/dashboard/",
+      "matcher": "/api/v1/command-centre/",
       "methods": [
         "ANY"
       ],
@@ -770,30 +770,6 @@
     },
     {
       "order": 55,
-      "service": "reporting",
-      "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/dashboard",
-      "methods": [
-        "ANY"
-      ],
-      "source": "services/api-gateway/server.js",
-      "line": 160
-    },
-    {
-      "order": 56,
-      "service": "reporting",
-      "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/command-centre/",
-      "methods": [
-        "ANY"
-      ],
-      "source": "services/api-gateway/server.js",
-      "line": 161
-    },
-    {
-      "order": 57,
       "service": "notification",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -803,10 +779,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 162
+      "line": 160
     },
     {
-      "order": 58,
+      "order": 56,
       "service": "audit",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -816,10 +792,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 163
+      "line": 161
     },
     {
-      "order": 59,
+      "order": 57,
       "service": "identity",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -829,10 +805,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 164
+      "line": 162
     },
     {
-      "order": 60,
+      "order": 58,
       "service": "tenant",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -842,10 +818,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 165
+      "line": 163
     },
     {
-      "order": 61,
+      "order": 59,
       "service": "student",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -855,10 +831,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 166
+      "line": 164
     },
     {
-      "order": 62,
+      "order": 60,
       "service": "attendance",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -868,10 +844,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 167
+      "line": 165
     },
     {
-      "order": 63,
+      "order": 61,
       "service": "fee",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -881,10 +857,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 168
+      "line": 166
     },
     {
-      "order": 64,
+      "order": 62,
       "service": "catalog",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -894,10 +870,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 169
+      "line": 167
     },
     {
-      "order": 65,
+      "order": 63,
       "service": "workflow",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -907,10 +883,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 170
+      "line": 168
     },
     {
-      "order": 66,
+      "order": 64,
       "service": "firefighting",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -920,10 +896,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 171
+      "line": 169
     },
     {
-      "order": 67,
+      "order": 65,
       "service": "reporting",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -933,10 +909,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 172
+      "line": 170
     },
     {
-      "order": 68,
+      "order": 66,
       "service": "billing",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -946,7 +922,7 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 173
+      "line": 171
     }
   ],
   "clientMigrationReferences": [
@@ -1046,56 +1022,56 @@
       "pathExpression": "/workspace",
       "compatibilityTemplate": "/api/v1/workspace",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 157
+      "line": 156
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders",
       "compatibilityTemplate": "/api/v1/supply/orders",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 186
+      "line": 185
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders/stats",
       "compatibilityTemplate": "/api/v1/supply/orders/stats",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 187
+      "line": 186
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders/pending-approval",
       "compatibilityTemplate": "/api/v1/supply/orders/pending-approval",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 210
+      "line": 209
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${orderId}/superadmin-approve",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-approve",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 223
+      "line": 222
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${rejectModalOrderId}/superadmin-reject",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-reject",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 238
+      "line": 237
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${orderId}/design-approved",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/design-approved",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 256
+      "line": 255
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders",
       "compatibilityTemplate": "/api/v1/supply/orders",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 644
+      "line": 641
     },
     {
       "method": "POST",
@@ -1881,16 +1857,6 @@
       ],
       "endpointCount": 5,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianConsentController.java"
-    },
-    {
-      "service": "school-core-service",
-      "controller": "GuardianDataReviewController",
-      "classification": "canonical",
-      "basePaths": [
-        "/api/v1/guardian-data-review"
-      ],
-      "endpointCount": 4,
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java"
     },
     {
       "service": "school-core-service",
@@ -4070,42 +4036,6 @@
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
       "line": 97
-    },
-    {
-      "service": "school-core-service",
-      "controller": "GuardianDataReviewController",
-      "method": "GET",
-      "path": "/api/v1/guardian-data-review/cases",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 53
-    },
-    {
-      "service": "school-core-service",
-      "controller": "GuardianDataReviewController",
-      "method": "POST",
-      "path": "/api/v1/guardian-data-review/cases/{caseId}/decisions",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 69
-    },
-    {
-      "service": "school-core-service",
-      "controller": "GuardianDataReviewController",
-      "method": "POST",
-      "path": "/api/v1/guardian-data-review/decisions/bulk",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 83
-    },
-    {
-      "service": "school-core-service",
-      "controller": "GuardianDataReviewController",
-      "method": "GET",
-      "path": "/api/v1/guardian-data-review/summary",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/GuardianDataReviewController.java",
-      "line": 42
     },
     {
       "service": "school-core-service",
