@@ -119,8 +119,6 @@ const routes = [
   route('student', '/api/v1/students'),
   route('student', '/api/v1/workspace/students'),
   route('student', '/api/v1/student-review-items/'),
-  route('student', '/api/v1/guardian-data-review/'),
-  route('student', '/api/v1/guardian-data-review'),
   route('student', '/api/v1/student-photo-imports/'),
   route('student', '/api/v1/student-photo-imports'),
   route('firefighting', '/api/v1/workspace/firefighting'),
