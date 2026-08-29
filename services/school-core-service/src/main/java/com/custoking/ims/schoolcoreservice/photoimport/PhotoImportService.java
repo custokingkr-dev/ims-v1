@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 public class PhotoImportService {
     private static final long MAX_SOURCE_IMAGE_BYTES = 20L * 1024 * 1024;
     private static final String PHOTO_RECOVERY_VERSION = "fit-without-crop-v1";
-    private static final int EXECUTION_CHUNK_SIZE = 1;
+    private static final int EXECUTION_CHUNK_SIZE = 10;
     private static final Map<String, Integer> ROMAN_CLASSES = Map.ofEntries(
             Map.entry("I", 1), Map.entry("II", 2), Map.entry("III", 3),
             Map.entry("IV", 4), Map.entry("V", 5), Map.entry("VI", 6),
@@ -324,7 +324,13 @@ public class PhotoImportService {
                     "The school's current academic year changed; this batch can no longer be executed");
         }
         List<DriveFile> currentFiles = drive.listFiles(reviewed.driveFolderId());
-        if (!drive.snapshotHash(currentFiles).equals(reviewed.snapshotHash())) {
+        // The complete folder must still match at the point where the first write is made. Once a
+        // chunk has completed, however, the frozen rows are the execution manifest: an unrelated
+        // upload, workbook edit, or rename must not strand hundreds of already-reviewed portraits.
+        // Every remaining source is still compared with its frozen Drive revision below and its
+        // downloaded bytes are certified before any student photo is changed.
+        if ("FROZEN".equals(reviewed.status())
+                && !drive.snapshotHash(currentFiles).equals(reviewed.snapshotHash())) {
             throw new DrivePhotoImportException("source_changed",
                     "The Drive folder changed after review. Execution was stopped before any writes");
         }
