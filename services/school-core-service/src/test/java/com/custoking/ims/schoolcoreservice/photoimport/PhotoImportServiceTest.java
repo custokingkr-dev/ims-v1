@@ -521,7 +521,7 @@ class PhotoImportServiceTest {
     }
 
     @Test
-    void executeProcessesOneReadyRowPerRequest() {
+    void executeProcessesOneBoundedChunkPerRequest() {
         UUID batchId = UUID.randomUUID();
         long schoolId = 7L;
         TenantContext.set(new TenantContext(
@@ -572,12 +572,81 @@ class PhotoImportServiceTest {
         Batch result = service.execute(batchId);
 
         assertThat(result.status()).isEqualTo("EXECUTING");
-        verify(drive, org.mockito.Mockito.times(1)).download(any(DriveFile.class), anyLong());
-        verify(storage, org.mockito.Mockito.times(1)).normalizePortrait(
+        verify(drive, org.mockito.Mockito.times(10)).download(any(DriveFile.class), anyLong());
+        verify(storage, org.mockito.Mockito.times(10)).normalizePortrait(
                 any(byte[].class), eq("image/jpeg"), eq(0.5), eq(0.5), eq(20L * 1024 * 1024));
-        verify(repository, org.mockito.Mockito.times(1))
+        verify(repository, org.mockito.Mockito.times(10))
                 .applyPhoto(eq(executing), any(ImportRow.class), any(byte[].class), eq("image/jpeg"),
                         any(String.class), any(byte[].class));
+    }
+
+    @Test
+    void resumedExecutionIgnoresUnrelatedFolderDriftButStillValidatesTheFrozenSource() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch reviewed = batch(batchId, schoolId, "EXECUTING", 1);
+        Batch executing = batch(batchId, schoolId, "EXECUTING", 1);
+        byte[] downloaded = new byte[]{1, 2, 3};
+        DriveFile frozenSource = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", sha256(downloaded), "2026-07-31T00:00:00Z");
+        DriveFile unrelatedUpload = new DriveFile(
+                "unrelated", "notes.txt", "text/plain", 20L,
+                "unrelated-md5", sha256("notes"), "2026-08-29T08:14:30Z");
+        ImportRow importRow = row(batchId, schoolId, 0, frozenSource);
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(reviewed);
+        when(repository.currentAcademicYearId(schoolId)).thenReturn("ay-2026");
+        when(drive.listFiles("folder-1")).thenReturn(List.of(frozenSource, unrelatedUpload));
+        when(repository.startExecution(batchId, schoolId, 42L)).thenReturn(executing);
+        when(repository.sourceFiles(batchId, schoolId)).thenReturn(List.of(frozenSource));
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(importRow));
+        when(drive.download(frozenSource, 20L * 1024 * 1024)).thenReturn(downloaded);
+        when(storage.normalizePortrait(
+                downloaded, "image/jpeg", 0.5, 0.5, 20L * 1024 * 1024))
+                .thenReturn(new byte[]{9, 8, 7});
+        when(repository.applyPhoto(
+                eq(executing), eq(importRow), eq(downloaded), eq("image/jpeg"),
+                eq(sha256(downloaded)), any(byte[].class)))
+                .thenReturn("photo-key");
+        when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
+
+        service.execute(batchId);
+
+        verify(drive, never()).snapshotHash(any());
+        verify(repository).applyPhoto(
+                eq(executing), eq(importRow), eq(downloaded), eq("image/jpeg"),
+                eq(sha256(downloaded)), any(byte[].class));
+        verify(repository, never()).markRowFailed(any(), anyLong(), any());
+    }
+
+    @Test
+    void firstExecutionStillRejectsWholeFolderDriftBeforeAnyWrite() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch frozen = batch(batchId, schoolId, "FROZEN", 1);
+        DriveFile changed = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", sha256(new byte[]{9, 9, 9}), "2026-08-29T08:14:30Z");
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(frozen);
+        when(repository.currentAcademicYearId(schoolId)).thenReturn("ay-2026");
+        when(drive.listFiles("folder-1")).thenReturn(List.of(changed));
+        when(drive.snapshotHash(List.of(changed))).thenReturn("changed-snapshot");
+
+        assertThatThrownBy(() -> service.execute(batchId))
+                .isInstanceOf(DrivePhotoImportException.class)
+                .hasMessageContaining("changed after review");
+
+        verify(repository, never()).startExecution(any(), anyLong(), any());
+        verify(drive, never()).download(any(), anyLong());
+        verify(repository, never()).applyPhoto(any(), any(), any(), any(), any(), any());
     }
 
     @Test
