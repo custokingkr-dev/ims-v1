@@ -52,6 +52,7 @@ resource "google_monitoring_alert_policy" "service_p95_latency" {
 
   project               = var.project
   display_name          = "custoking-${var.env}-${each.key}-p95-latency"
+  enabled               = var.enable_per_service_latency_incidents
   combiner              = "OR"
   notification_channels = var.enable_per_service_error_notifications ? local.effective_notification_channel_ids : []
   severity              = "WARNING"

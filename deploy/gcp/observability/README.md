@@ -11,7 +11,7 @@ environment in project `custoking`:
 - Alert policies for 5xx rate, p95 latency, max-instance saturation, uptime, async health, SLO burn rate,
   Cloud SQL CPU/memory/connections, Pub/Sub backlog age/count, authenticated Scheduler failures,
   trace-export failures, and sustained Cloud Storage growth.
-- Managed operator email channels, attached to every alert policy.
+- Managed operator email channels, attached only to production paging policies selected by the environment.
 - An optional project-wide `asia-south2` compliance log bucket and sink with 180-day retention.
 - Log-based distribution metrics for outbox and notification inbox health.
 - Cloud Monitoring services and availability/latency SLOs for Cloud Run.
@@ -28,6 +28,19 @@ available in Cloud Monitoring.
   `roles/cloudtrace.agent` for Cloud Trace exporters, plus
   `roles/telemetry.tracesWriter` and `roles/serviceusage.serviceUsageConsumer`
   for OTLP export to `telemetry.googleapis.com`.
+
+## Production alert-noise controls
+
+Production keeps generic per-service latency charts but sets
+`enable_per_service_latency_incidents=false`. Cloud Run's service-wide metric cannot distinguish interactive
+requests from intentionally long-running photo import, export, and recovery work; leaving the policies enabled
+created matching frontend, gateway, and upstream incidents for the same successful request. A future path-aware
+latency metric can replace this temporary incident suppression without losing the underlying telemetry.
+
+The authenticated async Scheduler policy sums failed attempts over five minutes and opens an incident only when
+the sum is greater than one. Scheduler retries remain enabled, so an isolated platform or network failure that
+succeeds on retry is retained in Cloud Logging without paging both operators. Persistent target, IAM, or database
+failures continue to page.
 
 ## Billing and cost reporting
 
