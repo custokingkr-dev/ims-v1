@@ -8,16 +8,21 @@
 # exactly that before.
 FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
 
-# Deletes npm, which this image never uses and which was its ENTIRE remaining vulnerability surface.
+# Refreshes the base image's runtime packages so a newly disclosed Alpine fix does not have to wait for
+# the upstream Node image digest to be rebuilt. This is deliberately limited to upgrades from the signed
+# repositories configured by the pinned base image.
+#
+# Deletes npm, which this image never uses and which was its entire application-library vulnerability
+# surface.
 #
 # Nothing here has dependencies -- no package.json, no lockfile, no install step, only Node built-ins --
 # so npm is dead weight that ships anyway because the base image bundles it. After bumping the base, all
 # 16 remaining CVEs were npm's own transitive dependencies: tar, brace-expansion, sigstore, picomatch,
 # ip-address. None of them is reachable by anything this container runs.
 #
-# Removing it takes the image to zero known vulnerabilities. Done as root before the USER switch,
-# because the node user cannot delete from /usr/local.
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# Done as root before the USER switch because package upgrades and deleting from /usr/local require it.
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Runs as an unprivileged user. The image ships one, and there is no reason for a read-only dashboard to
 # be root.
