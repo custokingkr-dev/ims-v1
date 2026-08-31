@@ -37,12 +37,16 @@ resource "google_monitoring_alert_policy" "scheduler_failure" {
         "resource.type=\"cloud_scheduler_job\"",
         "metric.type=\"logging.googleapis.com/user/${google_logging_metric.scheduler_failure_count.name}\"",
       ])
-      comparison      = "COMPARISON_GT"
-      threshold_value = 0
+      comparison = "COMPARISON_GT"
+      # Scheduler retries transient failures. Paging on the first failed attempt produced an incident for
+      # a single 503 even though the retry succeeded nine seconds later. Sum a five-minute window and page
+      # only when a second attempt also fails; persistent authentication, target, and database failures still
+      # trigger quickly, while one recovered platform/network failure remains visible in logs and dashboards.
+      threshold_value = 1
       duration        = "0s"
 
       aggregations {
-        alignment_period     = "60s"
+        alignment_period     = "300s"
         per_series_aligner   = "ALIGN_SUM"
         cross_series_reducer = "REDUCE_SUM"
       }
@@ -52,7 +56,7 @@ resource "google_monitoring_alert_policy" "scheduler_failure" {
   }
 
   documentation {
-    content   = "An authenticated async relay Scheduler attempt failed. Inspect the AttemptFinished log, HTTP status, OIDC audience/invoker binding, target readiness, and database state. Dev jobs are intentionally paused while dev SQL is stopped."
+    content   = "At least two authenticated async relay Scheduler attempts failed within five minutes. Inspect the AttemptFinished logs, HTTP statuses, OIDC audience/invoker binding, target readiness, and database state. A single failure that succeeds on retry remains visible in logs but does not page. Dev jobs are intentionally paused while dev SQL is stopped."
     mime_type = "text/markdown"
   }
   alert_strategy { auto_close = "1800s" }

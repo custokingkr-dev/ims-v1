@@ -1,6 +1,28 @@
 # Observability and Operations
 
-Last reconciled: 2026-08-14 against live Monitoring, Logging, health, and Pub/Sub inventory.
+Last reconciled: 2026-08-31 against live Monitoring incident history, alert policies, Scheduler and Cloud Run
+logs, Cloud Run readiness, and Cloud SQL state.
+
+## 2026-08-31 Alert-noise correction
+
+Production incident history and Cloud Run request logs showed two non-outage alert patterns:
+
+- a successful student-photo import opened frontend, API Gateway, and School Core p95 incidents because
+  intentionally long-running scan/execute requests were measured at every proxy hop; and
+- one School Core async-relay Scheduler attempt returned a transient 503, retried successfully nine seconds
+  later, but still paged both operators because the policy threshold was one failed attempt.
+
+The production Terraform state now disables all seven generic per-service p95 alert policies while retaining
+the underlying Cloud Run latency metrics, SLOs, traces, and dashboard charts. Set
+`enable_per_service_latency_incidents=true` only after replacing the service-wide signal with a path-aware
+interactive-request metric that excludes import, export, and recovery work.
+
+The async Scheduler policy remains enabled and attached to both production operator channels. Its aligned
+window is now five minutes and its condition is `sum > 1`, so one failure that succeeds on retry remains in
+Cloud Logging without paging; a second failed attempt in the window opens an incident. The production apply
+changed eight alert policies in place, added or destroyed no resources, and a targeted post-apply plan returned
+no changes. Uptime, product-liveness, aggregate real-user 5xx, outbox/inbox backlog, dead-letter, Cloud SQL,
+Pub/Sub, storage, trace-export, and budget alerting remain enabled according to their existing production inputs.
 
 ## 2026-08-24 DATA-01 Repository Delta
 

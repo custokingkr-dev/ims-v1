@@ -253,6 +253,20 @@ variable "enable_per_service_error_notifications" {
   default     = true
 }
 
+variable "enable_per_service_latency_incidents" {
+  description = <<-DESC
+    Whether generic per-service p95 latency policies can open incidents.
+
+    Disable this in production while long-running synchronous import, export, and recovery endpoints share
+    the same Cloud Run services as interactive requests. The raw latency metrics and dashboard charts remain
+    available. Re-enable incident generation only after latency is measured from a path-aware metric that
+    excludes intentional batch work, otherwise one successful request opens matching frontend, gateway, and
+    upstream-service incidents.
+  DESC
+  type        = bool
+  default     = false
+}
+
 variable "enable_product_liveness_check" {
   description = <<-DESC
     Whether to run the school-hours product liveness check.
