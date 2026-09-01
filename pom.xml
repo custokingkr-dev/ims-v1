@@ -33,7 +33,7 @@
         <postgresql.version>42.7.12</postgresql.version>
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
         <opentelemetry-gcp-auth-extension.version>1.59.0-alpha</opentelemetry-gcp-auth-extension.version>
-        <google-auth-library.version>1.50.0</google-auth-library.version>
+        <google-auth-library.version>1.51.0</google-auth-library.version>
         <maven-enforcer-plugin.version>3.6.3</maven-enforcer-plugin.version>
     </properties>
 
