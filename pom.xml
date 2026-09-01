@@ -28,7 +28,7 @@
     <properties>
         <java.version>25</java.version>
         <maven.minimum.version>3.9.0</maven.minimum.version>
-        <google-cloud-libraries-bom.version>26.86.0</google-cloud-libraries-bom.version>
+        <google-cloud-libraries-bom.version>26.87.0</google-cloud-libraries-bom.version>
         <grpc.version>1.83.1</grpc.version>
         <postgresql.version>42.7.12</postgresql.version>
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
