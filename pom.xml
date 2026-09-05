@@ -31,6 +31,10 @@
         <google-cloud-libraries-bom.version>26.86.0</google-cloud-libraries-bom.version>
         <grpc.version>1.83.1</grpc.version>
         <postgresql.version>42.7.12</postgresql.version>
+        <!-- Ahead of spring-boot-dependencies 4.1.1 (11.0.24), which the Trivy
+             HIGH/CRITICAL image gate rejects for CVE-2026-65182, CVE-2026-65905
+             and CVE-2026-68525. Drop this once the managed version reaches 11.0.25. -->
+        <tomcat.version>11.0.25</tomcat.version>
         <logstash-logback-encoder.version>8.1</logstash-logback-encoder.version>
         <opentelemetry-gcp-auth-extension.version>1.59.0-alpha</opentelemetry-gcp-auth-extension.version>
         <google-auth-library.version>1.50.0</google-auth-library.version>
