@@ -8,7 +8,7 @@ export const user = {
   role: 'ADMIN',
   branchId: 7,
   branchName: 'Green Valley School',
-  permissions: [],
+  permissions: ['school:read', 'school:create', 'school:update', 'platform:admin'],
 };
 
 export const workspace = {
@@ -28,6 +28,8 @@ export async function mockAuthenticatedApi(page: Page) {
     if (pathname === '/api/v1/auth/login') return json(route, user);
     if (pathname === '/api/v1/auth/refresh') return json(route, user);
     if (pathname === '/api/v1/workspace') return json(route, workspace);
+    if (pathname === '/api/v1/schools') return json(route, []);
+    if (pathname === '/api/v1/zones') return json(route, []);
     return json(route, {});
   });
 }
