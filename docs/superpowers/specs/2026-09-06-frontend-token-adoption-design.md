@@ -17,6 +17,8 @@ Measured on 2026-09-06:
 | `--ck-space-*` usages | **0** |
 | Hardcoded hex in `.tsx` | **331** across 23 files |
 | Hardcoded hex in `.css` | **425** |
+| Hardcoded `px` font-sizes in `.css` | **532** across 33 distinct values |
+| Those below 12px (excluding `/design-preview`) | **162** |
 | Inline `style={{...}}` blocks | **998** |
 | Distinct breakpoints | **11** (600/640/720/760/820/900/960/980/1100/1200) |
 | `grid-template-columns` with fixed px | **65** |
@@ -92,6 +94,22 @@ New scale, rem-based against a 16px root, hard floor of 12px:
 --ck-text-3xl   2.25rem     36px
 ```
 
+**Important asymmetry — colour and typography do not land together.**
+
+The palette change propagates app-wide immediately, because 1,546 call sites already resolve
+through CSS variables. Typography does **not**: there are **532 hardcoded `px` font-sizes in
+CSS** across 33 distinct values (6.5px to 40px, including fractional 7.3/7.8/8.5/9.5/10.5/
+11.5/12.5/13.5px), and they bypass the token scale entirely. There is also no global
+`font-size` on `html`, `body`, or `:root` — the base is simply the browser default.
+
+Excluding the `/design-preview` demo page, the real application has **423** hardcoded px
+font-sizes, of which **162 are below 12px** (`styles.css` 98, `attendance.css` 33,
+`photo-import.css` 15, `erp-modules.css` 14, `sidebar.css` 2).
+
+Therefore slice 1 **defines** the type scale and sets a global baseline, but the visible
+typography improvement only arrives in slices 2 and 3 as hardcoded sizes are replaced.
+Slice 1 must not be described or reviewed as if it fixes typography.
+
 - `line-height: 1.5` on body text.
 - DM Sans throughout; serif display faces (Instrument Serif, Fraunces) are dropped, matching
   the preview direction.
@@ -153,14 +171,16 @@ Each slice is a separate pull request against `dev`, independently shippable.
 | # | Slice | Scope | Acceptance |
 |---|---|---|---|
 | 1 | Foundation | Invert graph, new palette, rem type scale, font `<link>`, screenshot baseline | App repaints; all 35 unit test files green; before/after contact sheet produced |
-| 2 | CSS hex to tokens | 425 sites across 8 stylesheets | Zero hardcoded hex in `src/**/*.css` except `tokens.css` |
+| 2 | CSS hex + px font-sizes to tokens | 425 hex + 423 px font-sizes across 8 stylesheets | Zero hardcoded hex in `src/**/*.css` except `tokens.css`; no font-size below `--ck-text-xs` |
 | 3 | TSX hex plus static inline styles | 331 sites, 23 files - **split per panel, not one PR** | Zero hardcoded hex in `.tsx`; genuinely dynamic inline styles retained |
 | 4 | Retire `--dpx-*` | 780-line `design-preview.css`, repoint or delete `/design-preview` | Only one token system remains |
 | 5 | Breakpoint collapse | 42 media queries to 4 breakpoints | No breakpoint outside the four constants |
 | 6 | Tabular numerals | Numeric cells across 46 tables | Numeric columns align on the decimal |
 
-Slice 1 carries the entire visual change. Slices 2 to 6 remove outliers that would otherwise
-clash with the new palette.
+Slice 1 carries the entire **colour** change. Slices 2 to 6 remove outliers that would
+otherwise clash with the new palette, and slices 2 and 3 carry the **typography** change,
+since 532 hardcoded px font-sizes bypass the token scale and cannot be fixed by editing
+`tokens.css` alone.
 
 ## Verification
 
