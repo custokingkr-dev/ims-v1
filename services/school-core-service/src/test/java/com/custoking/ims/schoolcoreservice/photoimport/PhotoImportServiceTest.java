@@ -10,6 +10,9 @@ import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Rec
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RecoveryTarget;
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.RowInput;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -964,6 +967,87 @@ class PhotoImportServiceTest {
         assertThat(stored.getHeight()).isEqualTo(256);
         assertThat(new Color(stored.getRGB(16, 128)).getRed()).isGreaterThan(200);
         assertThat(new Color(stored.getRGB(495, 128)).getBlue()).isGreaterThan(200);
+    }
+
+    @Test
+    void executionFailureNamesTheDriveEvidenceThatChanged() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch partial = batch(batchId, schoolId, "PARTIAL", 1);
+        Batch executing = batch(batchId, schoolId, "EXECUTING", 1);
+        DriveFile retained = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", sha256(new byte[]{1, 2, 3}), "rev-1", "11", "2026-07-31T00:00:00Z");
+        DriveFile current = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", sha256(new byte[]{1, 2, 3}), "rev-2", "11", "2026-07-31T00:00:00Z");
+        ImportRow importRow = row(batchId, schoolId, 0, retained);
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(partial);
+        when(repository.currentAcademicYearId(schoolId)).thenReturn("ay-2026");
+        when(drive.listFiles("folder-1")).thenReturn(List.of(current));
+        when(repository.startExecution(batchId, schoolId, 42L)).thenReturn(executing);
+        when(repository.sourceFiles(batchId, schoolId)).thenReturn(List.of(retained));
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(importRow));
+        when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
+
+        service.execute(batchId);
+
+        verify(repository).markRowFailed(
+                eq(importRow.id()), eq(schoolId),
+                org.mockito.ArgumentMatchers.contains("Drive revision"));
+        verify(drive, never()).download(any(), anyLong());
+    }
+
+    @Test
+    void executionLogsEveryRowFailureWithItsDriveFileAndReason() {
+        UUID batchId = UUID.randomUUID();
+        long schoolId = 7L;
+        setOperationsTenant(schoolId);
+        Batch partial = batch(batchId, schoolId, "PARTIAL", 1);
+        Batch executing = batch(batchId, schoolId, "EXECUTING", 1);
+        DriveFile retained = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", sha256(new byte[]{1, 2, 3}), "rev-1", "11", "2026-07-31T00:00:00Z");
+        DriveFile current = new DriveFile(
+                "file-1", "DSC5000.jpg", "image/jpeg", 3L,
+                "legacy-md5", sha256(new byte[]{1, 2, 3}), "rev-2", "11", "2026-07-31T00:00:00Z");
+        ImportRow importRow = row(batchId, schoolId, 0, retained);
+
+        when(repository.batchSchoolId(batchId)).thenReturn(schoolId);
+        when(repository.studentsModuleEnabled(schoolId)).thenReturn(true);
+        when(repository.batch(batchId, schoolId)).thenReturn(partial);
+        when(repository.currentAcademicYearId(schoolId)).thenReturn("ay-2026");
+        when(drive.listFiles("folder-1")).thenReturn(List.of(current));
+        when(repository.startExecution(batchId, schoolId, 42L)).thenReturn(executing);
+        when(repository.sourceFiles(batchId, schoolId)).thenReturn(List.of(retained));
+        when(repository.rows(batchId, schoolId)).thenReturn(List.of(importRow));
+        when(repository.finishExecution(batchId, schoolId)).thenReturn(executing);
+
+        ch.qos.logback.classic.Logger serviceLogger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(PhotoImportService.class);
+        ListAppender<ILoggingEvent> captured = new ListAppender<>();
+        captured.start();
+        serviceLogger.addAppender(captured);
+        try {
+            service.execute(batchId);
+        } finally {
+            serviceLogger.detachAppender(captured);
+        }
+
+        assertThat(captured.list)
+                .anySatisfy(event -> {
+                    assertThat(event.getLevel()).isEqualTo(Level.WARN);
+                    assertThat(event.getFormattedMessage())
+                            .contains("photo.import.row.failed")
+                            .contains(batchId.toString())
+                            .contains(importRow.id().toString())
+                            .contains("file-1")
+                            .contains("Drive revision");
+                });
     }
 
     private static Batch batch(UUID id, long schoolId, String status, int readyCount) {
