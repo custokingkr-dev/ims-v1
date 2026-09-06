@@ -53,3 +53,15 @@ test('the type scale is rem-based and floored at 12px', async ({ page }) => {
   expect(scale.base).toBe('0.875rem');
   expect(scale.md).toBe('1rem');
 });
+
+test('body sets an accessible base size and line height', async ({ page }) => {
+  await page.goto('/login');
+
+  const base = await page.evaluate(() => {
+    const body = getComputedStyle(document.body);
+    return { fontSize: body.fontSize, lineHeight: body.lineHeight };
+  });
+
+  expect(base.fontSize).toBe('16px');
+  expect(base.lineHeight).toBe('24px');
+});
