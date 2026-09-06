@@ -1,6 +1,10 @@
 /* frontend/src/styles/tokens.css
-   Semantic token aliases on top of the existing :root shorthand vars.
-   Never remove the original vars — these are additive aliases only.
+   Source of truth for design tokens: the literal values below are canonical.
+   The legacy shorthand vars in frontend/src/styles.css (e.g. --g) now alias
+   these tokens, not the other way around — the dependency graph was
+   inverted during the token-foundation slice.
+   Do not delete the legacy aliases in styles.css: ~1,546 call sites across
+   the app still resolve their colors/spacing through those shorthand vars.
 */
 
 :root {

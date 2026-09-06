@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { signIn } from './support/session';
 
 test('fonts load via a preconnected stylesheet link, not CSS @import', async ({ page }) => {
   await page.goto('/login');
@@ -64,4 +65,83 @@ test('body sets an accessible base size and line height', async ({ page }) => {
 
   expect(base.fontSize).toBe('16px');
   expect(base.lineHeight).toBe('24px');
+});
+
+test('the .page-title heading actually renders in a served serif face, not the browser default', async ({
+  page,
+}) => {
+  // getComputedStyle().fontFamily only echoes the CSS-declared font stack —
+  // it reports "Instrument Serif", serif verbatim even when that face never
+  // loaded and the browser silently substituted Times New Roman. That is
+  // exactly the regression that reached prod (the @import that used to pull
+  // Fraunces + Instrument Serif was replaced by a <link> requesting DM Sans
+  // only), so a plain font-family assertion can't see it.
+  //
+  // document.fonts.check() is *also* unreliable here: empirically, Chromium
+  // returns true for it even for a font family that was never declared
+  // anywhere (e.g. "TotallyMadeUpFontXYZ") once .load() has been called on
+  // it — so it can't distinguish "actually served" from "silently
+  // substituted". What does discriminate reliably:
+  //   1. document.fonts.load(...) resolves to an EMPTY array when no
+  //      @font-face at all matches the family (nothing was ever requested
+  //      for it in index.html) and a non-empty 'loaded' array when a
+  //      @font-face was registered and successfully fetched.
+  //   2. Rendering the same string on a <canvas> with the real font stack
+  //      versus the bare generic ('serif') produces a DIFFERENT measured
+  //      width only when the named face is actually in use; identical
+  //      widths mean the browser fell back to its generic serif (Times New
+  //      Roman on Windows).
+  // Both were verified against a throwaway page with/without the Google
+  // Fonts <link> before writing this assertion.
+  await signIn(page);
+  await page.goto('/schools');
+
+  const heading = page.locator('.page-title').first();
+  await expect(heading).toBeVisible();
+
+  const result = await page.evaluate(async () => {
+    const el = document.querySelector('.page-title') as HTMLElement;
+    const family = getComputedStyle(el).fontFamily;
+
+    await document.fonts.ready;
+    const [instrumentFaces, frauncesFaces] = await Promise.all([
+      document.fonts.load('400 42px "Instrument Serif"'),
+      document.fonts.load('400 42px "Fraunces"'),
+    ]);
+
+    const measure = (fontFamily: string) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      ctx.font = `400 100px ${fontFamily}`;
+      return ctx.measureText('MMMMMMMMWWWWWWWWiiiiiiiilllllllll').width;
+    };
+
+    return {
+      family,
+      instrumentSerifFaceCount: instrumentFaces.length,
+      instrumentSerifStatus: instrumentFaces.map((f) => f.status),
+      frauncesFaceCount: frauncesFaces.length,
+      frauncesStatus: frauncesFaces.map((f) => f.status),
+      pageTitleStackWidth: measure(family),
+      genericSerifWidth: measure('serif'),
+    };
+  });
+
+  // Sanity check: the CSS rule itself (styles.css, out of scope for this fix)
+  // still names Instrument Serif.
+  expect(result.family).toContain('Instrument Serif');
+
+  // The actual regression check: the named faces must have been registered
+  // and fetched via the <link> in index.html — an empty array here means
+  // nothing on the page ever requested that family, which is exactly what
+  // happens if the serif families are dropped from the font request again.
+  expect(result.instrumentSerifFaceCount).toBeGreaterThan(0);
+  expect(result.instrumentSerifStatus.every((s) => s === 'loaded')).toBe(true);
+  expect(result.frauncesFaceCount).toBeGreaterThan(0);
+  expect(result.frauncesStatus.every((s) => s === 'loaded')).toBe(true);
+
+  // Belt and suspenders: the heading's real font stack must render visibly
+  // differently from the bare generic fallback, proving Instrument Serif
+  // (not Times New Roman) is what's actually painted.
+  expect(Math.abs(result.pageTitleStackWidth - result.genericSerifWidth)).toBeGreaterThan(1);
 });
