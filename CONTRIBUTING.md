@@ -22,14 +22,15 @@ consistent and production-safe. Please read it before opening a PR.
 ## Branch strategy
 
 ```
-main           — production-ready; protected; requires PR + passing CI
-feature/v1     — current development integration branch
-feature/<name> — individual features/fixes; branch from feature/v1
+main         — production-ready; promoted from dev by PR
+dev          — development integration branch; deploys to custoking-dev
+codex/<name> — individual features/fixes; branch from dev
 ```
 
-- Branch from `feature/v1` (or `main` for hotfixes).
+- Branch from `dev` (or `main` for hotfixes).
 - Keep branches short-lived. Rebase before opening a PR to avoid merge conflicts.
 - Delete branches after merging.
+- Promotion to production is a `dev` -> `main` pull request, not a direct push.
 
 ---
 
@@ -201,11 +202,16 @@ cd frontend && npm run build   # TypeScript type-check + Vite production bundle
 
 ## Pull request process
 
-1. Open your PR against `feature/v1` (or `main` for hotfixes).
+1. Open your PR against `dev` (or `main` for hotfixes). `CI / PR` only runs for
+   pull requests targeting `main` or `dev`.
 2. Fill in the PR template completely — incomplete PRs will be returned.
-3. CI must be green before review:
-   - backend-test, db-migration-test, frontend-build, secret-scan
-   - owasp-scan and trivy-scan run on push to main/master only
+3. CI must be green before review. `CI / PR` runs:
+   - `service-test` and `docker-build`, per affected service
+   - `secret-scan`, `duplicate-class-drift`, `static-architecture-audits`,
+     `privacy-technical-controls`, `promotion-source-policy`
+   - CodeQL `analyze` runs from the separate `Security / CodeQL` workflow
+   - Trivy runs inside `docker-build` on **every** pull request and fails the
+     build on any HIGH or CRITICAL finding — not only on pushes to `main`
 4. One approval required from a code owner before merging.
 5. Squash-merge preferred to keep `main` history linear.
 
