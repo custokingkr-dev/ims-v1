@@ -14,6 +14,8 @@ import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportRepository.Stu
 import com.custoking.ims.schoolcoreservice.photoimport.PhotoImportWorkbookParser.WorkbookRow;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class PhotoImportService {
+    private static final Logger log = LoggerFactory.getLogger(PhotoImportService.class);
     private static final long MAX_SOURCE_IMAGE_BYTES = 20L * 1024 * 1024;
     private static final String PHOTO_RECOVERY_VERSION = "fit-without-crop-v1";
     private static final int EXECUTION_CHUNK_SIZE = 10;
@@ -371,6 +374,10 @@ public class PhotoImportService {
                 repository.applyPhoto(
                         batch, row, sourceBytes, source.mimeType(), certifiedSha256, normalized);
             } catch (Exception ex) {
+                log.warn("photo.import.row.failed batchId={} rowId={} excelRow={} imageNo={} "
+                                + "driveFileId={} driveFileName={} reason={}",
+                        id, row.id(), row.excelRow(), row.imageNo(),
+                        row.driveFileId(), row.driveFileName(), ex.getMessage());
                 repository.markRowFailed(row.id(), schoolId, ex.getMessage());
             }
         }
@@ -647,7 +654,7 @@ public class PhotoImportService {
         }
         if (retained.size() != null && current.size() != null
                 && !retained.size().equals(current.size())) {
-            throw new IllegalArgumentException("The retained Drive original changed after import");
+            throw changedAfterImport("file size");
         }
         boolean verified = false;
         String retainedSha256 = normalizedOptionalSha256(retained.sha256Checksum());
@@ -655,19 +662,19 @@ public class PhotoImportService {
         if (retainedSha256 != null && currentSha256 != null) {
             verified = true;
             if (!retainedSha256.equals(currentSha256)) {
-                throw new IllegalArgumentException("The retained Drive original changed after import");
+                throw changedAfterImport("content checksum");
             }
         }
         if (retained.headRevisionId() != null && !retained.headRevisionId().isBlank()) {
             verified = true;
             if (!retained.headRevisionId().equals(current.headRevisionId())) {
-                throw new IllegalArgumentException("The retained Drive original changed after import");
+                throw changedAfterImport("Drive revision");
             }
         }
         if (retained.driveVersion() != null && !retained.driveVersion().isBlank()) {
             verified = true;
             if (!retained.driveVersion().equals(current.driveVersion())) {
-                throw new IllegalArgumentException("The retained Drive original changed after import");
+                throw changedAfterImport("Drive version");
             }
         }
         if (!verified) {
@@ -675,8 +682,15 @@ public class PhotoImportService {
                     "The retained Drive original has no stable revision evidence; rescan is required");
         }
         if (!retained.id().equals(current.id())) {
-            throw new IllegalArgumentException("The retained Drive original changed after import");
+            throw changedAfterImport("Drive file id");
         }
+    }
+
+    // Every mismatch used to raise one indistinguishable message, so a stalled batch could not be
+    // told apart from a re-uploaded photo without querying the database directly.
+    private static IllegalArgumentException changedAfterImport(String evidence) {
+        return new IllegalArgumentException(
+                "The retained Drive original changed after import (" + evidence + " changed)");
     }
 
     private static void requireDownloadedSha256(String expectedSha256, byte[] sourceBytes) {
