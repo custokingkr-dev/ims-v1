@@ -36,3 +36,20 @@ test('legacy shorthand vars resolve through the token layer', async ({ page }) =
   expect(resolved.tokenGreen).toBe('#166b49');
   expect(resolved.legacyGreen).toBe('#166b49');
 });
+
+test('the type scale is rem-based and floored at 12px', async ({ page }) => {
+  await page.goto('/login');
+
+  const scale = await page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    return {
+      xs: root.getPropertyValue('--ck-text-xs').trim(),
+      base: root.getPropertyValue('--ck-text-base').trim(),
+      md: root.getPropertyValue('--ck-text-md').trim(),
+    };
+  });
+
+  expect(scale.xs).toBe('0.75rem');
+  expect(scale.base).toBe('0.875rem');
+  expect(scale.md).toBe('1rem');
+});
