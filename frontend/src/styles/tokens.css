@@ -5,45 +5,42 @@
 
 :root {
   /* ── Brand Colors ──────────────────────────────────────────────── */
-  --ck-color-primary:        var(--g);
-  --ck-color-primary-dark:   #135533;
-  --ck-color-primary-soft:   var(--g1);
-  --ck-color-primary-border: var(--g2);
+  --ck-color-primary:        #166b49;
+  --ck-color-primary-dark:   #0f5539;
+  --ck-color-primary-soft:   #e8f4ee;
+  --ck-color-primary-border: #c4ddd0;
 
-  --ck-color-accent:         var(--b);
-  --ck-color-accent-soft:    var(--b1);
-
-  --ck-color-warning:        var(--am);
-  --ck-color-warning-soft:   var(--am1);
-
-  --ck-color-danger:         var(--re);
-  --ck-color-danger-soft:    var(--re1);
-
-  --ck-color-orange:         var(--or);
-  --ck-color-orange-soft:    var(--or1);
-
-  --ck-color-purple:         var(--pu);
-  --ck-color-purple-soft:    var(--pu1);
+  /* Status only — never decoration or module identity */
+  --ck-color-accent:         #2f68b2;
+  --ck-color-accent-soft:    #e6edf8;
+  --ck-color-warning:        #a45b16;
+  --ck-color-warning-soft:   #fff3e6;
+  --ck-color-danger:         #b42318;
+  --ck-color-danger-soft:    #fdecea;
+  --ck-color-orange:         #d14e12;
+  --ck-color-orange-soft:    #fff0e8;
+  --ck-color-purple:         #5b2d8a;
+  --ck-color-purple-soft:    #f2edf9;
 
   /* ── Surfaces ──────────────────────────────────────────────────── */
-  --ck-bg-app:               var(--bg);
-  --ck-bg-surface:           var(--white);
-  --ck-bg-surface-raised:    #faf9f7;
+  --ck-bg-app:               #f4f6f8;
+  --ck-bg-surface:           #ffffff;
+  --ck-bg-surface-raised:    #fbfcfc;
   --ck-bg-overlay:           rgba(0,0,0,.32);
 
   /* ── Text ──────────────────────────────────────────────────────── */
-  --ck-text-primary:         var(--ink);
-  --ck-text-secondary:       var(--ink2);
-  --ck-text-muted:           var(--ink3);
+  --ck-text-primary:         #1f2933;
+  --ck-text-secondary:       #667085;
+  --ck-text-muted:           #8b95a5;
   --ck-text-inverse:         #ffffff;
 
   /* ── Borders ───────────────────────────────────────────────────── */
-  --ck-border-subtle:        var(--border);
-  --ck-border-default:       var(--border2);
+  --ck-border-subtle:        #e3e7ec;
+  --ck-border-default:       #d3d9e1;
 
   /* ── Shadows ───────────────────────────────────────────────────── */
   --ck-shadow-card:          0 1px 4px rgba(0,0,0,.03);
-  --ck-shadow-raised:        var(--shadow);
+  --ck-shadow-raised:        0 12px 34px rgba(0,0,0,.06),0 3px 10px rgba(0,0,0,.04);
   --ck-shadow-popover:       0 8px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
   --ck-shadow-drawer:        -4px 0 24px rgba(0,0,0,.08);
 

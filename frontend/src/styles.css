@@ -1,8 +1,27 @@
 :root {
-  --bg:#f7f6f3; --white:#fff; --ink:#1a1a1a; --ink2:#5a5a5a; --ink3:#8d8c88;
-  --border:#e4e2dc; --border2:#ccc9c0; --g:#1a6840; --g1:#e8f5ee; --g2:#c4ddd0;
-  --b:#1a4fa8; --b1:#e6edf8; --am:#b35c00; --am1:#fff3e6; --re:#c0312b; --re1:#fdecea;
-  --or:#d14e12; --or1:#fff0e8; --pu:#5b2d8a; --pu1:#f2edf9; --shadow:0 12px 34px rgba(0,0,0,.06),0 3px 10px rgba(0,0,0,.04);
+  /* Compatibility aliases. Real values live in styles/tokens.css.
+     1,546 existing call sites resolve through these names. Do not delete. */
+  --bg:      var(--ck-bg-app);
+  --white:   var(--ck-bg-surface);
+  --ink:     var(--ck-text-primary);
+  --ink2:    var(--ck-text-secondary);
+  --ink3:    var(--ck-text-muted);
+  --border:  var(--ck-border-subtle);
+  --border2: var(--ck-border-default);
+  --g:       var(--ck-color-primary);
+  --g1:      var(--ck-color-primary-soft);
+  --g2:      var(--ck-color-primary-border);
+  --b:       var(--ck-color-accent);
+  --b1:      var(--ck-color-accent-soft);
+  --am:      var(--ck-color-warning);
+  --am1:     var(--ck-color-warning-soft);
+  --re:      var(--ck-color-danger);
+  --re1:     var(--ck-color-danger-soft);
+  --or:      var(--ck-color-orange);
+  --or1:     var(--ck-color-orange-soft);
+  --pu:      var(--ck-color-purple);
+  --pu1:     var(--ck-color-purple-soft);
+  --shadow:  var(--ck-shadow-raised);
 }
 * { box-sizing: border-box; }
 html, body, #root { min-height: 100%; }
