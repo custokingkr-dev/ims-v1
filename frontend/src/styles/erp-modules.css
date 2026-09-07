@@ -57,7 +57,7 @@
 }
 
 .erp-btn.primary { color: #fff; background: var(--g); border-color: var(--g); }
-.erp-btn.primary:hover:not(:disabled) { background: #155c36; }
+.erp-btn.primary:hover:not(:disabled) { background: var(--ck-color-primary-dark); }
 .erp-btn.secondary { color: var(--ink); background: var(--white); border-color: var(--border2); }
 .erp-btn.secondary:hover:not(:disabled) { background: var(--bg); border-color: var(--ink3); }
 .erp-btn.danger { color: var(--re); background: var(--re1); border-color: #f4bbb8; }
@@ -537,7 +537,7 @@
 .erp-schedule-cell.filled { align-items: stretch; color: var(--ink); border-top: 3px solid var(--b); background: var(--b1); }
 .erp-schedule-cell.filled strong { font-size: 13px; overflow-wrap: anywhere; }
 .erp-schedule-cell.filled span, .erp-schedule-cell.filled small { overflow: hidden; color: var(--ink2); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.erp-schedule-cell.break { align-items: center; color: var(--am); background: repeating-linear-gradient(135deg, var(--am1), var(--am1) 8px, #fffaf3 8px, #fffaf3 16px); }
+.erp-schedule-cell.break { align-items: center; color: var(--am); background: repeating-linear-gradient(135deg, var(--am1), var(--am1) 8px, var(--ck-bg-surface-raised) 8px, var(--ck-bg-surface-raised) 16px); }
 
 .erp-resource-board {
   display: grid;

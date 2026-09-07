@@ -309,7 +309,7 @@
   padding: 3px 8px;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #f4f4f0;
+  background: var(--ck-status-neutral-bg);
   color: var(--ink2);
   font-size: 10px;
   font-weight: 800;
@@ -527,7 +527,7 @@
 }
 .pi-preview-dialog > div { min-width: 0; display: grid; gap: 3px; }
 .pi-preview-dialog span { color: var(--ink3); font-size: 11px; overflow-wrap: anywhere; }
-.pi-preview-dialog img { width: 100%; aspect-ratio: 1; border-radius: 6px; object-fit: contain; background: #f4f4f0; }
+.pi-preview-dialog img { width: 100%; aspect-ratio: 1; border-radius: 6px; object-fit: contain; background: var(--ck-status-neutral-bg); }
 .pi-preview-dialog .ck-btn { justify-self: end; }
 .pi-preview-dialog:focus-visible,
 .pi-review-dialog:focus-visible { outline: 2px solid var(--b); outline-offset: 3px; }

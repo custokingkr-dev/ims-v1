@@ -101,7 +101,7 @@
 .ck-att-icon-button:hover:not(:disabled) {
   border-color: var(--g);
   color: var(--g);
-  background: #fafcfb;
+  background: var(--ck-bg-surface-raised);
 }
 
 .ck-att-button:disabled,
@@ -117,8 +117,8 @@
 }
 
 .ck-att-button--primary:hover:not(:disabled) {
-  border-color: #145234;
-  background: #145234;
+  border-color: var(--ck-color-primary-dark);
+  background: var(--ck-color-primary-dark);
   color: #fff;
 }
 
@@ -461,7 +461,7 @@
   min-height: 44px;
   padding: 7px 11px;
   border-bottom: 1px solid var(--g2);
-  background: #f0f8f4;
+  background: var(--ck-bg-app);
   color: var(--g);
   font-size: 11px;
 }
@@ -495,7 +495,7 @@
   height: 39px;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
-  background: #f8faf9;
+  background: var(--ck-bg-surface-raised);
   color: var(--ink3);
   font-size: 10px;
   font-weight: 800;
@@ -507,7 +507,7 @@
 .ck-att-table td {
   height: 62px;
   padding: 8px 10px;
-  border-bottom: 1px solid #e9eeeb;
+  border-bottom: 1px solid var(--ck-color-primary-soft);
   color: var(--ink2);
   font-size: 12px;
   vertical-align: middle;
@@ -515,7 +515,7 @@
 .ck-att-roster-table tbody tr:last-child td,
 .ck-att-table tbody tr:last-child td { border-bottom: 0; }
 .ck-att-roster-table tbody tr:hover,
-.ck-att-table tbody tr:hover { background: #fafcfb; }
+.ck-att-table tbody tr:hover { background: var(--ck-bg-surface-raised); }
 .ck-att-roster-table th:nth-child(1) { width: 38px; }
 .ck-att-roster-table th:nth-child(2) { width: 30%; }
 .ck-att-roster-table th:nth-child(3) { width: 64px; }
@@ -864,7 +864,7 @@ span.ck-att-pill { cursor: default; }
   position: sticky;
   top: 0;
   z-index: 1;
-  background: #f8faf9;
+  background: var(--ck-bg-surface-raised);
   color: var(--ink3);
   font-weight: 800;
 }
@@ -881,7 +881,7 @@ span.ck-att-pill { cursor: default; }
   text-align: left !important;
 }
 .ck-att-grid-name { background: var(--white); }
-.ck-att-grid-name-h { z-index: 3 !important; background: #f8faf9 !important; }
+.ck-att-grid-name-h { z-index: 3 !important; background: var(--ck-bg-surface-raised) !important; }
 .ck-att-grid-name strong {
   display: block;
   max-width: 150px;
@@ -892,7 +892,7 @@ span.ck-att-pill { cursor: default; }
 .ck-att-grid-name span { display: block; margin-top: 1px; color: var(--ink3); font-size: 8px; }
 .ck-att-grid-tot { background: var(--ck-bg-surface-raised); font-weight: 800; }
 .ck-att-grid tfoot td { background: var(--ck-bg-surface-raised); font-weight: 800; }
-.ck-att-day-off { background: #f3f2ef !important; color: #aaa8a1 !important; }
+.ck-att-day-off { background: var(--ck-status-neutral-bg) !important; color: #aaa8a1 !important; }
 .ck-att-cell--present { color: var(--g); font-weight: 800; }
 .ck-att-cell--late { color: var(--am); font-weight: 800; }
 .ck-att-cell--leave { color: var(--b); font-weight: 800; }
