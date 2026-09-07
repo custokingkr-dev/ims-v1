@@ -26,6 +26,14 @@
   --ck-color-purple:         #5b2d8a;
   --ck-color-purple-soft:    #f2edf9;
 
+  /* Status-tint borders. --ck-color-primary-border already named the green
+     equivalent; these name the pink, tan and lavender that existed in the CSS
+     as clusters of near-identical variants. Each value is the cluster centroid,
+     chosen from a shade already in use so adoption shifts nothing visibly. */
+  --ck-color-danger-border:  #f3c1bd;
+  --ck-color-warning-border: #f2d19d;
+  --ck-color-purple-border:  #c5b0e8;
+
   /* ── Surfaces ──────────────────────────────────────────────────── */
   --ck-bg-app:               #f4f6f8;
   --ck-bg-surface:           #ffffff;

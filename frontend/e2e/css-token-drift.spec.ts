@@ -76,3 +76,37 @@ test('white is not hardcoded where a role-appropriate token exists', () => {
 
   expect(offenders).toEqual([]);
 });
+
+/**
+ * Status-tint borders. Unlike the drift above these were never a token's value -
+ * they are a real palette the token set simply lacked a name for. Each cluster is
+ * one intended colour that accumulated near-identical variants: six pinks within a
+ * few units of each other, six tans likewise. Collapsing each cluster onto a single
+ * minted token names the colour that was already there.
+ *
+ * --ck-color-primary-border already existed for green; danger, warning and purple
+ * now have the equivalent.
+ */
+const UNNAMED_TINTS = [
+  // danger — 19 uses, every one a border, outline or border-color
+  '#f5c0bd', '#f4bbb8', '#f5c0bc', '#efc7c4', '#f3c1bd', '#f0c5c0', '#dca9a5',
+  // warning — 10 uses, same
+  '#f5d5a0', '#f5c090', '#efd9a3', '#eccda9', '#f5c878', '#f2d19d',
+  // purple — 2 uses, both borders
+  '#c5b0e8',
+];
+
+test('status-tint borders resolve through a named token', () => {
+  const offenders: string[] = [];
+
+  for (const path of stylesheetPaths()) {
+    const css = readFileSync(path, 'utf8').toLowerCase();
+    for (const colour of UNNAMED_TINTS) {
+      if (css.includes(colour)) {
+        offenders.push(`${path.split(/[\/]/).pop()}: ${colour}`);
+      }
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});

@@ -20,7 +20,7 @@
 }
 
 .pi-notice.ok { border-color: var(--g2); background: var(--g1); color: var(--g); }
-.pi-notice.bad { border-color: #efc7c4; background: var(--re1); color: var(--re); }
+.pi-notice.bad { border-color: var(--ck-color-danger-border); background: var(--re1); color: var(--re); }
 
 .pi-scope-band {
   display: grid;
@@ -316,8 +316,8 @@
   white-space: nowrap;
 }
 .pi-status.ok { border-color: var(--g2); background: var(--g1); color: var(--g); }
-.pi-status.warn { border-color: #efd9a3; background: var(--am1); color: var(--am); }
-.pi-status.bad { border-color: #efc7c4; background: var(--re1); color: var(--re); }
+.pi-status.warn { border-color: var(--ck-color-warning-border); background: var(--am1); color: var(--am); }
+.pi-status.bad { border-color: var(--ck-color-danger-border); background: var(--re1); color: var(--re); }
 
 .pi-metrics {
   display: grid;
@@ -348,7 +348,7 @@
 .pi-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .pi-actions .ck-btn { min-height: 36px; }
 .pi-danger-action { color: var(--re); }
-.pi-danger-action:hover:not(:disabled) { border-color: #dca9a5; background: var(--re1); }
+.pi-danger-action:hover:not(:disabled) { border-color: var(--ck-color-danger-border); background: var(--re1); }
 .pi-execute-confirm {
   max-width: 310px;
   display: flex;
@@ -376,7 +376,7 @@
   background: var(--g1);
   color: var(--g);
 }
-.pi-access-band.overdue { border-color: #efd9a3; background: var(--am1); color: var(--am); }
+.pi-access-band.overdue { border-color: var(--ck-color-warning-border); background: var(--am1); color: var(--am); }
 .pi-access-band > div { min-width: 0; display: grid; gap: 2px; }
 .pi-access-band strong { font-size: 13px; }
 .pi-access-band span { color: var(--ink2); font-size: 11px; overflow-wrap: anywhere; }
