@@ -44,7 +44,7 @@
   padding: 0 5px;
   border-radius: var(--ck-radius-pill);
   background: var(--ck-color-danger);
-  color: #fff;
+  color: var(--ck-text-inverse);
   font-size: 10px;
   font-weight: 700;
   display: inline-flex;

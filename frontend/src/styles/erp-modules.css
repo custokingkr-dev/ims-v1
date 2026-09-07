@@ -56,7 +56,7 @@
   white-space: nowrap;
 }
 
-.erp-btn.primary { color: #fff; background: var(--g); border-color: var(--g); }
+.erp-btn.primary { color: var(--ck-text-inverse); background: var(--g); border-color: var(--g); }
 .erp-btn.primary:hover:not(:disabled) { background: var(--ck-color-primary-dark); }
 .erp-btn.secondary { color: var(--ink); background: var(--white); border-color: var(--border2); }
 .erp-btn.secondary:hover:not(:disabled) { background: var(--bg); border-color: var(--ink3); }
@@ -398,7 +398,7 @@
   align-items: center;
   gap: 8px;
 }
-.erp-connection-map > div > span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--g); font-size: 11px; font-weight: 800; }
+.erp-connection-map > div > span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; color: var(--ck-text-inverse); background: var(--g); font-size: 11px; font-weight: 800; }
 .erp-connection-map p { margin: 0; color: var(--ink2); font-size: 12px; font-weight: 600; }
 .erp-connection-map svg { color: var(--ink3); }
 
@@ -593,7 +593,7 @@
 .erp-switch { width: 36px; height: 20px; position: relative; display: inline-block; }
 .erp-switch input { width: 1px; height: 1px; position: absolute; opacity: 0; }
 .erp-switch span { position: absolute; inset: 0; border-radius: 10px; background: var(--border2); cursor: pointer; }
-.erp-switch span::after { content: ''; width: 16px; height: 16px; position: absolute; top: 2px; left: 2px; border-radius: 50%; background: #fff; transition: transform .15s ease; }
+.erp-switch span::after { content: ''; width: 16px; height: 16px; position: absolute; top: 2px; left: 2px; border-radius: 50%; background: var(--ck-bg-surface); transition: transform .15s ease; }
 .erp-switch input:checked + span { background: var(--g); }
 .erp-switch input:checked + span::after { transform: translateX(16px); }
 

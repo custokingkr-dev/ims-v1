@@ -49,3 +49,30 @@ test('no CSS colour duplicates the value of an existing design token', () => {
 
   expect(offenders).toEqual([]);
 });
+
+/**
+ * #fff is the largest remaining cluster and the most dangerous to convert
+ * mechanically: it matches BOTH --ck-bg-surface and --ck-text-inverse by value,
+ * because both are #ffffff. Replacing it by value alone would point backgrounds
+ * at a text token - identical rendering today, wrong semantics, and a defect the
+ * moment either token is changed independently. So this guard is role-aware.
+ */
+test('white is not hardcoded where a role-appropriate token exists', () => {
+  const offenders: string[] = [];
+
+  for (const path of stylesheetPaths()) {
+    const css = readFileSync(path, 'utf8');
+    const file = path.split(/[\/]/).pop();
+
+    css.split(/\r?\n/).forEach((line, index) => {
+      const declarations = line.match(/(background|color)\s*:\s*[^;{}]*/gi) ?? [];
+      for (const declaration of declarations) {
+        if (/#(fff|ffffff)\b/i.test(declaration)) {
+          offenders.push(`${file}:${index + 1} ${declaration.trim().slice(0, 60)}`);
+        }
+      }
+    });
+  }
+
+  expect(offenders).toEqual([]);
+});

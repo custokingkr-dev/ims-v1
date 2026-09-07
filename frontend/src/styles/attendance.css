@@ -113,13 +113,13 @@
 .ck-att-button--primary {
   border-color: var(--g);
   background: var(--g);
-  color: #fff;
+  color: var(--ck-text-inverse);
 }
 
 .ck-att-button--primary:hover:not(:disabled) {
   border-color: var(--ck-color-primary-dark);
   background: var(--ck-color-primary-dark);
-  color: #fff;
+  color: var(--ck-text-inverse);
 }
 
 .ck-att-day-toolbar {
@@ -622,10 +622,10 @@
 }
 span.ck-att-pill { cursor: default; }
 .ck-att-pill:hover:not(.ck-att-pill--active) { background: var(--white); color: var(--ink); }
-.ck-att-pill--present.ck-att-pill--active { background: var(--g); color: #fff; }
-.ck-att-pill--late.ck-att-pill--active { background: var(--am); color: #fff; }
-.ck-att-pill--leave.ck-att-pill--active { background: var(--b); color: #fff; }
-.ck-att-pill--absent.ck-att-pill--active { background: var(--re); color: #fff; }
+.ck-att-pill--present.ck-att-pill--active { background: var(--g); color: var(--ck-text-inverse); }
+.ck-att-pill--late.ck-att-pill--active { background: var(--am); color: var(--ck-text-inverse); }
+.ck-att-pill--leave.ck-att-pill--active { background: var(--b); color: var(--ck-text-inverse); }
+.ck-att-pill--absent.ck-att-pill--active { background: var(--re); color: var(--ck-text-inverse); }
 
 .ck-att-remarks {
   width: 100%;
