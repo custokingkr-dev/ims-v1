@@ -189,7 +189,7 @@
 .erp-table th {
   padding: 10px 13px;
   color: var(--ink3);
-  background: #faf9f6;
+  background: var(--ck-bg-surface-raised);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   font-weight: 700;
@@ -199,7 +199,7 @@
 
 .erp-table td { padding: 12px 13px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
 .erp-table tbody tr:last-child td { border-bottom: 0; }
-.erp-table tbody tr:hover { background: #fcfbf8; }
+.erp-table tbody tr:hover { background: var(--ck-bg-surface-raised); }
 .erp-table td small { display: block; margin-top: 3px; color: var(--ink3); }
 
 .erp-status {
@@ -264,7 +264,7 @@
   background: var(--white);
 }
 
-.erp-side-list { min-width: 0; border-right: 1px solid var(--border); background: #faf9f6; }
+.erp-side-list { min-width: 0; border-right: 1px solid var(--border); background: var(--ck-bg-surface-raised); }
 .erp-side-title {
   min-height: 50px;
   display: flex;
@@ -310,7 +310,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  background: #faf9f6;
+  background: var(--ck-bg-surface-raised);
 }
 .erp-policy-strip span { min-width: 0; padding: 12px 16px; color: var(--ink2); font-size: 12px; }
 .erp-policy-strip span + span { border-left: 1px solid var(--border); }
@@ -362,7 +362,7 @@
   background: var(--white);
 }
 
-.erp-form-panel, .erp-connection-map { padding: 18px; border-left: 1px solid var(--border); background: #faf9f6; }
+.erp-form-panel, .erp-connection-map { padding: 18px; border-left: 1px solid var(--border); background: var(--ck-bg-surface-raised); }
 .erp-form-panel { display: flex; flex-direction: column; gap: 13px; }
 .erp-form-panel label,
 .erp-form-grid > label {
@@ -436,7 +436,7 @@
   padding: 15px 18px;
 }
 .erp-dialog > header { border-bottom: 1px solid var(--border); }
-.erp-dialog > footer { border-top: 1px solid var(--border); background: #faf9f6; }
+.erp-dialog > footer { border-top: 1px solid var(--border); background: var(--ck-bg-surface-raised); }
 .erp-dialog > header h2 { margin: 2px 0 0; font-size: 19px; }
 .erp-dialog > .erp-form-grid { overflow-y: auto; }
 .erp-dialog-body { min-height: 0; overflow: auto; padding: 18px; }
@@ -503,7 +503,7 @@
   position: sticky;
   z-index: 2;
   padding: 11px;
-  background: #faf9f6;
+  background: var(--ck-bg-surface-raised);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
 }

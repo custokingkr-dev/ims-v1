@@ -145,3 +145,16 @@ test('the .page-title heading actually renders in a served serif face, not the b
   // (not Times New Roman) is what's actually painted.
   expect(Math.abs(result.pageTitleStackWidth - result.genericSerifWidth)).toBeGreaterThan(1);
 });
+
+test('warm off-white surfaces resolve to the cool raised-surface token', async ({ page }) => {
+  await page.goto('/login');
+
+  const footerBackground = await page.evaluate(() => {
+    const el = document.querySelector('.login-footer');
+    return el ? getComputedStyle(el).backgroundColor : null;
+  });
+
+  // --ck-bg-surface-raised is #fbfcfc. Before slice 2 this was the warm #faf9f6
+  // (rgb(250, 249, 246)), which read as a cream strip against the cool app chrome.
+  expect(footerBackground).toBe('rgb(251, 252, 252)');
+});
