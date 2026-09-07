@@ -21,7 +21,9 @@
   --ck-color-warning-soft:   #fff3e6;
   --ck-color-danger:         #b42318;
   --ck-color-danger-soft:    #fdecea;
-  --ck-color-orange:         #d14e12;
+  /* #d14e12 measures 4.37:1 on white - just under the AA floor, and axe caught
+     it rendering as 10px bold on the dashboard. #c4470f clears it (4.93). */
+  --ck-color-orange:         #c4470f;
   --ck-color-orange-soft:    #fff0e8;
   --ck-color-purple:         #5b2d8a;
   --ck-color-purple-soft:    #f2edf9;
@@ -120,7 +122,10 @@
   --ck-status-partial-bg:    var(--or1);
   --ck-status-info:          var(--b);
   --ck-status-info-bg:       var(--b1);
-  --ck-status-neutral:       #888;
+  /* #888 measures 3.54:1 on white. It styles .sa-category-label at 13px, which
+     needs 4.5:1. Not on a scanned route, so axe has not flagged it - fixed on
+     the measurement, not on the report. #6e6e6e clears all three surfaces. */
+  --ck-status-neutral:       #6e6e6e;
   --ck-status-neutral-bg:    #f4f4f0;
 
   /* ── Chart / Module Identity ───────────────────────────────────── */
