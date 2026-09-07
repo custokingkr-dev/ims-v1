@@ -109,12 +109,12 @@ export default function ZoneManagementPage() {
           </thead>
           <tbody>
             {zones.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center', color: '#6b7280', padding: '1rem' }}>No zones created yet.</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ck-text-muted)', padding: '1rem' }}>No zones created yet.</td></tr>
             )}
             {zones.map(z => (
               <tr key={z.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                 <td style={{ padding: '0.75rem' }}>{z.name}</td>
-                <td style={{ padding: '0.75rem', color: '#6b7280' }}>{z.code}</td>
+                <td style={{ padding: '0.75rem', color: 'var(--ck-text-muted)' }}>{z.code}</td>
                 <td style={{ padding: '0.75rem' }}>{z.city || '—'}</td>
                 <td style={{ padding: '0.75rem' }}>{z.schoolCount}</td>
                 <td style={{ padding: '0.75rem', color: z.adminEmail ? '#111' : '#9ca3af' }}>{z.adminEmail || 'Not set'}</td>

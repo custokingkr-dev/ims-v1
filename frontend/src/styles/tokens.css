@@ -43,7 +43,11 @@
   /* ── Text ──────────────────────────────────────────────────────── */
   --ck-text-primary:         #1f2933;
   --ck-text-secondary:       #667085;
-  --ck-text-muted:           #8b95a5;
+  /* #8b95a5 measured 3.03:1 on white and 2.79:1 on the app ground - below the
+     4.5:1 WCAG AA floor for body text, and worse than the #8d8c88 it replaced.
+     #66707f is the lightest value in the same cool family that clears 4.5:1 on
+     all three surfaces (5.01 / 4.63 / 4.88). Verified by axe, not by eye. */
+  --ck-text-muted:           #66707f;
   --ck-text-inverse:         #ffffff;
 
   /* ── Borders ───────────────────────────────────────────────────── */
