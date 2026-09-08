@@ -97,7 +97,7 @@ export function GuardianConsentCard({ studentId, canManage, onProfileChanged }: 
 
   const startAdd = () => {
     setEditingGuardianId(null);
-    setGuardianForm(emptyGuardian((overview?.guardians.length ?? 0) === 0));
+    setGuardianForm(emptyGuardian((overview?.guardians?.length ?? 0) === 0));
     setGuardianFormOpen(true);
   };
 
@@ -189,9 +189,9 @@ export function GuardianConsentCard({ studentId, canManage, onProfileChanged }: 
 
         {!loading && !guardianFormOpen && !consentFormOpen ? (
           <>
-            {(overview?.guardians.length ?? 0) === 0 ? <div className="ts">No guardians recorded.</div> : (
+            {(overview?.guardians?.length ?? 0) === 0 ? <div className="ts">No guardians recorded.</div> : (
               <div className="ck-guardian-list">
-                {overview?.guardians.map((guardian) => (
+                {overview?.guardians?.map((guardian) => (
                   <div className="ck-guardian-row" key={guardian.id}>
                     <div>
                       <strong>{guardian.fullName}</strong>
@@ -213,7 +213,7 @@ export function GuardianConsentCard({ studentId, canManage, onProfileChanged }: 
             )}
             <div className="ck-consent-grid">
               {(overview?.supportedPurposes || []).map((purpose) => {
-                const consent = overview?.consents.find((item) => item.purpose === purpose);
+                const consent = overview?.consents?.find((item) => item.purpose === purpose);
                 return (
                   <div key={purpose}>
                     <span>{purposeLabel(purpose)}</span>
@@ -254,7 +254,7 @@ export function GuardianConsentCard({ studentId, canManage, onProfileChanged }: 
           <div className="ck-form-grid ck-fg-2">
             <label><span>Purpose</span><select value={consentForm.purpose} onChange={(e) => setConsentForm({ ...consentForm, purpose: e.target.value })}>{(overview?.supportedPurposes || []).map((purpose) => <option key={purpose} value={purpose}>{purposeLabel(purpose)}</option>)}</select></label>
             <label><span>Status</span><select value={consentForm.status} onChange={(e) => setConsentForm({ ...consentForm, status: e.target.value })}><option value="GRANTED">Granted</option><option value="DENIED">Denied</option><option value="WITHDRAWN">Withdrawn</option><option value="PENDING">Pending</option></select></label>
-            <label><span>Guardian</span><select value={consentForm.guardianId} onChange={(e) => setConsentForm({ ...consentForm, guardianId: e.target.value })}><option value="">School record</option>{overview?.guardians.map((guardian) => <option key={guardian.id} value={guardian.id}>{guardian.fullName}</option>)}</select></label>
+            <label><span>Guardian</span><select value={consentForm.guardianId} onChange={(e) => setConsentForm({ ...consentForm, guardianId: e.target.value })}><option value="">School record</option>{overview?.guardians?.map((guardian) => <option key={guardian.id} value={guardian.id}>{guardian.fullName}</option>)}</select></label>
             <label><span>Notice version</span><input value={consentForm.noticeVersion} onChange={(e) => setConsentForm({ ...consentForm, noticeVersion: e.target.value })} placeholder="e.g. privacy-notice-2026-01" /></label>
             <label><span>Evidence source</span><select value={consentForm.evidenceSource} onChange={(e) => setConsentForm({ ...consentForm, evidenceSource: e.target.value })}><option value="SCHOOL_RECORD">School record</option><option value="SIGNED_FORM">Signed form</option><option value="GUARDIAN_PORTAL">Guardian portal</option><option value="EMAIL">Email</option><option value="SMS">SMS</option><option value="WHATSAPP">WhatsApp</option><option value="OTHER">Other</option></select></label>
             <label><span>Evidence reference</span><input value={consentForm.evidenceReference} onChange={(e) => setConsentForm({ ...consentForm, evidenceReference: e.target.value })} /></label>

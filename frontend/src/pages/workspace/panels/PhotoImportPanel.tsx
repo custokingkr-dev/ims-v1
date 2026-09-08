@@ -60,7 +60,7 @@ export function PhotoImportPanel() {
   const executionPauseRequestedRef = useRef(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
 
-  const selectedSchool = context?.schools.find(school => school.id === Number(schoolId));
+  const selectedSchool = context?.schools?.find(school => school.id === Number(schoolId));
   const duplicateNames = useMemo(
     () => duplicateSchoolNames(context?.schools || []),
     [context?.schools],
@@ -595,7 +595,7 @@ export function PhotoImportPanel() {
           </div>
         )}
 
-        {context && context.schools.length === 0 && (
+        {context && context.schools?.length === 0 && (
           <div className="pi-empty">
             <ShieldCheck size={24} />
             <strong>No assigned schools</strong>
@@ -603,7 +603,7 @@ export function PhotoImportPanel() {
           </div>
         )}
 
-        {context && context.schools.length > 0 && (
+        {context && (context.schools?.length ?? 0) > 0 && (
           <>
             <section className="pi-scope-band" aria-label="Import scope">
               <div className="pi-scope-control">

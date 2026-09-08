@@ -110,3 +110,31 @@ test('status-tint borders resolve through a named token', () => {
 
   expect(offenders).toEqual([]);
 });
+
+/**
+ * design-preview.css is a 780-line stylesheet for an unlinked mockup page that
+ * has not been touched since it was created. Importing it from main.tsx shipped
+ * it to every user on every page. It is now imported by the lazy-loaded page
+ * itself, so it only loads when someone actually visits /design-preview.
+ */
+test('the design-preview stylesheet is not shipped to ordinary pages', async ({ page }) => {
+  const dpxLoaded = async () =>
+    page.evaluate(() => {
+      for (const sheet of Array.from(document.styleSheets)) {
+        let rules: CSSRuleList;
+        try { rules = sheet.cssRules; } catch { continue; }
+        for (const rule of Array.from(rules)) {
+          if (rule.cssText.includes('.dpx-shell')) return true;
+        }
+      }
+      return false;
+    });
+
+  await page.goto('/login');
+  await page.waitForLoadState('networkidle');
+  expect(await dpxLoaded(), 'design-preview CSS must not load on /login').toBe(false);
+
+  await page.goto('/design-preview');
+  await page.waitForLoadState('networkidle');
+  expect(await dpxLoaded(), 'design-preview CSS must load on its own page').toBe(true);
+});

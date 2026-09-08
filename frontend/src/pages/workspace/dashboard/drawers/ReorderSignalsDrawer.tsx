@@ -74,8 +74,8 @@ export function ReorderSignalsDrawer({ open, onClose }: Props) {
 
   useEffect(() => { if (open) load(); }, [open, load]);
 
-  const redCount    = data?.items.filter(i => i.alertLevel === 'RED').length ?? 0;
-  const yellowCount = data?.items.filter(i => i.alertLevel === 'YELLOW').length ?? 0;
+  const redCount    = data?.items?.filter(i => i.alertLevel === 'RED').length ?? 0;
+  const yellowCount = data?.items?.filter(i => i.alertLevel === 'YELLOW').length ?? 0;
   const subtitle = data
     ? `${data.items.length} categories · ${redCount} overdue · ${yellowCount} approaching`
     : undefined;

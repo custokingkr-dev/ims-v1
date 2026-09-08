@@ -55,7 +55,7 @@ export function StudentExportPanel() {
   }, []);
 
   const selected = useMemo(
-    () => context?.schools.find(school => school.id === Number(schoolId)),
+    () => context?.schools?.find(school => school.id === Number(schoolId)),
     [context?.schools, schoolId],
   );
   const missingPhotos = selected ? Math.max(0, selected.studentCount - selected.photoCount) : 0;
@@ -129,7 +129,7 @@ export function StudentExportPanel() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <LoaderCircle className="spin" size={18} /> Loading assigned schools…
             </div>
-          ) : context?.schools.length ? (
+          ) : context?.schools?.length ? (
             <>
               <Field label="School">
                 <select aria-label="School" value={schoolId} onChange={event => {

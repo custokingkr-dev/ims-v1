@@ -441,6 +441,10 @@ function ActionInsightsSection({
   if (!metrics || (!moduleAccess.erp && !moduleAccess.supplyOs)) return null;
 
   const { fees, photography, lifecycle, attendance, vendorDues, reorderSignals } = metrics;
+  // The guard above proves metrics exists, not that its sections do. Every field
+  // below is read unconditionally, so one missing section would throw here and
+  // the ErrorBoundary would replace the entire workspace rather than this card.
+  if (!fees || !photography || !lifecycle || !attendance || !vendorDues || !reorderSignals) return null;
   const overdueRupees = fees.totalOverdueAmountPaise / 100;
   const feeVariant = fees.defaulterCount > 0 ? 'danger' : 'ok';
   const attVariant = attendance.sectionsBelowThresholdCount > 0 ? 'warn' : 'ok';
