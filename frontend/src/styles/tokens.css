@@ -1,49 +1,64 @@
 /* frontend/src/styles/tokens.css
-   Semantic token aliases on top of the existing :root shorthand vars.
-   Never remove the original vars — these are additive aliases only.
+   Source of truth for design tokens: the literal values below are canonical.
+   The legacy shorthand vars in frontend/src/styles.css (e.g. --g) now alias
+   these tokens, not the other way around — the dependency graph was
+   inverted during the token-foundation slice.
+   Do not delete the legacy aliases in styles.css: ~1,546 call sites across
+   the app still resolve their colors/spacing through those shorthand vars.
 */
 
 :root {
   /* ── Brand Colors ──────────────────────────────────────────────── */
-  --ck-color-primary:        var(--g);
-  --ck-color-primary-dark:   #135533;
-  --ck-color-primary-soft:   var(--g1);
-  --ck-color-primary-border: var(--g2);
+  --ck-color-primary:        #166b49;
+  --ck-color-primary-dark:   #0f5539;
+  --ck-color-primary-soft:   #e8f4ee;
+  --ck-color-primary-border: #c4ddd0;
 
-  --ck-color-accent:         var(--b);
-  --ck-color-accent-soft:    var(--b1);
+  /* Status only — never decoration or module identity */
+  --ck-color-accent:         #2f68b2;
+  --ck-color-accent-soft:    #e6edf8;
+  --ck-color-warning:        #a45b16;
+  --ck-color-warning-soft:   #fff3e6;
+  --ck-color-danger:         #b42318;
+  --ck-color-danger-soft:    #fdecea;
+  /* #d14e12 measures 4.37:1 on white - just under the AA floor, and axe caught
+     it rendering as 10px bold on the dashboard. #c4470f clears it (4.93). */
+  --ck-color-orange:         #c4470f;
+  --ck-color-orange-soft:    #fff0e8;
+  --ck-color-purple:         #5b2d8a;
+  --ck-color-purple-soft:    #f2edf9;
 
-  --ck-color-warning:        var(--am);
-  --ck-color-warning-soft:   var(--am1);
-
-  --ck-color-danger:         var(--re);
-  --ck-color-danger-soft:    var(--re1);
-
-  --ck-color-orange:         var(--or);
-  --ck-color-orange-soft:    var(--or1);
-
-  --ck-color-purple:         var(--pu);
-  --ck-color-purple-soft:    var(--pu1);
+  /* Status-tint borders. --ck-color-primary-border already named the green
+     equivalent; these name the pink, tan and lavender that existed in the CSS
+     as clusters of near-identical variants. Each value is the cluster centroid,
+     chosen from a shade already in use so adoption shifts nothing visibly. */
+  --ck-color-danger-border:  #f3c1bd;
+  --ck-color-warning-border: #f2d19d;
+  --ck-color-purple-border:  #c5b0e8;
 
   /* ── Surfaces ──────────────────────────────────────────────────── */
-  --ck-bg-app:               var(--bg);
-  --ck-bg-surface:           var(--white);
-  --ck-bg-surface-raised:    #faf9f7;
+  --ck-bg-app:               #f4f6f8;
+  --ck-bg-surface:           #ffffff;
+  --ck-bg-surface-raised:    #fbfcfc;
   --ck-bg-overlay:           rgba(0,0,0,.32);
 
   /* ── Text ──────────────────────────────────────────────────────── */
-  --ck-text-primary:         var(--ink);
-  --ck-text-secondary:       var(--ink2);
-  --ck-text-muted:           var(--ink3);
+  --ck-text-primary:         #1f2933;
+  --ck-text-secondary:       #667085;
+  /* #8b95a5 measured 3.03:1 on white and 2.79:1 on the app ground - below the
+     4.5:1 WCAG AA floor for body text, and worse than the #8d8c88 it replaced.
+     #66707f is the lightest value in the same cool family that clears 4.5:1 on
+     all three surfaces (5.01 / 4.63 / 4.88). Verified by axe, not by eye. */
+  --ck-text-muted:           #66707f;
   --ck-text-inverse:         #ffffff;
 
   /* ── Borders ───────────────────────────────────────────────────── */
-  --ck-border-subtle:        var(--border);
-  --ck-border-default:       var(--border2);
+  --ck-border-subtle:        #e3e7ec;
+  --ck-border-default:       #d3d9e1;
 
   /* ── Shadows ───────────────────────────────────────────────────── */
   --ck-shadow-card:          0 1px 4px rgba(0,0,0,.03);
-  --ck-shadow-raised:        var(--shadow);
+  --ck-shadow-raised:        0 12px 34px rgba(0,0,0,.06),0 3px 10px rgba(0,0,0,.04);
   --ck-shadow-popover:       0 8px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
   --ck-shadow-drawer:        -4px 0 24px rgba(0,0,0,.08);
 
@@ -66,19 +81,20 @@
   --ck-space-8:              48px;
 
   /* ── Typography Scale ──────────────────────────────────────────── */
-  --ck-font-display:         'Instrument Serif', serif;
-  --ck-font-heading:         'Fraunces', serif;
+  --ck-font-display:         'DM Sans', system-ui, sans-serif;
+  --ck-font-heading:         'DM Sans', system-ui, sans-serif;
   --ck-font-body:            'DM Sans', system-ui, sans-serif;
   --ck-font-mono:            ui-monospace, 'JetBrains Mono', monospace;
 
-  --ck-text-xs:              10px;
-  --ck-text-sm:              12px;
-  --ck-text-base:            13px;
-  --ck-text-md:              14px;
-  --ck-text-lg:              16px;
-  --ck-text-xl:              18px;
-  --ck-text-2xl:             22px;
-  --ck-text-3xl:             28px;
+  /* rem against a 16px root. 0.75rem (12px) is a hard floor — nothing smaller. */
+  --ck-text-xs:              0.75rem;    /* 12px — captions, labels only */
+  --ck-text-sm:              0.8125rem;  /* 13px */
+  --ck-text-base:            0.875rem;   /* 14px — dense table body */
+  --ck-text-md:              1rem;       /* 16px — default body */
+  --ck-text-lg:              1.125rem;   /* 18px */
+  --ck-text-xl:              1.375rem;   /* 22px */
+  --ck-text-2xl:             1.75rem;    /* 28px */
+  --ck-text-3xl:             2.25rem;    /* 36px */
 
   /* ── Z-Index Layers ────────────────────────────────────────────── */
   --ck-z-base:               0;
@@ -106,7 +122,10 @@
   --ck-status-partial-bg:    var(--or1);
   --ck-status-info:          var(--b);
   --ck-status-info-bg:       var(--b1);
-  --ck-status-neutral:       #888;
+  /* #888 measures 3.54:1 on white. It styles .sa-category-label at 13px, which
+     needs 4.5:1. Not on a scanned route, so axe has not flagged it - fixed on
+     the measurement, not on the report. #6e6e6e clears all three surfaces. */
+  --ck-status-neutral:       #6e6e6e;
   --ck-status-neutral-bg:    #f4f4f0;
 
   /* ── Chart / Module Identity ───────────────────────────────────── */
@@ -115,4 +134,13 @@
   --ck-chart-attendance:     var(--am);
   --ck-chart-supply:         var(--pu);
   --ck-chart-firefighting:   var(--re);
+
+  /* ── Breakpoints (documentation only) ──────────────────────────────
+     CSS custom properties are INVALID inside media query conditions, so
+     these cannot be used as var(). Use these four literals and no others:
+       640px   small tablet / large phone
+       768px   tablet
+       1024px  laptop
+       1280px  desktop
+     Enforced by review, not tooling. See slice 5. */
 }

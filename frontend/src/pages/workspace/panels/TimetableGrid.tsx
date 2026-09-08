@@ -229,7 +229,7 @@ export function TimetableGrid({ readOnly, yearId: yearIdProp, years: yearsProp, 
   const editable = !!(data?.editable && !readOnly);
 
   const entryFor = (day: string, periodId: number) =>
-    data?.entries.find((e) => e.day === day && e.periodId === periodId) || null;
+    data?.entries?.find((e) => e.day === day && e.periodId === periodId) || null;
 
   const openEditor = (day: string, periodId: number) => {
     if (!editable) return;

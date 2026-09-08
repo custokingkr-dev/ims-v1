@@ -1106,7 +1106,7 @@ export default function SchoolManagementPage() {
             </div>
             <div className="ck-modal-body">
               {operatorSchoolsLoading ? (
-                <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280' }}>Loading schools...</div>
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ck-text-muted)' }}>Loading schools...</div>
               ) : (
                 <div className="sms-choice-list tall">
                   {schools.map((school) => (
@@ -1148,7 +1148,7 @@ export default function SchoolManagementPage() {
             </div>
             <div className="ck-modal-body">
               {modulesLoading ? (
-                <div style={{ textAlign: 'center', padding: '24px 0', color: '#6b7280' }}>Loading modules...</div>
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--ck-text-muted)' }}>Loading modules...</div>
               ) : (
                 <>
                   <div className="sms-modal-section-copy" style={{ marginBottom: 16 }}>
