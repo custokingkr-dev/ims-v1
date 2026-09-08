@@ -1,4 +1,9 @@
 import { useMemo, useState } from 'react';
+// Scoped here rather than in main.tsx: this 780-line stylesheet belongs to an
+// unlinked mockup page, and importing it globally shipped it to every user on
+// every page. Importing it from the lazy-loaded page keeps it out of the main
+// bundle and loads it only when someone actually visits /design-preview.
+import '../styles/design-preview.css';
 import {
   AlertTriangle,
   ArrowUpRight,
