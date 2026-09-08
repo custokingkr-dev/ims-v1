@@ -643,7 +643,7 @@ export function TimetableStudioPanel({ readOnly, staff = [] }: TimetableStudioPa
               </div>
               {(() => {
                 const availabilitySchedule = schedules.find((row) => String(row.id) === availabilityScheduleId);
-                const availabilityPeriods = availabilitySchedule?.periods.filter((period) => !period.isBreak) ?? [];
+                const availabilityPeriods = availabilitySchedule?.periods?.filter((period) => !period.isBreak) ?? [];
                 return availabilityPeriods.length ? (
                   <div className="erp-availability-scroll">
                     <div className="erp-availability-grid" style={{ gridTemplateColumns: `112px repeat(${availabilityPeriods.length}, minmax(112px, 1fr))` }}>

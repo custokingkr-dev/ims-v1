@@ -187,7 +187,11 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
       getFeeConfigurationHealth(nextYearId || undefined, schoolId),
       getFeeDiscountRules(nextYearId || undefined, schoolId),
     ]);
-    setStructure(structureResult.data);
+    // The neighbouring setters all defend their shape (Array.isArray checks below,
+    // and data?.bands ?? [] two lines down). This one did not, so a response
+    // without bands reached state and structure.bands.find(...) threw, taking the
+    // whole workspace into the ErrorBoundary rather than this panel.
+    setStructure(Array.isArray(structureResult.data?.bands) ? structureResult.data : emptyStructure);
     setHealth(healthResult.data);
     setRules(Array.isArray(rulesResult.data) ? rulesResult.data : []);
     const bands = structureResult.data?.bands ?? [];

@@ -194,8 +194,8 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
     } catch { /* best-effort */ }
   }
 
-  const selectedItems = data?.students.filter(s => selected.has(s.studentId)) ?? [];
-  const pendingIds = data?.students.filter(s => s.status !== 'PAID').map(s => s.studentId) ?? [];
+  const selectedItems = data?.students?.filter(s => selected.has(s.studentId)) ?? [];
+  const pendingIds = data?.students?.filter(s => s.status !== 'PAID').map(s => s.studentId) ?? [];
   const allPendingSelected = pendingIds.length > 0 && pendingIds.every(id => selected.has(id));
   const totalPages = data ? Math.ceil(data.totalElements / PAGE_SIZE) : 0;
 
