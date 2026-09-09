@@ -11,6 +11,12 @@
   /* ── Brand Colors ──────────────────────────────────────────────── */
   --ck-color-primary:        #166b49;
   --ck-color-primary-dark:   #0f5539;
+  /* Deeper than primary-dark: the near-black forest green used for hero
+     surfaces (AI/intelligence banners, sidebar headers, premium package
+     cards) and for text sitting on primary-soft. Reused 4x verbatim from
+     styles.css — not a status color, so the "status only" rule below does
+     not apply to it. */
+  --ck-color-primary-deep:   #0f3d28;
   --ck-color-primary-soft:   #e8f4ee;
   --ck-color-primary-border: #c4ddd0;
 
@@ -24,6 +30,10 @@
   /* #d14e12 measures 4.37:1 on white - just under the AA floor, and axe caught
      it rendering as 10px bold on the dashboard. #c4470f clears it (4.93). */
   --ck-color-orange:         #c4470f;
+  /* Hover-darken for filled orange buttons, mirroring --ck-color-primary-dark's
+     role for filled green buttons. Reused verbatim from the one hover rule
+     that already hand-picked this shade. */
+  --ck-color-orange-dark:    #a83b08;
   --ck-color-orange-soft:    #fff0e8;
   --ck-color-purple:         #5b2d8a;
   --ck-color-purple-soft:    #f2edf9;
@@ -35,12 +45,19 @@
   --ck-color-danger-border:  #f3c1bd;
   --ck-color-warning-border: #f2d19d;
   --ck-color-purple-border:  #c5b0e8;
+  /* Blue completes the set: green/pink/tan/lavender borders already had a
+     token, blue chips were the only variant still hand-rolling a border. */
+  --ck-color-accent-border:  #c7d6ef;
 
   /* ── Surfaces ──────────────────────────────────────────────────── */
   --ck-bg-app:               #f4f6f8;
   --ck-bg-surface:           #ffffff;
   --ck-bg-surface-raised:    #fbfcfc;
   --ck-bg-overlay:           rgba(0,0,0,.32);
+  /* Skeleton-loader shimmer base. Must stay visibly darker than
+     --ck-status-neutral-bg, which is the sweep highlight in the same
+     gradient — collapsing the two would erase the shimmer effect. */
+  --ck-bg-skeleton:          #ede9e1;
 
   /* ── Text ──────────────────────────────────────────────────────── */
   --ck-text-primary:         #1f2933;
@@ -81,8 +98,8 @@
   --ck-space-8:              48px;
 
   /* ── Typography Scale ──────────────────────────────────────────── */
-  --ck-font-display:         'DM Sans', system-ui, sans-serif;
-  --ck-font-heading:         'DM Sans', system-ui, sans-serif;
+  --ck-font-display:         'Instrument Serif', serif;
+  --ck-font-heading:         'Fraunces', serif;
   --ck-font-body:            'DM Sans', system-ui, sans-serif;
   --ck-font-mono:            ui-monospace, 'JetBrains Mono', monospace;
 

@@ -1,8 +1,11 @@
 name: Security / Container scan
 
 on:
+  # Weekly let CVEs sit for days before the next scan caught them. On 2026-09-09 alone,
+  # Tomcat, browserslist, util-linux, and libexpat all landed mid-week and blocked PRs --
+  # libexpat blocked a production release. Daily keeps the gap to at most one day.
   schedule:
-    - cron: "30 20 * * 0"
+    - cron: "30 20 * * *"
   workflow_dispatch:
 
 permissions:

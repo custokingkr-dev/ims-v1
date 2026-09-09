@@ -6,7 +6,7 @@
 }
 
 .ck-skeleton {
-  background: linear-gradient(90deg, #ede9e1 25%, var(--ck-status-neutral-bg) 50%, #ede9e1 75%);
+  background: linear-gradient(90deg, var(--ck-bg-skeleton) 25%, var(--ck-status-neutral-bg) 50%, var(--ck-bg-skeleton) 75%);
   background-size: 800px 100%;
   animation: ck-shimmer 1.4s ease-in-out infinite;
   border-radius: var(--ck-radius-sm);
