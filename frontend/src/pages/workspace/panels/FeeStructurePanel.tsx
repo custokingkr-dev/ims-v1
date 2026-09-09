@@ -438,7 +438,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                 <label>Payment schedules</label>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minHeight: 44, alignItems: 'center' }}>
                   {['Monthly', 'Quarterly', 'Half-yearly', 'Annual'].map((schedule) => (
-                    <button type="button" key={schedule} className={`ck-pill ${bandForm.schedules.includes(schedule) ? 'pg' : ''}`} style={{ border: bandForm.schedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: bandForm.schedules.includes(schedule) ? 'var(--g1)' : '#fff', cursor: 'pointer' }} onClick={() => toggleBandFormSchedule(schedule, 'create')}>{schedule}</button>
+                    <button type="button" key={schedule} className={`ck-pill ${bandForm.schedules.includes(schedule) ? 'pg' : ''}`} style={{ border: bandForm.schedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: bandForm.schedules.includes(schedule) ? 'var(--g1)' : 'var(--ck-bg-surface)', cursor: 'pointer' }} onClick={() => toggleBandFormSchedule(schedule, 'create')}>{schedule}</button>
                   ))}
                 </div>
               </div>
@@ -514,7 +514,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                         <label>Payment schedules</label>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', minHeight: 44, alignItems: 'center' }}>
                           {['Monthly', 'Quarterly', 'Half-yearly', 'Annual'].map((schedule) => (
-                            <button type="button" key={schedule} className={`ck-pill ${editSchedules.includes(schedule) ? 'pg' : ''}`} style={{ border: editSchedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: editSchedules.includes(schedule) ? 'var(--g1)' : '#fff', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggleBandFormSchedule(schedule, 'edit', band.id); }}>{schedule}</button>
+                            <button type="button" key={schedule} className={`ck-pill ${editSchedules.includes(schedule) ? 'pg' : ''}`} style={{ border: editSchedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: editSchedules.includes(schedule) ? 'var(--g1)' : 'var(--ck-bg-surface)', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggleBandFormSchedule(schedule, 'edit', band.id); }}>{schedule}</button>
                           ))}
                         </div>
                       </div>
@@ -531,7 +531,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                       <div className="ck-fee-name" style={{ fontSize: 15, fontWeight: 500 }}>{band.name} <span className="ts">· Classes {feeBandRangeLabel(band.classFrom, band.classTo)}</span></div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                         {['Monthly', 'Quarterly', 'Half-yearly', 'Annual'].map((schedule) => (
-                          <button type="button" key={schedule} className={`ck-pill ${activeSchedules.includes(schedule) ? 'pg' : ''}`} style={{ border: activeSchedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: activeSchedules.includes(schedule) ? 'var(--g1)' : '#fff', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggleBandSchedule(band, schedule); }}>{schedule}</button>
+                          <button type="button" key={schedule} className={`ck-pill ${activeSchedules.includes(schedule) ? 'pg' : ''}`} style={{ border: activeSchedules.includes(schedule) ? '1px solid var(--g2)' : '1px solid var(--border)', background: activeSchedules.includes(schedule) ? 'var(--g1)' : 'var(--ck-bg-surface)', cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggleBandSchedule(band, schedule); }}>{schedule}</button>
                         ))}
                       </div>
                     </>
@@ -542,7 +542,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div className="ck-fee-amt">₹{formatMoney(totalRupees)}</div>
                   <button className="ck-btn ck-btn-ghost" onClick={(e) => { e.stopPropagation(); setEditingBandId(band.id); setExpandedBandIds((prev) => prev.includes(band.id) ? prev : [...prev, band.id]); setFeeStructureData((prev: any) => ({ ...prev, bands: prev.bands.map((row: any) => row.id === band.id ? { ...row, editName: row.name, editClassFrom: String(row.classFrom), editClassTo: String(row.classTo), editDiscount: String(row.discount ?? 0), editSchedules: [...(row.activeSchedules || [])] } : row) })); }}>Edit</button>
-                  <button className="ck-btn ck-btn-ghost" style={{ color: '#A32D2D', borderColor: '#f5c0bc' }} onClick={(e) => { e.stopPropagation(); setConfirmDeleteBandId(confirmDeleteBandId === band.id ? '' : band.id); }}>Delete band</button>
+                  <button className="ck-btn ck-btn-ghost" style={{ color: 'var(--ck-color-danger)', borderColor: 'var(--ck-color-danger-border)' }} onClick={(e) => { e.stopPropagation(); setConfirmDeleteBandId(confirmDeleteBandId === band.id ? '' : band.id); }}>Delete band</button>
                 </div>
               ) : null}
             </div>
@@ -597,7 +597,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <input className="ck-fee-discount-input" type="number" min={0} max={100} value={band.discount} onChange={(e) => handleDiscountChange(band.id, e.target.value)} />
                       <span>%</span>
-                      <span className="ts">saves <strong style={{ color: '#085041' }}>₹{formatMoney(savings)}</strong></span>
+                      <span className="ts">saves <strong style={{ color: 'var(--ck-color-primary-dark)' }}>₹{formatMoney(savings)}</strong></span>
                     </div>
                   </div>
                   <div className="ck-fee-footer-right">Total annual: ₹{formatMoney(totalRupees)}</div>
@@ -652,7 +652,7 @@ export function FeeStructurePanel({ onRefresh }: Props) {
                 <span>₹</span>
                 <div>
                   <strong>Live net payable preview</strong>
-                  <div>Total annual fee ₹{formatMoney(total)} · Band discount −₹{formatMoney(bandDiscountAmt)} · Manual discount −₹{formatMoney(manualDiscountAmt)} · Surcharge +₹{formatMoney(surchargeAmt)} · <span style={{ color: '#085041', fontWeight: 700 }}>Net payable ₹{formatMoney(netPayable)}</span></div>
+                  <div>Total annual fee ₹{formatMoney(total)} · Band discount −₹{formatMoney(bandDiscountAmt)} · Manual discount −₹{formatMoney(manualDiscountAmt)} · Surcharge +₹{formatMoney(surchargeAmt)} · <span style={{ color: 'var(--ck-color-primary-dark)', fontWeight: 700 }}>Net payable ₹{formatMoney(netPayable)}</span></div>
                 </div>
               </div>
             </div>

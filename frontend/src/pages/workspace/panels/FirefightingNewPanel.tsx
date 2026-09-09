@@ -236,7 +236,7 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
                     <div style={{ fontWeight: 600, fontSize: 13 }}>{q.vendorName}</div>
                     <div style={{ fontSize: 12, color: 'var(--ink3)', marginTop: 2 }}>{q.amount ? `₹${formatMoney(Number(q.amount))}` : '—'}{q.deliveryTimeline ? ` · ${q.deliveryTimeline}` : ''}{q.documentUrl ? ` · 📄 ${q.documentUrl}` : ''}</div>
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--g)', background: '#fff', padding: '2px 8px', borderRadius: 5 }}>✓ Saved</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--g)', background: 'var(--ck-bg-surface)', padding: '2px 8px', borderRadius: 5 }}>✓ Saved</span>
                   {q.id ? (
                     <button className="ck-btn ck-btn-ghost" disabled={deletingQuoteId === q.id} onClick={() => deleteExistingQuote(q.id)} title="Remove this quotation">{deletingQuoteId === q.id ? '…' : 'Delete'}</button>
                   ) : null}
@@ -293,8 +293,8 @@ export function FirefightingNewPanel({ editingCode, setPanel, onRefresh }: Props
                       <thead><tr><th>Vendor</th><th>Amount</th><th>Delivery</th><th>Notes</th></tr></thead>
                       <tbody>
                         {ffForm.quotations.filter(q => q.vendorName).map((q, i) => (
-                          <tr key={i} style={q.vendorName.toLowerCase().includes('custoking') ? { background: '#f0faf4' } : {}}>
-                            <td style={{ fontWeight: 600 }}>{q.vendorName}{q.vendorName.toLowerCase().includes('custoking') && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--g)', color: '#fff', padding: '1px 7px', borderRadius: 5, marginLeft: 6 }}>✦ Our quote</span>}</td>
+                          <tr key={i} style={q.vendorName.toLowerCase().includes('custoking') ? { background: 'var(--ck-color-primary-soft)' } : {}}>
+                            <td style={{ fontWeight: 600 }}>{q.vendorName}{q.vendorName.toLowerCase().includes('custoking') && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--g)', color: 'var(--ck-text-inverse)', padding: '1px 7px', borderRadius: 5, marginLeft: 6 }}>✦ Our quote</span>}</td>
                             <td style={{ fontWeight: 700, color: 'var(--g)' }}>{q.amount ? `₹${formatMoney(Number(q.amount))}` : '—'}</td>
                             <td>{q.deliveryTimeline || '—'}</td>
                             <td style={{ fontSize: 12, color: 'var(--ink2)' }}>{q.notes || '—'}</td>

@@ -79,7 +79,7 @@ function FeeReminderModal({ card, onClose }: PolModalProps) {
             <span className="ck-value" style={{ color: 'var(--g)' }}>₹{((card.amount ?? 0) / 100).toLocaleString('en-IN')}</span>
           </div>
         )}
-        <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--b3, #c5d8ff)' }}>
+        <div style={{ background: 'var(--ck-color-accent-soft)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', lineHeight: 1.6, border: '1px solid var(--ck-color-accent-border)' }}>
           Historical data shows 3× faster recovery when reminders are sent before 6 PM on the overdue date.
         </div>
         <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
@@ -220,7 +220,7 @@ function PromotionReviewModal({ card, onClose }: PolModalProps) {
           <span className="ck-label">Promotion criteria</span>
           <span className="ck-value">≥75% attendance · pass in core subjects · no pending dues</span>
         </div>
-        <div style={{ background: 'var(--b1, #e8f0fe)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', border: '1px solid var(--b3, #c5d8ff)' }}>
+        <div style={{ background: 'var(--ck-color-accent-soft)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ink2)', border: '1px solid var(--ck-color-accent-border)' }}>
           Once all exceptions are reviewed, you can bulk-promote the eligible batch with one click.
         </div>
         <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
@@ -376,7 +376,7 @@ function OrderEscalateModal({ onClose }: PolModalProps) {
           <span className="ck-label">Response SLA</span>
           <span className="ck-value">4 business hours</span>
         </div>
-        <div style={{ background: '#fdecea', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--re, #c0312b)', border: '1px solid var(--re2, #f5c6c4)' }}>
+        <div style={{ background: 'var(--ck-color-danger-soft)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ck-color-danger)', border: '1px solid var(--ck-color-danger-border)' }}>
           Use only after the standard follow-up has gone unanswered for 48h.
         </div>
         <div style={{ fontSize: 11, color: 'var(--am)' }}>This action isn't available yet.</div>
@@ -540,7 +540,7 @@ function AttendanceSectionsModal({ onClose }: PolModalProps) {
               <div style={{ fontWeight: 600, fontSize: 13 }}>{s.className} – {s.sectionName}</div>
               <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.presentCount} / {s.totalEnrolled} present</div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--ck-color-danger)' : 'var(--ck-color-warning)' }}>
               {s.attendancePct}%
             </span>
           </div>
@@ -593,7 +593,7 @@ function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ background: '#fff8e1', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: '#7a5500', border: '1px solid #ffe082' }}>
+        <div style={{ background: 'var(--ck-color-warning-soft)', borderRadius: 6, padding: '10px 14px', fontSize: 12, color: 'var(--ck-color-warning)', border: '1px solid var(--ck-color-warning-border)' }}>
           School attendance today is {pct}%. Sections below 80% are highlighted in red.
         </div>
         {loading && (
@@ -614,7 +614,7 @@ function AttendanceLowModal({ workspace, onClose }: PolModalProps) {
               </div>
               <div style={{ fontSize: 11, color: 'var(--ink3)' }}>{s.presentCount} / {s.totalEnrolled} present</div>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--re, #c0312b)' : 'var(--am, #b35c00)' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: s.attendancePct < 80 ? 'var(--ck-color-danger)' : 'var(--ck-color-warning)' }}>
               {s.attendancePct}%
             </span>
           </div>

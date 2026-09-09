@@ -31,11 +31,11 @@ const PAGE_SIZE = 20;
 
 function ItemStatusBadge({ status }: { status: ReviewItemDetail['status'] }) {
   const cfg: Record<string, { label: string; bg: string; color: string }> = {
-    COMPLETED:       { label: 'Done',        bg: '#e6f4ed', color: '#1a6840' },
-    NEEDS_CORRECTION:{ label: 'Needs Fix',   bg: '#fff3cd', color: '#856404' },
-    PENDING:         { label: 'Pending',     bg: '#fde8e8', color: '#c0312b' },
+    COMPLETED:       { label: 'Done',        bg: 'var(--ck-color-primary-soft)', color: 'var(--ck-color-primary)' },
+    NEEDS_CORRECTION:{ label: 'Needs Fix',   bg: 'var(--ck-color-warning-soft)', color: 'var(--ck-color-warning)' },
+    PENDING:         { label: 'Pending',     bg: 'var(--ck-color-danger-soft)', color: 'var(--ck-color-danger)' },
   };
-  const c = cfg[status] ?? { label: status, bg: '#f5f5f5', color: '#555' };
+  const c = cfg[status] ?? { label: status, bg: 'var(--ck-status-neutral-bg)', color: 'var(--ck-status-neutral)' };
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px',
                    borderRadius: 10, background: c.bg, color: c.color, whiteSpace: 'nowrap' }}>
@@ -48,9 +48,9 @@ function ItemStatusBadge({ status }: { status: ReviewItemDetail['status'] }) {
 
 function ProgressBar({ pct }: { pct: number }) {
   return (
-    <div style={{ background: '#e8eaf6', borderRadius: 4, height: 8, overflow: 'hidden' }}>
+    <div style={{ background: 'var(--ck-color-indigo-soft)', borderRadius: 4, height: 8, overflow: 'hidden' }}>
       <div style={{ width: `${Math.min(100, pct)}%`, height: '100%',
-                    background: 'linear-gradient(90deg, #5c6bc0, #3949ab)', transition: 'width .3s' }} />
+                    background: 'linear-gradient(90deg, var(--ck-color-indigo-light), var(--ck-color-indigo))', transition: 'width .3s' }} />
     </div>
   );
 }
@@ -152,18 +152,18 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
     }
   };
 
-  if (loading) return <div style={{ padding: 24, color: '#888', textAlign: 'center' }}>Loading…</div>;
-  if (error)   return <div style={{ padding: 24, color: '#c0312b' }}>{error}</div>;
+  if (loading) return <div style={{ padding: 24, color: 'var(--ck-text-muted)', textAlign: 'center' }}>Loading…</div>;
+  if (error)   return <div style={{ padding: 24, color: 'var(--ck-color-danger)' }}>{error}</div>;
 
   if (!status?.campaignId) {
     return (
       <div style={{ padding: 24 }}>
-        <p style={{ marginBottom: 16, color: '#555' }}>
+        <p style={{ marginBottom: 16, color: 'var(--ck-text-secondary)' }}>
           No active ID Card Details review campaign. Initiate one to verify student card data across all enrolled students.
         </p>
         {canWrite && (
           <button onClick={handleInitiate} disabled={initiating}
-            style={{ padding: '10px 20px', background: '#3949ab', color: '#fff',
+            style={{ padding: '10px 20px', background: 'var(--ck-color-indigo)', color: 'var(--ck-text-inverse)',
                      border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
             {initiating ? 'Starting…' : 'Initiate ID Card Review'}
           </button>
@@ -194,15 +194,15 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
           { label: 'Completed', value: status.completed },
           { label: 'Needs Fix', value: status.needsCorrection },
         ].map(m => (
-          <div key={m.label} style={{ background: '#f5f6ff', borderRadius: 8, padding: '12px 16px' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#3949ab' }}>{m.value}</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{m.label}</div>
+          <div key={m.label} style={{ background: 'var(--ck-color-indigo-wash)', borderRadius: 8, padding: '12px 16px' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--ck-color-indigo)' }}>{m.value}</div>
+            <div style={{ fontSize: 12, color: 'var(--ck-text-muted)', marginTop: 2 }}>{m.label}</div>
           </div>
         ))}
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#555', marginBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ck-text-secondary)', marginBottom: 4 }}>
           <span>Completion</span><span>{pct.toFixed(1)}%</span>
         </div>
         <ProgressBar pct={pct} />
@@ -218,12 +218,12 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
               : undefined}
             style={{ padding: '8px 16px', borderRadius: 6, border: 'none', fontWeight: 600,
                      cursor: (completing || status.completed !== status.totalStudents) ? 'default' : 'pointer',
-                     background: (completing || status.completed !== status.totalStudents) ? '#c5cae9' : '#1a6840',
-                     color: '#fff' }}>
+                     background: (completing || status.completed !== status.totalStudents) ? 'var(--ck-color-indigo-border)' : 'var(--ck-color-primary)',
+                     color: 'var(--ck-text-inverse)' }}>
             {completing ? 'Completing…' : 'Complete campaign'}
           </button>
           {status.completed !== status.totalStudents && (
-            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--ck-text-muted)', marginTop: 4 }}>
               {status.totalStudents - status.completed} student(s) still to review
             </div>
           )}
@@ -234,9 +234,9 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {['', 'PENDING', 'NEEDS_CORRECTION', 'COMPLETED'].map(s => (
           <button key={s} onClick={() => { setFilter(s); setPage(0); }}
-            style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid #c5cae9',
-                     background: filter === s ? '#3949ab' : '#fff',
-                     color: filter === s ? '#fff' : '#3949ab',
+            style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid var(--ck-color-indigo-border)',
+                     background: filter === s ? 'var(--ck-color-indigo)' : 'var(--ck-bg-surface)',
+                     color: filter === s ? 'var(--ck-text-inverse)' : 'var(--ck-color-indigo)',
                      cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             {s || 'All'}
           </button>
@@ -246,19 +246,19 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
       {/* Items list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(item => (
-          <div key={item.itemId} style={{ border: '1px solid #e8eaf6', borderRadius: 8, overflow: 'hidden' }}>
+          <div key={item.itemId} style={{ border: '1px solid var(--ck-color-indigo-soft)', borderRadius: 8, overflow: 'hidden' }}>
             <div onClick={() => setExpandedId(expandedId === item.itemId ? null : item.itemId)}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                       padding: '10px 14px', cursor: 'pointer', background: '#fafbff' }}>
+                       padding: '10px 14px', cursor: 'pointer', background: 'var(--ck-color-indigo-wash)' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>{item.studentName}</div>
-                <div style={{ fontSize: 12, color: '#888' }}>{item.admissionNo} · {item.className} {item.sectionName}</div>
+                <div style={{ fontSize: 12, color: 'var(--ck-text-muted)' }}>{item.admissionNo} · {item.className} {item.sectionName}</div>
               </div>
               <ItemStatusBadge status={item.status} />
             </div>
 
             {expandedId === item.itemId && (
-              <div style={{ padding: '12px 14px', background: '#fff', borderTop: '1px solid #e8eaf6' }}>
+              <div style={{ padding: '12px 14px', background: 'var(--ck-bg-surface)', borderTop: '1px solid var(--ck-color-indigo-soft)' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                   {CHECKLIST.map(c => (
                     <label key={c.key as string}
@@ -273,8 +273,8 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
                   ))}
                 </div>
                 {item.correctionNotes && (
-                  <div style={{ marginTop: 8, fontSize: 12, color: '#856404',
-                                background: '#fff3cd', padding: '6px 10px', borderRadius: 4 }}>
+                  <div style={{ marginTop: 8, fontSize: 12, color: 'var(--ck-color-warning)',
+                                background: 'var(--ck-color-warning-soft)', padding: '6px 10px', borderRadius: 4 }}>
                     Note: {item.correctionNotes}
                   </div>
                 )}
@@ -288,16 +288,16 @@ function IdCardTab({ canWrite }: { canWrite: boolean }) {
       {totalElements > PAGE_SIZE && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
           <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-            style={{ padding: '5px 14px', border: '1px solid #c5cae9', borderRadius: 4,
+            style={{ padding: '5px 14px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 4,
                      cursor: page === 0 ? 'default' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}>
             Prev
           </button>
-          <span style={{ lineHeight: '30px', fontSize: 13, color: '#555' }}>
+          <span style={{ lineHeight: '30px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
             Page {page + 1} / {Math.ceil(totalElements / PAGE_SIZE)}
           </span>
           <button disabled={page >= Math.ceil(totalElements / PAGE_SIZE) - 1}
             onClick={() => setPage(p => p + 1)}
-            style={{ padding: '5px 14px', border: '1px solid #c5cae9', borderRadius: 4,
+            style={{ padding: '5px 14px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 4,
                      cursor: page >= Math.ceil(totalElements / PAGE_SIZE) - 1 ? 'default' : 'pointer',
                      opacity: page >= Math.ceil(totalElements / PAGE_SIZE) - 1 ? 0.4 : 1 }}>
             Next
@@ -401,20 +401,20 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
     }
   };
 
-  if (loading) return <div style={{ padding: 24, color: '#888', textAlign: 'center' }}>Loading…</div>;
-  if (error)   return <div style={{ padding: 24, color: '#c0312b' }}>{error}</div>;
+  if (loading) return <div style={{ padding: 24, color: 'var(--ck-text-muted)', textAlign: 'center' }}>Loading…</div>;
+  if (error)   return <div style={{ padding: 24, color: 'var(--ck-color-danger)' }}>{error}</div>;
 
   if (!status?.campaignId) {
     return (
       <div style={{ padding: 24 }}>
-        <p style={{ marginBottom: 16, color: '#555' }}>
+        <p style={{ marginBottom: 16, color: 'var(--ck-text-secondary)' }}>
           No active Full Name Verification campaign. This ensures student names match official records
           (Aadhaar, Birth Certificate, etc.).
         </p>
         {canWrite && (
           <div>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#333', marginBottom: 6, display: 'block' }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--ck-text-primary)', marginBottom: 6, display: 'block' }}>
                 Who verifies?
               </label>
               <div style={{ display: 'flex', gap: 10 }}>
@@ -430,7 +430,7 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
               </div>
             </div>
             <button onClick={handleInitiate} disabled={initiating}
-              style={{ padding: '10px 20px', background: '#3949ab', color: '#fff',
+              style={{ padding: '10px 20px', background: 'var(--ck-color-indigo)', color: 'var(--ck-text-inverse)',
                        border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
               {initiating ? 'Starting…' : 'Initiate Full Name Verification'}
             </button>
@@ -451,15 +451,15 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
           { label: 'Confirmed', value: status.confirmed },
           { label: 'Needs Fix', value: status.correctionRequested },
         ].map(m => (
-          <div key={m.label} style={{ background: '#f5f6ff', borderRadius: 8, padding: '12px 16px' }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#3949ab' }}>{m.value}</div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{m.label}</div>
+          <div key={m.label} style={{ background: 'var(--ck-color-indigo-wash)', borderRadius: 8, padding: '12px 16px' }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--ck-color-indigo)' }}>{m.value}</div>
+            <div style={{ fontSize: 12, color: 'var(--ck-text-muted)', marginTop: 2 }}>{m.label}</div>
           </div>
         ))}
       </div>
 
       <div style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#555', marginBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ck-text-secondary)', marginBottom: 4 }}>
           <span>Confirmation rate</span><span>{pct.toFixed(1)}%</span>
         </div>
         <ProgressBar pct={pct} />
@@ -475,12 +475,12 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
               : undefined}
             style={{ padding: '8px 16px', borderRadius: 6, border: 'none', fontWeight: 600,
                      cursor: (completing || status.confirmed !== status.totalStudents) ? 'default' : 'pointer',
-                     background: (completing || status.confirmed !== status.totalStudents) ? '#c5cae9' : '#1a6840',
-                     color: '#fff' }}>
+                     background: (completing || status.confirmed !== status.totalStudents) ? 'var(--ck-color-indigo-border)' : 'var(--ck-color-primary)',
+                     color: 'var(--ck-text-inverse)' }}>
             {completing ? 'Completing…' : 'Complete campaign'}
           </button>
           {status.confirmed !== status.totalStudents && (
-            <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+            <div style={{ fontSize: 12, color: 'var(--ck-text-muted)', marginTop: 4 }}>
               {status.totalStudents - status.confirmed} student(s) still to review
             </div>
           )}
@@ -491,9 +491,9 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         {['', 'PENDING', 'NEEDS_CORRECTION', 'COMPLETED'].map(s => (
           <button key={s} onClick={() => { setFilter(s); setPage(0); }}
-            style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid #c5cae9',
-                     background: filter === s ? '#3949ab' : '#fff',
-                     color: filter === s ? '#fff' : '#3949ab',
+            style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid var(--ck-color-indigo-border)',
+                     background: filter === s ? 'var(--ck-color-indigo)' : 'var(--ck-bg-surface)',
+                     color: filter === s ? 'var(--ck-text-inverse)' : 'var(--ck-color-indigo)',
                      cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
             {s || 'All'}
           </button>
@@ -503,18 +503,18 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
       {/* Items */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.map(item => (
-          <div key={item.itemId} style={{ border: '1px solid #e8eaf6', borderRadius: 8, overflow: 'hidden' }}>
+          <div key={item.itemId} style={{ border: '1px solid var(--ck-color-indigo-soft)', borderRadius: 8, overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '10px 14px', background: '#fafbff' }}>
+                          padding: '10px 14px', background: 'var(--ck-color-indigo-wash)' }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: 14 }}>
                   {item.currentFullName || item.studentName}
                 </div>
-                <div style={{ fontSize: 12, color: '#888' }}>
+                <div style={{ fontSize: 12, color: 'var(--ck-text-muted)' }}>
                   {item.admissionNo} · {item.className} {item.sectionName}
                 </div>
                 {item.suggestedFullName && (
-                  <div style={{ fontSize: 12, color: '#856404', marginTop: 2 }}>
+                  <div style={{ fontSize: 12, color: 'var(--ck-color-warning)', marginTop: 2 }}>
                     Suggested: <strong>{item.suggestedFullName}</strong>
                   </div>
                 )}
@@ -523,8 +523,8 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
                 <ItemStatusBadge status={item.status} />
                 {canWrite && item.status === 'PENDING' && verifyingId !== item.itemId && (
                   <button onClick={() => setVerifyingId(item.itemId)}
-                    style={{ padding: '4px 10px', fontSize: 12, border: '1px solid #3949ab',
-                             borderRadius: 4, color: '#3949ab', background: '#fff', cursor: 'pointer' }}>
+                    style={{ padding: '4px 10px', fontSize: 12, border: '1px solid var(--ck-color-indigo)',
+                             borderRadius: 4, color: 'var(--ck-color-indigo)', background: 'var(--ck-bg-surface)', cursor: 'pointer' }}>
                     Verify
                   </button>
                 )}
@@ -532,14 +532,14 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
             </div>
 
             {verifyingId === item.itemId && (
-              <div style={{ padding: '12px 14px', background: '#fff', borderTop: '1px solid #e8eaf6' }}>
+              <div style={{ padding: '12px 14px', background: 'var(--ck-bg-surface)', borderTop: '1px solid var(--ck-color-indigo-soft)' }}>
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 12, fontWeight: 600, display: 'block', marginBottom: 4 }}>
                     Suggested correct name (if different)
                   </label>
                   <input value={suggestName} onChange={e => setSuggestName(e.target.value)}
                     placeholder="Leave blank if current name is correct"
-                    style={{ width: '100%', padding: '7px 10px', border: '1px solid #c5cae9',
+                    style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--ck-color-indigo-border)',
                              borderRadius: 4, fontSize: 13 }} />
                 </div>
                 <div style={{ marginBottom: 12 }}>
@@ -547,25 +547,25 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
                     Notes (optional)
                   </label>
                   <textarea value={corrNotes} onChange={e => setCorrNotes(e.target.value)}
-                    rows={2} style={{ width: '100%', padding: '7px 10px', border: '1px solid #c5cae9',
+                    rows={2} style={{ width: '100%', padding: '7px 10px', border: '1px solid var(--ck-color-indigo-border)',
                                      borderRadius: 4, fontSize: 13, resize: 'vertical' }} />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => handleConfirm(item.itemId, true)}
-                    style={{ flex: 1, padding: '8px', background: '#1a6840', color: '#fff',
+                    style={{ flex: 1, padding: '8px', background: 'var(--ck-color-primary)', color: 'var(--ck-text-inverse)',
                              border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
                     Confirm Name Correct
                   </button>
                   <button onClick={() => handleConfirm(item.itemId, false)}
                     disabled={!suggestName.trim()}
-                    style={{ flex: 1, padding: '8px', background: suggestName.trim() ? '#856404' : '#ccc',
-                             color: '#fff', border: 'none', borderRadius: 4,
+                    style={{ flex: 1, padding: '8px', background: suggestName.trim() ? 'var(--ck-color-warning)' : 'var(--ck-border-default)',
+                             color: 'var(--ck-text-inverse)', border: 'none', borderRadius: 4,
                              cursor: suggestName.trim() ? 'pointer' : 'default',
                              fontWeight: 600, fontSize: 13 }}>
                     Request Correction
                   </button>
                   <button onClick={() => { setVerifyingId(null); setSuggestName(''); setCorrNotes(''); }}
-                    style={{ padding: '8px 14px', border: '1px solid #c5cae9', borderRadius: 4,
+                    style={{ padding: '8px 14px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 4,
                              cursor: 'pointer', fontSize: 13 }}>
                     Cancel
                   </button>
@@ -579,16 +579,16 @@ function FullNameTab({ canWrite }: { canWrite: boolean }) {
       {totalElements > PAGE_SIZE && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
           <button disabled={page === 0} onClick={() => setPage(p => p - 1)}
-            style={{ padding: '5px 14px', border: '1px solid #c5cae9', borderRadius: 4,
+            style={{ padding: '5px 14px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 4,
                      cursor: page === 0 ? 'default' : 'pointer', opacity: page === 0 ? 0.4 : 1 }}>
             Prev
           </button>
-          <span style={{ lineHeight: '30px', fontSize: 13, color: '#555' }}>
+          <span style={{ lineHeight: '30px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
             Page {page + 1} / {Math.ceil(totalElements / PAGE_SIZE)}
           </span>
           <button disabled={page >= Math.ceil(totalElements / PAGE_SIZE) - 1}
             onClick={() => setPage(p => p + 1)}
-            style={{ padding: '5px 14px', border: '1px solid #c5cae9', borderRadius: 4,
+            style={{ padding: '5px 14px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 4,
                      cursor: page >= Math.ceil(totalElements / PAGE_SIZE) - 1 ? 'default' : 'pointer',
                      opacity: page >= Math.ceil(totalElements / PAGE_SIZE) - 1 ? 0.4 : 1 }}>
             Next
@@ -625,15 +625,15 @@ export function StudentReviewDrawer({ open, onClose, onMetricsRefresh }: Props) 
       title="Student Lifecycle Review"
     >
       {/* Tab bar */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e8eaf6',
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid var(--ck-color-indigo-soft)',
                     paddingBottom: 0 }}>
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{ padding: '8px 16px', border: 'none', borderRadius: '6px 6px 0 0',
-                     background: tab === t.key ? '#3949ab' : 'transparent',
-                     color: tab === t.key ? '#fff' : '#5c6bc0',
+                     background: tab === t.key ? 'var(--ck-color-indigo)' : 'transparent',
+                     color: tab === t.key ? 'var(--ck-text-inverse)' : 'var(--ck-color-indigo-light)',
                      fontWeight: 600, fontSize: 13, cursor: 'pointer',
-                     borderBottom: tab === t.key ? '2px solid #3949ab' : 'none',
+                     borderBottom: tab === t.key ? '2px solid var(--ck-color-indigo)' : 'none',
                      marginBottom: -2 }}>
             {t.label}
           </button>

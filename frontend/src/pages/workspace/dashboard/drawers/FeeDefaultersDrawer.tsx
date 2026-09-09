@@ -23,10 +23,10 @@ function formatRupees(paise: number): string {
 
 function ReminderStatusBadge({ status }: { status: FeeDefaulterItem['reminderStatus'] }) {
   const cfg = {
-    NOT_SENT: { label: 'Not sent', bg: '#f5f5f5', color: '#555' },
-    SENT:     { label: 'Sent',     bg: '#e6f4ed', color: '#1a6840' },
-    PENDING:  { label: 'Pending',  bg: '#fff3cd', color: '#856404' },
-    FAILED:   { label: 'Failed',   bg: '#fde8e8', color: '#c0312b' },
+    NOT_SENT: { label: 'Not sent', bg: 'var(--ck-status-neutral-bg)', color: 'var(--ck-status-neutral)' },
+    SENT:     { label: 'Sent',     bg: 'var(--ck-color-primary-soft)', color: 'var(--ck-color-primary)' },
+    PENDING:  { label: 'Pending',  bg: 'var(--ck-color-warning-soft)', color: 'var(--ck-color-warning)' },
+    FAILED:   { label: 'Failed',   bg: 'var(--ck-color-danger-soft)', color: 'var(--ck-color-danger)' },
   }[status];
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
@@ -256,11 +256,11 @@ export function FeeDefaultersDrawer({ open, onClose, onMetricsRefresh }: Props) 
               <strong style={{ color: 'var(--text)' }}>{data.totalDefaulters}</strong> defaulters
             </span>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              <strong style={{ color: '#c0312b' }}>{formatRupees(data.totalOverdueAmount)}</strong> total due
+              <strong style={{ color: 'var(--ck-color-danger)' }}>{formatRupees(data.totalOverdueAmount)}</strong> total due
             </span>
             {data.oldestDueDays > 0 && (
               <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                Oldest due: <strong style={{ color: '#c0312b' }}>{data.oldestDueDays}d ago</strong>
+                Oldest due: <strong style={{ color: 'var(--ck-color-danger)' }}>{data.oldestDueDays}d ago</strong>
               </span>
             )}
           </div>
@@ -326,10 +326,10 @@ export function FeeDefaultersDrawer({ open, onClose, onMetricsRefresh }: Props) 
                     <td style={{ padding: '8px 8px', color: 'var(--text-muted)' }}>
                       {item.className} – {item.sectionName}
                     </td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: '#c0312b' }}>
+                    <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--ck-color-danger)' }}>
                       {formatRupees(item.dueAmount)}
                     </td>
-                    <td style={{ padding: '8px 8px', textAlign: 'right', color: item.daysOverdue > 30 ? '#c0312b' : 'var(--text)' }}>
+                    <td style={{ padding: '8px 8px', textAlign: 'right', color: item.daysOverdue > 30 ? 'var(--ck-color-danger)' : 'var(--text)' }}>
                       {item.daysOverdue}d
                     </td>
                     <td style={{ padding: '8px 8px' }}>
@@ -339,7 +339,7 @@ export function FeeDefaultersDrawer({ open, onClose, onMetricsRefresh }: Props) 
                           <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.parentPhone}</div>
                         </div>
                       ) : (
-                        <span style={{ fontSize: 11, color: '#c0312b' }}>No contact</span>
+                        <span style={{ fontSize: 11, color: 'var(--ck-color-danger)' }}>No contact</span>
                       )}
                     </td>
                     <td style={{ padding: '8px 8px', textAlign: 'center' }}>
@@ -400,7 +400,7 @@ export function FeeDefaultersDrawer({ open, onClose, onMetricsRefresh }: Props) 
       {toast && (
         <div style={{
           position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
-          background: '#1a6840', color: '#fff', padding: '10px 20px',
+          background: 'var(--ck-color-primary)', color: 'var(--ck-text-inverse)', padding: '10px 20px',
           borderRadius: 8, fontSize: 13, fontWeight: 600, zIndex: 600,
           boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
         }}>

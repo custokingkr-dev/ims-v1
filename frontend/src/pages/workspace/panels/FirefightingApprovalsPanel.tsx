@@ -32,7 +32,7 @@ function WorkflowStepper({ status }: { status: string }) {
                 background: done ? 'var(--g)' : active ? 'var(--b)' : 'var(--border2)',
                 border: active ? '2px solid var(--b)' : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 10, color: done || active ? '#fff' : 'var(--ink3)', fontWeight: 700,
+                fontSize: 10, color: done || active ? 'var(--ck-text-inverse)' : 'var(--ink3)', fontWeight: 700,
               }}>
                 {done ? '✓' : i + 1}
               </div>
@@ -200,8 +200,8 @@ export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
                     <thead><tr><th>Vendor</th><th>Amount</th><th>Delivery</th><th>Document</th><th>Notes</th></tr></thead>
                     <tbody>
                       {(req.quotations || []).map((q: Quotation) => (
-                        <tr key={q.id} style={q.isCustoking ? { background: '#f0faf4' } : {}}>
-                          <td style={{ fontWeight: 600 }}>{q.vendorName || '—'}{q.isCustoking && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--g)', color: '#fff', padding: '1px 7px', borderRadius: 5, marginLeft: 6 }}>✦ Our quote</span>}</td>
+                        <tr key={q.id} style={q.isCustoking ? { background: 'var(--ck-color-primary-soft)' } : {}}>
+                          <td style={{ fontWeight: 600 }}>{q.vendorName || '—'}{q.isCustoking && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--g)', color: 'var(--ck-text-inverse)', padding: '1px 7px', borderRadius: 5, marginLeft: 6 }}>✦ Our quote</span>}</td>
                           <td style={{ fontWeight: 700, color: 'var(--g)' }}>₹{formatMoney(Number(q.amount))}</td>
                           <td>{q.deliveryTimeline || '—'}</td>
                           <td style={{ fontSize: 12, color: q.documentUrl ? 'var(--g)' : 'var(--ink3)' }}>{q.documentUrl || 'No file'}</td>
@@ -238,7 +238,7 @@ export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
                 <button className="ck-btn ck-btn-g" disabled={approving[req.code]} onClick={() => void approveFfRequest(req)}>{approving[req.code] ? 'Approving…' : '✓ Approve — Custoking'}</button>
               )}
               {canApprove && (
-                <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid #f5c0bc', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }} onClick={() => openRejectModal(req)}>Reject</button>
+                <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid var(--ck-color-danger-border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', marginLeft: 'auto' }} onClick={() => openRejectModal(req)}>Reject</button>
               )}
             </div>
           </div>
@@ -268,7 +268,7 @@ export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={() => setRejectModalOpen(false)}>Cancel</button>
-              <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid #f5c0bc', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }} disabled={rejectSaving} onClick={() => void confirmReject()}>{rejectSaving ? 'Rejecting…' : 'Confirm rejection'}</button>
+              <button style={{ background: 'var(--re1)', color: 'var(--re)', border: '1px solid var(--ck-color-danger-border)', borderRadius: 20, padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }} disabled={rejectSaving} onClick={() => void confirmReject()}>{rejectSaving ? 'Rejecting…' : 'Confirm rejection'}</button>
             </div>
           </div>
         </div>
