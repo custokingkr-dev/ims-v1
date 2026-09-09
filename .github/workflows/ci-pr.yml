@@ -213,6 +213,17 @@ jobs:
           npm audit --audit-level=high
           npm run test:coverage
           npm run build
+      - name: Remove broken Google Chrome apt source
+        # GitHub's ubuntu-latest runners preinstall Chrome via an apt source in
+        # /etc/apt/sources.list.d/google-chrome.list. `playwright install --with-deps`
+        # runs `apt-get update`, which fails hard whenever Google's apt mirror serves a
+        # Release file whose hashes don't match its index (seen repeatedly, not a
+        # transient blip). Playwright's own Chromium download comes from Microsoft's
+        # CDN, not this apt repo, so removing the source list has no effect on what the
+        # tests need — Chrome itself (already installed) is untouched. Do not delete
+        # this step; without it, --with-deps deterministically fails apt-get update.
+        if: ${{ matrix.tool == 'npm' }}
+        run: sudo rm -f /etc/apt/sources.list.d/google-chrome.list
       - name: Install Playwright Chromium
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
