@@ -6,7 +6,6 @@ import LoginPage from './pages/LoginPage';
 const SchoolManagementPage = lazy(() => import('./pages/SchoolManagementPage'));
 const UnifiedWorkspacePage = lazy(() => import('./pages/UnifiedWorkspacePage'));
 const ZoneManagementPage = lazy(() => import('./pages/ZoneManagementPage'));
-const FeeTimetableDesignPreview = lazy(() => import('./pages/FeeTimetableDesignPreview'));
 
 function PageFallback() {
   return <div className="ck-loading">Loading...</div>;
@@ -17,7 +16,6 @@ export default function App() {
     <Suspense fallback={<PageFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/design-preview" element={<FeeTimetableDesignPreview />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute><UnifiedWorkspacePage /></ProtectedRoute>} />
         <Route path="/schools" element={<ProtectedRoute><SchoolManagementPage /></ProtectedRoute>} />

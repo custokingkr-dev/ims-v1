@@ -13,9 +13,6 @@ import { expect, test } from '@playwright/test';
  * These colours predate the design-token system and duplicate the value of a
  * token that now exists. The four greens are the old brand green and its
  * shades; the rest are near-white and warm-grey surfaces.
- *
- * design-preview.css is excluded: it is scoped to its own --dpx-* system and is
- * retired separately, so converting it now risks being discarded work.
  */
 const DRIFTED_COLOURS = [
   '#1a6840', '#155c36', '#145234', '#135533',
@@ -24,7 +21,7 @@ const DRIFTED_COLOURS = [
   '#f7f5ff', '#f0f8f4', '#e9eeeb', '#e8f5ee', '#8d8d8d',
 ];
 
-const EXCLUDED = ['design-preview.css', 'tokens.css'];
+const EXCLUDED = ['tokens.css'];
 
 function stylesheetPaths(): string[] {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
@@ -109,32 +106,4 @@ test('status-tint borders resolve through a named token', () => {
   }
 
   expect(offenders).toEqual([]);
-});
-
-/**
- * design-preview.css is a 780-line stylesheet for an unlinked mockup page that
- * has not been touched since it was created. Importing it from main.tsx shipped
- * it to every user on every page. It is now imported by the lazy-loaded page
- * itself, so it only loads when someone actually visits /design-preview.
- */
-test('the design-preview stylesheet is not shipped to ordinary pages', async ({ page }) => {
-  const dpxLoaded = async () =>
-    page.evaluate(() => {
-      for (const sheet of Array.from(document.styleSheets)) {
-        let rules: CSSRuleList;
-        try { rules = sheet.cssRules; } catch { continue; }
-        for (const rule of Array.from(rules)) {
-          if (rule.cssText.includes('.dpx-shell')) return true;
-        }
-      }
-      return false;
-    });
-
-  await page.goto('/login');
-  await page.waitForLoadState('networkidle');
-  expect(await dpxLoaded(), 'design-preview CSS must not load on /login').toBe(false);
-
-  await page.goto('/design-preview');
-  await page.waitForLoadState('networkidle');
-  expect(await dpxLoaded(), 'design-preview CSS must load on its own page').toBe(true);
 });
