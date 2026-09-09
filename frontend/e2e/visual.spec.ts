@@ -12,7 +12,6 @@ const LABEL = process.env.VISUAL_LABEL ?? 'current';
 
 const publicRoutes = [
   { name: 'login', path: '/login' },
-  { name: 'design-preview', path: '/design-preview' },
 ];
 
 const protectedRoutes = [

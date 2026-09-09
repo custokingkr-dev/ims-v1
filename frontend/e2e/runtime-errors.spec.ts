@@ -12,7 +12,6 @@ const routes = [
   { name: 'dashboard', path: '/dashboard', auth: true },
   { name: 'schools', path: '/schools', auth: true },
   { name: 'zones', path: '/zones', auth: true },
-  { name: 'design-preview', path: '/design-preview', auth: false },
 ];
 
 for (const route of routes) {
