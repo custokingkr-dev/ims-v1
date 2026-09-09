@@ -205,7 +205,7 @@ export function StudentExportPanel() {
             <div>No active schools are available for export. Operators should ask a Superadmin to check their school assignments.</div>
           )}
           {notice ? (
-            <div role="status" style={{ color: notice.tone === 'ok' ? '#087443' : '#b42318' }}>{notice.text}</div>
+            <div role="status" style={{ color: notice.tone === 'ok' ? 'var(--ck-color-primary)' : 'var(--ck-color-danger)' }}>{notice.text}</div>
           ) : null}
         </div>
       </div>

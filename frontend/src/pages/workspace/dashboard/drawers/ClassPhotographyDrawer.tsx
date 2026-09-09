@@ -27,10 +27,10 @@ function fmt(paise: number): string {
 
 function StatusBadge({ status }: { status: PhotoContributionItem['status'] }) {
   const cfg = {
-    PAID:    { label: 'Paid',    bg: '#e6f4ed', color: '#1a6840' },
-    PARTIAL: { label: 'Partial', bg: '#fff3cd', color: '#856404' },
-    PENDING: { label: 'Pending', bg: '#fde8e8', color: '#c0312b' },
-  }[status] ?? { label: status, bg: '#f5f5f5', color: '#555' };
+    PAID:    { label: 'Paid',    bg: 'var(--ck-color-primary-soft)', color: 'var(--ck-color-primary)' },
+    PARTIAL: { label: 'Partial', bg: 'var(--ck-color-warning-soft)', color: 'var(--ck-color-warning)' },
+    PENDING: { label: 'Pending', bg: 'var(--ck-color-danger-soft)', color: 'var(--ck-color-danger)' },
+  }[status] ?? { label: status, bg: 'var(--ck-status-neutral-bg)', color: 'var(--ck-status-neutral)' };
   return (
     <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
                    background: cfg.bg, color: cfg.color, whiteSpace: 'nowrap' }}>
@@ -73,31 +73,31 @@ function ConfirmReminderModal({ eventId, selected, onClose, onSent }: ConfirmMod
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1100,
                   display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 28, width: '100%',
+      <div style={{ background: 'var(--ck-bg-surface)', borderRadius: 12, padding: 28, width: '100%',
                     maxWidth: 460, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
         <h3 style={{ margin: '0 0 6px', fontSize: 17 }}>Send Payment Reminder</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#666' }}>
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
           {selected.length} student{selected.length !== 1 ? 's' : ''} selected
         </p>
 
         <label className="ck-field" style={{ display: 'block', marginBottom: 14 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>Channel</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-secondary)', display: 'block', marginBottom: 4 }}>Channel</span>
           <select value={channel} onChange={e => setChannel(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd', fontSize: 14 }}>
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ck-border-default)', fontSize: 14 }}>
             {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
 
         <label className="ck-field" style={{ display: 'block', marginBottom: 14 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#555', display: 'block', marginBottom: 4 }}>Message</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-secondary)', display: 'block', marginBottom: 4 }}>Message</span>
           <textarea value={message} onChange={e => setMessage(e.target.value)} rows={3}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid #ddd',
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--ck-border-default)',
                              fontSize: 13, resize: 'vertical', boxSizing: 'border-box' }} />
         </label>
 
-        <div style={{ background: '#f9f9f9', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#888', marginBottom: 6 }}>PREVIEW</div>
-          <div style={{ fontSize: 13, color: '#444' }}>{message || <em style={{ color: '#aaa' }}>No message</em>}</div>
+        <div style={{ background: 'var(--ck-bg-surface-raised)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--ck-text-muted)', marginBottom: 6 }}>PREVIEW</div>
+          <div style={{ fontSize: 13, color: 'var(--ck-text-primary)' }}>{message || <em style={{ color: 'var(--ck-text-muted)' }}>No message</em>}</div>
         </div>
 
         {error && <div className="ck-alert" style={{ marginBottom: 12, fontSize: 13 }}>{error}</div>}
@@ -218,11 +218,11 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
               { label: 'Collected', value: fmt(data.collectedAmount), hi: true },
               { label: 'Pending', value: fmt(data.pendingAmount), warn: true },
             ].map(m => (
-              <div key={m.label} style={{ flex: '1 1 130px', background: '#f8f9fa', borderRadius: 10,
+              <div key={m.label} style={{ flex: '1 1 130px', background: 'var(--ck-bg-surface-raised)', borderRadius: 10,
                                           padding: '10px 14px', minWidth: 120 }}>
-                <div style={{ fontSize: 11, color: '#888', fontWeight: 600 }}>{m.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--ck-text-muted)', fontWeight: 600 }}>{m.label}</div>
                 <div style={{ fontSize: 18, fontWeight: 700,
-                              color: m.hi ? '#1a6840' : m.warn ? '#c0312b' : '#1a1a1a', marginTop: 2 }}>
+                              color: m.hi ? 'var(--ck-color-primary)' : m.warn ? 'var(--ck-color-danger)' : 'var(--ck-text-primary)', marginTop: 2 }}>
                   {m.value}
                 </div>
               </div>
@@ -231,7 +231,7 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
         )}
 
         {data && !data.eventId && !loading && (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ck-text-muted)' }}>
             No active class photography event found.
           </div>
         )}
@@ -240,7 +240,7 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
         {data && data.eventId && (
           <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
             <select value={statusFilter} onChange={e => handleFilterChange(e.target.value)}
-                    style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid #ddd', fontSize: 13 }}>
+                    style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--ck-border-default)', fontSize: 13 }}>
               <option value="">All statuses</option>
               <option value="PENDING">Pending</option>
               <option value="PARTIAL">Partial</option>
@@ -257,10 +257,10 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
         )}
 
         {/* Loading / error */}
-        {loading && <div style={{ padding: 20, textAlign: 'center', color: '#888' }}>Loading…</div>}
+        {loading && <div style={{ padding: 20, textAlign: 'center', color: 'var(--ck-text-muted)' }}>Loading…</div>}
         {error && <div className="ck-alert" style={{ marginBottom: 12 }}>{error}</div>}
         {toast && (
-          <div style={{ background: '#e6f4ed', color: '#1a6840', borderRadius: 8, padding: '10px 14px',
+          <div style={{ background: 'var(--ck-color-primary-soft)', color: 'var(--ck-color-primary)', borderRadius: 8, padding: '10px 14px',
                         marginBottom: 12, fontSize: 13, fontWeight: 600 }}>{toast}</div>
         )}
 
@@ -269,7 +269,7 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
-                <tr style={{ background: '#f5f5f5' }}>
+                <tr style={{ background: 'var(--ck-bg-app)' }}>
                   {canNotify && (
                     <th style={{ padding: '8px 10px', textAlign: 'left', width: 36 }}>
                       <input type="checkbox" checked={allPendingSelected} onChange={toggleAll} />
@@ -288,7 +288,7 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
               </thead>
               <tbody>
                 {data.students.map(s => (
-                  <tr key={s.studentId} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <tr key={s.studentId} style={{ borderBottom: '1px solid var(--ck-border-subtle)' }}>
                     {canNotify && (
                       <td style={{ padding: '8px 10px' }}>
                         {s.status !== 'PAID' && (
@@ -299,21 +299,21 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
                     )}
                     <td style={{ padding: '8px 10px' }}>
                       <div style={{ fontWeight: 600 }}>{s.studentName}</div>
-                      <div style={{ fontSize: 11, color: '#888' }}>{s.admissionNo}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ck-text-muted)' }}>{s.admissionNo}</div>
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#555' }}>{s.className} – {s.sectionName}</td>
-                    <td style={{ padding: '8px 10px', color: '#555' }}>{s.parentPhone ?? '—'}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', color: '#333' }}>{fmt(s.expectedAmount)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right', color: '#1a6840' }}>{fmt(s.paidAmount)}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--ck-text-secondary)' }}>{s.className} – {s.sectionName}</td>
+                    <td style={{ padding: '8px 10px', color: 'var(--ck-text-secondary)' }}>{s.parentPhone ?? '—'}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--ck-text-primary)' }}>{fmt(s.expectedAmount)}</td>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', color: 'var(--ck-color-primary)' }}>{fmt(s.paidAmount)}</td>
                     <td style={{ padding: '8px 10px', textAlign: 'right',
-                                 color: s.pendingAmount > 0 ? '#c0312b' : '#1a6840',
+                                 color: s.pendingAmount > 0 ? 'var(--ck-color-danger)' : 'var(--ck-color-primary)',
                                  fontWeight: s.pendingAmount > 0 ? 600 : 400 }}>
                       {fmt(s.pendingAmount)}
                     </td>
                     <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                       <StatusBadge status={s.status} />
                     </td>
-                    <td style={{ padding: '8px 10px', fontSize: 12, color: '#888' }}>
+                    <td style={{ padding: '8px 10px', fontSize: 12, color: 'var(--ck-text-muted)' }}>
                       {s.lastReminderSentAt
                         ? new Date(s.lastReminderSentAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
                         : '—'}
@@ -337,7 +337,7 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
 
         {/* Empty state */}
         {!loading && data && data.eventId && data.students.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 0', color: '#888' }}>
+          <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--ck-text-muted)' }}>
             No students match the selected filter.
           </div>
         )}
@@ -347,7 +347,7 @@ export function ClassPhotographyDrawer({ open, onClose, onMetricsRefresh }: Prop
           <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 16 }}>
             <button className="ck-btn-ghost" disabled={page === 0}
                     onClick={() => handlePageChange(page - 1)}>← Prev</button>
-            <span style={{ padding: '6px 12px', fontSize: 13, color: '#555' }}>
+            <span style={{ padding: '6px 12px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
               Page {page + 1} of {totalPages}
             </span>
             <button className="ck-btn-ghost" disabled={page >= totalPages - 1}

@@ -45,9 +45,9 @@ function MarkPaidModal({ item, onClose, onConfirm }: MarkPaidModalProps) {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: 400, maxWidth: '90vw' }}>
+      <div style={{ background: 'var(--ck-bg-surface)', borderRadius: 12, padding: 24, width: 400, maxWidth: '90vw' }}>
         <h3 style={{ margin: '0 0 8px', fontSize: 16 }}>Mark Vendor Paid</h3>
-        <p style={{ margin: '0 0 16px', fontSize: 13, color: '#555' }}>
+        <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
           Record vendor payment of <strong>{rupees(item.amountPaise)}</strong> for&nbsp;
           <strong>{item.title}</strong>
           {item.vendorName ? ` (${item.vendorName})` : ''}.
@@ -57,13 +57,13 @@ function MarkPaidModal({ item, onClose, onConfirm }: MarkPaidModalProps) {
           value={notes}
           onChange={e => setNotes(e.target.value)}
           rows={3}
-          style={{ width: '100%', borderRadius: 6, border: '1px solid #ccc', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }}
+          style={{ width: '100%', borderRadius: 6, border: '1px solid var(--ck-border-default)', padding: '8px 10px', fontSize: 13, boxSizing: 'border-box', resize: 'vertical' }}
           placeholder="e.g. Paid via NEFT on 12-Jun-2026"
         />
-        {error && <p style={{ color: '#c0312b', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--ck-color-danger)', fontSize: 12, margin: '8px 0 0' }}>{error}</p>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
-          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #ccc', background: '#fff', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
-          <button onClick={handleSubmit} disabled={loading} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#1a6840', color: '#fff', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 13, opacity: loading ? 0.7 : 1 }}>
+          <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--ck-border-default)', background: 'var(--ck-bg-surface)', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          <button onClick={handleSubmit} disabled={loading} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--ck-color-primary)', color: 'var(--ck-text-inverse)', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 13, opacity: loading ? 0.7 : 1 }}>
             {loading ? 'Saving…' : 'Confirm Payment'}
           </button>
         </div>
@@ -81,23 +81,23 @@ const SOURCE_LABEL: Record<string, string> = {
 
 function DueRow({ item, canPay, onMarkPaid }: { item: VendorDueItem; canPay: boolean; onMarkPaid: (item: VendorDueItem) => void }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid #f0f0f0' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--ck-border-subtle)' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: item.sourceType === 'CATALOG_ORDER' ? '#e3f2fd' : '#fff3e0', color: item.sourceType === 'CATALOG_ORDER' ? '#1565c0' : '#b35c00' }}>
+          <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: item.sourceType === 'CATALOG_ORDER' ? 'var(--ck-color-accent-soft)' : 'var(--ck-color-warning-soft)', color: item.sourceType === 'CATALOG_ORDER' ? 'var(--ck-color-accent)' : 'var(--ck-color-warning)' }}>
             {SOURCE_LABEL[item.sourceType] ?? item.sourceType}
           </span>
           <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.title}</span>
         </div>
-        {item.vendorName && <div style={{ fontSize: 12, color: '#666' }}>{item.vendorName}</div>}
-        <div style={{ fontSize: 12, color: '#888' }}>{item.category} · {item.status}</div>
+        {item.vendorName && <div style={{ fontSize: 12, color: 'var(--ck-text-secondary)' }}>{item.vendorName}</div>}
+        <div style={{ fontSize: 12, color: 'var(--ck-text-muted)' }}>{item.category} · {item.status}</div>
       </div>
       <div style={{ textAlign: 'right', minWidth: 90 }}>
         <div style={{ fontWeight: 700, fontSize: 14 }}>{rupees(item.amountPaise)}</div>
         {canPay && (
           <button
             onClick={() => onMarkPaid(item)}
-            style={{ marginTop: 4, fontSize: 11, padding: '3px 8px', borderRadius: 4, border: 'none', background: '#1a6840', color: '#fff', cursor: 'pointer' }}
+            style={{ marginTop: 4, fontSize: 11, padding: '3px 8px', borderRadius: 4, border: 'none', background: 'var(--ck-color-primary)', color: 'var(--ck-text-inverse)', cursor: 'pointer' }}
           >
             Mark Paid
           </button>
@@ -149,23 +149,23 @@ export function VendorDuesDrawer({ open, onClose }: Props) {
   return (
     <>
       <CommandCenterDrawer title="Vendor Payment Dues" subtitle={subtitle} open={open} onClose={onClose}>
-        {loading && <p style={{ color: '#888', fontSize: 13 }}>Loading…</p>}
-        {error && <p style={{ color: '#c0312b', fontSize: 13 }}>{error}</p>}
+        {loading && <p style={{ color: 'var(--ck-text-muted)', fontSize: 13 }}>Loading…</p>}
+        {error && <p style={{ color: 'var(--ck-color-danger)', fontSize: 13 }}>{error}</p>}
         {data && data.items.length === 0 && (
-          <p style={{ color: '#555', fontSize: 13 }}>No pending vendor payments. All caught up!</p>
+          <p style={{ color: 'var(--ck-text-secondary)', fontSize: 13 }}>No pending vendor payments. All caught up!</p>
         )}
         {data && data.items.length > 0 && (
           <>
             <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-              <div style={{ flex: 1, background: '#e3f2fd', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontSize: 11, color: '#1565c0', fontWeight: 600 }}>Supply OS Orders</div>
+              <div style={{ flex: 1, background: 'var(--ck-color-accent-soft)', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, color: 'var(--ck-color-accent)', fontWeight: 600 }}>Supply OS Orders</div>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{data.catalogOrderCount}</div>
-                <div style={{ fontSize: 12, color: '#444' }}>{rupees(data.catalogOrderTotalPaise)}</div>
+                <div style={{ fontSize: 12, color: 'var(--ck-text-primary)' }}>{rupees(data.catalogOrderTotalPaise)}</div>
               </div>
-              <div style={{ flex: 1, background: '#fff3e0', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontSize: 11, color: '#b35c00', fontWeight: 600 }}>Urgent Procurement</div>
+              <div style={{ flex: 1, background: 'var(--ck-color-warning-soft)', borderRadius: 8, padding: '10px 14px' }}>
+                <div style={{ fontSize: 11, color: 'var(--ck-color-warning)', fontWeight: 600 }}>Urgent Procurement</div>
                 <div style={{ fontSize: 18, fontWeight: 700 }}>{data.firefightingCount}</div>
-                <div style={{ fontSize: 12, color: '#444' }}>{rupees(data.firefightingTotalPaise)}</div>
+                <div style={{ fontSize: 12, color: 'var(--ck-text-primary)' }}>{rupees(data.firefightingTotalPaise)}</div>
               </div>
             </div>
             <div>

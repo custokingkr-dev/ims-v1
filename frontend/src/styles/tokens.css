@@ -20,6 +20,26 @@
   --ck-color-primary-soft:   #e8f4ee;
   --ck-color-primary-border: #c4ddd0;
 
+  /* Command Center accent — the Student Lifecycle Review and Low Attendance
+     drawers' own interactive identity (buttons, active tab, links, progress
+     fill). Distinct hue from primary; not a status color, so the "status only"
+     rule below does not apply. Reused verbatim ~55x across those two drawers -
+     recurring enough to token, not noise. */
+  --ck-color-indigo:         #3949ab;
+  --ck-color-indigo-light:   #5c6bc0;
+  --ck-color-indigo-deep:    #1a2352;
+  --ck-color-indigo-soft:    #e8eaf6;
+  --ck-color-indigo-border:  #c5cae9;
+  /* Cluster centroid for two near-identical near-white washes (#f5f6ff and
+     #fafbff) used interchangeably as list-row/stat-card backgrounds in the
+     same two drawers — collapsing them shifts nothing visibly. */
+  --ck-color-indigo-wash:    #f5f6ff;
+
+  /* Solid near-black button fill on ZoneManagementPage (platform-admin-only
+     actions use a neutral dark CTA instead of the brand-green primary
+     button). Reused verbatim 3x; no existing bg token is this dark. */
+  --ck-color-ink:            #1a1a1a;
+
   /* Status only — never decoration or module identity */
   --ck-color-accent:         #2f68b2;
   --ck-color-accent-soft:    #e6edf8;
@@ -37,6 +57,11 @@
   --ck-color-orange-soft:    #fff0e8;
   --ck-color-purple:         #5b2d8a;
   --ck-color-purple-soft:    #f2edf9;
+  /* Distinct violet the dashboard home cards use for the "orders" module,
+     shown alongside purple's "supply"/"photography" cards in the same grid —
+     must stay visually distinct from purple, so it is its own base color
+     rather than an alias. */
+  --ck-color-violet:         #6a3d9a;
 
   /* Status-tint borders. --ck-color-primary-border already named the green
      equivalent; these name the pink, tan and lavender that existed in the CSS
@@ -151,6 +176,12 @@
   --ck-chart-attendance:     var(--am);
   --ck-chart-supply:         var(--pu);
   --ck-chart-firefighting:   var(--re);
+  /* Dashboard-home ActionInsightCard uses a slightly different module set
+     (photography, orders) than the reporting charts above. photography
+     reuses purple verbatim; orders needs to stay visually distinct from it
+     since both accent cards can appear together, hence --ck-color-violet. */
+  --ck-chart-photography:    var(--pu);
+  --ck-chart-orders:         var(--ck-color-violet);
 
   /* ── Breakpoints (documentation only) ──────────────────────────────
      CSS custom properties are INVALID inside media query conditions, so
