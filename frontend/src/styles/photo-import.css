@@ -568,7 +568,7 @@
 .pi-spin { animation: pi-spin .8s linear infinite; }
 @keyframes pi-spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 980px) {
+@media (max-width: 1024px) {
   .pi-scope-band { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; }
   .pi-scope-lock { justify-content: center; }
   .pi-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
