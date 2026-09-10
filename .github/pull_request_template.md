@@ -20,7 +20,9 @@ Closes #
 ## Checklist
 
 ### All PRs
-- [ ] CI is green (backend-test, db-migration-test, frontend-build, secret-scan)
+- [ ] CI is green — the `summary` check reflects every job (`service-test`, `docker-build`,
+      `secret-scan`, `duplicate-class-drift`, `static-architecture-audits`,
+      `privacy-technical-controls`, `promotion-source-policy`) plus CodeQL `analyze`
 - [ ] No secrets, passwords, or tokens committed
 
 ### Backend changes
@@ -33,7 +35,8 @@ Closes #
 - [ ] Integration test added/updated (covers both success and 403 cases)
 
 ### Database migrations
-- [ ] Migration version is V126+ (never re-uses an existing number)
+- [ ] Migration version is the next number **in that service/schema's own sequence**
+      (there is no global counter — `ls` the target `db/migration/` directory first)
 - [ ] Existing migration files are **not modified**
 - [ ] New permission row added to `permissions` table (if endpoint introduces a new permission)
 - [ ] Permission assigned to appropriate role(s) in `role_permissions`
