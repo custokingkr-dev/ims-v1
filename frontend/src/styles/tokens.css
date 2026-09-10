@@ -78,6 +78,9 @@
   --ck-bg-app:               #f4f6f8;
   --ck-bg-surface:           #ffffff;
   --ck-bg-surface-raised:    #fbfcfc;
+  /* The one scrim. Backs both the modal overlay and the mobile nav drawer's
+     backdrop — those were two hand-rolled rgba()s (.32 and .38) for the same
+     job, which is the drift this token exists to collapse. */
   --ck-bg-overlay:           rgba(0,0,0,.32);
   /* Skeleton-loader shimmer base. Must stay visibly darker than
      --ck-status-neutral-bg, which is the sweep highlight in the same
@@ -103,6 +106,10 @@
   --ck-shadow-raised:        0 12px 34px rgba(0,0,0,.06),0 3px 10px rgba(0,0,0,.04);
   --ck-shadow-popover:       0 8px 24px rgba(0,0,0,.12), 0 2px 8px rgba(0,0,0,.06);
   --ck-shadow-drawer:        -4px 0 24px rgba(0,0,0,.08);
+  /* The left nav's hover-expand shadow. --ck-shadow-drawer cannot be reused:
+     it casts LEFT (-4px x-offset) for the right-hand drawers in drawers.css,
+     whereas the left rail casts right. Same opacity family, mirrored axis. */
+  --ck-shadow-rail:          2px 0 16px rgba(0,0,0,.08);
 
   /* ── Border Radius ─────────────────────────────────────────────── */
   --ck-radius-xs:            4px;
@@ -121,6 +128,18 @@
   --ck-space-6:              24px;
   --ck-space-7:              32px;
   --ck-space-8:              48px;
+
+  /* ── Left-nav rail geometry ────────────────────────────────────────
+     One source of truth for the three sidebar widths. .ck-main's
+     margin-left has to mirror .ck-sidebar's width exactly in both the
+     collapsed and the pinned state; holding both sides of that pair on
+     the same token is what stops the layout drifting out of sync.
+     These are property values only — the 768px drawer breakpoint stays
+     a literal, because custom properties are invalid inside media query
+     CONDITIONS (only in declarations). Do not tokenise breakpoints. */
+  --ck-sidebar-rail:         64px;   /* collapsed icon rail (desktop)   */
+  --ck-sidebar-expanded:     248px;  /* hover-expanded / pinned         */
+  --ck-sidebar-drawer:       272px;  /* off-canvas drawer (<= 768px)    */
 
   /* ── Typography Scale ──────────────────────────────────────────── */
   --ck-font-display:         'Instrument Serif', serif;
