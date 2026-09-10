@@ -391,7 +391,7 @@ export default function UnifiedWorkspacePage() {
       <div className="ck-loading" style={{ padding: '48px 24px', display: 'grid', gap: '12px', textAlign: 'center' }}>
         <div style={{ fontSize: '28px' }}>⚠️</div>
         <div style={{ fontFamily: 'var(--ck-font-heading)', fontSize: '24px' }}>Workspace could not load</div>
-        <div style={{ color: '#5a5a5a' }}>{workspaceError}</div>
+        <div style={{ color: 'var(--ck-text-secondary)' }}>{workspaceError}</div>
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button className="ck-btn ck-btn-ghost" onClick={() => refresh()}>Retry</button>
           <button className="ck-btn ck-btn-primary" onClick={() => { logout(); navigate('/login', { replace: true }); }}>

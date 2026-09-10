@@ -17,11 +17,11 @@ interface Props {
 }
 
 const MODULE_ACCENT: Record<string, string> = {
-  fees:        '#1a6840',
-  attendance:  '#b35c00',
-  students:    '#1a4fa8',
-  photography: '#5b2d8a',
-  orders:      '#6a3d9a',
+  fees:        'var(--ck-chart-fees)',
+  attendance:  'var(--ck-chart-attendance)',
+  students:    'var(--ck-chart-students)',
+  photography: 'var(--ck-chart-photography)',
+  orders:      'var(--ck-chart-orders)',
 };
 
 export function ActionInsightCard({

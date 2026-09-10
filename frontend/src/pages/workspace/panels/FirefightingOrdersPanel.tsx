@@ -174,7 +174,7 @@ export function FirefightingOrdersPanel({ isSuperAdmin, onRefresh }: Props) {
                   {ffTimeline.map((item, i) => (
                     <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start', paddingBottom: i < ffTimeline.length - 1 ? 20 : 0, position: 'relative' }}>
                       {i < ffTimeline.length - 1 && <div style={{ position: 'absolute', left: 10, top: 22, width: 2, height: 'calc(100% - 4px)', background: 'var(--g)', zIndex: 0 }} />}
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--g)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: '#fff', fontWeight: 700, zIndex: 1 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', flexShrink: 0, background: 'var(--g)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--ck-text-inverse)', fontWeight: 700, zIndex: 1 }}>
                         ✓
                       </div>
                       <div style={{ flex: 1, paddingTop: 2 }}>

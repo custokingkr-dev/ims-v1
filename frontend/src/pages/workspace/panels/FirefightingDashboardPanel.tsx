@@ -104,7 +104,7 @@ export function FirefightingDashboardPanel({ isSuperAdmin, setPanel, onOpenFfDra
               <div className="ck-pipe-col" key={col.label}>
                 <div className="ck-pipe-head">
                   <div className="ck-pipe-label" style={{ color: `var(--${col.tone})` }}>{col.label}</div>
-                  <div className="ck-pipe-count" style={{ background: `var(--${col.tone}1,#f4f4f0)`, color: `var(--${col.tone})` }}>{colReqs.length}</div>
+                  <div className="ck-pipe-count" style={{ background: `var(--${col.tone}1, var(--ck-status-neutral-bg))`, color: `var(--${col.tone})` }}>{colReqs.length}</div>
                 </div>
                 <div className="ck-pipe-body">
                   {colReqs.map((r) => (

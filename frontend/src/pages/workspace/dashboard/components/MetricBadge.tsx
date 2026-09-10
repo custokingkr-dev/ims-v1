@@ -8,9 +8,9 @@ interface Props {
 
 const VARIANT_STYLE: Record<string, React.CSSProperties> = {
   default: { background: 'var(--surface-2)', color: 'var(--text)' },
-  warn:    { background: '#fff3cd', color: '#856404' },
-  danger:  { background: '#fde8e8', color: '#c0312b' },
-  ok:      { background: '#e6f4ed', color: '#1a6840' },
+  warn:    { background: 'var(--ck-color-warning-soft)', color: 'var(--ck-color-warning)' },
+  danger:  { background: 'var(--ck-color-danger-soft)', color: 'var(--ck-color-danger)' },
+  ok:      { background: 'var(--ck-color-primary-soft)', color: 'var(--ck-color-primary)' },
 };
 
 export function MetricBadge({ value, label, variant = 'default' }: Props) {

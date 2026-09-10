@@ -627,7 +627,7 @@
 .erp-availability-cell.blocked { color: var(--re); background: var(--re1); }
 .erp-availability-cell:disabled { opacity: .55; cursor: wait; }
 
-@media (max-width: 1120px) {
+@media (max-width: 1280px) {
   .erp-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .erp-resource-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .erp-validation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -635,7 +635,7 @@
   .erp-inline-form.fee-head .erp-check { align-self: center; }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 768px) {
   .erp-fee-layout, .erp-split { grid-template-columns: minmax(0, 1fr); }
   .erp-side-list { max-height: 250px; overflow-y: auto; border-right: 0; border-bottom: 1px solid var(--border); }
   .erp-form-panel, .erp-connection-map { border-top: 1px solid var(--border); border-left: 0; }

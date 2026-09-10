@@ -207,8 +207,8 @@ function ConfidenceRing({ pct, module: mod }: { pct: number; module: ActionModul
   const circ = 2 * Math.PI * r;
   // Map module to CSS var color string (inline SVG needs actual color values)
   const COLOR_MAP: Record<ActionModule, string> = {
-    fees: '#1a6840', students: '#1a4fa8', supply: '#5b2d8a',
-    firefighting: '#c0312b', attendance: '#b35c00',
+    fees: 'var(--ck-chart-fees)', students: 'var(--ck-chart-students)', supply: 'var(--ck-chart-supply)',
+    firefighting: 'var(--ck-chart-firefighting)', attendance: 'var(--ck-chart-attendance)',
   };
   const color = COLOR_MAP[mod];
   return (

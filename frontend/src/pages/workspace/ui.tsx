@@ -41,7 +41,7 @@ export function Field({
       <label>{label}</label>
       {children}
       {error
-        ? <div className="ts" style={{ marginTop: 4, color: '#b42318' }}>{error}</div>
+        ? <div className="ts" style={{ marginTop: 4, color: 'var(--ck-color-danger)' }}>{error}</div>
         : hint
           ? <div className="ts" style={{ marginTop: 4 }}>{hint}</div>
           : null}

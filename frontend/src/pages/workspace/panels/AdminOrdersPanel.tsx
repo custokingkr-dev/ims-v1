@@ -40,7 +40,7 @@ function OrderWorkflowBanner({ status }: { status: string }) {
                 width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
                 background: done ? 'var(--g)' : active ? 'var(--b)' : 'var(--border2)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, color: done || active ? '#fff' : 'var(--ink3)', fontWeight: 700,
+                fontSize: 9, color: done || active ? 'var(--ck-text-inverse)' : 'var(--ink3)', fontWeight: 700,
               }}>
                 {done ? '✓' : i + 1}
               </div>

@@ -84,6 +84,6 @@
   to   { opacity: 1; }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .ck-drawer, .ck-drawer-lg { width: 100vw; border-left: none; }
 }
