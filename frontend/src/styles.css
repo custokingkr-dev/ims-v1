@@ -164,9 +164,21 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-main { margin-left: var(--ck-sidebar-rail); flex: 1; min-width: 0; }
 .ck-sidebar.pinned ~ .ck-main { margin-left: var(--ck-sidebar-expanded); }
 
-/* pin toggle button (visible only when expanded/pinned) */
+/* Pin toggle: painted only when the rail is open, but always in the tab order.
+   It used to be `display: none` until `.ck-sidebar:has(:focus-visible)` fired —
+   and that condition cannot become true until focus is already PAST the pin's
+   position in the DOM, so forward Tab could never land on it. Hiding it with
+   opacity instead keeps it focusable, and focusing it is itself what fires
+   :has(:focus-visible): the rail expands and the pin paints in the same frame
+   as its focus ring. `pointer-events: none` while transparent so the invisible
+   26x26 box cannot swallow a click meant for the header underneath, and the
+   26x26 layout size is kept in every state so it never reads as an undersized
+   target (WCAG 2.5.8). At <=768px sidebar.css still removes it outright — the
+   drawer has no rail to pin. */
 .ck-sb-pin {
-  display: none;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
   align-items: center; justify-content: center;
   width: 26px; height: 26px;
   border: none; background: transparent;
@@ -177,7 +189,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   top: 14px; right: 10px;
 }
 .ck-sb-pin:hover { background: var(--bg); color: var(--ink2); }
-.ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-pin { display: flex; }
+.ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-pin { opacity: 1; pointer-events: auto; }
 .ck-sb-pin[aria-pressed="true"] { color: var(--g); }
 
 .ck-sb-header { padding: 16px 12px 12px; border-bottom: 1px solid var(--border); position: relative; }

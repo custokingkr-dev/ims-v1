@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,6 +42,39 @@ const SaAllOrdersPanel = lazy(() => import('./workspace/panels/SaAllOrdersPanel'
 const SaNewOrderPanel = lazy(() => import('./workspace/panels/SaNewOrderPanel').then((module) => ({ default: module.SaNewOrderPanel })));
 const SaSchoolsPanel = lazy(() => import('./workspace/panels/SaSchoolsPanel').then((module) => ({ default: module.SaSchoolsPanel })));
 const SaInvoicesPanel = lazy(() => import('./workspace/panels/SaInvoicesPanel').then((module) => ({ default: module.SaInvoicesPanel })));
+
+/**
+ * Mirrors the drawer breakpoint in styles/sidebar.css. Below it the sidebar is
+ * an off-canvas modal drawer over a backdrop; at or above it the very same
+ * <aside> is a persistent, non-modal icon rail. Every modal behaviour below —
+ * role="dialog", aria-modal, the focus trap, inerting the page behind it — is
+ * gated on this, because applying any of it to the desktop rail would tell a
+ * screen-reader user the whole workspace had disappeared behind a dialog.
+ */
+const DRAWER_BREAKPOINT = '(max-width: 768px)';
+
+const FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+/**
+ * Focusable descendants that are actually rendered.
+ *
+ * The rendered filter is load-bearing rather than defensive: the drawer always
+ * contains controls that CSS has removed at this breakpoint (.ck-sb-pin) or
+ * that a collapsed accordion group hides (.ck-nav-item), and a trap whose
+ * first/last handles point at a `display: none` button parks focus on nothing
+ * at the wrap-around and silently drops the user back onto <body>.
+ */
+function focusableWithin(root: HTMLElement): HTMLElement[] {
+  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+    .filter((el) => el.getClientRects().length > 0);
+}
 
 export default function UnifiedWorkspacePage() {
   const { user, logout } = useAuth();
@@ -99,6 +132,87 @@ export default function UnifiedWorkspacePage() {
   const [rejectReason, setRejectReason] = useState('');
   const [designApprovingSaving, setDesignApprovingSaving] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement | null>(null);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const menuToggleRef = useRef<HTMLButtonElement | null>(null);
+  const sidebarCloseRef = useRef<HTMLButtonElement | null>(null);
+  // matchMedia is guarded rather than assumed: jsdom (vitest) does not
+  // implement it, and an unguarded call would take down every test that mounts
+  // the workspace rather than just the drawer behaviour.
+  const [isDrawerViewport, setIsDrawerViewport] = useState(
+    () => (typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(DRAWER_BREAKPOINT).matches
+      : false),
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(DRAWER_BREAKPOINT);
+    const sync = (event: MediaQueryList | MediaQueryListEvent) => setIsDrawerViewport(event.matches);
+    sync(query);
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
+  /** The sidebar is a modal drawer only while it is open AND below the breakpoint. */
+  const drawerIsModal = sidebarOpen && isDrawerViewport;
+
+  // ── Modal drawer focus management ──────────────────────────────────────────
+  // Opening the drawer used to leave focus on .ck-menu-toggle, so a keyboard
+  // user had to tab through the entire (still interactive) page behind the
+  // backdrop to reach the nav they had just opened.
+  useEffect(() => {
+    if (!drawerIsModal) return;
+    const drawer = sidebarRef.current;
+    if (!drawer) return;
+    const main = mainRef.current;
+
+    // Nothing behind the backdrop is reachable while the drawer is open.
+    // Applied as a raw attribute because React 18's JSX types do not know
+    // `inert`; the DOM property landed in React 19.
+    main?.setAttribute('inert', '');
+    (sidebarCloseRef.current ?? drawer).focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSidebarOpen(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const focusables = focusableWithin(drawer);
+      if (focusables.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const inside = !!active && drawer.contains(active);
+      if (event.shiftKey) {
+        if (!inside || active === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (!inside || active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      main?.removeAttribute('inert');
+      // Hand focus back to whatever opened the drawer. Skipped when the drawer
+      // stopped being modal because the viewport grew past the breakpoint — the
+      // toggle is display:none up there and focusing it would silently dump
+      // focus on <body>.
+      const toggle = menuToggleRef.current;
+      const active = document.activeElement;
+      const focusIsLoose = !active || active === document.body || drawer.contains(active);
+      if (toggle && toggle.getClientRects().length > 0 && focusIsLoose) toggle.focus();
+    };
+  }, [drawerIsModal]);
+
   const [pinned, setPinned] = useState(() => {
     try { return localStorage.getItem('ck_nav_pinned') === '1'; } catch { return false; }
   });
@@ -419,8 +533,16 @@ export default function UnifiedWorkspacePage() {
         aria-hidden="true"
       />
       <aside
+        ref={sidebarRef}
         id="ck-sidebar-nav"
         className={`ck-sidebar${sidebarOpen ? ' open' : ''}${pinned ? ' pinned' : ''}`}
+        // Modal semantics only while this really is a drawer. On desktop the
+        // same element is a persistent rail and must keep its complementary
+        // landmark role.
+        role={drawerIsModal ? 'dialog' : undefined}
+        aria-modal={drawerIsModal ? true : undefined}
+        aria-label={drawerIsModal ? 'Navigation menu' : undefined}
+        tabIndex={drawerIsModal ? -1 : undefined}
       >
         <div className="ck-sb-header">
           <div className="ck-sb-monogram" aria-hidden>CK</div>
@@ -441,6 +563,7 @@ export default function UnifiedWorkspacePage() {
             {pinned ? <PanelLeftClose size={16} strokeWidth={2} aria-hidden /> : <PanelLeft size={16} strokeWidth={2} aria-hidden />}
           </button>
           <button
+            ref={sidebarCloseRef}
             className="ck-sb-close"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation menu"
@@ -505,9 +628,10 @@ export default function UnifiedWorkspacePage() {
         </div>
       </aside>
 
-      <main className="ck-main">
+      <main className="ck-main" ref={mainRef}>
         <div className="ck-topbar">
           <button
+            ref={menuToggleRef}
             className="ck-menu-toggle"
             onClick={() => setSidebarOpen(v => !v)}
             aria-label="Open navigation menu"
