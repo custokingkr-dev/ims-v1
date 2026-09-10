@@ -18,7 +18,7 @@
 .ck-sidebar-backdrop {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.38);
+  background: var(--ck-bg-overlay);
   z-index: calc(var(--ck-z-drawer) - 1);
   backdrop-filter: blur(2px);
 }
@@ -104,13 +104,16 @@
 }
 .ck-sb-close:hover { background: var(--ck-bg-app); color: var(--ck-text-primary); }
 
+/* 768px stays a literal: custom properties are invalid in media query
+   CONDITIONS. The drawer WIDTH inside the block is a property value, so it
+   tokenises normally. */
 @media (max-width: 768px) {
   .ck-menu-toggle { display: flex; }
 
   .ck-sidebar {
     position: fixed !important;
     top: 0; left: 0; bottom: 0;
-    width: 272px !important;
+    width: var(--ck-sidebar-drawer) !important;
     z-index: var(--ck-z-drawer);
     transform: translateX(-100%);
     transition: transform var(--ck-duration-slow) var(--ck-ease-out);
@@ -134,12 +137,35 @@
 
   /* drawer: always full labels, no icon-rail, no hover-expand */
   .ck-sidebar:hover { box-shadow: var(--ck-shadow-popover); }
-  .ck-nav-label, .ck-nav-group-header, .ck-sb-logo, .ck-school-name,
+  .ck-nav-label, .ck-sb-logo, .ck-school-name,
   .ck-school-meta, .ck-sb-school-badge, .ck-user-card-details { opacity: 1 !important; height: auto !important; }
   .ck-sb-monogram { display: none; }
   .ck-nav-item { justify-content: flex-start !important; padding: 9px 16px !important; gap: 11px !important; }
   .ck-nav-label { width: auto !important; overflow: visible !important; }
-  .ck-sidebar:not(:hover) .ck-nav-group-header { height: auto; padding: 12px 16px 4px; opacity: 1; }
+
+  /* Group headers keep their full box in the drawer, which has no icon-rail to
+     collapse into. This has to out-score the collapsed-rail rule in styles.css:
+
+       .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-nav-group-header
+         { height: 0; padding: 0; overflow: hidden; opacity: 0; }
+
+     `:has()` lends its argument's specificity to the `:not()` that wraps it, so
+     that selector scores (0,5,0) — two classes above the plain
+     `.ck-sidebar:not(:hover) …` this replaces. `height` and `opacity` were
+     being clawed back with !important above while `padding` silently kept
+     losing, which is exactly why the header shrank to its 18px text box and
+     failed WCAG 2.5.8's 24x24 target size. Restore all four properties in one
+     place instead, and repeat `.ck-sidebar` on the first branch so it wins at
+     (0,6,0) on specificity rather than on !important or on stylesheet import
+     order. The second branch covers the rail states the collapsed-rail rule
+     does not match at all. */
+  .ck-sidebar.ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-nav-group-header,
+  .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-nav-group-header {
+    height: auto;
+    padding: 12px 16px 4px;
+    overflow: visible;
+    opacity: 1;
+  }
   /* accordion works on touch: the drawer has no icon-rail, so a closed group hides its
      items directly (the desktop rule is :hover-gated, which never fires on touch). */
   .ck-nav-group.closed .ck-nav-item { display: none; }

@@ -777,7 +777,7 @@ Require-Text $CodeQlWorkflow @(
   "java-kotlin",
   "javascript-typescript",
   "security-extended",
-  "github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4"
+  "github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4"
 )
 Require-Text $ContainerWorkflow @(
   "Trivy HIGH/CRITICAL gate",
@@ -791,7 +791,7 @@ $approvedActionPins = @{
   "actions/checkout@v4"                 = "11d5960a326750d5838078e36cf38b85af677262"
   "actions/checkout@v7"                 = "3d3c42e5aac5ba805825da76410c181273ba90b1"
   "actions/checkout@v7.0.1"             = "3d3c42e5aac5ba805825da76410c181273ba90b1"
-  "actions/setup-java@v5"               = "b6effb05e454b25005698d916606bdc6ffcbf961"
+  "actions/setup-java@v6.0.0"           = "dd06d9cba3e5552c54d9f8ea23572deb30010f7c"
   "actions/setup-node@v7"               = "820762786026740c76f36085b0efc47a31fe5020"
   "actions/upload-artifact@v4"          = "ea165f8d65b6e75b540449e92b4886f43607fa02"
   "actions/upload-artifact@v7"          = "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
@@ -800,7 +800,7 @@ $approvedActionPins = @{
   "docker/build-push-action@v7"         = "53b7df96c91f9c12dcc8a07bcb9ccacbed38856a"
   "docker/login-action@v4"              = "dbcb813823bdd20940b903addbd779551569679f"
   "docker/setup-buildx-action@v4"       = "37fe631027851001ddb9b187196cc803df7f5f0e"
-  "github/codeql-action@v4"             = "ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd"
+  "github/codeql-action@v4"             = "cdf488f595d80d6e07e03d4674febd5ab45fa938"
   "gitleaks/gitleaks-action@v3"         = "e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e"
   "google-github-actions/auth@v3"       = "7c6bc770dae815cd3e89ee6cdf493a5fab2cc093"
   "google-github-actions/setup-gcloud@v3" = "aa5489c8933f4cc7a4f7d45035b3b1440c9c10db"

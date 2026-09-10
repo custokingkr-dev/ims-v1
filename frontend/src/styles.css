@@ -139,54 +139,87 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .workspace-shell { display:flex; min-height:100vh; }
 /* ── Left nav: hover-to-expand icon rail (desktop) ───────────────────────── */
 .ck-sidebar {
-  width: 64px;
+  width: var(--ck-sidebar-rail);
   background: var(--ck-bg-surface);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   position: fixed; top: 0; left: 0; bottom: 0;
   overflow-x: hidden; overflow-y: auto;
-  transition: width .18s ease;
-  z-index: 40;
+  transition: width var(--ck-duration-base) var(--ck-ease-out);
+  /* Same element is the desktop rail and the mobile drawer, so it sits on one
+     layer: above the topbar (20) and content dropdowns (30), below the modal
+     (60). The backdrop is pinned to --ck-z-drawer - 1 so it always lands
+     directly beneath it. */
+  z-index: var(--ck-z-drawer);
 }
 .ck-sidebar:hover, .ck-sidebar:has(:focus-visible) {
-  width: 248px;
-  box-shadow: 2px 0 16px rgba(0,0,0,.08);
+  width: var(--ck-sidebar-expanded);
+  box-shadow: var(--ck-shadow-rail);
 }
 .ck-sidebar.pinned {
-  width: 248px;
+  width: var(--ck-sidebar-expanded);
   box-shadow: none;
 }
-.ck-main { margin-left: 64px; flex: 1; min-width: 0; }
-.ck-sidebar.pinned ~ .ck-main { margin-left: 248px; }
+/* margin-left MUST track .ck-sidebar's width above — same tokens, both states */
+.ck-main { margin-left: var(--ck-sidebar-rail); flex: 1; min-width: 0; }
+.ck-sidebar.pinned ~ .ck-main { margin-left: var(--ck-sidebar-expanded); }
 
-/* pin toggle button (visible only when expanded/pinned) */
+/* Pin toggle: painted only when the rail is open, but always in the tab order.
+   It used to be `display: none` until `.ck-sidebar:has(:focus-visible)` fired —
+   and that condition cannot become true until focus is already PAST the pin's
+   position in the DOM, so forward Tab could never land on it. Hiding it with
+   opacity instead keeps it focusable, and focusing it is itself what fires
+   :has(:focus-visible): the rail expands and the pin paints in the same frame
+   as its focus ring. `pointer-events: none` while transparent so the invisible
+   26x26 box cannot swallow a click meant for the header underneath, and the
+   26x26 layout size is kept in every state so it never reads as an undersized
+   target (WCAG 2.5.8). At <=768px sidebar.css still removes it outright — the
+   drawer has no rail to pin. */
 .ck-sb-pin {
-  display: none;
+  display: flex;
+  opacity: 0;
+  pointer-events: none;
   align-items: center; justify-content: center;
   width: 26px; height: 26px;
   border: none; background: transparent;
-  border-radius: 6px;
+  border-radius: var(--ck-radius-sm);
   color: var(--ink3);
   cursor: pointer;
   position: absolute;
   top: 14px; right: 10px;
 }
 .ck-sb-pin:hover { background: var(--bg); color: var(--ink2); }
-.ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-pin { display: flex; }
+.ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-pin { opacity: 1; pointer-events: auto; }
 .ck-sb-pin[aria-pressed="true"] { color: var(--g); }
 
 .ck-sb-header { padding: 16px 12px 12px; border-bottom: 1px solid var(--border); position: relative; }
+/* The `font:` shorthand is split into longhands here: a var() survives inside
+   the shorthand but silently voids the whole declaration if the token is ever
+   renamed. line-height is declared explicitly because the shorthand used to
+   reset it to `normal`; longhands alone would inherit the 24px body value and
+   make the wordmark ~2px taller. font-family stays var(--ck-font-heading). */
 .ck-sb-monogram {
-  width: 40px; height: 40px; border-radius: 10px;
+  width: 40px; height: 40px; border-radius: var(--ck-radius-md);
   background: var(--g1); color: var(--g);
   display: flex; align-items: center; justify-content: center;
-  font: 700 15px var(--ck-font-heading); letter-spacing: -.02em;
+  font-family: var(--ck-font-heading);
+  font-size: var(--ck-text-md);
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: -.02em;
 }
-.ck-sb-logo { font: 400 19px var(--ck-font-heading); color: var(--g); letter-spacing: -.02em; }
-.ck-school-name { margin-top: 6px; font-size: 12px; font-weight: 700; }
-.ck-school-meta { font-size: 11px; color: var(--ink3); }
+.ck-sb-logo {
+  font-family: var(--ck-font-heading);
+  font-size: var(--ck-text-lg);
+  font-weight: 400;
+  line-height: normal;
+  color: var(--g);
+  letter-spacing: -.02em;
+}
+.ck-school-name { margin-top: 6px; font-size: var(--ck-text-xs); font-weight: 700; }
+.ck-school-meta { font-size: var(--ck-text-xs); color: var(--ink3); }
 /* collapsed: show monogram, hide wordmark/name/badge */
-.ck-sb-logo, .ck-school-name, .ck-school-meta, .ck-sb-school-badge { opacity: 0; transition: opacity .12s ease; }
+.ck-sb-logo, .ck-school-name, .ck-school-meta, .ck-sb-school-badge { opacity: 0; transition: opacity var(--ck-duration-fast) var(--ck-ease-out); }
 .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-logo, .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-school-name,
 .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-school-meta, .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-school-badge { opacity: 1; }
 .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-monogram { display: none; }
@@ -202,10 +235,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   width: 100%; border: none; background: transparent; cursor: pointer;
   padding: 12px 16px 4px; color: var(--ink3);
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  /* 10px was below the 12px floor (WCAG 1.4.4 — px type ignores the browser's
+     font-size preference). At the floor this uppercase micro-label runs ~20%
+     wider, so tracking drops .08em -> .06em: at 12px that is 0.72px of spacing
+     against the old 0.8px, i.e. slightly tighter in absolute terms, which buys
+     most of the width back. Longest title ("Urgent Procurement") still clears
+     the 216px content box when expanded. */
+  font-size: var(--ck-text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
 }
 .ck-nav-group-header:hover { color: var(--ink2); }
-.ck-nav-chevron { transition: transform .15s ease; flex-shrink: 0; }
+.ck-nav-chevron { transition: transform var(--ck-duration-fast) var(--ck-ease-out); flex-shrink: 0; }
 .ck-nav-group.closed .ck-nav-chevron { transform: rotate(-90deg); }
 .ck-nav-group.fire .ck-nav-group-header { color: var(--or); }
 /* headers hidden in the collapsed rail */
@@ -220,7 +259,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   border-left: 2px solid transparent; white-space: nowrap;
 }
 .ck-nav-item > svg { flex-shrink: 0; }
-.ck-nav-label { transition: opacity .12s ease; }
+.ck-nav-label { transition: opacity var(--ck-duration-fast) var(--ck-ease-out); }
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-nav-item { justify-content: center; padding: 9px 0; gap: 0; }
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-nav-label { opacity: 0; width: 0; overflow: hidden; }
 .ck-nav-item:hover { background: var(--bg); }
@@ -234,9 +273,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-nav-group.closed .ck-nav-item { display: none; }
 
 /* user card */
-.ck-user-card { margin: 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--ck-bg-surface-raised); }
+.ck-user-card { margin: 12px; padding: 12px; border-radius: var(--ck-radius-md); border: 1px solid var(--border); background: var(--ck-bg-surface-raised); }
 .ck-user-name { font-weight: 700; margin-bottom: 4px; }
-.ck-user-card-details { transition: opacity .12s ease; }
+.ck-user-card-details { transition: opacity var(--ck-duration-fast) var(--ck-ease-out); }
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-user-card { margin: 12px 10px; padding: 8px; }
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-user-card-details { opacity: 0; height: 0; overflow: hidden; margin: 0; }
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-user-card-inner { justify-content: center; }
@@ -246,7 +285,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   .ck-sb-logo, .ck-school-name, .ck-school-meta { transition: none; }
 }
 
-.ck-user-meta { font-size:12px; color:var(--ink3); }
+.ck-user-meta { font-size:var(--ck-text-xs); color:var(--ink3); }
 .ck-badge-row { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 12px; }
 .ck-topbar { position:sticky; top:0; z-index:20; background:rgba(247,246,243,.94); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:11px 26px; display:flex; gap:10px; align-items:center; }
 .ck-topbar-title { flex:1; font:400 17px var(--ck-font-heading); }
