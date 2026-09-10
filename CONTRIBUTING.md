@@ -37,8 +37,9 @@ codex/<name> — individual features/fixes; branch from dev
 ## Local setup
 
 ```bash
-# Backend (no global Maven required — wrapper downloads Maven 3.9.9 on first run)
-cd backend
+# Backend (no global Maven required — wrapper downloads Maven 3.9.9 on first run).
+# Run from the REPOSITORY ROOT: it is a 5-module Maven reactor (services/*-service).
+# There is no `backend/` directory.
 APP_JWT_SECRET=your-32-char-secret \
 APP_AADHAR_SECRET=your-16-char-secret \
 SUPERADMIN_PASSWORD=your-password \
@@ -164,13 +165,35 @@ If a feature is not ready, keep it off the branch.
 
 ## Flyway migrations
 
-- Current highest migration: **V125**. New migrations must start at **V126+**.
+- **There is no global migration counter.** Each service — and within
+  `school-core-service`, `platform-service` and `operations-service`, each *schema* — has its
+  own independent Flyway sequence starting at `V1`. Twelve sequences exist today:
+
+  | Service | Schema | Highest |
+  |---|---|---|
+  | billing-service | (service root) | V7 |
+  | identity-service | (service root) | V6 |
+  | operations-service | firefighting | V11 |
+  | operations-service | workflow | V5 |
+  | platform-service | audit | V1 |
+  | platform-service | notification | V10 |
+  | platform-service | reporting | V29 |
+  | school-core-service | attendance | V9 |
+  | school-core-service | catalog | V8 |
+  | school-core-service | fee | V9 |
+  | school-core-service | student | V35 |
+  | school-core-service | tenant_school | V26 |
+
+  Always `ls` the target directory and take the next number **in that sequence**. Picking a
+  number from another sequence is silently destructive: a `V126` dropped into `catalog`
+  (highest `V8`) applies fine, and then every later `V9`…`V125` is ignored as out-of-order.
 - **Never modify an existing migration** after it has been applied to any environment.
-- Migration files: `backend/src/main/resources/db/migration/V<N>__<description>.sql`
-- Naming: `V126__add_notification_templates.sql` (underscores, lowercase words)
+- Migration files: `services/<service>/src/main/resources/db/migration/[<schema>/]V<N>__<description>.sql`
+- Naming: `V27__add_notification_templates.sql` (underscores, lowercase words)
 - Every migration must be idempotent where possible (use `IF NOT EXISTS`, `DO $$ ... $$`).
-- Test migrations locally: `mvn flyway:migrate` against a fresh DB, or via the
-  `db-migration-test` CI job.
+- Test migrations locally: `mvn flyway:migrate` against a fresh DB. (There is no
+  `db-migration-test` CI job; migrations are exercised by the Testcontainers integration
+  tests inside `service-test`.)
 
 ---
 
@@ -179,11 +202,14 @@ If a feature is not ready, keep it off the branch.
 ### Backend
 
 ```bash
-# Unit tests (no Docker required)
-cd backend && mvn test
+# Unit tests (no Docker required) — from the repository root
+./mvnw -B test
+
+# A single service
+./mvnw -B -pl services/school-core-service test
 
 # Integration tests (Testcontainers — Docker required)
-cd backend && mvn verify -Pci
+./mvnw -B verify -Pci
 ```
 
 - Unit tests: `*Test.java`, Mockito mocks.
@@ -205,15 +231,22 @@ cd frontend && npm run build   # TypeScript type-check + Vite production bundle
 1. Open your PR against `dev` (or `main` for hotfixes). `CI / PR` only runs for
    pull requests targeting `main` or `dev`.
 2. Fill in the PR template completely — incomplete PRs will be returned.
-3. CI must be green before review. `CI / PR` runs:
+3. CI must be green before review. **Not currently enforced** — `main` and `dev` have no
+   branch protection, so a red PR *can* be merged (and PR #228 was). Enabling the guard is
+   ready to go: see `docs/branch-protection-proposal.md` and
+   `scripts/enable-branch-protection.sh`. `CI / PR` runs:
    - `service-test` and `docker-build`, per affected service
    - `secret-scan`, `duplicate-class-drift`, `static-architecture-audits`,
      `privacy-technical-controls`, `promotion-source-policy`
    - CodeQL `analyze` runs from the separate `Security / CodeQL` workflow
    - Trivy runs inside `docker-build` on **every** pull request and fails the
      build on any HIGH or CRITICAL finding — not only on pushes to `main`
-4. One approval required from a code owner before merging.
-5. Squash-merge preferred to keep `main` history linear.
+4. **No approval is required or enforced today**, and there is no `CODEOWNERS` file. The
+   repository is effectively single-maintainer, so a required-review rule would deadlock
+   merges (GitHub forbids approving your own PR); the proposal above deliberately requires
+   passing status checks instead.
+5. Merge commits are enabled and are what `main` actually contains. Squash-merge is *not*
+   enforced, and `main` history is not linear.
 
 ---
 
@@ -226,7 +259,7 @@ cd frontend && npm run build   # TypeScript type-check + Vite production bundle
 - **No hardcoded role names** in business logic — see RBAC rules above.
 - **Validate all inputs** with Bean Validation (`@Valid`, `@NotBlank`, `@Size`, etc.) on
   every request DTO.
-- Dependency vulnerability suppressions (`backend/.owasp-suppressions.xml`) require:
+- Dependency vulnerability suppressions require:
   - A CVE ID or NVD reference
   - A written justification
   - An expiry date no more than 6 months out
