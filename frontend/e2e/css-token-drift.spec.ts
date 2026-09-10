@@ -107,3 +107,154 @@ test('status-tint borders resolve through a named token', () => {
 
   expect(offenders).toEqual([]);
 });
+
+/* ────────────────────────────────────────────────────────────────────────────
+ * Left-nav conformance.
+ *
+ * The colour guards above never looked at type, radius, motion or layer, so the
+ * nav could (and did) sit on 10px/11px font-sizes, hand-rolled 6px/10px radii,
+ * `.15s ease` and a bare `z-index: 40` while the rest of the app moved onto the
+ * token scale. These guards close that hole at the SOURCE level for the two
+ * files that own the nav. Deliberately not CSSOM-based: browsers normalise
+ * values in cssText (hex -> rgb(), and the `font:` shorthand is re-serialised),
+ * so a runtime check misses most of this.
+ *
+ * Scope is the nav-owned selector families, not whole files — styles.css is a
+ * 2k-line legacy sheet and this guard is not a licence to fail on unrelated
+ * rules. sidebar.css is nav-only, so all of it is in scope.
+ * ──────────────────────────────────────────────────────────────────────────── */
+
+const NAV_SELECTOR_PREFIXES = [
+  '.ck-sidebar',
+  '.ck-nav',
+  '.ck-sb-',
+  '.ck-user-',
+  '.ck-school-',
+  '.ck-menu-toggle',
+];
+
+type Rule = { file: string; selector: string; body: string };
+
+/** Rules owned by the left nav, across styles.css and styles/sidebar.css. */
+function navRules(): Rule[] {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+  const files = [join(root, 'styles.css'), join(root, 'styles', 'sidebar.css')];
+  const rules: Rule[] = [];
+
+  for (const path of files) {
+    const file = path.split(/[\/\\]/).pop()!;
+    // Strip comments first so commented-out values never trip a guard.
+    const css = readFileSync(path, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    // Innermost declaration blocks only. An `@media` prelude can never form a
+    // complete match (its body contains braces), so nested rules are picked up
+    // individually and at-rule preludes are skipped.
+    for (const [, selector, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const sel = selector.trim();
+      const isNav =
+        file === 'sidebar.css' ||
+        NAV_SELECTOR_PREFIXES.some((p) => sel.includes(p));
+      if (isNav && sel && !sel.startsWith('@')) rules.push({ file, selector: sel, body });
+    }
+  }
+  return rules;
+}
+
+function declarations(body: string): string[] {
+  return body
+    .split(';')
+    .map((d) => d.trim())
+    .filter(Boolean);
+}
+
+test('nav type sits on the rem scale, never on px', () => {
+  const offenders: string[] = [];
+
+  for (const { file, selector, body } of navRules()) {
+    for (const declaration of declarations(body)) {
+      const [property] = declaration.split(':');
+      const name = property.trim().toLowerCase();
+      // Both the longhand and the `font:` shorthand can smuggle in a px size.
+      if (name !== 'font-size' && name !== 'font') continue;
+      if (/\b\d*\.?\d+px\b/.test(declaration)) {
+        offenders.push(`${file} ${selector.slice(0, 48)} -> ${declaration}`);
+      }
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});
+
+test('nav radius, motion, elevation, scrim and layer resolve through tokens', () => {
+  const offenders: string[] = [];
+
+  const checks: Array<{ properties: string[]; pattern: RegExp; why: string }> = [
+    // 6px/10px/12px radii predate --ck-radius-*.
+    { properties: ['border-radius'], pattern: /\b\d*\.?\d+px\b/, why: 'use --ck-radius-*' },
+    // `.18s ease` / `.12s ease` / `.15s ease` predate --ck-duration-* / --ck-ease-*.
+    {
+      properties: ['transition', 'transition-duration', 'animation', 'animation-duration'],
+      pattern: /(^|[\s,(])\.?\d*\.?\d+m?s\b/,
+      why: 'use --ck-duration-*',
+    },
+    // A bare integer layer bypasses the --ck-z-* ordering.
+    { properties: ['z-index'], pattern: /^\s*-?\d+\s*$/, why: 'use --ck-z-*' },
+    // Raw colour in elevation/scrim/fill positions.
+    {
+      properties: ['box-shadow', 'background', 'background-color', 'color', 'border-color'],
+      pattern: /rgba?\(|#[0-9a-f]{3,8}\b/i,
+      why: 'use a --ck-shadow-* / --ck-bg-* / colour token',
+    },
+  ];
+
+  for (const { file, selector, body } of navRules()) {
+    for (const declaration of declarations(body)) {
+      const colon = declaration.indexOf(':');
+      if (colon < 0) continue;
+      const name = declaration.slice(0, colon).trim().toLowerCase();
+      const value = declaration.slice(colon + 1);
+      for (const check of checks) {
+        if (!check.properties.includes(name)) continue;
+        // `transition: none` and keyword-only values are fine.
+        if (check.pattern.test(value)) {
+          offenders.push(`${file} ${selector.slice(0, 40)} -> ${name}:${value.trim()} (${check.why})`);
+        }
+      }
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});
+
+/**
+ * The specific bug this pair of tokens exists to prevent: .ck-main's margin-left
+ * has to equal .ck-sidebar's width in BOTH the collapsed and the pinned state.
+ * When those were four separate literals (64px twice, 248px twice) nothing
+ * stopped one of them being edited alone.
+ */
+test('sidebar rail widths cannot drift from the .ck-main gutter', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+  const tokens = readFileSync(join(root, 'styles', 'tokens.css'), 'utf8');
+
+  for (const [name, value] of [
+    ['--ck-sidebar-rail', '64px'],
+    ['--ck-sidebar-expanded', '248px'],
+    ['--ck-sidebar-drawer', '272px'],
+  ]) {
+    expect(tokens).toMatch(new RegExp(`${name}:\\s*${value}\\s*;`));
+  }
+
+  const offenders: string[] = [];
+  for (const { file, selector, body } of navRules()) {
+    for (const declaration of declarations(body)) {
+      const colon = declaration.indexOf(':');
+      if (colon < 0) continue;
+      const name = declaration.slice(0, colon).trim().toLowerCase();
+      if (name !== 'width' && name !== 'margin-left') continue;
+      if (/\b(64|248|272)px\b/.test(declaration.slice(colon + 1))) {
+        offenders.push(`${file} ${selector.slice(0, 40)} -> ${declaration}`);
+      }
+    }
+  }
+
+  expect(offenders).toEqual([]);
+});

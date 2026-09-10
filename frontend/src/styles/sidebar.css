@@ -18,7 +18,7 @@
 .ck-sidebar-backdrop {
   display: none;
   position: fixed; inset: 0;
-  background: rgba(0,0,0,.38);
+  background: var(--ck-bg-overlay);
   z-index: calc(var(--ck-z-drawer) - 1);
   backdrop-filter: blur(2px);
 }
@@ -104,13 +104,16 @@
 }
 .ck-sb-close:hover { background: var(--ck-bg-app); color: var(--ck-text-primary); }
 
+/* 768px stays a literal: custom properties are invalid in media query
+   CONDITIONS. The drawer WIDTH inside the block is a property value, so it
+   tokenises normally. */
 @media (max-width: 768px) {
   .ck-menu-toggle { display: flex; }
 
   .ck-sidebar {
     position: fixed !important;
     top: 0; left: 0; bottom: 0;
-    width: 272px !important;
+    width: var(--ck-sidebar-drawer) !important;
     z-index: var(--ck-z-drawer);
     transform: translateX(-100%);
     transition: transform var(--ck-duration-slow) var(--ck-ease-out);
