@@ -56,6 +56,14 @@ class AttendanceRlsIntegrationTest {
                     "('r1','d1',101,10,'2024-01-10','y1','c1','s1','PRESENT')," +
                     "('r2','d1',102,10,'2024-01-10','y1','c1','s1','ABSENT')," +
                     "('r3','d2',201,20,'2024-01-11','y1','c1','s2','PRESENT')");
+
+            // Seed absentee_notifications (RLS since V8): school 10 (A) x2, school 20 (B) x1.
+            // Non-QUEUED status so the V9 policy-evidence check does not apply.
+            st.execute("INSERT INTO attendance.absentee_notifications " +
+                    "(id, school_id, student_id, class_id, section_id, academic_year_id, attendance_date, parent_contact, message, status) VALUES " +
+                    "('n1',10,101,'c1','s1','y1','2024-01-10','919000000001','m','SENT')," +
+                    "('n2',10,102,'c1','s1','y1','2024-01-10','919000000002','m','SENT')," +
+                    "('n3',20,201,'c1','s2','y1','2024-01-11','919000000003','m','SENT')");
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -153,6 +161,69 @@ class AttendanceRlsIntegrationTest {
     void dailyRows_noContext_seesNothing() throws Exception {
         TenantContext.clear();
         assertEquals(0, countDaily());
+    }
+
+    // ── absentee_notifications RLS assertions (as app_rt, NOBYPASSRLS) ─────────────
+
+    private long countAbsenteeNotifications() throws SQLException {
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT count(*) FROM attendance.absentee_notifications")) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+
+    @Test
+    void absenteeRows_schoolA_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        assertEquals(2, countAbsenteeNotifications());
+    }
+
+    @Test
+    void absenteeRows_schoolB_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        assertEquals(1, countAbsenteeNotifications());
+    }
+
+    @Test
+    void absenteeRows_superadmin_seesAll() throws Exception {
+        TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+        assertEquals(3, countAbsenteeNotifications());
+    }
+
+    @Test
+    void absenteeRows_noContext_seesNothing() throws Exception {
+        TenantContext.clear();
+        assertEquals(0, countAbsenteeNotifications());
+    }
+
+    @Test
+    void withCheck_blocksCrossTenantAbsenteeInsert() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            SQLException ex = assertThrows(SQLException.class, () -> st.execute(
+                    "INSERT INTO attendance.absentee_notifications " +
+                    "(id, school_id, student_id, class_id, section_id, academic_year_id, attendance_date, parent_contact, message, status) " +
+                    "VALUES ('nX',20,299,'c1','s2','y1','2024-01-12','919000000009','m','SENT')"));
+            assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
+        }
+    }
+
+    @Test
+    void crossTenantAbsenteeUpdate_isNoOp() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            int affected = st.executeUpdate("UPDATE attendance.absentee_notifications SET status='CANCELLED' WHERE school_id=20");
+            assertEquals(0, affected, "Cross-tenant UPDATE must be a silent no-op (RLS hides target rows)");
+        }
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT status FROM attendance.absentee_notifications WHERE id='n3'")) {
+            assertTrue(rs.next());
+            assertEquals("SENT", rs.getString(1));
+        }
     }
 
     @Test

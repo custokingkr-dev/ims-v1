@@ -43,6 +43,10 @@ class StudentRlsIntegrationTest {
             // Seed: school 10 (A) x2, school 20 (B) x1 — as owner (bypasses RLS).
             st.execute("INSERT INTO student.students (admission_no, full_name, school_id, class_id, section_id, academic_year_id) VALUES " +
                     "('A1','Alice',10,'c1','s1','y1'),('A2','Amy',10,'c1','s1','y1'),('B1','Bob',20,'c1','s1','y1')");
+            // Enrolment history (RLS since V9) is what a class/section transfer writes to:
+            // school 10 (A) x2, school 20 (B) x1.
+            st.execute("INSERT INTO student.student_enrollments (id, student_id, school_id, academic_year_id, class_id, section_id, status) " +
+                    "SELECT 'e-' || id, id, school_id, academic_year_id, class_id, section_id, 'ACTIVE' FROM student.students");
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -103,6 +107,70 @@ class StudentRlsIntegrationTest {
                     "INSERT INTO student.students (admission_no, full_name, school_id, class_id, section_id, academic_year_id) " +
                     "VALUES ('X1','Mallory',20,'c1','s1','y1')"));
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
+        }
+    }
+
+    // ── student_enrollments RLS assertions (as app_rt, NOBYPASSRLS) ────────────────
+
+    private long countEnrollments() throws SQLException {
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT count(*) FROM student.student_enrollments")) {
+            rs.next();
+            return rs.getLong(1);
+        }
+    }
+
+    @Test
+    void enrollments_schoolA_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        assertEquals(2, countEnrollments());
+    }
+
+    @Test
+    void enrollments_schoolB_seesOnlyItsRows() throws Exception {
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        assertEquals(1, countEnrollments());
+    }
+
+    @Test
+    void enrollments_superadmin_seesAll() throws Exception {
+        TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+        assertEquals(3, countEnrollments());
+    }
+
+    @Test
+    void enrollments_noContext_seesNothing() throws Exception {
+        TenantContext.clear();
+        assertEquals(0, countEnrollments());
+    }
+
+    @Test
+    void withCheck_blocksCrossTenantEnrollmentInsert() throws Exception {
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            SQLException ex = assertThrows(SQLException.class, () -> st.execute(
+                    "INSERT INTO student.student_enrollments (id, student_id, school_id, academic_year_id, class_id, section_id, status) " +
+                    "VALUES ('eX', 999, 20, 'y1', 'c1', 's1', 'ACTIVE')"));
+            assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
+        }
+    }
+
+    @Test
+    void crossTenantEnrollmentClose_isNoOp() throws Exception {
+        // The transfer path's closeActiveEnrollment UPDATE must not be able to end another school's enrolment.
+        TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            int affected = st.executeUpdate(
+                    "UPDATE student.student_enrollments SET status='ENDED', effective_to=CURRENT_DATE WHERE school_id=20");
+            assertEquals(0, affected, "Cross-tenant UPDATE must be a silent no-op (RLS hides target rows)");
+        }
+        TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+        try (Connection c = appRt.getConnection();
+             Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT status FROM student.student_enrollments WHERE school_id=20")) {
+            assertTrue(rs.next());
+            assertEquals("ACTIVE", rs.getString(1));
         }
     }
 
