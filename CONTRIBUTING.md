@@ -178,7 +178,7 @@ If a feature is not ready, keep it off the branch.
   | platform-service | audit | V1 |
   | platform-service | notification | V10 |
   | platform-service | reporting | V29 |
-  | school-core-service | attendance | V9 |
+  | school-core-service | attendance | V10 |
   | school-core-service | catalog | V8 |
   | school-core-service | fee | V9 |
   | school-core-service | student | V35 |

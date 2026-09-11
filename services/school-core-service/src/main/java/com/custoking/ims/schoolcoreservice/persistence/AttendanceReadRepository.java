@@ -508,9 +508,11 @@ public class AttendanceReadRepository {
                        sc.name AS class_name, ss.name AS section_name,
                        ar.status, COALESCE(ar.remarks, '') AS remarks,
                        COALESCE(NULLIF(s.father_contact, ''), NULLIF(s.phone, ''), '') AS parent_contact,
-                       EXISTS (SELECT 1 FROM %s an
-                                WHERE an.student_id = s.id AND an.attendance_date = :date) AS already_queued
-                FROM %s ar
+                       EXISTS (SELECT 1 FROM %1$s an
+                                WHERE an.student_id = s.id AND an.attendance_date = :date) AS already_queued,
+                       (SELECT an.status FROM %1$s an
+                         WHERE an.student_id = s.id AND an.attendance_date = :date) AS notification_status
+                FROM %2$s ar
                 JOIN student.students s ON s.id = ar.student_id AND s.deleted_at IS NULL
                 JOIN tenant_school.school_sections ss ON ss.id = ar.section_id
                 JOIN tenant_school.school_classes sc ON sc.id = ar.class_id
@@ -546,7 +548,10 @@ public class AttendanceReadRepository {
                     "remarks", rs.getString("remarks"),
                     "parentContact", parent,
                     "hasContact", parent != null && !parent.isBlank(),
-                    "alreadyQueued", rs.getBoolean("already_queued"));
+                    "alreadyQueued", rs.getBoolean("already_queued"),
+                    // Delivery state written by the absentee delivery worker (SENT, SENT_DRY_RUN,
+                    // FAILED, DEAD_LETTER, SUPPRESSED) or QUEUED; null when never queued.
+                    "notificationStatus", rs.getString("notification_status"));
         }).list();
     }
 

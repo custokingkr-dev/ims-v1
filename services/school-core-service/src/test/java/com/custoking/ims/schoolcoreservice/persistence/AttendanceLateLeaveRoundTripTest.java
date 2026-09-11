@@ -232,6 +232,32 @@ class AttendanceLateLeaveRoundTripTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void exceptions_surfaceTheDeliveryStatusOfAQueuedAbsenteeNotification() throws Exception {
+        repo.saveSectionRegister(Map.of(
+                "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,
+                "records", List.of(
+                        Map.of("studentId", 1, "status", "ABSENT", "remarks", ""),
+                        Map.of("studentId", 2, "status", "ABSENT", "remarks", ""))));
+        try (Connection c = ds.getConnection(); Statement st = c.createStatement()) {
+            st.execute("DELETE FROM attendance.absentee_notifications");
+            st.execute("""
+                    INSERT INTO attendance.absentee_notifications
+                        (id, school_id, student_id, class_id, section_id, academic_year_id, attendance_date,
+                         parent_contact, channel, message, status)
+                    VALUES ('n1', 1, 1, 'c1', 's1', 'y1', DATE '%s', '919999999999', 'WHATSAPP', 'm', 'SENT_DRY_RUN')
+                    """.formatted(DAY));
+        }
+
+        List<Map<String, Object>> rows = (List<Map<String, Object>>) repo.exceptions(DAY, "c1", "s1", 1L).get("students");
+
+        Map<String, Object> notified = rows.stream().filter(r -> Long.valueOf(1L).equals(r.get("studentId"))).findFirst().orElseThrow();
+        Map<String, Object> untouched = rows.stream().filter(r -> Long.valueOf(2L).equals(r.get("studentId"))).findFirst().orElseThrow();
+        assertThat(notified).containsEntry("alreadyQueued", true).containsEntry("notificationStatus", "SENT_DRY_RUN");
+        assertThat(untouched).containsEntry("alreadyQueued", false).containsEntry("notificationStatus", null);
+    }
+
+    @Test
     void unknownStatus_isRejected() {
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> repo.saveSectionRegister(Map.of(
                 "date", DAY.toString(), "classId", "c1", "sectionId", "s1", "schoolId", 1,

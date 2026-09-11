@@ -144,7 +144,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column;
   position: fixed; top: 0; left: 0; bottom: 0;
-  overflow-x: hidden; overflow-y: auto;
+  /* The column itself never scrolls. It used to be `overflow-y: auto`, which
+     made the header, the list AND the user card one scroll region, so the
+     card (and Sign out with it) sat below the fold in every measured state
+     (ADMIN expanded at 1280x800: 1032px of content in an 800px rail, Sign out
+     at y=963). .ck-nav below is now the only scroller: header and card are
+     pinned, the list flexes between them. */
+  overflow: hidden;
   transition: width var(--ck-duration-base) var(--ck-ease-out);
   /* Same element is the desktop rail and the mobile drawer, so it sits on one
      layer: above the topbar (20) and content dropdowns (30), below the modal
@@ -192,7 +198,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-sb-pin { opacity: 1; pointer-events: auto; }
 .ck-sb-pin[aria-pressed="true"] { color: var(--g); }
 
-.ck-sb-header { padding: 16px 12px 12px; border-bottom: 1px solid var(--border); position: relative; }
+.ck-sb-header { padding: 16px 12px 12px; border-bottom: 1px solid var(--border); position: relative; flex-shrink: 0; }
 /* The `font:` shorthand is split into longhands here: a var() survives inside
    the shorthand but silently voids the whole declaration if the token is ever
    renamed. line-height is declared explicitly because the shorthand used to
@@ -228,7 +234,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-school-meta,
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-sb-school-badge { height: 0; margin: 0; overflow: hidden; }
 
-.ck-nav { padding: 8px 0 16px; display: flex; flex-direction: column; gap: 2px; flex: 1; }
+/* The one scroll region of the rail. `min-height: 0` is what lets a flex
+   child shrink below its content and scroll instead of pushing the user card
+   out of the viewport; without it `flex: 1` alone changes nothing. */
+.ck-nav { padding: 8px 0 16px; display: flex; flex-direction: column; gap: 2px; flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; }
+/* Collapsed rail: no list scrollbar. Chromium on Windows reserves a 15px
+   classic scrollbar gutter, which in a 64px rail pushes the icon column to
+   x=24 while the monogram above and the avatar below sit at x=32 (measured
+   headed; the old whole-column scroller had the same 15px gutter and the same
+   misalignment). The collapsed rail cannot be pointed at without expanding
+   (:hover) or tabbed into without expanding (:has(:focus-visible)), so the
+   scrollbar is never an affordance here; the list still scrolls by wheel,
+   touch and keyboard, and the expanded states keep their scrollbar. */
+.ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-nav { scrollbar-width: none; }
 
 /* group header (accordion) */
 .ck-nav-group-header {
@@ -273,7 +291,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-sidebar:is(:hover, .pinned, :has(:focus-visible)) .ck-nav-group.closed .ck-nav-item { display: none; }
 
 /* user card */
-.ck-user-card { margin: 12px; padding: 12px; border-radius: var(--ck-radius-md); border: 1px solid var(--border); background: var(--ck-bg-surface-raised); }
+/* Pinned footer: sits outside .ck-nav's scroll region, so the avatar is always
+   at the bottom of the rail and Sign out is on screen whenever the rail is
+   expanded, however long the list is. */
+.ck-user-card { margin: 12px; padding: 12px; border-radius: var(--ck-radius-md); border: 1px solid var(--border); background: var(--ck-bg-surface-raised); flex-shrink: 0; }
 .ck-user-name { font-weight: 700; margin-bottom: 4px; }
 .ck-user-card-details { transition: opacity var(--ck-duration-fast) var(--ck-ease-out); }
 .ck-sidebar:not(:hover):not(.pinned):not(:has(:focus-visible)) .ck-user-card { margin: 12px 10px; padding: 8px; }
@@ -288,7 +309,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-user-meta { font-size:var(--ck-text-xs); color:var(--ink3); }
 .ck-badge-row { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 12px; }
 .ck-topbar { position:sticky; top:0; z-index:20; background:rgba(247,246,243,.94); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:11px 26px; display:flex; gap:10px; align-items:center; }
-.ck-topbar-title { flex:1; font:400 17px var(--ck-font-heading); }
+/* Was `font: 400 17px var(--ck-font-heading)`. 17px sits between --ck-text-md
+   (16, "default body") and --ck-text-lg (18); lg is the one that keeps this a
+   heading: at 16px the serif face's smaller x-height would read as body copy
+   set in a different font, and the shell's other serif element, the
+   .ck-sb-logo wordmark, is already lg/400 - the two now share a size.
+   Delta is +1px of type; measured with Fraunces loaded, the title box goes
+   21px -> 23px and the topbar 44px -> 46px (Chromium rounds the face's
+   ascent and descent to whole px at each size). line-height stays `normal`
+   explicitly: the shorthand reset it, and the longhands alone would inherit
+   the 24px body value instead. font-family is the serif heading stack on
+   purpose - owner-confirmed, keep it. */
+.ck-topbar-title {
+  flex: 1;
+  font-family: var(--ck-font-heading);
+  font-size: var(--ck-text-lg);
+  font-weight: 400;
+  line-height: normal;
+}
 .ck-content { padding:26px; }
 .ck-loading { min-height:100vh; display:grid; place-items:center; font-size:18px; }
 .ck-ph { margin-bottom:22px; display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }

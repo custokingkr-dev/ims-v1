@@ -164,9 +164,13 @@ public class AttendanceReadController {
         TenantScope.requirePermissionIfAuthenticated("attendance:manage");
         Long scope = TenantScope.resolveSchoolId(body.schoolId());
         requireAttendanceModule(scope);
-        LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
         Long actorId = TenantContext.get() != null ? TenantContext.get().userId() : null;
-        return execute(() -> attendance.notifyAbsentees(date, body.classId(), body.sectionId(), scope, actorId));
+        // Parse inside execute() so a malformed date is a 400 like every other date on this
+        // controller, not an unhandled DateTimeParseException (500).
+        return execute(() -> {
+            LocalDate date = body.date() == null || body.date().isBlank() ? LocalDate.now() : LocalDate.parse(body.date());
+            return attendance.notifyAbsentees(date, body.classId(), body.sectionId(), scope, actorId);
+        });
     }
 
     @GetMapping("/report/register")

@@ -268,6 +268,228 @@ class StudentGuardianForwardSyncIntegrationTest {
         assertParity(studentId);
     }
 
+    // ── the legacy projection is derived once, from the final guardian state ────
+    //
+    // students.father_name / father_contact / mother_name are a projection of the guardian
+    // ledger. A legacy save writes them directly and then syncs both relationships; the
+    // projection must agree with the guardian rows after the sync no matter which
+    // combination of father / mother changes the save carried.
+
+    @Test
+    void fatherOnlySave_projectsTheFatherAndLeavesTheMotherAbsent() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-F", "Father Only",
+                "Original Father", "9876500001", null);
+        long studentId = studentId(created);
+        assertThat(projection(studentId)).isEqualTo(new Projection("Original Father", "9876500001", null));
+
+        saveLegacy(created, "Renamed Father", "9876500002", null);
+
+        assertThat(guardian(studentId, "FATHER"))
+                .containsEntry("fullName", "Renamed Father")
+                .containsEntry("phone", "9876500002");
+        assertThat(guardianCount(studentId, "MOTHER")).isZero();
+        assertThat(projection(studentId)).isEqualTo(new Projection("Renamed Father", "9876500002", null));
+        assertParity(studentId);
+    }
+
+    @Test
+    void motherOnlySave_projectsTheMotherAndLeavesTheFatherAbsent() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-M", "Mother Only",
+                null, null, "Original Mother");
+        long studentId = studentId(created);
+        assertThat(guardianCount(studentId, "FATHER")).isZero();
+        String motherId = String.valueOf(guardian(studentId, "MOTHER").get("id"));
+
+        saveLegacy(created, null, null, "Renamed Mother");
+
+        assertThat(guardian(studentId, "MOTHER"))
+                .containsEntry("id", motherId)
+                .containsEntry("fullName", "Renamed Mother");
+        assertThat(guardianCount(studentId, "FATHER")).isZero();
+        assertThat(projection(studentId)).isEqualTo(new Projection(null, null, "Renamed Mother"));
+        assertParity(studentId);
+    }
+
+    @Test
+    void addingBothParentsInOneSave_projectsBoth() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-BOTH", "No Parents Yet",
+                null, null, null);
+        long studentId = studentId(created);
+        assertThat(guardianCount(studentId, "FATHER")).isZero();
+        assertThat(guardianCount(studentId, "MOTHER")).isZero();
+
+        saveLegacy(created, "New Father", "9876500003", "New Mother");
+
+        assertThat(guardian(studentId, "FATHER"))
+                .containsEntry("fullName", "New Father")
+                .containsEntry("phone", "9876500003")
+                .containsEntry("primary", true);
+        assertThat(guardian(studentId, "MOTHER"))
+                .containsEntry("fullName", "New Mother")
+                .containsEntry("primary", false);
+        assertThat(projection(studentId)).isEqualTo(new Projection("New Father", "9876500003", "New Mother"));
+        assertParity(studentId);
+    }
+
+    /**
+     * The data-loss bug: the FATHER sync used to rewrite the projection from the guardian rows
+     * before the MOTHER row existed, wiping the mother name the save had just written.
+     * The father's identity (and any consent recorded against it) must survive the edit.
+     */
+    @Test
+    void fatherChangedAndMotherAddedInOneSave_keepsTheMotherOnTheProjection() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-BUG", "Imported Child",
+                "Imported Father", "9876500004", null);
+        long studentId = studentId(created);
+        String fatherId = String.valueOf(guardian(studentId, "FATHER").get("id"));
+        jdbc.sql("""
+                        INSERT INTO student.student_consent_events
+                            (id, school_id, student_id, guardian_id, purpose, status,
+                             lawful_basis, notice_version, evidence_source)
+                        VALUES
+                            ('consent-combined-edit', :schoolId, :studentId, :guardianId,
+                             'STUDENT_PHOTO', 'GRANTED', 'CONSENT', 'notice-1', 'SIGNED_FORM')
+                        """)
+                .param("schoolId", schoolId).param("studentId", studentId).param("guardianId", fatherId)
+                .update();
+        String consentsBefore = consentSnapshot();
+
+        saveLegacy(created, "Corrected Father", "9876500005", "Added Mother");
+
+        assertThat(guardian(studentId, "FATHER"))
+                .containsEntry("id", fatherId)
+                .containsEntry("fullName", "Corrected Father")
+                .containsEntry("phone", "9876500005");
+        assertThat(guardian(studentId, "MOTHER")).containsEntry("fullName", "Added Mother");
+        assertThat(projection(studentId))
+                .isEqualTo(new Projection("Corrected Father", "9876500005", "Added Mother"));
+        assertThat(consentSnapshot()).isEqualTo(consentsBefore);
+        assertParity(studentId);
+    }
+
+    /**
+     * Mirror of the bug: with the early refresh, blanking the mother while the father changed
+     * resurrected the old mother name on the profile even though her guardian was unlinked.
+     */
+    @Test
+    void fatherChangedAndMotherRemovedInOneSave_dropsTheMotherFromTheProjection() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-MIRROR", "Child",
+                "Father", "9876500006", "Departing Mother");
+        long studentId = studentId(created);
+        String motherId = String.valueOf(guardian(studentId, "MOTHER").get("id"));
+
+        saveLegacy(created, "Renamed Father", "9876500007", null);
+
+        assertThat(guardianCount(studentId, "MOTHER")).isZero();
+        assertThat(guardianStatus(motherId)).isEqualTo("INACTIVE");
+        assertThat(projection(studentId)).isEqualTo(new Projection("Renamed Father", "9876500007", null));
+        assertParity(studentId);
+    }
+
+    @Test
+    void removingTheMother_unlinksHerAndClearsTheProjection() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-RM", "Child",
+                "Father", "9876500008", "Departing Mother");
+        long studentId = studentId(created);
+        String fatherId = String.valueOf(guardian(studentId, "FATHER").get("id"));
+        String motherId = String.valueOf(guardian(studentId, "MOTHER").get("id"));
+
+        saveLegacy(created, "Father", "9876500008", null);
+
+        assertThat(guardianCount(studentId, "MOTHER")).isZero();
+        assertThat(guardianStatus(motherId)).isEqualTo("INACTIVE");
+        assertThat(guardian(studentId, "FATHER")).containsEntry("id", fatherId);
+        assertThat(projection(studentId)).isEqualTo(new Projection("Father", "9876500008", null));
+        assertParity(studentId);
+    }
+
+    @Test
+    void resavingAnUnchangedForm_leavesGuardiansAndTheProjectionUntouched() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-IDEM", "Child",
+                "Father", "9876500009", "Mother");
+        long studentId = studentId(created);
+        String guardiansBefore = guardianLedgerSnapshot();
+        long versionBefore = studentVersion(studentId);
+        jdbc.sql("DELETE FROM tenant_school.outbox_events").update();
+
+        saveLegacy(created, "Father", "9876500009", "Mother");
+        saveLegacy(created, "Father", "9876500009", "Mother");
+
+        // No guardian re-created, re-versioned or unlinked; no link touched.
+        assertThat(guardianLedgerSnapshot()).isEqualTo(guardiansBefore);
+        assertThat(projection(studentId)).isEqualTo(new Projection("Father", "9876500009", "Mother"));
+        // One version bump per save (the caller's own UPDATE); the projection refresh adds none.
+        assertThat(studentVersion(studentId)).isEqualTo(versionBefore + 2);
+        // Only this student's own upsert events; nothing fanned out.
+        assertThat(upsertedStudentIds()).containsExactly(studentId, studentId);
+        assertParity(studentId);
+    }
+
+    /**
+     * The consequence of the bug: after the combined edit the modal re-read a NULL mother_name,
+     * so the next save (with nothing changed by the user) sent an empty motherName and the
+     * synchronizer unlinked the mother guardian for good. The form must round-trip cleanly.
+     */
+    @Test
+    void resavingTheFormAfterTheCombinedEdit_doesNotUnlinkTheMother() {
+        long schoolId = seedSchool();
+        Map<String, Object> created = createLegacy(schoolId, "PROJ-RESAVE", "Imported Child",
+                "Imported Father", "9876500010", null);
+        long studentId = studentId(created);
+        saveLegacy(created, "Corrected Father", "9876500011", "Added Mother");
+        String motherId = String.valueOf(guardian(studentId, "MOTHER").get("id"));
+
+        // Re-save exactly what the edit modal now reads back.
+        Map<String, Object> detail = students.workspaceStudentDetail(studentId);
+        saveLegacy(created, (String) detail.get("fatherName"), (String) detail.get("fatherContact"),
+                (String) detail.get("motherName"));
+
+        assertThat(guardianCount(studentId, "MOTHER")).isOne();
+        assertThat(guardian(studentId, "MOTHER"))
+                .containsEntry("id", motherId)
+                .containsEntry("fullName", "Added Mother");
+        assertThat(guardianStatus(motherId)).isEqualTo("ACTIVE");
+        assertThat(projection(studentId))
+                .isEqualTo(new Projection("Corrected Father", "9876500011", "Added Mother"));
+        assertParity(studentId);
+    }
+
+    /**
+     * Deferring the refresh must not lose the fan-out: a shared father identity edited through one
+     * sibling still re-projects onto the other sibling, whose own mother is left alone.
+     */
+    @Test
+    void fatherChangedAndMotherAdded_stillFansTheSharedFatherOutToTheSibling() {
+        long schoolId = seedSchool();
+        Map<String, Object> first = createLegacy(schoolId, "PROJ-SIB-1", "First Sibling",
+                "Shared Father", "9876500012", null);
+        Map<String, Object> second = createLegacy(schoolId, "PROJ-SIB-2", "Second Sibling",
+                "Shared Father", "9876500012", "Second Mother");
+        long firstId = studentId(first);
+        long secondId = studentId(second);
+        String sharedFatherId = shareFatherGuardian(schoolId, firstId, secondId);
+        jdbc.sql("DELETE FROM tenant_school.outbox_events").update();
+
+        saveLegacy(first, "Corrected Father", "9876500013", "First Mother");
+
+        assertThat(guardian(secondId, "FATHER")).containsEntry("id", sharedFatherId);
+        assertThat(projection(firstId))
+                .isEqualTo(new Projection("Corrected Father", "9876500013", "First Mother"));
+        assertThat(projection(secondId))
+                .isEqualTo(new Projection("Corrected Father", "9876500013", "Second Mother"));
+        assertThat(guardian(secondId, "MOTHER")).containsEntry("fullName", "Second Mother");
+        assertThat(upsertedStudentIds()).containsExactlyInAnyOrder(firstId, secondId);
+        assertParity(firstId);
+        assertParity(secondId);
+    }
+
     private static long seedSchool() {
         jdbc.sql("""
                         INSERT INTO tenant_school.schools
@@ -279,6 +501,122 @@ class StudentGuardianForwardSyncIntegrationTest {
                 .query(Long.class).single();
         schools.updateStructure(schoolId, 1, 1);
         return schoolId;
+    }
+
+    /** The student's own phone; the create response does not echo it, so both helpers share it. */
+    private static final String STUDENT_PHONE = "9999900099";
+
+    /** Creates a student through the legacy shape; null parent fields are simply omitted. */
+    private static Map<String, Object> createLegacy(long schoolId, String admissionNo, String fullName,
+                                                    String fatherName, String fatherContact, String motherName) {
+        Map<String, Object> request = new java.util.HashMap<>();
+        request.put("schoolId", schoolId);
+        request.put("fullName", fullName);
+        request.put("admissionNumber", admissionNo);
+        request.put("gradeLevel", "1");
+        request.put("sectionName", "A");
+        request.put("phone", STUDENT_PHONE);
+        if (fatherName != null) request.put("fatherName", fatherName);
+        if (fatherContact != null) request.put("fatherContact", fatherContact);
+        if (motherName != null) request.put("motherName", motherName);
+        return students.createStudent(request);
+    }
+
+    /** Saves the edit form for a created student, changing only the legacy parent fields. */
+    private static void saveLegacy(Map<String, Object> created,
+                                   String fatherName, String fatherContact, String motherName) {
+        Map<String, Object> request = new java.util.HashMap<>();
+        request.put("schoolId", created.get("schoolId"));
+        request.put("fullName", created.get("fullName"));
+        request.put("admissionNumber", created.get("admissionNumber"));
+        request.put("classId", created.get("classId"));
+        request.put("sectionId", created.get("sectionId"));
+        request.put("phone", STUDENT_PHONE);
+        if (fatherName != null) request.put("fatherName", fatherName);
+        if (fatherContact != null) request.put("fatherContact", fatherContact);
+        if (motherName != null) request.put("motherName", motherName);
+        students.updateStudent(studentId(created), request);
+    }
+
+    private static long studentId(Map<String, Object> created) {
+        return ((Number) created.get("id")).longValue();
+    }
+
+    /** The legacy columns as the parity view compares them: trimmed, blank folded to null. */
+    private record Projection(String fatherName, String fatherContact, String motherName) {
+    }
+
+    private static Projection projection(long studentId) {
+        return jdbc.sql("""
+                        SELECT NULLIF(btrim(COALESCE(father_name, '')), '') AS father_name,
+                               NULLIF(btrim(COALESCE(father_contact, '')), '') AS father_contact,
+                               NULLIF(btrim(COALESCE(mother_name, '')), '') AS mother_name
+                        FROM student.students WHERE id = :studentId
+                        """)
+                .param("studentId", studentId)
+                .query((rs, rowNum) -> new Projection(
+                        rs.getString("father_name"), rs.getString("father_contact"), rs.getString("mother_name")))
+                .single();
+    }
+
+    private static long guardianCount(long studentId, String relationship) {
+        return jdbc.sql("""
+                        SELECT count(*) FROM student.student_guardians
+                        WHERE student_id = :studentId AND relationship = :relationship
+                        """)
+                .param("studentId", studentId).param("relationship", relationship)
+                .query(Long.class).single();
+    }
+
+    private static String guardianStatus(String guardianId) {
+        return jdbc.sql("SELECT status FROM student.guardians WHERE id = :guardianId")
+                .param("guardianId", guardianId).query(String.class).single();
+    }
+
+    private static long studentVersion(long studentId) {
+        return jdbc.sql("SELECT version FROM student.students WHERE id = :studentId")
+                .param("studentId", studentId).query(Long.class).single();
+    }
+
+    /** Every guardian and link row, including version and updated_at, so a no-op must be byte-identical. */
+    private static String guardianLedgerSnapshot() {
+        return jdbc.sql("""
+                        SELECT concat(
+                            (SELECT COALESCE(jsonb_agg(to_jsonb(g) ORDER BY g.id)::text, '[]') FROM student.guardians g),
+                            '|',
+                            (SELECT COALESCE(jsonb_agg(to_jsonb(l) ORDER BY l.id)::text, '[]') FROM student.student_guardians l))
+                        """).query(String.class).single();
+    }
+
+    private static List<Long> upsertedStudentIds() {
+        return jdbc.sql("""
+                        SELECT aggregate_id::bigint FROM tenant_school.outbox_events
+                        WHERE event_type = 'student.upserted.v1'
+                        ORDER BY id
+                        """).query(Long.class).list();
+    }
+
+    /** Re-points {@code toStudent}'s FATHER link at {@code fromStudent}'s father guardian (siblings). */
+    private static String shareFatherGuardian(long schoolId, long fromStudent, long toStudent) {
+        String sharedGuardianId = String.valueOf(guardian(fromStudent, "FATHER").get("id"));
+        String replacedGuardianId = String.valueOf(guardian(toStudent, "FATHER").get("id"));
+        jdbc.sql("DELETE FROM student.student_guardians WHERE student_id = :studentId AND guardian_id = :guardianId")
+                .param("studentId", toStudent).param("guardianId", replacedGuardianId).update();
+        jdbc.sql("DELETE FROM student.guardians WHERE id = :guardianId")
+                .param("guardianId", replacedGuardianId).update();
+        jdbc.sql("""
+                        INSERT INTO student.student_guardians
+                            (id, school_id, student_id, guardian_id, relationship, is_primary,
+                             receives_notifications, can_view_academic, can_manage_fees,
+                             pickup_authorized, created_at, updated_at, version)
+                        VALUES
+                            (:id, :schoolId, :studentId, :guardianId, 'FATHER', true,
+                             true, true, false, false, now(), now(), 0)
+                        """)
+                .param("id", "shared-father-link-" + toStudent)
+                .param("schoolId", schoolId).param("studentId", toStudent)
+                .param("guardianId", sharedGuardianId).update();
+        return sharedGuardianId;
     }
 
     private static Map<String, Object> guardian(long studentId, String relationship) {

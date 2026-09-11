@@ -20,7 +20,17 @@ env     = "dev"
 # state file or older local tfvars cannot recreate an alert against the retired pre-split bucket name.
 storage_bucket_ids = ["custoking-dev-student-photos"]
 
-enable_uptime_checks = true
+# OFF in dev, and the reason is money, not noise. Measured 2026-09-03..2026-09-10 in custoking-dev:
+# every service receives exactly 4,040 requests a week -- six checker regions x 96 probes a day -- and
+# nothing else. Dev's Cloud SQL is stopped outside weekday hours, Spring Boot cannot start without it
+# ("Application run failed"), so each probe buys a fresh ~23-second failed JVM boot: 1,100-1,700
+# container startups a week PER SERVICE, 68% of probes answered 5xx, and INR ~83/day of Cloud Run CPU
+# (INR ~2,500/month, roughly two-thirds of dev's whole bill) spent proving that a database that is
+# meant to be off is off. Dev notifications are disabled anyway, so the probes were paging nobody.
+#
+# Turn on deliberately for a soak, then turn off again. If dev ever needs permanent probes, probe the
+# gateway and frontend only -- they start in ~5 s and do not need the database.
+enable_uptime_checks = false
 
 # The source project had a single channel, which fails the runbook's own primary-and-backup requirement.
 notification_email_addresses = {
@@ -58,6 +68,15 @@ cost_metric_bq_project    = "custoking-prod"
 cost_metric_scope_project = "custoking-dev"
 
 # Set the scope to "*" instead for a cumulative view: one labelled series per project in the export.
+
+# Spend tripwire, GROSS of credits. Dev's honest floor with probes off is roughly INR 35/day (Cloud SQL
+# micro on weekdays + storage, Artifact Registry, Secret Manager, the hourly cost job) -- about INR
+# 1,100/month -- so INR 2,000 leaves headroom for releases and still reports the cold-start loop above
+# at 188% the moment it comes back. This budget notifies even though enable_alert_notifications is
+# false: see budget.tf for why money is the exception.
+manage_billing_budget = true
+billing_account_id    = "014C0A-C6B9AF-5FABC0"
+monthly_budget_inr    = 2000
 
 # Cloud Scheduler is not offered in asia-south2, so the trigger runs from the nearest region that has it
 # and calls into the job's own region.

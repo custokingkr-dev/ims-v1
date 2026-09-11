@@ -1,0 +1,93 @@
+# Observability inputs for the production environment (custoking-prod).
+# Real *.tfvars are gitignored because they carry operator email addresses; copy this to
+# custoking-prod.tfvars and fill in the channels. This example is the only committed record of which
+# production switches are on -- keep it in step with the live file.
+#
+#   $tok = gcloud auth print-access-token
+#   $env:GOOGLE_OAUTH_ACCESS_TOKEN = $tok
+#   $env:USER_PROJECT_OVERRIDE     = "true"            # budgets: Cloud Billing needs a quota project
+#   $env:GOOGLE_BILLING_PROJECT    = "custoking-prod"  # or the budget calls 403 naming a random project
+#   terraform init -reconfigure `
+#     -backend-config="bucket=custoking-prod-terraform-state" `
+#     -backend-config="prefix=observability/prod" `
+#     -backend-config="access_token=$tok"
+#   terraform plan -var-file=custoking-prod.tfvars
+
+project = "custoking-prod"
+region  = "asia-south2"
+env     = "prod"
+
+enable_uptime_checks = true
+
+# Two channels, primary and backup. Both are Gmail today; see docs/alerting-remediation-plan.md for
+# why that is not adequate on its own and what to add.
+notification_email_addresses = {
+  primary = "REPLACE-primary@example.com"
+  backup  = "REPLACE-backup@example.com"
+}
+
+# Channels Terraform cannot create without a human -- SMS (phone verification), the Cloud Mobile App
+# (appears after sign-in), Slack (OAuth grant). Create in the Console, paste the resource names here.
+# These are attached to SPEND signals (budgets, spend-anomaly policies) in addition to the emails.
+# budget_notification_channel_ids = ["projects/custoking-prod/notificationChannels/REPLACE"]
+
+manage_compliance_logging     = true
+compliance_log_retention_days = 365
+
+max_instances_by_service = {
+  "frontend"            = 3
+  "identity-service"    = 2
+  "school-core-service" = 2
+  "operations-service"  = 2
+  "platform-service"    = 2
+  "billing-service"     = 2
+  "api-gateway"         = 3
+}
+
+enable_cost_metric_export = true
+storage_bucket_ids        = ["custoking-prod-student-photos"]
+
+# ---------------------------------------------------------------------------------------------------
+# Spend. Read budget.tf and spend_anomaly_alerts.tf before changing any of these.
+# ---------------------------------------------------------------------------------------------------
+manage_billing_budget = true
+billing_account_id    = "014C0A-C6B9AF-5FABC0"
+
+# Monthly GROSS budget for this project. Measured 2026-08-27..2026-09-09: INR 4,209/month, so the
+# default of 5,000 puts a normal month at ~84% and the 90% rule fires only on real drift.
+# monthly_budget_inr = 5000
+
+# Account-wide trial-credit runway budget (prod root only). The amount is the credit remaining at the
+# start date, read from Console -> Billing -> Credits; the balance is not available from any API.
+# Re-read and update both when the runway is re-based; set manage_trial_runway_budget = false once the
+# account has been upgraded off the free trial.
+# manage_trial_runway_budget = true
+# trial_credit_remaining_inr = 23300
+# trial_runway_start_date    = "2026-09-11"
+# trial_expiry_date          = "2026-11-16"
+
+# Spend-anomaly policies. Defaults are sized from measured September 2026 data; see variables.tf.
+# enable_spend_anomaly_alerts               = true
+# daily_spend_alert_inr                     = 300
+# billing_export_stale_hours                = 36
+# cloud_run_instance_seconds_per_hour_alert = 1800
+
+uptime_content_matchers = {
+  "frontend" = "Custoking"
+}
+
+enable_cost_analysis_collector = true
+enable_product_liveness_check  = true
+
+enable_aggregate_error_alert           = true
+enable_per_service_error_notifications = false
+enable_per_service_latency_incidents   = false
+
+# Shared dashboard, IAP-gated. The OAuth client ID is a public identifier, not a secret.
+enable_shared_dashboard        = true
+dashboard_image                = "asia-south2-docker.pkg.dev/custoking-prod/custoking/custoking-dashboard:v12"
+dashboard_viewers              = ["user:REPLACE-primary@example.com"]
+enable_dashboard_load_balancer = false
+dashboard_oauth_client_id      = "REPLACE.apps.googleusercontent.com"
+dashboard_allowed_emails       = ["REPLACE-primary@example.com"]
+dashboard_public_url           = "https://custoking-dashboard-prod-REPLACE-em.a.run.app"

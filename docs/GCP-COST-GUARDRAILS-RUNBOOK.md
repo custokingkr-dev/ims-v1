@@ -49,31 +49,80 @@ Before adding a school to prod, confirm:
 - Student photo bucket growth is expected and attributable.
 - No one has set `CLOUD_RUN_DOMAIN_MIN_INSTANCES` or `CLOUD_RUN_GATEWAY_MIN_INSTANCES` without a written reason.
 
+## Free-trial expiry -- READ FIRST
+
+Billing account `014C0A-C6B9AF-5FABC0`, which both `custoking-prod` and `custoking-dev` bill to, is a
+**Free Trial** account. The credit expires on **2026-11-16** (confirmed by the account owner and by
+Google billing support). Google's documented behaviour at trial end without an upgrade: every resource
+on the account is **stopped**, billing is disabled, and data is marked for deletion after a **30-day
+grace period**. For a product serving live schools that is a shutdown date, not a cost event.
+
+The trial also ends **early** if the credit is exhausted first. Measured 2026-09-11: INR ~23,300 of
+credit remained, combined burn was INR 262/day gross (~INR 240/day of credit draw once the monthly
+Cloud Run free tier is used up, which happens around the 5th), and 67 days remained -- a projected
+draw of INR ~16,500 against INR ~23,300. The margin is about one month of burn. A three-week runaway
+consumes it.
+
+**Upgrading has no downside.** Remaining credit stays usable until its original expiry. It needs the
+account owner in the Console: Billing -> account `014C0A-C6B9AF-5FABC0` -> Activate / Upgrade. No API,
+no gcloud, no automation can do it.
+
+What reminds us, in order of reliability:
+
+1. **A human calendar.** The account owner and the operator each hold three calendar events with
+   notifications: **2026-10-16** (one month out: upgrade now), **2026-11-02** (two weeks: confirm the
+   upgrade is done), **2026-11-09** (one week: if not upgraded, nothing else matters this week). This
+   is the primary mechanism. Everything below is a backstop, because every automated path here
+   depends on something that can silently stop -- a workflow on a branch, a channel in a project, an
+   export Google can break server-side.
+2. **The `trial-expiry-countdown` job** in `.github/workflows/gcp-cost-controls.yml`. Twice a day it
+   prints the countdown to the run summary; from 45 days out it keeps one open GitHub issue labelled
+   `trial-expiry` assigned to the repository owner; from 14 days it comments on that issue every run;
+   from 7 days it fails the workflow. Scheduled workflows run from `main`, so it is live only once
+   merged there.
+3. **The `custoking-trial-credit-runway-to-2026-11-16` budget** (Terraform, prod root). Account-wide,
+   custom period from the day the balance was read to the expiry date, amount = credit remaining,
+   thresholds at 50 / 75 / 90 / 100% of the runway. This is the only signal for the credit-exhaustion
+   path. Re-base `trial_credit_remaining_inr` and `trial_runway_start_date` together whenever the
+   balance is re-read from the Console.
+
+After the upgrade: close the issue, set `manage_trial_runway_budget = false`, remove the countdown job,
+and record the date here.
+
 ## Budget Setup
 
-The live project budget is `Custoking Monthly Guardrail`, INR 5,000/month. It must use
-`EXCLUDE_ALL_CREDITS` so temporary promotional credits cannot hide gross consumption.
+Budgets are Terraform-managed in `deploy/gcp/observability/budget.tf`; do not create or edit them in
+the Console. Two per-project monthly budgets plus the account-wide runway budget above:
 
-Maintain at least one project budget:
+| Budget | Scope | Amount | Thresholds |
+| --- | --- | --- | --- |
+| `custoking-prod-monthly` | project custoking-prod, calendar month, GROSS | INR 5,000 | 90%, 100%, 150% current; 100% forecast |
+| `custoking-dev-monthly` | project custoking-dev, calendar month, GROSS | INR 2,000 | same |
+| `custoking-trial-credit-runway-to-2026-11-16` | whole account, 2026-09-11..2026-11-16, net of every credit except the promotion | credit remaining | 50%, 75%, 90%, 100% current |
 
-- Scope: project `custoking`.
-- Alert thresholds: current spend 50%, 80%, and 100%; forecasted spend 100%.
-- Add a forecasted-spend alert if available.
-- Notification target: engineering plus the business owner who approves onboarding spend.
+**They must measure GROSS** (`credit_types_treatment = "EXCLUDE_ALL_CREDITS"`). This runbook has said
+so since it was written; the Terraform did not do it until 2026-09-11, and for the whole of August
+both budgets measured a net of exactly zero and could not fire. Verify, do not assume:
 
-Add a second budget filtered to Cloud SQL if the billing account supports the filter. Cloud SQL is the fixed-cost anchor, so it deserves separate visibility.
-
-Budget alerts do not stop spend. They are escalation triggers. Apply and verify the repository,
-bucket, secret-version, and budget controls with:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\apply-gcp-cost-controls.ps1
-powershell -ExecutionPolicy Bypass -File scripts\apply-gcp-cost-controls.ps1 -Apply
+```bash
+curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "x-goog-user-project: custoking-prod"   https://billingbudgets.googleapis.com/v1/billingAccounts/014C0A-C6B9AF-5FABC0/budgets   | grep -E '"displayName"|"creditTypesTreatment"|"units"'
 ```
 
-The guarded load wrapper queries this budget and the standard billing export before starting k6. It
-reserves headroom by requiring current gross spend plus the profile estimate to remain within 80% of
-the budget. `-AllowBudgetOverrun` requires explicit spending-owner approval and is recorded in evidence.
+Every `creditTypesTreatment` must read `EXCLUDE_ALL_CREDITS` or `INCLUDE_SPECIFIED_CREDITS`. Never
+`INCLUDE_ALL_CREDITS`.
+
+Sizing: the prod budget puts the measured run rate (INR 4,209/month, 2026-08-27..2026-09-09) at ~84%,
+so a normal month fires nothing and the 90% rule means ~7% real drift. Dev's honest floor with uptime
+probes off is ~INR 1,100/month; INR 2,000 leaves room for releases and still reports the cold-start
+loop (INR ~3,750/month) at 188%. Raise a budget when real load arrives, not when it alerts.
+
+Budget alerts do not stop spend. They are escalation triggers. They notify the operator email channels
+plus anything in `budget_notification_channel_ids`, and (unless `budget_notify_default_iam_recipients
+= false`) every Billing Account Administrator, which is a second path that survives the Monitoring
+channels being deleted.
+
+The faster signals -- one day's gross spend, export staleness, Cloud Run instance time -- are alert
+policies in `spend_anomaly_alerts.tf`; see that file and `deploy/gcp/observability/README.md`.
 
 ## Billing Export
 
@@ -88,8 +137,8 @@ SELECT
   sku.description AS sku,
   SUM(cost) AS cost,
   SUM(IFNULL((SELECT SUM(c.amount) FROM UNNEST(credits) c), 0)) AS credits
-FROM `BILLING_DATASET.gcp_billing_export_resource_v1_*`
-WHERE project.id = 'custoking'
+FROM `custoking-prod.billing_export.gcp_billing_export_resource_v1_*`
+WHERE project.id IN ('custoking-prod', 'custoking-dev')
 GROUP BY day, service, sku
 ORDER BY day DESC, cost DESC;
 ```
