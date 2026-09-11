@@ -13,6 +13,12 @@ import java.util.UUID;
  * Keeps the normalized guardian model in step while the student compatibility APIs still accept
  * the legacy father/mother columns. Normalized guardian writes continue to synchronize in the
  * opposite direction through {@link GuardianConsentRepository}.
+ *
+ * <p>The legacy columns on {@code student.students} are a projection of the guardian ledger. A
+ * legacy save writes them for the edited student itself; this synchronizer only re-derives them —
+ * for every student linked to a changed shared identity — <em>after</em> both relationships have
+ * been synced, so the projection always reflects the final guardian state rather than whichever
+ * relationship happened to sync first.</p>
  */
 final class LegacyGuardianSynchronizer {
 
@@ -37,27 +43,37 @@ final class LegacyGuardianSynchronizer {
                 .optional()
                 .orElseThrow(() -> new IllegalArgumentException("Student not found"));
 
-        Set<Long> affectedStudents = new LinkedHashSet<>();
-        Set<Long> projectionChanges = new LinkedHashSet<>();
-        for (SyncResult result : List.of(
-                syncRelationship(studentId, parents.schoolId(), "FATHER",
-                        parents.fatherName(), parents.fatherContact()),
-                syncRelationship(studentId, parents.schoolId(), "MOTHER",
-                        parents.motherName(), null))) {
-            affectedStudents.addAll(result.affectedStudentIds());
-            projectionChanges.addAll(result.projectionChangedStudentIds());
-        }
-        return new SyncResult(Set.copyOf(affectedStudents), Set.copyOf(projectionChanges));
+        // Sync every relationship before touching the projection. Refreshing after the FATHER
+        // step alone used to rewrite mother_name from a ledger that did not yet hold (or still
+        // held) the MOTHER row the same save was adding (or removing).
+        Set<String> changedGuardianIds = new LinkedHashSet<>();
+        syncRelationship(studentId, parents.schoolId(), "FATHER",
+                parents.fatherName(), parents.fatherContact())
+                .ifPresent(changedGuardianIds::add);
+        syncRelationship(studentId, parents.schoolId(), "MOTHER",
+                parents.motherName(), null)
+                .ifPresent(changedGuardianIds::add);
+        if (changedGuardianIds.isEmpty()) return SyncResult.none();
+
+        Set<Long> affectedStudents = linkedStudentIds(changedGuardianIds);
+        Set<Long> projectionChanges = refreshLegacyProjectionForLinkedStudents(changedGuardianIds);
+        return new SyncResult(affectedStudents, projectionChanges);
     }
 
-    private SyncResult syncRelationship(Long studentId, Long schoolId, String relationship,
-                                        String legacyName, String legacyPhone) {
+    /**
+     * Brings one relationship in line with the legacy values and reports the id of the shared
+     * guardian identity it changed, if any. Inserting a fresh guardian or unlinking one affects
+     * only this student, whose legacy columns the caller has already written, so neither needs
+     * the projection re-derived.
+     */
+    private Optional<String> syncRelationship(Long studentId, Long schoolId, String relationship,
+                                              String legacyName, String legacyPhone) {
         String name = trimmedOrNull(legacyName);
         String phone = trimmedOrNull(legacyPhone);
         boolean hasLegacyValue = name != null || ("FATHER".equals(relationship) && phone != null);
         if (!hasLegacyValue) {
             unlinkRelationship(studentId, schoolId, relationship);
-            return SyncResult.none();
+            return Optional.empty();
         }
 
         Optional<GuardianLink> existing = jdbc.sql("""
@@ -82,10 +98,11 @@ final class LegacyGuardianSynchronizer {
             return updateExisting(existing.get(), relationship, name, phone);
         }
         insertNew(studentId, schoolId, relationship, name, phone);
-        return SyncResult.none();
+        return Optional.empty();
     }
 
-    private SyncResult updateExisting(GuardianLink link, String relationship, String name, String phone) {
+    /** Returns the guardian id when the shared identity actually changed, else empty. */
+    private Optional<String> updateExisting(GuardianLink link, String relationship, String name, String phone) {
         OffsetDateTime now = OffsetDateTime.now();
         int updated;
         if ("FATHER".equals(relationship)) {
@@ -125,34 +142,32 @@ final class LegacyGuardianSynchronizer {
         }
         // The identity is shared, while relationship and permission fields belong to each link.
         // Preserve every link row and the guardian id referenced by append-only consent events.
-        if (updated == 0) return SyncResult.none();
-        Set<Long> affectedStudents = linkedStudentIds(link.guardianId());
-        Set<Long> projectionChanges = refreshLegacyProjectionForLinkedStudents(link.guardianId());
-        return new SyncResult(affectedStudents, projectionChanges);
+        return updated == 0 ? Optional.empty() : Optional.of(link.guardianId());
     }
 
-    private Set<Long> linkedStudentIds(String guardianId) {
+    private Set<Long> linkedStudentIds(Set<String> guardianIds) {
         return Set.copyOf(jdbc.sql("""
                         SELECT DISTINCT link.student_id
                         FROM student.student_guardians link
                         JOIN student.students student_row ON student_row.id = link.student_id
-                        WHERE link.guardian_id = :guardianId AND student_row.deleted_at IS NULL
+                        WHERE link.guardian_id IN (:guardianIds) AND student_row.deleted_at IS NULL
                         """)
-                .param("guardianId", guardianId)
+                .param("guardianIds", guardianIds)
                 .query(Long.class)
                 .list());
     }
 
     /**
-     * Rebuilds compatibility columns for every student connected to a changed shared identity.
+     * Rebuilds compatibility columns for every student connected to a changed shared identity,
+     * from the guardian rows as they stand once every relationship has been synced.
      * The three correlated selections intentionally match V24's ordering rules exactly.
      */
-    private Set<Long> refreshLegacyProjectionForLinkedStudents(String guardianId) {
+    private Set<Long> refreshLegacyProjectionForLinkedStudents(Set<String> guardianIds) {
         List<Long> changed = jdbc.sql("""
                         WITH affected_students AS (
                             SELECT DISTINCT student_id
                             FROM student.student_guardians
-                            WHERE guardian_id = :guardianId
+                            WHERE guardian_id IN (:guardianIds)
                         ), parent_values AS (
                             SELECT student_row.id,
                                    (SELECT guardian.full_name
@@ -199,7 +214,7 @@ final class LegacyGuardianSynchronizer {
                                    IS DISTINCT FROM NULLIF(btrim(COALESCE(parent.mother_name, '')), ''))
                         RETURNING student_row.id
                         """)
-                .param("guardianId", guardianId)
+                .param("guardianIds", guardianIds)
                 .query(Long.class)
                 .list();
         return Set.copyOf(changed);
