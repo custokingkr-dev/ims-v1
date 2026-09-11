@@ -122,6 +122,13 @@ test('status-tint borders resolve through a named token', () => {
  * Scope is the nav-owned selector families, not whole files — styles.css is a
  * 2k-line legacy sheet and this guard is not a licence to fail on unrelated
  * rules. sidebar.css is nav-only, so all of it is in scope.
+ *
+ * `.ck-topbar-` rides along: the topbar is the other half of the workspace
+ * shell, its `-school` / `-user` rules already live in sidebar.css, and
+ * `.ck-topbar-title` sat one line below the tokenised nav block on a
+ * `font: 400 17px …` shorthand that the nav pass flagged and left out of
+ * scope. The bare `.ck-topbar` container rule is deliberately NOT matched
+ * (no trailing hyphen): its translucent rgba() backdrop is its own question.
  * ──────────────────────────────────────────────────────────────────────────── */
 
 const NAV_SELECTOR_PREFIXES = [
@@ -131,6 +138,7 @@ const NAV_SELECTOR_PREFIXES = [
   '.ck-user-',
   '.ck-school-',
   '.ck-menu-toggle',
+  '.ck-topbar-',
 ];
 
 type Rule = { file: string; selector: string; body: string };

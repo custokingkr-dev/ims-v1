@@ -395,9 +395,15 @@ jobs:
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
 
+      # release-evidence/trivy is created here, unconditionally, and not only once every image has
+      # resolved. The images step writes each service's *_ref output as it goes, so when resolution
+      # threw part-way (no dev-approved image for a later service) the earlier services' Trivy steps
+      # still ran, found no directory, and each died on "failed to create output file" - the log ended
+      # on a scanner error 34 seconds after the real one. With the directory always present a scan can
+      # always write its evidence, and a resolution failure surfaces as itself.
       - name: Initialize release evidence
         shell: pwsh
-        run: New-Item -ItemType Directory -Force -Path release-evidence | Out-Null
+        run: New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
 
       - name: Ensure development database is running
         id: dev_database
@@ -697,9 +703,14 @@ jobs:
           Write-Host "Reused $($restored.Count) of $($cached.Count) verdicts."
           $global:LASTEXITCODE = 0
 
+      # Every scan and the aggregate gate below are additionally conditioned on the images step having
+      # succeeded. Its *_ref outputs are written per service inside the loop, so a throw on the fourth
+      # service leaves three refs set; `always()` alone then scanned those three (a registry pull each,
+      # billed egress) and the gate reported them as failures - on a job that had already failed with
+      # the real reason. Nothing valid exists to scan or enforce once resolution fails.
       - name: Trivy exact-digest HIGH/CRITICAL gate (identity-service)
         id: trivy_gate_identity
-        if: ${{ always() && steps.images.outputs.identity_ref != '' && steps.scan_cache.outputs.identity_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.identity_ref != '' && steps.scan_cache.outputs.identity_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -712,7 +723,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (identity-service)
         id: trivy_sarif_identity
-        if: ${{ always() && steps.images.outputs.identity_ref != '' && steps.scan_cache.outputs.identity_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.identity_ref != '' && steps.scan_cache.outputs.identity_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -725,7 +736,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (school-core-service)
         id: trivy_gate_school_core
-        if: ${{ always() && steps.images.outputs.school_core_ref != '' && steps.scan_cache.outputs.school_core_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.school_core_ref != '' && steps.scan_cache.outputs.school_core_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -738,7 +749,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (school-core-service)
         id: trivy_sarif_school_core
-        if: ${{ always() && steps.images.outputs.school_core_ref != '' && steps.scan_cache.outputs.school_core_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.school_core_ref != '' && steps.scan_cache.outputs.school_core_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -751,7 +762,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (operations-service)
         id: trivy_gate_operations
-        if: ${{ always() && steps.images.outputs.operations_ref != '' && steps.scan_cache.outputs.operations_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.operations_ref != '' && steps.scan_cache.outputs.operations_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -764,7 +775,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (operations-service)
         id: trivy_sarif_operations
-        if: ${{ always() && steps.images.outputs.operations_ref != '' && steps.scan_cache.outputs.operations_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.operations_ref != '' && steps.scan_cache.outputs.operations_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -777,7 +788,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (platform-service)
         id: trivy_gate_platform
-        if: ${{ always() && steps.images.outputs.platform_ref != '' && steps.scan_cache.outputs.platform_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.platform_ref != '' && steps.scan_cache.outputs.platform_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -790,7 +801,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (platform-service)
         id: trivy_sarif_platform
-        if: ${{ always() && steps.images.outputs.platform_ref != '' && steps.scan_cache.outputs.platform_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.platform_ref != '' && steps.scan_cache.outputs.platform_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -803,7 +814,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (billing-service)
         id: trivy_gate_billing
-        if: ${{ always() && steps.images.outputs.billing_ref != '' && steps.scan_cache.outputs.billing_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.billing_ref != '' && steps.scan_cache.outputs.billing_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -816,7 +827,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (billing-service)
         id: trivy_sarif_billing
-        if: ${{ always() && steps.images.outputs.billing_ref != '' && steps.scan_cache.outputs.billing_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.billing_ref != '' && steps.scan_cache.outputs.billing_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -829,7 +840,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (frontend)
         id: trivy_gate_frontend
-        if: ${{ always() && steps.images.outputs.frontend_ref != '' && steps.scan_cache.outputs.frontend_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.frontend_ref != '' && steps.scan_cache.outputs.frontend_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -842,7 +853,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (frontend)
         id: trivy_sarif_frontend
-        if: ${{ always() && steps.images.outputs.frontend_ref != '' && steps.scan_cache.outputs.frontend_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.frontend_ref != '' && steps.scan_cache.outputs.frontend_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -855,7 +866,7 @@ jobs:
 
       - name: Trivy exact-digest HIGH/CRITICAL gate (api-gateway)
         id: trivy_gate_api_gateway
-        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' && steps.scan_cache.outputs.api_gateway_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.api_gateway_ref != '' && steps.scan_cache.outputs.api_gateway_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -868,7 +879,7 @@ jobs:
 
       - name: Trivy exact-digest SARIF evidence (api-gateway)
         id: trivy_sarif_api_gateway
-        if: ${{ always() && steps.images.outputs.api_gateway_ref != '' && steps.scan_cache.outputs.api_gateway_cached != 'true' }}
+        if: ${{ always() && steps.images.outcome == 'success' && steps.images.outputs.api_gateway_ref != '' && steps.scan_cache.outputs.api_gateway_cached != 'true' }}
         continue-on-error: true
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -1006,7 +1017,7 @@ jobs:
           $global:LASTEXITCODE = 0
 
       - name: Enforce exact-digest Trivy gates and evidence
-        if: always()
+        if: ${{ always() && steps.images.outcome == 'success' }}
         shell: pwsh
         env:
           IDENTITY_REF: ${{ steps.images.outputs.identity_ref }}
