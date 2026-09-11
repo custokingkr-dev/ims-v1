@@ -309,7 +309,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-user-meta { font-size:var(--ck-text-xs); color:var(--ink3); }
 .ck-badge-row { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 12px; }
 .ck-topbar { position:sticky; top:0; z-index:20; background:rgba(247,246,243,.94); backdrop-filter:blur(10px); border-bottom:1px solid var(--border); padding:11px 26px; display:flex; gap:10px; align-items:center; }
-.ck-topbar-title { flex:1; font:400 17px var(--ck-font-heading); }
+/* Was `font: 400 17px var(--ck-font-heading)`. 17px sits between --ck-text-md
+   (16, "default body") and --ck-text-lg (18); lg is the one that keeps this a
+   heading: at 16px the serif face's smaller x-height would read as body copy
+   set in a different font, and the shell's other serif element, the
+   .ck-sb-logo wordmark, is already lg/400 - the two now share a size.
+   Delta is +1px of type; measured with Fraunces loaded, the title box goes
+   21px -> 23px and the topbar 44px -> 46px (Chromium rounds the face's
+   ascent and descent to whole px at each size). line-height stays `normal`
+   explicitly: the shorthand reset it, and the longhands alone would inherit
+   the 24px body value instead. font-family is the serif heading stack on
+   purpose - owner-confirmed, keep it. */
+.ck-topbar-title {
+  flex: 1;
+  font-family: var(--ck-font-heading);
+  font-size: var(--ck-text-lg);
+  font-weight: 400;
+  line-height: normal;
+}
 .ck-content { padding:26px; }
 .ck-loading { min-height:100vh; display:grid; place-items:center; font-size:18px; }
 .ck-ph { margin-bottom:22px; display:flex; justify-content:space-between; gap:16px; align-items:flex-start; }
