@@ -59,8 +59,11 @@ resource "google_monitoring_alert_policy" "daily_spend_jump" {
       threshold_value = var.daily_spend_alert_inr
       # The gauge is republished hourly and RISES through the day as export rows for "yesterday" land,
       # then drops when the calendar rolls and "yesterday" becomes a new, partial day. One sample over
-      # the line is the day's total exceeding the threshold; there is nothing to wait for.
-      duration = "0s"
+      # the line is the day's total exceeding the threshold; there is nothing to wait for. The API
+      # rejects "0s" whenever evaluation_missing_data is set explicitly ("must have a non-zero
+      # duration" -- seen on the 2026-09-11 apply), and 60s is far below the hourly sample interval,
+      # so it still fires on the first sample over the line.
+      duration = "60s"
 
       aggregations {
         alignment_period   = "3600s"
