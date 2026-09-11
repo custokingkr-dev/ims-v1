@@ -169,7 +169,8 @@ resource "google_billing_budget" "trial_runway" {
       "COMMITTED_USAGE_DISCOUNT",
       "COMMITTED_USAGE_DISCOUNT_DOLLAR_BASE",
       "SUBSCRIPTION_BENEFIT",
-      "RESELLER_MARGIN",
+      # RESELLER_MARGIN deliberately omitted: the API drops it on a direct (non-reseller) billing
+      # account, so listing it produced a perpetual plan diff (seen on the 2026-09-11 apply).
     ]
   }
 
