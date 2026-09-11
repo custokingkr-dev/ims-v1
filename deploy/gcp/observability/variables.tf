@@ -96,18 +96,147 @@ variable "billing_account_id" {
 
 variable "monthly_budget_inr" {
   description = <<-DESC
-    Monthly budget in INR for this environment's project.
+    Monthly budget in INR for this environment's project, measured GROSS (before credits).
 
-    Not a target and not a cap -- a tripwire. The measured zero-user floor for the whole platform is
-    about INR 4,450/month, of which prod is roughly INR 3,832 and 81.5% of that is one Cloud SQL
-    instance whose daily cost has a coefficient of variation of zero. So a normal month is close to
-    flat, and any real movement is either genuine growth or a defect.
+    Not a target and not a cap -- a tripwire. Measured 2026-08-27..2026-09-09 from the billing export:
+    custoking-prod INR 138.46/day = INR 4,209/month, of which 74% is one Cloud SQL db-g1-small whose
+    daily cost has a coefficient of variation of zero. A normal month is therefore close to flat, and
+    any real movement is either genuine growth or a defect.
 
-    The default leaves headroom over that floor while still firing well before a runaway becomes
-    expensive. Raise it deliberately when real load arrives rather than when it alerts.
+    The default puts the measured prod rate at ~84% of budget, so the 90% rule fires only on real
+    drift and never on a normal month. Raise it deliberately when real load arrives, not when it
+    alerts. Dev overrides this in its tfvars: dev's correct floor is a fraction of prod's.
   DESC
   type        = number
-  default     = 6000
+  default     = 5000
+}
+
+variable "budget_notification_channel_ids" {
+  description = <<-DESC
+    Additional Cloud Monitoring notification channel names that spend signals (budgets and the
+    spend-anomaly policies) notify, on top of the managed operator email channels.
+
+    Intended for channels that cannot be created by Terraform without a human in the loop -- SMS needs
+    phone verification in the Console, Slack needs an OAuth grant, and the Cloud Mobile App channel
+    appears only after the app is signed in. Create the channel in the Console, then paste its name
+    here: projects/<project>/notificationChannels/<id>.
+  DESC
+  type        = list(string)
+  default     = []
+}
+
+variable "budget_notify_default_iam_recipients" {
+  description = <<-DESC
+    Whether budget alerts also go to every Billing Account Administrator and Billing Account User.
+
+    That is a second delivery path that does not depend on a Cloud Monitoring channel existing, being
+    enabled, or the project it lives in surviving. For a two-person operation that redundancy is worth
+    more than the duplicate mail. Set false to silence it.
+  DESC
+  type        = bool
+  default     = true
+}
+
+variable "manage_trial_runway_budget" {
+  description = <<-DESC
+    Create the account-wide trial-credit runway budget. Only takes effect in the prod root (env=prod)
+    and only when manage_billing_budget is also true. Set false once the billing account has been
+    upgraded off the free trial and the credit question no longer exists.
+  DESC
+  type        = bool
+  default     = true
+}
+
+variable "trial_credit_remaining_inr" {
+  description = <<-DESC
+    Free-trial credit remaining, in INR, at trial_runway_start_date. Read it from Console -> Billing ->
+    Credits; the balance is not queryable through any API (consumption is, balance is not).
+
+    Default derivation, 2026-09-11: Google support reported INR 28,262.87 remaining on 2026-08-20; the
+    billing export shows INR 4,958.57 of promotion credit drawn from 2026-08-21 through 2026-09-10;
+    28,262.87 - 4,958.57 = 23,304.30, rounded down. If the 2026-08-20 figure was itself a day stale,
+    the true remainder is up to INR ~520 lower, which is inside the rounding of the 90% threshold.
+  DESC
+  type        = number
+  default     = 23300
+}
+
+variable "trial_runway_start_date" {
+  description = "First day the runway budget counts spend from, ISO date. Should match the day trial_credit_remaining_inr was read."
+  type        = string
+  default     = "2026-09-11"
+
+  validation {
+    condition     = can(regex("^\\d{4}-\\d{2}-\\d{2}$", var.trial_runway_start_date))
+    error_message = "trial_runway_start_date must be YYYY-MM-DD."
+  }
+}
+
+variable "trial_expiry_date" {
+  description = <<-DESC
+    The day the free trial on the billing account ends, ISO date. Confirmed by the account owner and by
+    Google billing support: 2026-11-16 for account 014C0A-C6B9AF-5FABC0. At this date, without an
+    upgrade, Google stops every resource on the account and marks data for deletion after a 30-day grace
+    period. This is a hard shutdown date for the product, not a cost event.
+  DESC
+  type        = string
+  default     = "2026-11-16"
+
+  validation {
+    condition     = can(regex("^\\d{4}-\\d{2}-\\d{2}$", var.trial_expiry_date))
+    error_message = "trial_expiry_date must be YYYY-MM-DD."
+  }
+}
+
+variable "enable_spend_anomaly_alerts" {
+  description = <<-DESC
+    Create the spend-anomaly alert policies in spend_anomaly_alerts.tf. The export-based ones need
+    enable_cost_metric_export; the Cloud Run instance-time one needs nothing.
+  DESC
+  type        = bool
+  default     = true
+}
+
+variable "daily_spend_alert_inr" {
+  description = <<-DESC
+    Gross spend for a single calendar day, in INR, above which the daily-spend-jump policy opens an
+    incident. Read from custom.googleapis.com/custoking/cost/gross_yesterday, so it lags the day it
+    describes by the billing export's delay (measured ~12 hours) and closes the day by around midday
+    UTC the next day.
+
+    Default is roughly 2.2x the measured prod rate (INR 138/day) and 2.4x dev's (INR 124/day). It is
+    deliberately above the heaviest normal release day observed (prod INR 203 on 2026-08-24) and
+    below the dev figure for 2026-08-25 (INR 309, when a 19 GB Artifact Registry egress spike landed)
+    -- that day is exactly what this policy exists to surface.
+  DESC
+  type        = number
+  default     = 300
+}
+
+variable "billing_export_stale_hours" {
+  description = <<-DESC
+    Hours since the last billing-export delivery above which the export is considered stale and the
+    spend figures untrustworthy. Google documents no latency guarantee; measured export lag here cycles
+    between ~2 and ~8 hours through the day. Thirty-six hours means a full missed daily cycle.
+  DESC
+  type        = number
+  default     = 36
+}
+
+variable "cloud_run_instance_seconds_per_hour_alert" {
+  description = <<-DESC
+    Project-wide sum of run.googleapis.com/container/billable_instance_time per hour, in seconds, above
+    which the instance-time-runaway policy opens an incident. This is the near-real-time spend signal:
+    Cloud Run is the only line that can move by an order of magnitude in an hour, and a single
+    instance that never scales to zero is 3,600 s/h.
+
+    Measured 2026-09-03..2026-09-10: custoking-prod averages ~200 s/h across all seven services; the
+    dev cold-start loop runs ~1,070 s/h. The default of 1,800 (half an instance, continuously) is nine
+    times prod's normal and sits above dev's known leak so that the leak is reported by the budget,
+    where it belongs, and not paged twice.
+  DESC
+  type        = number
+  default     = 1800
 }
 
 variable "uptime_failure_checker_quorum" {
