@@ -90,6 +90,18 @@ spec:
               value: ims-reporting-events-v1-dev # from-param: ${reporting_topic}-${env}
             - name: SCHOOL_CORE_OUTBOX_PUBSUB_PROJECT_ID
               value: custoking # from-param: ${project_id}
+            # Absentee-notification drainer. dry-run (default) performs every step except the real
+            # send and marks rows SENT_DRY_RUN. Flipping to live is a config change: set this to
+            # "live", wire NOTIFICATION_STATUS_TOKEN from secret notification-status-token-${env}
+            # (grant the runtime SA secretAccessor first), grant the runtime SA roles/run.invoker on
+            # custoking-platform-service-${env}, and supply ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME.
+            # platform-service's own MSG91 live block is a separate governance gate.
+            - name: ATTENDANCE_ABSENTEE_DELIVERY_MODE
+              value: dry-run
+            - name: PLATFORM_BASE_URL
+              value: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${platform_url}
+            - name: PLATFORM_CLOUD_RUN_AUTH
+              value: auto
             - name: GCP_PROJECT
               value: custoking # from-param: ${project_id}
             - name: GOOGLE_CLOUD_PROJECT

@@ -4,7 +4,11 @@ import api from '../../../services/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { todayIso } from '../utils';
-import type { AttendanceExceptionListResponse, NotifyAbsenteesResponse } from '../../../types/attendance';
+import type {
+  AbsenteeNotificationStatus,
+  AttendanceExceptionListResponse,
+  NotifyAbsenteesResponse,
+} from '../../../types/attendance';
 import { AttendancePagination } from './attendance/AttendancePagination';
 
 interface Props { schoolScopedParams?: { schoolId: number }; }
@@ -14,6 +18,25 @@ interface SectionOpt { id: string; name: string }
 function errMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message) return err.message;
   return (err as { response?: { data?: { message?: string } } })?.response?.data?.message || fallback;
+}
+
+/** What the delivery worker did with a queued row. Only SENT means a message actually went out. */
+function deliveryChip(status: AbsenteeNotificationStatus | null | undefined) {
+  switch (status) {
+    case 'SENT':
+      return <span className="ck-status sapproved">Sent</span>;
+    case 'SENT_DRY_RUN':
+      return <span className="ck-status sinfo" title="Delivery is in dry-run mode: every step ran except the actual message.">Sent (dry run)</span>;
+    case 'FAILED':
+      return <span className="ck-status spending" title="Delivery failed; the worker will retry.">Retrying</span>;
+    case 'DEAD_LETTER':
+      return <span className="ck-status srejected" title="Delivery failed after every retry.">Failed</span>;
+    case 'SUPPRESSED':
+      return <span className="ck-status sneutral" title="Guardian consent or preferences did not allow this message.">Suppressed</span>;
+    case 'QUEUED':
+    default:
+      return <span className="ck-status spending" title="Waiting for the background delivery worker.">Queued</span>;
+  }
 }
 
 export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
@@ -117,7 +140,9 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
       if (sectionId) body.sectionId = sectionId;
       const response = await api.post<NotifyAbsenteesResponse>('/attendance/absentees/notify', body);
       const result = response.data;
-      setToast(`Queued ${result.queued}; skipped ${result.skippedNoContact + result.skippedAlreadyQueued}.`);
+      // Queuing is not delivery: a background worker drains the queue and the per-row status below
+      // shows what actually happened.
+      setToast(`Queued ${result.queued} for delivery by the background worker; skipped ${result.skippedNoContact + result.skippedAlreadyQueued}. Refresh to see each row's delivery status.`);
       await load(date, classId, sectionId);
     } catch (err) {
       setError(errMessage(err, 'Could not queue notifications'));
@@ -239,7 +264,7 @@ export function AttendanceAbsenteePanel({ schoolScopedParams }: Props) {
                         {student.status !== 'ABSENT'
                           ? <span className="ck-status sneutral">Not required</span>
                           : student.alreadyQueued
-                          ? <span className="ck-status sapproved">Queued</span>
+                          ? deliveryChip(student.notificationStatus)
                           : student.hasContact
                             ? <span className="ck-status spending">Ready</span>
                             : <span className="ck-status sneutral">Unavailable</span>}

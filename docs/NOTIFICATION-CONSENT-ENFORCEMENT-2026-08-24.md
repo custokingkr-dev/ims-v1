@@ -37,10 +37,21 @@ Changing a guardian phone number or email address clears `contact_verified_at`, 
 form reposts the prior `contactVerified=true` value. The replacement destination therefore cannot
 inherit verification from the old address; it must be verified in a later unchanged-contact update.
 
-Platform-service deliberately does not query school-core's student schema. The only provider-bound
-contract currently admitted is `notification.requested.v1` / `fees.fee-reminder-requested.v1` /
-`FEE_REMINDER` / `fee-reminder.v1` for a guardian. All other event/category/template/recipient
-combinations fail closed. The v2 evidence binds the school, student, guardian, channel, normalized
+Platform-service deliberately does not query school-core's student schema. The provider-bound
+contracts currently admitted are `notification.requested.v1` with either
+`fees.fee-reminder-requested.v1` / `FEE_REMINDER` / `fee-reminder.v1` / `reminderRequestId` or
+(added 2026-09-11 with the absentee delivery worker)
+`attendance.absentee-notification-requested.v1` / `ABSENTEE_ALERT` / `absentee-alert.v1` /
+`absenteeRequestId`, always for a guardian. All other event/category/template/recipient
+combinations fail closed.
+
+The absentee contract arrives over HTTP (`POST /api/v1/internal/notifications/deliveries`, Cloud
+Run OIDC plus the shared notification service token) rather than Pub/Sub, because school-core's
+drainer re-evaluates `guardian-communications.v2` immediately before every attempt, including
+retries, and needs the outcome back on the queued row. The command reuses the persisted inbox and
+`NotificationInboxProcessor`, so the guard, row lock, delivery-attempt audit and terminal-state
+idempotency apply unchanged. school-core ships with `ATTENDANCE_ABSENTEE_DELIVERY_MODE=dry-run`,
+which never calls platform-service and marks rows `SENT_DRY_RUN`. The v2 evidence binds the school, student, guardian, channel, normalized
 destination SHA-256, source event, immutable consent event and notice version, evaluation time, and
 expiry. Platform compares every binding and rejects future, expired, or more-than-two-minute-old
 evidence before invoking the provider. Missing, invalid, stale, or mismatched evidence produces a

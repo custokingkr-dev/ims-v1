@@ -43,6 +43,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!-- Spring Boot 4.0 split RestClientAutoConfiguration (the RestClient.Builder bean the
+             absentee delivery gateway depends on) out of spring-boot-starter-web; identity and
+             platform already add it for the same reason. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.github.librepdf</groupId>
             <artifactId>openpdf</artifactId>
