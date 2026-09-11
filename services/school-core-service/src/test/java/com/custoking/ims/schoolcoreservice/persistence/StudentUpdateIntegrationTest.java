@@ -275,8 +275,8 @@ class StudentUpdateIntegrationTest {
     @Test
     @SuppressWarnings("unchecked")
     void workspaceDetail_roundTripsEveryFieldTheEditFormReadsAndWrites() {
-        // The mother is seeded at creation on purpose: adding her in the same save that changes the
-        // father trips a separate synchronizer bug — see addingAMother_whileTheFatherAlsoChanges_...
+        // The mother is seeded at creation; the combined father-change + mother-add save has its own
+        // regression test — see addingAMother_whileTheFatherAlsoChanges_...
         long asha = create(SCHOOL_A, "ADM-100", "Asha", "c1", "a1", "Meena");
 
         // Exactly the keys frontend/src/features/students/profileForm.ts sends on save.
@@ -350,25 +350,24 @@ class StudentUpdateIntegrationTest {
     }
 
     /**
-     * LIVE BUG (found 2026-09-11 while paying this test debt, verified against origin/dev):
+     * Regression for a data-loss bug found 2026-09-11 (reproduced against origin/dev):
      * {@code LegacyGuardianSynchronizer.syncFromLegacy} syncs FATHER then MOTHER. When the father
-     * guardian already exists and changes, {@code updateExisting} immediately runs
-     * {@code refreshLegacyProjectionForLinkedStudents}, which rewrites
+     * guardian already existed and changed, {@code updateExisting} immediately rewrote
      * {@code students.father_name/father_contact/mother_name} from the guardian tables — before the
-     * MOTHER guardian has been inserted — so {@code mother_name} is set to NULL. The MOTHER branch
-     * then {@code insertNew}s the guardian but never refreshes the projection. Result: the guardian
-     * row says "Meena Rao", the student row (read by the detail modal, exports and dim_student)
-     * says null, and {@code guardian_legacy_parity.mother_name_matches} is false. A second save
-     * from the now-empty form would unlink the mother guardian for good.
+     * MOTHER guardian had been inserted — so {@code mother_name} was set to NULL, and the MOTHER
+     * branch's {@code insertNew} never refreshed the projection. The guardian row said "Meena Rao",
+     * the student row (read by the detail modal and the student export; dim_student carries no
+     * mother_name) said null, and a second save from the now-empty form unlinked the mother
+     * guardian for good.
      *
      * <p>Typical trigger: a spreadsheet-imported student (father + phone, no mother) whose first
      * profile edit corrects the father's phone and fills in the mother's name.</p>
      *
-     * <p>Fix belongs in the synchronizer (defer projection refreshes until both relationships are
-     * synced), not in this test PR. Remove {@code @Disabled} once that lands.</p>
+     * <p>The synchronizer now syncs both relationships first and derives the projection once from
+     * the final guardian state; the full behaviour matrix lives in
+     * {@link StudentGuardianForwardSyncIntegrationTest}.</p>
      */
     @Test
-    @org.junit.jupiter.api.Disabled("Known bug: LegacyGuardianSynchronizer wipes students.mother_name when the father changes and the mother is new — see Javadoc")
     void addingAMother_whileTheFatherAlsoChanges_keepsHerOnTheProfile() {
         long asha = create(SCHOOL_A, "ADM-100", "Asha", "c1", "a1");
         Map<String, Object> request = update(SCHOOL_A, "ADM-100", "Asha", "c1", "a1");
