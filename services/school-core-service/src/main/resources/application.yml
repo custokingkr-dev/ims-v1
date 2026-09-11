@@ -103,6 +103,31 @@ attendance:
   read-token: ${ATTENDANCE_READ_TOKEN:}
   db:
     schema: ${ATTENDANCE_DB_SCHEMA:attendance}
+  # Background drainer for attendance.absentee_notifications (POST /attendance/absentees/notify only
+  # queues rows). dry-run performs every step except the real send and marks rows SENT_DRY_RUN; live
+  # hands each row to platform-service over HTTP (Cloud Run OIDC + shared service token) and needs
+  # platform.base-url and platform.notification-status-token below, validated at startup.
+  absentee-delivery:
+    mode: ${ATTENDANCE_ABSENTEE_DELIVERY_MODE:dry-run}
+    batch-size: ${ATTENDANCE_ABSENTEE_DELIVERY_BATCH_SIZE:25}
+    max-attempts: ${ATTENDANCE_ABSENTEE_DELIVERY_MAX_ATTEMPTS:6}
+    initial-backoff: ${ATTENDANCE_ABSENTEE_DELIVERY_INITIAL_BACKOFF:30s}
+    max-backoff: ${ATTENDANCE_ABSENTEE_DELIVERY_MAX_BACKOFF:30m}
+    fixed-delay-ms: ${ATTENDANCE_ABSENTEE_DELIVERY_FIXED_DELAY_MS:15000}
+    initial-delay-ms: ${ATTENDANCE_ABSENTEE_DELIVERY_INITIAL_DELAY_MS:20000}
+    # Approved MSG91 WhatsApp template name. Blank until the product owner supplies one; in live mode
+    # the provider would otherwise fall back to the contract template id, which MSG91 does not know.
+    whatsapp-template-name: ${ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME:}
+
+platform:
+  # platform-service peer for the live absentee delivery path. Unused in dry-run.
+  base-url: ${PLATFORM_BASE_URL:}
+  cloud-run-auth: ${PLATFORM_CLOUD_RUN_AUTH:auto}
+  # Same secret platform-service reads as notification.status.token (gates its internal
+  # notification routes). Wire secret notification-status-token-<env> when flipping to live.
+  notification-status-token: ${NOTIFICATION_STATUS_TOKEN:}
+  connect-timeout-ms: ${PLATFORM_CONNECT_TIMEOUT_MS:3000}
+  read-timeout-ms: ${PLATFORM_READ_TIMEOUT_MS:10000}
 
 fee:
   read-token: ${FEE_READ_TOKEN:}

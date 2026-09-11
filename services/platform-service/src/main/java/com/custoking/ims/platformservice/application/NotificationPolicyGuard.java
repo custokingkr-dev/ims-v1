@@ -9,6 +9,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -20,6 +21,21 @@ final class NotificationPolicyGuard {
     private static final String POLICY_VERSION = "guardian-communications.v2";
     private static final Duration MAX_EVIDENCE_AGE = Duration.ofMinutes(2);
     private static final Duration FUTURE_CLOCK_SKEW = Duration.ofSeconds(30);
+
+    /**
+     * The producer contracts admitted to reach a provider. Each binds one source event type to one
+     * category, one template and one request-id field; every other combination fails closed. Adding
+     * a contract here is a reviewed change, not configuration.
+     */
+    private record AdmittedContract(String sourceEventType, String notificationType, String template,
+                                    String requestIdField) {
+    }
+
+    private static final List<AdmittedContract> ADMITTED_CONTRACTS = List.of(
+            new AdmittedContract("fees.fee-reminder-requested.v1", "FEE_REMINDER", "fee-reminder.v1",
+                    "reminderRequestId"),
+            new AdmittedContract("attendance.absentee-notification-requested.v1", "ABSENTEE_ALERT",
+                    "absentee-alert.v1", "absenteeRequestId"));
 
     private final Clock clock;
 
@@ -33,16 +49,15 @@ final class NotificationPolicyGuard {
 
     void requireAllowed(NotificationInboxEvent event, JsonNode payload) {
         requireExact(event.getEventType(), "notification.requested.v1", "POLICY_EVENT_TYPE_INVALID");
-        requireExact(text(payload, "sourceEventType"), "fees.fee-reminder-requested.v1",
-                "POLICY_SOURCE_EVENT_TYPE_INVALID");
-        requireExact(text(payload, "notificationType"), "FEE_REMINDER", "POLICY_CATEGORY_INVALID");
-        requireExact(text(payload, "template"), "fee-reminder.v1", "POLICY_TEMPLATE_INVALID");
+        AdmittedContract contract = admittedContract(text(payload, "sourceEventType"));
+        requireExact(text(payload, "notificationType"), contract.notificationType(), "POLICY_CATEGORY_INVALID");
+        requireExact(text(payload, "template"), contract.template(), "POLICY_TEMPLATE_INVALID");
         requireExact(text(payload, "recipientType"), "GUARDIAN", "POLICY_RECIPIENT_TYPE_INVALID");
 
         String sourceEventId = required(payload, "sourceEventId", "POLICY_SOURCE_EVENT_ID_MISSING");
         if (!sourceEventId.equals(event.getEventId())) deny("POLICY_SOURCE_EVENT_ID_MISMATCH");
-        String reminderRequestId = required(payload, "reminderRequestId", "POLICY_REQUEST_ID_MISSING");
-        if (!sourceEventId.equals(reminderRequestId)) deny("POLICY_REQUEST_ID_MISMATCH");
+        String requestId = required(payload, contract.requestIdField(), "POLICY_REQUEST_ID_MISSING");
+        if (!sourceEventId.equals(requestId)) deny("POLICY_REQUEST_ID_MISMATCH");
 
         JsonNode evidence = payload.get("policyEvidence");
         if (evidence == null || !evidence.isObject()) deny("POLICY_EVIDENCE_MISSING");
@@ -86,6 +101,14 @@ final class NotificationPolicyGuard {
         }
         if (evaluatedAt.isBefore(now.minus(MAX_EVIDENCE_AGE))) deny("POLICY_EVIDENCE_STALE");
         if (!expiresAt.isAfter(now)) deny("POLICY_EVIDENCE_EXPIRED");
+    }
+
+    private static AdmittedContract admittedContract(String sourceEventType) {
+        for (AdmittedContract contract : ADMITTED_CONTRACTS) {
+            if (contract.sourceEventType().equals(sourceEventType)) return contract;
+        }
+        deny("POLICY_SOURCE_EVENT_TYPE_INVALID");
+        return null;
     }
 
     private static void requireExact(String actual, String expected, String reasonCode) {

@@ -109,6 +109,19 @@ export interface AttendanceSummaryReport {
   overall: { presentCount: number; lateCount: number; leaveCount: number; absentCount: number; presentPercent: number };
 }
 
+/**
+ * Delivery lifecycle of a queued absentee notification, written by the school-core delivery worker.
+ * SENT is reserved for a real, non-dry-run provider send; SENT_DRY_RUN means every step ran except
+ * the actual message.
+ */
+export type AbsenteeNotificationStatus =
+  | 'QUEUED'
+  | 'SENT'
+  | 'SENT_DRY_RUN'
+  | 'FAILED'
+  | 'DEAD_LETTER'
+  | 'SUPPRESSED';
+
 export interface AbsenteeStudent {
   studentId: number;
   fullName: string;
@@ -118,6 +131,8 @@ export interface AbsenteeStudent {
   parentContact: string;
   hasContact: boolean;
   alreadyQueued: boolean;
+  /** null when no notification has been queued for this student on this date. */
+  notificationStatus?: AbsenteeNotificationStatus | null;
 }
 export interface AbsenteeListResponse {
   date: string;
