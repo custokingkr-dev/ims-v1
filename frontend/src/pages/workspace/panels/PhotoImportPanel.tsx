@@ -46,7 +46,7 @@ export function PhotoImportPanel() {
   const [schoolId, setSchoolId] = useState<number | ''>('');
   const [driveFolderUrl, setDriveFolderUrl] = useState('');
   const [batches, setBatches] = useState<ImportBatch[]>([]);
-  const [batch, setBatch] = useState<ImportBatch | null>(null);
+  const [loadedBatch, setBatch] = useState<ImportBatch | null>(null);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [filter, setFilter] = useState<RowFilter>('ALL');
   const [busy, setBusy] = useState('');
@@ -59,7 +59,10 @@ export function PhotoImportPanel() {
   const [executionPauseRequested, setExecutionPauseRequested] = useState(false);
   const executionPauseRequestedRef = useRef(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
+  const scopeRef = useRef({ schoolId, controller: new AbortController() });
 
+  const batch = loadedBatch?.schoolId === schoolId ? loadedBatch : null;
+  const schoolBatches = batches.filter(item => item.schoolId === schoolId);
   const selectedSchool = context?.schools?.find(school => school.id === Number(schoolId));
   const duplicateNames = useMemo(
     () => duplicateSchoolNames(context?.schools || []),
@@ -74,13 +77,37 @@ export function PhotoImportPanel() {
     [rows],
   );
 
+  const resetWorkspace = () => {
+    setBatch(null);
+    setRows([]);
+    setAccess(null);
+    setRecoveryProgress(null);
+    setOperationProgress(null);
+    setPreview(null);
+    setEditing(null);
+    setExecutionConfirmed(false);
+    setFilter('ALL');
+    setNotice(null);
+  };
+
+  const changeSchool = (nextSchoolId: number) => {
+    if (nextSchoolId === scopeRef.current.schoolId) return;
+    // Invalidate synchronously: a response may settle before the school effect runs.
+    scopeRef.current.controller.abort();
+    resetWorkspace();
+    setBatches([]);
+    setDriveFolderUrl('');
+    setBusy('');
+    setSchoolId(nextSchoolId);
+  };
+
   const loadContext = async () => {
     setBusy('context');
     try {
       const response = await api.get<ImportContext>('/student-photo-imports/context', PHOTO_IMPORT_REQUEST_CONFIG);
       setContext(response.data);
       const firstSchool = response.data.schools[0];
-      if (firstSchool) setSchoolId(current => current || firstSchool.id);
+      if (firstSchool && !scopeRef.current.schoolId) changeSchool(firstSchool.id);
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
     } finally {
@@ -88,22 +115,28 @@ export function PhotoImportPanel() {
     }
   };
 
-  const loadBatches = async (selectedId: number, signal?: AbortSignal) => {
+  const loadBatches = async (selectedId: number) => {
+    const scope = scopeRef.current;
+    const { signal } = scope.controller;
+    if (signal.aborted || selectedId !== scope.schoolId) return;
     try {
       const response = await api.get<ImportBatch[]>('/student-photo-imports', {
         ...PHOTO_IMPORT_REQUEST_CONFIG,
         signal,
         params: { schoolId: selectedId },
       });
-      if (signal?.aborted) return;
-      setBatches(response.data || []);
+      if (signal.aborted) return;
+      setBatches((response.data || []).filter(item => item.schoolId === selectedId));
     } catch (error) {
-      if (signal?.aborted || (error as { code?: string })?.code === 'ERR_CANCELED') return;
+      if (signal.aborted || (error as { code?: string })?.code === 'ERR_CANCELED') return;
       setNotice({ tone: 'bad', text: errorMessage(error) });
     }
   };
 
   const refreshDetail = async (id: string, options: { resetFilter?: boolean; showBusy?: boolean; showError?: boolean } = {}) => {
+    const scope = scopeRef.current;
+    const { signal } = scope.controller;
+    if (signal.aborted) return null;
     if (options.showBusy) setBusy('detail');
     try {
       const response = await api.get<{
@@ -113,8 +146,12 @@ export function PhotoImportPanel() {
         recoveryProgress?: RecoveryProgress;
       }>(
         `/student-photo-imports/${id}`,
-        PHOTO_IMPORT_REQUEST_CONFIG,
+        { ...PHOTO_IMPORT_REQUEST_CONFIG, signal },
       );
+      if (signal.aborted) return null;
+      if (response.data.batch.schoolId !== scope.schoolId || response.data.batch.id !== id) {
+        throw new Error('This import does not match the selected school. Select the school again and reopen its batch.');
+      }
       setBatch(response.data.batch);
       setRows(response.data.rows || []);
       setAccess(response.data.access || null);
@@ -124,10 +161,11 @@ export function PhotoImportPanel() {
       if (options.resetFilter) setFilter('ALL');
       return response.data.batch;
     } catch (error) {
+      if (signal.aborted || (error as { code?: string })?.code === 'ERR_CANCELED') return null;
       if (options.showError !== false) setNotice({ tone: 'bad', text: errorMessage(error) });
       throw error;
     } finally {
-      if (options.showBusy) setBusy('');
+      if (options.showBusy && !signal.aborted) setBusy('');
     }
   };
 
@@ -151,13 +189,9 @@ export function PhotoImportPanel() {
 
   useEffect(() => {
     const controller = new AbortController();
-    if (schoolId) void loadBatches(Number(schoolId), controller.signal);
-    setBatch(null);
-    setRows([]);
-    setAccess(null);
-    setRecoveryProgress(null);
-    setOperationProgress(null);
-    return () => controller.abort();
+    scopeRef.current = { schoolId, controller };
+    if (schoolId) void loadBatches(Number(schoolId));
+    return () => scopeRef.current.controller.abort();
   }, [schoolId]);
 
   useEffect(() => {
@@ -171,13 +205,13 @@ export function PhotoImportPanel() {
   }, [batch?.id]);
 
   useEffect(() => {
-    if (!batch || batch.status !== 'EXECUTING') return undefined;
+    if (!batch || batch.status !== 'EXECUTING' || busy) return undefined;
     const intervalId = window.setInterval(() => {
       void refreshDetail(batch.id, { showError: false }).catch(() => undefined);
       void loadBatches(batch.schoolId);
     }, 5000);
     return () => window.clearInterval(intervalId);
-  }, [batch?.id, batch?.schoolId, batch?.status]);
+  }, [batch?.id, batch?.schoolId, batch?.status, busy]);
 
   const createBatch = async () => {
     if (!selectedSchool) return;
@@ -269,13 +303,14 @@ export function PhotoImportPanel() {
         undefined,
         action === 'execute' ? PHOTO_IMPORT_REQUEST_CONFIG : undefined,
       );
-      let current: ImportBatch;
+      let current: ImportBatch | null;
       try {
         current = (await postAction()).data;
       } catch (error) {
         if (action !== 'execute' || !isTimeoutError(error)) throw error;
         current = await refreshDetail(batch.id, { showError: false });
       }
+      if (!current) return;
       if (action === 'execute') setOperationProgress(executionOperationProgress(current));
       while (
         action === 'execute'
@@ -289,12 +324,13 @@ export function PhotoImportPanel() {
           if (!isTimeoutError(error)) throw error;
           current = await refreshDetail(batch.id, { showError: false });
         }
+        if (!current) return;
         setOperationProgress(executionOperationProgress(current));
       }
       const executionPaused = action === 'execute'
         && current.status === 'EXECUTING'
         && executionPauseRequestedRef.current;
-      await loadDetail(batch.id);
+      await refreshDetail(batch.id, { resetFilter: true });
       if (action === 'execute') {
         setOperationProgress(executionPaused
           ? {
@@ -332,7 +368,9 @@ export function PhotoImportPanel() {
       }
     } catch (error) {
       setNotice({ tone: 'bad', text: errorMessage(error) });
-      if (action === 'execute') await loadDetail(batch.id);
+      if (action === 'execute') {
+        await refreshDetail(batch.id, { showError: false }).catch(() => undefined);
+      }
       setOperationProgress(current => current ? {
         ...current,
         detail: `The operation stopped: ${errorMessage(error)}`,
@@ -351,7 +389,7 @@ export function PhotoImportPanel() {
     try {
       const response = await api.post<ImportBatch>(`/student-photo-imports/${batch.id}/cancel`);
       setBatch(response.data);
-      await loadDetail(batch.id);
+      await refreshDetail(batch.id, { resetFilter: true });
       await loadBatches(batch.schoolId);
       setNotice({ tone: 'ok', text: 'Import cancelled. The intake folder can be used for a new job.' });
     } catch (error) {
@@ -611,8 +649,9 @@ export function PhotoImportPanel() {
                 <select
                   id="pi-school"
                   value={schoolId}
-                  onChange={event => setSchoolId(Number(event.target.value))}
-                  disabled={!!batch && !['COMPLETED', 'PARTIAL', 'FAILED'].includes(batch.status)}
+                  onChange={event => changeSchool(Number(event.target.value))}
+                  disabled={(!!busy && busy !== 'detail')
+                    || (!!batch && !['COMPLETED', 'PARTIAL', 'FAILED'].includes(batch.status))}
                 >
                   {context.schools.map(school => (
                     <option key={school.id} value={school.id}>{schoolOptionLabel(school, duplicateNames)}</option>
@@ -758,11 +797,9 @@ export function PhotoImportPanel() {
                   onCancel={() => { void cancelBatch(); }}
                   onMarkAccessRevoked={() => { void markAccessRevoked(); }}
                   onNewBatch={() => {
-                    setBatch(null);
-                    setRows([]);
-                    setAccess(null);
-                    setRecoveryProgress(null);
-                    setOperationProgress(null);
+                    scopeRef.current.controller.abort();
+                    scopeRef.current = { schoolId, controller: new AbortController() };
+                    resetWorkspace();
                   }}
                 />
                 {rows.length > 0 && (
@@ -780,14 +817,14 @@ export function PhotoImportPanel() {
               </Suspense>
             )}
 
-            {!batch && batches.length > 0 && (
+            {!batch && schoolBatches.length > 0 && (
               <section className="pi-history">
                 <div className="pi-section-title">
                   <RefreshCw size={17} />
                   <div><h2>Recent batches</h2><p>{selectedSchool?.name}</p></div>
                 </div>
                 <div className="pi-history-list">
-                  {batches.map(item => (
+                  {schoolBatches.map(item => (
                     <button key={item.id} onClick={() => loadDetail(item.id)} disabled={!!busy}>
                       <span>
                         <strong>{item.driveFolderName || 'Drive folder'}</strong>
