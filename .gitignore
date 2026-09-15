@@ -62,6 +62,8 @@ __pycache__/
 
 # Uploads (local dev only)
 uploads/
+.data/catalog-assets/
+.impeccable/review/
 
 # Local student / photographer exports - personal data, never commit
 outputs/

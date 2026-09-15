@@ -7,6 +7,8 @@ import { OrderSummaryPanel, thStyle, tdStyle, inlineInputStyle } from '../ui';
 import { formatMoney, toPaise, todayIso, financialYearOptions } from '../utils';
 import { CATALOG_TILES } from '../config';
 import type { PanelKey } from '../config';
+import { ProductFormBuilder } from '../../../features/catalog/ProductFormBuilder';
+import { useProductCategories, useProductFormDefinition } from '../../../features/catalog/api';
 
 interface Props {
   setPanel: (key: PanelKey) => void;
@@ -16,6 +18,13 @@ interface Props {
 export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
+  const notebookDefinition = useProductFormDefinition('NOTEBOOKS');
+  const productCatalog = useProductCategories();
+  const catalogTiles = (productCatalog.categories || []).map((category) => ({
+    ...(CATALOG_TILES.find((tile) => tile.key === category.code) || { pillClass: 'pg', headerBg: 'var(--bg)' }),
+    key: category.code, name: category.label, desc: category.description, emoji: category.emoji, pill: category.orderType,
+    available: CATALOG_TILES.some((tile) => tile.key === category.code) && (category.code !== 'NOTEBOOKS' || category.formEnabled),
+  }));
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
   const today = todayIso();
   const fyOptions = useMemo(
@@ -178,8 +187,10 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
             <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink3)', display: 'flex' }}><Search size={15} strokeWidth={1.9} aria-hidden /></span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
-            {CATALOG_TILES.filter((c) => !catalogSearch || `${c.name} ${c.desc}`.toLowerCase().includes(catalogSearch.toLowerCase())).map((c) => (
-              <div key={c.key} onClick={() => { setActiveCat(c.key); setCatalogNotice(null); }} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', cursor: 'pointer' }}>
+            {productCatalog.error && <div className="ck-alert ck-alert-re" role="alert">{productCatalog.error}<button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button></div>}
+            {!productCatalog.categories && !productCatalog.error && <p role="status">Loading catalog...</p>}
+            {catalogTiles.filter((c) => !catalogSearch || `${c.name} ${c.desc}`.toLowerCase().includes(catalogSearch.toLowerCase())).map((c) => (
+              <button type="button" key={c.key} disabled={!c.available} onClick={() => { setActiveCat(c.key); setCatalogNotice(null); }} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', cursor: c.available ? 'pointer' : 'default', textAlign: 'left', font: 'inherit', color: 'inherit', padding: 0 }}>
                 <div style={{ height: 90, background: c.headerBg, position: 'relative', overflow: 'hidden' }}>
                   <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38 }}>{c.emoji}</span>
                 </div>
@@ -188,10 +199,10 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
                   <div style={{ fontSize: 12, color: 'var(--ink3)', marginBottom: 10 }}>{c.desc}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span className={`pill ${c.pillClass}`}>{c.pill}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--g)' }}>Order →</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--g)' }}>{c.available ? 'Order →' : 'Unavailable'}</span>
                   </div>
                 </div>
-              </div>
+              </button>
             ))}
             <div onClick={() => setPanel('ff-new')} style={{ background: 'var(--or1)', border: '1.5px dashed var(--or2)', borderRadius: 'var(--r)', padding: 14, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', minHeight: 175 }}>
               <div style={{ fontSize: 30, marginBottom: 8 }}>🔥</div>
@@ -206,7 +217,11 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
             <button className="ck-btn ck-btn-ghost" style={{ fontSize: 12 }} onClick={() => { setActiveCat(null); setCatalogNotice(null); }}>← Back to catalog</button>
             <span style={{ fontSize: 13, color: 'var(--ink3)' }}>Catalog / {activeCat}</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 18 }}>
+          {activeCat === 'NOTEBOOKS' && notebookDefinition.loading ? <p role="status">Loading notebook options...</p>
+            : activeCat === 'NOTEBOOKS' && notebookDefinition.error ? <div className="ck-alert ck-alert-re" role="alert">{notebookDefinition.error}<button className="ck-btn ck-btn-ghost" onClick={notebookDefinition.retry}>Retry</button></div>
+            : activeCat === 'NOTEBOOKS' && !notebookDefinition.definition?.category.formEnabled ? <p role="status">Notebook ordering is currently unavailable.</p>
+            : activeCat === 'NOTEBOOKS' && notebookDefinition.definition?.enabled ? <ProductFormBuilder definition={notebookDefinition.definition} schoolId={user?.branchId} onSaved={(_, placed) => { if (placed) setPanel('orders'); }} />
+            : <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 18 }}>
             <div>
               <div className="ck-form-card">
                 {['IDCARDS', 'HOUSEKEEPING', 'HEALTH'].includes(activeCat || '') && (
@@ -358,7 +373,7 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
               onPlace={() => submitCatalogOrder(activeCat || '', true)}
               onDraft={() => submitCatalogOrder(activeCat || '', false)}
             />
-          </div>
+          </div>}
         </div>
       )}
     </div>

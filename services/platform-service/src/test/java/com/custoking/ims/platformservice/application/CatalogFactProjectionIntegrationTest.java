@@ -23,6 +23,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -123,6 +124,19 @@ class CatalogFactProjectionIntegrationTest {
         }
     }
 
+    private void feedNotebookOrderEvent(String eventId, String orderId, long version,
+                                       String pricingStatus, long totalAmount) {
+        Map<String, Object> payload = Map.of(
+                "id", orderId, "schoolId", 7L, "category", "NOTEBOOKS", "status", "PROCESSING",
+                "totalAmount", totalAmount, "superadminApprovalStatus", "PENDING",
+                "formVersion", 2, "pricingStatus", pricingStatus, "version", version);
+        ObjectMapper mapper = new ObjectMapper();
+        inbox.record(new ReportingEventInboxRecord(eventId, null, "catalog-order.upserted.v1", "v1",
+                "CatalogOrder", orderId, 7L, null, Optional.of(OffsetDateTime.now()), OffsetDateTime.now(),
+                mapper.writeValueAsString(Map.of("eventId", eventId, "eventType", "catalog-order.upserted.v1",
+                        "payload", payload)), mapper.writeValueAsString(payload)));
+    }
+
     @Test
     void projectsCatalogOrderUpsertedEventIntoFactCatalogOrder() throws Exception {
         feedCatalogOrderEvent(UUID.randomUUID().toString(), "CK-1001", 7L, "DRAFT");
@@ -132,7 +146,8 @@ class CatalogFactProjectionIntegrationTest {
         assertEquals(1, processed);
         try (Connection c = dataSource.getConnection();
              PreparedStatement ps = c.prepareStatement(
-                     "SELECT school_id, category, status, total_amount, notes FROM reporting.fact_catalog_order WHERE id = ?")) {
+                     "SELECT school_id, category, status, total_amount, notes, form_version, pricing_status "
+                             + "FROM reporting.fact_catalog_order WHERE id = ?")) {
             ps.setString(1, "CK-1001");
             try (ResultSet rs = ps.executeQuery()) {
                 assertTrue(rs.next(), "expected a fact_catalog_order row for CK-1001");
@@ -141,8 +156,49 @@ class CatalogFactProjectionIntegrationTest {
                 assertEquals("DRAFT", rs.getString("status"));
                 assertEquals(1180L, rs.getLong("total_amount"));
                 assertEquals("Please expedite", rs.getString("notes"));
+                assertEquals(1, rs.getInt("form_version"));
+                assertEquals("NOT_APPLICABLE", rs.getString("pricing_status"));
             }
         }
+    }
+
+    @Test
+    void quotationProjectsPricingAndTotalsAndRejectsDelayedUnquotedEvents() throws Exception {
+        feedNotebookOrderEvent(UUID.randomUUID().toString(), "CK-NB-1", 1, "PENDING_PRICING", 0);
+        assertEquals(1, processor.processBatch());
+        assertEquals("PENDING_PRICING", jdbcClient.sql(
+                "SELECT pricing_status FROM reporting.fact_catalog_order WHERE id = 'CK-NB-1'")
+                .query(String.class).single());
+
+        String quoteEventId = UUID.randomUUID().toString();
+        feedNotebookOrderEvent(quoteEventId, "CK-NB-1", 2, "QUOTED", 4_480_000);
+        assertEquals(1, processor.processBatch());
+        feedNotebookOrderEvent(UUID.randomUUID().toString(), "CK-NB-1", 1, "PENDING_PRICING", 0);
+        assertEquals(1, processor.processBatch());
+        feedNotebookOrderEvent(quoteEventId, "CK-NB-1", 2, "QUOTED", 4_480_000);
+        assertEquals(0, processor.processBatch());
+
+        Map<String, Object> order = jdbcClient.sql("""
+                SELECT form_version, pricing_status, total_amount, source_version
+                FROM reporting.fact_catalog_order WHERE id = 'CK-NB-1'
+                """).query().singleRow();
+        assertEquals(2, order.get("form_version"));
+        assertEquals("QUOTED", order.get("pricing_status"));
+        assertEquals(4_480_000L, order.get("total_amount"));
+        assertEquals(2L, order.get("source_version"));
+        assertEquals(1, countOrderRows("CK-NB-1"));
+    }
+
+    @Test
+    void legacyEventCannotEraseVersionedNotebookPricing() {
+        feedNotebookOrderEvent(UUID.randomUUID().toString(), "CK-NB-2", 3, "QUOTED", 2_000_000);
+        assertEquals(1, processor.processBatch());
+        feedCatalogOrderEvent(UUID.randomUUID().toString(), "CK-NB-2", 7L, "DRAFT");
+        assertEquals(1, processor.processBatch());
+
+        assertEquals("QUOTED", jdbcClient.sql(
+                "SELECT pricing_status FROM reporting.fact_catalog_order WHERE id = 'CK-NB-2'")
+                .query(String.class).single());
     }
 
     @Test

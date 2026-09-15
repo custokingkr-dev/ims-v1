@@ -1,4 +1,6 @@
 import Paginator from '../../../components/Paginator';
+import { useState } from 'react';
+import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 import { ModuleShell, Stat } from '../ui';
 import { formatMoney, prettyOrderStatus, orderItemsSummary } from '../utils';
 
@@ -76,6 +78,8 @@ export function AdminOrdersPanel({
   page = 0, totalPages = 1, onPageChange,
   onNewOrder, onMarkDesignApproved, onReorder,
 }: Props) {
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  if (selectedOrder) return <ProductOrderDetail orderId={selectedOrder} onBack={() => setSelectedOrder(null)} onChanged={() => onPageChange?.(page)} />;
   return (
     <ModuleShell
       title="School Orders"
@@ -138,7 +142,7 @@ export function AdminOrdersPanel({
                     <td><div className="tb">{row.id || row.code}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                     <td>{row.category}</td>
                     <td>{orderItemsSummary(row.orderData) || row.items || '—'}</td>
-                    <td className="col-money">₹{formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}</td>
+                    <td className="col-money">{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? row.amount ?? 0) / 100)}`}</td>
                     <td style={{ minWidth: 200 }}>
                       <OrderWorkflowBanner status={status} />
                     </td>
@@ -147,7 +151,7 @@ export function AdminOrdersPanel({
                     </td>
                     <td>{row.placedAt || row.date || '—'}</td>
                     <td>
-                      {status === 'DESIGN_APPROVAL'
+                      {Number(row.formVersion) === 2 ? <button className="ck-btn ck-btn-ghost" onClick={() => setSelectedOrder(row.id)}>{status === 'DRAFT' ? 'Edit draft' : 'View order'}</button> : status === 'DESIGN_APPROVAL'
                         ? <button className="ck-btn ck-btn-ghost" onClick={() => onMarkDesignApproved(row.id)}>Mark design approved</button>
                         : <button className="ck-btn ck-btn-ghost" onClick={() => onReorder(row)}>Reorder</button>
                       }

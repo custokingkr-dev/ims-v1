@@ -2,6 +2,7 @@ package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,18 @@ public class CatalogReadRepository {
 
     private final JdbcClient jdbc;
     private final OutboxWriter outbox;
+    private CatalogOrderFormService forms;
+    private ProductCatalogRepository products;
 
     public CatalogReadRepository(JdbcClient jdbc, OutboxWriter outbox) {
         this.jdbc = jdbc;
         this.outbox = outbox;
+    }
+
+    @Autowired
+    public void configureProductForms(CatalogOrderFormService forms, ProductCatalogRepository products) {
+        this.forms = forms;
+        this.products = products;
     }
 
     public List<CatalogItemRow> items() {
@@ -35,6 +44,11 @@ public class CatalogReadRepository {
     }
 
     public List<Map<String, Object>> categories() {
+        if (products != null) return products.categories(false).stream().map(category -> {
+            Map<String, Object> compatible = new LinkedHashMap<>(category);
+            compatible.put("id", category.get("code"));
+            return compatible;
+        }).toList();
         return List.of(
                 row("id", "UNIFORMS", "emoji", "\uD83D\uDC55", "label", "Uniforms", "orderType", "Recurring",
                         "description", "Full uniform sets by size and house"),
@@ -125,7 +139,7 @@ public class CatalogReadRepository {
                        co.design_status, co.superadmin_approval_status, co.required_by_date,
                        co.estimated_delivery, co.placed_by, co.placed_at, co.notes, co.created_at, co.school_id,
                        co.version, co.created_by, co.updated_by, co.vendor_paid_at, co.vendor_paid_by,
-                       co.vendor_payment_notes, s.name AS school_name
+                       co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status
                 FROM catalog.catalog_orders co
                 LEFT JOIN tenant_school.schools s ON s.id = co.school_id
                 WHERE UPPER(co.status) IN ('DESIGN_APPROVED_PROCESSING', 'PROCESSING')
@@ -241,13 +255,18 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow createOrder(Map<String, Object> request) {
+        String category = normalize(str(request.get("category"), "STATIONERY"), "STATIONERY");
+        if (forms != null && forms.handlesCreation(category)) {
+            CatalogOrderRow created = requiredOrder(forms.create(request));
+            emitOrderUpserted(created);
+            return created;
+        }
         Long schoolId = longObj(request.get("schoolId"));
         if (schoolId != null && schoolId > 0) {
             requireSchool(schoolId);
         } else {
             schoolId = null;
         }
-        String category = str(request.get("category"), "STATIONERY").toUpperCase(Locale.ROOT);
         Map<String, Object> orderData = mapValue(request.get("orderData"));
         if (orderData.isEmpty()) {
             orderData = row("title", str(request.get("category"), "Order"), "items", str(request.get("items"), "1 unit"));
@@ -309,6 +328,12 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow placeOrder(String id, Long actorId) {
+        if (forms != null && forms.isStructured(id)) {
+            forms.transition(id, "PLACE", actorId);
+            CatalogOrderRow placed = requiredOrder(id);
+            emitOrderUpserted(placed);
+            return placed;
+        }
         CatalogOrderRow current = requiredOrder(id);
         String category = normalize(current.category(), "");
         String newStatus;
@@ -348,6 +373,12 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow updateOrderStatus(String id, String status) {
+        if (forms != null && forms.isStructured(id)) {
+            forms.updateStatus(id, status);
+            CatalogOrderRow updated = requiredOrder(id);
+            emitOrderUpserted(updated);
+            return updated;
+        }
         requiredOrder(id);
         jdbc.sql("UPDATE catalog.catalog_orders SET status = :status, version = version + 1 WHERE id = :id")
                 .param("id", id)
@@ -385,6 +416,12 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow markDesignApproved(String id) {
+        if (forms != null && forms.isStructured(id)) {
+            forms.transition(id, "DESIGN_APPROVED", TenantContext.get().userId());
+            CatalogOrderRow updated = requiredOrder(id);
+            emitOrderUpserted(updated);
+            return updated;
+        }
         CatalogOrderRow current = requiredOrder(id);
         if (!requiresDesignApproval(current.category())) {
             throw new IllegalStateException("Design approval is only supported for uniform and notebook orders.");
@@ -405,6 +442,12 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow approveBySuperadmin(String id) {
+        if (forms != null && forms.isStructured(id)) {
+            forms.transition(id, "APPROVED", TenantContext.get().userId());
+            CatalogOrderRow updated = requiredOrder(id);
+            emitOrderUpserted(updated);
+            return updated;
+        }
         CatalogOrderRow current = requiredOrder(id);
         requireSuperadminReviewStatus(current.status(), "approved");
         jdbc.sql("""
@@ -419,6 +462,12 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow markDelivered(String id, Long actorId) {
+        if (forms != null && forms.isStructured(id)) {
+            forms.transition(id, "DELIVERED", actorId);
+            CatalogOrderRow updated = requiredOrder(id);
+            emitOrderUpserted(updated);
+            return updated;
+        }
         // Operations users have no home school; set the transaction-local operator-school scope
         // (the same GUC used for the orders read) so RLS bounds this write to the operator's
         // assigned schools (superadmin still bypasses session-wide). The controller additionally
@@ -443,6 +492,12 @@ public class CatalogReadRepository {
 
     @Transactional
     public CatalogOrderRow returnBySuperadmin(String id, String reason) {
+        if (forms != null && forms.isStructured(id)) {
+            forms.returnOrder(id, reason);
+            CatalogOrderRow updated = requiredOrder(id);
+            emitOrderUpserted(updated);
+            return updated;
+        }
         CatalogOrderRow current = requiredOrder(id);
         requireSuperadminReviewStatus(current.status(), "rejected");
         String newStatus = requiresDesignApproval(current.category()) ? "DESIGN_APPROVAL" : "PROCESSING";
@@ -545,7 +600,7 @@ public class CatalogReadRepository {
                        co.design_status, co.superadmin_approval_status, co.required_by_date,
                        co.estimated_delivery, co.placed_by, co.placed_at, co.notes, co.created_at, co.school_id,
                        co.version, co.created_by, co.updated_by, co.vendor_paid_at, co.vendor_paid_by,
-                       co.vendor_payment_notes, s.name AS school_name
+                       co.vendor_payment_notes, s.name AS school_name, co.form_version, co.pricing_status
                 FROM catalog.catalog_orders co
                 LEFT JOIN tenant_school.schools s ON s.id = co.school_id
                 """;
@@ -607,6 +662,9 @@ public class CatalogReadRepository {
         payload.put("requiredByDate", order.requiredByDate());
         payload.put("designStatus", order.designStatus());
         payload.put("notes", order.notes());
+        payload.put("formVersion", order.formVersion());
+        payload.put("pricingStatus", order.pricingStatus());
+        payload.put("version", order.version());
         outbox.append("catalog-order.upserted.v1", "CatalogOrderUpserted:" + order.id(), "CatalogOrder",
                 order.id(), order.schoolId(), payload);
     }
@@ -777,7 +835,22 @@ public class CatalogReadRepository {
             OffsetDateTime vendorPaidAt,
             Long vendorPaidBy,
             String vendorPaymentNotes,
-            String schoolName) {
+            String schoolName,
+            Integer formVersion,
+            String pricingStatus) {
+        public CatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
+                Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
+                String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,
+                LocalDate eventDate, String designStatus, String superadminApprovalStatus, LocalDate requiredByDate,
+                String estimatedDelivery, Long placedBy, OffsetDateTime placedAt, String notes, OffsetDateTime createdAt,
+                Long schoolId, Long version, String createdBy, String updatedBy, OffsetDateTime vendorPaidAt,
+                Long vendorPaidBy, String vendorPaymentNotes, String schoolName) {
+            this(id, category, orderData, subtotal, gst, totalAmount, status, classGroup, logoOnUniform, notebookCoverLogo,
+                    notebookDeliveryMode, notebookSpineName, stationeryPackType, eventName, eventDate, designStatus,
+                    superadminApprovalStatus, requiredByDate, estimatedDelivery, placedBy, placedAt, notes, createdAt,
+                    schoolId, version, createdBy, updatedBy, vendorPaidAt, vendorPaidBy, vendorPaymentNotes, schoolName,
+                    1, "NOT_APPLICABLE");
+        }
     }
 
     public record PendingCatalogOrderRow(
@@ -811,7 +884,22 @@ public class CatalogReadRepository {
             OffsetDateTime vendorPaidAt,
             Long vendorPaidBy,
             String vendorPaymentNotes,
-            String schoolName) {
+            String schoolName,
+            Integer formVersion,
+            String pricingStatus) {
+        public PendingCatalogOrderRow(String id, String category, String orderData, Long subtotal, Long gst,
+                Long totalAmount, String status, String classGroup, String logoOnUniform, String notebookCoverLogo,
+                String notebookDeliveryMode, String notebookSpineName, String stationeryPackType, String eventName,
+                LocalDate eventDate, String designStatus, String superadminApprovalStatus, LocalDate requiredByDate,
+                String estimatedDelivery, Long placedBy, OffsetDateTime placedAt, String notes, OffsetDateTime createdAt,
+                Long schoolId, Long version, String createdBy, String updatedBy, OffsetDateTime vendorPaidAt,
+                Long vendorPaidBy, String vendorPaymentNotes, String schoolName) {
+            this(id, category, orderData, subtotal, gst, totalAmount, status, classGroup, logoOnUniform, notebookCoverLogo,
+                    notebookDeliveryMode, notebookSpineName, stationeryPackType, eventName, eventDate, designStatus,
+                    superadminApprovalStatus, requiredByDate, estimatedDelivery, placedBy, placedAt, notes, createdAt,
+                    schoolId, version, createdBy, updatedBy, vendorPaidAt, vendorPaidBy, vendorPaymentNotes, schoolName,
+                    1, "NOT_APPLICABLE");
+        }
     }
 
     public record SupplyOrderRow(

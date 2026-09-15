@@ -136,6 +136,12 @@ fee:
 
 catalog:
   read-token: ${CATALOG_READ_TOKEN:}
+  product-form:
+    enabled: ${CATALOG_PRODUCT_FORM_ENABLED:false}
+  assets:
+    mode: ${CATALOG_ASSETS_MODE:gcs}
+    bucket: ${CATALOG_ASSETS_BUCKET:${STUDENT_PHOTO_BUCKET:}}
+    local-directory: ${CATALOG_ASSETS_LOCAL_DIRECTORY:.data/catalog-assets}
   db:
     schema: ${CATALOG_DB_SCHEMA:catalog}
 

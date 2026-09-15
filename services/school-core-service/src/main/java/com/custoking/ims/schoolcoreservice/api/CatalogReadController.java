@@ -305,7 +305,8 @@ public class CatalogReadController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
             }
         }
-        request.put("schoolId", TenantScope.resolveSchoolId(requested));
+        request.put("schoolId", TenantContext.get().isOperations()
+                ? TenantScope.resolveOperationsWriteScope(requested) : TenantScope.resolveSchoolId(requested));
     }
 
     private void requireToken(String token, String requiredScope) {

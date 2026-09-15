@@ -112,7 +112,7 @@ public class CatalogPublicCompatibilityController {
         requireToken(token, "catalog:read");
         TenantScope.requirePermissionIfAuthenticated("order:create");
         requireOrderModule(TenantContext.get().schoolId());
-        return command(() -> catalog.placeOrder(id, null));
+        return command(() -> catalog.placeOrder(id, TenantContext.get().userId()));
     }
 
     @PatchMapping({"/api/v1/supply/orders/{id}/status", "/api/v1/sa/orders/{id}/status"})
@@ -254,7 +254,9 @@ public class CatalogPublicCompatibilityController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
             }
         }
-        request.put("schoolId", TenantScope.resolveSchoolId(requested));
+        request.put("schoolId", TenantContext.get().isOperations()
+                ? TenantScope.resolveOperationsWriteScope(requested) : TenantScope.resolveSchoolId(requested));
+        request.put("actorId", TenantContext.get().userId());
     }
 
     private void requireToken(String token, String requiredScope) {

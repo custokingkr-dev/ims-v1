@@ -51,6 +51,11 @@ class CatalogRlsIntegrationTest {
                     "('o3','UNIFORMS',3000,540,3540,20,0,'APPROVED')," +
                     "('o4','UNIFORMS',4000,720,4720,30,0,'APPROVED')");
 
+            st.execute("INSERT INTO catalog.catalog_order_lines(order_id,school_id,line_no,option_selections,requested_book_count,book_count,requested_page_count,page_count) "
+                    + "SELECT id, school_id, 1, '{}'::jsonb, 100, 100, 98, 98 FROM catalog.catalog_orders");
+            st.execute("INSERT INTO catalog.catalog_order_assets(order_id,school_id,asset_kind,storage_key,content_type,size_bytes,checksum_sha256,original_filename) "
+                    + "SELECT id, school_id, 'DESIGN', 'private/' || id, 'image/png', 100, repeat('a',64), 'design.png' FROM catalog.catalog_orders");
+
             // Seed annual_plan_items: 2 rows for school 10, 1 row for school 20.
             st.execute("INSERT INTO catalog.annual_plan_items " +
                     "(id, estimated_amount, school_id, academic_year_id) VALUES " +
@@ -223,6 +228,56 @@ class CatalogRlsIntegrationTest {
                     "(id, category, subtotal, gst, total_amount, school_id, version) " +
                     "VALUES ('oX','STATIONERY',100,18,118,20,0)"));
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
+        }
+    }
+
+    @Test
+    void notebookLinesAndAssetsEnforceSchoolSuperadminAndEmptyScopes() throws Exception {
+        for (String table : new String[]{"catalog_order_lines", "catalog_order_assets"}) {
+            TenantContext.set(new TenantContext(1L, "a@x", "ADMIN", 10L, null));
+            assertEquals(2, countFormRows(table));
+            TenantContext.set(new TenantContext(2L, "b@x", "ADMIN", 20L, null));
+            assertEquals(1, countFormRows(table));
+            TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+            assertEquals(4, countFormRows(table));
+            TenantContext.clear();
+            assertEquals(0, countFormRows(table));
+        }
+    }
+
+    @Test
+    void notebookLinesAndAssetsHonorOperatorReadAndWriteScope() throws Exception {
+        TenantContext.set(new TenantContext(4L, "op@x", "OPERATIONS", null, null));
+        for (String table : new String[]{"catalog_order_lines", "catalog_order_assets"}) {
+            try (Connection c = appRt.getConnection()) {
+                setOperatorSchoolsLocal(c, "10,20");
+                try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery("SELECT count(*) FROM catalog." + table)) {
+                    rs.next();
+                    assertEquals(3, rs.getLong(1));
+                }
+                try (Statement st = c.createStatement()) {
+                    assertEquals(0, st.executeUpdate("UPDATE catalog." + table + " SET school_id = school_id WHERE order_id = 'o4'"));
+                    assertEquals(1, st.executeUpdate("UPDATE catalog." + table + " SET school_id = school_id WHERE order_id = 'o3'"));
+                }
+                endTransaction(c);
+            }
+        }
+    }
+
+    @Test
+    void lineSchoolCannotBeSpoofedEvenWithinVisibleSchools() throws Exception {
+        TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            assertThrows(SQLException.class, () -> st.execute("INSERT INTO catalog.catalog_order_lines(order_id,school_id,line_no,option_selections,requested_book_count,book_count,requested_page_count,page_count) "
+                    + "VALUES ('o1',20,2,'{}',100,100,98,98)"));
+        }
+    }
+
+    private long countFormRows(String table) throws SQLException {
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT count(*) FROM catalog." + table)) {
+            rs.next();
+            return rs.getLong(1);
         }
     }
 }

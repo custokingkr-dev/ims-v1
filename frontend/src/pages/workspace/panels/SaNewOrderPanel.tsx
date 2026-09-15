@@ -3,12 +3,20 @@ import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 import { currentFinancialYearLabel, formatMoney, computeSaOrderValue, EVENT_RATES } from '../utils';
 import { SA_NEW_ORDER_CATEGORIES } from '../config';
+import { ProductFormBuilder } from '../../../features/catalog/ProductFormBuilder';
+import { useProductCategories, useProductFormDefinition } from '../../../features/catalog/api';
 
 interface Props {
   onOrderCreated: () => void;
 }
 
 export function SaNewOrderPanel({ onOrderCreated }: Props) {
+  const notebookDefinition = useProductFormDefinition('NOTEBOOKS');
+  const productCatalog = useProductCategories();
+  const categoryOptions = SA_NEW_ORDER_CATEGORIES.filter((item) => item.key === 'CUSTOM' || productCatalog.categories?.some((category) => category.code === item.key)).map((item) => {
+    const category = productCatalog.categories?.find((value) => value.code === item.key);
+    return category ? { ...item, title: category.label, desc: category.description } : item;
+  });
   const [activeCat, setActiveCat] = useState<string | null>(null);
   const [form, setForm] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -32,7 +40,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
       .catch(() => { setSchoolOptions([]); setSchoolLoadError('Failed to load school list. Please refresh the page.'); });
   }, []);
 
-  const categoryMeta = SA_NEW_ORDER_CATEGORIES.find((item) => item.key === activeCat) || null;
+  const categoryMeta = categoryOptions.find((item) => item.key === activeCat) || null;
 
   const submit = async () => {
     const errs: Record<string, string> = {};
@@ -81,7 +89,8 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
           <>
             <div className="sa-category-label">Select supply category</div>
             <div className="sa-category-grid">
-              {SA_NEW_ORDER_CATEGORIES.map((item, idx) => (
+              {productCatalog.error && <div role="alert">{productCatalog.error}<button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button></div>}
+              {categoryOptions.map((item, idx) => (
                 <button key={`${item.title}-${idx}`} className="sa-category-card" onClick={() => { setActiveCat(item.key); setErrors({}); }}>
                   <div className="sa-category-icon" aria-hidden="true">{item.icon}</div>
                   <div className="sa-category-title">{item.title}</div>
@@ -107,6 +116,14 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
 
             {errors._api ? <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{errors._api}</div></div> : null}
 
+            {activeCat === 'NOTEBOOKS' && notebookDefinition.loading ? <p role="status">Loading notebook options...</p>
+              : activeCat === 'NOTEBOOKS' && notebookDefinition.error ? <div className="ck-alert ck-alert-re" role="alert">{notebookDefinition.error}<button className="ck-btn ck-btn-ghost" onClick={notebookDefinition.retry}>Retry</button></div>
+              : activeCat === 'NOTEBOOKS' && !notebookDefinition.definition?.category.formEnabled ? <p role="status">Notebook ordering is currently unavailable.</p>
+              : activeCat === 'NOTEBOOKS' && notebookDefinition.definition?.enabled ? <>
+                <div className="ck-product-fields"><label className="field"><span>School</span><select value={form.schoolId || ''} onChange={(e) => setForm({ schoolId: Number(e.target.value) || '' })}><option value="">Select school</option>{schoolOptions.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}</select></label></div>
+                {schoolLoadError && <p className="ck-product-error" role="alert">{schoolLoadError}</p>}
+                {form.schoolId ? <ProductFormBuilder key={form.schoolId} schoolId={Number(form.schoolId)} definition={notebookDefinition.definition} onSaved={(_, placed) => { if (placed) onOrderCreated(); }} /> : <p className="ck-product-muted">Select a school to begin this order.</p>}
+              </> : <>
             <div className="ck-form-grid ck-fg-2">
               <Field label="School *" error={errors.school}>
                 <select value={form.schoolId || ''} onChange={(e) => setForm({ ...form, schoolId: Number(e.target.value) || '' })}>
@@ -213,6 +230,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
               <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Save as draft</button>
               <button className="ck-btn ck-btn-g" disabled={saving} onClick={submit}>{saving ? 'Creating…' : 'Create order →'}</button>
             </div>
+            </>}
           </div>
         )}
       </div>
