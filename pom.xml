@@ -29,7 +29,7 @@
         <java.version>25</java.version>
         <maven.minimum.version>3.9.0</maven.minimum.version>
         <google-cloud-libraries-bom.version>26.87.0</google-cloud-libraries-bom.version>
-        <grpc.version>1.83.1</grpc.version>
+        <grpc.version>1.84.0</grpc.version>
         <postgresql.version>42.7.12</postgresql.version>
         <!-- Ahead of spring-boot-dependencies 4.1.1 (11.0.24), which the Trivy
              HIGH/CRITICAL image gate rejects for CVE-2026-65182, CVE-2026-65905
