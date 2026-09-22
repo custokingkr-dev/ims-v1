@@ -44,9 +44,53 @@ class CatalogProductFormControllerTest {
         mvc.perform(patch("/api/v1/supply/product-catalog/options/3").header("X-Catalog-Service-Token", "catalog-token")
                         .contentType("application/json").content("{\"widthMm\":180,\"heightMm\":270}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(get("/api/v1/supply/product-catalog/forms/NOTEBOOKS?includeInactive=true").header("X-Catalog-Service-Token", "catalog-token"))
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void adminReadRoutesRequireSuperAdminRegardlessOfAnyRequestValue() throws Exception {
+        // The privileged read lives on its own route with an unconditional guard, so no request
+        // value decides whether authorization runs (issue #259).
+        TenantContext.set(new TenantContext(2L, "school@example.test", "ADMIN", 10L, null));
+        mvc.perform(get("/api/v1/supply/product-catalog/admin/categories").header("X-Catalog-Service-Token", "catalog-token"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/supply/product-catalog/admin/forms/NOTEBOOKS").header("X-Catalog-Service-Token", "catalog-token"))
                 .andExpect(status().isForbidden());
         verifyNoInteractions(repository);
+    }
+
+    @Test
+    void adminReadRoutesReturnInactiveDefinitionsForSuperAdmin() throws Exception {
+        when(repository.categories(true)).thenReturn(List.of(Map.of("code", "RETIRED")));
+        when(repository.form("NOTEBOOKS", true)).thenReturn(Map.of("categoryCode", "NOTEBOOKS"));
+
+        mvc.perform(get("/api/v1/supply/product-catalog/admin/categories").header("X-Catalog-Service-Token", "catalog-token"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/supply/product-catalog/admin/forms/NOTEBOOKS").header("X-Catalog-Service-Token", "catalog-token"))
+                .andExpect(status().isOk());
+
+        verify(repository).categories(true);
+        verify(repository).form("NOTEBOOKS", true);
+    }
+
+    @Test
+    void publicReadRoutesAreActiveOnlyAndIgnoreAnyIncludeInactiveParameter() throws Exception {
+        // A school admin holding order:read may read the catalog; the parameter no longer exists, so
+        // it cannot widen the result to inactive definitions.
+        TenantContext.set(new TenantContext(2L, "school@example.test", "ADMIN", 10L, null,
+                java.util.Set.of(), java.util.Set.of("order:read")));
+        when(repository.categories(false)).thenReturn(List.of(Map.of("code", "NOTEBOOKS")));
+        when(repository.form("NOTEBOOKS", false)).thenReturn(Map.of("categoryCode", "NOTEBOOKS"));
+
+        mvc.perform(get("/api/v1/supply/product-catalog/categories?includeInactive=true").header("X-Catalog-Service-Token", "catalog-token"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/supply/product-catalog/forms/NOTEBOOKS?includeInactive=true").header("X-Catalog-Service-Token", "catalog-token"))
+                .andExpect(status().isOk());
+
+        verify(repository).categories(false);
+        verify(repository).form("NOTEBOOKS", false);
+        verify(repository, org.mockito.Mockito.never()).categories(true);
+        verify(repository, org.mockito.Mockito.never()).form("NOTEBOOKS", true);
     }
 
     @Test

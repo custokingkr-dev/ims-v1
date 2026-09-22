@@ -35,20 +35,38 @@ public class CatalogProductFormController {
         this.token = token == null ? "" : token.trim();
     }
 
+    // Active definitions: readable by any catalog caller. There is deliberately no parameter that can
+    // widen this to inactive rows; the privileged view is a separate route below, so no request value
+    // decides whether an authorization check runs.
     @GetMapping("/categories")
     public ResponseEntity<?> categories(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String serviceToken,
-                                         @RequestParam(defaultValue = "false") boolean includeInactive,
                                          @RequestHeader(value = "If-None-Match", required = false) String etag) {
-        read(serviceToken, includeInactive);
-        return cached(catalog.categories(includeInactive), etag);
+        read(serviceToken);
+        return cached(catalog.categories(false), etag);
     }
 
     @GetMapping("/forms/{categoryCode}")
     public ResponseEntity<?> form(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String serviceToken,
-                                   @PathVariable String categoryCode, @RequestParam(defaultValue = "false") boolean includeInactive,
+                                   @PathVariable String categoryCode,
                                    @RequestHeader(value = "If-None-Match", required = false) String etag) {
-        read(serviceToken, includeInactive);
-        return cached(catalog.form(categoryCode, includeInactive), etag);
+        read(serviceToken);
+        return cached(catalog.form(categoryCode, false), etag);
+    }
+
+    // Builder view: includes inactive definitions and is superadmin-only, unconditionally.
+    @GetMapping("/admin/categories")
+    public ResponseEntity<?> adminCategories(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String serviceToken,
+                                              @RequestHeader(value = "If-None-Match", required = false) String etag) {
+        readAdmin(serviceToken);
+        return cached(catalog.categories(true), etag);
+    }
+
+    @GetMapping("/admin/forms/{categoryCode}")
+    public ResponseEntity<?> adminForm(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String serviceToken,
+                                        @PathVariable String categoryCode,
+                                        @RequestHeader(value = "If-None-Match", required = false) String etag) {
+        readAdmin(serviceToken);
+        return cached(catalog.form(categoryCode, true), etag);
     }
 
     @PostMapping("/categories")
@@ -90,9 +108,14 @@ public class CatalogProductFormController {
         return catalog.delete(resource, "categories".equals(resource) ? id : Long.valueOf(id), hard);
     }
 
-    private void read(String serviceToken, boolean admin) {
+    private void read(String serviceToken) {
         requireToken(serviceToken, "order:read");
-        if (admin) { TenantScope.requireSuperAdmin(); TenantScope.requirePermissionIfAuthenticated("catalog:manage"); }
+        if (moduleGuard != null) moduleGuard.requireModuleEnabled(TenantContext.get().schoolId(), "ORDERS");
+    }
+    private void readAdmin(String serviceToken) {
+        requireToken(serviceToken, "order:read");
+        TenantScope.requireSuperAdmin();
+        TenantScope.requirePermissionIfAuthenticated("catalog:manage");
         if (moduleGuard != null) moduleGuard.requireModuleEnabled(TenantContext.get().schoolId(), "ORDERS");
     }
     private void write(String serviceToken) {
