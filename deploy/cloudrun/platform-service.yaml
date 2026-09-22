@@ -77,6 +77,10 @@ spec:
               value: "false" # from-param: ${reporting_pubsub_require_shared_token}
             - name: NOTIFICATION_PUBSUB_REQUIRE_SHARED_TOKEN
               value: "true" # from-param: ${notification_pubsub_require_shared_token}
+            - name: PUBSUB_PUSH_OIDC_AUDIENCES
+              value: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${platform_url}
+            - name: PUBSUB_PUSH_OIDC_SERVICE_ACCOUNTS
+              value: ims-reporting-push-dev@custoking.iam.gserviceaccount.com,ims-notification-push-dev@custoking.iam.gserviceaccount.com # from-param: ${pubsub_push_service_accounts}
             - name: OTEL_SERVICE_NAME
               value: platform-service
             - name: OTEL_TRACES_EXPORTER

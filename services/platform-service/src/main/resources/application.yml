@@ -77,6 +77,15 @@ reporting:
   db:
     schema: ${REPORTING_DB_SCHEMA:reporting}
 
+pubsub:
+  push:
+    oidc:
+      # Used when a *_PUBSUB_REQUIRE_SHARED_TOKEN flag is false: the push must carry a Google OIDC token
+      # for one of these audiences (comma-separated service URLs) whose email is one of these service
+      # accounts. Empty = reject every push.
+      audiences: ${PUBSUB_PUSH_OIDC_AUDIENCES:}
+      service-accounts: ${PUBSUB_PUSH_OIDC_SERVICE_ACCOUNTS:}
+
 notification:
   pubsub:
     push-token: ${NOTIFICATION_PUBSUB_PUSH_TOKEN:}
