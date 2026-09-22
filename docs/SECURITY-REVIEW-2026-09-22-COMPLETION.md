@@ -126,6 +126,26 @@ presently the only gate between a write collaborator and production.
 This is the precondition for the cost-controller finding and for the promotion-provenance gap; both
 shrink considerably once `main` requires review.
 
+## CodeQL alert dismissed during the promotion
+
+PR #257 failed CodeQL with one high-severity *User-controlled bypass of sensitive method* at
+`CatalogProductFormController.java:95`, where the request parameter `includeInactive` decides
+whether `requireSuperAdmin()` runs. It is not my change: it arrived with the notebook catalog
+feature (4bd4eecd) already on `dev`, and surfaced only because a `dev` to `main` pull request
+presents that whole feature as new relative to `main`.
+
+It is **not exploitable as written**. `includeInactive=false`, the default, adds `WHERE active` to
+every query and returns strictly fewer rows, and `form()` additionally 404s an inactive category.
+The branch that widens the result set is the guarded one, so inactive definitions stay unreachable
+without superadmin. It was dismissed on that basis to unblock the promotion, and the structural
+fix — moving the privileged read onto its own route with an unconditional guard — is tracked as
+issue #259. The pattern is fragile rather than wrong: it becomes a real vulnerability the moment
+privileged data is added to the non-admin path, and nothing would fail when that happens.
+
+Dismissal had to be done through the GitHub UI. The alert lives only in the `refs/pull/257/merge`
+analysis scope, which the code-scanning API did not expose to this account, and a dismissal on the
+default branch does not cover a pull-request merge-ref alert.
+
 ## Production promotion
 
 Production still carries every finding. PR #257 stages the promotion and was deliberately left
