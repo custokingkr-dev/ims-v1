@@ -25,7 +25,7 @@ import java.util.Map;
  * <p>Auth: Cloud Run IAM verifies the caller's OIDC bearer at the ingress (the caller's runtime
  * service account needs {@code roles/run.invoker} on this service), and the shared
  * {@code X-Notification-Service-Token} ({@code notification.status.token}) gates the route inside
- * the app — the same double gate as {@code /api/v1/notifications/logs}. The gateway never routes
+ * the app. The gateway refuses to route
  * {@code /api/v1/internal/**}.
  *
  * <p>Every delivery outcome is a 200 with a {@code status} field (DELIVERED, SUPPRESSED, FAILED,

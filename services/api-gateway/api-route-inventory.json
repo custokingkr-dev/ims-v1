@@ -11,9 +11,9 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 41,
-    "endpoints": 409,
-    "canonicalEndpoints": 312,
+    "controllers": 40,
+    "endpoints": 408,
+    "canonicalEndpoints": 311,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 7,
     "diagnosticAliases": 12,
@@ -1765,16 +1765,6 @@
     },
     {
       "service": "platform-service",
-      "controller": "NotificationLogCommandController",
-      "classification": "canonical",
-      "basePaths": [
-        "/api/v1/notifications/logs"
-      ],
-      "endpointCount": 1,
-      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationLogCommandController.java"
-    },
-    {
-      "service": "platform-service",
       "controller": "NotificationStatusController",
       "classification": "canonical",
       "basePaths": [
@@ -3025,15 +3015,6 @@
     },
     {
       "service": "platform-service",
-      "controller": "NotificationLogCommandController",
-      "method": "POST",
-      "path": "/api/v1/notifications/logs",
-      "classification": "canonical",
-      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationLogCommandController.java",
-      "line": 33
-    },
-    {
-      "service": "platform-service",
       "controller": "SenderProfileController",
       "method": "GET",
       "path": "/api/v1/notifications/sender-profiles",
@@ -3120,7 +3101,7 @@
       "path": "/api/v1/pubsub/notifications",
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/PubSubPushController.java",
-      "line": 65
+      "line": 73
     },
     {
       "service": "platform-service",
@@ -3129,7 +3110,7 @@
       "path": "/api/v1/pubsub/reporting-events",
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/ReportingPubSubPushController.java",
-      "line": 67
+      "line": 76
     },
     {
       "service": "platform-service",

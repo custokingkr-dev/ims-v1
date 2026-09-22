@@ -2,7 +2,6 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
-import com.custoking.ims.platformservice.persistence.NotificationLogCommandRepository;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantContextFilter;
@@ -33,8 +32,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * in a standalone MockMvc setup.
  *
  * Judgment calls documented inline:
- * - NotificationLogCommandController (POST /api/v1/notifications/logs): system-internal ingestion,
- *   NOT guarded. Proven to work without a superadmin context in this test.
  * - NotificationBroadcastCommandController list is tenant-scoped: school admins can read their
  *   own school's broadcasts, cross-school reads are fail-closed.
  * - SenderProfileController: ALL guards are UNCONDITIONAL. The Msg91 delivery path reads
@@ -47,8 +44,6 @@ class NotificationTenantScopingTest {
 
     private final NotificationBroadcastCommandRepository broadcasts =
             mock(NotificationBroadcastCommandRepository.class);
-    private final NotificationLogCommandRepository logs =
-            mock(NotificationLogCommandRepository.class);
     private final SenderProfileRepository senderProfiles =
             mock(SenderProfileRepository.class);
 
@@ -58,11 +53,6 @@ class NotificationTenantScopingTest {
 
     private final MockMvc broadcastMvc = MockMvcBuilders
             .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN))
-            .addFilters(new TenantContextFilter())
-            .build();
-
-    private final MockMvc logMvc = MockMvcBuilders
-            .standaloneSetup(new NotificationLogCommandController(logs, TOKEN))
             .addFilters(new TenantContextFilter())
             .build();
 
@@ -139,40 +129,6 @@ class NotificationTenantScopingTest {
                 .andExpect(status().isOk());
 
         verify(broadcasts).list(isNull(), isNull(), anyInt());
-    }
-
-    // --- system-internal log ingestion: works WITHOUT a superadmin context ---
-
-    @Test
-    void systemInternalLogIngestion_worksWithoutSuperadminContext() throws Exception {
-        // NotificationLogCommandController is NOT guarded with requireSuperAdmin.
-        // Services call it with a service token only and no user context headers.
-        when(logs.createRequestLog(any())).thenReturn(Map.of("id", "log-123"));
-
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        // No X-Authenticated-Role — simulating a system-to-system call
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"SMS\",\"notificationType\":\"FEE_PAYMENT\",\"schoolId\":10}"))
-                .andExpect(status().isOk());
-
-        verify(logs).createRequestLog(any());
-    }
-
-    @Test
-    void systemInternalLogIngestion_notBlockedBySchoolAdminContext() throws Exception {
-        // Even a non-superadmin user context must not block the ingestion path.
-        when(logs.createRequestLog(any())).thenReturn(Map.of("id", "log-456"));
-
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .header("X-Authenticated-Role", "ADMIN")
-                        .header("X-Authenticated-School-Id", "5")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\":\"SMS\",\"notificationType\":\"ATTENDANCE\",\"schoolId\":5}"))
-                .andExpect(status().isOk());
-
-        verify(logs).createRequestLog(any());
     }
 
     // --- SenderProfileController: cross-tenant read blocked for school admin ---

@@ -175,6 +175,14 @@ test('diagnostic alias to an internal upstream path is refused before authentica
   }
 });
 
+test('the caller-less notification log ingest route no longer exists on any service', () => {
+  // POST /api/v1/notifications/logs accepted a body schoolId with no tenant check and an RLS bypass.
+  // The inventory is regenerated from the controllers, so this fails if the route is reintroduced.
+  const inventory = require('./api-route-inventory.json');
+  const endpoints = JSON.stringify(inventory);
+  assert.equal(endpoints.includes('/api/v1/notifications/logs'), false);
+});
+
 test('auth classifier treats login refresh and logout as public auth routes', () => {
   assert.equal(requiresUserAuth('/api/v1/auth/login'), false);
   assert.equal(requiresUserAuth('/api/v1/auth/refresh'), false);
