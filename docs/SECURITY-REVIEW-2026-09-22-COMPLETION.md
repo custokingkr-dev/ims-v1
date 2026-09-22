@@ -128,9 +128,17 @@ shrink considerably once `main` requires review.
 
 ## Production promotion
 
-Production still carries every finding. The promotion is a `dev` to `main` pull request, and then
-the **three-step sequence** below, because this change set touches Cloud Deploy targets. The
+Production still carries every finding. PR #257 stages the promotion and was deliberately left
+**open, not merged**, for the reason in the next paragraph. The promotion is that pull request and
+then the **three-step sequence** below, because this change set touches Cloud Deploy targets. The
 ordinary one-step release does not work and, worse, reports success while deploying nothing.
+
+**Merging without finishing the deploy is worse than not merging.** Once these `deploy/**` changes
+are on `main` but production has not been reconciled and released, any later unrelated service
+release to production takes the fast image-only path, which preserves the existing Cloud Run
+environment. The new platform-service code would start with empty caller-identity allow-lists,
+which fail closed and reject every Pub/Sub push — an outage triggered by a future innocent-looking
+merge rather than by this change. Merge only when steps 2 and 3 can follow immediately.
 
 1. Merge `dev` into `main`. The release run is blocked by `configuration-reconciliation-required`
    and deploys nothing. This is expected.
