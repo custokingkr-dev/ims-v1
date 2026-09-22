@@ -46,7 +46,9 @@ contracts currently admitted are `notification.requested.v1` with either
 combinations fail closed.
 
 The absentee contract arrives over HTTP (`POST /api/v1/internal/notifications/deliveries`, Cloud
-Run OIDC plus the shared notification service token) rather than Pub/Sub, because school-core's
+Run OIDC plus the shared notification service token; since 2026-09-22 platform-service also
+verifies that the OIDC bearer is the school-core runtime service account, because the shared token
+is equally held by the API gateway) rather than Pub/Sub, because school-core's
 drainer re-evaluates `guardian-communications.v2` immediately before every attempt, including
 retries, and needs the outcome back on the queued row. The command reuses the persisted inbox and
 `NotificationInboxProcessor`, so the guard, row lock, delivery-attempt audit and terminal-state
