@@ -64,8 +64,8 @@ async function setup(page: Page, role: 'ADMIN' | 'SUPERADMIN' = 'ADMIN', placed 
     else if (path === '/workspace') body = { school: { name: 'Green Valley School', meta: '2026-27', timeZone: 'Asia/Kolkata' }, dashboard: {}, orders: [], staff: [] };
     else if (path.endsWith('/modules/active')) body = ['ORDERS', 'SUPPLY_OS', 'ERP'].map((moduleCode) => ({ moduleCode }));
     else if (path.includes('command-center') || path.includes('command-centre/brief')) body = commandCenter;
-    else if (path === '/supply/product-catalog/categories') body = [state.form.category];
-    else if (path === '/supply/product-catalog/forms/NOTEBOOKS') body = state.form;
+    else if (path === '/supply/product-catalog/categories' || path === '/supply/product-catalog/admin/categories') body = [state.form.category];
+    else if (path === '/supply/product-catalog/forms/NOTEBOOKS' || path === '/supply/product-catalog/admin/forms/NOTEBOOKS') body = state.form;
     else if (/^\/supply\/product-catalog\/rules\/\d+$/.test(path) && method === 'PATCH') {
       const patch = route.request().postDataJSON(); state.patches.push(patch);
       const rule = state.form.rules.find((item) => item.id === Number(path.split('/').pop())); Object.assign(rule!, patch); body = rule;
