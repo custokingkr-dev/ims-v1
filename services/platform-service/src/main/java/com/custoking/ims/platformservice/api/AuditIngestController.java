@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.persistence.AuditEvent;
 import com.custoking.ims.platformservice.persistence.AuditEventRepository;
+import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantScope;
 import jakarta.persistence.criteria.Predicate;
 import org.slf4j.Logger;
@@ -53,20 +54,26 @@ public class AuditIngestController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "action is required");
         }
 
+        // The shared token only proves the request came through a trusted hop; a user request the
+        // gateway relays carries a principal, and that principal is the record's actor, tenant and
+        // time. Only superadmin and header-less system callers may attribute records freely.
+        TenantContext principal = TenantContext.get();
+        boolean bindToPrincipal = principal.isAuthenticated() && !principal.isSuperAdmin();
+
         AuditEvent event = new AuditEvent();
         event.setAction(request.action());
-        event.setUserId(request.userId());
-        event.setSchoolId(request.schoolId());
+        event.setUserId(bindToPrincipal ? principal.userId() : request.userId());
+        event.setSchoolId(bindToPrincipal ? principal.schoolId() : request.schoolId());
         event.setEntityType(request.entityType());
         event.setEntityId(request.entityId());
         event.setIpAddress(trim(request.ipAddress(), 64));
         event.setUserAgent(trim(request.userAgent(), 512));
         event.setRequestId(trim(request.requestId(), 64));
-        event.setActorEmail(trim(request.actorEmail(), 255));
+        event.setActorEmail(trim(bindToPrincipal ? principal.email() : request.actorEmail(), 255));
         event.setOldValue(request.oldValue());
         event.setNewValue(request.newValue());
         event.setOutcome(StringUtils.hasText(request.outcome()) ? request.outcome() : "SUCCESS");
-        event.setEventTimestamp(request.timestamp() != null ? request.timestamp() : OffsetDateTime.now());
+        event.setEventTimestamp(!bindToPrincipal && request.timestamp() != null ? request.timestamp() : OffsetDateTime.now());
 
         AuditEvent saved = repository.save(event);
         log.info("ingested audit event id={} action={} userId={} schoolId={} outcome={}",
