@@ -27,7 +27,7 @@ output "config_prod_service_account" {
 }
 
 output "cost_controller_service_account" {
-  value = google_service_account.github["cost_controller"].email
+  value = try(google_service_account.github["cost_controller"].email, null)
 }
 
 output "governance_auditor_service_account" {

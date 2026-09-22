@@ -27,8 +27,10 @@ locals {
   # filtered out by default and this module stays a truthful record of the project.
   dev_identity_keys = ["release_dev", "rollback_dev", "config_dev"]
 
-  # Which environment each identity key belongs to. Cost control is the only environment-agnostic
-  # identity; governance inventory and recovery are production-only.
+  # Which environment each identity key belongs to. Cost control only ever acts on the dev project
+  # (gcp-cost-controls.yml stops the dev Cloud SQL instance and runs outside the reviewer-gated
+  # Environments), so it must not exist with cloudsql.editor in a production project. Governance
+  # inventory and recovery are production-only.
   identity_environment = {
     release_dev        = "dev"
     release_prod       = "prod"
@@ -36,6 +38,7 @@ locals {
     rollback_prod      = "prod"
     config_dev         = "dev"
     config_prod        = "prod"
+    cost_controller    = "dev"
     governance_auditor = "prod"
     recovery           = "prod"
   }
@@ -103,13 +106,14 @@ locals {
   ])
 
   # Scheduled maintenance runs from main whichever environment it acts on, so a dev-only project must
-  # still trust refs/heads/main for these or its cost-control run cannot authenticate.
+  # still trust refs/heads/main for its cost-control run to authenticate; a prod-only project must not
+  # trust that workflow at all, because it is not reviewer-gated.
   # The provider condition governs which workflows may ATTEMPT federation; the impersonation bindings
   # govern what they can actually assume. Keep them decoupled: gating this claim on
   # enable_recovery_bindings would silently narrow the provider and break recovery drills for a project
   # that owns production.
   maintenance_workflow_claims = concat(
-    [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main" }],
+    contains(var.environments, "dev") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-cost-controls.yml@refs/heads/main" }] : [],
     contains(var.environments, "prod") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/gcp-governance-audit.yml@refs/heads/main" }] : [],
     contains(var.environments, "prod") ? [{ ref = "refs/heads/main", workflow_ref = "${var.github_repository}/.github/workflows/recovery-drill.yml@refs/heads/main" }] : []
   )
@@ -505,13 +509,13 @@ resource "google_artifact_registry_repository_iam_member" "rollback_image_reader
 }
 
 resource "google_project_iam_member" "cost_controller_roles" {
-  for_each = toset([
+  for_each = contains(var.environments, "dev") ? toset([
     "roles/cloudsql.editor",
     "roles/serviceusage.serviceUsageConsumer",
     # Required to run any query job. It confers no data access on its own; readable data is granted
     # separately and narrowly on the billing export dataset below.
     "roles/bigquery.jobUser",
-  ])
+  ]) : toset([])
 
   project = var.project_id
   role    = each.value
@@ -575,7 +579,7 @@ resource "google_project_iam_member" "recovery_roles" {
 # rather than the project so the cost-control identity cannot read application data. Paired with
 # roles/bigquery.jobUser above, which permits running a query but grants no data of its own.
 resource "google_bigquery_dataset_iam_member" "cost_controller_billing_export_viewer" {
-  count      = var.billing_export_dataset == "" ? 0 : 1
+  count      = var.billing_export_dataset == "" || !contains(var.environments, "dev") ? 0 : 1
   project    = var.project_id
   dataset_id = var.billing_export_dataset
   role       = "roles/bigquery.dataViewer"
