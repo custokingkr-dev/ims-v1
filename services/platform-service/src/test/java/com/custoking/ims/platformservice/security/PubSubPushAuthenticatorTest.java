@@ -8,7 +8,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -16,7 +15,7 @@ class PubSubPushAuthenticatorTest {
 
     private static final String PUSH_SA = "ims-reporting-push-prod@custoking-prod.iam.gserviceaccount.com";
 
-    private static PubSubPushAuthenticator.IdentityTokenVerifier verifierReturning(String email) {
+    private static IdentityTokenVerifier verifierReturning(String email) {
         return idToken -> "valid-token".equals(idToken) ? Optional.ofNullable(email) : Optional.empty();
     }
 
@@ -67,21 +66,6 @@ class PubSubPushAuthenticatorTest {
                 verifierReturning(PUSH_SA.toUpperCase()), " other@x.iam.gserviceaccount.com , " + PUSH_SA + " ");
 
         assertThatCode(() -> authenticator.requirePushIdentity("Bearer valid-token")).doesNotThrowAnyException();
-    }
-
-    @Test
-    void audienceCheckAcceptsAnyConfiguredAudienceFormAndRejectsOthers() {
-        Set<String> audiences = PubSubPushAuthenticator.parseList(
-                "https://custoking-platform-service-prod-182609177023.asia-south2.run.app, https://custoking-platform-service-prod-abc-em.a.run.app");
-
-        assertThat(PubSubPushAuthenticator.audienceAllowed(
-                "https://custoking-platform-service-prod-182609177023.asia-south2.run.app", audiences)).isTrue();
-        assertThat(PubSubPushAuthenticator.audienceAllowed(
-                java.util.List.of("https://custoking-platform-service-prod-abc-em.a.run.app"), audiences)).isTrue();
-        assertThat(PubSubPushAuthenticator.audienceAllowed(
-                "https://custoking-api-gateway-prod-182609177023.asia-south2.run.app", audiences)).isFalse();
-        assertThat(PubSubPushAuthenticator.audienceAllowed(null, audiences)).isFalse();
-        assertThat(PubSubPushAuthenticator.audienceAllowed("https://anything", Set.of())).isFalse();
     }
 
     private static void assertUnauthorized(ThrowingCallable call) {

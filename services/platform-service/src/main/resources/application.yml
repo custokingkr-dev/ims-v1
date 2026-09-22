@@ -77,14 +77,24 @@ reporting:
   db:
     schema: ${REPORTING_DB_SCHEMA:reporting}
 
+oidc:
+  # This service's own URLs (comma-separated). Every Cloud Run / Pub/Sub identity token presented to
+  # the endpoints below must carry one of them as audience. Empty = every such token is refused.
+  audiences: ${SERVICE_OIDC_AUDIENCES:}
+
 pubsub:
   push:
     oidc:
-      # Used when a *_PUBSUB_REQUIRE_SHARED_TOKEN flag is false: the push must carry a Google OIDC token
-      # for one of these audiences (comma-separated service URLs) whose email is one of these service
-      # accounts. Empty = reject every push.
-      audiences: ${PUBSUB_PUSH_OIDC_AUDIENCES:}
+      # Used when a *_PUBSUB_REQUIRE_SHARED_TOKEN flag is false: the push must carry a Google OIDC
+      # token whose email is one of these push service accounts. Empty = reject every push.
       service-accounts: ${PUBSUB_PUSH_OIDC_SERVICE_ACCOUNTS:}
+
+internal:
+  oidc:
+    # When on, /api/v1/internal/** additionally requires the caller's Cloud Run identity to be one of
+    # these runtime service accounts (the shared route token alone is also held by the API gateway).
+    require: ${INTERNAL_OIDC_REQUIRE:false}
+    service-accounts: ${INTERNAL_OIDC_SERVICE_ACCOUNTS:}
 
 notification:
   pubsub:
