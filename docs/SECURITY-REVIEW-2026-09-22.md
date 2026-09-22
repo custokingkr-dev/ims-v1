@@ -60,6 +60,18 @@ platform-service (all rendered from Cloud Deploy target parameters; no new secre
   `scripts/audit-service-authorization-boundaries.ps1` pass.
 - Live check of the four push subscriptions' OIDC audience and service account.
 
+## Release sequencing this change required
+
+Changing `deploy/clouddeploy/targets-*.yaml` sets `deployment_reconciliation_required`, which blocks
+`build-images` and `release` while still reporting the run as successful. The remediation therefore
+deployed in three steps, not one: merge (deploys nothing), then `Ops / Reconcile deployment
+configuration` for the environment, then a release pinned with an explicit `commit_sha` to a commit
+that touches `deploy/cloudrun/**` but not the targets, so the Cloud Deploy path applies the full
+manifests. Following the gate's own advice instead — a services-only commit — would have taken the
+fast image-only path and started the new code against the previous environment block, where the
+empty caller-identity allow-lists fail closed and reject every Pub/Sub push. The full sequence is in
+`current-state/deployment-cicd.md`; prod needs the same three steps.
+
 ## Open follow-ups
 
 1. **Immutable Artifact Registry tags.** Production promotion resolves the mutable

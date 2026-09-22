@@ -139,7 +139,7 @@ gcloud run deploy <affected-service> --image=<immutable-digest>
 
 Only the image is updated, so existing Cloud Run environment variables, secret references, service accounts, networking, scaling, and probes remain intact. A service already serving the exact runnable digest in `LATEST` mode is recorded as `already-current` without creating a redundant revision. Other updates are submitted with `--async`, allowing independent services to create revisions concurrently. The verification loop then waits up to 15 minutes for every affected service to expose the expected ready digest at 100 percent traffic. If a previous Cloud Deploy rollout pinned dev traffic to a named revision, verification restores `LATEST` traffic mode after the new revision is ready; this also makes the next direct deployment route normally.
 
-If deployment configuration changed, dev automatically uses the Cloud Deploy path instead. This renders and applies the target configuration and deploys the affected manifest(s), preventing configuration changes from being skipped by the fast image-only path.
+If deployment configuration changed, dev uses the Cloud Deploy path instead. This renders and applies the target configuration and deploys the affected manifest(s), preventing configuration changes from being skipped by the fast image-only path. A Cloud Deploy *target* or delivery-pipeline change is different and is not deployed automatically at all: it is blocked until the protected reconciliation workflow has run. See "Releasing after a Cloud Deploy target change" below.
 
 Push and manual dev runs share one concurrency group. A newer dev run cancels an older run, so two trigger types cannot deploy the same environment concurrently.
 
@@ -176,6 +176,34 @@ deploy/skaffold.yaml
 ```
 
 Target rendering still requires the environment-specific database values and Google Drive root folder ID. GitHub Environment variables are read by the `release` job because that job owns the selected environment.
+
+### Releasing after a Cloud Deploy target change
+
+Changing `deploy/clouddeploy/targets-<env>.yaml`, `delivery-pipelines.yaml`, or either renderer sets
+`deployment_reconciliation_required`. `build-images` and `release` both refuse to run while it is
+set, so the commit that carries such a change deploys nothing and the run still reports success.
+Verified on 2026-09-22 (PR #255).
+
+The gate's message says to reconcile and then "release services in separate service-specific
+commits". Taken literally that is unsafe: a services-only commit leaves `deployment_config_changed`
+false, which selects the fast image-only path, and that path deliberately preserves the existing
+Cloud Run environment. New code would then start against the previous environment block — for the
+caller-identity variables that means an empty allow-list, which fails closed and rejects every
+Pub/Sub push.
+
+Use this sequence instead, so the manifest and the image land together:
+
+1. Merge the change. The release run is blocked; nothing is deployed.
+2. Run `Ops / Reconcile deployment configuration` for the environment (`dev` from `dev`, `prod` from
+   `main`). This renders and applies targets and pipelines only, and creates no release.
+3. Release from a commit that touches `deploy/cloudrun/**` but not `targets-<env>.yaml`, so
+   `deployment_config_changed` is true while `deployment_reconciliation_required` is false. Dispatch
+   `CD / Deploy branch environment` with an explicit `commit_sha`, which forces every service to be
+   rebuilt and deployed, and takes the Cloud Deploy path that applies the full manifests.
+
+A commit touching only `deploy/cloudrun/**` is not sufficient on its own: those paths are not
+service triggers, so `has_service_changes` stays false and the run ends as a no-op. The explicit
+`commit_sha` in step 3 is what makes every service affected.
 
 ## Automatic Verification
 
