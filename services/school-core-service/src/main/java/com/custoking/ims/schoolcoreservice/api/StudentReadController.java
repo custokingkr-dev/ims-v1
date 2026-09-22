@@ -206,7 +206,9 @@ public class StudentReadController {
         if (req.city() != null) params.put("city", req.city());
         if (req.state() != null) params.put("state", req.state());
         if (req.pinCode() != null) params.put("pinCode", req.pinCode());
-        if (req.photoUrl() != null) params.put("photoUrl", req.photoUrl());
+        // A non-URL photo_url is a private bucket object key that only the upload paths may assign;
+        // accepting one here would let a caller point a student at any object in the bucket.
+        if (req.photoUrl() != null && req.photoUrl().matches("(?i)^https?://.*")) params.put("photoUrl", req.photoUrl());
         applyResolvedSchool(params);
         requireStudentModule(longValue(params.get("schoolId")));
         return execute(() -> students.createStudent(params));

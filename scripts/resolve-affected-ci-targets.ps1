@@ -127,6 +127,8 @@ if ($allAffected) {
   foreach ($service in $services) {
     foreach ($file in $changedFiles) {
       if ($file.StartsWith("$($service.path)/") -or
+          ($file -eq "contracts/catalog-form-rule-fixtures.json" -and
+           $service.name -in @("school-core-service", "frontend")) -or
           $file -eq "deploy/cloudrun/$($service.name).yaml" -or
           ($file -eq "pom.xml" -and $service.tool -eq "maven")) {
         $affected.Add($service)

@@ -3,6 +3,7 @@ import api from '../../../services/api';
 import { ModuleShell, Field, Info, Stat } from '../ui';
 import { formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
+import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 
 interface Props {
   onNewOrder: () => void;
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
+  const [notebookOrderId, setNotebookOrderId] = useState<string | null>(null);
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -88,6 +90,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     setDetailLoading(true); setDetailError(''); setDetailOpen(true); setDetailOrder(null);
     try {
       const res = await api.get(`/supply/orders/${orderId}`);
+      if (Number(res.data?.formVersion) === 2) { setDetailOpen(false); setNotebookOrderId(orderId); return; }
       setDetailOrder(res.data); setNewStatus(res.data?.status || '');
     } catch (e: any) {
       setDetailError(e?.response?.data?.message || 'Failed to load order.');
@@ -187,6 +190,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     }
   };
 
+  if (notebookOrderId) return <ProductOrderDetail orderId={notebookOrderId} onBack={() => setNotebookOrderId(null)} onChanged={() => void load()} />;
   return (
     <>
       <ModuleShell title="All orders" subtitle="All catalog orders across all schools" actions={canManage ? <button className="ck-btn ck-btn-g" onClick={onNewOrder}>+ New order request</button> : undefined}>
@@ -234,12 +238,12 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                       <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || row.category}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td>{row.category}</td>
-                      <td>₹{formatMoney(Number(row.totalAmount ?? 0) / 100)}</td>
+                      <td>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
                       <td>{row.placedAt || row.createdAt || '—'}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
-                        <button className="ck-btn ck-btn-ghost" onClick={() => openDetail(row.id)}>View</button>
-                        {canManage && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
+                        <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
+                        {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
                           : (
                             <>

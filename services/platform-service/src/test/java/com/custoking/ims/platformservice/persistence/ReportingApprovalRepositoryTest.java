@@ -80,7 +80,7 @@ class ReportingApprovalRepositoryTest {
     void setUp() throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
-            statement.execute("TRUNCATE TABLE reporting.fact_firefighting_request");
+            statement.execute("TRUNCATE TABLE reporting.fact_firefighting_request, reporting.fact_catalog_order");
         }
         commandClient = mock(ApprovalCommandClient.class);
         approvals = new ReportingApprovalRepository(jdbcClient, commandClient);
@@ -92,6 +92,22 @@ class ReportingApprovalRepositoryTest {
             statement.execute("INSERT INTO reporting.fact_firefighting_request (code, status) VALUES ('"
                     + code + "', '" + status + "')");
         }
+    }
+
+    @Test
+    void catalogApprovalExposesPendingPricingInsteadOfOnlyAZeroAmount() {
+        jdbcClient.sql("""
+                INSERT INTO reporting.fact_catalog_order
+                    (id, school_id, category, status, total_amount, superadmin_approval_status,
+                     form_version, pricing_status)
+                VALUES ('CK-NB-PENDING', 7, 'NOTEBOOKS', 'PROCESSING', 0, 'PENDING', 2, 'PENDING_PRICING')
+                """).update();
+
+        assertThat(approvals.approvals(20)).singleElement().satisfies(order -> {
+            assertThat(order).containsEntry("formVersion", 2);
+            assertThat(order).containsEntry("pricingStatus", "PENDING_PRICING");
+            assertThat(order).containsEntry("sourceId", "CK-NB-PENDING");
+        });
     }
 
     @Test

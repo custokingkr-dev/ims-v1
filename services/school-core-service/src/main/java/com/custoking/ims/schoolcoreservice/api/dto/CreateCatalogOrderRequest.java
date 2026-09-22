@@ -19,5 +19,5 @@ public record CreateCatalogOrderRequest(
         Long amount,
         String items,
         // Optional nested order-data map forwarded to the repo (absent → repo computes a default)
-        Map<String, Object> orderData) {
+        Object orderData) {
 }

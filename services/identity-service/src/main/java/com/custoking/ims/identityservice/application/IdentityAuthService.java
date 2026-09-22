@@ -102,6 +102,10 @@ public class IdentityAuthService {
         if (!Objects.equals(session.getUser().getId(), user.getId())) {
             throw unauthorized("Invalid refresh token");
         }
+        if (user.isDisabled()) {
+            sessions.revokeFamily(session.getFamilyId());
+            throw unauthorized("Invalid refresh token");
+        }
         // Rotate: retire the presented token, issue a new one in the same family.
         session.setStatus(AuthSessionEntity.ROTATED);
         session.setRotatedAt(OffsetDateTime.now(ZoneOffset.UTC));

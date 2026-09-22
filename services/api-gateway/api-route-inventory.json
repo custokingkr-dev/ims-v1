@@ -11,15 +11,15 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 38,
-    "endpoints": 383,
-    "canonicalEndpoints": 287,
+    "controllers": 40,
+    "endpoints": 408,
+    "canonicalEndpoints": 311,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 6,
+    "internalEndpoints": 7,
     "diagnosticAliases": 12,
     "gatewayRoutes": 67,
-    "frontendCompatibilityCalls": 90,
-    "frontendCompatibilityFiles": 19
+    "frontendCompatibilityCalls": 95,
+    "frontendCompatibilityFiles": 21
   },
   "diagnosticAliases": [
     {
@@ -1005,6 +1005,41 @@
     },
     {
       "method": "POST",
+      "pathExpression": "/supply/orders",
+      "compatibilityTemplate": "/api/v1/supply/orders",
+      "source": "frontend/src/features/catalog/ProductFormBuilder.tsx",
+      "line": 66
+    },
+    {
+      "method": "POST",
+      "pathExpression": "/supply/orders/${detail.order.id}/place",
+      "compatibilityTemplate": "/api/v1/supply/orders/{id}/place",
+      "source": "frontend/src/features/catalog/ProductFormBuilder.tsx",
+      "line": 81
+    },
+    {
+      "method": "POST",
+      "pathExpression": "/supply/orders/${orderId}/design-approved",
+      "compatibilityTemplate": "/api/v1/supply/orders/{id}/design-approved",
+      "source": "frontend/src/features/catalog/ProductOrderDetail.tsx",
+      "line": 81
+    },
+    {
+      "method": "POST",
+      "pathExpression": "/supply/orders/${orderId}/superadmin-approve",
+      "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-approve",
+      "source": "frontend/src/features/catalog/ProductOrderDetail.tsx",
+      "line": 82
+    },
+    {
+      "method": "POST",
+      "pathExpression": "/supply/orders/${orderId}/deliver",
+      "compatibilityTemplate": "/api/v1/supply/orders/{id}/deliver",
+      "source": "frontend/src/features/catalog/ProductOrderDetail.tsx",
+      "line": 83
+    },
+    {
+      "method": "POST",
       "pathExpression": "/schools/${selectedSchool.id}/admin",
       "compatibilityTemplate": "/api/v1/schools/{schoolId}/admin",
       "source": "frontend/src/pages/SchoolManagementPage.tsx",
@@ -1022,56 +1057,56 @@
       "pathExpression": "/workspace",
       "compatibilityTemplate": "/api/v1/workspace",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 156
+      "line": 270
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders",
       "compatibilityTemplate": "/api/v1/supply/orders",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 185
+      "line": 299
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders/stats",
       "compatibilityTemplate": "/api/v1/supply/orders/stats",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 186
+      "line": 300
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders/pending-approval",
       "compatibilityTemplate": "/api/v1/supply/orders/pending-approval",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 209
+      "line": 323
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${orderId}/superadmin-approve",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-approve",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 222
+      "line": 336
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${rejectModalOrderId}/superadmin-reject",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-reject",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 237
+      "line": 351
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${orderId}/design-approved",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/design-approved",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 255
+      "line": 369
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders",
       "compatibilityTemplate": "/api/v1/supply/orders",
       "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 641
+      "line": 765
     },
     {
       "method": "POST",
@@ -1092,42 +1127,42 @@
       "pathExpression": "/supply/orders",
       "compatibilityTemplate": "/api/v1/supply/orders",
       "source": "frontend/src/pages/workspace/panels/CatalogPanel.tsx",
-      "line": 119
+      "line": 128
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${orderId}/place",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/place",
       "source": "frontend/src/pages/workspace/panels/CatalogPanel.tsx",
-      "line": 131
+      "line": 140
     },
     {
       "method": "GET",
       "pathExpression": "/fees/report",
       "compatibilityTemplate": "/api/v1/fees/report",
       "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 305
+      "line": 309
     },
     {
       "method": "GET",
       "pathExpression": "/fees/overdue",
       "compatibilityTemplate": "/api/v1/fees/overdue",
       "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 306
+      "line": 310
     },
     {
       "method": "GET",
       "pathExpression": "/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(nextSectionId)}/students",
       "compatibilityTemplate": "/api/v1/classes/{classId}/sections/{sectionId}/students",
       "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 307
+      "line": 311
     },
     {
       "method": "POST",
       "pathExpression": "/fees/send-reminders",
       "compatibilityTemplate": "/api/v1/fees/send-reminders",
       "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 581
+      "line": 585
     },
     {
       "method": "GET",
@@ -1274,42 +1309,42 @@
       "pathExpression": "/command-centre/actions",
       "compatibilityTemplate": "/api/v1/command-centre/actions",
       "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1102
+      "line": 1106
     },
     {
       "method": "GET",
       "pathExpression": "/command-centre/brief",
       "compatibilityTemplate": "/api/v1/command-centre/brief",
       "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1149
+      "line": 1153
     },
     {
       "method": "GET",
       "pathExpression": "/command-centre/feed?limit=20",
       "compatibilityTemplate": "/api/v1/command-centre/feed",
       "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1172
+      "line": 1176
     },
     {
       "method": "GET",
       "pathExpression": "/command-centre/feed?limit=5",
       "compatibilityTemplate": "/api/v1/command-centre/feed",
       "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1197
+      "line": 1201
     },
     {
       "method": "POST",
       "pathExpression": "/command-centre/actions/${a.id}/accept",
       "compatibilityTemplate": "/api/v1/command-centre/actions/{id}/accept",
       "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1240
+      "line": 1244
     },
     {
       "method": "POST",
       "pathExpression": "/command-centre/actions/${a.id}/dismiss",
       "compatibilityTemplate": "/api/v1/command-centre/actions/{id}/dismiss",
       "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1250
+      "line": 1254
     },
     {
       "method": "POST",
@@ -1330,63 +1365,63 @@
       "pathExpression": "/sa/orders/${detailOrder.id}/status",
       "compatibilityTemplate": "/api/v1/sa/orders/{id}/status",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 103
+      "line": 106
     },
     {
       "method": "PATCH",
       "pathExpression": "/sa/orders/${orderId}/status",
       "compatibilityTemplate": "/api/v1/sa/orders/{id}/status",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 114
+      "line": 117
     },
     {
       "method": "POST",
       "pathExpression": "/supply/orders/${orderId}/deliver",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}/deliver",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 123
+      "line": 126
     },
     {
       "method": "GET",
       "pathExpression": "/sa/invoices/by-order/${orderId}",
       "compatibilityTemplate": "/api/v1/sa/invoices/by-order/{orderRef}",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 133
+      "line": 136
     },
     {
       "method": "POST",
       "pathExpression": "/sa/invoices",
       "compatibilityTemplate": "/api/v1/sa/invoices",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 167
+      "line": 170
     },
     {
       "method": "PATCH",
       "pathExpression": "/sa/invoices/${invExistingId}",
       "compatibilityTemplate": "/api/v1/sa/invoices/{id}",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 181
+      "line": 184
     },
     {
       "method": "GET",
       "pathExpression": "/sa/orders",
       "compatibilityTemplate": "/api/v1/sa/orders",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 48
+      "line": 50
     },
     {
       "method": "GET",
       "pathExpression": "/sa/orders/stats",
       "compatibilityTemplate": "/api/v1/sa/orders/stats",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 57
+      "line": 59
     },
     {
       "method": "GET",
       "pathExpression": "/supply/orders/${orderId}",
       "compatibilityTemplate": "/api/v1/supply/orders/{id}",
       "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 90
+      "line": 92
     },
     {
       "method": "GET",
@@ -1421,7 +1456,7 @@
       "pathExpression": "/sa/orders",
       "compatibilityTemplate": "/api/v1/sa/orders",
       "source": "frontend/src/pages/workspace/panels/SaNewOrderPanel.tsx",
-      "line": 55
+      "line": 63
     },
     {
       "method": "PUT",
@@ -1720,13 +1755,13 @@
     },
     {
       "service": "platform-service",
-      "controller": "NotificationLogCommandController",
-      "classification": "canonical",
+      "controller": "NotificationDeliveryCommandController",
+      "classification": "internal",
       "basePaths": [
-        "/api/v1/notifications/logs"
+        "/api/v1/internal/notifications"
       ],
       "endpointCount": 1,
-      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationLogCommandController.java"
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/NotificationDeliveryCommandController.java"
     },
     {
       "service": "platform-service",
@@ -1807,6 +1842,27 @@
       ],
       "endpointCount": 18,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java"
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/supply/orders",
+        "/api/v1/catalog/orders"
+      ],
+      "endpointCount": 14,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java"
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/supply/product-catalog"
+      ],
+      "endpointCount": 11,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java"
     },
     {
       "service": "school-core-service",
@@ -2896,6 +2952,15 @@
     },
     {
       "service": "platform-service",
+      "controller": "NotificationDeliveryCommandController",
+      "method": "POST",
+      "path": "/api/v1/internal/notifications/deliveries",
+      "classification": "internal",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/NotificationDeliveryCommandController.java",
+      "line": 51
+    },
+    {
+      "service": "platform-service",
       "controller": "NotificationStatusController",
       "method": "GET",
       "path": "/api/v1/notifications/{eventId}",
@@ -2947,15 +3012,6 @@
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
       "line": 93
-    },
-    {
-      "service": "platform-service",
-      "controller": "NotificationLogCommandController",
-      "method": "POST",
-      "path": "/api/v1/notifications/logs",
-      "classification": "canonical",
-      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationLogCommandController.java",
-      "line": 33
     },
     {
       "service": "platform-service",
@@ -3045,7 +3101,7 @@
       "path": "/api/v1/pubsub/notifications",
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/PubSubPushController.java",
-      "line": 65
+      "line": 73
     },
     {
       "service": "platform-service",
@@ -3054,7 +3110,7 @@
       "path": "/api/v1/pubsub/reporting-events",
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/ReportingPubSubPushController.java",
-      "line": 67
+      "line": 76
     },
     {
       "service": "platform-service",
@@ -3297,7 +3353,7 @@
       "path": "/api/v1/attendance/daily-entry",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 296
+      "line": 300
     },
     {
       "service": "school-core-service",
@@ -3333,7 +3389,7 @@
       "path": "/api/v1/attendance/report/register",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 172
+      "line": 176
     },
     {
       "service": "school-core-service",
@@ -3342,7 +3398,7 @@
       "path": "/api/v1/attendance/report/register/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 213
+      "line": 217
     },
     {
       "service": "school-core-service",
@@ -3351,7 +3407,7 @@
       "path": "/api/v1/attendance/report/student",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 186
+      "line": 190
     },
     {
       "service": "school-core-service",
@@ -3360,7 +3416,7 @@
       "path": "/api/v1/attendance/report/student/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 227
+      "line": 231
     },
     {
       "service": "school-core-service",
@@ -3369,7 +3425,7 @@
       "path": "/api/v1/attendance/report/summary",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 200
+      "line": 204
     },
     {
       "service": "school-core-service",
@@ -3378,7 +3434,7 @@
       "path": "/api/v1/attendance/report/summary/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 243
+      "line": 247
     },
     {
       "service": "school-core-service",
@@ -3405,7 +3461,7 @@
       "path": "/api/v1/attendance/section-register",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 276
+      "line": 280
     },
     {
       "service": "school-core-service",
@@ -3414,7 +3470,7 @@
       "path": "/api/v1/attendance/submit-day",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 336
+      "line": 340
     },
     {
       "service": "school-core-service",
@@ -3423,7 +3479,7 @@
       "path": "/api/v1/attendance/submit-section",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java",
-      "line": 317
+      "line": 321
     },
     {
       "service": "school-core-service",
@@ -3517,6 +3573,51 @@
     },
     {
       "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "PATCH",
+      "path": "/api/v1/catalog/orders/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 51
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "GET",
+      "path": "/api/v1/catalog/orders/{id}/assets",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 68
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "POST",
+      "path": "/api/v1/catalog/orders/{id}/assets",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 75
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "DELETE",
+      "path": "/api/v1/catalog/orders/{id}/assets/{assetId}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 86
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "GET",
+      "path": "/api/v1/catalog/orders/{id}/assets/{assetId}/content",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 94
+    },
+    {
+      "service": "school-core-service",
       "controller": "CatalogReadController",
       "method": "POST",
       "path": "/api/v1/catalog/orders/{id}/design-approved",
@@ -3526,12 +3627,30 @@
     },
     {
       "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "GET",
+      "path": "/api/v1/catalog/orders/{id}/form",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 44
+    },
+    {
+      "service": "school-core-service",
       "controller": "CatalogReadController",
       "method": "POST",
       "path": "/api/v1/catalog/orders/{id}/place",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
       "line": 134
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "PUT",
+      "path": "/api/v1/catalog/orders/{id}/quote",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 59
     },
     {
       "service": "school-core-service",
@@ -4921,6 +5040,51 @@
     },
     {
       "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "PATCH",
+      "path": "/api/v1/supply/orders/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 51
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "GET",
+      "path": "/api/v1/supply/orders/{id}/assets",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 68
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "POST",
+      "path": "/api/v1/supply/orders/{id}/assets",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 75
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "DELETE",
+      "path": "/api/v1/supply/orders/{id}/assets/{assetId}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 86
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "GET",
+      "path": "/api/v1/supply/orders/{id}/assets/{assetId}/content",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 94
+    },
+    {
+      "service": "school-core-service",
       "controller": "CatalogPublicCompatibilityController",
       "method": "POST",
       "path": "/api/v1/supply/orders/{id}/deliver",
@@ -4939,12 +5103,30 @@
     },
     {
       "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "GET",
+      "path": "/api/v1/supply/orders/{id}/form",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 44
+    },
+    {
+      "service": "school-core-service",
       "controller": "CatalogPublicCompatibilityController",
       "method": "POST",
       "path": "/api/v1/supply/orders/{id}/place",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
       "line": 108
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogOrderFormController",
+      "method": "PUT",
+      "path": "/api/v1/supply/orders/{id}/quote",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogOrderFormController.java",
+      "line": 59
     },
     {
       "service": "school-core-service",
@@ -4990,6 +5172,105 @@
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
       "line": 68
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "DELETE",
+      "path": "/api/v1/supply/product-catalog/{resource}/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 86
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "GET",
+      "path": "/api/v1/supply/product-catalog/categories",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 38
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "POST",
+      "path": "/api/v1/supply/product-catalog/categories",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 54
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "PATCH",
+      "path": "/api/v1/supply/product-catalog/categories/{code}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 58
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "GET",
+      "path": "/api/v1/supply/product-catalog/forms/{categoryCode}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 46
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "POST",
+      "path": "/api/v1/supply/product-catalog/groups",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 62
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "PATCH",
+      "path": "/api/v1/supply/product-catalog/groups/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 66
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "POST",
+      "path": "/api/v1/supply/product-catalog/options",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 70
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "PATCH",
+      "path": "/api/v1/supply/product-catalog/options/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 74
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "POST",
+      "path": "/api/v1/supply/product-catalog/rules",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 78
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogProductFormController",
+      "method": "PATCH",
+      "path": "/api/v1/supply/product-catalog/rules/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogProductFormController.java",
+      "line": 82
     },
     {
       "service": "school-core-service",

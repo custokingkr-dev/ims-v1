@@ -86,6 +86,14 @@ repository now ignores `outputs/`.
 - `PRIVACY-TECHNICAL-CONTROLS-EVIDENCE-2026-08-24.md` and
   `DATA-LIFECYCLE-POLICY-DECISION-TEMPLATE.md` — technical export/erasure and repository-history controls,
   followed by the legal/ownership fields engineering must not invent.
+- `SECURITY-REVIEW-2026-09-22.md` — whole-codebase security review: the gateway alias root cause, the
+  five verified findings and their fixes (PR #255), the OIDC caller-identity configuration this introduced,
+  and the follow-ups still open. The live model it changed is described in
+  `INTERNAL-SERVICE-AUTHORIZATION.md`.
+- `SECURITY-REVIEW-2026-09-22-COMPLETION.md` — what was deployed and measured on dev, the decisions taken
+  and their reasons (notably why immutable registry tags were rejected), the two items blocked on
+  permissions this account lacks with the exact commands and the expected Terraform plan, and the
+  three-step production promotion sequence. Read before promoting to production.
 
 ## Active contracts, operational procedures, and reference designs
 

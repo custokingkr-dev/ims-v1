@@ -145,6 +145,26 @@ class IdentityAuthServiceRotationTest {
     }
 
     @Test
+    void refresh_disabledUser_401_revokesFamily_issuesNothing() {
+        // Disabling a user deletes their sessions today; this makes refresh safe even if a future
+        // writer sets deleted_at without doing so.
+        AppUserEntity user = mockUser();
+        when(user.isDisabled()).thenReturn(true);
+        AuthSessionEntity activeSession = sessionFixture(AuthSessionEntity.ACTIVE,
+                OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
+        stubJwtPrologue();
+        when(sessions.findByRefreshTokenHashForUpdate(any())).thenReturn(Optional.of(activeSession));
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> service.refresh(RAW_TOKEN))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(sessions).revokeFamily(FAMILY_ID);
+        verify(sessions, never()).save(any());
+        verify(jwtService, never()).generateRefreshToken(any());
+    }
+
+    @Test
     void introspect_refreshToken_isAlwaysInactive() {
         Claims claims = mock(Claims.class);
         when(claims.get("type", String.class)).thenReturn("refresh");

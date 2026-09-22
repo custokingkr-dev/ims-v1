@@ -102,6 +102,8 @@ public class CatalogPublicCompatibilityController {
         TenantScope.requirePermissionIfAuthenticated("order:create");
         applyResolvedSchool(request);
         requireOrderModule(longValue(request.get("schoolId")));
+        // Every order starts as a draft; placement, approval and delivery are separate guarded steps.
+        request.put("status", "DRAFT");
         return command(() -> catalog.createOrder(request));
     }
 
@@ -112,7 +114,7 @@ public class CatalogPublicCompatibilityController {
         requireToken(token, "catalog:read");
         TenantScope.requirePermissionIfAuthenticated("order:create");
         requireOrderModule(TenantContext.get().schoolId());
-        return command(() -> catalog.placeOrder(id, null));
+        return command(() -> catalog.placeOrder(id, TenantContext.get().userId()));
     }
 
     @PatchMapping({"/api/v1/supply/orders/{id}/status", "/api/v1/sa/orders/{id}/status"})
@@ -121,6 +123,9 @@ public class CatalogPublicCompatibilityController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "catalog:read");
+        // Direct status writes bypass the legacy order's approval steps, so only superadmin may make them;
+        // schools move orders through /place, and structured orders through their own guarded transitions.
+        TenantScope.requireSuperAdmin();
         TenantScope.requirePermissionIfAuthenticated("order:update");
         requireOrderModule(TenantContext.get().schoolId());
         return command(() -> catalog.updateOrderStatus(id, String.valueOf(request.getOrDefault("status", ""))));
@@ -254,7 +259,9 @@ public class CatalogPublicCompatibilityController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invalid schoolId");
             }
         }
-        request.put("schoolId", TenantScope.resolveSchoolId(requested));
+        request.put("schoolId", TenantContext.get().isOperations()
+                ? TenantScope.resolveOperationsWriteScope(requested) : TenantScope.resolveSchoolId(requested));
+        request.put("actorId", TenantContext.get().userId());
     }
 
     private void requireToken(String token, String requiredScope) {

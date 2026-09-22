@@ -1,0 +1,721 @@
+[
+  {
+    "name": "all sizes combined meet target",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 400,
+          "pageCount": 198
+        },
+        {
+          "selections": {
+            "SIZE": "JUMBO_LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 600,
+          "pageCount": 200
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196,
+        203
+      ],
+      "actualTotal": 1000,
+      "requiredTotal": 1000,
+      "valid": true
+    }
+  },
+  {
+    "name": "one book short stays draft feedback",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 999,
+          "pageCount": 196
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196
+      ],
+      "actualTotal": 999,
+      "requiredTotal": 1000,
+      "valid": false
+    }
+  },
+  {
+    "name": "one book over blocks placement",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1001,
+          "pageCount": 150
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        147
+      ],
+      "actualTotal": 1001,
+      "requiredTotal": 1000,
+      "valid": false
+    }
+  },
+  {
+    "name": "rulings and page counts share one target",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 200,
+          "pageCount": 152
+        },
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "FOUR_RULE"
+          },
+          "bookCount": 200,
+          "pageCount": 4
+        },
+        {
+          "selections": {
+            "SIZE": "JUMBO_LONG",
+            "RULING": "PLAIN"
+          },
+          "bookCount": 600,
+          "pageCount": 1
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        154,
+        7,
+        7
+      ],
+      "actualTotal": 1000,
+      "requiredTotal": 1000,
+      "valid": true
+    }
+  },
+  {
+    "name": "superadmin target is configurable",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 500,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 100,
+          "pageCount": 198
+        },
+        {
+          "selections": {
+            "SIZE": "JUMBO_LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 400,
+          "pageCount": 198
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196,
+        196
+      ],
+      "actualTotal": 500,
+      "requiredTotal": 500,
+      "valid": true
+    }
+  },
+  {
+    "name": "non customized has no total requirement",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "NON_CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 37,
+          "pageCount": 198
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196
+      ],
+      "valid": true
+    }
+  },
+  {
+    "name": "zero printed pages rejected",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1000,
+          "pageCount": 0
+        }
+      ]
+    },
+    "expected": {
+      "error": "pageCount"
+    }
+  },
+  {
+    "name": "fractional books rejected",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1000.5,
+          "pageCount": 198
+        }
+      ]
+    },
+    "expected": {
+      "error": "bookCount"
+    }
+  },
+  {
+    "name": "up mode rounds upward",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "UP",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1000,
+          "pageCount": 198
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        203
+      ],
+      "actualTotal": 1000,
+      "requiredTotal": 1000,
+      "valid": true
+    }
+  },
+  {
+    "name": "down mode rounds downward",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "DOWN",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1000,
+          "pageCount": 200
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196
+      ],
+      "actualTotal": 1000,
+      "requiredTotal": 1000,
+      "valid": true
+    }
+  },
+  {
+    "name": "even multiple midpoint rounds down",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 10,
+          "mode": "NEAREST",
+          "minimum": 10
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1000,
+          "pageCount": 195
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        190
+      ],
+      "actualTotal": 1000,
+      "requiredTotal": 1000,
+      "valid": true
+    }
+  },
+  {
+    "name": "phase ordering rounds before bounds",
+    "rules": [
+      {
+        "id": 3,
+        "ruleType": "MAX_VALUE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "value": 196
+        },
+        "priority": 0,
+        "active": true
+      },
+      {
+        "id": 1,
+        "ruleType": "REQUIRE_QUANTITY_TOTAL",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000,
+          "comparison": "EQ",
+          "scope": "ORDER",
+          "stage": "ON_PLACE"
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1000,
+          "pageCount": 198
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196
+      ],
+      "actualTotal": 1000,
+      "requiredTotal": 1000,
+      "valid": true
+    }
+  }
+]

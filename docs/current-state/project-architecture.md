@@ -133,7 +133,7 @@ Source: gateway route table in `services/api-gateway/server.js`.
 | `/api/v1/audit-logs` | platform audit |
 | `/api/v1/sa/invoices/**`, `/api/v1/customers/**`, `/api/v1/invoices/**`, `/api/v1/billing-payments/**` | billing |
 
-Diagnostic service prefixes also exist, such as `/identity-api/v1/`, `/tenant-api/v1/`, `/reporting-api/v1/`, and `/billing-api/v1/`.
+Diagnostic service prefixes also exist, such as `/identity-api/v1/`, `/tenant-api/v1/`, `/reporting-api/v1/`, and `/billing-api/v1/`. They rewrite `/<service>-api/v1/<rest>` to `/api/v1/<rest>` on the owning upstream and require a user JWT like any other route. Since 2026-09-22 the gateway refuses, before authentication, any request whose rewritten path falls under `/api/v1/internal` or `/api/v1/pubsub`; those surfaces are reachable only by the Scheduler, Pub/Sub push and peer-service identities that the owning controller verifies (`docs/INTERNAL-SERVICE-AUTHORIZATION.md`).
 
 ## Authentication Model
 

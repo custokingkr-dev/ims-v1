@@ -34,6 +34,7 @@ const {
   server,
   routes,
   requiresUserAuth,
+  isInternalUpstreamPath,
   isCookieAuthPath,
   outboundHeaders,
   isRequestHopHeader,
@@ -143,6 +144,43 @@ test('diagnostic route rewrites service-prefixed path to internal api path', () 
 
   assert.equal(matched.service, 'reporting');
   assert.equal(matched.rewrite('/reporting-api/v1/dashboard'), '/api/v1/dashboard');
+});
+
+test('internal upstream paths are never reachable through the gateway, canonical or aliased', () => {
+  assert.equal(isInternalUpstreamPath('/api/v1/internal/async/drain'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/internal/notifications/deliveries'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/internal/outbox/relay'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/pubsub/reporting-events'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/pubsub/notifications'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/internal'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/pubsub'), true);
+  assert.equal(isInternalUpstreamPath('/api/v1/internals'), false);
+  assert.equal(isInternalUpstreamPath('/api/v1/dashboard'), false);
+  assert.equal(isInternalUpstreamPath('/api/v1/notifications/logs'), false);
+});
+
+test('diagnostic alias to an internal upstream path is refused before authentication', async () => {
+  const baseUrl = await listen();
+
+  for (const path of [
+    '/reporting-api/v1/pubsub/reporting-events',
+    '/reporting-api/v1/internal/async/drain',
+    '/notification-api/v1/internal/notifications/deliveries',
+    '/billing-api/v1/internal/outbox/relay',
+  ]) {
+    const response = await fetch(`${baseUrl}${path}`, { method: 'POST', body: '{}' });
+    const payload = await response.json();
+    assert.equal(response.status, 404, path);
+    assert.deepEqual(payload, { message: 'No service route is configured for this API path' }, path);
+  }
+});
+
+test('the caller-less notification log ingest route no longer exists on any service', () => {
+  // POST /api/v1/notifications/logs accepted a body schoolId with no tenant check and an RLS bypass.
+  // The inventory is regenerated from the controllers, so this fails if the route is reintroduced.
+  const inventory = require('./api-route-inventory.json');
+  const endpoints = JSON.stringify(inventory);
+  assert.equal(endpoints.includes('/api/v1/notifications/logs'), false);
 });
 
 test('auth classifier treats login refresh and logout as public auth routes', () => {

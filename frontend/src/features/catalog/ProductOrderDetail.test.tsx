@@ -1,0 +1,57 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import api from '../../services/api';
+import { ProductOrderDetail } from './ProductOrderDetail';
+import { savedNotebook } from './catalogTestFixtures';
+const auth = vi.hoisted(() => ({ role: 'SUPERADMIN' }));
+vi.mock('../../services/api', () => ({ default: { get: vi.fn(), post: vi.fn(), put: vi.fn() } }));
+vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
+vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: auth }) }));
+beforeEach(() => { vi.clearAllMocks(); auth.role = 'SUPERADMIN'; URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
+afterEach(cleanup);
+it('quotes persisted lines in paise, refreshes computed totals, and gates approval on the quote', async () => {
+  let detail = savedNotebook('PROCESSING', false);
+  vi.mocked(api.get).mockImplementation(async () => ({ data: detail }));
+  vi.mocked(api.put).mockImplementation(async () => {
+    detail = { ...detail, version: 1, pricingStatus: 'QUOTED', order: { ...detail.order, subtotal: 4550000, gst: 12000, totalAmount: 4562000 }, lines: detail.lines.map((line) => ({ ...line, unitPricePaise: 4550, lineTotalPaise: 4550000 })) };
+    return { data: detail };
+  });
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('button', { name: 'Approve order' })).toBeDisabled();
+  expect(screen.getByText('GST amount (Rs.)')).toBeInTheDocument();
+  expect(screen.getByRole('row', { name: 'Order line 1' }).querySelector('[data-label="Line 1 - Size"]')).toHaveTextContent('Long');
+  expect(screen.getAllByLabelText('Unit price for line 1')).toHaveLength(1);
+  fireEvent.change(screen.getByLabelText('Unit price for line 1'), { target: { value: '45.50' } });
+  fireEvent.change(screen.getByLabelText('GST amount in rupees'), { target: { value: '120' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save quote' }));
+  await waitFor(() => expect(api.put).toHaveBeenCalledWith('/supply/orders/ORD-42/quote', { version: 0, lines: [{ id: 101, unitPricePaise: 4550 }], gstPaise: 12000 }));
+  expect(await screen.findByText('Quote saved.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Approve order' })).toBeEnabled();
+  expect(screen.getByText('Rs. 45,620.00')).toBeInTheDocument();
+});
+it('hides design and quote actions from school administrators, while keeping uploaded artwork readable', async () => {
+  auth.role = 'ADMIN';
+  const detail = savedNotebook('DESIGN_APPROVAL');
+  detail.assets = [{ id: 1, assetKind: 'DESIGN', contentType: 'image/png', sizeBytes: 100, originalFilename: 'cover.png', contentUrl: '/supply/orders/ORD-42/assets/1/content', uploadedAt: '2026-09-15T12:00:00Z' }];
+  vi.mocked(api.get).mockImplementation(async (url) => ({ data: String(url).endsWith('/content') ? new Blob(['image'], { type: 'image/png' }) : detail }));
+  render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByText('cover.png')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Approve design' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Save quote' })).not.toBeInTheDocument();
+  expect(await screen.findByAltText('Design artwork')).toHaveAttribute('src', 'blob:artwork');
+  expect(api.get).toHaveBeenCalledWith('/supply/orders/ORD-42/assets/1/content', { responseType: 'blob' });
+});
+it('uploads the later pre-delivery photo on the same order and enables delivery after refresh', async () => {
+  let detail = savedNotebook('APPROVED');
+  vi.mocked(api.get).mockImplementation(async (url) => ({ data: String(url).endsWith('/content') ? new Blob(['photo'], { type: 'image/png' }) : detail }));
+  vi.mocked(api.post).mockImplementation(async () => { detail = { ...detail, version: 1, assets: [{ id: 5, assetKind: 'PRE_DELIVERY_PHOTO', contentType: 'image/png', sizeBytes: 10, originalFilename: 'delivery.png', contentUrl: '/supply/orders/ORD-42/assets/5/content', uploadedAt: '2026-09-15T12:00:00Z' }] }; return { data: detail.assets[0] }; });
+  const { container } = render(<ProductOrderDetail orderId="ORD-42" onBack={vi.fn()} />);
+  expect(await screen.findByRole('button', { name: 'Mark delivered' })).toBeDisabled();
+  const file = new File(['photo'], 'delivery.png', { type: 'image/png' });
+  fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [file] } });
+  expect(await screen.findByText('Attachment saved.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Mark delivered' })).toBeEnabled();
+  expect(api.post).toHaveBeenCalledWith('/supply/orders/ORD-42/assets', expect.any(FormData));
+  const body = vi.mocked(api.post).mock.calls[0][1] as FormData;
+  expect(body.get('assetKind')).toBe('PRE_DELIVERY_PHOTO');
+});

@@ -86,6 +86,12 @@ class OpenApiCiGateTest(unittest.TestCase):
         )
         return json.loads(completed.stdout)
 
+    @unittest.skipUnless(shutil.which("pwsh"), "PowerShell is required for routing checks")
+    def test_catalog_rule_fixture_selects_both_rule_implementations(self) -> None:
+        selection = self.resolve("contracts/catalog-form-rule-fixtures.json")
+        selected_names = [entry["name"] for entry in selection["service_matrix"]["include"]]
+        self.assertEqual(selected_names, ["frontend", "school-core-service"])
+
 
 if __name__ == "__main__":
     unittest.main()
