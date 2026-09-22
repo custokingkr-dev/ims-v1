@@ -521,9 +521,24 @@ jobs:
             # seconds -- and because images are content addressed, the digest is identical on both sides,
             # so the promoted reference is provably the same bytes that were approved on dev.
             if ($runtimeRegistry -ne $sourceRegistry) {
-              & docker buildx imagetools create --tag "$runtimeRegistry/$($entry.image):$resolvedTag" "$sourceRegistry/$($entry.image)@$digest"
-              if ($LASTEXITCODE -ne 0) {
-                throw "Could not promote $($entry.image)@$digest into $runtimeRegistry."
+              # Writing the tag is skipped when it already resolves to this digest, so re-running a
+              # release is a no-op instead of a rewrite. A tag that already points somewhere else is a
+              # conflict, never something to overwrite. This mirrors the commit- and approval-tag steps
+              # and is what allows the registry to be switched to immutable tags.
+              $existingOutput = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
+              $existingExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+              $existingDigest = if ($null -eq $existingOutput) { "" } else { ([string]$existingOutput).Trim() }
+              if ($existingExitCode -eq 0 -and $existingDigest -match "^sha256:[0-9a-f]{64}$") {
+                if ($existingDigest -ne $digest) {
+                  throw "Promotion tag conflict for $($entry.image): $resolvedTag already points to $existingDigest, not the approved $digest."
+                }
+                Write-Host "Promotion tag for $($entry.image) already points to $digest."
+              } else {
+                & docker buildx imagetools create --tag "$runtimeRegistry/$($entry.image):$resolvedTag" "$sourceRegistry/$($entry.image)@$digest"
+                if ($LASTEXITCODE -ne 0) {
+                  throw "Could not promote $($entry.image)@$digest into $runtimeRegistry."
+                }
               }
               $promoted = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
               $promotedDigest = if ($null -eq $promoted) { "" } else { ([string]$promoted).Trim() }
