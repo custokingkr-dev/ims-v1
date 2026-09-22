@@ -88,8 +88,12 @@ repository now ignores `outputs/`.
   followed by the legal/ownership fields engineering must not invent.
 - `SECURITY-REVIEW-2026-09-22.md` — whole-codebase security review: the gateway alias root cause, the
   five verified findings and their fixes (PR #255), the OIDC caller-identity configuration this introduced,
-  and the two follow-ups still open (immutable registry tags, branch protection). The live model it changed
-  is described in `INTERNAL-SERVICE-AUTHORIZATION.md`.
+  and the follow-ups still open. The live model it changed is described in
+  `INTERNAL-SERVICE-AUTHORIZATION.md`.
+- `SECURITY-REVIEW-2026-09-22-COMPLETION.md` — what was deployed and measured on dev, the decisions taken
+  and their reasons (notably why immutable registry tags were rejected), the two items blocked on
+  permissions this account lacks with the exact commands and the expected Terraform plan, and the
+  three-step production promotion sequence. Read before promoting to production.
 
 ## Active contracts, operational procedures, and reference designs
 
