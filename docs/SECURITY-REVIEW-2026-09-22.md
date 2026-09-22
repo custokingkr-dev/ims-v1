@@ -74,10 +74,15 @@ empty caller-identity allow-lists fail closed and reject every Pub/Sub push. The
 
 ## Open follow-ups
 
-1. **Immutable Artifact Registry tags.** Production promotion resolves the mutable
-   `dev-approved-<sourceTag>` tag in the dev registry and never binds digest to source. The pipeline
-   never re-points a tag (it fails on conflict), so `docker_config { immutable_tags = true }` looks
-   compatible, but its interaction with the seven-day cleanup policy was not verified. Enable on dev
-   first. This is a stealth path for someone who can already push to `main`, not an escalation.
+1. **Provenance binding for production promotion.** Production resolves the mutable
+   `dev-approved-<sourceTag>` tag in the dev registry and never binds digest to source. Investigated
+   2026-09-22 and **immutable tags are not the answer**: Artifact Registry does not permit deleting a
+   tagged artifact once immutable tags are on, which would silently disable the repository's
+   `delete-old-release-images` cleanup policy for every image here (all carry a source, commit or
+   approval tag) and grow storage without bound. Close the gap with cosign keyless signing from the
+   dev release job plus verification in prod, or Binary Authorization with an attestor only the dev
+   release identity can satisfy. Needs a decision. The prerequisite defect — the promotion rewrote
+   its tag unconditionally and silently overwrote a conflicting one — is fixed in PR #256. This is a
+   stealth path for someone who can already push to `main`, not an escalation.
 2. **Branch protection on `main` and `dev`.** Neither branch requires review; the `prod` GitHub
    Environment reviewer is the only gate. Needs repository admin.
