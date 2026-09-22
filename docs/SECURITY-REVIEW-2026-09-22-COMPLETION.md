@@ -10,7 +10,7 @@ permissions this account does not hold. Written 2026-09-22.
 | --- | --- |
 | Findings 1-5, the latent item, three hardening items | Fixed, merged to `dev` (PR #255), deployed to dev, verified live |
 | Promotion tag-write defect (found while assessing immutable tags) | Fixed, merged to `dev` (PR #256) |
-| Production | **Not deployed.** `main` is unchanged; every finding is still live in production |
+| Production | **Deployed and verified 2026-09-22.** All seven services on new revisions; internal and Pub/Sub paths return 404 before authentication; a real Pub/Sub reporting push was accepted (HTTP 204) with no identity rejections |
 | Cost-controller removal from `custoking-prod` | Planned and reviewed, **not applied** — see "Blocked" |
 | Branch protection | **Not done** — see "Blocked" |
 | Immutable registry tags | **Deliberately rejected** — see "Decisions" |
@@ -37,6 +37,31 @@ PROCESSED with no projection. It is inert; delete it if inbox cleanliness matter
 
 The internal caller check could not be exercised on dev because absentee delivery runs in
 `dry-run` there and never calls platform-service. Both sides' configuration was compared instead.
+
+## Verified in production
+
+Measured after the rollout on 2026-09-22:
+
+- All seven services `Ready` on new revisions; `/gateway-health` 200.
+- `/reporting-api/v1/pubsub/reporting-events`, `/reporting-api/v1/internal/async/drain`,
+  `/notification-api/v1/internal/notifications/deliveries` and `/billing-api/v1/internal/outbox/relay`
+  all return 404 **before authentication**. Canonical routes still return 401, so routing is intact.
+- `SERVICE_OIDC_AUDIENCES` carries both service URL forms on the serving revision, as required by the
+  three different audiences in use.
+- A probe message published to `ims-reporting-events-v1-prod` was accepted: **HTTP 204**, no identity
+  rejections. Reporting push is the one path whose behaviour tightened, so this was the decisive check.
+
+**Correction to an earlier claim.** This record previously stated that production's notification
+push had been returning 401 because it required a shared token configured nowhere. The
+configuration defect was real, but the logs show **no notification push traffic in production at
+all** over the preceding thirty days, so no 401s ever actually occurred. The fix removed a latent
+trap rather than repairing observed breakage.
+
+**Probe rows.** One inert row exists in each environment's reporting inbox
+(`ops-oidc-verify-1790081470` in dev, `ops-oidc-verify-prod-1790091921` in prod): an unrecognised
+event type, no projector, marked PROCESSED with no projection and no fact or dimension written.
+They are deliberately left in place — deleting them would require a write job against the private
+production database, which is more risk than two inert rows justify.
 
 ## Decisions taken, with reasons
 
