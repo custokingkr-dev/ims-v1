@@ -40,6 +40,22 @@ The internal caller check could not be exercised on dev because absentee deliver
 
 ## Decisions taken, with reasons
 
+### Promotion provenance: cosign keyless signing (chosen 2026-09-22)
+
+The dev release signs every built digest with `cosign sign` under GitHub's OIDC identity, before
+the `dev-approved-*` tag is written, so an unsigned digest is never approved. Production runs
+`cosign verify` against the source digest, requiring a certificate whose identity is
+`…/build-release.yml@refs/heads/dev` and whose issuer is GitHub, before it copies anything.
+Repointing the mutable tag is no longer sufficient: a digest that no dev release signed fails the
+promotion.
+
+**Residual risk, stated plainly.** The Fulcio certificate binds the workflow *path and ref*, not
+the file's contents. Someone who can push a modified `build-release.yml` to `dev` can still obtain
+a valid signature for a digest of their choosing. This narrows the exposure from "anyone with
+`artifactregistry.writer` in the dev project, or any principal that compromises it" to "someone who
+can commit to `dev`", which is a materially smaller set, and branch protection on `dev` is the
+control that closes the remainder.
+
 ### Immutable Artifact Registry tags: rejected
 
 The original finding proposed `docker_config { immutable_tags = true }` to stop the
@@ -122,6 +138,19 @@ Not possible from this account: the repository reports `"admin": false` for it, 
 `custokingkr-dev` holds admin. Both branches currently return HTTP 404 from the branch-protection
 API, meaning no protection of any kind. The `prod` GitHub Environment's required reviewers are
 presently the only gate between a write collaborator and production.
+
+`scripts/enable-branch-protection.sh` already encodes the agreed policy and needs no edit: required
+status checks `summary`, `analyze (java-kotlin)` and `analyze (javascript-typescript)`, pinned to
+the github-actions app id, with `required_pull_request_reviews` left null so a single maintainer can
+still merge their own work. It was never run, which is the whole of the finding. A dry run on
+2026-09-22 validated cleanly and reported both branches unprotected. An administrator completes it
+with:
+
+```bash
+bash scripts/enable-branch-protection.sh --apply
+```
+
+Rollback is one call per branch, documented in the script header.
 
 This is the precondition for the cost-controller finding and for the promotion-provenance gap; both
 shrink considerably once `main` requires review.
