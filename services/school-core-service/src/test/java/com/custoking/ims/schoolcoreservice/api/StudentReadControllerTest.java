@@ -74,6 +74,28 @@ class StudentReadControllerTest {
         verify(students).workspaceStudents(4L, "9", "A", "Pending", "Aman 102", 0, 25);
     }
 
+    private static com.custoking.ims.schoolcoreservice.api.dto.CreateStudentRequest createRequest(String photoUrl) {
+        return new com.custoking.ims.schoolcoreservice.api.dto.CreateStudentRequest(
+                "ADM-1", "Asha", 10L, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, photoUrl);
+    }
+
+    @Test
+    void createDoesNotAcceptAStorageObjectKeyAsPhotoUrl() {
+        // photo_url is read back as a bucket key by studentPhotoContent; a key can only be assigned by
+        // the upload paths, never chosen by the client. External http(s) references stay allowed.
+        TenantContext.set(new TenantContext(1L, "admin@x", "ADMIN", 10L, null, Set.of(), Set.of("student:create")));
+        when(students.createStudent(org.mockito.ArgumentMatchers.anyMap())).thenReturn(Map.of("id", 1L));
+
+        controller.create("student-token", createRequest("schools/other-school/students/42/photo.jpg"));
+        controller.create("student-token", createRequest("https://example.test/photo.jpg"));
+
+        org.mockito.ArgumentCaptor<Map<String, Object>> captor = org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(students, org.mockito.Mockito.times(2)).createStudent(captor.capture());
+        assertThat(captor.getAllValues().get(0)).doesNotContainKey("photoUrl");
+        assertThat(captor.getAllValues().get(1)).containsEntry("photoUrl", "https://example.test/photo.jpg");
+    }
+
     @Test
     void getReturnsNotFoundForMissingStudent() {
         when(students.schoolIdForStudent(404L)).thenThrow(new StudentNotFoundException("student not found"));
