@@ -77,6 +77,11 @@ spec:
               value: "false" # from-param: ${reporting_pubsub_require_shared_token}
             - name: NOTIFICATION_PUBSUB_REQUIRE_SHARED_TOKEN
               value: "true" # from-param: ${notification_pubsub_require_shared_token}
+            # Caller-identity verification for the surfaces Cloud Run IAM alone cannot protect, because
+            # the API gateway is an invoker of this service too. SERVICE_OIDC_AUDIENCES lists this
+            # service's own URLs (prod carries two forms; see docs/SECURITY-REVIEW-2026-09-22.md), and
+            # each allow-list names the only identities permitted on its surface. An empty allow-list or
+            # audience set fails closed.
             - name: SERVICE_OIDC_AUDIENCES
               value: https://custoking-platform-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${service_oidc_audiences}
             - name: PUBSUB_PUSH_OIDC_SERVICE_ACCOUNTS
