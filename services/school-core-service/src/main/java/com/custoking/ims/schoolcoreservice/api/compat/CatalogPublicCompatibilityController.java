@@ -102,6 +102,8 @@ public class CatalogPublicCompatibilityController {
         TenantScope.requirePermissionIfAuthenticated("order:create");
         applyResolvedSchool(request);
         requireOrderModule(longValue(request.get("schoolId")));
+        // Every order starts as a draft; placement, approval and delivery are separate guarded steps.
+        request.put("status", "DRAFT");
         return command(() -> catalog.createOrder(request));
     }
 
@@ -121,6 +123,9 @@ public class CatalogPublicCompatibilityController {
             @PathVariable String id,
             @RequestBody Map<String, Object> request) {
         requireToken(token, "catalog:read");
+        // Direct status writes bypass the legacy order's approval steps, so only superadmin may make them;
+        // schools move orders through /place, and structured orders through their own guarded transitions.
+        TenantScope.requireSuperAdmin();
         TenantScope.requirePermissionIfAuthenticated("order:update");
         requireOrderModule(TenantContext.get().schoolId());
         return command(() -> catalog.updateOrderStatus(id, String.valueOf(request.getOrDefault("status", ""))));

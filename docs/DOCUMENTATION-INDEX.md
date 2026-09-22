@@ -86,6 +86,10 @@ repository now ignores `outputs/`.
 - `PRIVACY-TECHNICAL-CONTROLS-EVIDENCE-2026-08-24.md` and
   `DATA-LIFECYCLE-POLICY-DECISION-TEMPLATE.md` — technical export/erasure and repository-history controls,
   followed by the legal/ownership fields engineering must not invent.
+- `SECURITY-REVIEW-2026-09-22.md` — whole-codebase security review: the gateway alias root cause, the
+  five verified findings and their fixes (PR #255), the OIDC caller-identity configuration this introduced,
+  and the two follow-ups still open (immutable registry tags, branch protection). The live model it changed
+  is described in `INTERNAL-SERVICE-AUTHORIZATION.md`.
 
 ## Active contracts, operational procedures, and reference designs
 

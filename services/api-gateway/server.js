@@ -284,6 +284,12 @@ const server = http.createServer(async (req, res) => {
     }
 
     const matched = routes.find((candidate) => candidate.matches(parsed.pathname, req.method));
+    if (matched && isInternalUpstreamPath(matched.rewrite(parsed.pathname))) {
+      // /api/v1/internal/** and /api/v1/pubsub/** are service-to-service surfaces guarded only by
+      // Cloud Run IAM; the gateway is itself an invoker, so it must never carry a user request there.
+      sendJson(res, 404, { message: 'No service route is configured for this API path' });
+      return;
+    }
     if (matched) {
       matchedService = matched.service;
       compatibility = classifyCompatibilityRequest(parsed.pathname, req.method);
@@ -372,6 +378,10 @@ function diagnostic(service, prefix) {
       return `/api/v1/${pathname.slice(prefix.length)}`;
     },
   };
+}
+
+function isInternalUpstreamPath(upstreamPathname) {
+  return /^\/api\/v1\/(internal|pubsub)(\/|$)/.test(upstreamPathname);
 }
 
 function requiresUserAuth(pathname) {
@@ -920,6 +930,7 @@ module.exports = {
   route,
   diagnostic,
   requiresUserAuth,
+  isInternalUpstreamPath,
   isCookieAuthPath,
   outboundHeaders,
   isRequestHopHeader,

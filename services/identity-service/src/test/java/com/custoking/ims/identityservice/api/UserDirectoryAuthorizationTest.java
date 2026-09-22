@@ -66,6 +66,48 @@ class UserDirectoryAuthorizationTest {
         verify(users, never()).users(any(), any(), any(), any(), anyInt());
     }
 
+    // ---- user by id ----
+
+    private static UserDirectoryReadRepository.UserDirectoryRow row(Long branchId, String role) {
+        return new UserDirectoryReadRepository.UserDirectoryRow(
+                42L, "Someone", "someone@example.test", role, branchId, null, null, null, null, null, null, true);
+    }
+
+    @Test
+    void user_schoolAdminReadingAPlatformLevelUser_isNotFound() throws Exception {
+        // A user with no school (superadmin, zone admin) belongs to no tenant; only superadmin may see them.
+        when(users.user(42L)).thenReturn(row(null, "SUPERADMIN"));
+
+        mvc.perform(get("/api/v1/users/42")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void user_schoolAdminReadingOwnSchoolUser_isAllowed() throws Exception {
+        when(users.user(42L)).thenReturn(row(10L, "ADMIN"));
+
+        mvc.perform(get("/api/v1/users/42")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "ADMIN")
+                        .header("X-Authenticated-School-Id", "10")
+                        .header("X-Authenticated-Permissions", "user:read"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void user_superadminReadingAPlatformLevelUser_isAllowed() throws Exception {
+        when(users.user(42L)).thenReturn(row(null, "ZONE_ADMIN"));
+
+        mvc.perform(get("/api/v1/users/42")
+                        .header("X-Identity-Service-Token", VALID_TOKEN)
+                        .header("X-Authenticated-Role", "SUPERADMIN"))
+                .andExpect(status().isOk());
+    }
+
     // ---- updateUser ----
 
     @Test

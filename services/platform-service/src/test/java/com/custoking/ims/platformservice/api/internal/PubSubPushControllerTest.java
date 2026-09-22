@@ -30,7 +30,7 @@ class PubSubPushControllerTest {
         PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "push-token");
         when(inbox.findById("event-1")).thenReturn(Optional.empty());
 
-        controller.receiveNotificationRequest("push-token", null, envelopeWithTrace());
+        controller.receiveNotificationRequest(null, "push-token", null, envelopeWithTrace());
 
         ArgumentCaptor<NotificationInboxEvent> captor = ArgumentCaptor.forClass(NotificationInboxEvent.class);
         verify(inbox).save(captor.capture());
@@ -41,17 +41,41 @@ class PubSubPushControllerTest {
     }
 
     @Test
-    void oidcOnlyMode_acceptsRequestWithoutLegacySharedToken() throws Exception {
+    void oidcOnlyMode_acceptsRequestFromAllowListedPushServiceAccount() throws Exception {
         NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
         NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
-        PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "", false);
+        PubSubPushController controller = new PubSubPushController(
+                inbox, processor, mapper, "", false, pushAuthenticatorAccepting("Bearer push-sa-token"));
         when(inbox.findById("event-1")).thenReturn(Optional.empty());
 
-        controller.receiveNotificationRequest(null, null, envelopeWithTrace());
+        controller.receiveNotificationRequest("Bearer push-sa-token", null, null, envelopeWithTrace());
 
         ArgumentCaptor<NotificationInboxEvent> captor = ArgumentCaptor.forClass(NotificationInboxEvent.class);
         verify(inbox).save(captor.capture());
         verify(processor).process(captor.getValue());
+    }
+
+    @Test
+    void oidcOnlyMode_rejectsRequestWithoutVerifiedPushIdentity() throws Exception {
+        NotificationInboxRepository inbox = mock(NotificationInboxRepository.class);
+        NotificationInboxProcessor processor = mock(NotificationInboxProcessor.class);
+        PubSubPushController controller = new PubSubPushController(
+                inbox, processor, mapper, "", false, pushAuthenticatorAccepting("Bearer push-sa-token"));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                controller.receiveNotificationRequest("Bearer gateway-token", null, null, envelopeWithTrace()))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error)
+                        .getStatusCode().value()).isEqualTo(401));
+
+        verify(inbox, never()).save(org.mockito.ArgumentMatchers.any());
+    }
+
+    private static com.custoking.ims.platformservice.security.PubSubPushAuthenticator pushAuthenticatorAccepting(String authorization) {
+        String allowed = "push@test.iam.gserviceaccount.com";
+        return new com.custoking.ims.platformservice.security.PubSubPushAuthenticator(
+                idToken -> authorization.equals("Bearer " + idToken) ? Optional.of(allowed) : Optional.empty(),
+                java.util.Set.of(allowed));
     }
 
     @Test
@@ -61,7 +85,7 @@ class PubSubPushControllerTest {
         PubSubPushController controller = new PubSubPushController(inbox, processor, mapper, "push-token");
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                controller.receiveNotificationRequest(null, null, envelopeWithTrace()))
+                controller.receiveNotificationRequest(null, null, null, envelopeWithTrace()))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error)
                         .getStatusCode().value()).isEqualTo(401));
@@ -79,7 +103,7 @@ class PubSubPushControllerTest {
         event.setStatus(NotificationInboxEvent.STATUS_DEAD_LETTER);
         when(inbox.findById("event-1")).thenReturn(Optional.of(event));
 
-        controller.receiveNotificationRequest("push-token", null, envelopeWithTrace());
+        controller.receiveNotificationRequest(null, "push-token", null, envelopeWithTrace());
 
         verify(processor, never()).process(event);
     }
@@ -94,7 +118,7 @@ class PubSubPushControllerTest {
         event.setStatus(NotificationInboxEvent.STATUS_SUPPRESSED);
         when(inbox.findById("event-1")).thenReturn(Optional.of(event));
 
-        controller.receiveNotificationRequest("push-token", null, envelopeWithTrace());
+        controller.receiveNotificationRequest(null, "push-token", null, envelopeWithTrace());
 
         verify(processor, never()).process(event);
     }
@@ -111,7 +135,7 @@ class PubSubPushControllerTest {
         when(inbox.findById("event-1")).thenReturn(Optional.of(event));
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                controller.receiveNotificationRequest("push-token", null, envelopeWithTrace()))
+                controller.receiveNotificationRequest(null, "push-token", null, envelopeWithTrace()))
                 .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
                 .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error)
                         .getStatusCode().value()).isEqualTo(503));

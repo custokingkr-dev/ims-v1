@@ -67,6 +67,7 @@ uploads/
 
 # Local student / photographer exports - personal data, never commit
 outputs/
+output/
 
 # Packaging artifacts
 custoking-ims-clean.zip

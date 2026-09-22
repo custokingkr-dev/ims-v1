@@ -98,6 +98,49 @@ class AuditIngestControllerTest {
         assertThat(saved.getEventTimestamp()).isEqualTo(timestamp);
     }
 
+    @org.junit.jupiter.api.AfterEach
+    void clearContext() { com.custoking.ims.platformservice.security.TenantContext.clear(); }
+
+    @Test
+    void ingestBindsActorAndSchoolToTheAuthenticatedPrincipalNotTheBody() {
+        // A user request relayed by the gateway carries X-Authenticated-* headers; the body must not be
+        // able to attribute the record to another user, school or email.
+        com.custoking.ims.platformservice.security.TenantContext.set(
+                new com.custoking.ims.platformservice.security.TenantContext(77L, "teacher@school-a.test", "ADMIN", 5L, null));
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        controller.ingest("audit-token", new AuditIngestController.AuditEventRequest(
+                "USER_DELETED", 42L, 7L, "USER", "42", null, null, null, "principal@school-b.test",
+                null, null, "SUCCESS", OffsetDateTime.parse("2026-01-01T00:00:00Z")));
+
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(repository).save(eventCaptor.capture());
+        AuditEvent saved = eventCaptor.getValue();
+        assertThat(saved.getUserId()).isEqualTo(77L);
+        assertThat(saved.getSchoolId()).isEqualTo(5L);
+        assertThat(saved.getActorEmail()).isEqualTo("teacher@school-a.test");
+        // A caller cannot back-date its own record either.
+        assertThat(saved.getEventTimestamp()).isAfter(OffsetDateTime.parse("2026-01-01T00:00:00Z"));
+    }
+
+    @Test
+    void ingestKeepsBodyAttributionForSuperAdminAndForHeaderlessSystemCallers() {
+        when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+
+        com.custoking.ims.platformservice.security.TenantContext.set(
+                new com.custoking.ims.platformservice.security.TenantContext(1L, "sa@custoking.test", "SUPERADMIN", null, null));
+        controller.ingest("audit-token", validRequest());
+        com.custoking.ims.platformservice.security.TenantContext.clear();
+        controller.ingest("audit-token", validRequest());
+
+        verify(repository, org.mockito.Mockito.times(2)).save(eventCaptor.capture());
+        assertThat(eventCaptor.getAllValues()).allSatisfy(saved -> {
+            assertThat(saved.getUserId()).isEqualTo(9L);
+            assertThat(saved.getSchoolId()).isEqualTo(4L);
+        });
+    }
+
     private AuditIngestController.AuditEventRequest validRequest() {
         return new AuditIngestController.AuditEventRequest(
                 "LOGIN",

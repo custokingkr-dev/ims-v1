@@ -53,6 +53,45 @@ class CatalogPublicCompatibilityControllerTest {
         verify(repo, never()).markVendorPaid("12", 1L, null, null);
     }
 
+    private static TenantContext schoolAdmin(long schoolId, String... permissions) {
+        return new TenantContext(7L, "admin@school.test", "ADMIN", schoolId, null, java.util.Set.of(), java.util.Set.of(permissions));
+    }
+
+    @Test
+    void updateOrderStatusIsRefusedForSchoolAdminEvenWithOrderUpdatePermission() {
+        // The legacy status column has no state machine; APPROVED is superadmin's decision alone.
+        TenantContext.set(schoolAdmin(5L, "order:update", "order:approve"));
+
+        assertThatThrownBy(() -> controller.updateOrderStatus("tok", "12", new HashMap<>(Map.of("status", "APPROVED"))))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+        verify(repo, never()).updateOrderStatus(org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void updateOrderStatusDelegatesForSuperAdmin() {
+        TenantContext.set(new TenantContext(1L, "sa@custoking.test", "SUPERADMIN", null, null));
+        CatalogOrderRow row = order("12");
+        when(repo.updateOrderStatus("12", "APPROVED")).thenReturn(row);
+
+        assertThat(controller.updateOrderStatus("tok", "12", new HashMap<>(Map.of("status", "APPROVED")))).isSameAs(row);
+        verify(repo).updateOrderStatus("12", "APPROVED");
+    }
+
+    @Test
+    void createOrderIgnoresClientSuppliedStatusAndAlwaysStartsAsDraft() {
+        TenantContext.set(schoolAdmin(5L, "order:create"));
+        Map<String, Object> request = new HashMap<>(Map.of("category", "UNIFORMS", "status", "APPROVED", "totalAmount", 1));
+        when(repo.createOrder(org.mockito.ArgumentMatchers.anyMap())).thenReturn(order("12"));
+
+        controller.createOrder("tok", request);
+
+        org.mockito.ArgumentCaptor<Map<String, Object>> captor = org.mockito.ArgumentCaptor.forClass(Map.class);
+        verify(repo).createOrder(captor.capture());
+        assertThat(captor.getValue()).containsEntry("status", "DRAFT");
+    }
+
     private CatalogOrderRow order(String id) {
         return new CatalogOrderRow(
                 id,

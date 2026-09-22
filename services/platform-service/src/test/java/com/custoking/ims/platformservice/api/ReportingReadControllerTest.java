@@ -203,7 +203,7 @@ class ReportingReadControllerTest {
         ObjectMapper mapper = new ObjectMapper();
         ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "push-token");
 
-        assertThatThrownBy(() -> pubSub.receiveReportingEvent("wrong-token", null, directEnvelope(mapper)))
+        assertThatThrownBy(() -> pubSub.receiveReportingEvent(null, "wrong-token", null, directEnvelope(mapper)))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(error -> ((ResponseStatusException) error).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -212,16 +212,43 @@ class ReportingReadControllerTest {
     }
 
     @Test
-    void pubSubAcceptsCloudRunIamAuthenticatedDeliveryWithoutSharedUrlToken() throws Exception {
+    void pubSubOidcModeAcceptsDeliveryFromAllowListedPushServiceAccount() throws Exception {
         ReportingEventInboxRepository inbox = mock(ReportingEventInboxRepository.class);
         ObjectMapper mapper = new ObjectMapper();
-        ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "", false);
+        ReportingPubSubPushController pubSub = new ReportingPubSubPushController(
+                inbox, mapper, "", false, pushAuthenticatorAccepting("Bearer push-sa-token"));
         when(inbox.exists("event-1")).thenReturn(false);
 
-        pubSub.receiveReportingEvent(null, null, directEnvelope(mapper));
+        pubSub.receiveReportingEvent("Bearer push-sa-token", null, null, directEnvelope(mapper));
 
         verify(inbox).exists("event-1");
         verify(inbox).record(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void pubSubOidcModeRejectsDeliveryWithoutVerifiedPushIdentity() throws Exception {
+        ReportingEventInboxRepository inbox = mock(ReportingEventInboxRepository.class);
+        ObjectMapper mapper = new ObjectMapper();
+        ReportingPubSubPushController pubSub = new ReportingPubSubPushController(
+                inbox, mapper, "", false, pushAuthenticatorAccepting("Bearer push-sa-token"));
+
+        // A gateway-relayed user request carries the gateway's own identity, never a push SA.
+        assertThatThrownBy(() -> pubSub.receiveReportingEvent("Bearer gateway-token", null, null, directEnvelope(mapper)))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(error -> ((ResponseStatusException) error).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThatThrownBy(() -> pubSub.receiveReportingEvent(null, null, null, directEnvelope(mapper)))
+                .isInstanceOf(ResponseStatusException.class);
+
+        verify(inbox, never()).exists("event-1");
+        verify(inbox, never()).record(org.mockito.ArgumentMatchers.any());
+    }
+
+    private static com.custoking.ims.platformservice.security.PubSubPushAuthenticator pushAuthenticatorAccepting(String authorization) {
+        String allowed = "push@test.iam.gserviceaccount.com";
+        return new com.custoking.ims.platformservice.security.PubSubPushAuthenticator(
+                idToken -> authorization.equals("Bearer " + idToken) ? java.util.Optional.of(allowed) : java.util.Optional.empty(),
+                java.util.Set.of(allowed));
     }
 
     @Test
@@ -231,7 +258,7 @@ class ReportingReadControllerTest {
         ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "push-token");
         when(inbox.exists("event-1")).thenReturn(false);
 
-        pubSub.receiveReportingEvent("push-token", null, directEnvelope(mapper));
+        pubSub.receiveReportingEvent(null, "push-token", null, directEnvelope(mapper));
 
         ArgumentCaptor<ReportingEventInboxRecord> captor = ArgumentCaptor.forClass(ReportingEventInboxRecord.class);
         verify(inbox).record(captor.capture());
@@ -250,7 +277,7 @@ class ReportingReadControllerTest {
         ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "push-token");
         when(inbox.exists("event-1")).thenReturn(false);
 
-        pubSub.receiveReportingEvent(null, "push-token", pubSubEnvelopeWithTrace(mapper));
+        pubSub.receiveReportingEvent(null, null, "push-token", pubSubEnvelopeWithTrace(mapper));
 
         ArgumentCaptor<ReportingEventInboxRecord> captor = ArgumentCaptor.forClass(ReportingEventInboxRecord.class);
         verify(inbox).record(captor.capture());
@@ -266,7 +293,7 @@ class ReportingReadControllerTest {
         ReportingPubSubPushController pubSub = new ReportingPubSubPushController(inbox, mapper, "push-token");
         when(inbox.exists("event-1")).thenReturn(true);
 
-        pubSub.receiveReportingEvent(null, "push-token", pubSubEnvelope(mapper));
+        pubSub.receiveReportingEvent(null, null, "push-token", pubSubEnvelope(mapper));
 
         verify(inbox).exists("event-1");
         verify(inbox, never()).record(org.mockito.ArgumentMatchers.any());

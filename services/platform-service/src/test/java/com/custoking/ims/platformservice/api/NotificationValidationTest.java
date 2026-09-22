@@ -2,7 +2,6 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
-import com.custoking.ims.platformservice.persistence.NotificationLogCommandRepository;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantContextFilter;
@@ -47,25 +46,16 @@ class NotificationValidationTest {
 
     private final NotificationBroadcastCommandRepository broadcasts =
             mock(NotificationBroadcastCommandRepository.class);
-    private final NotificationLogCommandRepository logs =
-            mock(NotificationLogCommandRepository.class);
     private final SenderProfileRepository senderProfiles =
             mock(SenderProfileRepository.class);
 
     private MockMvc broadcastMvc;
-    private MockMvc logMvc;
     private MockMvc senderProfileMvc;
 
     @BeforeEach
     void setUp() {
         broadcastMvc = MockMvcBuilders
                 .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN))
-                .setControllerAdvice(new ValidationExceptionHandler())
-                .addFilters(new TenantContextFilter())
-                .build();
-
-        logMvc = MockMvcBuilders
-                .standaloneSetup(new NotificationLogCommandController(logs, TOKEN))
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .addFilters(new TenantContextFilter())
                 .build();
@@ -193,93 +183,6 @@ class NotificationValidationTest {
         assertTrue(!captor.getValue().containsKey("schoolId"), "schoolId must not be present when omitted");
         assertTrue(!captor.getValue().containsKey("module"), "module must not be present when omitted");
         assertTrue(!captor.getValue().containsKey("createdBy"), "createdBy must not be present when omitted");
-    }
-
-    // ─── POST /notifications/logs ─────────────────────────────────────────────
-
-    @Test
-    void createLog_missingChannel_returns400WithFieldError() throws Exception {
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .contentType("application/json")
-                        .content("{\"notificationType\":\"FEE_REMINDER\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.channel").exists());
-        verifyNoInteractions(logs);
-    }
-
-    @Test
-    void createLog_blankChannel_returns400WithFieldError() throws Exception {
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .contentType("application/json")
-                        .content("{\"channel\":\"\",\"notificationType\":\"FEE_REMINDER\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.channel").exists());
-        verifyNoInteractions(logs);
-    }
-
-    @Test
-    void createLog_missingNotificationType_returns400WithFieldError() throws Exception {
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .contentType("application/json")
-                        .content("{\"channel\":\"SMS\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.notificationType").exists());
-        verifyNoInteractions(logs);
-    }
-
-    @Test
-    void createLog_blankNotificationType_returns400WithFieldError() throws Exception {
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .contentType("application/json")
-                        .content("{\"channel\":\"SMS\",\"notificationType\":\"\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.fieldErrors.notificationType").exists());
-        verifyNoInteractions(logs);
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void createLog_valid_callsRepoWithChannelAndType() throws Exception {
-        when(logs.createRequestLog(anyMap())).thenReturn(Map.of("id", "log-123"));
-
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .contentType("application/json")
-                        .content("{\"channel\":\"SMS\",\"notificationType\":\"FEE_REMINDER\",\"schoolId\":10,\"studentId\":501}"))
-                .andExpect(status().isOk());
-
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(logs).createRequestLog(captor.capture());
-        assertEquals("SMS", captor.getValue().get("channel"));
-        assertEquals("FEE_REMINDER", captor.getValue().get("notificationType"));
-        assertEquals(10L, captor.getValue().get("schoolId"));
-        assertEquals(501L, captor.getValue().get("studentId"));
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    void createLog_withoutOptionalFields_doesNotPutThemInMap() throws Exception {
-        when(logs.createRequestLog(anyMap())).thenReturn(Map.of("id", "log-abc"));
-
-        logMvc.perform(post("/api/v1/notifications/logs")
-                        .header("X-Notification-Service-Token", TOKEN)
-                        .contentType("application/json")
-                        .content("{\"channel\":\"EMAIL\",\"notificationType\":\"ATTENDANCE\"}"))
-                .andExpect(status().isOk());
-
-        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
-        verify(logs).createRequestLog(captor.capture());
-        assertTrue(!captor.getValue().containsKey("schoolId"), "schoolId must not be present when omitted");
-        assertTrue(!captor.getValue().containsKey("studentId"), "studentId must not be present when omitted");
-        assertTrue(!captor.getValue().containsKey("sentBy"), "sentBy must not be present when omitted");
     }
 
     // ─── PUT /notifications/sender-profiles/default (partial upsert) ────────────
