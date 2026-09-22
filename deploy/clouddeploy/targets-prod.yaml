@@ -153,6 +153,9 @@ deployParameters:
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "false"
+  # Both URL forms of this service: the prod notification push subscription carries the legacy
+  # hash-form URL as its OIDC audience, the reporting one the deterministic form.
+  service_oidc_audiences: https://custoking-platform-service-prod-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-platform-service-prod-yter7sugpa-em.a.run.app
   pubsub_push_service_accounts: ims-reporting-push-prod@__PROJECT_ID__.iam.gserviceaccount.com,ims-notification-push-prod@__PROJECT_ID__.iam.gserviceaccount.com
   internal_oidc_require: "true"
   internal_caller_service_accounts: ims-school-core-prod@__PROJECT_ID__.iam.gserviceaccount.com

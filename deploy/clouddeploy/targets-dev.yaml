@@ -153,6 +153,7 @@ deployParameters:
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "false"
+  service_oidc_audiences: https://custoking-platform-service-dev-__PROJECT_NUMBER__.__REGION__.run.app
   pubsub_push_service_accounts: ims-reporting-push-dev@__PROJECT_ID__.iam.gserviceaccount.com,ims-notification-push-dev@__PROJECT_ID__.iam.gserviceaccount.com
   internal_oidc_require: "true"
   internal_caller_service_accounts: ims-school-core-dev@__PROJECT_ID__.iam.gserviceaccount.com
