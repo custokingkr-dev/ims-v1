@@ -4,8 +4,9 @@ Source: five order-form prototypes supplied 2026-09-23 (flex, flier, bill book, 
 Those prototypes are the specification for what follows; this document records what they require,
 what already exists, and what has to be built.
 
-Status: complete. The notebook revision and all four new categories are built, enabled in every
-environment, and both open product decisions are confirmed (see the end of this document).
+Status: built and enabled in dev and stage, with both product decisions confirmed (see the end of
+this document). Production is deliberately still off pending a walkthrough of one real order per
+category in dev — no order has yet been submitted through any of these forms in any environment.
 
 ## Where the current implementation stands
 
