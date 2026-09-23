@@ -1,6 +1,8 @@
 export interface ProductCategory {
   code: string; label: string; emoji: string; description: string;
   orderType: string; formEnabled: boolean; sortOrder: number; active: boolean;
+  // Only paged categories (notebooks) collect a printed-page count per line.
+  paged?: boolean;
 }
 export interface ProductOption {
   id: number; groupId: number; code: string; label: string; specText: string | null;
@@ -10,6 +12,9 @@ export interface ProductOption {
 export interface ProductGroup {
   id: number; categoryCode: string; code: string; label: string; level: number;
   selectionType: string; required: boolean; scope: 'ORDER' | 'LINE'; active: boolean; options: ProductOption[];
+  // SELECT groups pick from `options`; the others capture a typed value stored on the line's
+  // `attributes` rather than a selection. `unit` is a display suffix such as "ft" or "gsm".
+  inputType?: 'SELECT' | 'TEXT' | 'INTEGER' | 'DECIMAL'; unit?: string;
 }
 export interface ProductRule {
   id?: number; categoryCode?: string; ruleType: string; targetField?: string | null;

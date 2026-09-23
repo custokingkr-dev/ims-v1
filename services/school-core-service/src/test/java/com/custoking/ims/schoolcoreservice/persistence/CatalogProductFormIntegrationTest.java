@@ -53,12 +53,12 @@ class CatalogProductFormIntegrationTest {
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        assertEquals(7, repository.categories(false).size());
+        assertEquals(11, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
         assertEquals(15, maps(group(definition, "RULING").get("options")).size());
-        assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
+        assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
         assertEquals(4, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());
@@ -82,10 +82,80 @@ class CatalogProductFormIntegrationTest {
     }
 
     @Test
+    void billBookAndBeltFormsAreUsableThroughTheGenericPath() {
+        // Seed-only categories: proof that a category with no rules and no bespoke code is served by
+        // the same definition endpoint the notebook form uses.
+        assertTrue(repository.formEnabled("BILLBOOKS"));
+        assertTrue(repository.formEnabled("BELTS"));
+
+        var billBook = repository.form("BILLBOOKS", false);
+        assertTrue(Boolean.TRUE.equals(billBook.get("enabled")));
+        assertEquals(5, maps(billBook.get("groups")).size());
+        assertEquals(List.of("A3", "A4", "A5"),
+                maps(group(billBook, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("50", "100", "200"),
+                maps(group(billBook, "PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("1", "2", "4", "8"),
+                maps(group(billBook, "SLIPS_PER_PAGE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertTrue(maps(billBook.get("rules")).isEmpty(), "the prototype states counts have no minimum or rounding");
+
+        var belt = repository.form("BELTS", false);
+        assertEquals(3, maps(belt.get("groups")).size());
+        assertEquals(List.of("Cloth Belt", "Satin Belt"),
+                maps(group(belt, "BELT_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("Bronze", "Plastic"),
+                maps(group(belt, "BUCKLE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(6, maps(group(belt, "LENGTH").get("options")).size());
+        assertTrue(maps(belt.get("rules")).isEmpty());
+    }
+
+    @Test
+    void flexAndFlierCarryTypedLineValues() {
+        var flex = repository.form("FLEX", false);
+        assertTrue(Boolean.TRUE.equals(flex.get("enabled")));
+        assertEquals("SELECT", group(flex, "FLEX_TYPE").get("inputType"));
+        assertEquals("DECIMAL", group(flex, "LENGTH_FT").get("inputType"));
+        assertEquals("ft", group(flex, "LENGTH_FT").get("unit"));
+        assertEquals(5, maps(group(flex, "FLEX_TYPE").get("options")).size());
+        assertTrue(maps(flex.get("rules")).isEmpty(), "flex has no minimum or rounding");
+
+        var flier = repository.form("FLIERS", false);
+        assertEquals("TEXT", group(flier, "SIZE").get("inputType"));
+        assertEquals("INTEGER", group(flier, "GSM").get("inputType"));
+        // The prototype rejects a count under 3000 rather than raising it, unlike the notebook floor.
+        var minimum = maps(flier.get("rules")).stream().filter(r -> "MIN_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
+        assertEquals(3000, map(minimum.get("params")).get("value"));
+    }
+
+    @Test
+    void formEnablementIsReadFromTheCategoryRatherThanHardcoded() {
+        // Any category the superadmin marks form_enabled must take the structured path. A literal
+        // category name here would silently drop a new category onto the legacy order route.
+        assertTrue(repository.formEnabled("NOTEBOOKS"));
+        assertFalse(repository.formEnabled("UNIFORMS"));
+        assertFalse(repository.formEnabled("NO_SUCH_CATEGORY"));
+
+        transaction.executeWithoutResult(status -> {
+            jdbc.sql("UPDATE catalog.product_categories SET form_enabled = true WHERE code = 'UNIFORMS'").update();
+            assertTrue(repository.formEnabled("UNIFORMS"), "enabling the category must be enough");
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
+    void inactiveCategoriesAreNeverFormEnabled() {
+        transaction.executeWithoutResult(status -> {
+            jdbc.sql("UPDATE catalog.product_categories SET active = false WHERE code = 'NOTEBOOKS'").update();
+            assertFalse(repository.formEnabled("NOTEBOOKS"));
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
     void incompleteSizeCannotBecomeConfirmedWithoutDimensions() {
         transaction.executeWithoutResult(status -> {
             var definition = repository.form("NOTEBOOKS", true);
-            var king = maps(group(definition, "SIZE").get("options")).stream().filter(o -> "KING".equals(o.get("code"))).findFirst().orElseThrow();
+            var king = maps(group(definition, "SIZE").get("options")).stream().filter(o -> "DRAWING_BOOK".equals(o.get("code"))).findFirst().orElseThrow();
             assertThrows(ProductFormValidationException.class, () -> repository.update("options", king.get("id"), Map.of("specStatus", "CONFIRMED")));
             var confirmed = repository.update("options", king.get("id"), Map.of("specStatus", "CONFIRMED", "widthMm", 190, "heightMm", 250, "specText", "19 cm x 25 cm"));
             assertEquals("CONFIRMED", confirmed.get("specStatus"));
@@ -114,11 +184,11 @@ class CatalogProductFormIntegrationTest {
     void configurableQuantityAndRulesAreValidatedBeforeStorage() {
         transaction.executeWithoutResult(status -> {
             var definition = repository.form("NOTEBOOKS", true);
-            var quantity = maps(definition.get("rules")).stream().filter(r -> "REQUIRE_QUANTITY_TOTAL".equals(r.get("ruleType"))).findFirst().orElseThrow();
-            var saved = repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", 500, "comparison", "EQ", "scope", "ORDER", "stage", "ON_PLACE")));
+            var quantity = maps(definition.get("rules")).stream().filter(r -> "FLOOR_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
+            var saved = repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", 500)));
             assertEquals(500, map(saved.get("params")).get("value"));
             assertThrows(ProductFormValidationException.class, () -> repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", -1))));
-            assertThrows(ProductFormValidationException.class, () -> repository.update("rules", quantity.get("id"), Map.of("matchOptions", Map.of("SIZE", "LONG"))));
+            assertThrows(ProductFormValidationException.class, () -> repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", 500, "unexpected", 1))));
             status.setRollbackOnly();
         });
     }

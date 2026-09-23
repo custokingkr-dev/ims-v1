@@ -19,3 +19,14 @@ export function savedNotebook(status = 'DRAFT', customized = true): FormOrderDet
     orderSelections: { CUSTOMIZATION: { code: customized ? 'CUSTOMIZED' : 'NON_CUSTOMIZED', label: customized ? 'Customized' : 'Non-customized' } },
     lines: [{ id: 101, lineNo: 1, optionSelections: { SIZE: { code: 'LONG', label: 'Long' }, RULING: { code: 'SINGLE_RULE', label: 'Single rule' } }, requestedBookCount: 1000, bookCount: 1000, requestedPageCount: 198, pageCount: 196, unitPricePaise: null, lineTotalPaise: null }], assets: [], quantityRuleResults: [] };
 }
+
+/** A non-paged category whose lines carry typed measurements rather than only selections. */
+export const flexDefinition: FormDefinition = {
+  enabled: true, dependencies: [], rules: [],
+  category: { code: 'FLEX', label: 'Flex', emoji: '', description: 'Flex signage', orderType: 'One-time', formEnabled: true, paged: false, active: true, sortOrder: 10 },
+  groups: [
+    { id: 11, categoryCode: 'FLEX', code: 'FLEX_TYPE', label: 'Type of flex', scope: 'LINE', level: 1, required: true, active: true, selectionType: 'SINGLE', inputType: 'SELECT', unit: '', options: options(11, [['STAR', 'Star flex'], ['NORMAL', 'Normal flex']]) },
+    { id: 12, categoryCode: 'FLEX', code: 'LENGTH_FT', label: 'Length', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
+    { id: 13, categoryCode: 'FLEX', code: 'BREADTH_FT', label: 'Breadth', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
+  ],
+};
