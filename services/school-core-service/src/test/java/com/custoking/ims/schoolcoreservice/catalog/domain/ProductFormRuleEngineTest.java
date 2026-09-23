@@ -132,6 +132,47 @@ class ProductFormRuleEngineTest {
         assertEquals(25, ((Number) result.lines().get(0).get("bookCount")).intValue());
     }
 
+    /** A category whose lines carry typed values rather than only option selections (flex, flier). */
+    static Map<String, Object> typedDefinition() {
+        return row("groups", List.of(
+                row("code", "TYPE", "label", "Type", "scope", "LINE", "required", true, "inputType", "SELECT", "options", List.of(
+                        row("id", 1, "code", "STAR", "label", "Star flex", "specStatus", "CONFIRMED"))),
+                row("code", "LENGTH_FT", "label", "Length (ft)", "scope", "LINE", "required", true, "inputType", "DECIMAL", "options", List.of()),
+                row("code", "BREADTH_FT", "label", "Breadth (ft)", "scope", "LINE", "required", true, "inputType", "DECIMAL", "options", List.of()),
+                row("code", "NOTE", "label", "Note", "scope", "LINE", "required", false, "inputType", "TEXT", "options", List.of())),
+                "rules", List.of(), "dependencies", List.of());
+    }
+
+    @Test
+    void typedGroupsCaptureValuesInsteadOfOptionCodes() {
+        var result = engine.normalise(typedDefinition(), row(), List.of(
+                row("selections", row("TYPE", "STAR", "LENGTH_FT", "6.5", "BREADTH_FT", 8, "NOTE", " matte "),
+                        "bookCount", 12, "pageCount", 1)));
+
+        var attributes = map(result.lines().get(0).get("attributes"));
+        assertEquals(new java.math.BigDecimal("6.5"), attributes.get("LENGTH_FT"));
+        assertEquals(new java.math.BigDecimal("8"), attributes.get("BREADTH_FT"));
+        assertEquals("matte", attributes.get("NOTE"), "text values are trimmed");
+        // The selection map keeps only real option selections, so rule matching is unaffected.
+        assertEquals(Set.of("TYPE"), map(result.lines().get(0).get("optionSelections")).keySet());
+    }
+
+    @Test
+    void typedGroupsRejectBadValuesAndMissingRequiredOnes() {
+        var definition = typedDefinition();
+        var bad = assertThrows(ProductFormValidationException.class, () -> engine.normalise(definition, row(), List.of(
+                row("selections", row("TYPE", "STAR", "LENGTH_FT", "wide", "BREADTH_FT", 8), "bookCount", 1, "pageCount", 1))));
+        assertTrue(bad.fieldErrors().keySet().stream().anyMatch(k -> k.endsWith("LENGTH_FT")));
+
+        var missing = assertThrows(ProductFormValidationException.class, () -> engine.normalise(definition, row(), List.of(
+                row("selections", row("TYPE", "STAR", "LENGTH_FT", "6"), "bookCount", 1, "pageCount", 1))));
+        assertTrue(missing.fieldErrors().keySet().stream().anyMatch(k -> k.endsWith("BREADTH_FT")));
+
+        var negative = assertThrows(ProductFormValidationException.class, () -> engine.normalise(definition, row(), List.of(
+                row("selections", row("TYPE", "STAR", "LENGTH_FT", "-2", "BREADTH_FT", 8), "bookCount", 1, "pageCount", 1))));
+        assertTrue(negative.fieldErrors().keySet().stream().anyMatch(k -> k.endsWith("LENGTH_FT")));
+    }
+
     static Map<String, Object> definition(List<Map<String, Object>> rules) {
         var sizes = new ArrayList<Map<String, Object>>();
         sizes.add(row("id", 3, "code", "LONG", "label", "Long", "specText", "17 cm x 27 cm", "widthMm", 170, "heightMm", 270, "specStatus", "CONFIRMED"));

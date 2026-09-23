@@ -27,7 +27,7 @@ public class ProductCatalogRepository {
     private record Entity(String table, String key, Map<String, String> columns) {}
     private static final Map<String, Entity> ENTITIES = Map.of(
             "categories", new Entity("product_categories", "code", columns("code", "label", "emoji", "description", "orderType", "formEnabled", "sortOrder", "active")),
-            "groups", new Entity("product_option_groups", "id", columns("categoryCode", "code", "label", "level", "selectionType", "required", "scope", "active")),
+            "groups", new Entity("product_option_groups", "id", columns("categoryCode", "code", "label", "level", "selectionType", "inputType", "unit", "required", "scope", "active")),
             "options", new Entity("product_options", "id", columns("groupId", "code", "label", "specText", "widthMm", "heightMm", "specStatus", "sortOrder", "active")),
             "rules", new Entity("product_form_rules", "id", columns("categoryCode", "ruleType", "targetField", "matchOptions", "params", "priority", "message", "active")));
     private final JdbcClient jdbc;
@@ -306,7 +306,7 @@ public class ProductCatalogRepository {
         result.put("active", true);
         switch (resource) {
             case "categories" -> result.putAll(row("emoji", "", "description", "", "orderType", "Recurring", "formEnabled", false, "sortOrder", 0));
-            case "groups" -> result.putAll(row("selectionType", "SINGLE", "required", true, "level", 1));
+            case "groups" -> result.putAll(row("selectionType", "SINGLE", "inputType", "SELECT", "unit", "", "required", true, "level", 1));
             case "options" -> result.putAll(row("specText", "", "widthMm", null, "heightMm", null, "specStatus", "CONFIRMED", "sortOrder", 0));
             case "rules" -> result.putAll(row("targetField", null, "matchOptions", Map.of(), "priority", 0, "message", ""));
         }

@@ -53,7 +53,7 @@ class CatalogProductFormIntegrationTest {
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        assertEquals(9, repository.categories(false).size());
+        assertEquals(11, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
@@ -107,6 +107,24 @@ class CatalogProductFormIntegrationTest {
                 maps(group(belt, "BUCKLE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(6, maps(group(belt, "LENGTH").get("options")).size());
         assertTrue(maps(belt.get("rules")).isEmpty());
+    }
+
+    @Test
+    void flexAndFlierCarryTypedLineValues() {
+        var flex = repository.form("FLEX", false);
+        assertTrue(Boolean.TRUE.equals(flex.get("enabled")));
+        assertEquals("SELECT", group(flex, "FLEX_TYPE").get("inputType"));
+        assertEquals("DECIMAL", group(flex, "LENGTH_FT").get("inputType"));
+        assertEquals("ft", group(flex, "LENGTH_FT").get("unit"));
+        assertEquals(5, maps(group(flex, "FLEX_TYPE").get("options")).size());
+        assertTrue(maps(flex.get("rules")).isEmpty(), "flex has no minimum or rounding");
+
+        var flier = repository.form("FLIERS", false);
+        assertEquals("TEXT", group(flier, "SIZE").get("inputType"));
+        assertEquals("INTEGER", group(flier, "GSM").get("inputType"));
+        // The prototype rejects a count under 3000 rather than raising it, unlike the notebook floor.
+        var minimum = maps(flier.get("rules")).stream().filter(r -> "MIN_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
+        assertEquals(3000, map(minimum.get("params")).get("value"));
     }
 
     @Test

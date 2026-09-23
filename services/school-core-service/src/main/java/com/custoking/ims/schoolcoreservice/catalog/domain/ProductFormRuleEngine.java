@@ -33,9 +33,11 @@ public class ProductFormRuleEngine {
             checkDependencies(definition, groups, combined, path);
             int books = positiveInt(raw.get("bookCount"), path + ".bookCount");
             int pages = positiveInt(raw.get("pageCount"), path + ".pageCount");
+            var attributes = typedValues(groups, map(raw.get("selections")), "LINE", path + ".selections");
             var line = new LinkedHashMap<String, Object>();
             line.put("lineNo", index + 1);
             line.put("optionSelections", selected);
+            line.put("attributes", attributes);
             line.put("requestedBookCount", books);
             line.put("bookCount", books);
             line.put("requestedPageCount", pages);
@@ -193,6 +195,50 @@ public class ProductFormRuleEngine {
         if (!keys.equals(params.keySet())) throw error("params", "Unexpected or missing rule parameters");
     }
 
+    /**
+     * Typed per-line values, keyed by group code, for groups that capture a measurement or free text
+     * rather than a selection. Kept apart from option selections so rule matching stays exact.
+     */
+    private Map<String, Object> typedValues(List<Map<String, Object>> groups, Map<String, Object> raw, String scope, String path) {
+        var values = new LinkedHashMap<String, Object>();
+        for (var group : groups) {
+            if (!active(group) || !scope.equals(group.get("scope")) || isSelect(group)) continue;
+            String code = String.valueOf(group.get("code"));
+            String type = String.valueOf(group.get("inputType"));
+            Object input = raw.get(code);
+            if (input == null || String.valueOf(input).isBlank()) {
+                if (Boolean.TRUE.equals(group.get("required"))) throw error(path + "." + code, "Enter " + group.get("label"));
+                continue;
+            }
+            String text = String.valueOf(input).trim();
+            switch (type) {
+                case "TEXT" -> {
+                    if (text.length() > 120) throw error(path + "." + code, group.get("label") + " is too long");
+                    values.put(code, text);
+                }
+                case "INTEGER" -> values.put(code, positiveInt(text, path + "." + code));
+                case "DECIMAL" -> {
+                    java.math.BigDecimal number;
+                    try {
+                        number = new java.math.BigDecimal(text);
+                    } catch (NumberFormatException e) {
+                        throw error(path + "." + code, "Enter " + group.get("label") + " as a number");
+                    }
+                    if (number.signum() <= 0) throw error(path + "." + code, group.get("label") + " must be greater than zero");
+                    if (number.scale() > 2) throw error(path + "." + code, group.get("label") + " allows at most two decimal places");
+                    values.put(code, number);
+                }
+                default -> throw error(path + "." + code, "Unsupported input type");
+            }
+        }
+        return values;
+    }
+
+    private static boolean isSelect(Map<String, Object> group) {
+        Object type = group.get("inputType");
+        return type == null || "SELECT".equals(String.valueOf(type));
+    }
+
     private Map<String, Object> selections(List<Map<String, Object>> groups, Map<String, Object> raw, String scope, String path) {
         var result = new LinkedHashMap<String, Object>();
         for (String key : raw.keySet()) {
@@ -201,7 +247,7 @@ public class ProductFormRuleEngine {
             }
         }
         for (var group : groups) {
-            if (!active(group) || !scope.equals(group.get("scope"))) continue;
+            if (!active(group) || !scope.equals(group.get("scope")) || !isSelect(group)) continue;
             String code = String.valueOf(group.get("code"));
             Object input = raw.get(code);
             if (input == null || String.valueOf(input).isBlank()) {
