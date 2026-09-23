@@ -36,7 +36,7 @@ class NotificationDeliveryCommandControllerTest {
         when(service.deliverNow(any())).thenReturn(new DeliveryAnswer("school-core:absentee:row-1",
                 "DELIVERED", true, "logging", 1, null, null));
 
-        Map<String, Object> body = controller.deliver("status-token", envelope());
+        Map<String, Object> body = controller.deliver(null, "status-token", envelope());
 
         ArgumentCaptor<DeliverNowCommand> captor = ArgumentCaptor.forClass(DeliverNowCommand.class);
         verify(service).deliverNow(captor.capture());
@@ -53,11 +53,34 @@ class NotificationDeliveryCommandControllerTest {
     }
 
     @Test
-    void missingOrWrongTokenIsUnauthorizedBeforeAnythingIsPersisted() {
-        assertThatThrownBy(() -> controller.deliver(null, envelope()))
+    void sharedTokenAloneIsNotEnoughWhenACallerIdentityIsRequired() {
+        // The gateway injects the shared token on relayed user requests; only school-core's own
+        // Cloud Run identity may command a delivery.
+        String schoolCore = "ims-school-core-test@project.iam.gserviceaccount.com";
+        com.custoking.ims.platformservice.security.InternalCallerAuthenticator callers =
+                new com.custoking.ims.platformservice.security.InternalCallerAuthenticator(
+                        idToken -> "school-core-token".equals(idToken) ? java.util.Optional.of(schoolCore) : java.util.Optional.empty(),
+                        true, schoolCore);
+        NotificationDeliveryCommandController guarded =
+                new NotificationDeliveryCommandController(service, mapper, "status-token", callers);
+        when(service.deliverNow(any())).thenReturn(new DeliveryAnswer("school-core:absentee:row-1",
+                "DELIVERED", true, "logging", 1, null, null));
+
+        assertThatThrownBy(() -> guarded.deliver("Bearer gateway-token", "status-token", envelope()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(401));
-        assertThatThrownBy(() -> controller.deliver("wrong", envelope()))
+        verify(service, never()).deliverNow(any());
+
+        guarded.deliver("Bearer school-core-token", "status-token", envelope());
+        verify(service).deliverNow(any());
+    }
+
+    @Test
+    void missingOrWrongTokenIsUnauthorizedBeforeAnythingIsPersisted() {
+        assertThatThrownBy(() -> controller.deliver(null, null, envelope()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(401));
+        assertThatThrownBy(() -> controller.deliver(null, "wrong", envelope()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(401));
         verify(service, never()).deliverNow(any());
@@ -67,7 +90,7 @@ class NotificationDeliveryCommandControllerTest {
     void unconfiguredTokenFailsClosed() {
         NotificationDeliveryCommandController unconfigured = new NotificationDeliveryCommandController(service, mapper, "");
 
-        assertThatThrownBy(() -> unconfigured.deliver("", envelope()))
+        assertThatThrownBy(() -> unconfigured.deliver(null, "", envelope()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(401));
         verify(service, never()).deliverNow(any());
@@ -78,10 +101,10 @@ class NotificationDeliveryCommandControllerTest {
         JsonNode noEventId = mapper.readTree("{\"eventType\":\"notification.requested.v1\",\"payload\":{}}");
         JsonNode noPayload = mapper.readTree("{\"eventId\":\"x\",\"eventType\":\"notification.requested.v1\"}");
 
-        assertThatThrownBy(() -> controller.deliver("status-token", noEventId))
+        assertThatThrownBy(() -> controller.deliver(null, "status-token", noEventId))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
-        assertThatThrownBy(() -> controller.deliver("status-token", noPayload))
+        assertThatThrownBy(() -> controller.deliver(null, "status-token", noPayload))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
         verify(service, never()).deliverNow(any());

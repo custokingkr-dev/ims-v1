@@ -69,7 +69,7 @@ github-rollback-dev@custoking.iam.gserviceaccount.com
 github-rollback-prod@custoking.iam.gserviceaccount.com
 github-config-dev@custoking.iam.gserviceaccount.com
 github-config-prod@custoking.iam.gserviceaccount.com
-github-cost-controller@custoking.iam.gserviceaccount.com
+github-cost-controller@custoking.iam.gserviceaccount.com   # dev-hosting projects only (since 2026-09-22)
 clouddeploy-dev-deployer@custoking.iam.gserviceaccount.com
 clouddeploy-prod-deployer@custoking.iam.gserviceaccount.com
 ```

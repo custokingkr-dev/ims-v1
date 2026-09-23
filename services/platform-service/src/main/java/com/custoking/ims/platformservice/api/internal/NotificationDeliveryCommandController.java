@@ -1,6 +1,7 @@
 package com.custoking.ims.platformservice.api.internal;
 
 import com.custoking.ims.platformservice.application.NotificationDeliveryCommandService;
+import com.custoking.ims.platformservice.security.InternalCallerAuthenticator;
 import com.custoking.ims.platformservice.application.NotificationDeliveryCommandService.DeliverNowCommand;
 import com.custoking.ims.platformservice.application.NotificationDeliveryCommandService.DeliveryAnswer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,7 @@ import java.util.Map;
  * <p>Auth: Cloud Run IAM verifies the caller's OIDC bearer at the ingress (the caller's runtime
  * service account needs {@code roles/run.invoker} on this service), and the shared
  * {@code X-Notification-Service-Token} ({@code notification.status.token}) gates the route inside
- * the app — the same double gate as {@code /api/v1/notifications/logs}. The gateway never routes
+ * the app. The gateway refuses to route
  * {@code /api/v1/internal/**}.
  *
  * <p>Every delivery outcome is a 200 with a {@code status} field (DELIVERED, SUPPRESSED, FAILED,
@@ -38,21 +39,32 @@ public class NotificationDeliveryCommandController {
     private final NotificationDeliveryCommandService service;
     private final ObjectMapper objectMapper;
     private final String statusToken;
+    private final InternalCallerAuthenticator callers;
+
+    public NotificationDeliveryCommandController(NotificationDeliveryCommandService service,
+                                                 ObjectMapper objectMapper,
+                                                 String statusToken) {
+        this(service, objectMapper, statusToken, InternalCallerAuthenticator.sharedTokenOnly());
+    }
 
     @Autowired
     public NotificationDeliveryCommandController(NotificationDeliveryCommandService service,
                                                  ObjectMapper objectMapper,
-                                                 @Value("${notification.status.token:}") String statusToken) {
+                                                 @Value("${notification.status.token:}") String statusToken,
+                                                 InternalCallerAuthenticator callers) {
         this.service = service;
         this.objectMapper = objectMapper;
         this.statusToken = statusToken == null ? "" : statusToken.trim();
+        this.callers = callers;
     }
 
     @PostMapping("/deliveries")
     public Map<String, Object> deliver(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
             @RequestBody JsonNode envelope) {
         requireToken(token, "notification:deliver");
+        callers.requireCaller(authorization);
         String eventId = text(envelope, "eventId");
         if (!StringUtils.hasText(eventId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "eventId is required");

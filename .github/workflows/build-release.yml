@@ -153,7 +153,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ needs.resolve-target.outputs.commit_sha }}
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         if: ${{ matrix.tool == 'maven' }}
         with:
           distribution: temurin
@@ -251,7 +251,7 @@ jobs:
           service_account: ${{ env.RELEASE_BUILDER_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
@@ -318,7 +318,7 @@ jobs:
       - name: Build and push image
         id: build
         if: ${{ steps.source.outputs.should_build == 'true' }}
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
@@ -393,7 +393,7 @@ jobs:
           service_account: ${{ env.RELEASE_BUILDER_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+      - uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4
 
       # release-evidence/trivy is created here, unconditionally, and not only once every image has
       # resolved. The images step writes each service's *_ref output as it goes, so when resolution
@@ -521,9 +521,24 @@ jobs:
             # seconds -- and because images are content addressed, the digest is identical on both sides,
             # so the promoted reference is provably the same bytes that were approved on dev.
             if ($runtimeRegistry -ne $sourceRegistry) {
-              & docker buildx imagetools create --tag "$runtimeRegistry/$($entry.image):$resolvedTag" "$sourceRegistry/$($entry.image)@$digest"
-              if ($LASTEXITCODE -ne 0) {
-                throw "Could not promote $($entry.image)@$digest into $runtimeRegistry."
+              # Writing the tag is skipped when it already resolves to this digest, so re-running a
+              # release is a no-op instead of a rewrite. A tag that already points somewhere else is a
+              # conflict, never something to overwrite. This mirrors the commit- and approval-tag steps
+              # and is what allows the registry to be switched to immutable tags.
+              $existingOutput = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
+              $existingExitCode = $LASTEXITCODE
+              $global:LASTEXITCODE = 0
+              $existingDigest = if ($null -eq $existingOutput) { "" } else { ([string]$existingOutput).Trim() }
+              if ($existingExitCode -eq 0 -and $existingDigest -match "^sha256:[0-9a-f]{64}$") {
+                if ($existingDigest -ne $digest) {
+                  throw "Promotion tag conflict for $($entry.image): $resolvedTag already points to $existingDigest, not the approved $digest."
+                }
+                Write-Host "Promotion tag for $($entry.image) already points to $digest."
+              } else {
+                & docker buildx imagetools create --tag "$runtimeRegistry/$($entry.image):$resolvedTag" "$sourceRegistry/$($entry.image)@$digest"
+                if ($LASTEXITCODE -ne 0) {
+                  throw "Could not promote $($entry.image)@$digest into $runtimeRegistry."
+                }
               }
               $promoted = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
               $promotedDigest = if ($null -eq $promoted) { "" } else { ([string]$promoted).Trim() }

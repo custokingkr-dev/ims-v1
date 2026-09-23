@@ -58,7 +58,11 @@ public class CatalogFactProjector implements ReportingEventProjector {
         LocalDate requiredByDate = PayloadJson.localDateOrNull(payload, "requiredByDate");
         String designStatus = PayloadJson.textOrNull(payload, "designStatus");
         String notes = PayloadJson.textOrNull(payload, "notes");
+        Long formVersion = PayloadJson.longOrNull(payload, "formVersion");
+        String pricingStatus = PayloadJson.textOrNull(payload, "pricingStatus");
+        Long sourceVersion = PayloadJson.longOrNull(payload, "version");
         catalogFactRead.upsert(id, schoolId, category, status, totalAmount, superadminApprovalStatus,
-                vendorPaidAt, createdAt, requiredByDate, designStatus, notes);
+                vendorPaidAt, createdAt, requiredByDate, designStatus, notes,
+                formVersion == null ? 1 : Math.toIntExact(formVersion), pricingStatus, sourceVersion);
     }
 }

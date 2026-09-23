@@ -1,5 +1,7 @@
 import { ModuleShell, Stat } from '../ui';
 import { formatMoney } from '../utils';
+import { useState } from 'react';
+import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 
 interface Props {
   orders: any[];
@@ -21,10 +23,12 @@ export function SaOrderApprovalsPanel({
   rejectModalOrderId, rejectReason,
   onRefresh, onApprove, onOpenRejectModal, onCloseRejectModal, onSetRejectReason, onReject,
 }: Props) {
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  if (selectedOrder) return <ProductOrderDetail orderId={selectedOrder} onBack={() => setSelectedOrder(null)} onChanged={onRefresh} />;
   return (
     <ModuleShell
       title="Supply order approvals"
-      subtitle="Review admin orders pending superadmin approval — notebooks and uniforms after design approval, stationery and events from processing"
+      subtitle="Review submitted orders, quotations and approval prerequisites"
       actions={<button className="ck-btn ck-btn-ghost" onClick={onRefresh}>↻ Refresh</button>}
     >
       {notice && (
@@ -37,7 +41,7 @@ export function SaOrderApprovalsPanel({
         <Stat
           label="Awaiting approval"
           value={orders.length}
-          sub="Orders in design-approved processing state"
+          sub="Orders ready for pricing and final review"
           pill={orders.length > 0 ? 'Action needed' : 'All clear'}
           tone={orders.length > 0 ? 'orange' : 'green'}
         />
@@ -47,7 +51,7 @@ export function SaOrderApprovalsPanel({
           <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>Loading orders…</div>
         ) : orders.length === 0 ? (
           <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>
-            No orders awaiting approval. Uniform and notebook orders appear after design approval. Stationery and events orders appear from processing.
+            No orders awaiting final approval.
           </div>
         ) : (
           <table className="ck-table">
@@ -64,13 +68,13 @@ export function SaOrderApprovalsPanel({
                   <td><div className="tb">{row.schoolName}</div></td>
                   <td>{row.category}</td>
                   <td><div style={{ maxWidth: 220 }}>{row.description || row.title || row.category}</div><div className="ts">{row.items}</div></td>
-                  <td style={{ fontWeight: 600 }}>₹{formatMoney(Number(row.totalAmount ?? 0) / 100)}</td>
+                  <td style={{ fontWeight: 600 }}>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                   <td style={{ color: 'var(--ink3)' }}>{row.placedAt ? new Date(row.placedAt).toLocaleDateString('en-IN') : row.date || '—'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                      <button className="ck-btn ck-btn-g" disabled={savingId === row.id} onClick={() => onApprove(row.id)}>
+                      {Number(row.formVersion) === 2 ? <button className="ck-btn ck-btn-g" onClick={() => setSelectedOrder(row.id)}>Review order</button> : <button className="ck-btn ck-btn-g" disabled={savingId === row.id} onClick={() => onApprove(row.id)}>
                         {savingId === row.id ? 'Saving…' : '✓ Approve'}
-                      </button>
+                      </button>}
                       <button className="ck-btn ck-btn-ghost" disabled={savingId === row.id} onClick={() => onOpenRejectModal(row.id)}>
                         Return
                       </button>
@@ -92,7 +96,7 @@ export function SaOrderApprovalsPanel({
             </div>
             <div className="ck-modal-body">
               <p style={{ marginBottom: 12, color: 'var(--ink2)', fontSize: 13 }}>
-                Order <strong>{rejectModalOrderId}</strong> will be returned to <em>Design approval</em> and the admin will be notified.
+                Order <strong>{rejectModalOrderId}</strong> will be returned for revision and the admin will be notified.
               </p>
               <div className="field">
                 <label>Reason for returning (shown to school admin)</label>

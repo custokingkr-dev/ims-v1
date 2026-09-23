@@ -939,7 +939,8 @@ public class ReportingReadRepository {
                 FROM reporting.fact_catalog_order
                 WHERE school_id = :schoolId
                   AND status IN ('SUBMITTED', 'AWAITING_APPROVAL', 'IN_TRANSIT',
-                                 'AWAITING_DESIGN_APPROVAL', 'DESIGN_APPROVED', 'PROCESSING')
+                                 'AWAITING_DESIGN_APPROVAL', 'DESIGN_APPROVED', 'PROCESSING',
+                                 'DESIGN_APPROVAL', 'DESIGN_APPROVED_PROCESSING')
                 """, schoolId);
         long attendanceSections = yearId == null ? 0L : count("""
                 SELECT count(*)

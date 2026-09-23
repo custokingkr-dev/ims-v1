@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api.internal;
 
 import com.custoking.ims.platformservice.application.NotificationInboxProcessor;
 import com.custoking.ims.platformservice.observability.TraceContextBridge;
+import com.custoking.ims.platformservice.security.PubSubPushAuthenticator;
 import com.custoking.ims.platformservice.persistence.NotificationInboxEvent;
 import com.custoking.ims.platformservice.persistence.NotificationInboxRepository;
 import tools.jackson.databind.JsonNode;
@@ -30,21 +31,26 @@ public class PubSubPushController {
     private final ObjectMapper objectMapper;
     private final String pushToken;
     private final boolean requireSharedToken;
+    private final PubSubPushAuthenticator pushAuthenticator;
     private final TraceContextBridge traceContextBridge;
 
     public PubSubPushController(NotificationInboxRepository inboxRepository,
                                 NotificationInboxProcessor inboxProcessor,
                                 ObjectMapper objectMapper,
                                 String pushToken) {
-        this(inboxRepository, inboxProcessor, objectMapper, pushToken, true, TraceContextBridge.noop());
+        this(inboxRepository, inboxProcessor, objectMapper, pushToken, true,
+                new PubSubPushAuthenticator(idToken -> java.util.Optional.empty(), java.util.Set.of()),
+                TraceContextBridge.noop());
     }
 
     public PubSubPushController(NotificationInboxRepository inboxRepository,
                                 NotificationInboxProcessor inboxProcessor,
                                 ObjectMapper objectMapper,
                                 String pushToken,
-                                boolean requireSharedToken) {
-        this(inboxRepository, inboxProcessor, objectMapper, pushToken, requireSharedToken, TraceContextBridge.noop());
+                                boolean requireSharedToken,
+                                PubSubPushAuthenticator pushAuthenticator) {
+        this(inboxRepository, inboxProcessor, objectMapper, pushToken, requireSharedToken, pushAuthenticator,
+                TraceContextBridge.noop());
     }
 
     @Autowired
@@ -53,22 +59,25 @@ public class PubSubPushController {
                                 ObjectMapper objectMapper,
                                 @Value("${notification.pubsub.push-token:}") String pushToken,
                                 @Value("${notification.pubsub.require-shared-token:true}") boolean requireSharedToken,
+                                PubSubPushAuthenticator pushAuthenticator,
                                 TraceContextBridge traceContextBridge) {
         this.inboxRepository = inboxRepository;
         this.inboxProcessor = inboxProcessor;
         this.objectMapper = objectMapper;
         this.pushToken = pushToken;
         this.requireSharedToken = requireSharedToken;
+        this.pushAuthenticator = pushAuthenticator;
         this.traceContextBridge = traceContextBridge;
     }
 
     @PostMapping("/notifications")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void receiveNotificationRequest(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestHeader(value = "X-Pubsub-Token", required = false) String token,
             @RequestParam(value = "token", required = false) String tokenParam,
             @RequestBody JsonNode envelope) {
-        requireValidToken(token != null ? token : tokenParam, "notification:ingest");
+        requireValidToken(authorization, token != null ? token : tokenParam, "notification:ingest");
 
         JsonNode message = envelope.path("message");
         if (message.isMissingNode()) {
@@ -122,14 +131,14 @@ public class PubSubPushController {
         inboxProcessor.process(event);
     }
 
-    private void requireValidToken(String token, String requiredScope) {
+    private void requireValidToken(String authorization, String token, String requiredScope) {
         if (requiredScope == null || requiredScope.isBlank()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope" );
         }
-        // Cloud Run verifies the OIDC bearer token before the request reaches this controller.
-        // Disable the legacy shared token only where the service is private and the dedicated
-        // Pub/Sub push service account is the sole notification invoker.
+        // Without the shared token, the delivery must carry the OIDC identity of a configured Pub/Sub
+        // push service account. Cloud Run IAM alone is not enough: the API gateway is also an invoker.
         if (!requireSharedToken) {
+            pushAuthenticator.requirePushIdentity(authorization);
             return;
         }
         if (pushToken == null || pushToken.isBlank()) {

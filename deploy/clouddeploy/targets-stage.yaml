@@ -138,6 +138,10 @@ deployParameters:
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "true"
   notification_pubsub_require_shared_token: "true"
+  service_oidc_audiences: https://custoking-platform-service-stage-__PROJECT_NUMBER__.__REGION__.run.app
+  pubsub_push_service_accounts: ims-reporting-push-stage@__PROJECT_ID__.iam.gserviceaccount.com,ims-notification-push-stage@__PROJECT_ID__.iam.gserviceaccount.com
+  internal_oidc_require: "true"
+  internal_caller_service_accounts: ims-school-core-stage@__PROJECT_ID__.iam.gserviceaccount.com
   photo_import_drive_root_folder_id: ""
   frontend_url: https://custoking-frontend-stage-__PROJECT_NUMBER__.__REGION__.run.app
   gateway_url: https://custoking-api-gateway-stage-__PROJECT_NUMBER__.__REGION__.run.app

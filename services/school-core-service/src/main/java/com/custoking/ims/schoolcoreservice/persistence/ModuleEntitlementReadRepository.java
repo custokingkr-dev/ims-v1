@@ -1,5 +1,7 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import com.custoking.ims.schoolcoreservice.security.TenantScope;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -89,9 +91,17 @@ public class ModuleEntitlementReadRepository {
                 .single();
     }
 
+    @Transactional(readOnly = true)
     public boolean anyEnabled(Long schoolId, Collection<String> moduleCodes) {
         if (schoolId == null || moduleCodes == null || moduleCodes.isEmpty()) {
             return false;
+        }
+        TenantContext context = TenantContext.get();
+        if (context.isOperations()) {
+            TenantScope.resolvePlatformReadScope(schoolId);
+            jdbc.sql("SELECT set_config('app.operator_schools', :schools, true)")
+                    .param("schools", String.join(",", context.operatorSchools().stream().map(String::valueOf).toList()))
+                    .query(String.class).single();
         }
         List<String> normalizedCodes = moduleCodes.stream()
                 .map(this::normalizeModule)

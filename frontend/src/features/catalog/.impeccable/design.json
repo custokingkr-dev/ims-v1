@@ -1,0 +1,375 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-15T16:53:12.733Z",
+  "title": "Design System: Operate Catalog",
+  "extensions": {
+    "scope": "frontend/src/features/catalog",
+    "sources": [
+      "../../styles/tokens.css",
+      "../../styles.css",
+      "product-form.css",
+      "ProductFormBuilder.tsx",
+      "ProductOrderDetail.tsx",
+      "OrderAssetField.tsx",
+      "ProductCatalogManager.tsx"
+    ],
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Primary green",
+        "tonalRamp": [
+          "oklch(15.00% 0.09590 161.17)",
+          "oklch(26.43% 0.09590 161.17)",
+          "oklch(37.86% 0.09590 161.17)",
+          "oklch(49.29% 0.09590 161.17)",
+          "oklch(60.71% 0.09590 161.17)",
+          "oklch(72.14% 0.09590 161.17)",
+          "oklch(83.57% 0.09590 161.17)",
+          "oklch(95.00% 0.09590 161.17)"
+        ]
+      },
+      "primary-soft": {
+        "role": "primary",
+        "displayName": "Soft green",
+        "tonalRamp": [
+          "oklch(15.00% 0.01496 164.73)",
+          "oklch(26.43% 0.01496 164.73)",
+          "oklch(37.86% 0.01496 164.73)",
+          "oklch(49.29% 0.01496 164.73)",
+          "oklch(60.71% 0.01496 164.73)",
+          "oklch(72.14% 0.01496 164.73)",
+          "oklch(83.57% 0.01496 164.73)",
+          "oklch(95.00% 0.01496 164.73)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White surface",
+        "tonalRamp": [
+          "oklch(15.00% 0.00000 0)",
+          "oklch(26.43% 0.00000 0)",
+          "oklch(37.86% 0.00000 0)",
+          "oklch(49.29% 0.00000 0)",
+          "oklch(60.71% 0.00000 0)",
+          "oklch(72.14% 0.00000 0)",
+          "oklch(83.57% 0.00000 0)",
+          "oklch(95.00% 0.00000 0)"
+        ]
+      },
+      "app-ground": {
+        "role": "neutral",
+        "displayName": "Cool application ground",
+        "tonalRamp": [
+          "oklch(15.00% 0.00342 247.86)",
+          "oklch(26.43% 0.00342 247.86)",
+          "oklch(37.86% 0.00342 247.86)",
+          "oklch(49.29% 0.00342 247.86)",
+          "oklch(60.71% 0.00342 247.86)",
+          "oklch(72.14% 0.00342 247.86)",
+          "oklch(83.57% 0.00342 247.86)",
+          "oklch(95.00% 0.00342 247.86)"
+        ]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Primary text",
+        "tonalRamp": [
+          "oklch(15.00% 0.02328 248.68)",
+          "oklch(26.43% 0.02328 248.68)",
+          "oklch(37.86% 0.02328 248.68)",
+          "oklch(49.29% 0.02328 248.68)",
+          "oklch(60.71% 0.02328 248.68)",
+          "oklch(72.14% 0.02328 248.68)",
+          "oklch(83.57% 0.02328 248.68)",
+          "oklch(95.00% 0.02328 248.68)"
+        ]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Secondary text",
+        "tonalRamp": [
+          "oklch(15.00% 0.03503 265.11)",
+          "oklch(26.43% 0.03503 265.11)",
+          "oklch(37.86% 0.03503 265.11)",
+          "oklch(49.29% 0.03503 265.11)",
+          "oklch(60.71% 0.03503 265.11)",
+          "oklch(72.14% 0.03503 265.11)",
+          "oklch(83.57% 0.03503 265.11)",
+          "oklch(95.00% 0.03503 265.11)"
+        ]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Muted text",
+        "tonalRamp": [
+          "oklch(15.00% 0.02643 258.37)",
+          "oklch(26.43% 0.02643 258.37)",
+          "oklch(37.86% 0.02643 258.37)",
+          "oklch(49.29% 0.02643 258.37)",
+          "oklch(60.71% 0.02643 258.37)",
+          "oklch(72.14% 0.02643 258.37)",
+          "oklch(83.57% 0.02643 258.37)",
+          "oklch(95.00% 0.02643 258.37)"
+        ]
+      },
+      "border-subtle": {
+        "role": "neutral",
+        "displayName": "Subtle border",
+        "tonalRamp": [
+          "oklch(15.00% 0.00803 253.86)",
+          "oklch(26.43% 0.00803 253.86)",
+          "oklch(37.86% 0.00803 253.86)",
+          "oklch(49.29% 0.00803 253.86)",
+          "oklch(60.71% 0.00803 253.86)",
+          "oklch(72.14% 0.00803 253.86)",
+          "oklch(83.57% 0.00803 253.86)",
+          "oklch(95.00% 0.00803 253.86)"
+        ]
+      },
+      "border-default": {
+        "role": "neutral",
+        "displayName": "Default border",
+        "tonalRamp": [
+          "oklch(15.00% 0.01278 255.51)",
+          "oklch(26.43% 0.01278 255.51)",
+          "oklch(37.86% 0.01278 255.51)",
+          "oklch(49.29% 0.01278 255.51)",
+          "oklch(60.71% 0.01278 255.51)",
+          "oklch(72.14% 0.01278 255.51)",
+          "oklch(83.57% 0.01278 255.51)",
+          "oklch(95.00% 0.01278 255.51)"
+        ]
+      },
+      "warning": {
+        "role": "secondary",
+        "displayName": "Warning amber",
+        "tonalRamp": [
+          "oklch(15.00% 0.12217 57.49)",
+          "oklch(26.43% 0.12217 57.49)",
+          "oklch(37.86% 0.12217 57.49)",
+          "oklch(49.29% 0.12217 57.49)",
+          "oklch(60.71% 0.12217 57.49)",
+          "oklch(72.14% 0.12217 57.49)",
+          "oklch(83.57% 0.12217 57.49)",
+          "oklch(95.00% 0.12217 57.49)"
+        ]
+      },
+      "warning-soft": {
+        "role": "secondary",
+        "displayName": "Soft warning",
+        "tonalRamp": [
+          "oklch(15.00% 0.02155 69.79)",
+          "oklch(26.43% 0.02155 69.79)",
+          "oklch(37.86% 0.02155 69.79)",
+          "oklch(49.29% 0.02155 69.79)",
+          "oklch(60.71% 0.02155 69.79)",
+          "oklch(72.14% 0.02155 69.79)",
+          "oklch(83.57% 0.02155 69.79)",
+          "oklch(95.00% 0.02155 69.79)"
+        ]
+      },
+      "information": {
+        "role": "secondary",
+        "displayName": "Information blue",
+        "tonalRamp": [
+          "oklch(15.00% 0.13160 256.15)",
+          "oklch(26.43% 0.13160 256.15)",
+          "oklch(37.86% 0.13160 256.15)",
+          "oklch(49.29% 0.13160 256.15)",
+          "oklch(60.71% 0.13160 256.15)",
+          "oklch(72.14% 0.13160 256.15)",
+          "oklch(83.57% 0.13160 256.15)",
+          "oklch(95.00% 0.13160 256.15)"
+        ]
+      },
+      "danger": {
+        "role": "secondary",
+        "displayName": "Danger red",
+        "tonalRamp": [
+          "oklch(15.00% 0.18205 29.51)",
+          "oklch(26.43% 0.18205 29.51)",
+          "oklch(37.86% 0.18205 29.51)",
+          "oklch(49.29% 0.18205 29.51)",
+          "oklch(60.71% 0.18205 29.51)",
+          "oklch(72.14% 0.18205 29.51)",
+          "oklch(83.57% 0.18205 29.51)",
+          "oklch(95.00% 0.18205 29.51)"
+        ]
+      },
+      "danger-soft": {
+        "role": "secondary",
+        "displayName": "Soft danger",
+        "tonalRamp": [
+          "oklch(15.00% 0.01872 25.60)",
+          "oklch(26.43% 0.01872 25.60)",
+          "oklch(37.86% 0.01872 25.60)",
+          "oklch(49.29% 0.01872 25.60)",
+          "oklch(60.71% 0.01872 25.60)",
+          "oklch(72.14% 0.01872 25.60)",
+          "oklch(83.57% 0.01872 25.60)",
+          "oklch(95.00% 0.01872 25.60)"
+        ]
+      }
+    },
+    "tonalRampNote": "Synthesized OKLCH display ramps hold each extracted color's hue and chroma while stepping lightness. They are panel illustrations, not shipped application tokens or new palette authority.",
+    "typographyMeta": {
+      "title": {
+        "displayName": "Local title",
+        "purpose": "Local h2 form headings."
+      },
+      "section-title": {
+        "displayName": "Local section title",
+        "purpose": "Local h3 headings, including attachments."
+      },
+      "body": {
+        "displayName": "Form body",
+        "purpose": "Dense order content."
+      },
+      "label": {
+        "displayName": "Field label",
+        "purpose": "Visible labels above controls."
+      },
+      "supporting": {
+        "displayName": "Supporting evidence",
+        "purpose": "Specifications, requirements, and file metadata."
+      }
+    },
+    "motion": [
+      {
+        "name": "button-state",
+        "value": "filter .15s, opacity .15s",
+        "purpose": "Inherited button hover brightness and disabled opacity."
+      },
+      {
+        "name": "field-border",
+        "value": "border-color .13s",
+        "purpose": "Inherited field border-color transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "line-and-attachment-reflow",
+        "value": "900px"
+      },
+      {
+        "name": "quotation-row-reflow",
+        "value": "600px"
+      },
+      {
+        "name": "narrow-fields-and-controls",
+        "value": "520px"
+      }
+    ],
+    "focus": {
+      "outline": "2px solid var(--ck-color-primary)",
+      "outlineOffset": "3px",
+      "purpose": "Feature control focus and upload-label focus-within."
+    },
+    "limitations": [
+      "The scope is the catalog feature; no global identity or shared token file is changed.",
+      "The inherited status chip's 11px text is shown faithfully in the static sample, but is not canonized as a typography token; the shared token floor is 12px.",
+      "Feature breakpoint values are local observations and do not supersede the shared breakpoint vocabulary.",
+      "Snippets are static CSS examples of existing controls. Application state and permission logic remain in React.",
+      "Source and existing review records were inspected. No browser, detector, integration test, or production verification was rerun."
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary command",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Existing filled command for placing, saving, or approving.",
+      "html": "<button class=\"ds-primary\">Place order</button>",
+      "css": ".ds-primary{display:inline-flex;gap:var(--ck-space-2,8px);align-items:center;justify-content:center;min-height:36px;border:none;border-radius:var(--ck-radius-pill,999px);padding:9px 15px;font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:var(--ck-text-base,.875rem);font-weight:600;line-height:1.5;cursor:pointer;white-space:normal;transition:filter .15s,opacity .15s;background:var(--ck-color-primary,#166b49);color:var(--ck-text-inverse,#ffffff)}.ds-primary:hover:not(:disabled){filter:brightness(1.08)}.ds-primary:focus-visible{outline:2px solid var(--ck-color-primary,#166b49);outline-offset:3px}.ds-primary:disabled{opacity:.5;cursor:not-allowed}@media(max-width:520px){.ds-primary{min-height:40px}}"
+    },
+    {
+      "name": "Ghost command",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Existing secondary command for draft or supporting actions.",
+      "html": "<button class=\"ds-ghost\">Save draft</button>",
+      "css": ".ds-ghost{display:inline-flex;gap:var(--ck-space-2,8px);align-items:center;justify-content:center;min-height:36px;border:none;border-radius:var(--ck-radius-pill,999px);padding:9px 15px;font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:var(--ck-text-base,.875rem);font-weight:600;line-height:1.5;cursor:pointer;white-space:normal;transition:filter .15s,opacity .15s;background:transparent;border:1px solid var(--ck-border-default,#d3d9e1);color:var(--ck-text-secondary,#667085)}.ds-ghost:hover:not(:disabled){filter:brightness(1.08)}.ds-ghost:focus-visible{outline:2px solid var(--ck-color-primary,#166b49);outline-offset:3px}.ds-ghost:disabled{opacity:.5;cursor:not-allowed}@media(max-width:520px){.ds-ghost{min-height:40px}}"
+    },
+    {
+      "name": "Labeled numerical field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Visible field label, native number input, and meaningful bounds.",
+      "html": "<label class=\"ds-field\"><span>Books</span><input type=\"number\" min=\"1\" step=\"1\" value=\"400\"></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:var(--ck-space-2,8px);min-width:0;font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:var(--ck-text-sm,.8125rem);font-weight:500;line-height:1.5;color:var(--ck-text-primary,#1f2933)}.ds-field input{width:100%;min-width:0;border:1px solid var(--ck-border-default,#d3d9e1);border-radius:var(--ck-radius-xs,4px);padding:9px 10px;font:inherit;color:inherit;background:var(--ck-bg-surface,#ffffff);caret-color:var(--ck-color-primary,#166b49);transition:border-color .13s}.ds-field input:focus{border-color:var(--ck-color-primary,#166b49)}.ds-field input:focus-visible{outline:2px solid var(--ck-color-primary,#166b49);outline-offset:3px}.ds-field input:disabled{background:var(--ck-bg-app,#f4f6f8);color:var(--ck-text-muted,#66707f)}"
+    },
+    {
+      "name": "Catalog tabs",
+      "kind": "nav",
+      "refersTo": "tab-selected",
+      "description": "Local catalog navigation with a green active underline.",
+      "html": "<div class=\"ds-tabs\" role=\"tablist\" aria-label=\"Catalog\"><button role=\"tab\" aria-selected=\"false\">Products</button><button role=\"tab\" aria-selected=\"false\">Form</button><button role=\"tab\" aria-selected=\"true\">Conditions</button><button role=\"tab\" aria-selected=\"false\">Preview</button></div>",
+      "css": ".ds-tabs{display:flex;gap:var(--ck-space-4,16px);border-bottom:1px solid var(--ck-border-subtle,#e3e7ec);margin-block:var(--ck-space-5,20px);overflow-x:auto;font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:var(--ck-text-md,1rem);line-height:1.5}.ds-tabs button{flex:0 0 auto;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--ck-text-muted,#66707f);padding:var(--ck-space-3,12px) var(--ck-space-2,8px);font:inherit;cursor:pointer}.ds-tabs button[aria-selected=true]{border-bottom-color:var(--ck-color-primary,#166b49);color:var(--ck-color-primary,#166b49);font-weight:600}.ds-tabs button:focus-visible{outline:2px solid var(--ck-color-primary,#166b49);outline-offset:3px}"
+    },
+    {
+      "name": "Pending pricing indicator",
+      "kind": "chip",
+      "refersTo": "status-pending",
+      "description": "Inherited status shape and color; the carried 11px text is descriptive, not a new type standard.",
+      "html": "<span class=\"ds-pending\">Pending pricing</span>",
+      "css": ".ds-pending{display:inline-flex;padding:3px 8px;border-radius:6px;font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:11px;line-height:1.5;font-weight:700;background:var(--ck-color-warning-soft,#fff3e6);color:var(--ck-color-warning,#a45b16)}"
+    },
+    {
+      "name": "Combined quantity strip",
+      "kind": "custom",
+      "refersTo": "quantity-complete",
+      "description": "The all-sizes aggregate and its condition remain visible in one divided band.",
+      "html": "<div class=\"ds-quantity\" role=\"status\"><div><strong>All sizes combined</strong><span>1,000 / 1,000 books</span></div><span>Required total met</span></div>",
+      "css": ".ds-quantity{padding:var(--ck-space-4,16px) 0;margin-top:var(--ck-space-3,12px);border-block:1px solid var(--ck-border-subtle,#e3e7ec);display:flex;justify-content:space-between;gap:var(--ck-space-3,12px);flex-wrap:wrap;color:var(--ck-color-primary,#166b49);font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:var(--ck-text-sm,.8125rem);line-height:1.5}.ds-quantity>div{display:flex;flex-wrap:wrap;gap:var(--ck-space-4,16px)}"
+    },
+    {
+      "name": "Validation feedback",
+      "kind": "custom",
+      "refersTo": "alert-error",
+      "description": "Readable validation content with alert semantics.",
+      "html": "<div class=\"ds-error\" role=\"alert\">Enter a non-negative price for every line and a GST amount.</div>",
+      "css": ".ds-error{display:flex;gap:var(--ck-space-2,8px);padding:11px 14px;border-radius:var(--ck-radius-sm,8px);margin-bottom:var(--ck-space-4,16px);align-items:flex-start;background:var(--ck-color-danger-soft,#fdecea);border:1px solid var(--ck-color-danger-border,#f3c1bd);color:var(--ck-color-danger,#b42318);font-family:var(--ck-font-body,'DM Sans',system-ui,sans-serif);font-size:var(--ck-text-base,.875rem);line-height:1.5"
+    }
+  ],
+  "narrative": {
+    "northStar": "Operate task UI",
+    "overview": "This is an implementation record for `frontend/src/features/catalog`. It extends the existing task interface: compact controls, clear order state, quiet surfaces, and visible evidence for each decision. The name describes the incumbent direction supplied for this extension; it is not a newly chosen brand identity or an invented user preference.\n\nThe shared [token stylesheet](../../styles/tokens.css) remains the source of truth. This frontmatter records the reused subset for this feature; reconcile it when those source tokens change. [Global styles](../../styles.css) supply the body, buttons, alerts, and status indicators; [feature styles](product-form.css) supply the local forms and responsive behavior. The [product record](../../../../PRODUCT.md) owns business rules. The [surface brief](.impeccable/surfaces/notebook-order-workflow.md) owns the workflow and integration scope.",
+    "keyCharacteristics": [
+      "Compact labeled controls and readable numerical comparisons.",
+      "White inputs on a cool-gray application ground.",
+      "Green commands and focus, with meaningful warning, information, and error colors.",
+      "Flat sections separated by thin rules.",
+      "Order evidence remains visible across desktop and mobile layouts."
+    ],
+    "rules": [
+      {
+        "name": "The Status With Words Rule",
+        "body": "Pair each status color with explicit text stating the condition or outcome.",
+        "section": "colors"
+      },
+      {
+        "name": "The Compact Heading Rule",
+        "body": "Use the local DM Sans title roles for form sections and keep heading letter spacing at zero.",
+        "section": "typography"
+      },
+      {
+        "name": "The Complete Line Rule",
+        "body": "Keep a quoted line's specification, quantity, price, and total readable together on small screens.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do reuse shared color, type, radius, and spacing tokens.",
+      "Do keep order evidence, status text, and monetary units visible.",
+      "Do preserve native field labels and named icon commands.",
+      "Do retain complete labeled quotation rows at small widths.",
+      "Do show actual attachment content with containment and wrapping filenames."
+    ],
+    "donts": [
+      "Don't use status colors as decorative fills in this feature.",
+      "Don't apply workspace display typography to local form headings.",
+      "Don't turn the feature's observed breakpoint exceptions into global defaults.",
+      "Don't inherit the carried 11px status text as a new typography standard."
+    ]
+  }
+}

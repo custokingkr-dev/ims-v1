@@ -1,6 +1,7 @@
 package com.custoking.ims.platformservice.api.internal;
 
 import com.custoking.ims.platformservice.observability.TraceContextBridge;
+import com.custoking.ims.platformservice.security.PubSubPushAuthenticator;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository;
 import com.custoking.ims.platformservice.persistence.ReportingEventInboxRepository.ReportingEventInboxRecord;
 import tools.jackson.databind.JsonNode;
@@ -33,21 +34,23 @@ public class ReportingPubSubPushController {
     private final ObjectMapper objectMapper;
     private final String pushToken;
     private final boolean requireSharedToken;
+    private final PubSubPushAuthenticator pushAuthenticator;
     private final TraceContextBridge traceContextBridge;
 
     public ReportingPubSubPushController(
             ReportingEventInboxRepository inbox,
             ObjectMapper objectMapper,
             String pushToken) {
-        this(inbox, objectMapper, pushToken, true, TraceContextBridge.noop());
+        this(inbox, objectMapper, pushToken, true, rejectAllPushIdentities(), TraceContextBridge.noop());
     }
 
     public ReportingPubSubPushController(
             ReportingEventInboxRepository inbox,
             ObjectMapper objectMapper,
             String pushToken,
-            boolean requireSharedToken) {
-        this(inbox, objectMapper, pushToken, requireSharedToken, TraceContextBridge.noop());
+            boolean requireSharedToken,
+            PubSubPushAuthenticator pushAuthenticator) {
+        this(inbox, objectMapper, pushToken, requireSharedToken, pushAuthenticator, TraceContextBridge.noop());
     }
 
     @Autowired
@@ -56,21 +59,28 @@ public class ReportingPubSubPushController {
             ObjectMapper objectMapper,
             @Value("${reporting.pubsub.push-token:${reporting.read-token:}}") String pushToken,
             @Value("${reporting.pubsub.require-shared-token:true}") boolean requireSharedToken,
+            PubSubPushAuthenticator pushAuthenticator,
             TraceContextBridge traceContextBridge) {
         this.inbox = inbox;
         this.objectMapper = objectMapper;
         this.pushToken = pushToken == null ? "" : pushToken.trim();
         this.requireSharedToken = requireSharedToken;
+        this.pushAuthenticator = pushAuthenticator;
         this.traceContextBridge = traceContextBridge;
+    }
+
+    private static PubSubPushAuthenticator rejectAllPushIdentities() {
+        return new PubSubPushAuthenticator(idToken -> Optional.empty(), java.util.Set.of());
     }
 
     @PostMapping("/reporting-events")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void receiveReportingEvent(
+            @RequestHeader(value = "Authorization", required = false) String authorization,
             @RequestHeader(value = "X-Reporting-Pubsub-Token", required = false) String token,
             @RequestParam(value = "token", required = false) String tokenParam,
             @RequestBody JsonNode inboundEnvelope) {
-        requireToken(token != null ? token : tokenParam, "reporting:ingest");
+        requireToken(authorization, token != null ? token : tokenParam, "reporting:ingest");
 
         JsonNode message = inboundEnvelope.path("message");
         String traceParent = attribute(message, "traceparent");
@@ -116,14 +126,15 @@ public class ReportingPubSubPushController {
         ));
     }
 
-    private void requireToken(String token, String requiredScope) {
+    private void requireToken(String authorization, String token, String requiredScope) {
         if (!StringUtils.hasText(requiredScope)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "missing internal route scope");
         }
-        // When disabled, Cloud Run IAM is the authentication boundary: the service is private and
-        // only the dedicated Pub/Sub push identity has run.invoker. Keep the default true for local,
-        // direct and legacy deployments where that infrastructure guarantee is absent.
+        // Without the shared token, the delivery must carry the OIDC identity of a configured Pub/Sub
+        // push service account. Cloud Run IAM alone is not enough: the API gateway is also an invoker.
+        // The shared token remains the default for local and direct deployments.
         if (!requireSharedToken) {
+            pushAuthenticator.requirePushIdentity(authorization);
             return;
         }
         if (!StringUtils.hasText(pushToken) || !pushToken.equals(token)) {

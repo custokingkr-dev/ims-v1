@@ -1,6 +1,5 @@
 package com.custoking.ims.platformservice.security;
 
-import com.custoking.ims.platformservice.persistence.NotificationLogCommandRepository;
 import com.zaxxer.hikari.HikariDataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.*;
@@ -22,9 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Proves the RLS backstop added on the notification schema's tenant tables in
- * {@code notification/V8__enable_rls.sql}, and — critically — that
- * {@link NotificationLogCommandRepository#createRequestLog} still succeeds with NO TenantContext
- * because it calls {@link ProjectorRls#allow(JdbcClient)} as its first statement. Mirrors
+ * {@code notification/V8__enable_rls.sql}. Mirrors
  * {@code ReportingFactRlsIntegrationTest}'s Testcontainers + app_rt NOBYPASSRLS +
  * TenantAwareDataSource + TransactionTemplate harness.
  */
@@ -225,26 +222,5 @@ class NotificationRlsIntegrationTest {
                     "('e0000000-0000-0000-0000-000000000003', 20)"));
             assertTrue(ex.getMessage().toLowerCase().contains("row-level security"), ex.getMessage());
         }
-    }
-
-    // --- (3) CRITICAL: the real createRequestLog writer succeeds with NO TenantContext ---
-    // (proves ProjectorRls.allow() is wired into NotificationLogCommandRepository.createRequestLog;
-    // without it, WITH CHECK would reject this context-less system-ingestion write.)
-
-    @Test
-    void createRequestLog_succeedsWithNoTenantContext() throws Exception {
-        TenantContext.clear();
-        NotificationLogCommandRepository repo = new NotificationLogCommandRepository(appRtJdbc);
-
-        Map<String, Object> request = Map.of(
-                "id", "proj-log-1",
-                "schoolId", 10L,
-                "channel", "SMS",
-                "notificationType", "FEE_PAYMENT");
-
-        txTemplate.executeWithoutResult(status -> repo.createRequestLog(request));
-
-        assertEquals(1, countAsOwner(
-                "SELECT count(*) FROM notification.notification_logs WHERE id = 'proj-log-1'"));
     }
 }

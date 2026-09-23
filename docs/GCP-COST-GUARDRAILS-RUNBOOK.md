@@ -209,7 +209,10 @@ branch-gated `dev` GitHub Environment. It reads only the repository-level
 `DEV_COST_CONTROLLER_SERVICE_ACCOUNT` controls. There are no legacy fallbacks: an absent dev-only
 control fails validation before authentication. The cost-controller service account must be dedicated to this workflow and limited to
 Cloud SQL Editor plus Service Usage Consumer. Never point the cost-controller variable at a release or
-general deployment identity.
+general deployment identity. The identity exists only in projects that host `dev`
+(`infra/terraform/cicd`, `identity_environment.cost_controller = "dev"`): it must never be created
+in a production project, because this workflow runs outside the reviewer-gated Environments and
+would otherwise be an unreviewed path to production Cloud SQL.
 
 Use the guarded helper only for dev:
 
