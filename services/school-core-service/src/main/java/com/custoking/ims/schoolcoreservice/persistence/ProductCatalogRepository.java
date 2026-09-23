@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -43,6 +44,23 @@ public class ProductCatalogRepository {
     }
 
     public boolean isEnabled() { return enabled; }
+
+    /**
+     * Whether a category takes the structured order form. Read from the category rather than a
+     * literal so that enabling a category is the only step needed to route it away from the legacy
+     * order path, which has no form validation.
+     */
+    public boolean formEnabled(String categoryCode) {
+        if (categoryCode == null || categoryCode.isBlank()) return false;
+        return Boolean.TRUE.equals(jdbc.sql("""
+                        SELECT form_enabled FROM catalog.product_categories
+                        WHERE code = :code AND active
+                        """)
+                .param("code", categoryCode.trim().toUpperCase(Locale.ROOT))
+                .query(Boolean.class)
+                .optional()
+                .orElse(false));
+    }
 
     public List<Map<String, Object>> categories(boolean includeInactive) {
         return readList("categories", includeInactive ? "" : " WHERE active", Map.of(), " ORDER BY sort_order, code");

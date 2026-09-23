@@ -53,7 +53,7 @@ class CatalogProductFormIntegrationTest {
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        assertEquals(7, repository.categories(false).size());
+        assertEquals(9, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
@@ -79,6 +79,58 @@ class CatalogProductFormIntegrationTest {
             status.setRollbackOnly();
         });
         verify(outbox, atLeastOnce()).append(eq("catalog-configuration.changed.v1"), anyString(), eq("catalog-configuration"), anyString(), isNull(), argThat(payload -> Long.valueOf(7).equals(payload.get("actorId"))));
+    }
+
+    @Test
+    void billBookAndBeltFormsAreUsableThroughTheGenericPath() {
+        // Seed-only categories: proof that a category with no rules and no bespoke code is served by
+        // the same definition endpoint the notebook form uses.
+        assertTrue(repository.formEnabled("BILLBOOKS"));
+        assertTrue(repository.formEnabled("BELTS"));
+
+        var billBook = repository.form("BILLBOOKS", false);
+        assertTrue(Boolean.TRUE.equals(billBook.get("enabled")));
+        assertEquals(5, maps(billBook.get("groups")).size());
+        assertEquals(List.of("A3", "A4", "A5"),
+                maps(group(billBook, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("50", "100", "200"),
+                maps(group(billBook, "PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("1", "2", "4", "8"),
+                maps(group(billBook, "SLIPS_PER_PAGE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertTrue(maps(billBook.get("rules")).isEmpty(), "the prototype states counts have no minimum or rounding");
+
+        var belt = repository.form("BELTS", false);
+        assertEquals(3, maps(belt.get("groups")).size());
+        assertEquals(List.of("Cloth Belt", "Satin Belt"),
+                maps(group(belt, "BELT_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("Bronze", "Plastic"),
+                maps(group(belt, "BUCKLE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(6, maps(group(belt, "LENGTH").get("options")).size());
+        assertTrue(maps(belt.get("rules")).isEmpty());
+    }
+
+    @Test
+    void formEnablementIsReadFromTheCategoryRatherThanHardcoded() {
+        // Any category the superadmin marks form_enabled must take the structured path. A literal
+        // category name here would silently drop a new category onto the legacy order route.
+        assertTrue(repository.formEnabled("NOTEBOOKS"));
+        assertFalse(repository.formEnabled("UNIFORMS"));
+        assertFalse(repository.formEnabled("NO_SUCH_CATEGORY"));
+
+        transaction.executeWithoutResult(status -> {
+            jdbc.sql("UPDATE catalog.product_categories SET form_enabled = true WHERE code = 'UNIFORMS'").update();
+            assertTrue(repository.formEnabled("UNIFORMS"), "enabling the category must be enough");
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
+    void inactiveCategoriesAreNeverFormEnabled() {
+        transaction.executeWithoutResult(status -> {
+            jdbc.sql("UPDATE catalog.product_categories SET active = false WHERE code = 'NOTEBOOKS'").update();
+            assertFalse(repository.formEnabled("NOTEBOOKS"));
+            status.setRollbackOnly();
+        });
     }
 
     @Test

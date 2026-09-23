@@ -47,7 +47,9 @@ public class CatalogOrderFormService {
     }
 
     public boolean handlesCreation(String category) {
-        return category != null && "NOTEBOOKS".equalsIgnoreCase(category.trim()) && products.isEnabled();
+        // Driven by the category's own form_enabled flag. A hardcoded category name would drop any
+        // newly configured category onto the legacy order path, which performs no form validation.
+        return category != null && products.isEnabled() && products.formEnabled(category);
     }
 
     @Transactional
