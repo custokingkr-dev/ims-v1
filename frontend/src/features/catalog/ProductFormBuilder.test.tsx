@@ -2,12 +2,26 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductFormBuilder } from './ProductFormBuilder';
-import { notebookDefinition, savedNotebook } from './catalogTestFixtures';
+import { flexDefinition, notebookDefinition, savedNotebook } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { post: vi.fn(), patch: vi.fn(), get: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 beforeEach(() => { vi.clearAllMocks(); URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
 afterEach(cleanup);
 describe('ProductFormBuilder', () => {
+  it('renders typed inputs and hides the page count for a non-paged category', () => {
+    render(<ProductFormBuilder categoryCode="FLEX" definition={flexDefinition} preview />);
+    // A typed group is a free entry with its unit shown, not a dropdown of options.
+    const length = screen.getByLabelText('Length for line 1');
+    expect(length).toHaveAttribute('type', 'number');
+    expect(screen.getAllByText('ft').length).toBeGreaterThan(0);
+    // Selections still render as a dropdown.
+    expect(within(screen.getByLabelText('Type of flex for line 1')).getAllByRole('option').length).toBeGreaterThan(1);
+    // Flex has no page concept, so the notebook page field must not appear.
+    expect(screen.queryByLabelText('Printed pages for line 1')).not.toBeInTheDocument();
+    fireEvent.change(length, { target: { value: '6.5' } });
+    expect(length).toHaveValue(6.5);
+  });
+
   it('shows every ruling and disabled incomplete sizes, aggregates all lines, and preserves requested pages', () => {
     render(<ProductFormBuilder definition={notebookDefinition} preview />);
     expect(within(screen.getByLabelText('Ruling for line 1')).getAllByRole('option')).toHaveLength(16);

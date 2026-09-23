@@ -4,7 +4,9 @@ Source: five order-form prototypes supplied 2026-09-23 (flex, flier, bill book, 
 Those prototypes are the specification for what follows; this document records what they require,
 what already exists, and what has to be built.
 
-Status: notebook revision implemented; the four new categories are planned here and not yet built.
+Status: notebook revision implemented. All four new categories are built on the backend and render
+through the shared order form. Remaining: enabling the feature flag, and deciding whether the
+flier size stays free text.
 
 ## Where the current implementation stands
 
@@ -145,6 +147,12 @@ existing dependency mechanism (`checkDependencies`) already expresses.
    bespoke forms. The existing notebook form is the closest model.
 6. **Enable.** Set `CATALOG_PRODUCT_FORM_ENABLED=true` per environment, dev first, once each
    category's rules are seeded — an enabled but unseeded category rejects every order.
+
+Steps 1 to 5 are done. The form component was already parameterised by category and definition, so
+it needed three changes rather than four new forms: a group renders a typed input when its
+`input_type` is not `SELECT`, the printed-page field appears only for a paged category, and the
+count is labelled from the category rather than assumed to be books. `product_categories.paged`
+carries that last distinction so the form does not have to guess from the rules.
 
 ## Decisions that need a product owner
 

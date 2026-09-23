@@ -1,6 +1,8 @@
 export interface ProductCategory {
   code: string; label: string; emoji: string; description: string;
   orderType: string; formEnabled: boolean; sortOrder: number; active: boolean;
+  // Only paged categories (notebooks) collect a printed-page count per line.
+  paged?: boolean;
 }
 export interface ProductOption {
   id: number; groupId: number; code: string; label: string; specText: string | null;
