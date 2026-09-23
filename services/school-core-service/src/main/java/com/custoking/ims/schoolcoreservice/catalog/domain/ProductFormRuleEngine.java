@@ -53,6 +53,19 @@ public class ProductFormRuleEngine {
                 if (from != to) applied.add(row("ruleId", rule.get("id"), "type", rule.get("ruleType"),
                         "field", rule.get("targetField"), "from", from, "to", to));
             }
+            // A floor raises a low count rather than rejecting it, so it belongs with rounding in the
+            // normalisation phase and is recorded the same way.
+            for (var rule : rules) {
+                if (!"FLOOR_VALUE".equals(rule.get("ruleType")) || !matches(rule, combined)) continue;
+                String field = "BOOK_COUNT".equals(rule.get("targetField")) ? "bookCount" : "pageCount";
+                int from = ((Number) line.get(field)).intValue();
+                int floor = positiveInt(map(rule.get("params")).get("value"), "params.value");
+                if (from < floor) {
+                    line.put(field, floor);
+                    applied.add(row("ruleId", rule.get("id"), "type", "FLOOR_VALUE",
+                            "field", rule.get("targetField"), "from", from, "to", floor));
+                }
+            }
             for (var rule : rules) {
                 String type = String.valueOf(rule.get("ruleType"));
                 if (!("MIN_VALUE".equals(type) || "MAX_VALUE".equals(type)) || !matches(rule, combined)) continue;
@@ -131,7 +144,7 @@ public class ProductFormRuleEngine {
         String type = String.valueOf(rule.get("ruleType"));
         var params = map(rule.get("params"));
         String target = String.valueOf(rule.get("targetField"));
-        if (!Set.of("REQUIRE_QUANTITY_TOTAL", "ROUND_TO_MULTIPLE", "MIN_VALUE", "MAX_VALUE", "REQUIRE_ASSET").contains(type)) {
+        if (!Set.of("REQUIRE_QUANTITY_TOTAL", "ROUND_TO_MULTIPLE", "FLOOR_VALUE", "MIN_VALUE", "MAX_VALUE", "REQUIRE_ASSET").contains(type)) {
             throw error("ruleType", "Unsupported rule type");
         }
         if (!"REQUIRE_ASSET".equals(type) && !Set.of("BOOK_COUNT", "PAGE_COUNT").contains(target)) throw error("targetField", "Select books or printed pages");
@@ -152,7 +165,7 @@ public class ProductFormRuleEngine {
                 if (minimum % multiple != 0) throw error("params.minimum", "Minimum must be a multiple of the rounding step");
                 exactKeys(params, Set.of("multiple", "mode", "minimum"));
             }
-            case "MIN_VALUE", "MAX_VALUE" -> {
+            case "FLOOR_VALUE", "MIN_VALUE", "MAX_VALUE" -> {
                 positiveInt(params.get("value"), "params.value");
                 exactKeys(params, Set.of("value"));
             }

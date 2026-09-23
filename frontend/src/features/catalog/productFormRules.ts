@@ -22,6 +22,13 @@ export function evaluateProductForm(rules: ProductRule[], input: FormInput) {
       const field = rule.targetField === 'BOOK_COUNT' ? 'bookCount' : 'pageCount';
       result[field] = roundToMultiple(result[field], Number(rule.params.multiple), String(rule.params.mode), Number(rule.params.minimum || 1));
     }
+    // A floor raises a low count rather than rejecting it, so it runs with the normalisation rules
+    // and mirrors the backend engine exactly.
+    for (const rule of applicable.filter((r) => r.ruleType === 'FLOOR_VALUE')) {
+      const field = rule.targetField === 'BOOK_COUNT' ? 'bookCount' : 'pageCount';
+      const floor = Number(rule.params.value);
+      if (Number.isFinite(floor) && result[field] < floor) result[field] = floor;
+    }
     for (const rule of applicable.filter((r) => ['MIN_VALUE', 'MAX_VALUE'].includes(r.ruleType))) {
       const field = rule.targetField === 'BOOK_COUNT' ? 'bookCount' : 'pageCount';
       if ((rule.ruleType === 'MIN_VALUE' && result[field] < Number(rule.params.value)) || (rule.ruleType === 'MAX_VALUE' && result[field] > Number(rule.params.value))) {

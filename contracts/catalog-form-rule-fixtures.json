@@ -717,5 +717,70 @@
       "requiredTotal": 1000,
       "valid": true
     }
+  },
+  {
+    "name": "customised lines floor per ruling line and non customised do not",
+    "rules": [
+      {
+        "id": 1,
+        "ruleType": "FLOOR_VALUE",
+        "targetField": "BOOK_COUNT",
+        "matchOptions": {
+          "CUSTOMIZATION": "CUSTOMIZED"
+        },
+        "params": {
+          "value": 1000
+        },
+        "priority": 10,
+        "active": true
+      },
+      {
+        "id": 2,
+        "ruleType": "ROUND_TO_MULTIPLE",
+        "targetField": "PAGE_COUNT",
+        "matchOptions": {},
+        "params": {
+          "multiple": 7,
+          "mode": "NEAREST",
+          "minimum": 7
+        },
+        "priority": 20,
+        "active": true
+      }
+    ],
+    "input": {
+      "orderSelections": {
+        "CUSTOMIZATION": "CUSTOMIZED"
+      },
+      "lines": [
+        {
+          "selections": {
+            "SIZE": "LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 400,
+          "pageCount": 198
+        },
+        {
+          "selections": {
+            "SIZE": "JUMBO_LONG",
+            "RULING": "SINGLE_RULE"
+          },
+          "bookCount": 1500,
+          "pageCount": 200
+        }
+      ]
+    },
+    "expected": {
+      "pageCounts": [
+        196,
+        203
+      ],
+      "bookCounts": [
+        1000,
+        1500
+      ],
+      "valid": true
+    }
   }
 ]

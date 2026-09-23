@@ -58,7 +58,7 @@ class CatalogProductFormIntegrationTest {
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
         assertEquals(15, maps(group(definition, "RULING").get("options")).size());
-        assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
+        assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
         assertEquals(4, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());
@@ -85,7 +85,7 @@ class CatalogProductFormIntegrationTest {
     void incompleteSizeCannotBecomeConfirmedWithoutDimensions() {
         transaction.executeWithoutResult(status -> {
             var definition = repository.form("NOTEBOOKS", true);
-            var king = maps(group(definition, "SIZE").get("options")).stream().filter(o -> "KING".equals(o.get("code"))).findFirst().orElseThrow();
+            var king = maps(group(definition, "SIZE").get("options")).stream().filter(o -> "DRAWING_BOOK".equals(o.get("code"))).findFirst().orElseThrow();
             assertThrows(ProductFormValidationException.class, () -> repository.update("options", king.get("id"), Map.of("specStatus", "CONFIRMED")));
             var confirmed = repository.update("options", king.get("id"), Map.of("specStatus", "CONFIRMED", "widthMm", 190, "heightMm", 250, "specText", "19 cm x 25 cm"));
             assertEquals("CONFIRMED", confirmed.get("specStatus"));
@@ -114,11 +114,11 @@ class CatalogProductFormIntegrationTest {
     void configurableQuantityAndRulesAreValidatedBeforeStorage() {
         transaction.executeWithoutResult(status -> {
             var definition = repository.form("NOTEBOOKS", true);
-            var quantity = maps(definition.get("rules")).stream().filter(r -> "REQUIRE_QUANTITY_TOTAL".equals(r.get("ruleType"))).findFirst().orElseThrow();
-            var saved = repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", 500, "comparison", "EQ", "scope", "ORDER", "stage", "ON_PLACE")));
+            var quantity = maps(definition.get("rules")).stream().filter(r -> "FLOOR_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
+            var saved = repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", 500)));
             assertEquals(500, map(saved.get("params")).get("value"));
             assertThrows(ProductFormValidationException.class, () -> repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", -1))));
-            assertThrows(ProductFormValidationException.class, () -> repository.update("rules", quantity.get("id"), Map.of("matchOptions", Map.of("SIZE", "LONG"))));
+            assertThrows(ProductFormValidationException.class, () -> repository.update("rules", quantity.get("id"), Map.of("params", Map.of("value", 500, "unexpected", 1))));
             status.setRollbackOnly();
         });
     }

@@ -96,6 +96,42 @@ class ProductFormRuleEngineTest {
         assertDoesNotThrow(() -> validateRule(rule, groups));
     }
 
+    @Test
+    void customizedLinesAreFlooredPerRulingLineAndTheAdjustmentIsRecorded() {
+        // The order form floors each customised ruling line at 1000 rather than requiring an exact
+        // order total, and raises a low count instead of rejecting it.
+        var rule = row("id", 90, "ruleType", "FLOOR_VALUE", "targetField", "BOOK_COUNT",
+                "matchOptions", row("CUSTOMIZATION", "CUSTOMIZED"),
+                "params", row("value", 1000), "message", "Customised lines floor at 1000 books");
+        var definition = definition(List.of(rule));
+
+        var result = engine.normalise(definition, row("CUSTOMIZATION", "CUSTOMIZED"), List.of(
+                row("selections", row("SIZE", "LONG", "RULING", "SINGLE_RULE"), "bookCount", 400, "pageCount", 196),
+                row("selections", row("SIZE", "LONG", "RULING", "PLAIN"), "bookCount", 1500, "pageCount", 196)));
+
+        assertEquals(1000, ((Number) result.lines().get(0).get("bookCount")).intValue());
+        assertEquals(400, ((Number) result.lines().get(0).get("requestedBookCount")).intValue());
+        assertEquals(1500, ((Number) result.lines().get(1).get("bookCount")).intValue());
+        assertTrue(result.violations().isEmpty(), "a per-line floor must not block placement");
+        var applied = maps(result.lines().get(0).get("appliedRules"));
+        assertTrue(applied.stream().anyMatch(a -> "FLOOR_VALUE".equals(a.get("type"))
+                && ((Number) a.get("from")).intValue() == 400 && ((Number) a.get("to")).intValue() == 1000),
+                "the floor adjustment must be auditable like rounding is");
+    }
+
+    @Test
+    void nonCustomizedLinesAreNotFloored() {
+        var rule = row("id", 90, "ruleType", "FLOOR_VALUE", "targetField", "BOOK_COUNT",
+                "matchOptions", row("CUSTOMIZATION", "CUSTOMIZED"),
+                "params", row("value", 1000), "message", "Customised lines floor at 1000 books");
+        var definition = definition(List.of(rule));
+
+        var result = engine.normalise(definition, row("CUSTOMIZATION", "NON_CUSTOMIZED"), List.of(
+                row("selections", row("SIZE", "LONG", "RULING", "SINGLE_RULE"), "bookCount", 25, "pageCount", 196)));
+
+        assertEquals(25, ((Number) result.lines().get(0).get("bookCount")).intValue());
+    }
+
     static Map<String, Object> definition(List<Map<String, Object>> rules) {
         var sizes = new ArrayList<Map<String, Object>>();
         sizes.add(row("id", 3, "code", "LONG", "label", "Long", "specText", "17 cm x 27 cm", "widthMm", 170, "heightMm", 270, "specStatus", "CONFIRMED"));
