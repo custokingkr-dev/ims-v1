@@ -29,7 +29,18 @@ public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, 
     Optional<AuthSessionEntity> findByRefreshTokenHashForUpdate(
             @Param("refreshTokenHash") String refreshTokenHash);
 
-    long deleteByExpiresAtBefore(OffsetDateTime cutoff);
+    /**
+     * Removes expired sessions in one statement.
+     *
+     * <p>Deliberately not a derived delete. Spring Data implements those by loading each matching
+     * row and removing it individually, so two logins clearing the same expired rows concurrently
+     * make the slower one delete zero rows and fail with an optimistic-locking error — a valid
+     * login then returns HTTP 500. A bulk delete removes whatever is still there and reports how
+     * many rows it took, which is all the caller needs.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("DELETE FROM AuthSessionEntity s WHERE s.expiresAt < :cutoff")
+    int deleteByExpiresAtBefore(@Param("cutoff") OffsetDateTime cutoff);
 
     List<AuthSessionEntity> findByFamilyId(String familyId);
 
