@@ -18,12 +18,14 @@ interface Props {
 export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
   const { user } = useAuth();
   const { can } = usePermissions();
-  const notebookDefinition = useProductFormDefinition('NOTEBOOKS');
   const productCatalog = useProductCategories();
+  // A category is orderable when its form is enabled, or when it is one of the legacy categories
+  // that still has a hand-written form here. Requiring a hardcoded tile made every newly seeded
+  // category unorderable no matter what the catalog said.
   const catalogTiles = (productCatalog.categories || []).map((category) => ({
     ...(CATALOG_TILES.find((tile) => tile.key === category.code) || { pillClass: 'pg', headerBg: 'var(--bg)' }),
     key: category.code, name: category.label, desc: category.description, emoji: category.emoji, pill: category.orderType,
-    available: CATALOG_TILES.some((tile) => tile.key === category.code) && (category.code !== 'NOTEBOOKS' || category.formEnabled),
+    available: category.formEnabled || CATALOG_TILES.some((tile) => tile.key === category.code),
   }));
   const schoolScopedParams = !can('platform:admin') && user?.branchId ? { schoolId: user.branchId } : undefined;
   const today = todayIso();
@@ -33,6 +35,12 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
   );
 
   const [activeCat, setActiveCat] = useState<string | null>(null);
+
+  const activeCategory = productCatalog.categories?.find((category) => category.code === activeCat) || null;
+
+  const formCategory = activeCategory?.formEnabled ? activeCat : null;
+
+  const formDefinition = useProductFormDefinition(formCategory);
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogSaving, setCatalogSaving] = useState(false);
   const [catalogNotice, setCatalogNotice] = useState<{ type: 'success' | 'error' | 'draft'; msg: string } | null>(null);
@@ -217,10 +225,10 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
             <button className="ck-btn ck-btn-ghost" style={{ fontSize: 12 }} onClick={() => { setActiveCat(null); setCatalogNotice(null); }}>← Back to catalog</button>
             <span style={{ fontSize: 13, color: 'var(--ink3)' }}>Catalog / {activeCat}</span>
           </div>
-          {activeCat === 'NOTEBOOKS' && notebookDefinition.loading ? <p role="status">Loading notebook options...</p>
-            : activeCat === 'NOTEBOOKS' && notebookDefinition.error ? <div className="ck-alert ck-alert-re" role="alert">{notebookDefinition.error}<button className="ck-btn ck-btn-ghost" onClick={notebookDefinition.retry}>Retry</button></div>
-            : activeCat === 'NOTEBOOKS' && !notebookDefinition.definition?.category.formEnabled ? <p role="status">Notebook ordering is currently unavailable.</p>
-            : activeCat === 'NOTEBOOKS' && notebookDefinition.definition?.enabled ? <ProductFormBuilder definition={notebookDefinition.definition} schoolId={user?.branchId} onSaved={(_, placed) => { if (placed) setPanel('orders'); }} />
+          {formCategory && formDefinition.loading ? <p role="status">Loading order options...</p>
+            : formCategory && formDefinition.error ? <div className="ck-alert ck-alert-re" role="alert">{formDefinition.error}<button className="ck-btn ck-btn-ghost" onClick={formDefinition.retry}>Retry</button></div>
+            : formCategory && !formDefinition.definition?.category.formEnabled ? <p role="status">Ordering is currently unavailable for this category.</p>
+            : formCategory && formDefinition.definition?.enabled ? <ProductFormBuilder key={formCategory} categoryCode={formCategory} definition={formDefinition.definition} schoolId={user?.branchId} onSaved={(_, placed) => { if (placed) setPanel('orders'); }} />
             : <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 18 }}>
             <div>
               <div className="ck-form-card">

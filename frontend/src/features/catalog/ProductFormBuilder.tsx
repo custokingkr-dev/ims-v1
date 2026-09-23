@@ -16,12 +16,14 @@ function initialSelections(groups: ProductGroup[], scope: string) {
   return Object.fromEntries(groups.filter((g) => g.active && g.scope === scope).map((group) => [group.code,
     group.options.filter((o) => o.active && o.specStatus === 'CONFIRMED').sort((a, b) => a.sortOrder - b.sortOrder)[0]?.code || '']));
 }
-export function ProductFormBuilder({ categoryCode = 'NOTEBOOKS', definition: suppliedDefinition, schoolId, initialOrder, preview = false, onSaved }: Props) {
+export function ProductFormBuilder({ categoryCode, definition: suppliedDefinition, schoolId, initialOrder, preview = false, onSaved }: Props) {
   const { can } = usePermissions();
   const [saved, setSaved] = useState(initialOrder);
   const savedRef = useRef(initialOrder);
   const inFlight = useRef(false);
   const definition = saved?.formDefinition || suppliedDefinition;
+  // The definition names its own category, so an order is never filed under another one.
+  const orderCategory = categoryCode || definition.category.code;
   const [input, setInput] = useState<FormInput>(() => initialOrder ? {
     orderSelections: selectionCodes(initialOrder.orderSelections), lines: initialOrder.lines.map((line) => ({ selections: selectionCodes(line.optionSelections), bookCount: line.requestedBookCount ?? line.bookCount, pageCount: line.requestedPageCount ?? line.pageCount })),
   } : { orderSelections: initialSelections(definition.groups, 'ORDER'), lines: [{ selections: initialSelections(definition.groups, 'LINE'), bookCount: 0, pageCount: suppliedDefinition.category.paged === false ? 1 : 196 }] });
@@ -67,7 +69,7 @@ export function ProductFormBuilder({ categoryCode = 'NOTEBOOKS', definition: sup
       if (savedRef.current) {
         detail = parseFormOrderDetail((await api.patch<unknown>(`/supply/orders/${savedRef.current.order.id}`, { ...body, version: savedRef.current.version })).data);
       } else {
-        const created = (await api.post('/supply/orders', { ...body, category: categoryCode, status: 'DRAFT', ...(schoolId ? { schoolId } : {}) })).data;
+        const created = (await api.post('/supply/orders', { ...body, category: orderCategory, status: 'DRAFT', ...(schoolId ? { schoolId } : {}) })).data;
         if (!created || typeof created.id !== 'string') throw new Error('The saved order could not be read. Check your orders before retrying.');
         // Keep the id even if the subsequent detail request fails; retry must never create twice.
         const retained = { order: { id: created.id }, version: created.version, formDefinition: definition, assets: [], ...created } as FormOrderDetail;

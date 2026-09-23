@@ -11,13 +11,25 @@ interface Props {
 }
 
 export function SaNewOrderPanel({ onOrderCreated }: Props) {
-  const notebookDefinition = useProductFormDefinition('NOTEBOOKS');
-  const productCatalog = useProductCategories();
-  const categoryOptions = SA_NEW_ORDER_CATEGORIES.filter((item) => item.key === 'CUSTOM' || productCatalog.categories?.some((category) => category.code === item.key)).map((item) => {
-    const category = productCatalog.categories?.find((value) => value.code === item.key);
-    return category ? { ...item, title: category.label, desc: category.description } : item;
-  });
   const [activeCat, setActiveCat] = useState<string | null>(null);
+  const productCatalog = useProductCategories();
+  const activeCategory = productCatalog.categories?.find((category) => category.code === activeCat) || null;
+  // Categories whose form is enabled are served by the shared product form, whatever they are.
+  const formCategory = activeCategory?.formEnabled ? activeCat : null;
+  const formDefinition = useProductFormDefinition(formCategory);
+  // Tiles come from the catalog, using the hardcoded entry only for its icon and for the legacy
+  // categories that still have no form. A category seeded in the catalog but absent from that list
+  // would otherwise be unorderable, which is what happened to bill books, belts, flex and fliers.
+  const knownTile = (code: string) => SA_NEW_ORDER_CATEGORIES.find((item) => item.key === code);
+  const categoryOptions = [
+    ...(productCatalog.categories || []).map((category) => ({
+      key: category.code,
+      icon: knownTile(category.code)?.icon || category.emoji || '📦',
+      title: category.label,
+      desc: category.description,
+    })),
+    ...SA_NEW_ORDER_CATEGORIES.filter((item) => item.key === 'CUSTOM'),
+  ];
   const [form, setForm] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -116,13 +128,13 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
 
             {errors._api ? <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{errors._api}</div></div> : null}
 
-            {activeCat === 'NOTEBOOKS' && notebookDefinition.loading ? <p role="status">Loading notebook options...</p>
-              : activeCat === 'NOTEBOOKS' && notebookDefinition.error ? <div className="ck-alert ck-alert-re" role="alert">{notebookDefinition.error}<button className="ck-btn ck-btn-ghost" onClick={notebookDefinition.retry}>Retry</button></div>
-              : activeCat === 'NOTEBOOKS' && !notebookDefinition.definition?.category.formEnabled ? <p role="status">Notebook ordering is currently unavailable.</p>
-              : activeCat === 'NOTEBOOKS' && notebookDefinition.definition?.enabled ? <>
+            {formCategory && formDefinition.loading ? <p role="status">Loading order options...</p>
+              : formCategory && formDefinition.error ? <div className="ck-alert ck-alert-re" role="alert">{formDefinition.error}<button className="ck-btn ck-btn-ghost" onClick={formDefinition.retry}>Retry</button></div>
+              : formCategory && !formDefinition.definition?.category.formEnabled ? <p role="status">Ordering is currently unavailable for this category.</p>
+              : formCategory && formDefinition.definition?.enabled ? <>
                 <div className="ck-product-fields"><label className="field"><span>School</span><select value={form.schoolId || ''} onChange={(e) => setForm({ schoolId: Number(e.target.value) || '' })}><option value="">Select school</option>{schoolOptions.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}</select></label></div>
                 {schoolLoadError && <p className="ck-product-error" role="alert">{schoolLoadError}</p>}
-                {form.schoolId ? <ProductFormBuilder key={form.schoolId} schoolId={Number(form.schoolId)} definition={notebookDefinition.definition} onSaved={(_, placed) => { if (placed) onOrderCreated(); }} /> : <p className="ck-product-muted">Select a school to begin this order.</p>}
+                {form.schoolId ? <ProductFormBuilder key={`${formCategory}-${form.schoolId}`} categoryCode={formCategory} schoolId={Number(form.schoolId)} definition={formDefinition.definition} onSaved={(_, placed) => { if (placed) onOrderCreated(); }} /> : <p className="ck-product-muted">Select a school to begin this order.</p>}
               </> : <>
             <div className="ck-form-grid ck-fg-2">
               <Field label="School *" error={errors.school}>
