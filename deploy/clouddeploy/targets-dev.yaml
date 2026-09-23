@@ -23,6 +23,7 @@ deployParameters:
   vpc_egress: private-ranges-only
   otel_sample: "0.05"
   reporting_topic: ims-reporting-events-v1
+  catalog_product_form_enabled: "true"
   photo_import_drive_root_folder_id: __STUDENT_PHOTO_IMPORT_DRIVE_ROOT_FOLDER_ID__
   frontend_url: https://custoking-frontend-dev-__PROJECT_NUMBER__.__REGION__.run.app
   gateway_url: https://custoking-api-gateway-dev-__PROJECT_NUMBER__.__REGION__.run.app
