@@ -37,10 +37,10 @@ export function ProductCatalogManager() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [attempt, setAttempt] = useState(0);
-  const loadCategories = async () => { const response = await api.get<unknown>('/supply/product-catalog/categories', { params: { includeInactive: true } }); const data = parseProductCategories(response.data); setCategories(data); return data; };
-  const loadDefinition = async () => { const { data } = await api.get<unknown>(`/supply/product-catalog/forms/${selected}`, { params: { includeInactive: true } }); setDefinition(parseProductFormDefinition(data)); };
+  const loadCategories = async () => { const response = await api.get<unknown>('/supply/product-catalog/admin/categories'); const data = parseProductCategories(response.data); setCategories(data); return data; };
+  const loadDefinition = async () => { const { data } = await api.get<unknown>(`/supply/product-catalog/admin/forms/${selected}`); setDefinition(parseProductFormDefinition(data)); };
   useEffect(() => { setLoading(true); setError(''); void loadCategories().catch((e: unknown) => setError(errorMessage(e))).finally(() => setLoading(false)); }, [attempt]);
-  useEffect(() => { let active = true; setDefinition(null); api.get<unknown>(`/supply/product-catalog/forms/${selected}`, { params: { includeInactive: true } }).then(({ data }) => { const parsed = parseProductFormDefinition(data); if (active) setDefinition(parsed); }).catch((e: unknown) => { if (active) setError(errorMessage(e)); }); return () => { active = false; }; }, [selected, attempt]);
+  useEffect(() => { let active = true; setDefinition(null); api.get<unknown>(`/supply/product-catalog/admin/forms/${selected}`).then(({ data }) => { const parsed = parseProductFormDefinition(data); if (active) setDefinition(parsed); }).catch((e: unknown) => { if (active) setError(errorMessage(e)); }); return () => { active = false; }; }, [selected, attempt]);
   const mutate = async (action: () => Promise<unknown>, message: string) => {
     if (!can('catalog:manage')) return;
     setBusy(true); setError(''); setNotice('');

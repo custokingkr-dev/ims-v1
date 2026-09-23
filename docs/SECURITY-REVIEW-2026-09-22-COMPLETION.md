@@ -10,7 +10,7 @@ permissions this account does not hold. Written 2026-09-22.
 | --- | --- |
 | Findings 1-5, the latent item, three hardening items | Fixed, merged to `dev` (PR #255), deployed to dev, verified live |
 | Promotion tag-write defect (found while assessing immutable tags) | Fixed, merged to `dev` (PR #256) |
-| Production | **Not deployed.** `main` is unchanged; every finding is still live in production |
+| Production | **Deployed and verified 2026-09-22.** All seven services on new revisions; internal and Pub/Sub paths return 404 before authentication; a real Pub/Sub reporting push was accepted (HTTP 204) with no identity rejections |
 | Cost-controller removal from `custoking-prod` | Planned and reviewed, **not applied** — see "Blocked" |
 | Branch protection | **Not done** — see "Blocked" |
 | Immutable registry tags | **Deliberately rejected** — see "Decisions" |
@@ -38,7 +38,48 @@ PROCESSED with no projection. It is inert; delete it if inbox cleanliness matter
 The internal caller check could not be exercised on dev because absentee delivery runs in
 `dry-run` there and never calls platform-service. Both sides' configuration was compared instead.
 
+## Verified in production
+
+Measured after the rollout on 2026-09-22:
+
+- All seven services `Ready` on new revisions; `/gateway-health` 200.
+- `/reporting-api/v1/pubsub/reporting-events`, `/reporting-api/v1/internal/async/drain`,
+  `/notification-api/v1/internal/notifications/deliveries` and `/billing-api/v1/internal/outbox/relay`
+  all return 404 **before authentication**. Canonical routes still return 401, so routing is intact.
+- `SERVICE_OIDC_AUDIENCES` carries both service URL forms on the serving revision, as required by the
+  three different audiences in use.
+- A probe message published to `ims-reporting-events-v1-prod` was accepted: **HTTP 204**, no identity
+  rejections. Reporting push is the one path whose behaviour tightened, so this was the decisive check.
+
+**Correction to an earlier claim.** This record previously stated that production's notification
+push had been returning 401 because it required a shared token configured nowhere. The
+configuration defect was real, but the logs show **no notification push traffic in production at
+all** over the preceding thirty days, so no 401s ever actually occurred. The fix removed a latent
+trap rather than repairing observed breakage.
+
+**Probe rows.** One inert row exists in each environment's reporting inbox
+(`ops-oidc-verify-1790081470` in dev, `ops-oidc-verify-prod-1790091921` in prod): an unrecognised
+event type, no projector, marked PROCESSED with no projection and no fact or dimension written.
+They are deliberately left in place — deleting them would require a write job against the private
+production database, which is more risk than two inert rows justify.
+
 ## Decisions taken, with reasons
+
+### Promotion provenance: cosign keyless signing (chosen 2026-09-22)
+
+The dev release signs every built digest with `cosign sign` under GitHub's OIDC identity, before
+the `dev-approved-*` tag is written, so an unsigned digest is never approved. Production runs
+`cosign verify` against the source digest, requiring a certificate whose identity is
+`…/build-release.yml@refs/heads/dev` and whose issuer is GitHub, before it copies anything.
+Repointing the mutable tag is no longer sufficient: a digest that no dev release signed fails the
+promotion.
+
+**Residual risk, stated plainly.** The Fulcio certificate binds the workflow *path and ref*, not
+the file's contents. Someone who can push a modified `build-release.yml` to `dev` can still obtain
+a valid signature for a digest of their choosing. This narrows the exposure from "anyone with
+`artifactregistry.writer` in the dev project, or any principal that compromises it" to "someone who
+can commit to `dev`", which is a materially smaller set, and branch protection on `dev` is the
+control that closes the remainder.
 
 ### Immutable Artifact Registry tags: rejected
 
@@ -122,6 +163,19 @@ Not possible from this account: the repository reports `"admin": false` for it, 
 `custokingkr-dev` holds admin. Both branches currently return HTTP 404 from the branch-protection
 API, meaning no protection of any kind. The `prod` GitHub Environment's required reviewers are
 presently the only gate between a write collaborator and production.
+
+`scripts/enable-branch-protection.sh` already encodes the agreed policy and needs no edit: required
+status checks `summary`, `analyze (java-kotlin)` and `analyze (javascript-typescript)`, pinned to
+the github-actions app id, with `required_pull_request_reviews` left null so a single maintainer can
+still merge their own work. It was never run, which is the whole of the finding. A dry run on
+2026-09-22 validated cleanly and reported both branches unprotected. An administrator completes it
+with:
+
+```bash
+bash scripts/enable-branch-protection.sh --apply
+```
+
+Rollback is one call per branch, documented in the script header.
 
 This is the precondition for the cost-controller finding and for the promotion-provenance gap; both
 shrink considerably once `main` requires review.
