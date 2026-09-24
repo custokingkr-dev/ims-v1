@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SaNewOrderPanel } from './SaNewOrderPanel';
 import api from '../../../services/api';
@@ -39,6 +39,22 @@ describe('SaNewOrderPanel category tiles', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /notebooks/i })).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /bill books/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /belts/i })).toBeInTheDocument();
+  });
+
+  it('reports a failed category load instead of silently showing a short list', async () => {
+    // A 401 mid-session empties the catalogue. The panel used to keep rendering the two generic
+    // fallback tiles with only an unstyled line of text, which reads as "the categories are gone".
+    vi.mocked(api.get).mockImplementation((url: string) => {
+      if (url === '/supply/product-catalog/categories') return Promise.reject(new Error('Request failed with status code 401'));
+      if (url === '/sa/schools') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: [] });
+    });
+    render(<SaNewOrderPanel onOrderCreated={() => {}} />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/catalog|categor/i);
+    expect(within(alert).getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    // The stale fallback tiles must not be offered as if they were the catalogue.
+    expect(screen.queryByRole('button', { name: /custom \/ other/i })).not.toBeInTheDocument();
   });
 
   it('renders the product form for a non-notebook category', async () => {
