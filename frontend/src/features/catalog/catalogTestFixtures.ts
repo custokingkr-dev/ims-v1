@@ -3,9 +3,9 @@ const options = (groupId: number, values: [string, string][]): ProductOption[] =
 export const notebookDefinition: FormDefinition = {
   enabled: true, category: { code: 'NOTEBOOKS', label: 'Notebooks', emoji: '', description: 'Notebook orders', orderType: 'Recurring', formEnabled: true, active: true, sortOrder: 2 }, dependencies: [],
   groups: [
-    { id: 1, categoryCode: 'NOTEBOOKS', code: 'CUSTOMIZATION', label: 'Customization', scope: 'ORDER', level: 1, required: true, active: true, selectionType: 'SINGLE', options: options(1, [['CUSTOMIZED', 'Customized'], ['NON_CUSTOMIZED', 'Non-customized']]) },
-    { id: 2, categoryCode: 'NOTEBOOKS', code: 'SIZE', label: 'Size', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', options: options(2, [['LONG', 'Long'], ['JUMBO_LONG', 'Jumbo Long'], ['KING', 'King'], ['JUMBO_KING', 'Jumbo King'], ['FA_A4', 'FA / A4 notebook'], ['DRAWING_BOOK', 'Drawing book']]) },
-    { id: 3, categoryCode: 'NOTEBOOKS', code: 'RULING', label: 'Ruling', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', options: options(3, Array.from({ length: 15 }, (_, i) => [i === 0 ? 'SINGLE_RULE' : `RULE_${i}`, i === 0 ? 'Single rule' : `Ruling ${i}`])) },
+    { id: 1, categoryCode: 'NOTEBOOKS', code: 'CUSTOMIZATION', label: 'Category', render: 'SEGMENTED', scope: 'ORDER', level: 1, required: true, active: true, selectionType: 'SINGLE', options: options(1, [['CUSTOMIZED', 'Custom'], ['NON_CUSTOMIZED', 'Wholesale']]) },
+    { id: 2, categoryCode: 'NOTEBOOKS', code: 'SIZE', label: 'Size', render: 'SELECT', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', options: options(2, [['LONG', 'Long'], ['JUMBO_LONG', 'Jumbo Long'], ['KING', 'King'], ['JUMBO_KING', 'Jumbo King'], ['FA_A4', 'FA / A4 notebook'], ['DRAWING_BOOK', 'Drawing book']]) },
+    { id: 3, categoryCode: 'NOTEBOOKS', code: 'RULING', label: 'Ruling', render: 'MATRIX', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', options: options(3, Array.from({ length: 15 }, (_, i) => [i === 0 ? 'SINGLE_RULE' : `RULE_${i}`, i === 0 ? 'Single rule' : `Ruling ${i}`])) },
   ],
   rules: [
     { id: 1, categoryCode: 'NOTEBOOKS', ruleType: 'REQUIRE_QUANTITY_TOTAL', targetField: 'BOOK_COUNT', matchOptions: { CUSTOMIZATION: 'CUSTOMIZED' }, params: { value: 1000, comparison: 'EQ', scope: 'ORDER', stage: 'ON_PLACE' }, priority: 1, message: '', active: true },
@@ -25,8 +25,8 @@ export const flexDefinition: FormDefinition = {
   enabled: true, dependencies: [], rules: [],
   category: { code: 'FLEX', label: 'Flex', emoji: '', description: 'Flex signage', orderType: 'One-time', formEnabled: true, paged: false, active: true, sortOrder: 10 },
   groups: [
-    { id: 11, categoryCode: 'FLEX', code: 'FLEX_TYPE', label: 'Type of flex', scope: 'LINE', level: 1, required: true, active: true, selectionType: 'SINGLE', inputType: 'SELECT', unit: '', options: options(11, [['STAR', 'Star flex'], ['NORMAL', 'Normal flex']]) },
-    { id: 12, categoryCode: 'FLEX', code: 'LENGTH_FT', label: 'Length', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
-    { id: 13, categoryCode: 'FLEX', code: 'BREADTH_FT', label: 'Breadth', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
+    { id: 11, categoryCode: 'FLEX', code: 'FLEX_TYPE', label: 'Type of flex', render: 'SEGMENTED', scope: 'LINE', level: 1, required: true, active: true, selectionType: 'SINGLE', inputType: 'SELECT', unit: '', options: options(11, [['STAR', 'Star flex'], ['NORMAL', 'Normal flex']]) },
+    { id: 12, categoryCode: 'FLEX', code: 'LENGTH_FT', label: 'Length', render: 'FIELD', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
+    { id: 13, categoryCode: 'FLEX', code: 'BREADTH_FT', label: 'Breadth', render: 'FIELD', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
   ],
 };

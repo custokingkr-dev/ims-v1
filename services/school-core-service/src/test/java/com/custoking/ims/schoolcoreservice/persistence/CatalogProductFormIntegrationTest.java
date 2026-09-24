@@ -77,6 +77,34 @@ class CatalogProductFormIntegrationTest {
                 maps(group.get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
     }
 
+    // The prototypes present a group in one of four ways. Inferring that from option counts is
+    // what produced a generic form none of them actually shows, so the definition states it.
+    @Test
+    void groupsCarryThePresentationTheProtypesUse() {
+        var notebook = repository.form("NOTEBOOKS", false);
+        assertEquals("SEGMENTED", group(notebook, "CUSTOMIZATION").get("render"));
+        assertEquals("SELECT", group(notebook, "SIZE").get("render"));
+        assertEquals("MATRIX", group(notebook, "RULING").get("render"));
+
+        var belt = repository.form("BELTS", false);
+        assertEquals("SEGMENTED", group(belt, "BELT_TYPE").get("render"));
+        assertEquals("SEGMENTED", group(belt, "BUCKLE_TYPE").get("render"));
+        assertEquals("MATRIX", group(belt, "LENGTH").get("render"));
+
+        var billBook = repository.form("BILLBOOKS", false);
+        assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED"),
+                maps(billBook.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
+
+        // A typed group is a field wherever it appears.
+        var flex = repository.form("FLEX", false);
+        assertEquals("SEGMENTED", group(flex, "FLEX_TYPE").get("render"));
+        assertEquals("FIELD", group(flex, "LENGTH_FT").get("render"));
+        assertEquals("FIELD", group(flex, "BREADTH_FT").get("render"));
+        var flier = repository.form("FLIERS", false);
+        assertEquals("FIELD", group(flier, "SIZE").get("render"));
+        assertEquals("FIELD", group(flier, "GSM").get("render"));
+    }
+
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
