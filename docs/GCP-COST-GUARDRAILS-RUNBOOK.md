@@ -199,9 +199,21 @@ Prefer the smallest scope:
 
 ## Dev Cost Control
 
-The `Ops / GCP cost controls` workflow starts dev Cloud SQL at 08:00 IST on weekdays and stops it
-at 20:00 IST daily. A dev deployment starts the database and waits until it is runnable before
-deployment verification. GitHub schedule execution can be delayed by platform load.
+The `Ops / GCP cost controls` workflow starts dev Cloud SQL at 08:00 IST on weekdays. **The nightly
+stop was removed on 2026-09-24** and stopping is now a deliberate manual act, via the workflow's
+`dev_database_action` input or the helper below. A dev deployment still starts the database, waits
+until it is runnable, and returns it to stopped only if it found it stopped.
+
+The stop was removed because it made dev unusable for most of the working day. GitHub schedule
+execution can be delayed by platform load, and here it ran **4 to 5.5 hours late every day**: the
+08:00/20:00 IST crons produced an actual window of roughly 13:20 to 24:00 IST, so a morning login
+failed with every service unable to reach the database (`FlywaySqlUnableToConnectToDbException`,
+SQL state 08001). That reads as an authentication bug rather than a stopped instance. The weekday
+start remains, so an instance stopped by hand comes back on the next working day.
+
+**Cost:** dev Cloud SQL is `db-f1-micro` and now runs continuously rather than roughly half the
+day. Stop it by hand during any long idle period, and note the free-trial credit expires
+2026-11-16.
 
 The scheduled workflow runs from the repository default branch and intentionally does not target the
 branch-gated `dev` GitHub Environment. It reads only the repository-level
