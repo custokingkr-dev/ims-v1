@@ -4,6 +4,15 @@ import api from '../../services/api';
 import type { AssetKind, OrderAsset } from './types';
 import './product-form.css';
 
+// A blob URL inherits its blob's type, so a stored file or an API response claiming text/html or
+// image/svg+xml would run script on this origin the moment the URL were opened. The type is taken
+// from this allow-list instead of from the data; anything else previews and downloads as bytes.
+const PREVIEWABLE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
+function safeObjectUrl(data: Blob): string {
+  const type = PREVIEWABLE_TYPES.includes(data.type) ? data.type : 'application/octet-stream';
+  return URL.createObjectURL(data.type === type ? data : new Blob([data], { type }));
+}
+
 export function OrderAssetField({ assetKind, label, requirement, orderId, asset, file, onFile, disabled = false, accept, maxBytes }: {
   assetKind: AssetKind; label: string; requirement: string; orderId?: string; asset?: OrderAsset; file?: File;
   onFile?: (file: File | undefined) => void; disabled?: boolean;
@@ -17,10 +26,10 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
   useEffect(() => {
     let active = true; let objectUrl = '';
     setUrl(''); setError('');
-    if (file) { objectUrl = URL.createObjectURL(file); setUrl(objectUrl); }
+    if (file) { objectUrl = safeObjectUrl(file); setUrl(objectUrl); }
     else if (asset && orderId) {
       api.get<Blob>(`/supply/orders/${encodeURIComponent(orderId)}/assets/${asset.id}/content`, { responseType: 'blob' })
-        .then(({ data }) => { if (active) { objectUrl = URL.createObjectURL(data); setUrl(objectUrl); } })
+        .then(({ data }) => { if (active) { objectUrl = safeObjectUrl(data); setUrl(objectUrl); } })
         .catch(() => { if (active) setError('Preview could not load. Reopen the order to retry.'); });
     }
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
