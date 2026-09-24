@@ -154,6 +154,20 @@ it needed three changes rather than four new forms: a group renders a typed inpu
 count is labelled from the category rather than assumed to be books. `product_categories.paged`
 carries that last distinction so the form does not have to guess from the rules.
 
+**Correction, 2026-09-23.** Step 5 was reported complete on the strength of the form component
+alone, and the component was only half the frontend. The two panels that *host* it —
+`CatalogPanel` (school side) and `SaNewOrderPanel` (superadmin) — chose the category from a
+hardcoded array and rendered the builder only when `activeCat === 'NOTEBOOKS'`. So the four new
+categories were seeded, migrated and served over the API, and still had no tile to click. Both
+panels now build their tiles from `/supply/product-catalog/categories` and treat any
+`formEnabled` category as orderable; the hardcoded lists survive only as a source of icons and of
+the legacy hand-written forms.
+
+The same omission hid a second defect: `ProductFormBuilder`'s `categoryCode` prop defaulted to
+`'NOTEBOOKS'` and is what gets posted as the order's `category`. Any order placed through a new
+category's form would have been filed as a notebook order. The category now comes from the
+definition, which cannot disagree with the form being displayed.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The

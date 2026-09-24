@@ -66,7 +66,9 @@ export function fieldErrorsFrom(error: unknown): Record<string, string> {
 export async function getFormOrder(id: string): Promise<FormOrderDetail> {
   return parseFormOrderDetail((await api.get<unknown>(`/supply/orders/${encodeURIComponent(id)}/form`)).data);
 }
-export function useProductFormDefinition(categoryCode: string) {
+// Passing null holds the fetch, so a panel can ask for whichever category the user opened
+// rather than being wired to one category at build time.
+export function useProductFormDefinition(categoryCode: string | null) {
   const [definition, setDefinition] = useState<FormDefinition | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -74,10 +76,11 @@ export function useProductFormDefinition(categoryCode: string) {
   useEffect(() => {
     let current = true;
     setLoading(true); setError(''); setDefinition(null);
-    api.get<unknown>(`/supply/product-catalog/forms/${categoryCode}`).then(({ data }) => {
+    if (!categoryCode) { setLoading(false); return () => { current = false; }; }
+    api.get<unknown>(`/supply/product-catalog/forms/${encodeURIComponent(categoryCode)}`).then(({ data }) => {
       const parsed = parseProductFormDefinition(data);
       if (current) setDefinition(parsed);
-    }).catch((e: unknown) => { if (current) setError(errorMessage(e, 'Unable to load notebook options.')); })
+    }).catch((e: unknown) => { if (current) setError(errorMessage(e, 'Unable to load the order options for this category.')); })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
   }, [categoryCode, attempt]);
