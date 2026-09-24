@@ -4,9 +4,9 @@ Source: five order-form prototypes supplied 2026-09-23 (flex, flier, bill book, 
 Those prototypes are the specification for what follows; this document records what they require,
 what already exists, and what has to be built.
 
-Status: notebook revision implemented. All four new categories are built on the backend and render
-through the shared order form. Remaining: enabling the feature flag, and deciding whether the
-flier size stays free text.
+Status: built and enabled in dev and stage, with both product decisions confirmed (see the end of
+this document). Production is deliberately still off pending a walkthrough of one real order per
+category in dev — no order has yet been submitted through any of these forms in any environment.
 
 ## Where the current implementation stands
 
@@ -168,12 +168,15 @@ The same omission hid a second defect: `ProductFormBuilder`'s `categoryCode` pro
 category's form would have been filed as a notebook order. The category now comes from the
 definition, which cannot disagree with the form being displayed.
 
-## Decisions that need a product owner
+## Decisions taken by the product owner
 
-1. **The notebook quantity change reverses D-2**, which was recorded as confirmed on 2026-09-15.
-   Implemented here as the prototype specifies. If the exact-1000-combined rule was the intended
-   policy and the prototype is a draft, this must be reverted before the form is enabled.
+1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The
+   customised rule is a floor of 1000 on each ruling line, not an exact combined total of 1000. D-2
+   of 2026-09-15 is superseded; `notebook-order-form-builder.md` still records the original wording,
+   so read this document alongside it.
 2. **King at 19 × 26 cm** is taken as confirmed, superseding `PENDING_SPEC`.
 3. **Drawing book** remains unorderable until someone supplies dimensions.
-4. **Flier size is free text.** Anything typed is accepted, so `A4`, `a4` and `A-4` are distinct
-   values in reporting. A fixed list would be cheaper to report on later.
+4. **Flier size stays free text, confirmed 2026-09-23.** Anything typed is accepted, so `A4`, `a4`
+   and `A-4` are distinct values in reporting. This was chosen deliberately over a seeded list for
+   the flexibility the prototype shows; if reporting on flier sizes later matters, normalising the
+   stored value is the cheaper fix than migrating orders to a fixed list.
