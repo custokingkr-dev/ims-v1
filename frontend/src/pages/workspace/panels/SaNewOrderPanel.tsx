@@ -21,7 +21,11 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
   // categories that still have no form. A category seeded in the catalog but absent from that list
   // would otherwise be unorderable, which is what happened to bill books, belts, flex and fliers.
   const knownTile = (code: string) => SA_NEW_ORDER_CATEGORIES.find((item) => item.key === code);
-  const categoryOptions = [
+  // When the catalogue cannot be read there is nothing honest to show: the generic fallback tiles
+  // on their own look like the whole catalogue, which is how a mid-session 401 reads as
+  // "the categories have disappeared". Show the failure and a retry instead.
+  const catalogUnavailable = Boolean(productCatalog.error);
+  const categoryOptions = catalogUnavailable ? [] : [
     ...(productCatalog.categories || []).map((category) => ({
       key: category.code,
       icon: knownTile(category.code)?.icon || category.emoji || '📦',
@@ -101,7 +105,16 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
           <>
             <div className="sa-category-label">Select supply category</div>
             <div className="sa-category-grid">
-              {productCatalog.error && <div role="alert">{productCatalog.error}<button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button></div>}
+              {catalogUnavailable && (
+                <div className="ck-alert ck-alert-re" role="alert">
+                  <div>
+                    <div>The supply catalog could not be loaded, so no categories can be shown.</div>
+                    <div className="ts">{productCatalog.error}</div>
+                  </div>
+                  <button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button>
+                </div>
+              )}
+              {!catalogUnavailable && !productCatalog.categories && <p role="status">Loading catalog...</p>}
               {categoryOptions.map((item, idx) => (
                 <button key={`${item.title}-${idx}`} className="sa-category-card" onClick={() => { setActiveCat(item.key); setErrors({}); }}>
                   <div className="sa-category-icon" aria-hidden="true">{item.icon}</div>

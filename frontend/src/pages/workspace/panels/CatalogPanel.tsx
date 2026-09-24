@@ -22,7 +22,9 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
   // A category is orderable when its form is enabled, or when it is one of the legacy categories
   // that still has a hand-written form here. Requiring a hardcoded tile made every newly seeded
   // category unorderable no matter what the catalog said.
-  const catalogTiles = (productCatalog.categories || []).map((category) => ({
+  // A failed catalogue read must not leave a plausible-looking grid behind; see SaNewOrderPanel.
+  const catalogUnavailable = Boolean(productCatalog.error);
+  const catalogTiles = (catalogUnavailable ? [] : productCatalog.categories || []).map((category) => ({
     ...(CATALOG_TILES.find((tile) => tile.key === category.code) || { pillClass: 'pg', headerBg: 'var(--bg)' }),
     key: category.code, name: category.label, desc: category.description, emoji: category.emoji, pill: category.orderType,
     available: category.formEnabled || CATALOG_TILES.some((tile) => tile.key === category.code),
@@ -195,8 +197,16 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
             <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink3)', display: 'flex' }}><Search size={15} strokeWidth={1.9} aria-hidden /></span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 28 }}>
-            {productCatalog.error && <div className="ck-alert ck-alert-re" role="alert">{productCatalog.error}<button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button></div>}
-            {!productCatalog.categories && !productCatalog.error && <p role="status">Loading catalog...</p>}
+            {catalogUnavailable && (
+              <div className="ck-alert ck-alert-re" role="alert">
+                <div>
+                  <div>The supply catalog could not be loaded, so no categories can be shown.</div>
+                  <div className="ts">{productCatalog.error}</div>
+                </div>
+                <button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button>
+              </div>
+            )}
+            {!productCatalog.categories && !catalogUnavailable && <p role="status">Loading catalog...</p>}
             {catalogTiles.filter((c) => !catalogSearch || `${c.name} ${c.desc}`.toLowerCase().includes(catalogSearch.toLowerCase())).map((c) => (
               <button type="button" key={c.key} disabled={!c.available} onClick={() => { setActiveCat(c.key); setCatalogNotice(null); }} style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', cursor: c.available ? 'pointer' : 'default', textAlign: 'left', font: 'inherit', color: 'inherit', padding: 0 }}>
                 <div style={{ height: 90, background: c.headerBg, position: 'relative', overflow: 'hidden' }}>
