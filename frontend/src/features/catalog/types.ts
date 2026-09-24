@@ -15,6 +15,9 @@ export interface ProductGroup {
   // SELECT groups pick from `options`; the others capture a typed value stored on the line's
   // `attributes` rather than a selection. `unit` is a display suffix such as "ft" or "gsm".
   inputType?: 'SELECT' | 'TEXT' | 'INTEGER' | 'DECIMAL'; unit?: string;
+  // How the prototypes present this group: a row of buttons, a dropdown, the axis of a
+  // quantity table, or a typed entry. Absent means SELECT.
+  render?: 'SEGMENTED' | 'SELECT' | 'MATRIX' | 'FIELD';
 }
 export interface ProductRule {
   id?: number; categoryCode?: string; ruleType: string; targetField?: string | null;

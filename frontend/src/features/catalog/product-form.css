@@ -67,3 +67,42 @@
   .ck-product-totals .field { flex: 1; }
 }
 @media (max-width: 520px) { .ck-product-fields { grid-template-columns: 1fr; } .ck-product-asset-preview { width: 68px; height: 72px; } .ck-product-line-fields { gap: var(--ck-space-2); } .ck-product-line { gap: var(--ck-space-1); } .ck-product-form .ck-btn, .ck-product-admin .ck-btn { min-height: 40px; } .ck-product-icon { width: 36px; flex-basis: 36px; } .ck-product-actions { gap: var(--ck-space-2); } }
+
+/* ---- The 2026-09-23 prototype format ---------------------------------------------------------
+   A short choice is a row of buttons rather than a dropdown; a long one stays a dropdown. The
+   buttons carry aria-pressed, so the selected state must read as selected without relying on
+   colour alone - it also gains a border and weight. */
+.ck-product-seg { display: flex; flex-wrap: wrap; gap: var(--ck-space-2); }
+.ck-product-seg-btn { min-height: 36px; padding: 0 var(--ck-space-4); border: 1px solid var(--border2); border-radius: var(--ck-radius-xs); background: var(--white); color: var(--ink); font: inherit; font-size: var(--ck-text-sm); cursor: pointer; }
+.ck-product-seg-btn:hover:not(:disabled) { border-color: var(--border-strong, var(--ink3)); }
+.ck-product-seg-btn.is-on { border-color: var(--g); border-width: 2px; padding: 0 calc(var(--ck-space-4) - 1px); font-weight: 700; color: var(--g); background: var(--g1, var(--bg)); }
+.ck-product-seg-btn:disabled { color: var(--ink3); background: var(--bg); cursor: not-allowed; }
+
+/* The matrix: every option of one group as a row with its own quantity. */
+.ck-product-matrix { margin-bottom: var(--ck-space-5); border: 1px solid var(--border); border-radius: var(--ck-radius-sm); overflow: hidden; }
+.ck-product-matrix-table { width: 100%; border-collapse: collapse; font-size: var(--ck-text-sm); }
+.ck-product-matrix-table :is(th, td) { padding: var(--ck-space-2) var(--ck-space-3); text-align: left; border-bottom: 1px solid var(--border); }
+.ck-product-matrix-table thead th { background: var(--bg); font-size: var(--ck-text-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--ink3); }
+.ck-product-matrix-table tbody th { font-weight: 500; }
+.ck-product-matrix-table td { width: 120px; }
+.ck-product-matrix-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--ck-space-3); flex-wrap: wrap; padding: var(--ck-space-3); }
+
+/* What has been added so far, grouped by the context it was added under. */
+.ck-product-order { margin-bottom: var(--ck-space-5); }
+.ck-product-order-block { border: 1px solid var(--border); border-radius: var(--ck-radius-sm); padding: var(--ck-space-3); margin-top: var(--ck-space-3); }
+.ck-product-order-context { font-size: var(--ck-text-xs); text-transform: uppercase; letter-spacing: .06em; color: var(--ink3); margin-bottom: var(--ck-space-2); }
+.ck-product-order-lines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--ck-space-2); }
+.ck-product-order-lines li { display: flex; align-items: center; gap: var(--ck-space-2); flex-wrap: wrap; }
+.ck-product-order-name { flex: 1 1 160px; min-width: 0; font-size: var(--ck-text-sm); }
+.ck-product-order-lines input { width: 88px; text-align: right; }
+.ck-product-order-pages { color: var(--ink3); font-size: var(--ck-text-xs); font-weight: 400; }
+
+/* The prototype keeps the total and the two actions in view while the order is built. */
+.ck-product-footbar { position: sticky; bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: var(--ck-space-3); flex-wrap: wrap; padding: var(--ck-space-3) 0; margin-top: var(--ck-space-4); border-top: 1px solid var(--border); background: var(--white); }
+.ck-product-foot-summary { font-size: var(--ck-text-sm); font-weight: 600; }
+.ck-product-foot-actions { display: flex; gap: var(--ck-space-2); flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .ck-product-matrix-table td { width: 92px; }
+  .ck-product-footbar { flex-direction: column; align-items: stretch; }
+}

@@ -68,9 +68,24 @@ Unchanged and already correct: pages snap to the nearest multiple of 7 with a fl
 (`roundToSeven` matches `round(..., 7, "NEAREST", 7)`, so 198 → 196); rows left at zero are
 skipped; schools never enter prices.
 
-Also from the prototype: **King is 19 × 26 cm**. The seed carries it as `PENDING_SPEC` with null
-dimensions, which renders it visible but unorderable. It becomes `CONFIRMED` at 190 × 260 mm.
-Drawing book stays `PENDING_SPEC` — the prototype gives it no dimensions either.
+**Correction, 2026-09-25 — the size claim below was wrong.** This document previously recorded
+"King is 19 × 26 cm", and V11 confirmed King at 190 × 260 on that basis. The prototype's markup says
+otherwise:
+
+```html
+<option value="King"       data-dim="">King</option>
+<option value="Jumbo King" data-dim="19 x 26 cm">Jumbo King — 19×26 cm</option>
+```
+
+19 × 26 cm is **Jumbo King's**, which the original V9 seed already had right. V11 both invented a
+specification for King and duplicated Jumbo King's. V16 restores King to `PENDING_SPEC` with null
+dimensions — visible but unorderable, which is what "no agreed size" means here. Drawing book stays
+`PENDING_SPEC` for the same reason: the prototype gives it no dimensions either.
+
+Two wordings also follow the prototype rather than the original seed: the order-scope group is
+labelled **Category** (not "Customization") with the choices **Custom** and **Wholesale**, and the
+notebook per-line count reads **Quantity**. The option *codes* are unchanged, because every rule's
+`match_options` and every existing order reference them.
 
 ## The four new categories
 
@@ -174,7 +189,9 @@ definition, which cannot disagree with the form being displayed.
    customised rule is a floor of 1000 on each ruling line, not an exact combined total of 1000. D-2
    of 2026-09-15 is superseded; `notebook-order-form-builder.md` still records the original wording,
    so read this document alongside it.
-2. **King at 19 × 26 cm** is taken as confirmed, superseding `PENDING_SPEC`.
+2. **King has no agreed size** and stays `PENDING_SPEC`. The 19 × 26 cm reading was an error of
+   mine, corrected 2026-09-25: those are Jumbo King's dimensions. Nothing was decided here, so
+   there is no decision to revisit — but if King *does* have a size, someone has to supply it.
 3. **Drawing book** remains unorderable until someone supplies dimensions.
 4. **Flier size stays free text, confirmed 2026-09-23.** Anything typed is accepted, so `A4`, `a4`
    and `A-4` are distinct values in reporting. This was chosen deliberately over a seeded list for

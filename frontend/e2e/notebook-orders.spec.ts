@@ -9,15 +9,15 @@ const definition: FormDefinition = {
   enabled: true,
   category: { code: 'NOTEBOOKS', label: 'Notebooks', emoji: '', description: 'School notebooks', orderType: 'Recurring', formEnabled: true, sortOrder: 1, active: true },
   groups: [
-    { id: 1, categoryCode: 'NOTEBOOKS', code: 'CUSTOMIZATION', label: 'Customization', level: 1, selectionType: 'SINGLE', required: true, scope: 'ORDER', active: true, options: [option(1, 1, 'CUSTOMIZED', 'Customized'), option(2, 1, 'NON_CUSTOMIZED', 'Non-customized')] },
-    { id: 2, categoryCode: 'NOTEBOOKS', code: 'SIZE', label: 'Size', level: 2, selectionType: 'SINGLE', required: true, scope: 'LINE', active: true, options: [
+    { id: 1, categoryCode: 'NOTEBOOKS', code: 'CUSTOMIZATION', label: 'Category', render: 'SEGMENTED', level: 1, selectionType: 'SINGLE', required: true, scope: 'ORDER', active: true, options: [option(1, 1, 'CUSTOMIZED', 'Custom'), option(2, 1, 'NON_CUSTOMIZED', 'Wholesale')] },
+    { id: 2, categoryCode: 'NOTEBOOKS', code: 'SIZE', render: 'SELECT', label: 'Size', level: 2, selectionType: 'SINGLE', required: true, scope: 'LINE', active: true, options: [
       option(3, 2, 'LONG', 'Long', { specText: '17 cm x 27 cm', widthMm: 170, heightMm: 270 }),
       option(4, 2, 'JUMBO_LONG', 'Jumbo Long', { specText: '18 cm x 24 cm', widthMm: 180, heightMm: 240 }),
       option(5, 2, 'KING', 'King', { specStatus: 'PENDING_SPEC' }),
       option(6, 2, 'FA_A4', 'FA / A4 notebook', { specText: '21 cm x 29.7 cm', widthMm: 210, heightMm: 297 }),
       option(7, 2, 'DRAWING_BOOK', 'Drawing book', { specStatus: 'PENDING_SPEC' }),
     ] },
-    { id: 3, categoryCode: 'NOTEBOOKS', code: 'RULING', label: 'Ruling', level: 3, selectionType: 'SINGLE', required: true, scope: 'LINE', active: true, options: [option(8, 3, 'SINGLE_RULE', 'Single rule'), option(9, 3, 'SPECIAL_MATH_RULE', 'Special math rule'), option(10, 3, 'ONE_SIDE_BROAD_RULE', 'One side broad rule')] },
+    { id: 3, categoryCode: 'NOTEBOOKS', code: 'RULING', render: 'MATRIX', label: 'Ruling', level: 3, selectionType: 'SINGLE', required: true, scope: 'LINE', active: true, options: [option(8, 3, 'SINGLE_RULE', 'Single rule'), option(9, 3, 'SPECIAL_MATH_RULE', 'Special math rule'), option(10, 3, 'ONE_SIDE_BROAD_RULE', 'One side broad rule')] },
   ],
   dependencies: [],
   rules: [
@@ -109,25 +109,25 @@ async function openSchoolForm(page: Page) {
 
 test('customized notebooks combine every size and ruling into one exact total', async ({ page }) => {
   const state = await setup(page); await openSchoolForm(page);
-  await expect(page.getByLabel('Size for line 1').locator('option[value="KING"]')).toHaveAttribute('disabled', '');
-  await expect(page.getByLabel('Size for line 1').locator('option[value="DRAWING_BOOK"]')).toHaveAttribute('disabled', '');
-  await expect(page.getByLabel('Size for line 1').locator('option[value="FA_A4"]')).toHaveCount(1);
-  await page.getByLabel('Ruling for line 1').selectOption('SPECIAL_MATH_RULE');
-  await page.getByLabel('Books for line 1', { exact: true }).fill('400');
-  await page.getByLabel('Printed pages for line 1').fill('198');
-  await page.getByLabel('Printed pages for line 1').blur();
+  await expect(page.getByLabel('Size').locator('option[value="KING"]')).toHaveAttribute('disabled', '');
+  await expect(page.getByLabel('Size').locator('option[value="DRAWING_BOOK"]')).toHaveAttribute('disabled', '');
+  await expect(page.getByLabel('Size').locator('option[value="FA_A4"]')).toHaveCount(1);
+  // The prototype picks a size once, then fills quantities against every ruling at once.
+  await page.getByLabel('Size').selectOption('LONG');
+  await page.getByLabel('Quantity for Special math rule', { exact: true }).fill('400');
+  await page.getByLabel('Pages for Special math rule', { exact: true }).fill('198');
+  await page.getByRole('button', { name: 'Add to order', exact: true }).click();
   await expect(page.getByText('Rounded from 198 to 196')).toBeVisible();
-  await page.getByRole('button', { name: 'Add line', exact: true }).click();
-  await page.getByLabel('Size for line 2').selectOption('JUMBO_LONG');
-  await page.getByLabel('Ruling for line 2').selectOption('ONE_SIDE_BROAD_RULE');
-  await page.getByLabel('Books for line 2', { exact: true }).fill('599');
+  await page.getByLabel('Size').selectOption('JUMBO_LONG');
+  await page.getByLabel('Quantity for One side broad rule', { exact: true }).fill('599');
+  await page.getByRole('button', { name: 'Add to order', exact: true }).click();
   await expect(page.getByText('1 more books needed')).toBeVisible();
   await page.getByRole('button', { name: 'Place order', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('combined book count');
   expect(state.creates).toBe(0);
-  await page.getByLabel('Books for line 2', { exact: true }).fill('601');
+  await page.getByLabel('Ordered quantity for One side broad rule', { exact: true }).fill('601');
   await expect(page.getByText('1 books over the required total')).toBeVisible();
-  await page.getByLabel('Books for line 2', { exact: true }).fill('600');
+  await page.getByLabel('Ordered quantity for One side broad rule', { exact: true }).fill('600');
   await expect(page.getByText('Required total met')).toBeVisible();
   await page.getByRole('region', { name: 'Design artwork' }).locator('input[type="file"]').setInputFiles({ name: 'school-cover.png', mimeType: 'image/png', buffer: png });
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
@@ -141,8 +141,10 @@ test('customized notebooks combine every size and ruling into one exact total', 
 
 test('non-customized books submit without artwork, a 1000 minimum, or school prices', async ({ page }) => {
   const state = await setup(page); await openSchoolForm(page);
-  await page.getByLabel('Customization', { exact: true }).selectOption('NON_CUSTOMIZED');
-  await page.getByLabel('Books for line 1', { exact: true }).fill('25');
+  await page.getByRole('button', { name: 'Wholesale', exact: true }).click();
+  await page.getByLabel('Size').selectOption('LONG');
+  await page.getByLabel('Quantity for Special math rule', { exact: true }).fill('25');
+  await page.getByRole('button', { name: 'Add to order', exact: true }).click();
   await expect(page.getByText('All sizes combined')).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Design artwork' })).toHaveCount(0);
   await expect(page.getByLabel(/Unit price/)).toHaveCount(0);
@@ -185,7 +187,9 @@ test('superadmin changes the combined quantity rule through guided controls', as
   await expect(page.getByRole('status').filter({ hasText: 'Catalog changes saved' })).toBeVisible();
   expect(state.patches[0].params).toMatchObject({ value: 1500, scope: 'ORDER', comparison: 'EQ' });
   await page.getByRole('tab', { name: 'Preview', exact: true }).click();
-  await page.getByLabel('Books for line 1', { exact: true }).fill('1500');
+  await page.getByLabel('Size').selectOption('LONG');
+  await page.getByLabel('Quantity for Special math rule', { exact: true }).fill('1500');
+  await page.getByRole('button', { name: 'Add to order', exact: true }).click();
   await expect(page.getByText('1,500 / 1,500 books')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Place order', exact: true })).toHaveCount(0);
 });
