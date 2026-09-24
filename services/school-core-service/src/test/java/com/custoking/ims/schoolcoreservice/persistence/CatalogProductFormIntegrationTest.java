@@ -50,6 +50,33 @@ class CatalogProductFormIntegrationTest {
     @AfterEach void clear() { TenantContext.clear(); }
     @AfterAll static void stop() { if (pg != null) pg.stop(); }
 
+    // The 2026-09-23 prototype lists "King" with no dimensions and "Jumbo King - 19x26 cm".
+    // V11 read that as King being 19x26 and confirmed it, which both invented a spec for King and
+    // duplicated Jumbo King's. An option with no agreed size must stay visible but unorderable.
+    @Test
+    void kingHasNoAgreedSizeAndJumboKingCarriesTheNineteenBySixSpec() {
+        var sizes = maps(group(repository.form("NOTEBOOKS", false), "SIZE").get("options"));
+        var king = sizes.stream().filter(o -> "KING".equals(o.get("code"))).findFirst().orElseThrow();
+        assertEquals("PENDING_SPEC", king.get("specStatus"));
+        assertNull(king.get("widthMm"));
+        assertNull(king.get("heightMm"));
+
+        var jumboKing = sizes.stream().filter(o -> "JUMBO_KING".equals(o.get("code"))).findFirst().orElseThrow();
+        assertEquals("CONFIRMED", jumboKing.get("specStatus"));
+        assertEquals(190, jumboKing.get("widthMm"));
+        assertEquals(260, jumboKing.get("heightMm"));
+    }
+
+    // The prototype labels the order-scope group "Category", with "Custom" and "Wholesale".
+    @Test
+    void customisationGroupUsesThePrototypeWording() {
+        var definition = repository.form("NOTEBOOKS", false);
+        var group = group(definition, "CUSTOMIZATION");
+        assertEquals("Category", group.get("label"));
+        assertEquals(java.util.List.of("Custom", "Wholesale"),
+                maps(group.get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+    }
+
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
@@ -58,7 +85,8 @@ class CatalogProductFormIntegrationTest {
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
         assertEquals(15, maps(group(definition, "RULING").get("options")).size());
-        assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
+        // King and Drawing book: both are listed with no agreed size in the prototype.
+        assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
         assertEquals(4, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());

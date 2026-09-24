@@ -38,7 +38,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
   const groups = definition.groups.filter((g) => g.active).sort((a, b) => a.level - b.level);
   // Notebooks count books and printed pages; every other category counts units and has no pages.
   const paged = definition.category.paged !== false;
-  const countLabel = paged ? 'Books' : 'Count';
+  // The prototypes call this Quantity on the notebook form and Count everywhere else.
+  const countLabel = paged ? 'Quantity' : 'Count';
   const defaultPageCount = paged ? 196 : 1;
   const customized = input.orderSelections.CUSTOMIZATION === 'CUSTOMIZED';
   const assetRules = definition.rules.filter((r) => r.active !== false && r.ruleType === 'REQUIRE_ASSET' && input.lines.some((line) => matches(r.matchOptions, { ...line.selections, ...input.orderSelections })));
