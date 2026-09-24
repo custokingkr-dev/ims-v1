@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -25,8 +26,8 @@ import static com.custoking.ims.schoolcoreservice.catalog.domain.ProductFormRule
 public class ProductCatalogRepository {
     private record Entity(String table, String key, Map<String, String> columns) {}
     private static final Map<String, Entity> ENTITIES = Map.of(
-            "categories", new Entity("product_categories", "code", columns("code", "label", "emoji", "description", "orderType", "formEnabled", "sortOrder", "active")),
-            "groups", new Entity("product_option_groups", "id", columns("categoryCode", "code", "label", "level", "selectionType", "required", "scope", "active")),
+            "categories", new Entity("product_categories", "code", columns("code", "label", "emoji", "description", "orderType", "formEnabled", "paged", "sortOrder", "active")),
+            "groups", new Entity("product_option_groups", "id", columns("categoryCode", "code", "label", "level", "selectionType", "inputType", "unit", "required", "scope", "active")),
             "options", new Entity("product_options", "id", columns("groupId", "code", "label", "specText", "widthMm", "heightMm", "specStatus", "sortOrder", "active")),
             "rules", new Entity("product_form_rules", "id", columns("categoryCode", "ruleType", "targetField", "matchOptions", "params", "priority", "message", "active")));
     private final JdbcClient jdbc;
@@ -43,6 +44,23 @@ public class ProductCatalogRepository {
     }
 
     public boolean isEnabled() { return enabled; }
+
+    /**
+     * Whether a category takes the structured order form. Read from the category rather than a
+     * literal so that enabling a category is the only step needed to route it away from the legacy
+     * order path, which has no form validation.
+     */
+    public boolean formEnabled(String categoryCode) {
+        if (categoryCode == null || categoryCode.isBlank()) return false;
+        return Boolean.TRUE.equals(jdbc.sql("""
+                        SELECT form_enabled FROM catalog.product_categories
+                        WHERE code = :code AND active
+                        """)
+                .param("code", categoryCode.trim().toUpperCase(Locale.ROOT))
+                .query(Boolean.class)
+                .optional()
+                .orElse(false));
+    }
 
     public List<Map<String, Object>> categories(boolean includeInactive) {
         return readList("categories", includeInactive ? "" : " WHERE active", Map.of(), " ORDER BY sort_order, code");
@@ -287,8 +305,8 @@ public class ProductCatalogRepository {
         var result = new LinkedHashMap<String, Object>();
         result.put("active", true);
         switch (resource) {
-            case "categories" -> result.putAll(row("emoji", "", "description", "", "orderType", "Recurring", "formEnabled", false, "sortOrder", 0));
-            case "groups" -> result.putAll(row("selectionType", "SINGLE", "required", true, "level", 1));
+            case "categories" -> result.putAll(row("emoji", "", "description", "", "orderType", "Recurring", "formEnabled", false, "paged", false, "sortOrder", 0));
+            case "groups" -> result.putAll(row("selectionType", "SINGLE", "inputType", "SELECT", "unit", "", "required", true, "level", 1));
             case "options" -> result.putAll(row("specText", "", "widthMm", null, "heightMm", null, "specStatus", "CONFIRMED", "sortOrder", 0));
             case "rules" -> result.putAll(row("targetField", null, "matchOptions", Map.of(), "priority", 0, "message", ""));
         }

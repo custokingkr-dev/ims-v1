@@ -205,6 +205,37 @@ A commit touching only `deploy/cloudrun/**` is not sufficient on its own: those 
 service triggers, so `has_service_changes` stays false and the run ends as a no-op. The explicit
 `commit_sha` in step 3 is what makes every service affected.
 
+## Reading a failed run
+
+Three failure modes here look like defects and are not. All three were hit on 2026-09-22/23.
+
+**A cancelled run reports as a red X with every step ticked.** Dev shares one concurrency group with
+`cancel-in-progress`, so *any* push to `dev` — including a documentation-only commit — kills a
+running dev release. The cancelled run then shows `✓` beside every job that finished and an `X` on
+the run itself. Always read `conclusion` before diagnosing:
+
+```bash
+gh api repos/<owner>/<repo>/actions/runs/<id> --jq '.conclusion'   # cancelled, not failure
+```
+
+The same applies to pull-request checks. A promotion PR from `dev` inherits the head commit's CD
+run, so a cancelled dev deployment surfaces as several failing checks on a pull request whose own
+CI is entirely green. Map each failing check back to its parent run before concluding anything:
+
+```bash
+gh pr checks <pr> | grep fail | grep -oE 'runs/[0-9]+' | cut -d/ -f2 |
+  xargs -I{} gh api repos/<owner>/<repo>/actions/runs/{} --jq '.name + " -> " + .conclusion'
+```
+
+**Re-releasing an already-released commit fails with `ALREADY_EXISTS`.** Cloud Deploy release ids are
+`rel-<env>-<sha12>-<attempt>`, so dispatching a second release pinned to the same `commit_sha`
+collides on the first service and deploys nothing. Release a newer commit instead, or use
+`force_full_deploy` without `commit_sha`.
+
+**Job logs are not retrievable while a job is running.** `gh run view --job <id> --log` returns
+nothing until the job completes, so grepping a running job for an expected line proves nothing. Wait
+for completion, or read the step's pass/fail state instead.
+
 ## Automatic Verification
 
 Every changed service is checked after deployment:

@@ -921,6 +921,42 @@ test('authenticate returns null and does not introspect when no bearer token is 
   assert.equal(principal, null);
 });
 
+// A 401 is logged with no reason at all, so a rejected request cannot be told apart from an
+// expired token, a missing header, or a refresh token used as a bearer. On 2026-09-24 a dev
+// session was rejected twelve seconds after a successful call and the logs could not say why.
+test('authenticate records why it rejected the caller', async () => {
+  const introspectStub = async () => null;
+  const cases = [
+    [null, 'missing_bearer'],
+    [signHS512({ ...enrichedClaims, exp: NOW - 1 }, JWT_SECRET), 'token_expired'],
+    [`${signHS512(enrichedClaims, JWT_SECRET).slice(0, -2)}xx`, 'token_invalid'],
+    [signHS512({ ...enrichedClaims, type: 'refresh' }, JWT_SECRET), 'refresh_token_as_bearer'],
+  ];
+  for (const [token, expected] of cases) {
+    const req = reqWithToken(token);
+    const principal = await authenticate(req, 'req-reason', {
+      localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
+    });
+    assert.equal(principal, null);
+    assert.equal(req.authFailureReason, expected);
+  }
+});
+
+test('authenticate records an introspection rejection and leaves no reason on success', async () => {
+  const legacy = signHS512({ sub: 'a@b.com', role: 'ADMIN', exp: NOW + 900 }, JWT_SECRET);
+  const rejected = reqWithToken(legacy);
+  assert.equal(await authenticate(rejected, 'req-i1', {
+    localVerify: true, secret: JWT_SECRET, introspect: async () => null, now: NOW,
+  }), null);
+  assert.equal(rejected.authFailureReason, 'introspection_rejected');
+
+  const ok = reqWithToken(signHS512(enrichedClaims, JWT_SECRET));
+  assert.ok(await authenticate(ok, 'req-i2', {
+    localVerify: true, secret: JWT_SECRET, introspect: async () => null, now: NOW,
+  }));
+  assert.equal(ok.authFailureReason, undefined);
+});
+
 async function listen() {
   if (!server.listening) {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -81,7 +80,7 @@ class CatalogOrderFormIntegrationTest {
         tx(() -> {
             jdbc.sql("DELETE FROM catalog.catalog_orders").update();
             jdbc.sql("DELETE FROM tenant_school.outbox_events").update();
-            jdbc.sql("UPDATE catalog.product_form_rules SET params = jsonb_set(params, '{value}', '1000') WHERE rule_type = 'REQUIRE_QUANTITY_TOTAL'").update();
+            jdbc.sql("UPDATE catalog.product_form_rules SET params = jsonb_set(params, '{value}', '1000') WHERE rule_type = 'FLOOR_VALUE'").update();
             return null;
         });
         school(1);
@@ -102,8 +101,12 @@ class CatalogOrderFormIntegrationTest {
         assertThat(line.get("requestedPageCount")).isEqualTo(198);
         assertThat(line.get("pageCount")).isEqualTo(196);
         assertThat(line.get("unitPricePaise")).isNull();
-        assertThat(String.valueOf(detail.get("quantityRuleResults"))).contains("actualTotal=1000", "lineIds");
-        jdbc.sql("UPDATE catalog.product_form_rules SET params = jsonb_set(params, '{value}', '1200') WHERE rule_type = 'REQUIRE_QUANTITY_TOTAL'").update();
+        // Each customised ruling line is raised to the floor of 1000 instead of the order needing an
+        // exact combined total, and the count the school asked for is preserved beside it.
+        assertThat(line.get("requestedBookCount")).isEqualTo(400);
+        assertThat(line.get("bookCount")).isEqualTo(1000);
+        assertThat(String.valueOf(line.get("appliedRules"))).contains("FLOOR_VALUE");
+        assertThat(detailLines(detail).get(1).get("bookCount")).isEqualTo(1000);
         upload(created.id(), "DESIGN", 1);
         assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isEqualTo("DESIGN_APPROVAL");
     }

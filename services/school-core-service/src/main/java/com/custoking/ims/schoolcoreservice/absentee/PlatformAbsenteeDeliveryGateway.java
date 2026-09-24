@@ -152,7 +152,7 @@ public class PlatformAbsenteeDeliveryGateway implements AbsenteeDeliveryGateway 
 
     private static String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static String rootMessage(Throwable ex) {

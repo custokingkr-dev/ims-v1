@@ -234,6 +234,8 @@ const server = http.createServer(async (req, res) => {
       compatibilitySuccessor: compatibility ? compatibility.successor : undefined,
       schoolId,
       userId,
+      // Why a 401 happened. Undefined on every authenticated request, so it never adds noise.
+      authFailureReason: req.authFailureReason,
     }, traceFields);
   });
 
@@ -410,10 +412,13 @@ const HMAC_JWT_ALGORITHMS = {
 
 // Verify an HMAC JWT locally with the shared secret; no network call.
 // Returns the decoded claims, or null on any failure. `nowSeconds` is injectable for tests.
-function verifyJwtLocally(token, secret, nowSeconds) {
-  if (typeof token !== 'string' || typeof secret !== 'string' || !secret) return null;
+// `detail` is an optional out-parameter carrying why verification failed. It exists so a 401 can
+// say whether the token was expired, malformed or forged; it never carries the token itself.
+function verifyJwtLocally(token, secret, nowSeconds, detail = {}) {
+  const fail = (reason) => { detail.reason = reason; return null; };
+  if (typeof token !== 'string' || typeof secret !== 'string' || !secret) return fail('token_invalid');
   const parts = token.split('.');
-  if (parts.length !== 3) return null;
+  if (parts.length !== 3) return fail('token_malformed');
   const [headerB64, payloadB64, sigB64] = parts;
   let header;
   let payload;
@@ -421,19 +426,19 @@ function verifyJwtLocally(token, secret, nowSeconds) {
     header = JSON.parse(Buffer.from(headerB64, 'base64url').toString('utf8'));
     payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
   } catch {
-    return null;
+    return fail('token_malformed');
   }
   // Allow only HMAC JWT algorithms emitted by the identity service; reject "none" and asymmetric algs.
   const digest = header && HMAC_JWT_ALGORITHMS[header.alg];
-  if (!digest) return null;
+  if (!digest) return fail('token_algorithm_rejected');
   const expected = crypto.createHmac(digest, secret).update(`${headerB64}.${payloadB64}`).digest('base64url');
   // base64url signatures are ASCII, so comparing the encoded text byte-for-byte is equivalent to comparing raw bytes.
   const provided = Buffer.from(sigB64);
   const expectedBuf = Buffer.from(expected);
-  if (provided.length !== expectedBuf.length) return null;
-  if (!crypto.timingSafeEqual(provided, expectedBuf)) return null;
-  if (typeof payload.exp === 'number' && nowSeconds >= payload.exp) return null;
-  if (typeof payload.nbf === 'number' && nowSeconds < payload.nbf) return null;
+  if (provided.length !== expectedBuf.length) return fail('token_invalid');
+  if (!crypto.timingSafeEqual(provided, expectedBuf)) return fail('token_invalid');
+  if (typeof payload.exp === 'number' && nowSeconds >= payload.exp) return fail('token_expired');
+  if (typeof payload.nbf === 'number' && nowSeconds < payload.nbf) return fail('token_not_yet_valid');
   return payload;
 }
 
@@ -461,24 +466,30 @@ async function authenticate(req, requestId, opts = {}) {
   const introspectFn = opts.introspect !== undefined ? opts.introspect : introspect;
   const now = opts.now !== undefined ? opts.now : Math.floor(Date.now() / 1000);
 
+  // Every rejection path below records why, so a 401 in the request log is diagnosable.
+  const reject = (reason) => { req.authFailureReason = reason; return null; };
+
   const token = parseBearerToken(req.headers.authorization);
-  if (!token) return null;
+  if (!token) return reject('missing_bearer');
 
   if (localVerify && secret) {
-    const claims = verifyJwtLocally(token, secret, now);
-    if (!claims) return null; // bad signature / expired / wrong alg → 401, no fallback
+    const detail = {};
+    const claims = verifyJwtLocally(token, secret, now, detail);
+    if (!claims) return reject(detail.reason || 'token_invalid'); // no fallback
     // A refresh token is validly signed but is never a bearer credential. Do not send it to
     // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
-    if (claims.type === 'refresh') return null;
+    if (claims.type === 'refresh') return reject('refresh_token_as_bearer');
     const principal = principalFromClaims(claims);
     if (principal) return principal; // enriched token → no network call
-    return introspectFn(req, requestId); // valid but un-enriched → fall back
+    const introspected = await introspectFn(req, requestId); // valid but un-enriched → fall back
+    return introspected || reject('introspection_rejected');
   }
   if (localVerify && !secret && !warnedMissingJwtSecret) {
     warnedMissingJwtSecret = true;
     console.warn('gateway.localjwt: GATEWAY_LOCAL_JWT_VERIFY enabled but APP_JWT_SECRET unset; using introspection');
   }
-  return introspectFn(req, requestId);
+  const introspected = await introspectFn(req, requestId);
+  return introspected || reject('introspection_rejected');
 }
 
 async function introspect(req, requestId) {

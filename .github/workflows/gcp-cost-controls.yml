@@ -1,9 +1,12 @@
 name: Ops / GCP cost controls
 
 on:
+  # The nightly stop was removed on 2026-09-24: it made dev unusable outside a narrow window, and
+  # GitHub runs scheduled workflows hours late, so the window was 13:20-24:00 IST rather than the
+  # 08:00-20:00 the crons implied. A login attempt in the morning simply failed. The start below
+  # stays as a safety net, so a database stopped by hand comes back on the next weekday.
   schedule:
     - cron: "30 2 * * 1-5"
-    - cron: "30 14 * * *"
   workflow_dispatch:
     inputs:
       dev_database_action:
@@ -65,7 +68,8 @@ jobs:
         run: |
           $action = "${{ inputs.dev_database_action || '' }}"
           if ([string]::IsNullOrWhiteSpace($action)) {
-            $action = if ("${{ github.event.schedule }}" -eq "30 2 * * 1-5") { "start" } else { "stop" }
+            # The only remaining schedule starts the database. Stopping is a deliberate manual act.
+            $action = "start"
           }
           "value=$action" >> $env:GITHUB_OUTPUT
           "Development database action: $action" >> $env:GITHUB_STEP_SUMMARY

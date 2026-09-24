@@ -17,6 +17,10 @@
 .ck-product-muted { color: var(--ink3); font-size: var(--ck-text-xs); font-weight: 400; }
 .ck-product-error { color: var(--re); font-size: var(--ck-text-sm); }
 .ck-product-adjustment { color: var(--b); font-size: var(--ck-text-xs); font-weight: 400; }
+/* A typed line value sits with its unit, so "6.5" reads as "6.5 ft" without a second label. */
+.ck-product-typed-field { display: flex; align-items: center; gap: var(--ck-space-2); }
+.ck-product-typed-field > input { flex: 1 1 auto; min-width: 0; }
+.ck-product-unit { color: var(--ink3); font-size: var(--ck-text-xs); font-weight: 400; white-space: nowrap; }
 .ck-product-quantity { padding: var(--ck-space-4) 0; margin-top: var(--ck-space-3); border-block: 1px solid var(--border); display: flex; justify-content: space-between; gap: var(--ck-space-3); flex-wrap: wrap; color: var(--ck-color-warning); font-size: var(--ck-text-sm); }
 .ck-product-quantity > div { display: flex; flex-wrap: wrap; gap: var(--ck-space-4); }
 .ck-product-quantity-complete { color: var(--g); }

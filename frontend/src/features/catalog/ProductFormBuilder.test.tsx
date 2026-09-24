@@ -2,12 +2,26 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductFormBuilder } from './ProductFormBuilder';
-import { notebookDefinition, savedNotebook } from './catalogTestFixtures';
+import { flexDefinition, notebookDefinition, savedNotebook } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { post: vi.fn(), patch: vi.fn(), get: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 beforeEach(() => { vi.clearAllMocks(); URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
 afterEach(cleanup);
 describe('ProductFormBuilder', () => {
+  it('renders typed inputs and hides the page count for a non-paged category', () => {
+    render(<ProductFormBuilder categoryCode="FLEX" definition={flexDefinition} preview />);
+    // A typed group is a free entry with its unit shown, not a dropdown of options.
+    const length = screen.getByLabelText('Length for line 1');
+    expect(length).toHaveAttribute('type', 'number');
+    expect(screen.getAllByText('ft').length).toBeGreaterThan(0);
+    // Selections still render as a dropdown.
+    expect(within(screen.getByLabelText('Type of flex for line 1')).getAllByRole('option').length).toBeGreaterThan(1);
+    // Flex has no page concept, so the notebook page field must not appear.
+    expect(screen.queryByLabelText('Printed pages for line 1')).not.toBeInTheDocument();
+    fireEvent.change(length, { target: { value: '6.5' } });
+    expect(length).toHaveValue(6.5);
+  });
+
   it('shows every ruling and disabled incomplete sizes, aggregates all lines, and preserves requested pages', () => {
     render(<ProductFormBuilder definition={notebookDefinition} preview />);
     expect(within(screen.getByLabelText('Ruling for line 1')).getAllByRole('option')).toHaveLength(16);
@@ -27,6 +41,23 @@ describe('ProductFormBuilder', () => {
     expect(screen.getByText('Pending pricing')).toBeInTheDocument();
     expect(screen.queryByLabelText(/price|GST/i)).not.toBeInTheDocument();
   });
+  it('files the order under its own category rather than defaulting to notebooks', async () => {
+    vi.mocked(api.post).mockImplementation(async (url) => {
+      if (url === '/supply/orders') return { data: { id: 'ORD-9', formVersion: 1, version: 0 } };
+      return { data: {} };
+    });
+    vi.mocked(api.get).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
+    vi.mocked(api.patch).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
+    // No categoryCode prop: the definition already names the category, and defaulting to
+    // NOTEBOOKS filed every flex, flier, bill book and belt order as a notebook order.
+    render(<ProductFormBuilder definition={flexDefinition} schoolId={7} />);
+    fireEvent.change(screen.getByLabelText('Length for line 1'), { target: { value: '6' } });
+    fireEvent.change(screen.getByLabelText('Breadth for line 1'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Count for line 1'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/supply/orders', expect.objectContaining({ category: 'FLEX' })));
+  });
+
   it('saves an incomplete aggregate as draft and retries placement using that same id', async () => {
     let detail = savedNotebook('DRAFT', false);
     let places = 0;

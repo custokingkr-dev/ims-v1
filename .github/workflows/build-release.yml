@@ -315,6 +315,12 @@ jobs:
             }
           }
 
+      # The security-patch layer in each Dockerfile is keyed on this value. Without it the layer is
+      # served from the build cache and newly published fixes are never installed; see the comment
+      # in frontend/Dockerfile. Dating it by the day keeps every other layer cached.
+      - name: Resolve the security patch epoch
+        run: echo "SECURITY_PATCH_EPOCH=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+
       - name: Build and push image
         id: build
         if: ${{ steps.source.outputs.should_build == 'true' }}
@@ -326,7 +332,9 @@ jobs:
           tags: |
             ${{ steps.source.outputs.source_ref }}
             ${{ steps.source.outputs.sha_ref }}
-          build-args: ${{ matrix.build_args }}
+          build-args: |
+            ${{ matrix.build_args }}
+            SECURITY_PATCH_EPOCH=${{ env.SECURITY_PATCH_EPOCH }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: mode=max

@@ -85,7 +85,7 @@ public class PubSubPushController {
         }
         String eventId = attribute(message, "eventId");
         if (eventId == null || eventId.isBlank()) {
-            eventId = message.path("messageId").asText(null);
+            eventId = message.path("messageId").asString(null);
         }
         if (eventId == null || eventId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing event id");
@@ -150,7 +150,7 @@ public class PubSubPushController {
     }
 
     private JsonNode decodePayload(JsonNode message) {
-        String encoded = message.path("data").asText("");
+        String encoded = message.path("data").asString("");
         if (encoded.isBlank()) {
             return objectMapper.createObjectNode();
         }
@@ -167,7 +167,7 @@ public class PubSubPushController {
         JsonNode schemaVersion = decodedPayload.get("schemaVersion");
         JsonNode payload = decodedPayload.get("payload");
         if (schemaVersion != null
-                && "ims.event-envelope.v1".equals(schemaVersion.asText())
+                && "ims.event-envelope.v1".equals(schemaVersion.asString())
                 && payload != null
                 && !payload.isNull()) {
             return payload;
@@ -185,12 +185,12 @@ public class PubSubPushController {
 
     private static String attribute(JsonNode message, String name) {
         JsonNode value = message.path("attributes").path(name);
-        return value.isMissingNode() || value.isNull() ? null : value.asText();
+        return value.isMissingNode() || value.isNull() ? null : value.asString();
     }
 
     private static String text(JsonNode node, String name) {
         JsonNode value = node.get(name);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static String firstText(String first, String second) {

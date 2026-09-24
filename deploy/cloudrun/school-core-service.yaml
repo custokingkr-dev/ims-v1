@@ -163,6 +163,14 @@ spec:
                 secretKeyRef:
                   name: catalog-read-token-dev # from-param: catalog-read-token-${env}
                   key: latest
+            # Routes categories whose form_enabled is set to the structured order form. Off leaves
+            # every order on the legacy path regardless of what the catalog is configured to do.
+            # Both must be true for a category to use its form: this flag for the environment, and
+            # product_categories.form_enabled for the category. Enabling a category whose rules are
+            # not seeded rejects its orders, so seed first. See
+            # docs/product/catalog-order-forms-expansion.md.
+            - name: CATALOG_PRODUCT_FORM_ENABLED
+              value: "true" # from-param: ${catalog_product_form_enabled}
             - name: STUDENT_PHOTO_IMPORT_DRIVE_OAUTH_CLIENT_ID
               valueFrom:
                 secretKeyRef:

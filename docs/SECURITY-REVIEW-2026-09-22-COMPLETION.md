@@ -6,6 +6,9 @@ permissions this account does not hold. Written 2026-09-22.
 
 ## State at the time of writing
 
+Final state as of 2026-09-23: every finding and every follow-up is deployed and verified in
+production. One item remains and needs repository-owner credentials — branch protection.
+
 | Item | State |
 | --- | --- |
 | Findings 1-5, the latent item, three hardening items | Fixed, merged to `dev` (PR #255), deployed to dev, verified live |
@@ -116,6 +119,28 @@ A Cloud Run service answers to more than one URL. Measured in production on 2026
 The service's own `status.url` is the second form. Pinning a single audience would therefore have
 rejected two of the three callers. `service_oidc_audiences` lists both for prod, and the verifier
 accepts a set.
+
+## Follow-up work, also completed
+
+Promoted to production on 2026-09-23 and verified live:
+
+- **Catalog read route split** (issue #259). Public catalog reads are active-only with the
+  `includeInactive` parameter removed; the builder view moved to `/admin/categories` and
+  `/admin/forms/{categoryCode}` behind an unconditional `requireSuperAdmin()`. No request value
+  decides whether authorization runs. Verified in production: both admin routes answer 401 rather
+  than 404, so they exist and are gated.
+- **Release provenance** (issue #263). The dev release signs every built digest with cosign keyless
+  before the `dev-approved` tag is written; production verifies that signature before promoting.
+  The gate ran for the first time on the 2026-09-23 promotion and logged
+  `Verified dev-release signature for …` for all seven services.
+- **Promotion tag idempotency**, and nine dependency bumps including four re-vetted action pins.
+
+An earlier cosign attempt was reverted and then re-landed. The revert was wrong: it rested on a
+verification run against a digest taken from an older `dev-approved` tag rather than the digest the
+signing run produced, compounded by `cosign triangulate` reporting the legacy `.sig` location that
+cosign v3 no longer writes, and by a shell loop that failed only on CRLF line endings. The lesson
+worth keeping is that the cheap local test — signing with a key against the real registry — isolates
+the registry write path from OIDC and costs no CI release; it should come before any revert.
 
 ## Blocked: needs someone else
 

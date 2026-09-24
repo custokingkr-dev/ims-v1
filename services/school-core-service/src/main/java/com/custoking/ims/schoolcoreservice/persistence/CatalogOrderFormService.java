@@ -47,7 +47,9 @@ public class CatalogOrderFormService {
     }
 
     public boolean handlesCreation(String category) {
-        return category != null && "NOTEBOOKS".equalsIgnoreCase(category.trim()) && products.isEnabled();
+        // Driven by the category's own form_enabled flag. A hardcoded category name would drop any
+        // newly configured category onto the legacy order path, which performs no form validation.
+        return category != null && products.isEnabled() && products.formEnabled(category);
     }
 
     @Transactional
@@ -441,11 +443,14 @@ public class CatalogOrderFormService {
         for (Map<String, Object> line : result.lines()) {
             jdbc.sql("""
                     INSERT INTO catalog.catalog_order_lines(order_id, school_id, line_no, option_selections,
-                        requested_book_count, book_count, requested_page_count, page_count, applied_rules, created_by)
-                    VALUES (:order, :school, :line, CAST(:options AS jsonb), :requestedBooks, :books,
-                        :requestedPages, :pages, CAST(:rules AS jsonb), :actor)
+                        attributes, requested_book_count, book_count, requested_page_count, page_count,
+                        applied_rules, created_by)
+                    VALUES (:order, :school, :line, CAST(:options AS jsonb), CAST(:attributes AS jsonb),
+                        :requestedBooks, :books, :requestedPages, :pages, CAST(:rules AS jsonb), :actor)
                     """).param("order", id).param("school", schoolId).param("line", line.get("lineNo"))
-                    .param("options", Json.write(line.get("optionSelections"))).param("requestedBooks", line.get("requestedBookCount"))
+                    .param("options", Json.write(line.get("optionSelections")))
+                    .param("attributes", Json.write(line.getOrDefault("attributes", Map.of())))
+                    .param("requestedBooks", line.get("requestedBookCount"))
                     .param("books", line.get("bookCount")).param("requestedPages", line.get("requestedPageCount"))
                     .param("pages", line.get("pageCount")).param("rules", Json.write(line.get("appliedRules")))
                     .param("actor", TenantContext.get().userId()).update();
@@ -469,14 +474,15 @@ public class CatalogOrderFormService {
 
     private List<Map<String, Object>> lines(String id) {
         return jdbc.sql("""
-                SELECT id, line_no, option_selections, requested_book_count, book_count, requested_page_count,
-                    page_count, applied_rules, unit_price_paise, line_total_paise
+                SELECT id, line_no, option_selections, attributes, requested_book_count, book_count,
+                    requested_page_count, page_count, applied_rules, unit_price_paise, line_total_paise
                 FROM catalog.catalog_order_lines WHERE order_id = :id ORDER BY line_no, id
                 """).param("id", id).query((rs, n) -> {
                     Map<String, Object> line = new LinkedHashMap<>();
                     line.put("id", rs.getLong("id"));
                     line.put("lineNo", rs.getInt("line_no"));
                     line.put("optionSelections", map(rs.getString("option_selections")));
+                    line.put("attributes", map(rs.getString("attributes")));
                     line.put("requestedBookCount", rs.getInt("requested_book_count"));
                     line.put("bookCount", rs.getInt("book_count"));
                     line.put("requestedPageCount", rs.getInt("requested_page_count"));

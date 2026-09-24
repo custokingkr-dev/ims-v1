@@ -246,6 +246,12 @@ jobs:
       - uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4
       - name: Set image reference
         run: echo "IMAGE_REF=ci/${{ matrix.image }}:${{ github.sha }}" >> "$GITHUB_ENV"
+      # The security-patch layer in each Dockerfile is keyed on this value. Without it the layer is
+      # served from the build cache and newly published fixes are never installed; see the comment
+      # in frontend/Dockerfile. Dating it by the day keeps every other layer cached.
+      - name: Resolve the security patch epoch
+        run: echo "SECURITY_PATCH_EPOCH=$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+
       - name: Build image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
@@ -253,7 +259,9 @@ jobs:
           file: ${{ matrix.dockerfile }}
           load: true
           tags: ${{ env.IMAGE_REF }}
-          build-args: ${{ matrix.build_args }}
+          build-args: |
+            ${{ matrix.build_args }}
+            SECURITY_PATCH_EPOCH=${{ env.SECURITY_PATCH_EPOCH }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
           provenance: false

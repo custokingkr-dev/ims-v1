@@ -1,7 +1,6 @@
 package com.custoking.ims.schoolcoreservice.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import java.util.List;
 
 /**
  * DTO for POST /api/v1/students (create student).
