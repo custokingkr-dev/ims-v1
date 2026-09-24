@@ -10,7 +10,7 @@ it('permits PDF artwork but rejects PDF as a pre-delivery photo', () => {
   expect(input).not.toHaveAttribute('accept', expect.stringContaining('application/pdf'));
   fireEvent.change(input, { target: { files: [file] } });
   expect(onFile).not.toHaveBeenCalled();
-  expect(screen.getByRole('alert')).toHaveTextContent('Choose a JPEG, PNG or WebP photo.');
+  expect(screen.getByRole('alert')).toHaveTextContent('JPEG, PNG or WebP.');
   view.unmount();
   const design = render(<OrderAssetField assetKind="DESIGN" label="Design artwork" requirement="Required to place order" onFile={onFile} />);
   fireEvent.change(design.container.querySelector('input[type="file"]')!, { target: { files: [file] } });

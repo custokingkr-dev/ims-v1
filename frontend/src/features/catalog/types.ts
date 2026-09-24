@@ -30,7 +30,7 @@ export interface FormDefinition {
 }
 export interface FormLine { selections: Record<string, string>; bookCount: number; pageCount: number }
 export interface FormInput { orderSelections: Record<string, string>; lines: FormLine[] }
-export type AssetKind = 'DESIGN' | 'PRE_DELIVERY_PHOTO';
+export type AssetKind = 'DESIGN' | 'PRE_DELIVERY_PHOTO' | 'PRINT_REFERENCE';
 export interface OrderAsset {
   id: number; assetKind: AssetKind; contentType: string; sizeBytes: number; originalFilename: string;
   contentUrl: string; uploadedAt: string; supersededAt?: string | null;

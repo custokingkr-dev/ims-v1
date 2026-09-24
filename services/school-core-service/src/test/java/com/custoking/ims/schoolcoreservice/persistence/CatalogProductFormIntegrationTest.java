@@ -92,7 +92,7 @@ class CatalogProductFormIntegrationTest {
         assertEquals("MATRIX", group(belt, "LENGTH").get("render"));
 
         var billBook = repository.form("BILLBOOKS", false);
-        assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED"),
+        assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "FIELD"),
                 maps(billBook.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
 
         // A typed group is a field wherever it appears.
@@ -116,7 +116,8 @@ class CatalogProductFormIntegrationTest {
         // King and Drawing book: both are listed with no agreed size in the prototype.
         assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
-        assertEquals(4, maps(definition.get("rules")).size());
+        // Four ordering rules plus the optional sample-design upload the prototype offers.
+        assertEquals(5, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());
     }
 
@@ -146,14 +147,16 @@ class CatalogProductFormIntegrationTest {
 
         var billBook = repository.form("BILLBOOKS", false);
         assertTrue(Boolean.TRUE.equals(billBook.get("enabled")));
-        assertEquals(5, maps(billBook.get("groups")).size());
+        // Five option groups plus the optional "Share the content" note beside the print references.
+        assertEquals(6, maps(billBook.get("groups")).size());
         assertEquals(List.of("A3", "A4", "A5"),
                 maps(group(billBook, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("50", "100", "200"),
                 maps(group(billBook, "PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("1", "2", "4", "8"),
                 maps(group(billBook, "SLIPS_PER_PAGE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
-        assertTrue(maps(billBook.get("rules")).isEmpty(), "the prototype states counts have no minimum or rounding");
+        assertTrue(maps(billBook.get("rules")).stream().noneMatch(r -> String.valueOf(r.get("ruleType")).endsWith("_VALUE")
+                || "ROUND_TO_MULTIPLE".equals(r.get("ruleType"))), "the prototype states counts have no minimum or rounding");
 
         var belt = repository.form("BELTS", false);
         assertEquals(3, maps(belt.get("groups")).size());
@@ -162,7 +165,9 @@ class CatalogProductFormIntegrationTest {
         assertEquals(List.of("Bronze", "Plastic"),
                 maps(group(belt, "BUCKLE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(6, maps(group(belt, "LENGTH").get("options")).size());
-        assertTrue(maps(belt.get("rules")).isEmpty());
+        // Belts carry no quantity rule; the only rule is the optional belt image the prototype offers.
+        assertEquals(List.of("OFFER_ASSET"),
+                maps(belt.get("rules")).stream().map(r -> String.valueOf(r.get("ruleType"))).toList());
     }
 
     @Test
@@ -173,7 +178,8 @@ class CatalogProductFormIntegrationTest {
         assertEquals("DECIMAL", group(flex, "LENGTH_FT").get("inputType"));
         assertEquals("ft", group(flex, "LENGTH_FT").get("unit"));
         assertEquals(5, maps(group(flex, "FLEX_TYPE").get("options")).size());
-        assertTrue(maps(flex.get("rules")).isEmpty(), "flex has no minimum or rounding");
+        assertTrue(maps(flex.get("rules")).stream().noneMatch(r -> String.valueOf(r.get("ruleType")).endsWith("_VALUE")
+                || "ROUND_TO_MULTIPLE".equals(r.get("ruleType"))), "flex has no minimum or rounding");
 
         var flier = repository.form("FLIERS", false);
         assertEquals("TEXT", group(flier, "SIZE").get("inputType"));

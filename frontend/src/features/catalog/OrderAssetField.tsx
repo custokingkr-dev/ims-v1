@@ -4,9 +4,12 @@ import api from '../../services/api';
 import type { AssetKind, OrderAsset } from './types';
 import './product-form.css';
 
-export function OrderAssetField({ assetKind, label, requirement, orderId, asset, file, onFile, disabled = false }: {
+export function OrderAssetField({ assetKind, label, requirement, orderId, asset, file, onFile, disabled = false, accept, maxBytes }: {
   assetKind: AssetKind; label: string; requirement: string; orderId?: string; asset?: OrderAsset; file?: File;
   onFile?: (file: File | undefined) => void; disabled?: boolean;
+  // Both come from the category's own rule: the flex PDF is 10 MB where every image field is 5 MB,
+  // and only some fields accept a PDF at all.
+  accept?: string; maxBytes?: number;
 }) {
   const id = useId();
   const [url, setUrl] = useState('');
@@ -25,8 +28,13 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
   const filename = file?.name || asset?.originalFilename;
   const contentType = file?.type || asset?.contentType || '';
   const size = file?.size || asset?.sizeBytes || 0;
-  const acceptsPdf = assetKind === 'DESIGN';
-  const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp', ...(acceptsPdf ? ['application/pdf'] : [])];
+  const acceptedTypes = accept ? accept.split(',').map((type) => type.trim()).filter(Boolean)
+    : ['image/jpeg', 'image/png', 'image/webp', ...(assetKind === 'DESIGN' ? ['application/pdf'] : [])];
+  const acceptsPdf = acceptedTypes.includes('application/pdf');
+  const limit = maxBytes && maxBytes > 0 ? maxBytes : 5 * 1024 * 1024;
+  const limitMb = Math.round(limit / 1024 / 1024);
+  const typeHint = acceptedTypes.length === 1 && acceptsPdf ? 'PDF only.'
+    : acceptsPdf ? 'JPEG, PNG, WebP or PDF.' : 'JPEG, PNG or WebP.';
   return <section className="ck-product-asset" aria-labelledby={`${id}-label`}>
     <div className="ck-product-section-head"><h3 id={`${id}-label`}>{label}</h3><span className="ck-product-muted">{requirement}</span></div>
     {filename ? <div className="ck-product-asset-file">
@@ -39,10 +47,10 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
       <input id={id} className="ck-product-file-input" type="file" accept={acceptedTypes.join(',')} disabled={disabled} onChange={(event) => {
         const selected = event.target.files?.[0]; event.target.value = '';
         if (!selected) return;
-        if (selected.size > 5 * 1024 * 1024) { setError('Choose a file no larger than 5 MB.'); return; }
-        if (!acceptedTypes.includes(selected.type)) { setError(acceptsPdf ? 'Choose a JPEG, PNG, WebP or PDF file.' : 'Choose a JPEG, PNG or WebP photo.'); return; }
+        if (selected.size > limit) { setError(`Choose a file no larger than ${limitMb} MB.`); return; }
+        if (!acceptedTypes.includes(selected.type)) { setError(`Choose a file of the accepted type. ${typeHint}`); return; }
         setError(''); onFile(selected);
-      }} /><span className="ck-product-muted">{acceptsPdf ? 'JPEG, PNG, WebP or PDF.' : 'JPEG, PNG or WebP.'} Up to 5 MB.</span></div>}
+      }} /><span className="ck-product-muted">{typeHint} Up to {limitMb} MB.</span></div>}
     {error && <p className="ck-product-error" role="alert">{error}</p>}
   </section>;
 }

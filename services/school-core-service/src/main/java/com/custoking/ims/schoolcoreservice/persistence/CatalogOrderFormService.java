@@ -320,15 +320,30 @@ public class CatalogOrderFormService {
                 }).list();
     }
 
+    /** The size cap a category allows for this kind, taken from its seeded asset rule. */
+    private long maxUploadBytes(String category, String kind) {
+        if (category == null || category.isBlank()) return CatalogOrderAssetStorage.MAX_BYTES;
+        return jdbc.sql("""
+                        SELECT params ->> 'maxBytes' FROM catalog.product_form_rules
+                        WHERE category_code = :category AND rule_type IN ('OFFER_ASSET', 'REQUIRE_ASSET')
+                          AND params ->> 'assetKind' = :kind AND active AND params ->> 'maxBytes' IS NOT NULL
+                        ORDER BY priority LIMIT 1
+                        """)
+                .param("category", category).param("kind", kind)
+                .query(String.class).optional()
+                .map(value -> { try { return Long.parseLong(value); } catch (NumberFormatException e) { return CatalogOrderAssetStorage.MAX_BYTES; } })
+                .orElse(CatalogOrderAssetStorage.MAX_BYTES);
+    }
+
     @Transactional
     public Map<String, Object> upload(String id, String assetKind, byte[] bytes, String filename) {
         TenantScope.requirePermissionIfAuthenticated("order:update");
         Map<String, Object> order = load(id, true);
         requireV2(order);
         String kind = string(assetKind).toUpperCase(Locale.ROOT);
-        if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO").contains(kind)) throw bad("Select a valid attachment kind");
+        if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE").contains(kind)) throw bad("Select a valid attachment kind");
         requireAssetEditable(order, kind);
-        var validated = storage.validate(bytes, filename, kind);
+        var validated = storage.validate(bytes, filename, kind, maxUploadBytes(string(order.get("category")), kind));
         for (Map<String, Object> current : assets(id)) {
             if (kind.equals(current.get("assetKind")) && validated.checksumSha256().equals(current.get("checksumSha256"))) return current;
         }
@@ -340,8 +355,12 @@ public class CatalogOrderFormService {
                 }
             });
         }
-        jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE order_id = :id AND asset_kind = :kind AND superseded_at IS NULL")
-                .param("id", id).param("kind", kind).update();
+        // A design or delivery photo is replaced by the next one; print references accumulate, because
+        // the prototypes let a school share several images for the same order.
+        if (!"PRINT_REFERENCE".equals(kind)) {
+            jdbc.sql("UPDATE catalog.catalog_order_assets SET superseded_at = now() WHERE order_id = :id AND asset_kind = :kind AND superseded_at IS NULL")
+                    .param("id", id).param("kind", kind).update();
+        }
         Long assetId = jdbc.sql("""
                 INSERT INTO catalog.catalog_order_assets(order_id, school_id, asset_kind, storage_key, content_type,
                     size_bytes, checksum_sha256, original_filename, uploaded_by)
