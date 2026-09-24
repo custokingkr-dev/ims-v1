@@ -11,7 +11,15 @@ RUN npm run build
 FROM nginx:1.31.5-alpine3.24@sha256:72ba65eb42c10344912a84ff42408db7d34f2feb642204570ab8fc5ffd29f1d3
 ENV API_UPSTREAM=http://api-gateway:80
 ENV NGINX_RESOLVER="127.0.0.11 valid=10s ipv6=off"
-RUN apk update \
+# The security-patch layer below must not be served from the build cache. Its cache key is the
+# base image plus this literal command, and neither changes when Alpine publishes a fix, so a
+# cached layer keeps installing the versions current when it was first built. The image then
+# looks patched and is not: on 2026-09-24 this shipped libexpat 2.8.4-r0 for days after 2.8.5-r0
+# was available, until Trivy failed the build on CVE-2026-93990. CI passes SECURITY_PATCH_EPOCH
+# as the current UTC date, so this layer rebuilds at most once a day and the rest still caches.
+ARG SECURITY_PATCH_EPOCH=unset
+RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
+  && apk update \
   && apk upgrade --no-cache libcrypto3 libssl3 libuuid libexpat
 COPY nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
