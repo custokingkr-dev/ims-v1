@@ -1,7 +1,6 @@
 package com.custoking.ims.schoolcoreservice.api.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import java.util.Map;
 
 public record CreateCatalogOrderRequest(
         @NotBlank String category,

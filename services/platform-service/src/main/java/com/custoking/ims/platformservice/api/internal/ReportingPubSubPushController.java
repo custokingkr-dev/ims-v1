@@ -95,7 +95,7 @@ public class ReportingPubSubPushController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported reporting event envelope");
         }
 
-        String eventId = firstText(text(eventEnvelope, "eventId"), attribute(message, "eventId"), message.path("messageId").asText(null));
+        String eventId = firstText(text(eventEnvelope, "eventId"), attribute(message, "eventId"), message.path("messageId").asString(null));
         String eventType = firstText(text(eventEnvelope, "eventType"), attribute(message, "eventType"));
         if (!StringUtils.hasText(eventId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing event id");
@@ -143,7 +143,7 @@ public class ReportingPubSubPushController {
     }
 
     private JsonNode decodeData(JsonNode message) {
-        String encoded = message.path("data").asText("");
+        String encoded = message.path("data").asString("");
         if (!StringUtils.hasText(encoded)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing Pub/Sub message data");
         }
@@ -189,18 +189,18 @@ public class ReportingPubSubPushController {
         if (value.isNumber()) {
             return value.longValue();
         }
-        String text = value.asText();
+        String text = value.asString();
         return StringUtils.hasText(text) ? Long.valueOf(text) : null;
     }
 
     private static String attribute(JsonNode message, String name) {
         JsonNode value = message.path("attributes").path(name);
-        return value.isMissingNode() || value.isNull() ? null : value.asText();
+        return value.isMissingNode() || value.isNull() ? null : value.asString();
     }
 
     private static String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static String firstText(String... values) {

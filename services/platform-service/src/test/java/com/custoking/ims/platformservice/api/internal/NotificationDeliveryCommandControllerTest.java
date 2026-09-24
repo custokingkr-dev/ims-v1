@@ -44,7 +44,7 @@ class NotificationDeliveryCommandControllerTest {
         assertThat(captor.getValue().eventType()).isEqualTo("notification.requested.v1");
         assertThat(captor.getValue().aggregateType()).isEqualTo("AbsenteeNotification");
         assertThat(captor.getValue().aggregateId()).isEqualTo("row-1");
-        assertThat(captor.getValue().payload().path("channel").asText()).isEqualTo("WHATSAPP");
+        assertThat(captor.getValue().payload().path("channel").asString()).isEqualTo("WHATSAPP");
         assertThat(body).containsEntry("eventId", "school-core:absentee:row-1")
                 .containsEntry("status", "DELIVERED")
                 .containsEntry("dryRun", true)

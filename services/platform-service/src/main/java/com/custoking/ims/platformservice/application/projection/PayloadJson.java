@@ -26,14 +26,14 @@ public final class PayloadJson {
 
     public static String textOrNull(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     public static Long longOrNull(JsonNode node, String field) {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) return null;
         if (value.isNumber()) return value.longValue();
-        String text = value.asText();
+        String text = value.asString();
         return text == null || text.isBlank() ? null : Long.valueOf(text);
     }
 
@@ -41,7 +41,7 @@ public final class PayloadJson {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) return null;
         if (value.isNumber()) return value.decimalValue();
-        String text = value.asText();
+        String text = value.asString();
         return text == null || text.isBlank() ? null : new BigDecimal(text);
     }
 
@@ -49,7 +49,7 @@ public final class PayloadJson {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) return null;
         if (value.isNumber()) return value.intValue();
-        String text = value.asText();
+        String text = value.asString();
         return text == null || text.isBlank() ? null : Integer.valueOf(text);
     }
 
@@ -57,20 +57,20 @@ public final class PayloadJson {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) return false;
         if (value.isBoolean()) return value.booleanValue();
-        return Boolean.parseBoolean(value.asText());
+        return Boolean.parseBoolean(value.asString());
     }
 
     public static OffsetDateTime offsetDateTimeOrNull(JsonNode node, String field) {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) return null;
-        String text = value.asText();
+        String text = value.asString();
         return text == null || text.isBlank() ? null : OffsetDateTime.parse(text);
     }
 
     public static LocalDate localDateOrNull(JsonNode node, String field) {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) return null;
-        String text = value.asText();
+        String text = value.asString();
         return text == null || text.isBlank() ? null : LocalDate.parse(text);
     }
 }

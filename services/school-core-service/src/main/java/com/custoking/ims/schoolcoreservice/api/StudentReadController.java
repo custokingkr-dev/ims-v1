@@ -1,6 +1,5 @@
 package com.custoking.ims.schoolcoreservice.api;
 
-import com.custoking.ims.schoolcoreservice.api.dto.AttachPhotoRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.ConfirmImportRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.CreateStudentRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.InitiateIdCardReviewRequest;
@@ -274,7 +273,7 @@ public class StudentReadController {
             ImageUrlFetcher.FetchedImage img = fetcher.fetch(url);
             return ResponseEntity.ok(execute(() -> students.attachPhoto(id, img.data(), img.contentType())));
         } catch (ImageFetchException ex) {
-            return ResponseEntity.unprocessableEntity().body(Map.of("reason", ex.reason(), "ok", false));
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(Map.of("reason", ex.reason(), "ok", false));
         }
     }
 

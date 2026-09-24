@@ -125,7 +125,7 @@ final class NotificationPolicyGuard {
         JsonNode value = node.get(field);
         if (value == null || value.isNull()) deny(reasonCode);
         try {
-            long parsed = value.isIntegralNumber() ? value.asLong() : Long.parseLong(value.asText());
+            long parsed = value.isIntegralNumber() ? value.asLong() : Long.parseLong(value.asString());
             if (parsed <= 0) deny(reasonCode);
             return parsed;
         } catch (NumberFormatException ex) {
@@ -203,7 +203,7 @@ final class NotificationPolicyGuard {
 
     private static String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static boolean blank(String value) {
