@@ -43,20 +43,20 @@ class PubSubDomainEventPublisherTest {
         String json = message.getData().toString(StandardCharsets.UTF_8);
         JsonNode root = objectMapper.readTree(json);
 
-        assertThat(root.get("schemaVersion").asText()).isEqualTo("ims.event-envelope.v1");
-        assertThat(root.get("eventId").asText()).isEqualTo("11111111-1111-1111-1111-111111111111");
-        assertThat(root.get("eventKey").asText()).isEqualTo("InvoiceUpserted:42");
-        assertThat(root.get("eventType").asText()).isEqualTo("billing.invoice-upserted.v1");
-        assertThat(root.get("eventVersion").asText()).isEqualTo("v1");
-        assertThat(root.get("aggregateType").asText()).isEqualTo("SuperadminInvoice");
-        assertThat(root.get("aggregateId").asText()).isEqualTo("42");
-        assertThat(root.get("occurredAt").asText()).isEqualTo("2026-06-25T12:34:56Z");
+        assertThat(root.get("schemaVersion").asString()).isEqualTo("ims.event-envelope.v1");
+        assertThat(root.get("eventId").asString()).isEqualTo("11111111-1111-1111-1111-111111111111");
+        assertThat(root.get("eventKey").asString()).isEqualTo("InvoiceUpserted:42");
+        assertThat(root.get("eventType").asString()).isEqualTo("billing.invoice-upserted.v1");
+        assertThat(root.get("eventVersion").asString()).isEqualTo("v1");
+        assertThat(root.get("aggregateType").asString()).isEqualTo("SuperadminInvoice");
+        assertThat(root.get("aggregateId").asString()).isEqualTo("42");
+        assertThat(root.get("occurredAt").asString()).isEqualTo("2026-06-25T12:34:56Z");
         assertThat(root.get("schoolId").asLong()).isEqualTo(7L);
 
         // payload must nest as a JSON OBJECT, not a stringified string.
         JsonNode payload = root.get("payload");
         assertThat(payload.isObject()).isTrue();
-        assertThat(payload.get("id").asText()).isEqualTo("42");
+        assertThat(payload.get("id").asString()).isEqualTo("42");
         assertThat(payload.get("total").asDouble()).isEqualTo(199.5);
 
         assertThat(message.getAttributesMap())

@@ -55,25 +55,25 @@ class PlatformAbsenteeDeliveryGatewayTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(request -> {
                     JsonNode body = objectMapper.readTree(request.getBody().toString());
-                    assertThat(body.path("eventId").asText()).isEqualTo("school-core:absentee:row-1");
-                    assertThat(body.path("eventType").asText()).isEqualTo("notification.requested.v1");
-                    assertThat(body.path("aggregateType").asText()).isEqualTo("AbsenteeNotification");
-                    assertThat(body.path("aggregateId").asText()).isEqualTo("row-1");
+                    assertThat(body.path("eventId").asString()).isEqualTo("school-core:absentee:row-1");
+                    assertThat(body.path("eventType").asString()).isEqualTo("notification.requested.v1");
+                    assertThat(body.path("aggregateType").asString()).isEqualTo("AbsenteeNotification");
+                    assertThat(body.path("aggregateId").asString()).isEqualTo("row-1");
                     JsonNode payload = body.path("payload");
-                    assertThat(payload.path("sourceEventType").asText()).isEqualTo("attendance.absentee-notification-requested.v1");
-                    assertThat(payload.path("sourceEventId").asText()).isEqualTo("school-core:absentee:row-1");
-                    assertThat(payload.path("absenteeRequestId").asText()).isEqualTo("school-core:absentee:row-1");
-                    assertThat(payload.path("notificationType").asText()).isEqualTo("ABSENTEE_ALERT");
-                    assertThat(payload.path("template").asText()).isEqualTo("absentee-alert.v1");
-                    assertThat(payload.path("templateName").asText()).isEqualTo("approved_absence_v1");
-                    assertThat(payload.path("channel").asText()).isEqualTo("WHATSAPP");
-                    assertThat(payload.path("destination").asText()).isEqualTo("919999999999");
+                    assertThat(payload.path("sourceEventType").asString()).isEqualTo("attendance.absentee-notification-requested.v1");
+                    assertThat(payload.path("sourceEventId").asString()).isEqualTo("school-core:absentee:row-1");
+                    assertThat(payload.path("absenteeRequestId").asString()).isEqualTo("school-core:absentee:row-1");
+                    assertThat(payload.path("notificationType").asString()).isEqualTo("ABSENTEE_ALERT");
+                    assertThat(payload.path("template").asString()).isEqualTo("absentee-alert.v1");
+                    assertThat(payload.path("templateName").asString()).isEqualTo("approved_absence_v1");
+                    assertThat(payload.path("channel").asString()).isEqualTo("WHATSAPP");
+                    assertThat(payload.path("destination").asString()).isEqualTo("919999999999");
                     assertThat(payload.path("schoolId").asLong()).isEqualTo(10L);
                     assertThat(payload.path("studentId").asLong()).isEqualTo(7L);
-                    assertThat(payload.path("recipientType").asText()).isEqualTo("GUARDIAN");
-                    assertThat(payload.path("recipientId").asText()).isEqualTo("guardian-1");
-                    assertThat(payload.path("policyEvidence").path("decision").asText()).isEqualTo("ALLOW");
-                    assertThat(payload.path("variables").path("attendanceDate").asText()).isEqualTo("2026-09-10");
+                    assertThat(payload.path("recipientType").asString()).isEqualTo("GUARDIAN");
+                    assertThat(payload.path("recipientId").asString()).isEqualTo("guardian-1");
+                    assertThat(payload.path("policyEvidence").path("decision").asString()).isEqualTo("ALLOW");
+                    assertThat(payload.path("variables").path("attendanceDate").asString()).isEqualTo("2026-09-10");
                     assertThat(payload.has("msg91Body")).isFalse();
                 })
                 .andRespond(withSuccess("""

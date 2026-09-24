@@ -159,7 +159,7 @@ public class NotificationInboxProcessor {
         try {
             JsonNode payload = objectMapper.readTree(event.getPayload());
             JsonNode channel = payload.get("channel");
-            return channel == null || channel.isNull() ? null : channel.asText();
+            return channel == null || channel.isNull() ? null : channel.asString();
         } catch (Exception ignored) {
             return null;
         }

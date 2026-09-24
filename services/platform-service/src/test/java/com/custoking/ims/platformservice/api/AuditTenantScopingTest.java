@@ -1,6 +1,5 @@
 package com.custoking.ims.platformservice.api;
 
-import com.custoking.ims.platformservice.persistence.AuditEvent;
 import com.custoking.ims.platformservice.persistence.AuditEventRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantContextFilter;

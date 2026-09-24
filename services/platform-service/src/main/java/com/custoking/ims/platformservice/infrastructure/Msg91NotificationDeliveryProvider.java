@@ -259,13 +259,13 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
 
     private static Long longValue(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        if (value == null || value.isNull() || value.asText().isBlank()) {
+        if (value == null || value.isNull() || value.asString().isBlank()) {
             return null;
         }
         if (value.isNumber()) {
             return value.asLong();
         }
-        return Long.parseLong(value.asText());
+        return Long.parseLong(value.asString());
     }
 
     private static String firstNonBlank(String first, String second) {
@@ -285,7 +285,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
 
     private static String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
-        return value == null || value.isNull() ? null : value.asText();
+        return value == null || value.isNull() ? null : value.asString();
     }
 
     private static String required(String value, String name) {
