@@ -34,6 +34,10 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
     }
     return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [asset?.id, file, orderId]);
+  // Only a URL this component minted is ever put in the DOM. createObjectURL always returns a
+  // blob: URL, so anything else in this state could only come from a future change routing a
+  // server-supplied string here, which must not reach an href or src.
+  const previewUrl = url.startsWith('blob:') ? url : '';
   const filename = file?.name || asset?.originalFilename;
   const contentType = file?.type || asset?.contentType || '';
   const size = file?.size || asset?.sizeBytes || 0;
@@ -47,9 +51,9 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
   return <section className="ck-product-asset" aria-labelledby={`${id}-label`}>
     <div className="ck-product-section-head"><h3 id={`${id}-label`}>{label}</h3><span className="ck-product-muted">{requirement}</span></div>
     {filename ? <div className="ck-product-asset-file">
-      {url && contentType.startsWith('image/') ? <img className="ck-product-asset-preview" src={url} alt={label} /> : <FileImage size={32} aria-hidden="true" />}
+      {previewUrl && contentType.startsWith('image/') ? <img className="ck-product-asset-preview" src={previewUrl} alt={label} /> : <FileImage size={32} aria-hidden="true" />}
       <div className="ck-product-file-name"><strong>{filename}</strong><span className="ck-product-muted">{(size / 1024 / 1024).toFixed(2)} MB{file ? ' - ready to upload' : ' - uploaded'}</span></div>
-      {url && <a className="ck-btn ck-btn-ghost ck-product-icon" href={url} download={filename} title="Download file" aria-label={`Download ${filename}`}><Download size={16} /></a>}
+      {previewUrl && <a className="ck-btn ck-btn-ghost ck-product-icon" href={previewUrl} download={filename} title="Download file" aria-label={`Download ${filename}`}><Download size={16} /></a>}
       {file && onFile && <button type="button" className="ck-btn ck-btn-ghost ck-product-icon" disabled={disabled} onClick={() => onFile(undefined)} title="Remove selected file" aria-label={`Remove selected ${label.toLowerCase()}`}><X size={16} /></button>}
     </div> : <p className="ck-product-muted">No file attached</p>}
     {onFile && <div className="ck-product-upload-control"><label className={`ck-btn ck-btn-ghost${disabled ? ' ck-product-disabled' : ''}`} htmlFor={id}><Upload size={15} aria-hidden="true" />{filename ? 'Replace' : 'Choose file'}</label>
