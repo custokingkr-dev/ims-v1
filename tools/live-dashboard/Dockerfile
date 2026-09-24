@@ -21,7 +21,15 @@ FROM node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a55
 # ip-address. None of them is reachable by anything this container runs.
 #
 # Done as root before the USER switch because package upgrades and deleting from /usr/local require it.
-RUN apk upgrade --no-cache \
+# The security-patch layer below must not be served from the build cache. Its cache key is the
+# base image plus this literal command, and neither changes when Alpine publishes a fix, so a
+# cached layer keeps installing the versions current when it was first built. The image then
+# looks patched and is not: on 2026-09-24 this shipped libexpat 2.8.4-r0 for days after 2.8.5-r0
+# was available, until Trivy failed the build on CVE-2026-93990. CI passes SECURITY_PATCH_EPOCH
+# as the current UTC date, so this layer rebuilds at most once a day and the rest still caches.
+ARG SECURITY_PATCH_EPOCH=unset
+RUN echo "security patches for ${SECURITY_PATCH_EPOCH}" \
+  && apk upgrade --no-cache \
     && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Runs as an unprivileged user. The image ships one, and there is no reason for a read-only dashboard to
