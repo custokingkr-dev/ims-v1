@@ -41,6 +41,23 @@ describe('ProductFormBuilder', () => {
     expect(screen.getByText('Pending pricing')).toBeInTheDocument();
     expect(screen.queryByLabelText(/price|GST/i)).not.toBeInTheDocument();
   });
+  it('files the order under its own category rather than defaulting to notebooks', async () => {
+    vi.mocked(api.post).mockImplementation(async (url) => {
+      if (url === '/supply/orders') return { data: { id: 'ORD-9', formVersion: 1, version: 0 } };
+      return { data: {} };
+    });
+    vi.mocked(api.get).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
+    vi.mocked(api.patch).mockImplementation(async () => ({ data: savedNotebook('DRAFT', false) }));
+    // No categoryCode prop: the definition already names the category, and defaulting to
+    // NOTEBOOKS filed every flex, flier, bill book and belt order as a notebook order.
+    render(<ProductFormBuilder definition={flexDefinition} schoolId={7} />);
+    fireEvent.change(screen.getByLabelText('Length for line 1'), { target: { value: '6' } });
+    fireEvent.change(screen.getByLabelText('Breadth for line 1'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Count for line 1'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/supply/orders', expect.objectContaining({ category: 'FLEX' })));
+  });
+
   it('saves an incomplete aggregate as draft and retries placement using that same id', async () => {
     let detail = savedNotebook('DRAFT', false);
     let places = 0;
