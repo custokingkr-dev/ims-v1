@@ -128,10 +128,42 @@ class CatalogProductFormIntegrationTest {
                 .noneMatch(g -> "PRINT_CONTENT".equals(g.get("code"))), "the duplicate note group is gone");
     }
 
+    // Ties, from the prototype supplied 2026-09-25. Its source says Long Tie is "a subcategory
+    // available under each of the 4 tie types, not a separate type", so it is a sixth length row
+    // rather than a fifth type, and every type offers all six lengths with no dependency.
+    @Test
+    void tiesOfferFourTypesAndSixLengthsIncludingTheFixedLongTie() {
+        var ties = repository.form("TIES", false);
+        assertTrue(Boolean.TRUE.equals(ties.get("enabled")));
+        assertEquals(false, ties.get("paged") == null ? map(ties.get("category")).get("paged") : null,
+                "ties count units, not pages");
+
+        assertEquals("SEGMENTED", group(ties, "TIE_TYPE").get("render"));
+        assertEquals(List.of("Satin Tie with logo", "Satin Tie", "Cloth Tie", "Readymade ties"),
+                maps(group(ties, "TIE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+
+        assertEquals("MATRIX", group(ties, "LENGTH").get("render"));
+        assertEquals(List.of("10 inch", "11 inch", "12 inch", "14 inch", "16 inch", "Long Tie"),
+                maps(group(ties, "LENGTH").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals("48 inch", maps(group(ties, "LENGTH").get("options")).stream()
+                .filter(o -> "LONG_TIE".equals(o.get("code"))).findFirst().orElseThrow().get("specText"));
+
+        // Long Tie is not a tie type, and the lengths do not depend on the type.
+        assertTrue(maps(group(ties, "TIE_TYPE").get("options")).stream()
+                .noneMatch(o -> String.valueOf(o.get("label")).toLowerCase().contains("long")));
+        assertTrue(maps(ties.get("dependencies")).isEmpty(), "every type offers every length");
+
+        // Counts are plain entries, and the only rule is the optional image.
+        assertEquals(List.of("OFFER_ASSET"),
+                maps(ties.get("rules")).stream().map(r -> String.valueOf(r.get("ruleType"))).toList());
+        assertEquals(false, Boolean.TRUE.equals(map(ties.get("category")).get("notesEnabled")));
+    }
+
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        assertEquals(11, repository.categories(false).size());
+        // Twelve since ties were seeded on 2026-09-25.
+        assertEquals(12, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
