@@ -159,11 +159,43 @@ class CatalogProductFormIntegrationTest {
         assertEquals(false, Boolean.TRUE.equals(map(ties.get("category")).get("notesEnabled")));
     }
 
+    // Certificates, from the prototype supplied 2026-09-25. Its minimum rejects rather than raising
+    // ("Count must be at least 20 for a certificate order"), so it is MIN_VALUE like the flier's
+    // 3000 and not the FLOOR_VALUE that silently raises a customised notebook line.
+    @Test
+    void certificatesBuildLinesFromThreeChoicesWithAMinimumOfTwenty() {
+        var certificates = repository.form("CERTIFICATES", false);
+        assertTrue(Boolean.TRUE.equals(certificates.get("enabled")));
+        assertEquals(List.of("Category", "Size", "GSM"),
+                maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
+        assertEquals(List.of("SEGMENTED", "SEGMENTED", "SEGMENTED"),
+                maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
+        // No matrix: a certificate line is built one at a time, as bill books and fliers are.
+        assertTrue(maps(certificates.get("groups")).stream().noneMatch(g -> "MATRIX".equals(g.get("render"))));
+
+        assertEquals(List.of("Generic", "Individual customisation"),
+                maps(group(certificates, "CATEGORY").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("A3", "A4", "A5"),
+                maps(group(certificates, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("250", "300"),
+                maps(group(certificates, "GSM").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+
+        var minimum = maps(certificates.get("rules")).stream()
+                .filter(r -> "MIN_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
+        assertEquals(20, map(minimum.get("params")).get("value"));
+        assertTrue(maps(certificates.get("rules")).stream().noneMatch(r -> "FLOOR_VALUE".equals(r.get("ruleType"))),
+                "the count is rejected below 20, never raised to it");
+        // Both uploads the prototype offers, and neither blocks placement.
+        assertEquals(List.of("DESIGN", "PRINT_REFERENCE"), maps(certificates.get("rules")).stream()
+                .filter(r -> "OFFER_ASSET".equals(r.get("ruleType")))
+                .map(r -> String.valueOf(map(r.get("params")).get("assetKind"))).sorted().toList());
+    }
+
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        // Twelve since ties were seeded on 2026-09-25.
-        assertEquals(12, repository.categories(false).size());
+        // Thirteen: ties and certificates were both seeded on 2026-09-25.
+        assertEquals(13, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());

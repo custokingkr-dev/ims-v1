@@ -213,6 +213,30 @@ new table.
 page furniture rather than the order form, and the form lives inside the existing workspace
 navigation.
 
+## Certificates, a seventh category (2026-09-25)
+
+No matrix: a line is built one at a time from a category, size, GSM and count, the way bill books
+and fliers are.
+
+| | |
+| --- | --- |
+| Category | Generic, Individual customisation |
+| Size | A3, A4, A5 |
+| GSM | 250, 300 |
+| Per line | Count, **minimum 20** |
+| Uploads | Certificate image, plus several print references. PNG/JPEG/WebP, 5 MB each, both optional |
+
+From the prototype's source: `var MIN_COUNT = 20;` and *"Minimum order quantity is 20 per size/GSM
+line."* The minimum **rejects** rather than raising, so it is `MIN_VALUE` like the flier's 3000, not
+the `FLOOR_VALUE` that silently raises a customised notebook line. `findGroup(state.cat)` keeps one
+group per category inside a single order, so the category is a **line-scope** choice rather than an
+order-wide one: Generic and Individual customisation certificates can share one order.
+
+**One conflict, left unbuilt.** This prototype also shows "Share the content (optional)" beside the
+print references. That is the field removed on the same day when the note became flier-only, so
+adding it back here would contradict that decision. The uploads are in; the text field is not. It is
+a single seeded row to add if the note is wanted on certificates after all.
+
 ## Ties, a sixth category (2026-09-25)
 
 From a prototype supplied after the first five. Shaped like belts: a tie type chosen once, then a
