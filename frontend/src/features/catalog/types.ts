@@ -3,6 +3,9 @@ export interface ProductCategory {
   orderType: string; formEnabled: boolean; sortOrder: number; active: boolean;
   // Only paged categories (notebooks) collect a printed-page count per line.
   paged?: boolean;
+  // Only fliers collect a free-text note, decided 2026-09-25. Read from the definition so the form
+  // never has to name a category in code.
+  notesEnabled?: boolean;
 }
 export interface ProductOption {
   id: number; groupId: number; code: string; label: string; specText: string | null;
@@ -15,6 +18,9 @@ export interface ProductGroup {
   // SELECT groups pick from `options`; the others capture a typed value stored on the line's
   // `attributes` rather than a selection. `unit` is a display suffix such as "ft" or "gsm".
   inputType?: 'SELECT' | 'TEXT' | 'INTEGER' | 'DECIMAL'; unit?: string;
+  // How the prototypes present this group: a row of buttons, a dropdown, the axis of a
+  // quantity table, or a typed entry. Absent means SELECT.
+  render?: 'SEGMENTED' | 'SELECT' | 'MATRIX' | 'FIELD';
 }
 export interface ProductRule {
   id?: number; categoryCode?: string; ruleType: string; targetField?: string | null;
@@ -27,7 +33,7 @@ export interface FormDefinition {
 }
 export interface FormLine { selections: Record<string, string>; bookCount: number; pageCount: number }
 export interface FormInput { orderSelections: Record<string, string>; lines: FormLine[] }
-export type AssetKind = 'DESIGN' | 'PRE_DELIVERY_PHOTO';
+export type AssetKind = 'DESIGN' | 'PRE_DELIVERY_PHOTO' | 'PRINT_REFERENCE';
 export interface OrderAsset {
   id: number; assetKind: AssetKind; contentType: string; sizeBytes: number; originalFilename: string;
   contentUrl: string; uploadedAt: string; supersededAt?: string | null;

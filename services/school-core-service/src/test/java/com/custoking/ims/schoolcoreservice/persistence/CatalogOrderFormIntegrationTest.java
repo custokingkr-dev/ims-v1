@@ -114,8 +114,9 @@ class CatalogOrderFormIntegrationTest {
     @Test
     void aggregateDraftCanBeReopenedEditedAndPlacedWithSameId() {
         var created = create(true, 399, 600);
-        assertThatThrownBy(() -> tx(() -> orders.placeOrder(created.id(), 7L))).isInstanceOf(ProductFormValidationException.class);
         tx(() -> { forms.updateDraft(created.id(), Map.of("version", 0, "orderData", data(true, 400, 600))); return null; });
+        // Artwork is optional since 2026-09-25, so it is attached here to prove an upload survives
+        // the edit rather than to unblock the placement.
         upload(created.id(), "DESIGN", 1);
         assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).id()).isEqualTo(created.id());
         assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_orders").query(Long.class).single()).isEqualTo(1);
@@ -185,7 +186,8 @@ class CatalogOrderFormIntegrationTest {
         var created = create(true, 400, 600);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "PROCESSING"))).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "APPROVED"))).isInstanceOf(ResponseStatusException.class);
-        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL"))).isInstanceOf(ProductFormValidationException.class);
+        // DESIGN_APPROVAL is a real transition for a customised order and no longer waits on artwork.
+        assertThat(tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL")).status()).isEqualTo("DESIGN_APPROVAL");
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "FULFILLED"))).isInstanceOf(ResponseStatusException.class);
     }
 
@@ -314,6 +316,41 @@ class CatalogOrderFormIntegrationTest {
         var detail = tx(() -> forms.detail(id));
         return Map.of("version", detail.get("version"), "gstPaise", gst,
                 "lines", detailLines(detail).stream().map(line -> Map.of("id", line.get("id"), "unitPricePaise", unit)).toList());
+    }
+
+    // Every prototype offers an optional upload, and bill books and fliers additionally take several
+    // print reference images plus a note. Only the notebook design existed before.
+    @Test
+    void printReferencesAcceptSeveralImagesWhereADesignKeepsOnlyTheCurrentOne() {
+        var created = create(true, 400, 600);
+        var first = upload(created.id(), "PRINT_REFERENCE", 1);
+        var second = upload(created.id(), "PRINT_REFERENCE", 2);
+        assertThat(second.get("id")).isNotEqualTo(first.get("id"));
+        // Both stay current: a reference set is a set, not a replacement.
+        assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id AND asset_kind = 'PRINT_REFERENCE' AND superseded_at IS NULL")
+                .param("id", created.id()).query(Long.class).single()).isEqualTo(2L);
+        // A design still supersedes, so there is exactly one current design.
+        upload(created.id(), "DESIGN", 3);
+        upload(created.id(), "DESIGN", 4);
+        assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_order_assets WHERE order_id = :id AND asset_kind = 'DESIGN' AND superseded_at IS NULL")
+                .param("id", created.id()).query(Long.class).single()).isEqualTo(1L);
+    }
+
+    @Test
+    void optionalUploadsAreOfferedForEveryCategoryAndNeverBlockPlacement() {
+        var offers = jdbc.sql("SELECT category_code, params ->> 'assetKind' AS kind FROM catalog.product_form_rules WHERE rule_type = 'OFFER_ASSET' ORDER BY category_code, kind")
+                .query((rs, n) -> rs.getString("category_code") + ":" + rs.getString("kind")).list();
+        assertThat(offers).containsExactlyInAnyOrder(
+                "BELTS:DESIGN", "BILLBOOKS:DESIGN", "BILLBOOKS:PRINT_REFERENCE",
+                "FLEX:DESIGN", "FLIERS:DESIGN", "FLIERS:PRINT_REFERENCE", "NOTEBOOKS:DESIGN",
+                "TIES:DESIGN", "CERTIFICATES:DESIGN", "CERTIFICATES:PRINT_REFERENCE",
+                "REPORT_CARDS:DESIGN");
+        // The flex PDF is 10 MB in the prototype where the images are 5 MB.
+        assertThat(jdbc.sql("SELECT params ->> 'maxBytes' FROM catalog.product_form_rules WHERE rule_type = 'OFFER_ASSET' AND category_code = 'FLEX'")
+                .query(String.class).single()).isEqualTo("10485760");
+        // A non-customised order places with no attachment at all, as it did before.
+        var created = create(false, 25, 30);
+        assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).status()).isNotNull();
     }
 
     private Map<String, Object> upload(String id, String kind, int color) {

@@ -68,9 +68,24 @@ Unchanged and already correct: pages snap to the nearest multiple of 7 with a fl
 (`roundToSeven` matches `round(..., 7, "NEAREST", 7)`, so 198 → 196); rows left at zero are
 skipped; schools never enter prices.
 
-Also from the prototype: **King is 19 × 26 cm**. The seed carries it as `PENDING_SPEC` with null
-dimensions, which renders it visible but unorderable. It becomes `CONFIRMED` at 190 × 260 mm.
-Drawing book stays `PENDING_SPEC` — the prototype gives it no dimensions either.
+**Correction, 2026-09-25 — the size claim below was wrong.** This document previously recorded
+"King is 19 × 26 cm", and V11 confirmed King at 190 × 260 on that basis. The prototype's markup says
+otherwise:
+
+```html
+<option value="King"       data-dim="">King</option>
+<option value="Jumbo King" data-dim="19 x 26 cm">Jumbo King — 19×26 cm</option>
+```
+
+19 × 26 cm is **Jumbo King's**, which the original V9 seed already had right. V11 both invented a
+specification for King and duplicated Jumbo King's. V16 restores King to `PENDING_SPEC` with null
+dimensions — visible but unorderable, which is what "no agreed size" means here. Drawing book stays
+`PENDING_SPEC` for the same reason: the prototype gives it no dimensions either.
+
+Two wordings also follow the prototype rather than the original seed: the order-scope group is
+labelled **Category** (not "Customization") with the choices **Custom** and **Wholesale**, and the
+notebook per-line count reads **Quantity**. The option *codes* are unchanged, because every rule's
+`match_options` and every existing order reference them.
 
 ## The four new categories
 
@@ -168,13 +183,150 @@ The same omission hid a second defect: `ProductFormBuilder`'s `categoryCode` pro
 category's form would have been filed as a notebook order. The category now comes from the
 definition, which cannot disagree with the form being displayed.
 
+## Uploads and print references (2026-09-25)
+
+Every prototype offers an upload and all of them are optional, but the model could only express a
+*required* asset (`REQUIRE_ASSET`). Four of the five categories therefore had no upload at all, and
+the print-reference block on bill books and fliers did not exist. V18 adds what they show:
+
+| | Upload | Accepts | Cap |
+| --- | --- | --- | --- |
+| Notebooks | Sample design | PNG, JPEG, WebP, PDF | 5 MB |
+| Bill books | Bill book image + several print references | PNG, JPEG, WebP | 5 MB |
+| Belts | Belt image | PNG, JPEG, WebP | 5 MB |
+| Flex | Flex PDF | PDF | **10 MB** |
+| Fliers | Flier image + several print references | PNG, JPEG, WebP | 5 MB |
+
+Three things this required. `OFFER_ASSET` is an optional upload that never blocks placement, so the
+existing `REQUIRE_ASSET` keeps its meaning — where both name the same kind, as on a customised
+notebook, the offer is dropped and one field is shown. `PRINT_REFERENCE` is a kind that accumulates:
+the unique index that keeps one current asset per kind now excludes it, because a reference set is a
+set rather than a replacement. And the size cap moved from a single constant onto the rule, since
+the flex PDF is 10 MB where every image field is 5 MB; the table's own check allows 10 MB and no
+seeded rule can raise a cap past it.
+
+"Share the content (optional)" beside those images is an order-scope typed value, stored in the new
+`catalog_orders.attributes` — the counterpart of `catalog_order_lines.attributes`, so it needed no
+new table.
+
+**Still not built:** the prototypes' "Placed this session" table and the image lightbox. Those are
+page furniture rather than the order form, and the form lives inside the existing workspace
+navigation.
+
+## Report cards, an eighth category (2026-09-25) - and the first price shown to a school
+
+Ordering works like certificates: a line built from an after-folding size (A4, A5), inner pages
+(0, 4, 8, 12, 16, 20, 24) and whether folding is required, with a **minimum of 50 per line** that
+rejects rather than raising.
+
+**This is the first form that shows a school a price**, which cuts against the rule recorded for
+notebooks: "Schools do not enter prices. Superadmin quotes after submission." Two things keep both
+true. The school still types no price - every figure is computed - and the estimate is labelled
+*"Estimate only. The Custoking quote is the price of record."* The quote flow is untouched.
+
+The rates are transcribed from the prototype, which attributes them to a source sheet:
+
+| | A4 | A5 |
+| --- | --- | --- |
+| D7, per card | 16 | 8 |
+| D8, per card per signature of 4 inner pages | 14 | 7 |
+
+D9 is 250 when folding is required, otherwise 80 / 150 / 200 by quantity band (=100, =200, above).
+E9 charges 6 per unit once quantity reaches 150 and a flat 150x6 below it, and falls back to D9 when
+there are no inner pages at all. **D9 is excluded from the cost per card**, which the prototype
+states explicitly and is easy to get wrong:
+
+    cost per card = (D7 + D8 + E9) / quantity
+
+Every rate is seeded on a `COST_ESTIMATE` rule rather than written into the frontend, so a wrong
+rate is a data fix rather than a release. If any rate is missing or malformed the estimate is
+hidden rather than shown as zero.
+
+While adding it, `validateRule` turned out to reject `OFFER_ASSET`, which V18 introduced - a
+superadmin editing any optional upload would have been refused. Fixed here along with the new rule
+type.
+
+## Certificates, a seventh category (2026-09-25)
+
+No matrix: a line is built one at a time from a category, size, GSM and count, the way bill books
+and fliers are.
+
+| | |
+| --- | --- |
+| Category | Generic, Individual customisation |
+| Size | A3, A4, A5 |
+| GSM | 250, 300 |
+| Per line | Count, **minimum 20** |
+| Uploads | Certificate image, plus several print references. PNG/JPEG/WebP, 5 MB each, both optional |
+
+From the prototype's source: `var MIN_COUNT = 20;` and *"Minimum order quantity is 20 per size/GSM
+line."* The minimum **rejects** rather than raising, so it is `MIN_VALUE` like the flier's 3000, not
+the `FLOOR_VALUE` that silently raises a customised notebook line. `findGroup(state.cat)` keeps one
+group per category inside a single order, so the category is a **line-scope** choice rather than an
+order-wide one: Generic and Individual customisation certificates can share one order.
+
+**One conflict, left unbuilt.** This prototype also shows "Share the content (optional)" beside the
+print references. That is the field removed on the same day when the note became flier-only, so
+adding it back here would contradict that decision. The uploads are in; the text field is not. It is
+a single seeded row to add if the note is wanted on certificates after all.
+
+## Ties, a sixth category (2026-09-25)
+
+From a prototype supplied after the first five. Shaped like belts: a tie type chosen once, then a
+table of lengths each with its own count, rows left at zero skipped, and an optional image.
+
+| | |
+| --- | --- |
+| Tie type | Satin Tie with logo, Satin Tie, Cloth Tie, Readymade ties |
+| Length | 10, 11, 12, 14, 16 inch, plus **Long Tie** fixed at 48 inch |
+| Per line | Count, with no minimum or rounding |
+| Upload | Tie image, PNG/JPEG/WebP, 5 MB, optional |
+
+Two details taken from the prototype's source rather than its appearance, because the difference
+matters:
+
+```js
+var LENGTHS_STANDARD = ["10 inch","11 inch","12 inch","14 inch","16 inch"];
+var LONG_TIE_ROW = "Long Tie · 48 inch";
+/* Every tie type gets the 10-16 inch range, plus the Long Tie row (fixed 48 inch) - Long Tie is
+   a subcategory available under each of the 4 tie types, not a separate type. */
+```
+
+So **Long Tie is a sixth length, not a fifth type**, and **no length depends on the type** - unlike
+belts, there are no dependency rows. The list is exactly those five lengths; there is no 13 or
+15 inch.
+
+Ties needed **no frontend change at all**. The tiles and the form are driven by the definition, so
+seeding a category is now enough to make it orderable - which is the whole point of the earlier fix.
+
+## Two changes on 2026-09-25
+
+**Artwork no longer blocks a customised notebook order.** The 2026-09-15 record said a customised
+order requires artwork and a pre-delivery photo; the upload is now optional, which also matches the
+prototype's own "Sample design (optional)" label. The upload itself stays, as the optional sample
+design every category offers, and the pre-delivery photo is untouched because it belongs to a later
+stage. Two tests that asserted a placement *fails* without artwork now assert it succeeds; they
+encoded the old rule, so changing them is the point rather than a workaround.
+
+**The free-text note belongs to fliers alone.** It used to appear on every category, and the
+"Share the content" group added for bill books and fliers duplicated it, so that group is gone.
+`product_categories.notes_enabled` carries the distinction, beside `form_enabled` and `paged`, so
+the form reads it from the definition rather than naming a category in code — the hardcoding that
+made the four new categories invisible in the first place.
+
+Still open: whether "sample image upload under every option" means one upload per category renamed
+consistently, one per line in an order, or one per selectable option defined in the catalog. Not
+built pending that answer.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The
    customised rule is a floor of 1000 on each ruling line, not an exact combined total of 1000. D-2
    of 2026-09-15 is superseded; `notebook-order-form-builder.md` still records the original wording,
    so read this document alongside it.
-2. **King at 19 × 26 cm** is taken as confirmed, superseding `PENDING_SPEC`.
+2. **King has no agreed size** and stays `PENDING_SPEC`. The 19 × 26 cm reading was an error of
+   mine, corrected 2026-09-25: those are Jumbo King's dimensions. Nothing was decided here, so
+   there is no decision to revisit — but if King *does* have a size, someone has to supply it.
 3. **Drawing book** remains unorderable until someone supplies dimensions.
 4. **Flier size stays free text, confirmed 2026-09-23.** Anything typed is accepted, so `A4`, `a4`
    and `A-4` are distinct values in reporting. This was chosen deliberately over a seeded list for

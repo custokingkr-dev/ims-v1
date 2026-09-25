@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import api from '../../../services/api';
 import { ModuleShell, Field } from '../ui';
 import { currentFinancialYearLabel, formatMoney, computeSaOrderValue, EVENT_RATES } from '../utils';
 import { SA_NEW_ORDER_CATEGORIES } from '../config';
 import { ProductFormBuilder } from '../../../features/catalog/ProductFormBuilder';
+import { CategoryIcon } from '../../../features/catalog/categoryIcons';
 import { useProductCategories, useProductFormDefinition } from '../../../features/catalog/api';
 
 interface Props {
@@ -17,10 +19,6 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
   // Categories whose form is enabled are served by the shared product form, whatever they are.
   const formCategory = activeCategory?.formEnabled ? activeCat : null;
   const formDefinition = useProductFormDefinition(formCategory);
-  // Tiles come from the catalog, using the hardcoded entry only for its icon and for the legacy
-  // categories that still have no form. A category seeded in the catalog but absent from that list
-  // would otherwise be unorderable, which is what happened to bill books, belts, flex and fliers.
-  const knownTile = (code: string) => SA_NEW_ORDER_CATEGORIES.find((item) => item.key === code);
   // When the catalogue cannot be read there is nothing honest to show: the generic fallback tiles
   // on their own look like the whole catalogue, which is how a mid-session 401 reads as
   // "the categories have disappeared". Show the failure and a retry instead.
@@ -28,11 +26,14 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
   const categoryOptions = catalogUnavailable ? [] : [
     ...(productCatalog.categories || []).map((category) => ({
       key: category.code,
-      icon: knownTile(category.code)?.icon || category.emoji || '📦',
       title: category.label,
       desc: category.description,
+      pill: category.orderType,
     })),
-    ...SA_NEW_ORDER_CATEGORIES.filter((item) => item.key === 'CUSTOM'),
+    // One "anything else" route. There were two tiles carrying the CUSTOM key, which offered the
+    // same destination twice under different names.
+    ...SA_NEW_ORDER_CATEGORIES.filter((item) => item.key === 'CUSTOM').slice(-1)
+      .map((item) => ({ key: item.key, title: item.title, desc: item.desc, pill: '' })),
   ];
   const [form, setForm] = useState<any>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -114,12 +115,16 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
                   <button className="ck-btn ck-btn-ghost" onClick={productCatalog.retry}>Retry</button>
                 </div>
               )}
-              {!catalogUnavailable && !productCatalog.categories && <p role="status">Loading catalog...</p>}
+              {!catalogUnavailable && !productCatalog.categories
+                && Array.from({ length: 8 }, (_, i) => <div key={`skeleton-${i}`} className="sa-category-card is-loading" aria-hidden="true" />)}
+              {!catalogUnavailable && !productCatalog.categories && <p className="ck-sr-only" role="status">Loading catalog</p>}
               {categoryOptions.map((item, idx) => (
-                <button key={`${item.title}-${idx}`} className="sa-category-card" onClick={() => { setActiveCat(item.key); setErrors({}); }}>
-                  <div className="sa-category-icon" aria-hidden="true">{item.icon}</div>
-                  <div className="sa-category-title">{item.title}</div>
-                  <div className="sa-category-desc">{item.desc}</div>
+                <button type="button" key={`${item.key}-${idx}`} className="sa-category-card"
+                  onClick={() => { setActiveCat(item.key); setErrors({}); }}>
+                  <span className="sa-category-icon"><CategoryIcon code={item.key} /></span>
+                  <span className="sa-category-title">{item.title}</span>
+                  <span className="sa-category-desc">{item.desc}</span>
+                  {item.pill ? <span className="sa-category-pill">{item.pill}</span> : null}
                 </button>
               ))}
             </div>
@@ -127,10 +132,11 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
         ) : (
           <div className="sa-order-form-card">
             <div className="sa-order-form-head">
-              <button className="sa-order-back" onClick={() => { setActiveCat(null); setErrors({}); }}>← Change</button>
+              <button type="button" className="ck-btn ck-btn-ghost" onClick={() => { setActiveCat(null); setErrors({}); }}>
+                <ArrowLeft size={16} aria-hidden="true" />Change category</button>
               {categoryMeta ? (
                 <div className="sa-order-selected">
-                  <div className="sa-order-selected-icon">{categoryMeta.icon}</div>
+                  <span className="sa-order-selected-icon"><CategoryIcon code={categoryMeta.key} size={20} /></span>
                   <div>
                     <div className="sa-order-selected-title">{categoryMeta.title}</div>
                     <div className="sa-order-selected-desc">{categoryMeta.desc}</div>

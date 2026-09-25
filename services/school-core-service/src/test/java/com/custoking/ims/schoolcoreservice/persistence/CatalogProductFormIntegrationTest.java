@@ -50,16 +50,190 @@ class CatalogProductFormIntegrationTest {
     @AfterEach void clear() { TenantContext.clear(); }
     @AfterAll static void stop() { if (pg != null) pg.stop(); }
 
+    // The 2026-09-23 prototype lists "King" with no dimensions and "Jumbo King - 19x26 cm".
+    // V11 read that as King being 19x26 and confirmed it, which both invented a spec for King and
+    // duplicated Jumbo King's. An option with no agreed size must stay visible but unorderable.
+    @Test
+    void kingHasNoAgreedSizeAndJumboKingCarriesTheNineteenBySixSpec() {
+        var sizes = maps(group(repository.form("NOTEBOOKS", false), "SIZE").get("options"));
+        var king = sizes.stream().filter(o -> "KING".equals(o.get("code"))).findFirst().orElseThrow();
+        assertEquals("PENDING_SPEC", king.get("specStatus"));
+        assertNull(king.get("widthMm"));
+        assertNull(king.get("heightMm"));
+
+        var jumboKing = sizes.stream().filter(o -> "JUMBO_KING".equals(o.get("code"))).findFirst().orElseThrow();
+        assertEquals("CONFIRMED", jumboKing.get("specStatus"));
+        assertEquals(190, jumboKing.get("widthMm"));
+        assertEquals(260, jumboKing.get("heightMm"));
+    }
+
+    // The prototype labels the order-scope group "Category", with "Custom" and "Wholesale".
+    @Test
+    void customisationGroupUsesThePrototypeWording() {
+        var definition = repository.form("NOTEBOOKS", false);
+        var group = group(definition, "CUSTOMIZATION");
+        assertEquals("Category", group.get("label"));
+        assertEquals(java.util.List.of("Custom", "Wholesale"),
+                maps(group.get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+    }
+
+    // The prototypes present a group in one of four ways. Inferring that from option counts is
+    // what produced a generic form none of them actually shows, so the definition states it.
+    @Test
+    void groupsCarryThePresentationTheProtypesUse() {
+        var notebook = repository.form("NOTEBOOKS", false);
+        assertEquals("SEGMENTED", group(notebook, "CUSTOMIZATION").get("render"));
+        assertEquals("SELECT", group(notebook, "SIZE").get("render"));
+        assertEquals("MATRIX", group(notebook, "RULING").get("render"));
+
+        var belt = repository.form("BELTS", false);
+        assertEquals("SEGMENTED", group(belt, "BELT_TYPE").get("render"));
+        assertEquals("SEGMENTED", group(belt, "BUCKLE_TYPE").get("render"));
+        assertEquals("MATRIX", group(belt, "LENGTH").get("render"));
+
+        var billBook = repository.form("BILLBOOKS", false);
+        assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED"),
+                maps(billBook.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
+
+        // A typed group is a field wherever it appears.
+        var flex = repository.form("FLEX", false);
+        assertEquals("SEGMENTED", group(flex, "FLEX_TYPE").get("render"));
+        assertEquals("FIELD", group(flex, "LENGTH_FT").get("render"));
+        assertEquals("FIELD", group(flex, "BREADTH_FT").get("render"));
+        var flier = repository.form("FLIERS", false);
+        assertEquals("FIELD", group(flier, "SIZE").get("render"));
+        assertEquals("FIELD", group(flier, "GSM").get("render"));
+    }
+
+    // 2026-09-25: artwork stops blocking a customised order, and the note belongs to fliers alone.
+    @Test
+    void customisedArtworkIsOfferedNotRequiredAndOnlyFliersCollectANote() {
+        var notebook = repository.form("NOTEBOOKS", false);
+        var rules = maps(notebook.get("rules"));
+        assertTrue(rules.stream().noneMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
+                && "DESIGN".equals(map(r.get("params")).get("assetKind"))), "artwork must not block placement");
+        // The upload itself stays, as the optional sample design.
+        assertTrue(rules.stream().anyMatch(r -> "OFFER_ASSET".equals(r.get("ruleType"))
+                && "DESIGN".equals(map(r.get("params")).get("assetKind"))));
+        // The pre-delivery photo belongs to a later stage and is untouched.
+        assertTrue(rules.stream().anyMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
+                && "PRE_DELIVERY_PHOTO".equals(map(r.get("params")).get("assetKind"))));
+
+        for (var category : repository.categories(false)) {
+            boolean expected = "FLIERS".equals(category.get("code"));
+            assertEquals(expected, Boolean.TRUE.equals(category.get("notesEnabled")),
+                    "notesEnabled for " + category.get("code"));
+        }
+        assertTrue(maps(repository.form("BILLBOOKS", false).get("groups")).stream()
+                .noneMatch(g -> "PRINT_CONTENT".equals(g.get("code"))), "the duplicate note group is gone");
+    }
+
+    // Ties, from the prototype supplied 2026-09-25. Its source says Long Tie is "a subcategory
+    // available under each of the 4 tie types, not a separate type", so it is a sixth length row
+    // rather than a fifth type, and every type offers all six lengths with no dependency.
+    @Test
+    void tiesOfferFourTypesAndSixLengthsIncludingTheFixedLongTie() {
+        var ties = repository.form("TIES", false);
+        assertTrue(Boolean.TRUE.equals(ties.get("enabled")));
+        assertEquals(false, ties.get("paged") == null ? map(ties.get("category")).get("paged") : null,
+                "ties count units, not pages");
+
+        assertEquals("SEGMENTED", group(ties, "TIE_TYPE").get("render"));
+        assertEquals(List.of("Satin Tie with logo", "Satin Tie", "Cloth Tie", "Readymade ties"),
+                maps(group(ties, "TIE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+
+        assertEquals("MATRIX", group(ties, "LENGTH").get("render"));
+        assertEquals(List.of("10 inch", "11 inch", "12 inch", "14 inch", "16 inch", "Long Tie"),
+                maps(group(ties, "LENGTH").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals("48 inch", maps(group(ties, "LENGTH").get("options")).stream()
+                .filter(o -> "LONG_TIE".equals(o.get("code"))).findFirst().orElseThrow().get("specText"));
+
+        // Long Tie is not a tie type, and the lengths do not depend on the type.
+        assertTrue(maps(group(ties, "TIE_TYPE").get("options")).stream()
+                .noneMatch(o -> String.valueOf(o.get("label")).toLowerCase().contains("long")));
+        assertTrue(maps(ties.get("dependencies")).isEmpty(), "every type offers every length");
+
+        // Counts are plain entries, and the only rule is the optional image.
+        assertEquals(List.of("OFFER_ASSET"),
+                maps(ties.get("rules")).stream().map(r -> String.valueOf(r.get("ruleType"))).toList());
+        assertEquals(false, Boolean.TRUE.equals(map(ties.get("category")).get("notesEnabled")));
+    }
+
+    // Certificates, from the prototype supplied 2026-09-25. Its minimum rejects rather than raising
+    // ("Count must be at least 20 for a certificate order"), so it is MIN_VALUE like the flier's
+    // 3000 and not the FLOOR_VALUE that silently raises a customised notebook line.
+    @Test
+    void certificatesBuildLinesFromThreeChoicesWithAMinimumOfTwenty() {
+        var certificates = repository.form("CERTIFICATES", false);
+        assertTrue(Boolean.TRUE.equals(certificates.get("enabled")));
+        assertEquals(List.of("Category", "Size", "GSM"),
+                maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
+        assertEquals(List.of("SEGMENTED", "SEGMENTED", "SEGMENTED"),
+                maps(certificates.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
+        // No matrix: a certificate line is built one at a time, as bill books and fliers are.
+        assertTrue(maps(certificates.get("groups")).stream().noneMatch(g -> "MATRIX".equals(g.get("render"))));
+
+        assertEquals(List.of("Generic", "Individual customisation"),
+                maps(group(certificates, "CATEGORY").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("A3", "A4", "A5"),
+                maps(group(certificates, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("250", "300"),
+                maps(group(certificates, "GSM").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+
+        var minimum = maps(certificates.get("rules")).stream()
+                .filter(r -> "MIN_VALUE".equals(r.get("ruleType"))).findFirst().orElseThrow();
+        assertEquals(20, map(minimum.get("params")).get("value"));
+        assertTrue(maps(certificates.get("rules")).stream().noneMatch(r -> "FLOOR_VALUE".equals(r.get("ruleType"))),
+                "the count is rejected below 20, never raised to it");
+        // Both uploads the prototype offers, and neither blocks placement.
+        assertEquals(List.of("DESIGN", "PRINT_REFERENCE"), maps(certificates.get("rules")).stream()
+                .filter(r -> "OFFER_ASSET".equals(r.get("ruleType")))
+                .map(r -> String.valueOf(map(r.get("params")).get("assetKind"))).sorted().toList());
+    }
+
+    // Report cards, 2026-09-25. The first category that shows a school a price; it is computed from
+    // these seeded rates and never typed, and the superadmin quote stays the price of record.
+    @Test
+    void reportCardsCarryAMinimumOfFiftyAndTheSeededEstimateRates() {
+        var cards = repository.form("REPORT_CARDS", false);
+        assertEquals(List.of("After folding size", "Inner pages (multiple of 4)", "Folding required"),
+                maps(cards.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
+        assertEquals(List.of("A4", "A5"),
+                maps(group(cards, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("0", "4", "8", "12", "16", "20", "24"),
+                maps(group(cards, "INNER_PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("Yes", "No"),
+                maps(group(cards, "FOLDING").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+
+        var minimum = maps(cards.get("rules")).stream().filter(r -> "MIN_VALUE".equals(r.get("ruleType")))
+                .findFirst().orElseThrow();
+        assertEquals(50, map(minimum.get("params")).get("value"));
+
+        var estimate = maps(cards.get("rules")).stream().filter(r -> "COST_ESTIMATE".equals(r.get("ruleType")))
+                .findFirst().orElseThrow();
+        var params = map(estimate.get("params"));
+        assertEquals("SHEET_V1", params.get("model"));
+        assertEquals(16, params.get("a4Base"));
+        assertEquals(14, params.get("a4PerSignature"));
+        assertEquals(250, params.get("foldingFee"));
+        assertEquals(6, params.get("printRate"));
+        assertEquals(150, params.get("printMinUnits"));
+    }
+
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        assertEquals(11, repository.categories(false).size());
+        // Fourteen: ties, certificates and report cards were all seeded on 2026-09-25.
+        assertEquals(14, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());
         assertEquals(15, maps(group(definition, "RULING").get("options")).size());
-        assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
+        // King and Drawing book: both are listed with no agreed size in the prototype.
+        assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
+        // Three ordering rules, the pre-delivery photo, and the optional sample design. Artwork no
+        // longer blocks placement, so there is no REQUIRE_ASSET for the design.
         assertEquals(4, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());
     }
@@ -90,6 +264,7 @@ class CatalogProductFormIntegrationTest {
 
         var billBook = repository.form("BILLBOOKS", false);
         assertTrue(Boolean.TRUE.equals(billBook.get("enabled")));
+        // Five option groups; the note lives on fliers alone since 2026-09-25.
         assertEquals(5, maps(billBook.get("groups")).size());
         assertEquals(List.of("A3", "A4", "A5"),
                 maps(group(billBook, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
@@ -97,7 +272,8 @@ class CatalogProductFormIntegrationTest {
                 maps(group(billBook, "PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("1", "2", "4", "8"),
                 maps(group(billBook, "SLIPS_PER_PAGE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
-        assertTrue(maps(billBook.get("rules")).isEmpty(), "the prototype states counts have no minimum or rounding");
+        assertTrue(maps(billBook.get("rules")).stream().noneMatch(r -> String.valueOf(r.get("ruleType")).endsWith("_VALUE")
+                || "ROUND_TO_MULTIPLE".equals(r.get("ruleType"))), "the prototype states counts have no minimum or rounding");
 
         var belt = repository.form("BELTS", false);
         assertEquals(3, maps(belt.get("groups")).size());
@@ -106,7 +282,9 @@ class CatalogProductFormIntegrationTest {
         assertEquals(List.of("Bronze", "Plastic"),
                 maps(group(belt, "BUCKLE_TYPE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(6, maps(group(belt, "LENGTH").get("options")).size());
-        assertTrue(maps(belt.get("rules")).isEmpty());
+        // Belts carry no quantity rule; the only rule is the optional belt image the prototype offers.
+        assertEquals(List.of("OFFER_ASSET"),
+                maps(belt.get("rules")).stream().map(r -> String.valueOf(r.get("ruleType"))).toList());
     }
 
     @Test
@@ -117,7 +295,8 @@ class CatalogProductFormIntegrationTest {
         assertEquals("DECIMAL", group(flex, "LENGTH_FT").get("inputType"));
         assertEquals("ft", group(flex, "LENGTH_FT").get("unit"));
         assertEquals(5, maps(group(flex, "FLEX_TYPE").get("options")).size());
-        assertTrue(maps(flex.get("rules")).isEmpty(), "flex has no minimum or rounding");
+        assertTrue(maps(flex.get("rules")).stream().noneMatch(r -> String.valueOf(r.get("ruleType")).endsWith("_VALUE")
+                || "ROUND_TO_MULTIPLE".equals(r.get("ruleType"))), "flex has no minimum or rounding");
 
         var flier = repository.form("FLIERS", false);
         assertEquals("TEXT", group(flier, "SIZE").get("inputType"));
