@@ -3,7 +3,7 @@ import api from '../../../services/api';
 import { ModuleShell, Field, Info, Stat } from '../ui';
 import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
-import { useProductCategories } from '../../../features/catalog/api';
+import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 
 interface Props {
@@ -13,18 +13,7 @@ interface Props {
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const [notebookOrderId, setNotebookOrderId] = useState<string | null>(null);
-  // The Category column printed the catalogue code (REPORT_CARDS, BILLBOOKS). The catalogue
-  // already carries each code's label, so read it from there and humanise anything it does not
-  // know rather than hardcoding a list that drifts as categories are seeded.
-  const productCatalog = useProductCategories();
-  const categoryLabel = (code?: string) => {
-    const key = String(code ?? '').trim();
-    if (!key) return '—';
-    const known = productCatalog.categories?.find((category) => category.code === key);
-    if (known) return known.label;
-    const words = key.replace(/_/g, ' ').toLowerCase();
-    return words.charAt(0).toUpperCase() + words.slice(1);
-  };
+  const categoryLabel = useCategoryLabel();
 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);

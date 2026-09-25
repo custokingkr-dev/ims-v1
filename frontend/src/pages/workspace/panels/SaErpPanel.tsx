@@ -32,9 +32,29 @@ export function SaErpPanel() {
     return (
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
         <div className="ck-card">
-          <div className="ck-alert ck-alert-re" style={{ margin: 16 }}>
-            <span>✕</span>
+          <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+            <span aria-hidden="true">✕</span>
             <div>{error}</div>
+          </div>
+        </div>
+      </ModuleShell>
+    );
+  }
+
+  // Every section below is dereferenced directly, so a response that is not the expected shape
+  // used to throw during render and take the whole application into the global error boundary,
+  // losing the nav and every other panel with it. A panel that cannot read its data shows that
+  // in its own error state instead.
+  const sections = ['fees', 'lifecycle', 'attendance', 'vendorDues', 'reorderSignals'] as const;
+  const usable = !!metrics && typeof metrics === 'object'
+    && sections.every((section) => metrics[section] && typeof metrics[section] === 'object');
+
+  if (metrics && !usable) {
+    return (
+      <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
+        <div className="ck-card">
+          <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+            <div>ERP metrics could not be read. Please retry.</div>
           </div>
         </div>
       </ModuleShell>

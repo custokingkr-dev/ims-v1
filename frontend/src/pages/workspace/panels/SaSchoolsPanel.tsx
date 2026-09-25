@@ -243,8 +243,13 @@ export function SaSchoolsPanel() {
         })()}
         <div className="ck-card">
           {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
-          : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
-          : <table className="ck-table">
+          : saSchoolsError ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{saSchoolsError}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void loadSaSchools()}>Retry</button>
+            </div>
+          )
+          : <div className="ck-table-wrap"><table className="ck-table">
             <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
@@ -274,7 +279,7 @@ export function SaSchoolsPanel() {
                   </tr>
                 ))}
             </tbody>
-          </table>}
+          </table></div>}
         </div>
       </ModuleShell>
 
