@@ -110,3 +110,6 @@
 /* Several print reference images for one order, as bill books and fliers allow. */
 .ck-product-references { display: flex; flex-direction: column; gap: var(--ck-space-3); padding: var(--ck-space-3); border: 1px solid var(--border); border-radius: var(--ck-radius-sm); }
 .ck-product-references > label { align-self: flex-start; }
+
+/* The report card estimate. Deliberately quiet: it is advisory, and the quote is the price. */
+.ck-product-estimate { display: flex; align-items: baseline; justify-content: space-between; gap: var(--ck-space-3); flex-wrap: wrap; padding: var(--ck-space-3); margin-bottom: var(--ck-space-4); border: 1px dashed var(--border2); border-radius: var(--ck-radius-sm); }

@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { usePermissions } from '../../hooks/usePermissions';
 import { errorMessage, fieldErrorsFrom, getFormOrder, parseFormOrderDetail } from './api';
 import { evaluateProductForm, matches } from './productFormRules';
+import { estimateLine, estimateRatesFrom } from './reportCardEstimate';
 import { OrderAssetField } from './OrderAssetField';
 import { selectionCodes, type AssetKind, type FormDefinition, type FormInput, type FormLine, type FormOrderDetail, type ProductGroup, type ProductOption } from './types';
 import './product-form.css';
@@ -235,6 +236,18 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
     return <label className="field" key={group.code}><span>{group.label}</span>{control}</label>;
   };
 
+  // Only report cards carry an estimate today. It is computed, never typed, and advisory.
+  const estimateRates = estimateRatesFrom(definition.rules);
+  const estimate = estimateRates && input.lines.length ? input.lines.reduce((total, line) => {
+    const pages = Number(labelFor('INNER_PAGES', line.selections.INNER_PAGES)) || 0;
+    return total + estimateLine(estimateRates, {
+      size: labelFor('SIZE', line.selections.SIZE),
+      pages,
+      folding: line.selections.FOLDING === 'YES',
+      quantity: line.bookCount || 0,
+    }).lineTotal;
+  }, 0) : null;
+
   const builderSelections = { ...context, ...input.orderSelections };
   return <div className="ck-product-form">
     <div className="ck-product-section-head"><h2>{definition.category.label} order</h2><span className="ck-status sam">Pending pricing</span></div>
@@ -340,6 +353,10 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
       {!customized && <p className="ck-product-muted">No design approval required</p>}
     </fieldset>
 
+    {estimate !== null && <div className="ck-product-estimate" role="status">
+      <span><strong>Estimated total</strong> {estimate.toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 })}</span>
+      <span className="ck-product-muted">Estimate only. The Custoking quote is the price of record.</span>
+    </div>}
     {!preview && !isPlaced && <div className="ck-product-footbar">
       <span className="ck-product-foot-summary">{totalUnits.toLocaleString('en-IN')} {paged ? 'books' : 'units'}{saved?.order.id ? ` · Draft ${saved.order.id}` : ''}</span>
       <span className="ck-product-foot-actions">

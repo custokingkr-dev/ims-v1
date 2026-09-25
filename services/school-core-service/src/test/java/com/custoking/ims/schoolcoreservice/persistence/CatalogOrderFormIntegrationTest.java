@@ -343,7 +343,8 @@ class CatalogOrderFormIntegrationTest {
         assertThat(offers).containsExactlyInAnyOrder(
                 "BELTS:DESIGN", "BILLBOOKS:DESIGN", "BILLBOOKS:PRINT_REFERENCE",
                 "FLEX:DESIGN", "FLIERS:DESIGN", "FLIERS:PRINT_REFERENCE", "NOTEBOOKS:DESIGN",
-                "TIES:DESIGN", "CERTIFICATES:DESIGN", "CERTIFICATES:PRINT_REFERENCE");
+                "TIES:DESIGN", "CERTIFICATES:DESIGN", "CERTIFICATES:PRINT_REFERENCE",
+                "REPORT_CARDS:DESIGN");
         // The flex PDF is 10 MB in the prototype where the images are 5 MB.
         assertThat(jdbc.sql("SELECT params ->> 'maxBytes' FROM catalog.product_form_rules WHERE rule_type = 'OFFER_ASSET' AND category_code = 'FLEX'")
                 .query(String.class).single()).isEqualTo("10485760");

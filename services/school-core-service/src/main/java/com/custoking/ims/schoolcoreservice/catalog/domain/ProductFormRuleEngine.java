@@ -146,11 +146,14 @@ public class ProductFormRuleEngine {
         String type = String.valueOf(rule.get("ruleType"));
         var params = map(rule.get("params"));
         String target = String.valueOf(rule.get("targetField"));
-        if (!Set.of("REQUIRE_QUANTITY_TOTAL", "ROUND_TO_MULTIPLE", "FLOOR_VALUE", "MIN_VALUE", "MAX_VALUE", "REQUIRE_ASSET").contains(type)) {
+        if (!Set.of("REQUIRE_QUANTITY_TOTAL", "ROUND_TO_MULTIPLE", "FLOOR_VALUE", "MIN_VALUE", "MAX_VALUE",
+                "REQUIRE_ASSET", "OFFER_ASSET", "COST_ESTIMATE").contains(type)) {
             throw error("ruleType", "Unsupported rule type");
         }
-        if (!"REQUIRE_ASSET".equals(type) && !Set.of("BOOK_COUNT", "PAGE_COUNT").contains(target)) throw error("targetField", "Select books or printed pages");
-        if ("REQUIRE_ASSET".equals(type) && rule.get("targetField") != null && !target.isBlank()) throw error("targetField", "Asset rules have no numeric target");
+        // Asset and estimate rules carry no numeric target; everything else works on a count.
+        boolean untargeted = Set.of("REQUIRE_ASSET", "OFFER_ASSET", "COST_ESTIMATE").contains(type);
+        if (!untargeted && !Set.of("BOOK_COUNT", "PAGE_COUNT").contains(target)) throw error("targetField", "Select books or printed pages");
+        if (untargeted && rule.get("targetField") != null && !target.isBlank()) throw error("targetField", "This rule has no numeric target");
         switch (type) {
             case "REQUIRE_QUANTITY_TOTAL" -> {
                 positiveInt(params.get("value"), "params.value");
@@ -177,6 +180,26 @@ public class ProductFormRuleEngine {
                     throw error("params", "Choose a supported asset kind and stage");
                 }
                 exactKeys(params, Set.of("assetKind", "stage"));
+            }
+            // An optional upload. It never blocks placement, so it has no stage; it carries what the
+            // field should say, what it accepts and how large a file may be.
+            case "OFFER_ASSET" -> {
+                if (!Set.of("DESIGN", "PRE_DELIVERY_PHOTO", "PRINT_REFERENCE").contains(String.valueOf(params.get("assetKind")))) {
+                    throw error("params.assetKind", "Choose a supported asset kind");
+                }
+                if (params.get("maxBytes") != null) positiveInt(params.get("maxBytes"), "params.maxBytes");
+                exactKeys(params, Set.of("assetKind", "label", "accept", "maxBytes", "multiple"));
+            }
+            // A read-only price estimate shown beside the lines. Every rate is a positive number so a
+            // typo cannot silently produce a negative or zero price.
+            case "COST_ESTIMATE" -> {
+                if (!"SHEET_V1".equals(String.valueOf(params.get("model")))) throw error("params.model", "Unknown estimate model");
+                for (var key : Set.of("a4Base", "a5Base", "a4PerSignature", "a5PerSignature", "foldingFee",
+                        "band1Max", "band1", "band2Max", "band2", "band3", "printRate", "printMinUnits")) {
+                    positiveInt(params.get(key), "params." + key);
+                }
+                exactKeys(params, Set.of("model", "a4Base", "a5Base", "a4PerSignature", "a5PerSignature", "foldingFee",
+                        "band1Max", "band1", "band2Max", "band2", "band3", "printRate", "printMinUnits"));
             }
         }
         for (var entry : map(rule.get("matchOptions")).entrySet()) {
