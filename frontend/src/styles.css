@@ -953,28 +953,38 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 
 .sa-order-request { display:flex; flex-direction:column; gap:20px; }
 .sa-category-label { color:var(--ck-status-neutral); font-size:13px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; margin-top:4px; }
-.sa-category-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:18px; }
-.sa-category-card { min-height:188px; border:1px solid #ddd7cf; border-radius:18px; background:var(--ck-bg-surface); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:22px 18px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
-.sa-category-card:hover { transform:translateY(-1px); box-shadow:0 10px 24px rgba(29, 24, 19, .06); border-color:#cfc7bc; }
-.sa-category-icon { font-size:34px; line-height:1; margin-bottom:22px; }
-.sa-category-title { font-size:18px; font-weight:800; color:var(--ink); }
-.sa-category-desc { margin-top:8px; color:var(--ink3); font-size:13px; }
+/* Auto-fill rather than a fixed column count: the workspace nav takes ~260px, so a fixed four
+   columns collapsed to two and left half the card empty. The track minimum is the width the
+   longest category description needs to stay on two lines. */
+.sa-category-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(258px, 1fr)); gap:14px; }
+/* The card leads with its name, not with a centred badge: at a dozen categories the eye scans a
+   column of titles. Text is left-aligned for that scan, and the height comes from the content
+   rather than a fixed 188px of mostly empty card. */
+.sa-category-card { border:1px solid var(--ck-border-default); border-radius:var(--r); background:var(--ck-bg-surface); display:grid; grid-template-columns:auto 1fr; grid-template-areas:"icon title" "icon desc" "icon pill"; column-gap:12px; row-gap:2px; align-content:start; text-align:left; padding:16px; cursor:pointer; font:inherit; color:inherit; transition:border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+.sa-category-card:hover { border-color:var(--ck-color-primary); background:var(--ck-bg-surface-raised); }
+.sa-category-card:focus-visible { outline:2px solid var(--ck-color-primary); outline-offset:3px; }
+.sa-category-card:active { background:var(--ck-color-primary-soft); }
+.sa-category-card:disabled { cursor:not-allowed; opacity:.55; border-color:var(--ck-border-subtle); background:var(--ck-bg-app); }
+.sa-category-card:disabled:hover { border-color:var(--ck-border-subtle); background:var(--ck-bg-app); }
+.sa-category-icon { grid-area:icon; align-self:start; display:grid; place-items:center; width:38px; height:38px; border-radius:var(--rsm); background:var(--ck-color-primary-soft); color:var(--ck-color-primary-deep); }
+.sa-category-title { grid-area:title; font-size:15px; font-weight:700; color:var(--ink); line-height:1.35; }
+.sa-category-desc { grid-area:desc; color:var(--ink3); font-size:12.5px; line-height:1.45; }
+.sa-category-pill { grid-area:pill; justify-self:start; margin-top:8px; padding:2px 9px; border-radius:999px; background:var(--ck-status-neutral-bg); color:var(--ck-status-neutral); font-size:11.5px; font-weight:600; }
+/* Placeholders while the catalogue loads, so the grid does not jump when it arrives. */
+.sa-category-card.is-loading { min-height:104px; background:var(--ck-bg-skeleton); border-color:var(--ck-border-subtle); cursor:default; animation:sa-category-pulse 1.4s ease-in-out infinite; }
+@keyframes sa-category-pulse { 0%, 100% { opacity:.55; } 50% { opacity:.85; } }
+@media (prefers-reduced-motion: reduce) { .sa-category-card.is-loading { animation:none; } }
 .sa-order-form-card { background:var(--ck-bg-surface); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 4px 18px rgba(0,0,0,.03); }
 .sa-order-form-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
-.sa-order-back { border:none; background:var(--ck-status-neutral-bg); color:#3a3328; padding:10px 14px; border-radius:999px; font-weight:700; cursor:pointer; }
 .sa-order-selected { display:flex; align-items:center; gap:12px; }
-.sa-order-selected-icon { width:44px; height:44px; border-radius:14px; background:var(--ck-status-neutral-bg); display:grid; place-items:center; font-size:22px; }
+.sa-order-selected-icon { width:40px; height:40px; border-radius:var(--rsm); background:var(--ck-color-primary-soft); color:var(--ck-color-primary-deep); display:grid; place-items:center; }
 .sa-order-selected-title { font-size:18px; font-weight:800; color:var(--ink); }
 .sa-order-selected-desc { color:var(--ink3); font-size:13px; margin-top:2px; }
-.sa-order-summary { display:flex; align-items:center; justify-content:space-between; border:1px dashed #d9d0c4; border-radius:14px; padding:14px 16px; background:var(--ck-bg-surface-raised); }
+.sa-order-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; border:1px solid var(--ck-border-subtle); border-radius:var(--rsm); padding:14px 16px; background:var(--ck-bg-surface-raised); }
 .sa-order-summary span { color:var(--ink3); font-size:13px; }
 .sa-order-summary strong { color:var(--ink); font-size:20px; }
-@media (max-width: 1280px) {
-  .sa-category-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 768px) {
-  .sa-category-grid { grid-template-columns:1fr; }
-  .sa-category-card { min-height:150px; }
+  .sa-category-card { padding:14px; }
 }
 
 
