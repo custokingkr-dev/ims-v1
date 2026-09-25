@@ -63,6 +63,18 @@ describe('ProductFormBuilder in the prototype format', () => {
 });
 
 describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
+  // A wholesale notebook run is printed from stock, so there is no artwork to attach. The upload
+  // belongs to the customised choice only.
+  it('offers the sample design for a customised notebook and not for a wholesale one', () => {
+    render(<ProductFormBuilder definition={notebookDefinition} preview />);
+    // Custom is the first confirmed option, so the upload is there on arrival.
+    expect(screen.getByRole('heading', { name: 'Sample design' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Wholesale' }));
+    expect(screen.queryByRole('heading', { name: 'Sample design' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Custom' }));
+    expect(screen.getByRole('heading', { name: 'Sample design' })).toBeInTheDocument();
+  });
+
   // Report cards are the only category that shows a school a price, and it is computed, not typed.
   it('shows a computed estimate and offers no way to type a price', () => {
     render(<ProductFormBuilder definition={reportCardDefinition} preview />);
