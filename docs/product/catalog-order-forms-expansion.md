@@ -213,6 +213,25 @@ new table.
 page furniture rather than the order form, and the form lives inside the existing workspace
 navigation.
 
+## Two changes on 2026-09-25
+
+**Artwork no longer blocks a customised notebook order.** The 2026-09-15 record said a customised
+order requires artwork and a pre-delivery photo; the upload is now optional, which also matches the
+prototype's own "Sample design (optional)" label. The upload itself stays, as the optional sample
+design every category offers, and the pre-delivery photo is untouched because it belongs to a later
+stage. Two tests that asserted a placement *fails* without artwork now assert it succeeds; they
+encoded the old rule, so changing them is the point rather than a workaround.
+
+**The free-text note belongs to fliers alone.** It used to appear on every category, and the
+"Share the content" group added for bill books and fliers duplicated it, so that group is gone.
+`product_categories.notes_enabled` carries the distinction, beside `form_enabled` and `paged`, so
+the form reads it from the definition rather than naming a category in code — the hardcoding that
+made the four new categories invisible in the first place.
+
+Still open: whether "sample image upload under every option" means one upload per category renamed
+consistently, one per line in an order, or one per selectable option defined in the catalog. Not
+built pending that answer.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The

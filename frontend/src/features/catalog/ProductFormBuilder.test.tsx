@@ -62,6 +62,38 @@ describe('ProductFormBuilder in the prototype format', () => {
   });
 });
 
+describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
+  it('shows the note on a category that collects one and nowhere else', () => {
+    const { unmount } = render(<ProductFormBuilder definition={notebookDefinition} preview />);
+    expect(screen.queryByLabelText('Notes')).not.toBeInTheDocument();
+    unmount();
+    render(<ProductFormBuilder definition={{ ...flexDefinition, category: { ...flexDefinition.category, notesEnabled: true } }} preview />);
+    expect(screen.getByLabelText('Notes')).toBeInTheDocument();
+  });
+
+  it('places a customised order with no artwork attached', async () => {
+    // The design upload stays, but it no longer blocks placement.
+    const withoutArtworkRule = {
+      ...notebookDefinition,
+      rules: notebookDefinition.rules.filter((rule) => !(rule.ruleType === 'REQUIRE_ASSET' && rule.params.assetKind === 'DESIGN')),
+    };
+    const detail = savedNotebook('PROCESSING');
+    vi.mocked(api.post).mockImplementation(async (url) => {
+      if (url === '/supply/orders') return { data: { id: 'ORD-42', formVersion: 2, version: 0 } };
+      return { data: {} };
+    });
+    vi.mocked(api.get).mockResolvedValue({ data: detail });
+    vi.mocked(api.patch).mockResolvedValue({ data: detail });
+    render(<ProductFormBuilder definition={withoutArtworkRule} schoolId={7} />);
+    fireEvent.change(screen.getByLabelText('Size'), { target: { value: 'LONG' } });
+    fireEvent.change(screen.getByLabelText('Quantity for Single rule'), { target: { value: '1000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Place order' }));
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/supply/orders/ORD-42/place'));
+    expect(screen.queryByText('Attach design artwork before placing this order.')).not.toBeInTheDocument();
+  });
+});
+
 describe('ProductFormBuilder', () => {
   it('renders typed entries with their unit and no page column for a non-paged category', () => {
     render(<ProductFormBuilder categoryCode="FLEX" definition={flexDefinition} preview />);

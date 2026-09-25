@@ -335,7 +335,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
           }} />
         <p className="ck-product-muted">{String(referenceRule.message || '')}</p>
       </div>}</div>
-      <label className="field"><span>Notes</span><textarea rows={2} value={notes} maxLength={255} onChange={(e) => setNotes(e.target.value)} /></label>
+      {definition.category.notesEnabled && <label className="field"><span>Notes</span>
+        <textarea rows={2} value={notes} maxLength={255} onChange={(e) => setNotes(e.target.value)} /></label>}
       {!customized && <p className="ck-product-muted">No design approval required</p>}
     </fieldset>
 

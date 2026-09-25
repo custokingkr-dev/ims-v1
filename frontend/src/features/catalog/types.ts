@@ -3,6 +3,9 @@ export interface ProductCategory {
   orderType: string; formEnabled: boolean; sortOrder: number; active: boolean;
   // Only paged categories (notebooks) collect a printed-page count per line.
   paged?: boolean;
+  // Only fliers collect a free-text note, decided 2026-09-25. Read from the definition so the form
+  // never has to name a category in code.
+  notesEnabled?: boolean;
 }
 export interface ProductOption {
   id: number; groupId: number; code: string; label: string; specText: string | null;
