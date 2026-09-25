@@ -104,7 +104,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
         <div className="ck-card">
           {saInvoicesLoading ? <div style={{ padding: 16 }}>Loading invoices…</div>
           : saInvoicesError ? <div style={{ padding: 16 }}>{saInvoicesError}</div>
-          : <table className="ck-table">
+          : <div className="ck-table-wrap"><table className="ck-table">
             <thead><tr><th>Invoice</th><th>School</th><th>Order ref</th><th>Total</th><th>Status</th><th>Issued</th><th /></tr></thead>
             <tbody>
               {saInvoices.length === 0
@@ -126,7 +126,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                   </tr>
                 ))}
             </tbody>
-          </table>}
+          </table></div>}
         </div>
       </ModuleShell>
 

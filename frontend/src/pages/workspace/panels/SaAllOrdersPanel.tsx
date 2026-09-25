@@ -228,7 +228,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           {loading ? <div style={{ padding: 16 }}>Loading orders…</div>
           : error ? <div style={{ padding: 16 }}>{error}</div>
           : (
-            <table className="ck-table">
+            <div className="ck-table-wrap"><table className="ck-table">
               <thead><tr><th>Order</th><th>School</th><th>Category</th><th>Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
@@ -257,7 +257,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </ModuleShell>

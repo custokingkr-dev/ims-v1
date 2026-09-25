@@ -349,7 +349,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-stat-s { color:var(--ink3); font-size:12px; margin-bottom:6px; }
 .ck-pill.pg { background:var(--g1); color:var(--g); }
 .ck-pill.pb { background:var(--b1); color:var(--b); }
-.ck-pill.po { background:var(--or1); color:var(--or); }
+/* 4.43:1 measured on --or1, and 12px text needs 4.5. The darker orange already in the
+   palette clears it at 5.73 without changing the pill's hue. */
+.ck-pill.po { background:var(--or1); color:var(--ck-color-orange-dark); }
 .ck-pill.pr { background:var(--re1); color:var(--re); }
 .ck-two-col { display:grid; grid-template-columns:1fr 320px; gap:18px; }
 .ck-act-row, .ck-cta-row, .ck-fee-row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); }
@@ -741,6 +743,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   .ck-staff-detail-head .ck-status { grid-column:2; justify-self:start; }
 }
 .ck-alert-re { background:var(--re1); border:1px solid var(--ck-color-danger-border); color:var(--re); }
+/* Secondary and muted text keep their neutral grey when they land inside an alert, which
+   measured 4.35:1 and 4.38:1 on the danger ground. On a coloured surface the quieter text
+   is tinted from that surface's own hue rather than greyed: this reads as subdued and
+   clears 6.5:1. */
+.ck-alert-re .ts,
+.ck-alert-re .ck-btn-ghost { color:var(--ck-text-on-danger-soft); }
+.ck-alert-re .ck-btn-ghost { border-color:var(--ck-color-danger-border); }
 .ck-student-cell { display:flex; align-items:center; gap:12px; }
 .ck-student-delete-inline { padding:3px 8px; font-size:11px; color:var(--re); border-color:var(--ck-color-danger-border); }
 .ck-student-avatar { width:42px; height:42px; border-radius:8px; object-fit:contain; object-position:center; border:1px solid var(--border); background:var(--ck-status-neutral-bg); flex-shrink:0; }
