@@ -114,8 +114,9 @@ class CatalogOrderFormIntegrationTest {
     @Test
     void aggregateDraftCanBeReopenedEditedAndPlacedWithSameId() {
         var created = create(true, 399, 600);
-        assertThatThrownBy(() -> tx(() -> orders.placeOrder(created.id(), 7L))).isInstanceOf(ProductFormValidationException.class);
         tx(() -> { forms.updateDraft(created.id(), Map.of("version", 0, "orderData", data(true, 400, 600))); return null; });
+        // Artwork is optional since 2026-09-25, so it is attached here to prove an upload survives
+        // the edit rather than to unblock the placement.
         upload(created.id(), "DESIGN", 1);
         assertThat(tx(() -> orders.placeOrder(created.id(), 7L)).id()).isEqualTo(created.id());
         assertThat(jdbc.sql("SELECT count(*) FROM catalog.catalog_orders").query(Long.class).single()).isEqualTo(1);
@@ -185,7 +186,8 @@ class CatalogOrderFormIntegrationTest {
         var created = create(true, 400, 600);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "PROCESSING"))).isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "APPROVED"))).isInstanceOf(ResponseStatusException.class);
-        assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL"))).isInstanceOf(ProductFormValidationException.class);
+        // DESIGN_APPROVAL is a real transition for a customised order and no longer waits on artwork.
+        assertThat(tx(() -> orders.updateOrderStatus(created.id(), "DESIGN_APPROVAL")).status()).isEqualTo("DESIGN_APPROVAL");
         assertThatThrownBy(() -> tx(() -> orders.updateOrderStatus(created.id(), "FULFILLED"))).isInstanceOf(ResponseStatusException.class);
     }
 

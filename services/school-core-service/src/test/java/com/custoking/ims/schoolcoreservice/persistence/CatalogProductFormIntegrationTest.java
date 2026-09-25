@@ -92,7 +92,7 @@ class CatalogProductFormIntegrationTest {
         assertEquals("MATRIX", group(belt, "LENGTH").get("render"));
 
         var billBook = repository.form("BILLBOOKS", false);
-        assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "FIELD"),
+        assertEquals(java.util.List.of("SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED", "SEGMENTED"),
                 maps(billBook.get("groups")).stream().map(g -> String.valueOf(g.get("render"))).toList());
 
         // A typed group is a field wherever it appears.
@@ -103,6 +103,29 @@ class CatalogProductFormIntegrationTest {
         var flier = repository.form("FLIERS", false);
         assertEquals("FIELD", group(flier, "SIZE").get("render"));
         assertEquals("FIELD", group(flier, "GSM").get("render"));
+    }
+
+    // 2026-09-25: artwork stops blocking a customised order, and the note belongs to fliers alone.
+    @Test
+    void customisedArtworkIsOfferedNotRequiredAndOnlyFliersCollectANote() {
+        var notebook = repository.form("NOTEBOOKS", false);
+        var rules = maps(notebook.get("rules"));
+        assertTrue(rules.stream().noneMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
+                && "DESIGN".equals(map(r.get("params")).get("assetKind"))), "artwork must not block placement");
+        // The upload itself stays, as the optional sample design.
+        assertTrue(rules.stream().anyMatch(r -> "OFFER_ASSET".equals(r.get("ruleType"))
+                && "DESIGN".equals(map(r.get("params")).get("assetKind"))));
+        // The pre-delivery photo belongs to a later stage and is untouched.
+        assertTrue(rules.stream().anyMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
+                && "PRE_DELIVERY_PHOTO".equals(map(r.get("params")).get("assetKind"))));
+
+        for (var category : repository.categories(false)) {
+            boolean expected = "FLIERS".equals(category.get("code"));
+            assertEquals(expected, Boolean.TRUE.equals(category.get("notesEnabled")),
+                    "notesEnabled for " + category.get("code"));
+        }
+        assertTrue(maps(repository.form("BILLBOOKS", false).get("groups")).stream()
+                .noneMatch(g -> "PRINT_CONTENT".equals(g.get("code"))), "the duplicate note group is gone");
     }
 
     @Test
@@ -116,8 +139,9 @@ class CatalogProductFormIntegrationTest {
         // King and Drawing book: both are listed with no agreed size in the prototype.
         assertEquals(2, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "PENDING_SPEC".equals(o.get("specStatus"))).count());
         assertEquals(1, maps(group(definition, "SIZE").get("options")).stream().filter(o -> "FA_A4".equals(o.get("code"))).count());
-        // Four ordering rules plus the optional sample-design upload the prototype offers.
-        assertEquals(5, maps(definition.get("rules")).size());
+        // Three ordering rules, the pre-delivery photo, and the optional sample design. Artwork no
+        // longer blocks placement, so there is no REQUIRE_ASSET for the design.
+        assertEquals(4, maps(definition.get("rules")).size());
         assertTrue(maps(definition.get("dependencies")).isEmpty());
     }
 
@@ -147,8 +171,8 @@ class CatalogProductFormIntegrationTest {
 
         var billBook = repository.form("BILLBOOKS", false);
         assertTrue(Boolean.TRUE.equals(billBook.get("enabled")));
-        // Five option groups plus the optional "Share the content" note beside the print references.
-        assertEquals(6, maps(billBook.get("groups")).size());
+        // Five option groups; the note lives on fliers alone since 2026-09-25.
+        assertEquals(5, maps(billBook.get("groups")).size());
         assertEquals(List.of("A3", "A4", "A5"),
                 maps(group(billBook, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
         assertEquals(List.of("50", "100", "200"),
