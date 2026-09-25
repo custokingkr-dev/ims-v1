@@ -40,3 +40,19 @@ export const tieDefinition: FormDefinition = {
     { id: 22, categoryCode: 'TIES', code: 'LENGTH', label: 'Length', render: 'MATRIX', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', options: options(22, [['LEN_10', '10 inch'], ['LEN_11', '11 inch'], ['LEN_12', '12 inch'], ['LEN_14', '14 inch'], ['LEN_16', '16 inch'], ['LONG_TIE', 'Long Tie']]) },
   ],
 };
+
+/** Report cards: three segmented choices, a minimum of 50, and the only estimate in the catalog. */
+export const reportCardDefinition: FormDefinition = {
+  enabled: true, dependencies: [],
+  category: { code: 'REPORT_CARDS', label: 'Report Cards', emoji: '', description: 'Report cards', orderType: 'Recurring', formEnabled: true, paged: false, notesEnabled: false, active: true, sortOrder: 14 },
+  groups: [
+    { id: 31, categoryCode: 'REPORT_CARDS', code: 'SIZE', label: 'After folding size', render: 'SEGMENTED', scope: 'LINE', level: 1, required: true, active: true, selectionType: 'SINGLE', options: options(31, [['A4', 'A4'], ['A5', 'A5']]) },
+    { id: 32, categoryCode: 'REPORT_CARDS', code: 'INNER_PAGES', label: 'Inner pages (multiple of 4)', render: 'SEGMENTED', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', options: options(32, [['P0', '0'], ['P4', '4'], ['P8', '8']]) },
+    { id: 33, categoryCode: 'REPORT_CARDS', code: 'FOLDING', label: 'Folding required', render: 'SEGMENTED', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', options: options(33, [['YES', 'Yes'], ['NO', 'No']]) },
+  ],
+  rules: [
+    { id: 41, categoryCode: 'REPORT_CARDS', ruleType: 'MIN_VALUE', targetField: 'BOOK_COUNT', matchOptions: {}, params: { value: 50 }, priority: 10, message: 'Minimum order is 50 report cards per line', active: true },
+    { id: 42, categoryCode: 'REPORT_CARDS', ruleType: 'COST_ESTIMATE', matchOptions: {}, priority: 90, message: 'Estimate only.', active: true,
+      params: { model: 'SHEET_V1', a4Base: 16, a5Base: 8, a4PerSignature: 14, a5PerSignature: 7, foldingFee: 250, band1Max: 100, band1: 80, band2Max: 200, band2: 150, band3: 200, printRate: 6, printMinUnits: 150 } },
+  ],
+};

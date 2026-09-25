@@ -191,11 +191,40 @@ class CatalogProductFormIntegrationTest {
                 .map(r -> String.valueOf(map(r.get("params")).get("assetKind"))).sorted().toList());
     }
 
+    // Report cards, 2026-09-25. The first category that shows a school a price; it is computed from
+    // these seeded rates and never typed, and the superadmin quote stays the price of record.
+    @Test
+    void reportCardsCarryAMinimumOfFiftyAndTheSeededEstimateRates() {
+        var cards = repository.form("REPORT_CARDS", false);
+        assertEquals(List.of("After folding size", "Inner pages (multiple of 4)", "Folding required"),
+                maps(cards.get("groups")).stream().map(g -> String.valueOf(g.get("label"))).toList());
+        assertEquals(List.of("A4", "A5"),
+                maps(group(cards, "SIZE").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("0", "4", "8", "12", "16", "20", "24"),
+                maps(group(cards, "INNER_PAGES").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+        assertEquals(List.of("Yes", "No"),
+                maps(group(cards, "FOLDING").get("options")).stream().map(o -> String.valueOf(o.get("label"))).toList());
+
+        var minimum = maps(cards.get("rules")).stream().filter(r -> "MIN_VALUE".equals(r.get("ruleType")))
+                .findFirst().orElseThrow();
+        assertEquals(50, map(minimum.get("params")).get("value"));
+
+        var estimate = maps(cards.get("rules")).stream().filter(r -> "COST_ESTIMATE".equals(r.get("ruleType")))
+                .findFirst().orElseThrow();
+        var params = map(estimate.get("params"));
+        assertEquals("SHEET_V1", params.get("model"));
+        assertEquals(16, params.get("a4Base"));
+        assertEquals(14, params.get("a4PerSignature"));
+        assertEquals(250, params.get("foldingFee"));
+        assertEquals(6, params.get("printRate"));
+        assertEquals(150, params.get("printMinUnits"));
+    }
+
     @Test
     void seedContainsAllConfirmedOptionsAndFourRules() {
         var definition = repository.form("NOTEBOOKS", false);
-        // Thirteen: ties and certificates were both seeded on 2026-09-25.
-        assertEquals(13, repository.categories(false).size());
+        // Fourteen: ties, certificates and report cards were all seeded on 2026-09-25.
+        assertEquals(14, repository.categories(false).size());
         assertTrue(Boolean.TRUE.equals(definition.get("enabled")));
         assertEquals(3, maps(definition.get("groups")).size());
         assertEquals(23, maps(definition.get("groups")).stream().mapToInt(g -> maps(g.get("options")).size()).sum());

@@ -213,6 +213,39 @@ new table.
 page furniture rather than the order form, and the form lives inside the existing workspace
 navigation.
 
+## Report cards, an eighth category (2026-09-25) - and the first price shown to a school
+
+Ordering works like certificates: a line built from an after-folding size (A4, A5), inner pages
+(0, 4, 8, 12, 16, 20, 24) and whether folding is required, with a **minimum of 50 per line** that
+rejects rather than raising.
+
+**This is the first form that shows a school a price**, which cuts against the rule recorded for
+notebooks: "Schools do not enter prices. Superadmin quotes after submission." Two things keep both
+true. The school still types no price - every figure is computed - and the estimate is labelled
+*"Estimate only. The Custoking quote is the price of record."* The quote flow is untouched.
+
+The rates are transcribed from the prototype, which attributes them to a source sheet:
+
+| | A4 | A5 |
+| --- | --- | --- |
+| D7, per card | 16 | 8 |
+| D8, per card per signature of 4 inner pages | 14 | 7 |
+
+D9 is 250 when folding is required, otherwise 80 / 150 / 200 by quantity band (=100, =200, above).
+E9 charges 6 per unit once quantity reaches 150 and a flat 150x6 below it, and falls back to D9 when
+there are no inner pages at all. **D9 is excluded from the cost per card**, which the prototype
+states explicitly and is easy to get wrong:
+
+    cost per card = (D7 + D8 + E9) / quantity
+
+Every rate is seeded on a `COST_ESTIMATE` rule rather than written into the frontend, so a wrong
+rate is a data fix rather than a release. If any rate is missing or malformed the estimate is
+hidden rather than shown as zero.
+
+While adding it, `validateRule` turned out to reject `OFFER_ASSET`, which V18 introduced - a
+superadmin editing any optional upload would have been refused. Fixed here along with the new rule
+type.
+
 ## Certificates, a seventh category (2026-09-25)
 
 No matrix: a line is built one at a time from a category, size, GSM and count, the way bill books

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductFormBuilder } from './ProductFormBuilder';
-import { flexDefinition, notebookDefinition, savedNotebook, tieDefinition } from './catalogTestFixtures';
+import { flexDefinition, notebookDefinition, reportCardDefinition, savedNotebook, tieDefinition } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { post: vi.fn(), patch: vi.fn(), get: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 beforeEach(() => { vi.clearAllMocks(); URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
@@ -63,6 +63,25 @@ describe('ProductFormBuilder in the prototype format', () => {
 });
 
 describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
+  // Report cards are the only category that shows a school a price, and it is computed, not typed.
+  it('shows a computed estimate and offers no way to type a price', () => {
+    render(<ProductFormBuilder definition={reportCardDefinition} preview />);
+    expect(screen.queryByText(/Estimated total/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'A4' }));
+    fireEvent.click(screen.getByRole('button', { name: '8' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    fireEvent.change(screen.getByLabelText('Count'), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+    // (16*100) + (14*100*2) + 900 = 5300, with D9 excluded.
+    expect(screen.getByText(/Estimated total/)).toBeInTheDocument();
+    expect(screen.getByText(/5,300/)).toBeInTheDocument();
+    expect(screen.getByText(/the Custoking quote is the price of record/i)).toBeInTheDocument();
+    // No price entry anywhere on the school's form.
+    expect(screen.queryByLabelText(/price|cost/i)).not.toBeInTheDocument();
+  });
+
   // Ties have no order-scope group: the segmented choice is per line, above the length matrix.
   it('drives a line-scoped segmented choice into the matrix rows', () => {
     render(<ProductFormBuilder definition={tieDefinition} preview />);
