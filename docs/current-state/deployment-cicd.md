@@ -201,6 +201,18 @@ Use this sequence instead, so the manifest and the image land together:
    `CD / Deploy branch environment` with an explicit `commit_sha`, which forces every service to be
    rebuilt and deployed, and takes the Cloud Deploy path that applies the full manifests.
 
+**Reconciling does not unblock the commit that carried the change.** Verified on 2026-09-25: after
+`Ops / Reconcile deployment configuration` succeeded for prod (run 36027376792), dispatching a prod
+release on the same `main` commit still skipped `build-images` and `release` and still reported
+success (run 36142407316). The gate reads the release commit's own diff, so that commit can never
+deploy, however many times it is reconciled or retried. Step 3 above therefore means a *later*
+commit, not a retry.
+
+On `main` that later commit can only be a `dev` promotion: `promotion-source-policy` refuses any
+pull request to `main` whose head is not `dev`. Before opening it, confirm the range is clean with
+`git diff origin/main origin/dev -- deploy/`; if that prints nothing, the gate will not fire again
+and the release deploys (run 36144767018, where `configuration-reconciliation-required` skipped).
+
 A commit touching only `deploy/cloudrun/**` is not sufficient on its own: those paths are not
 service triggers, so `has_service_changes` stays false and the run ends as a no-op. The explicit
 `commit_sha` in step 3 is what makes every service affected.
