@@ -57,6 +57,24 @@ describe('SaNewOrderPanel category tiles', () => {
     expect(screen.queryByRole('button', { name: /custom \/ other/i })).not.toBeInTheDocument();
   });
 
+  it('draws category icons rather than emoji, and offers one route for anything else', async () => {
+    mockApi();
+    const { container } = render(<SaNewOrderPanel onOrderCreated={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /notebooks/i })).toBeInTheDocument());
+
+    // Icons come from the shared library at one stroke weight, not from the platform's emoji font.
+    const notebooks = screen.getByRole('button', { name: /notebooks/i });
+    expect(notebooks.querySelector('svg')).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+
+    // The order type is on the card, so the grid can be scanned without opening a form.
+    expect(within(notebooks).getByText('Recurring')).toBeInTheDocument();
+
+    // Two tiles used to carry the CUSTOM key and led to the same form.
+    expect(screen.getAllByRole('button', { name: /custom \/ other/i })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /food & canteen/i })).not.toBeInTheDocument();
+  });
+
   it('renders the product form for a non-notebook category', async () => {
     const billbooks = {
       ...definition,
