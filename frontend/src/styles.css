@@ -386,6 +386,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 /* Row action buttons. display:flex used to sit on the <td> itself, which takes the cell out of
    the table's column algorithm — the buttons then overhung the card's right edge. */
 .ck-row-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+
+/* A money column is read by comparing magnitudes, which needs the digits in a grid. Left-aligned
+   proportional figures lined ₹1,40,000.00 up with ₹62,400.00 on the rupee sign and nothing else. */
+.ck-table th.ck-num, .ck-table td.ck-num { text-align:right; font-variant-numeric:tabular-nums; }
+.ck-stat-v { font-variant-numeric:tabular-nums; }
 .ck-data-table { min-width:680px; }
 .ck-data-table td { overflow-wrap:anywhere; }
 .ck-form-body { padding:18px; }

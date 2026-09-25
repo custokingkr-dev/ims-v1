@@ -58,7 +58,7 @@ export function SaOrderApprovalsPanel({
             <thead>
               <tr>
                 <th>Order ID</th><th>School</th><th>Category</th>
-                <th>Amount</th><th>Placed on</th><th style={{ textAlign: 'right' }}>Actions</th>
+                <th className="ck-num">Amount</th><th>Placed on</th><th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -74,7 +74,7 @@ export function SaOrderApprovalsPanel({
                   </td>
                   <td><div className="tb">{row.schoolName}</div></td>
                   <td>{categoryLabel(row.category)}</td>
-                  <td>{row.pricingStatus === 'PENDING_PRICING'
+                  <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
                     ? <span className="ck-pill ck-pill-am">Pending pricing</span>
                     : <span style={{ fontWeight: 600 }}>{`₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</span>}</td>
                   <td style={{ color: 'var(--ink3)' }}>{formatIsoDay(row.placedAt || row.createdAt)}</td>

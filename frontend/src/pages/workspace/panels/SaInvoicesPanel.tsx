@@ -110,7 +110,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
             </div>
           )
           : <div className="ck-table-wrap"><table className="ck-table">
-            <thead><tr><th>Invoice</th><th>School</th><th>Order ref</th><th>Total</th><th>Status</th><th>Issued</th><th /></tr></thead>
+            <thead><tr><th>Invoice</th><th>School</th><th>Order ref</th><th className="ck-num">Total</th><th>Status</th><th>Issued</th><th /></tr></thead>
             <tbody>
               {saInvoices.length === 0
                 ? <tr><td colSpan={7}><PanelMessage>No invoices found.</PanelMessage></td></tr>
@@ -124,7 +124,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     </td>
                     <td>{row.school || '—'}</td>
                     <td>{row.orderRef || '—'}</td>
-                    <td>₹{formatMoney(Number(row.total || 0) / 100)}</td>
+                    <td className="ck-num">₹{formatMoney(Number(row.total || 0) / 100)}</td>
                     <td><span className={`ck-status ${String(row.status).toLowerCase().includes('paid') ? 'sg' : 'sam'}`}>{row.status}</span></td>
                     <td>{formatIsoDay(row.issuedAt)}</td>
                     <td>

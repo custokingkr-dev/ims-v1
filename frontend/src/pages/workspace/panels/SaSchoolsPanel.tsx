@@ -250,7 +250,7 @@ export function SaSchoolsPanel() {
             </div>
           )
           : <div className="ck-table-wrap"><table className="ck-table">
-            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th className="ck-num">Orders YTD</th><th className="ck-num">Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
                 ? <tr><td colSpan={15}><PanelMessage>No schools found.</PanelMessage></td></tr>
@@ -267,8 +267,8 @@ export function SaSchoolsPanel() {
                     <td>{financialStartLabel(school.financialYearStartMonth)}</td>
                     <td>{renderAccountList(accountList(school, 'adminAccounts', 'adminEmail'))}</td>
                     <td>{renderAccountList(accountList(school, 'operatorAccounts', 'operationsEmail'))}</td>
-                    <td>{school.ordersYTD ?? 0}</td>
-                    <td>{formatSchoolCurrency(Number(school.gmvYTD || 0) / 100, school)}</td>
+                    <td className="ck-num">{school.ordersYTD ?? 0}</td>
+                    <td className="ck-num">{formatSchoolCurrency(Number(school.gmvYTD || 0) / 100, school)}</td>
                     <td>{school.erpSince || '—'}</td>
                     <td>
                       <div className="ck-actions-inline">

@@ -76,7 +76,7 @@ export function SaErpPanel() {
   return (
     <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
       {/* Fee collection */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Fee collection
       </div>
       <div className="ck-grid ck-grid-3" style={{ marginBottom: 20 }}>
@@ -103,7 +103,7 @@ export function SaErpPanel() {
       </div>
 
       {/* Attendance */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Attendance
       </div>
       <div className="ck-grid ck-grid-2" style={{ marginBottom: 20 }}>
@@ -124,7 +124,7 @@ export function SaErpPanel() {
       </div>
 
       {/* Vendor dues */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Vendor dues
       </div>
       <div className="ck-grid ck-grid-3" style={{ marginBottom: 20 }}>
@@ -151,7 +151,7 @@ export function SaErpPanel() {
       </div>
 
       {/* Student lifecycle & reorder */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Student lifecycle &amp; inventory
       </div>
       <div className="ck-grid ck-grid-2">

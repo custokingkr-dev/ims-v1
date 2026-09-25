@@ -237,7 +237,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           )
           : (
             <div className="ck-table-wrap"><table className="ck-table">
-              <thead><tr><th>Order</th><th>School</th><th>Category</th><th>Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
+              <thead><tr><th>Order</th><th>School</th><th>Category</th><th className="ck-num">Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
                   ? <tr><td colSpan={7}><PanelMessage>No orders found.</PanelMessage></td></tr>
@@ -248,7 +248,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                       <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td>{categoryLabel(row.category)}</td>
-                      <td>{row.pricingStatus === 'PENDING_PRICING'
+                      <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
                         ? <span className="ck-pill ck-pill-am">Pending pricing</span>
                         : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
