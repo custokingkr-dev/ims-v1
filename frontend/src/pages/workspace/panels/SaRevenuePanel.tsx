@@ -67,7 +67,6 @@ export function SaRevenuePanel() {
             label="Total invoiced (GMV)"
             value={`₹${formatMoney(Number(stats.totalInvoiced || 0) / 100)}`}
             sub="Grand total billed"
-            pill="Paise→₹"
             tone="blue"
           />
         </div>

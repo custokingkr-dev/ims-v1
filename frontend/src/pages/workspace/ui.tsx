@@ -66,7 +66,8 @@ export function Stat({
   label: string;
   value: string | number;
   sub: string;
-  pill: string;
+  /** The small state chip. Omit it where the card has no state worth naming. */
+  pill?: string;
   tone: 'green' | 'blue' | 'orange' | 'red';
   onClick?: () => void;
 }) {
@@ -76,7 +77,7 @@ export function Stat({
       <div className="ck-stat-l">{label}</div>
       <div className="ck-stat-v">{value}</div>
       <div className="ck-stat-s">{sub}</div>
-      <div className={`ck-pill ${toneClass}`}>{pill}</div>
+      {pill ? <div className={`ck-pill ${toneClass}`}>{pill}</div> : null}
     </button>
   );
 }

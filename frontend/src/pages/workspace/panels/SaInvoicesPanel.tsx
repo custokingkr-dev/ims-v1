@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, Stat } from '../ui';
-import { formatMoney, todayIso } from '../utils';
+import { formatIsoDay, formatMoney, todayIso } from '../utils';
 
 interface Props {
   onBadgeChange?: (count: number) => void;
@@ -99,7 +99,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
           <Stat label="Sent this month" value={saInvStats?.sentThisMonth ?? 0} sub="Invoices issued" pill="Current" tone="blue" />
           <Stat label="Paid" value={saInvStats?.paid ?? 0} sub="Settled invoices" pill="Received" tone="green" />
           <Stat label="Pending" value={saInvStats?.pending ?? 0} sub="Awaiting payment" pill="Action" tone="orange" />
-          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total" pill="Paise→₹" tone="blue" />
+          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total" tone="blue" />
         </div>
         <div className="ck-card">
           {saInvoicesLoading ? <div style={{ padding: 16 }}>Loading invoices…</div>
@@ -116,7 +116,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td>{row.orderRef || '—'}</td>
                     <td>₹{formatMoney(Number(row.total || 0) / 100)}</td>
                     <td><span className={`ck-status ${String(row.status).toLowerCase().includes('paid') ? 'sg' : 'sam'}`}>{row.status}</span></td>
-                    <td>{row.issuedAt || '—'}</td>
+                    <td>{formatIsoDay(row.issuedAt)}</td>
                     <td style={{ display: 'flex', gap: 8 }}>
                       <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
                       {String(row.status).toLowerCase().includes('awaiting')

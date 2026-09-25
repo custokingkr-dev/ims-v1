@@ -67,7 +67,6 @@ export function SaErpPanel() {
           label="Total overdue"
           value={`₹${formatMoney(metrics.fees.totalOverdueAmountPaise / 100)}`}
           sub="Overdue fee amount"
-          pill="Paise→₹"
           tone="orange"
         />
         <Stat
@@ -109,7 +108,6 @@ export function SaErpPanel() {
           label="Total vendor dues"
           value={`₹${formatMoney(metrics.vendorDues.totalDuesPaise / 100)}`}
           sub="Unpaid vendor amounts"
-          pill="Paise→₹"
           tone="orange"
         />
         <Stat

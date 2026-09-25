@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, Info, Stat } from '../ui';
-import { formatMoney, todayIso } from '../utils';
+import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
+import { useProductCategories } from '../../../features/catalog/api';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 
 interface Props {
@@ -12,6 +13,19 @@ interface Props {
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const [notebookOrderId, setNotebookOrderId] = useState<string | null>(null);
+  // The Category column printed the catalogue code (REPORT_CARDS, BILLBOOKS). The catalogue
+  // already carries each code's label, so read it from there and humanise anything it does not
+  // know rather than hardcoding a list that drifts as categories are seeded.
+  const productCatalog = useProductCategories();
+  const categoryLabel = (code?: string) => {
+    const key = String(code ?? '').trim();
+    if (!key) return '—';
+    const known = productCatalog.categories?.find((category) => category.code === key);
+    if (known) return known.label;
+    const words = key.replace(/_/g, ' ').toLowerCase();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  };
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -198,7 +212,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <Stat label="Total orders" value={stats?.totalOrders ?? 0} sub="Across all schools" pill="Live" tone="blue" />
           <Stat label="New requests" value={stats?.pendingApproval ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
           <Stat label="In progress" value={stats?.approved ?? 0} sub="Approved or processing" pill="Active" tone="green" />
-          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
+          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" tone="blue" />
         </div>
         <div className="ck-form-card" style={{ marginBottom: 16 }}>
           <div className="ck-form-body">
@@ -235,12 +249,12 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                   ? <tr><td colSpan={7}><div className="ts">No orders found.</div></td></tr>
                   : filtered.map((row: any) => (
                     <tr key={row.id}>
-                      <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || row.category}</div></td>
+                      <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || categoryLabel(row.category)}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
-                      <td>{row.category}</td>
+                      <td>{categoryLabel(row.category)}</td>
                       <td>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
-                      <td>{row.placedAt || row.createdAt || '—'}</td>
+                      <td>{formatIsoDay(row.placedAt || row.createdAt)}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
                         {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
