@@ -229,7 +229,12 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
         )}
         <div className="ck-card">
           {loading ? <div style={{ padding: 16 }}>Loading orders…</div>
-          : error ? <div style={{ padding: 16 }}>{error}</div>
+          : error ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{error}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void load()}>Retry</button>
+            </div>
+          )
           : (
             <div className="ck-table-wrap"><table className="ck-table">
               <thead><tr><th>Order</th><th>School</th><th>Category</th><th>Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
@@ -238,7 +243,9 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                   ? <tr><td colSpan={7}><div className="ts">No orders found.</div></td></tr>
                   : filtered.map((row: any) => (
                     <tr key={row.id}>
-                      <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || categoryLabel(row.category)}</div></td>
+                      {/* description and title are not fields on a catalog order row, so this
+                          secondary line could only ever repeat the Category column beside it. */}
+                      <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td>{categoryLabel(row.category)}</td>
                       <td>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>

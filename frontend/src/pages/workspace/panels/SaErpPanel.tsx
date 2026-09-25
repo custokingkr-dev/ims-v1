@@ -9,16 +9,19 @@ export function SaErpPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
     setError('');
+    setMetrics(null);
     fetchCommandCenterMetrics()
       .then((data) => setMetrics(data))
       .catch((e: any) => {
         setError(e?.response?.data?.message || 'Failed to load ERP metrics.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   if (loading) {
     return (
@@ -33,8 +36,8 @@ export function SaErpPanel() {
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
         <div className="ck-card">
           <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
-            <span aria-hidden="true">✕</span>
             <div>{error}</div>
+            <button className="ck-btn ck-btn-ghost" onClick={load}>Retry</button>
           </div>
         </div>
       </ModuleShell>
@@ -54,7 +57,8 @@ export function SaErpPanel() {
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
         <div className="ck-card">
           <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
-            <div>ERP metrics could not be read. Please retry.</div>
+            <div>ERP metrics could not be read.</div>
+            <button className="ck-btn ck-btn-ghost" onClick={load}>Retry</button>
           </div>
         </div>
       </ModuleShell>

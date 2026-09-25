@@ -103,7 +103,12 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
         </div>
         <div className="ck-card">
           {saInvoicesLoading ? <div style={{ padding: 16 }}>Loading invoices…</div>
-          : saInvoicesError ? <div style={{ padding: 16 }}>{saInvoicesError}</div>
+          : saInvoicesError ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{saInvoicesError}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void loadSaInvoices()}>Retry</button>
+            </div>
+          )
           : <div className="ck-table-wrap"><table className="ck-table">
             <thead><tr><th>Invoice</th><th>School</th><th>Order ref</th><th>Total</th><th>Status</th><th>Issued</th><th /></tr></thead>
             <tbody>
@@ -111,7 +116,12 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                 ? <tr><td colSpan={7}><div className="ts">No invoices found.</div></td></tr>
                 : saInvoices.map((row: any) => (
                   <tr key={row.id}>
-                    <td><div className="tb">{row.id}</div><div className="ts">{row.description || 'Invoice'}</div></td>
+                    {/* An invoice's description is free text and often empty; labelling the
+                        blank case "Invoice" under an invoice number told the reader nothing. */}
+                    <td>
+                      <div className="tb">{row.id}</div>
+                      {row.description ? <div className="ts">{row.description}</div> : null}
+                    </td>
                     <td>{row.school || '—'}</td>
                     <td>{row.orderRef || '—'}</td>
                     <td>₹{formatMoney(Number(row.total || 0) / 100)}</td>
@@ -119,9 +129,6 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td>{formatIsoDay(row.issuedAt)}</td>
                     <td style={{ display: 'flex', gap: 8 }}>
                       <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
-                      {String(row.status).toLowerCase().includes('awaiting')
-                        ? <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Resend</button>
-                        : <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download</button>}
                     </td>
                   </tr>
                 ))}

@@ -15,7 +15,7 @@ export function SaRevenuePanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
     setError('');
     api
@@ -25,7 +25,9 @@ export function SaRevenuePanel() {
         setError(e?.response?.data?.message || 'Failed to load revenue stats.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   return (
     <ModuleShell title="Revenue analytics" subtitle="Platform-wide invoice revenue and collection summary">
@@ -33,9 +35,9 @@ export function SaRevenuePanel() {
         <div className="ck-card" style={{ padding: 16 }}>Loading revenue stats…</div>
       ) : error ? (
         <div className="ck-card">
-          <div className="ck-alert ck-alert-re" style={{ margin: 16 }}>
-            <span>✕</span>
+          <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
             <div>{error}</div>
+            <button className="ck-btn ck-btn-ghost" onClick={load}>Retry</button>
           </div>
         </div>
       ) : !stats ? (
