@@ -54,6 +54,8 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
   const [requiredByDate, setRequiredByDate] = useState(initialOrder?.order.requiredByDate || '');
   const [notes, setNotes] = useState(initialOrder?.order.notes || '');
   const [files, setFiles] = useState<Partial<Record<AssetKind, File>>>({});
+  // Print references accumulate rather than replacing one another.
+  const [referenceFiles, setReferenceFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
@@ -62,6 +64,16 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
   const customized = input.orderSelections.CUSTOMIZATION === 'CUSTOMIZED';
   const assetRules = definition.rules.filter((r) => r.active !== false && r.ruleType === 'REQUIRE_ASSET'
     && input.lines.some((line) => matches(r.matchOptions, { ...line.selections, ...input.orderSelections })));
+  // Every prototype also offers an optional upload, and bill books and fliers take several print
+  // references. An offer is dropped when the same kind is already required, so a customised
+  // notebook shows one design field rather than two.
+  const offerRules = definition.rules.filter((r) => r.active !== false && r.ruleType === 'OFFER_ASSET'
+    && !assetRules.some((required) => required.params.assetKind === r.params.assetKind)
+    && matches(r.matchOptions, input.orderSelections));
+  const referenceRule = offerRules.find((r) => r.params.assetKind === 'PRINT_REFERENCE');
+  const singleOffers = offerRules.filter((r) => r !== referenceRule);
+  const ruleAccept = (rule: { params: Record<string, string | number> }) => rule.params.accept ? String(rule.params.accept) : undefined;
+  const ruleMaxBytes = (rule: { params: Record<string, string | number> }) => Number(rule.params.maxBytes) || undefined;
   const currentAsset = (kind: AssetKind) => saved?.assets.find((a) => a.assetKind === kind && !a.supersededAt);
   const canSave = preview || (saved ? can('order:update') : can('order:create'));
   const isPlaced = !!saved && saved.order.status !== 'DRAFT';
@@ -160,13 +172,16 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
         detail = await getFormOrder(created.id);
       }
       recordSaved(detail);
-      for (const [kind, file] of Object.entries(files)) {
-        if (!file) continue;
+      const queued: [string, File][] = [
+        ...Object.entries(files).filter((entry): entry is [string, File] => !!entry[1]),
+        ...referenceFiles.map((file) => ['PRINT_REFERENCE', file] as [string, File]),
+      ];
+      for (const [kind, file] of queued) {
         const form = new FormData(); form.append('file', file); form.append('assetKind', kind);
         await api.post(`/supply/orders/${detail.order.id}/assets`, form);
-        setFiles((current) => ({ ...current, [kind]: undefined }));
         detail = await getFormOrder(detail.order.id); recordSaved(detail);
       }
+      if (queued.length) { setFiles({}); setReferenceFiles([]); }
       if (place) { await api.post(`/supply/orders/${detail.order.id}/place`); detail = await getFormOrder(detail.order.id); recordSaved(detail); }
       setNotice(place ? customized ? 'Order placed. Design approval and pricing are pending.' : 'Order placed. Processing and pricing are pending; no design approval is required.' : `Draft ${detail.order.id} saved.`);
       onSaved?.(detail, place);
@@ -293,7 +308,33 @@ export function ProductFormBuilder({ categoryCode, definition: suppliedDefinitio
         label={rule.params.assetKind === 'DESIGN' ? 'Design artwork' : 'Pre-delivery photo'}
         requirement={rule.params.stage === 'ON_PLACE' ? 'Required to place order' : 'Required before delivery'}
         orderId={saved?.order.id} asset={currentAsset(rule.params.assetKind as AssetKind)} file={files[rule.params.assetKind as AssetKind]}
-        disabled={saving || isPlaced || !can('order:update')} onFile={(file) => setFiles((current) => ({ ...current, [String(rule.params.assetKind)]: file }))} />)}</div>
+        disabled={saving || isPlaced || !can('order:update')} onFile={(file) => setFiles((current) => ({ ...current, [String(rule.params.assetKind)]: file }))} />)}
+
+      {singleOffers.map((rule) => <OrderAssetField key={rule.id ?? `offer-${rule.params.assetKind}`}
+        assetKind={rule.params.assetKind as AssetKind} label={String(rule.params.label || 'Attachment')} requirement="Optional"
+        accept={ruleAccept(rule)} maxBytes={ruleMaxBytes(rule)}
+        orderId={saved?.order.id} asset={currentAsset(rule.params.assetKind as AssetKind)} file={files[rule.params.assetKind as AssetKind]}
+        disabled={saving || isPlaced || !can('order:update')} onFile={(file) => setFiles((current) => ({ ...current, [String(rule.params.assetKind)]: file }))} />)}
+
+      {referenceRule && <div className="ck-product-references">
+        {/* Several images may be shared for one order, so each new choice is added to the list. */}
+        {[...(saved?.assets.filter((a) => a.assetKind === 'PRINT_REFERENCE' && !a.supersededAt) || []).map((asset, i) => ({ key: `saved-${asset.id}`, asset, file: undefined, index: i })),
+          ...referenceFiles.map((file, i) => ({ key: `new-${i}`, asset: undefined, file, index: i }))].map((entry) => <OrderAssetField
+            key={entry.key} assetKind="PRINT_REFERENCE" label={String(referenceRule.params.label || 'Print reference')} requirement="Optional"
+            accept={ruleAccept(referenceRule)} maxBytes={ruleMaxBytes(referenceRule)}
+            orderId={saved?.order.id} asset={entry.asset} file={entry.file}
+            disabled={saving || isPlaced || !can('order:update')}
+            onFile={entry.file ? (file) => setReferenceFiles((current) => current.filter((_, i) => file ? true : i !== entry.index)) : undefined} />)}
+        <label className={`ck-btn ck-btn-ghost${saving || isPlaced ? ' ck-product-disabled' : ''}`} htmlFor="print-reference-add">Add an image</label>
+        <input id="print-reference-add" className="ck-product-file-input" type="file" multiple
+          accept={ruleAccept(referenceRule)} disabled={saving || isPlaced || !can('order:update')}
+          aria-label={String(referenceRule.message || 'Share all the images')}
+          onChange={(event) => {
+            const chosen = [...(event.target.files || [])]; event.target.value = '';
+            if (chosen.length) setReferenceFiles((current) => [...current, ...chosen]);
+          }} />
+        <p className="ck-product-muted">{String(referenceRule.message || '')}</p>
+      </div>}</div>
       <label className="field"><span>Notes</span><textarea rows={2} value={notes} maxLength={255} onChange={(e) => setNotes(e.target.value)} /></label>
       {!customized && <p className="ck-product-muted">No design approval required</p>}
     </fieldset>

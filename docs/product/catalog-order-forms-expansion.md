@@ -183,6 +183,36 @@ The same omission hid a second defect: `ProductFormBuilder`'s `categoryCode` pro
 category's form would have been filed as a notebook order. The category now comes from the
 definition, which cannot disagree with the form being displayed.
 
+## Uploads and print references (2026-09-25)
+
+Every prototype offers an upload and all of them are optional, but the model could only express a
+*required* asset (`REQUIRE_ASSET`). Four of the five categories therefore had no upload at all, and
+the print-reference block on bill books and fliers did not exist. V18 adds what they show:
+
+| | Upload | Accepts | Cap |
+| --- | --- | --- | --- |
+| Notebooks | Sample design | PNG, JPEG, WebP, PDF | 5 MB |
+| Bill books | Bill book image + several print references | PNG, JPEG, WebP | 5 MB |
+| Belts | Belt image | PNG, JPEG, WebP | 5 MB |
+| Flex | Flex PDF | PDF | **10 MB** |
+| Fliers | Flier image + several print references | PNG, JPEG, WebP | 5 MB |
+
+Three things this required. `OFFER_ASSET` is an optional upload that never blocks placement, so the
+existing `REQUIRE_ASSET` keeps its meaning — where both name the same kind, as on a customised
+notebook, the offer is dropped and one field is shown. `PRINT_REFERENCE` is a kind that accumulates:
+the unique index that keeps one current asset per kind now excludes it, because a reference set is a
+set rather than a replacement. And the size cap moved from a single constant onto the rule, since
+the flex PDF is 10 MB where every image field is 5 MB; the table's own check allows 10 MB and no
+seeded rule can raise a cap past it.
+
+"Share the content (optional)" beside those images is an order-scope typed value, stored in the new
+`catalog_orders.attributes` — the counterpart of `catalog_order_lines.attributes`, so it needed no
+new table.
+
+**Still not built:** the prototypes' "Placed this session" table and the image lightbox. Those are
+page furniture rather than the order form, and the form lives inside the existing workspace
+navigation.
+
 ## Decisions taken by the product owner
 
 1. **The notebook quantity change reverses D-2, and that reversal is confirmed (2026-09-23).** The

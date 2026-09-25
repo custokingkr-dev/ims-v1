@@ -106,3 +106,7 @@
   .ck-product-matrix-table td { width: 92px; }
   .ck-product-footbar { flex-direction: column; align-items: stretch; }
 }
+
+/* Several print reference images for one order, as bill books and fliers allow. */
+.ck-product-references { display: flex; flex-direction: column; gap: var(--ck-space-3); padding: var(--ck-space-3); border: 1px solid var(--border); border-radius: var(--ck-radius-sm); }
+.ck-product-references > label { align-self: flex-start; }

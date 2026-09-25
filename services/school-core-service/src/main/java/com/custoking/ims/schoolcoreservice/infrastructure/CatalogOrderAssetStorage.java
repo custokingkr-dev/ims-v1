@@ -27,6 +27,8 @@ import java.util.UUID;
 @Component
 public class CatalogOrderAssetStorage {
     public static final long MAX_BYTES = 5L * 1024 * 1024;
+    /** No seeded rule may raise the cap past what the assets table itself accepts. */
+    public static final long ABSOLUTE_MAX_BYTES = 10L * 1024 * 1024;
     private final String bucket;
     private final boolean local;
     private final Path localDirectory;
@@ -43,8 +45,17 @@ public class CatalogOrderAssetStorage {
     }
 
     public ValidatedAsset validate(byte[] bytes, String originalFilename, String assetKind) {
-        if (bytes == null || bytes.length == 0 || bytes.length > MAX_BYTES) {
-            throw bad("Upload a nonempty file of 5 MB or smaller");
+        return validate(bytes, originalFilename, assetKind, MAX_BYTES);
+    }
+
+    /**
+     * The cap is per upload rather than global: the flex prototype accepts a 10 MB PDF where every
+     * image field accepts 5 MB, and the seeded rule carries the limit for its own category.
+     */
+    public ValidatedAsset validate(byte[] bytes, String originalFilename, String assetKind, long maxBytes) {
+        long cap = Math.min(maxBytes > 0 ? maxBytes : MAX_BYTES, ABSOLUTE_MAX_BYTES);
+        if (bytes == null || bytes.length == 0 || bytes.length > cap) {
+            throw bad("Upload a nonempty file of " + (cap / (1024 * 1024)) + " MB or smaller");
         }
         String contentType;
         if (starts(bytes, new byte[]{(byte) 0x89, 'P', 'N', 'G', 13, 10, 26, 10})) contentType = "image/png";
