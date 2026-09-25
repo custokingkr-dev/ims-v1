@@ -1,7 +1,7 @@
 // Presentational components and style constants shared across workspace panels.
 // These components are stateless — they render props, nothing more.
 
-import { type CSSProperties } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { formatMoney } from './utils';
 
 // ─── Layout shells ────────────────────────────────────────────────────────────
@@ -125,6 +125,14 @@ export function OrderSummaryPanel({
 }
 
 // ─── Shared style constants ──────────��────────────────────────────────────────
+
+/**
+ * The one way this portal says "waiting" or "nothing here". Both moments used to be written
+ * inline, differently, in every panel that had them.
+ */
+export function PanelMessage({ children }: { children: ReactNode }) {
+  return <div className="ck-panel-msg">{children}</div>;
+}
 
 export const thStyle: CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--ink2)' };
 export const tdStyle: CSSProperties = { padding: '10px 12px', borderTop: '1px solid var(--border)', fontSize: 13, verticalAlign: 'middle' };

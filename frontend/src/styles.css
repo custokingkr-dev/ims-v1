@@ -377,6 +377,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-table th { font-size:10px; font-weight:700; text-transform:uppercase; color:var(--ink3); letter-spacing:.05em; background:var(--ck-bg-surface-raised); }
 .ck-table tbody tr:last-child td { border-bottom:none; }
 .ck-table-wrap { width:100%; overflow-x:auto; }
+
+/* Waiting and having nothing to show are the same two moments in every panel. They were written
+   four different ways — padding 16 against padding 24, left against centre, default ink against
+   --ink3, inside a card and outside one — so they now share one definition. */
+.ck-panel-msg { padding:24px 16px; text-align:center; color:var(--ink3); font-size:13px; }
+
+/* Row action buttons. display:flex used to sit on the <td> itself, which takes the cell out of
+   the table's column algorithm — the buttons then overhung the card's right edge. */
+.ck-row-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
 .ck-data-table { min-width:680px; }
 .ck-data-table td { overflow-wrap:anywhere; }
 .ck-form-body { padding:18px; }

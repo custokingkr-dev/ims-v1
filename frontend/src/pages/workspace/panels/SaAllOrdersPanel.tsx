@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field, Info, Stat } from '../ui';
+import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
 import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
 import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
@@ -228,7 +228,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}><span>i</span><div>Showing the first {orders.length} orders — some older orders are not displayed. Refine the filters to narrow the list.</div></div>
         )}
         <div className="ck-card">
-          {loading ? <div style={{ padding: 16 }}>Loading orders…</div>
+          {loading ? <PanelMessage>Loading orders…</PanelMessage>
           : error ? (
             <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
               <div>{error}</div>
@@ -240,7 +240,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               <thead><tr><th>Order</th><th>School</th><th>Category</th><th>Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={7}><div className="ts">No orders found.</div></td></tr>
+                  ? <tr><td colSpan={7}><PanelMessage>No orders found.</PanelMessage></td></tr>
                   : filtered.map((row: any) => (
                     <tr key={row.id}>
                       {/* description and title are not fields on a catalog order row, so this
@@ -248,10 +248,12 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                       <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
                       <td>{categoryLabel(row.category)}</td>
-                      <td>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
+                      <td>{row.pricingStatus === 'PENDING_PRICING'
+                        ? <span className="ck-pill ck-pill-am">Pending pricing</span>
+                        : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
                       <td>{formatIsoDay(row.placedAt || row.createdAt)}</td>
-                      <td style={{ display: 'flex', gap: 8 }}>
+                      <td><div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
                         {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
@@ -263,7 +265,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                               <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>
                             </>
                           ))}
-                      </td>
+                      </div></td>
                     </tr>
                   ))}
               </tbody>

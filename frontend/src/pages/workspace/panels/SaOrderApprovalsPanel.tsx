@@ -1,4 +1,4 @@
-import { ModuleShell, Stat } from '../ui';
+import { ModuleShell, PanelMessage, Stat } from '../ui';
 import { formatIsoDay, formatMoney } from '../utils';
 import { useState } from 'react';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
@@ -50,13 +50,11 @@ export function SaOrderApprovalsPanel({
       </div>
       <div className="ck-card">
         {loading ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>Loading orders…</div>
+          <PanelMessage>Loading orders…</PanelMessage>
         ) : orders.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>
-            No orders awaiting final approval.
-          </div>
+          <PanelMessage>No orders awaiting final approval.</PanelMessage>
         ) : (
-          <table className="ck-table">
+          <div className="ck-table-wrap"><table className="ck-table">
             <thead>
               <tr>
                 <th>Order ID</th><th>School</th><th>Category</th>
@@ -93,7 +91,7 @@ export function SaOrderApprovalsPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 

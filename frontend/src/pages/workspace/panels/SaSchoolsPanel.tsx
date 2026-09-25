@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field, Stat } from '../ui';
+import { ModuleShell, Field, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../../../utils/timeZones';
 import { DEFAULT_SCHOOL_LOCALIZATION, SCHOOL_COUNTRY_PRESETS, formatSchoolCurrency, localizationForCountry } from '../../../utils/schoolLocalization';
@@ -242,7 +242,7 @@ export function SaSchoolsPanel() {
           );
         })()}
         <div className="ck-card">
-          {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
+          {saSchoolsLoading ? <PanelMessage>Loading schools…</PanelMessage>
           : saSchoolsError ? (
             <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
               <div>{saSchoolsError}</div>
@@ -253,7 +253,7 @@ export function SaSchoolsPanel() {
             <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={15}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={15}><PanelMessage>No schools found.</PanelMessage></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'} · {school.countryCode || 'IN'} · {school.currencyCode || 'INR'}</div></td>

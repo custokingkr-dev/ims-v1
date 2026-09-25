@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Stat } from '../ui';
+import { ModuleShell, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
 interface InvStats {
@@ -32,7 +32,7 @@ export function SaRevenuePanel() {
   return (
     <ModuleShell title="Revenue analytics" subtitle="Platform-wide invoice revenue and collection summary">
       {loading ? (
-        <div className="ck-card" style={{ padding: 16 }}>Loading revenue stats…</div>
+        <div className="ck-card"><PanelMessage>Loading revenue stats…</PanelMessage></div>
       ) : error ? (
         <div className="ck-card">
           <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
@@ -41,7 +41,7 @@ export function SaRevenuePanel() {
           </div>
         </div>
       ) : !stats ? (
-        <div className="ck-card" style={{ padding: 16 }}>No revenue data available.</div>
+        <div className="ck-card"><PanelMessage>No revenue data available.</PanelMessage></div>
       ) : (
         <div className="ck-grid ck-grid-4">
           <Stat

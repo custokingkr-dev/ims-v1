@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchCommandCenterMetrics } from '../../../api/dashboardCommandCenterApi';
 import type { DashboardCommandCenterResponse } from '../../../types/dashboardCommandCenter';
-import { ModuleShell, Stat } from '../ui';
+import { ModuleShell, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
 export function SaErpPanel() {
@@ -26,7 +26,7 @@ export function SaErpPanel() {
   if (loading) {
     return (
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
-        <div className="ck-card" style={{ padding: 16 }}>Loading ERP metrics…</div>
+        <div className="ck-card"><PanelMessage>Loading ERP metrics…</PanelMessage></div>
       </ModuleShell>
     );
   }
@@ -68,7 +68,7 @@ export function SaErpPanel() {
   if (!metrics) {
     return (
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
-        <div className="ck-card" style={{ padding: 16 }}>No ERP metrics available.</div>
+        <div className="ck-card"><PanelMessage>No ERP metrics available.</PanelMessage></div>
       </ModuleShell>
     );
   }
