@@ -72,14 +72,19 @@ export function Stat({
   onClick?: () => void;
 }) {
   const toneClass = tone === 'green' ? 'pg' : tone === 'blue' ? 'pb' : tone === 'orange' ? 'po' : 'pr';
-  return (
-    <button className="ck-stat" onClick={onClick}>
+  // A stat card with nowhere to go is a reading, not a control. Rendering every one of them as
+  // a <button> put a row of dead tab stops in front of anyone using a keyboard.
+  const body = (
+    <>
       <div className="ck-stat-l">{label}</div>
       <div className="ck-stat-v">{value}</div>
       <div className="ck-stat-s">{sub}</div>
       {pill ? <div className={`ck-pill ${toneClass}`}>{pill}</div> : null}
-    </button>
+    </>
   );
+  return onClick
+    ? <button className="ck-stat" onClick={onClick}>{body}</button>
+    : <div className="ck-stat">{body}</div>;
 }
 
 // ─── Catalog order summary sidebar ───────────────────────────────────────────

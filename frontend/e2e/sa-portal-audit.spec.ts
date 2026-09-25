@@ -115,3 +115,33 @@ for (const width of [375, 768] as const) {
     });
   }
 }
+
+/**
+ * The nav and every input announce keyboard focus with a 2px green ring. Buttons announced it
+ * with the browser default — a 1px near-black hairline at zero offset — which on a filled dark
+ * green primary button is no announcement at all. Measured from the browser, because what a
+ * stylesheet declares and what a control actually draws are different questions.
+ */
+test('keyboard focus is as visible on buttons as it is on the nav', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openPortal(page);
+  await page.locator('.ck-nav-item').first().waitFor({ state: 'attached' });
+  const measured = await page.evaluate(() => {
+    const read = (selector: string) => {
+      const el = document.querySelector<HTMLElement>(selector);
+      if (!el) return null;
+      el.focus();
+      const style = getComputedStyle(el);
+      return { selector, width: parseFloat(style.outlineWidth) || 0, style: style.outlineStyle };
+    };
+    return ['.ck-nav-item', '.ck-btn'].map(read);
+  });
+  for (const entry of measured) {
+    expect(entry, 'element not present to measure').not.toBeNull();
+    expect(entry!.style, `${entry!.selector} has no drawn outline`).not.toBe('none');
+    // 'auto' is the user-agent ring; the application draws its own.
+    expect(entry!.style, `${entry!.selector} falls back to the browser default ring`).toBe('solid');
+    expect(entry!.width, `${entry!.selector} focus ring is thinner than the nav's`).toBeGreaterThanOrEqual(2);
+  }
+});
+
