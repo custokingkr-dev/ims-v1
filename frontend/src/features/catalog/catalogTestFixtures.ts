@@ -30,3 +30,13 @@ export const flexDefinition: FormDefinition = {
     { id: 13, categoryCode: 'FLEX', code: 'BREADTH_FT', label: 'Breadth', render: 'FIELD', scope: 'LINE', level: 3, required: true, active: true, selectionType: 'SINGLE', inputType: 'DECIMAL', unit: 'ft', options: [] },
   ],
 };
+
+/** Ties: a line-scoped segmented choice plus a length matrix, with no order-scope group at all. */
+export const tieDefinition: FormDefinition = {
+  enabled: true, dependencies: [], rules: [],
+  category: { code: 'TIES', label: 'Ties', emoji: '', description: 'School ties', orderType: 'Recurring', formEnabled: true, paged: false, notesEnabled: false, active: true, sortOrder: 12 },
+  groups: [
+    { id: 21, categoryCode: 'TIES', code: 'TIE_TYPE', label: 'Tie type', render: 'SEGMENTED', scope: 'LINE', level: 1, required: true, active: true, selectionType: 'SINGLE', options: options(21, [['SATIN_WITH_LOGO', 'Satin Tie with logo'], ['SATIN', 'Satin Tie'], ['CLOTH', 'Cloth Tie'], ['READYMADE', 'Readymade ties']]) },
+    { id: 22, categoryCode: 'TIES', code: 'LENGTH', label: 'Length', render: 'MATRIX', scope: 'LINE', level: 2, required: true, active: true, selectionType: 'SINGLE', options: options(22, [['LEN_10', '10 inch'], ['LEN_11', '11 inch'], ['LEN_12', '12 inch'], ['LEN_14', '14 inch'], ['LEN_16', '16 inch'], ['LONG_TIE', 'Long Tie']]) },
+  ],
+};

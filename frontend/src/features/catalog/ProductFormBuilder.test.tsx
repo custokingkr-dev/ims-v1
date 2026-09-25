@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../services/api';
 import { ProductFormBuilder } from './ProductFormBuilder';
-import { flexDefinition, notebookDefinition, savedNotebook } from './catalogTestFixtures';
+import { flexDefinition, notebookDefinition, savedNotebook, tieDefinition } from './catalogTestFixtures';
 vi.mock('../../services/api', () => ({ default: { post: vi.fn(), patch: vi.fn(), get: vi.fn() } }));
 vi.mock('../../hooks/usePermissions', () => ({ usePermissions: () => ({ can: () => true }) }));
 beforeEach(() => { vi.clearAllMocks(); URL.createObjectURL = vi.fn(() => 'blob:artwork'); URL.revokeObjectURL = vi.fn(); });
@@ -63,6 +63,23 @@ describe('ProductFormBuilder in the prototype format', () => {
 });
 
 describe('ProductFormBuilder, 2026-09-25 product decisions', () => {
+  // Ties have no order-scope group: the segmented choice is per line, above the length matrix.
+  it('drives a line-scoped segmented choice into the matrix rows', () => {
+    render(<ProductFormBuilder definition={tieDefinition} preview />);
+    expect(screen.getByRole('group', { name: 'Tie type' })).toBeInTheDocument();
+    expect(screen.getAllByRole('spinbutton', { name: /Count for / })).toHaveLength(6);
+    // No page column on a category that counts units.
+    expect(screen.queryByLabelText(/Pages for/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cloth Tie' }));
+    fireEvent.change(screen.getByLabelText('Count for Long Tie'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add to order' }));
+    const order = screen.getByRole('region', { name: 'Order' });
+    expect(within(order).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(order).getByText('Long Tie')).toBeInTheDocument();
+    expect(within(order).getByText('Cloth Tie')).toBeInTheDocument();
+  });
+
   it('shows the note on a category that collects one and nowhere else', () => {
     const { unmount } = render(<ProductFormBuilder definition={notebookDefinition} preview />);
     expect(screen.queryByLabelText('Notes')).not.toBeInTheDocument();

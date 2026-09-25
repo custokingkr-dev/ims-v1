@@ -213,6 +213,35 @@ new table.
 page furniture rather than the order form, and the form lives inside the existing workspace
 navigation.
 
+## Ties, a sixth category (2026-09-25)
+
+From a prototype supplied after the first five. Shaped like belts: a tie type chosen once, then a
+table of lengths each with its own count, rows left at zero skipped, and an optional image.
+
+| | |
+| --- | --- |
+| Tie type | Satin Tie with logo, Satin Tie, Cloth Tie, Readymade ties |
+| Length | 10, 11, 12, 14, 16 inch, plus **Long Tie** fixed at 48 inch |
+| Per line | Count, with no minimum or rounding |
+| Upload | Tie image, PNG/JPEG/WebP, 5 MB, optional |
+
+Two details taken from the prototype's source rather than its appearance, because the difference
+matters:
+
+```js
+var LENGTHS_STANDARD = ["10 inch","11 inch","12 inch","14 inch","16 inch"];
+var LONG_TIE_ROW = "Long Tie · 48 inch";
+/* Every tie type gets the 10-16 inch range, plus the Long Tie row (fixed 48 inch) - Long Tie is
+   a subcategory available under each of the 4 tie types, not a separate type. */
+```
+
+So **Long Tie is a sixth length, not a fifth type**, and **no length depends on the type** - unlike
+belts, there are no dependency rows. The list is exactly those five lengths; there is no 13 or
+15 inch.
+
+Ties needed **no frontend change at all**. The tiles and the form are driven by the definition, so
+seeding a category is now enough to make it orderable - which is the whole point of the earlier fix.
+
 ## Two changes on 2026-09-25
 
 **Artwork no longer blocks a customised notebook order.** The 2026-09-15 record said a customised
