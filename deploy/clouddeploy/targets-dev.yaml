@@ -151,6 +151,9 @@ deployParameters:
   otel_sample: "0.05"
   notification_delivery_provider: logging
   msg91_dry_run: "true"
+  # Authenticated request-driven Scheduler verified before this opt-in; never sends externally.
+  broadcast_dispatch_mode: "DRY_RUN"
+  broadcast_worker_ready: "true"
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "false"

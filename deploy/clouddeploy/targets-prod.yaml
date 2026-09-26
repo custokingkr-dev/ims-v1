@@ -153,6 +153,8 @@ deployParameters:
   otel_sample: "0.05"
   notification_delivery_provider: logging
   msg91_dry_run: "true"
+  broadcast_dispatch_mode: "OFF"
+  broadcast_worker_ready: "false"
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "false"
