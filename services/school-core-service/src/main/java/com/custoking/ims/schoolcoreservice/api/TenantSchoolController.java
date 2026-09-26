@@ -410,7 +410,7 @@ public class TenantSchoolController {
             @PathVariable Long id) {
         requireToken(token, "tenant-school:read");
         TenantScope.requirePermissionIfAuthenticated("zone:read");
-        TenantScope.requireSuperAdmin();
+        TenantScope.requireZoneRead(id);
         return zones.findById(id).map(ZoneResponse::from)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "zone not found"));
     }
@@ -462,7 +462,8 @@ public class TenantSchoolController {
             @RequestParam(required = false) Boolean active) {
         requireToken(token, "tenant-school:read");
         TenantScope.requirePermissionIfAuthenticated("zone:read");
-        TenantScope.requireSuperAdmin();
+        TenantScope.requireZoneRead(id);
+        if (!TenantContext.get().isSuperAdmin()) active = true;
         return structure.zoneSchools(id, active);
     }
 

@@ -4,49 +4,52 @@
 
 import type { AxiosInstance } from 'axios';
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-}
+export type LoginRequest = { "email": string; "password": string; };
 
-export interface AuthResponse {
-  accessToken: string;
-  userId: number;
-  fullName: string;
-  email: string;
-  role: "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER";
-  branchId: number | null;
-  branchName: string | null;
-  zoneId: number | null;
-  zoneName: string | null;
-  roles: string[];
-  permissions: string[];
-  operatorSchools: number[];
-}
+export type AuthResponse = { "accessToken": string; "userId": number; "fullName": string; "email": string; "role": "SUPERADMIN" | "ZONE_ADMIN" | "ADMIN" | "SCHOOL_ADMIN" | "OPERATIONS" | "ACCOUNTANT" | "TEACHER" | "VIEWER"; "branchId": number | null; "branchName": string | null; "zoneId": number | null; "zoneName": string | null; "roles": Array<string>; "permissions": Array<string>; "operatorSchools": Array<number>; };
 
-export interface Problem {
-  [key: string]: unknown;
-  message?: string;
-}
+export type Problem = { "message"?: string; [key: string]: unknown; };
+
+export type PasswordResetCapabilities = { "enabled": boolean; };
+
+export type PasswordResetRequest = { "email": string; };
+
+export type PasswordResetConfirm = { "token": string; "password": string; };
+
+export type PasswordResetAccepted = { "message": string; };
 
 export interface IdentityAuthClient {
   login(request: LoginRequest): Promise<AuthResponse>;
   refresh(): Promise<AuthResponse>;
   logout(): Promise<void>;
+  passwordResetCapabilities(): Promise<PasswordResetCapabilities>;
+  requestPasswordReset(request: PasswordResetRequest): Promise<PasswordResetAccepted>;
+  confirmPasswordReset(request: PasswordResetConfirm): Promise<void>;
 }
 
 export function createIdentityAuthClient(http: AxiosInstance): IdentityAuthClient {
   return {
     async login(request: LoginRequest) {
-      const response = await http.post<AuthResponse>('/auth/login', request);
+      const response = await http.post<AuthResponse>("/auth/login", request);
       return response.data;
     },
     async refresh() {
-      const response = await http.post<AuthResponse>('/auth/refresh');
+      const response = await http.post<AuthResponse>("/auth/refresh");
       return response.data;
     },
     async logout() {
-      await http.post('/auth/logout');
+      await http.post("/auth/logout");
+    },
+    async passwordResetCapabilities() {
+      const response = await http.get<PasswordResetCapabilities>("/auth/password-reset/capabilities");
+      return response.data;
+    },
+    async requestPasswordReset(request: PasswordResetRequest) {
+      const response = await http.post<PasswordResetAccepted>("/auth/password-reset/request", request);
+      return response.data;
+    },
+    async confirmPasswordReset(request: PasswordResetConfirm) {
+      await http.post("/auth/password-reset/confirm", request);
     },
   };
 }

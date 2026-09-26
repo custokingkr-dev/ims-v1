@@ -41,7 +41,7 @@ class IdentityControllersTest {
     @Test
     void loginDelegatesAndSetsRefreshCookie() {
         IdentityAuthService authService = mock(IdentityAuthService.class);
-        AuthController controller = new AuthController(authService, true, "None", 60_000L, "identity-token");
+        AuthController controller = new AuthController(authService, mock(com.custoking.ims.identityservice.application.AuthAbuseProtection.class), true, "None", 60_000L, "identity-token");
         LoginRequest request = new LoginRequest("admin@custoking.com", "secret");
         AuthResponse authResponse = authResponse("access-token");
         when(authService.login(request)).thenReturn(new LoginResult("refresh-token", authResponse));
@@ -61,7 +61,7 @@ class IdentityControllersTest {
     @Test
     void refreshRejectsMissingRefreshTokenBeforeServiceCall() {
         IdentityAuthService authService = mock(IdentityAuthService.class);
-        AuthController controller = new AuthController(authService, false, "Strict", 60_000L, "identity-token");
+        AuthController controller = new AuthController(authService, mock(com.custoking.ims.identityservice.application.AuthAbuseProtection.class), false, "Strict", 60_000L, "identity-token");
 
         assertThatThrownBy(() -> controller.refresh(null, new MockHttpServletResponse()))
                 .isInstanceOf(ResponseStatusException.class)
@@ -74,7 +74,7 @@ class IdentityControllersTest {
     @Test
     void logoutClearsRefreshCookie() {
         IdentityAuthService authService = mock(IdentityAuthService.class);
-        AuthController controller = new AuthController(authService, false, "Lax", 60_000L, "identity-token");
+        AuthController controller = new AuthController(authService, mock(com.custoking.ims.identityservice.application.AuthAbuseProtection.class), false, "Lax", 60_000L, "identity-token");
         MockHttpServletResponse servletResponse = new MockHttpServletResponse();
 
         controller.logout("refresh-token", servletResponse);
@@ -89,7 +89,7 @@ class IdentityControllersTest {
     @Test
     void introspectRejectsInvalidServiceTokenBeforeServiceCall() {
         IdentityAuthService authService = mock(IdentityAuthService.class);
-        AuthController controller = new AuthController(authService, false, "Strict", 60_000L, "identity-token");
+        AuthController controller = new AuthController(authService, mock(com.custoking.ims.identityservice.application.AuthAbuseProtection.class), false, "Strict", 60_000L, "identity-token");
 
         assertThatThrownBy(() -> controller.introspect("wrong-token", new AuthController.IntrospectionRequest("access-token")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -102,7 +102,7 @@ class IdentityControllersTest {
     @Test
     void introspectDelegatesWithValidServiceToken() {
         IdentityAuthService authService = mock(IdentityAuthService.class);
-        AuthController controller = new AuthController(authService, false, "Strict", 60_000L, "identity-token");
+        AuthController controller = new AuthController(authService, mock(com.custoking.ims.identityservice.application.AuthAbuseProtection.class), false, "Strict", 60_000L, "identity-token");
         IntrospectionResponse result = new IntrospectionResponse(true, authResponse("access-token"));
         when(authService.introspect("access-token")).thenReturn(result);
 

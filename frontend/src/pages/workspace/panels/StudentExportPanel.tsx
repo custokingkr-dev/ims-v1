@@ -4,6 +4,7 @@ import api from '../../../services/api';
 import { downloadStudentExport, type StudentExportProgress } from '../../../features/students';
 import { TransferProgress } from '../../../components/TransferProgress';
 import { Field, ModuleShell } from '../ui';
+import { userFacingError } from '../../../shared/display/errorMessage';
 
 interface ExportSchool {
   id: number;
@@ -25,7 +26,9 @@ function safeArchiveName(shortCode: string): string {
 }
 
 function errorMessage(error: any): string {
-  return error?.response?.data?.message || error?.message || 'Unable to prepare the student export.';
+  // Falling back to the Error's own message printed whatever was thrown: a TypeError from this
+  // panel reached the page, in red, reading "Cannot read properties of undefined".
+  return userFacingError(error, 'Unable to prepare the student export.');
 }
 
 function formatBytes(bytes: number): string {

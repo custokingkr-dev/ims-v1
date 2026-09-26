@@ -1,323 +1,154 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ModuleShell } from '../ui';
 import { Modal } from '../../../components/Modal';
 import type { WorkspaceData, PanelKey } from '../../workspace/config';
-import { currentFinancialYearLabel, financialYearHistoryOptions, formatMoney } from '../utils';
+import { formatMoney } from '../utils';
+import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
+import { catalogClient } from '../../../services/catalogApi';
 
-interface Props {
-  workspace: WorkspaceData;
-  onRefresh: () => Promise<void>;
-  setPanel?: (k: PanelKey) => void;
+interface Props { workspace: WorkspaceData; onRefresh: () => Promise<void>; setPanel?: (key: PanelKey) => void; }
+interface PlanItem { id: string; term: string | null; category: string | null; description: string | null; quantity: string | null; estimatedAmount: number; status: string | null; }
+interface Confirmation { confirmed: true; id: string; schoolId: number; academicYearId: string; fingerprint: string; revision: number; confirmedAt: string; itemCount: number; notificationStatus: 'NOT_SENT'; }
+interface PlanReview { schoolId: number; academicYearId: string; yearLabel: string; items: PlanItem[]; fingerprint: string; confirmation: Confirmation | null; }
+const EMPTY_FORM = { category: '', description: '', estimatedAmount: '' };
+function readConfirmation(value: unknown, fingerprint: string, schoolId: number, academicYearId: string): Confirmation {
+  const record = value as Confirmation | null;
+  if (!record || record.confirmed !== true || typeof record.id !== 'string' || record.fingerprint !== fingerprint
+    || record.schoolId !== schoolId || record.academicYearId !== academicYearId || !Number.isInteger(record.itemCount) || record.itemCount < 1
+    || !Number.isInteger(record.revision) || record.revision < 1 || typeof record.confirmedAt !== 'string' || !Number.isFinite(Date.parse(record.confirmedAt))
+    || record.notificationStatus !== 'NOT_SENT') throw new Error('Confirmation unavailable');
+  return record;
 }
-
-interface PlanTerm {
-  id?: string | number;
-  term?: string;
-  category?: string;
-  status?: string;
-  quantity?: string | number;
-  amount?: number;
-  estimatedAmount?: number;
-  description?: string;
-}
-
-interface PlanForm {
-  category: string;
-  description: string;
-  estimatedAmount: string;
-}
-
-const EMPTY_FORM: PlanForm = {
-  category: '',
-  description: '',
-  estimatedAmount: '',
-};
-
-function planAmount(item: PlanTerm): number {
-  return Number(item.amount ?? item.estimatedAmount ?? 0);
-}
-
-function normalizeStatus(status?: string): string {
-  const value = String(status || 'Draft').trim();
-  return value || 'Draft';
-}
-
-function statusTone(status?: string): string {
-  const value = normalizeStatus(status).toLowerCase();
-  if (value.includes('confirm') || value.includes('lock') || value.includes('ordered')) return 'sg';
-  if (value.includes('pending') || value.includes('draft')) return 'sam';
-  if (value.includes('cancel') || value.includes('reject')) return 'sr';
-  return 'sb2';
+function readReview(value: unknown, schoolId: number): PlanReview {
+  const record = value as PlanReview | null;
+  if (!record || record.schoolId !== schoolId || typeof record.academicYearId !== 'string' || typeof record.yearLabel !== 'string'
+    || typeof record.fingerprint !== 'string' || !record.fingerprint || !Array.isArray(record.items)
+    || !record.items.every(item => item && typeof item.id === 'string' && Number.isFinite(item.estimatedAmount)
+      && [item.term, item.category, item.description, item.quantity, item.status].every(value => value === null || typeof value === 'string'))) throw new Error('Plan review unavailable');
+  if (record.confirmation) readConfirmation(record.confirmation, record.fingerprint, schoolId, record.academicYearId);
+  return record;
 }
 
 export function PlanningPanel({ workspace, onRefresh, setPanel }: Props) {
-  const [selectedYear, setSelectedYear] = useState<string | null>(null);
+  const { user } = useAuth();
+  const platform = user?.role === 'SUPERADMIN';
+  const canManage = platform || (user?.permissions ?? []).includes('plan:manage');
+  const [schoolId, setSchoolId] = useState(platform ? 0 : user?.branchId ?? 0);
+  const [schools, setSchools] = useState<Array<{ id: number; name: string }>>([]);
+  const [review, setReview] = useState<PlanReview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [reload, setReload] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState<PlanForm>(EMPTY_FORM);
-  const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const savingRef = useRef(false);
+  const newItemId = useRef<string | null>(null);
 
-  const financialYearStartMonth = Number(workspace.school?.financialYearStartMonth || 4);
-  const currentYearLabel = currentFinancialYearLabel(new Date(), financialYearStartMonth);
-  const planningYearTabs = financialYearHistoryOptions(3, new Date(), financialYearStartMonth);
-  const activeYear = selectedYear ?? currentYearLabel;
-
-  const planTerms = useMemo(
-    () => ((workspace.annualPlan?.terms ?? []) as PlanTerm[]),
-    [workspace.annualPlan?.terms],
-  );
-
-  const totalPlanned = useMemo(
-    () => planTerms.reduce((sum, item) => sum + planAmount(item), 0),
-    [planTerms],
-  );
-
-  const confirmedCount = useMemo(
-    () => planTerms.filter(item => {
-      const status = normalizeStatus(item.status).toLowerCase();
-      return status.includes('confirm') || status.includes('lock') || status.includes('ordered');
-    }).length,
-    [planTerms],
-  );
-
-  const categories = useMemo(
-    () => new Set(planTerms.map(item => String(item.category || 'Uncategorized'))).size,
-    [planTerms],
-  );
-
-  function showToast(message: string) {
-    setToast(message);
-    window.setTimeout(() => setToast(null), 3200);
-  }
-
-  function updateForm<K extends keyof PlanForm>(key: K, value: PlanForm[K]) {
-    setForm(current => ({ ...current, [key]: value }));
-    setError(null);
-  }
-
-  async function createPlanItem(): Promise<void> {
-    const category = form.category.trim();
-    const description = form.description.trim();
-    const estimatedAmount = Number(form.estimatedAmount);
-
-    if (!category) {
-      setError('Category is required.');
-      return;
-    }
-    if (!Number.isFinite(estimatedAmount) || estimatedAmount < 0) {
-      setError('Enter a valid estimated amount.');
-      return;
-    }
-
-    setSaving(true);
-    setError(null);
-    try {
-      await api.post('/supply/annual-plan/items', {
-        category,
-        description,
-        estimatedAmount: Math.round(estimatedAmount),
-      });
-      setForm(EMPTY_FORM);
-      setFormOpen(false);
-      showToast('Annual plan item saved.');
-      await onRefresh();
-    } catch (err: unknown) {
-      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not save annual plan item.'));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function confirmPlan(): Promise<void> {
-    setConfirming(true);
-    try {
-      await api.post('/supply/annual-plan/confirm');
-      showToast('Annual plan confirmed.');
-      await onRefresh();
-    } catch (err: unknown) {
-      showToast((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Could not confirm annual plan.'));
-    } finally {
-      setConfirming(false);
-    }
-  }
-
-  return (
-    <ModuleShell
-      title="Annual plan"
-      subtitle={`Plan and confirm real supply requirements for ${activeYear}`}
-      actions={
-        <>
-          {setPanel ? (
-            <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('catalog' as PanelKey)}>
-              Catalog
-            </button>
-          ) : null}
-          <button className="ck-btn ck-btn-ghost" onClick={() => setFormOpen(true)}>
-            Add item
-          </button>
-          <button className="ck-btn ck-btn-g" disabled={confirming || planTerms.length === 0} onClick={() => void confirmPlan()}>
-            {confirming ? 'Confirming...' : 'Confirm plan'}
-          </button>
-        </>
+  useEffect(() => {
+    if (!platform) return;
+    let active = true;
+    api.get('/schools').then(result => {
+      if (!Array.isArray(result.data) || !result.data.every((school: { id?: unknown; name?: unknown }) => Number.isInteger(school.id) && typeof school.name === 'string')) throw new Error('School list unavailable');
+      if (active) setSchools(result.data);
+    }).catch(() => { if (active) setLoadError('Schools could not be loaded. Refresh the plan to retry.'); });
+    return () => { active = false; };
+  }, [platform, reload]);
+  useEffect(() => {
+    if (!schoolId) { setReview(null); return; }
+    let active = true; setLoading(true); setLoadError(''); setReview(null);
+    catalogClient.reviewAnnualPlan({ schoolId }).then(result => {
+      const next = readReview(result, schoolId);
+      if (active) {
+        setReview(next); setUnconfirmed(false);
+        const savedItem = next.items.find(item => item.id === newItemId.current);
+        if (savedItem) {
+          newItemId.current = null; setForm(EMPTY_FORM); setFormOpen(false);
+          setNotice('The item is saved in this plan. Review its details before confirming the plan.');
+        }
       }
-    >
-      <div className="ap-subheader">
-        <div className="ap-year-tabs">
-          {planningYearTabs.map(year => (
-            <button
-              key={year}
-              className={`ap-ytab${year === activeYear ? ' on' : ''}`}
-              onClick={() => {
-                setSelectedYear(year);
-                if (year !== currentYearLabel) showToast(`Showing saved workspace data for ${year}.`);
-              }}
-            >
-              {year}
-            </button>
-          ))}
-        </div>
-        <div className="ap-hstats">
-          <div className="ap-hstat">
-            <div className="ap-hstat-v" style={{ color: 'var(--b)' }}>{planTerms.length}</div>
-            <div className="ap-hstat-l">Items</div>
-          </div>
-          <div className="ap-hstat">
-            <div className="ap-hstat-v" style={{ color: 'var(--g)' }}>Rs {formatMoney(totalPlanned)}</div>
-            <div className="ap-hstat-l">Planned</div>
-          </div>
-          <div className="ap-hstat">
-            <div className="ap-hstat-v" style={{ color: 'var(--am)' }}>{categories}</div>
-            <div className="ap-hstat-l">Categories</div>
-          </div>
-          <div className="ap-hstat">
-            <div className="ap-hstat-v" style={{ color: 'var(--pu)' }}>{confirmedCount}</div>
-            <div className="ap-hstat-l">Confirmed</div>
-          </div>
-        </div>
-      </div>
+    }).catch(() => { if (active) setLoadError('The current plan could not be loaded. Refresh before adding or confirming items.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [schoolId, reload]);
 
-      <div className="ck-card" style={{ marginBottom: 18 }}>
-        <div className="ck-card-head">
-          <div>
-            <div className="ck-card-title">Saved plan items</div>
-            <div className="ts">Only records returned by the workspace annual-plan API are shown.</div>
-          </div>
-          <button className="ck-btn ck-btn-g" onClick={() => setFormOpen(true)}>Add item</button>
-        </div>
+  async function createPlanItem() {
+    if (savingRef.current || !canManage || !review) return;
+    const amount = Number(form.estimatedAmount);
+    if (!form.category.trim() || !form.estimatedAmount.trim() || !Number.isSafeInteger(amount) || amount < 0) {
+      setError('Enter a category and a whole-number estimated amount of zero or more.'); return;
+    }
+    savingRef.current = true; setSaving(true); setError(''); setNotice('');
+    if (!newItemId.current) newItemId.current = crypto.randomUUID();
+    try {
+      const result = await api.post('/catalog/annual-plan/items', { id: newItemId.current, category: form.category.trim(), description: form.description.trim(), estimatedAmount: amount }, { params: { schoolId } });
+      if (result.data?.id !== newItemId.current || result.data?.schoolId !== schoolId) throw new Error('Saved item unavailable');
+      newItemId.current = null; setForm(EMPTY_FORM); setFormOpen(false); setReload(value => value + 1);
+      setNotice('Plan item saved. Confirm the updated plan when it is ready.');
+    } catch {
+      setError('Item saving could not be confirmed. Your details are still here. Retrying this form uses the same item reference to prevent a duplicate.');
+    } finally { savingRef.current = false; setSaving(false); }
+  }
+  async function confirmPlan() {
+    if (savingRef.current || newItemId.current !== null || !canManage || !review || !review.items.length || unconfirmed || review.confirmation) return;
+    savingRef.current = true; setConfirming(true); setNotice(''); setError('');
+    try {
+      const result = await catalogClient.confirmAnnualPlan({ schoolId }, { fingerprint: review.fingerprint });
+      const confirmation = readConfirmation(result, review.fingerprint, schoolId, review.academicYearId);
+      setReview(current => current ? { ...current, confirmation } : current);
+      setNotice(`Plan confirmation saved as revision ${confirmation.revision}. No staff or provider notification has been sent.`);
+      try { await onRefresh(); }
+      catch { setNotice(`Plan confirmation is saved as revision ${confirmation.revision}. The workspace could not refresh; refresh the plan to review it. No notification has been sent.`); }
+    } catch {
+      setUnconfirmed(true);
+      setError('Plan confirmation could not be confirmed. Refresh the plan to check for a saved confirmation or changed items before retrying.');
+    } finally { savingRef.current = false; setConfirming(false); }
+  }
 
-        {planTerms.length === 0 ? (
-          <div className="ck-empty-state" style={{ marginTop: 16 }}>
-            <div>
-              <strong>No annual plan items saved</strong>
-              <span>Create the first item when the school has a confirmed supply requirement.</span>
-              <button className="ck-btn ck-btn-g" style={{ marginTop: 12 }} onClick={() => setFormOpen(true)}>Create item</button>
-            </div>
-          </div>
-        ) : (
-          <div className="ck-table-wrap" style={{ marginTop: 14 }}>
-            <table className="ck-table">
-              <thead>
-                <tr>
-                  <th>Term</th>
-                  <th>Category</th>
-                  <th>Quantity</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'right' }}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {planTerms.map((item, index) => (
-                  <tr key={item.id ?? `${item.category}-${item.term}-${index}`}>
-                    <td>{item.term || activeYear}</td>
-                    <td>
-                      <strong>{item.category || 'Uncategorized'}</strong>
-                      {item.description ? <div className="ts">{item.description}</div> : null}
-                    </td>
-                    <td>{item.quantity || '-'}</td>
-                    <td><span className={`status ${statusTone(item.status)}`}>{normalizeStatus(item.status)}</span></td>
-                    <td className="mono" style={{ textAlign: 'right' }}>Rs {formatMoney(planAmount(item))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="ck-card">
-        <div className="ck-card-head">
-          <div>
-            <div className="ck-card-title">Procurement handoff</div>
-            <div className="ts">Use the catalog to convert approved planning items into actual supply orders.</div>
-          </div>
-          {setPanel ? (
-            <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('orders' as PanelKey)}>
-              View orders
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {toast ? <div className="toast">{toast}</div> : null}
-
-      {formOpen ? (
-        <Modal
-          title="Add annual plan item"
-          subtitle="Save a real requirement to the school's annual plan"
-          onClose={() => { if (!saving) { setFormOpen(false); setError(null); } }}
-          footer={
-            <>
-              <button className="ck-btn ck-btn-ghost" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button>
-              <button className="ck-btn ck-btn-g" disabled={saving} onClick={() => void createPlanItem()}>
-                {saving ? 'Saving...' : 'Save item'}
-              </button>
-            </>
-          }
-        >
-          {error ? (
-            <div className="ck-alert ck-alert-r" style={{ marginBottom: 14 }}>
-              <span>!</span>
-              <div>{error}</div>
-            </div>
-          ) : null}
-          <div className="ck-form-grid ck-fg-1">
-            <div className="ck-field">
-              <label htmlFor="plan-category">Category</label>
-              <input
-                id="plan-category"
-                value={form.category}
-                onChange={event => updateForm('category', event.target.value)}
-                placeholder="Uniforms, notebooks, exam stationery"
-              />
-            </div>
-            <div className="ck-field">
-              <label htmlFor="plan-description">Description</label>
-              <textarea
-                id="plan-description"
-                rows={3}
-                value={form.description}
-                onChange={event => updateForm('description', event.target.value)}
-                placeholder="Requirement, class coverage, deadline, or vendor note"
-              />
-            </div>
-            <div className="ck-field">
-              <label htmlFor="plan-amount">Estimated amount</label>
-              <input
-                id="plan-amount"
-                type="number"
-                min={0}
-                step={1}
-                value={form.estimatedAmount}
-                onChange={event => updateForm('estimatedAmount', event.target.value)}
-                placeholder="0"
-              />
-            </div>
-          </div>
-        </Modal>
-      ) : null}
-    </ModuleShell>
-  );
+  const items = review?.items ?? [];
+  const busy = saving || confirming;
+  return <ModuleShell title="Annual plan" subtitle={review ? `Review supply requirements for academic year ${review.yearLabel}` : 'Review the current school plan before confirming it.'} actions={<>
+    {setPanel && <button className="ck-btn ck-btn-ghost" onClick={() => setPanel('catalog')}>Catalog</button>}
+    <button className="ck-btn ck-btn-ghost" disabled={busy || loading} onClick={() => { setError(''); setReload(value => value + 1); }}>Refresh plan</button>
+    {canManage && <button className="ck-btn ck-btn-ghost" disabled={!review || busy || loading} onClick={() => { setError(''); setFormOpen(true); }}>Add item</button>}
+    {canManage && <button className="ck-btn ck-btn-g" disabled={busy || loading || !items.length || Boolean(review?.confirmation) || unconfirmed || newItemId.current !== null} onClick={() => void confirmPlan()}>{confirming ? 'Recording confirmation...' : 'Confirm current plan'}</button>}
+  </>}>
+    {platform ? <div className="ck-field"><label htmlFor="plan-school">School</label><select id="plan-school" value={schoolId || ''} disabled={busy || formOpen || newItemId.current !== null} onChange={event => { setSchoolId(Number(event.target.value)); setNotice(''); setError(''); }}>
+      <option value="">Select school</option>{schools.map(school => <option key={school.id} value={school.id}>{school.name}</option>)}
+    </select></div> : <p>{workspace.school?.name}</p>}
+    {newItemId.current !== null && !formOpen && <p>An item save needs review. Refresh this plan to check it, or reopen Add item to retry the same item reference before changing schools.</p>}
+    {!schoolId && <p>{platform ? 'Select a school to review its current annual plan.' : 'Your account has no school scope. Contact your administrator.'}</p>}
+    {loading && <p role="status">Loading the current annual plan...</p>}
+    {loadError && <p role="alert">{loadError}</p>}
+    {error && !formOpen && <p role="alert">{error}</p>}
+    {notice && <p role="status">{notice}</p>}
+    {review && <>
+      <div className="ap-subheader"><div className="ap-hstats">
+        <div className="ap-hstat"><div className="ap-hstat-v">{items.length}</div><div className="ap-hstat-l">Saved items</div></div>
+        <div className="ap-hstat"><div className="ap-hstat-v">Rs {formatMoney(items.reduce((sum, item) => sum + item.estimatedAmount, 0))}</div><div className="ap-hstat-l">Estimated total</div></div>
+      </div></div>
+      <p>{review.confirmation ? `Current plan confirmed as revision ${review.confirmation.revision}.` : 'This version of the plan is not confirmed.'} Confirmation records the reviewed items. It does not place orders or send notifications.</p>
+      {items.length ? <div className="ck-table-wrap"><table className="ck-table"><caption>Saved items for academic year {review.yearLabel}</caption>
+        <thead><tr><th scope="col">Term</th><th scope="col">Category</th><th scope="col">Quantity</th><th scope="col">Item status</th><th scope="col">Estimated amount</th></tr></thead>
+        <tbody>{items.map(item => <tr key={item.id}><td>{item.term || '-'}</td><td><strong>{item.category || 'Uncategorized'}</strong>{item.description && <div>{item.description}</div>}</td><td>{item.quantity || '-'}</td><td>{item.status || 'Not specified'}</td><td>Rs {formatMoney(item.estimatedAmount)}</td></tr>)}</tbody>
+      </table></div> : <p>No items saved for this academic year. Add a supply requirement before confirming the plan.</p>}
+    </>}
+    {setPanel && <div style={{ marginTop: 24 }}><p>Use the catalog to create supply orders separately.</p><button className="ck-btn ck-btn-ghost" onClick={() => setPanel('orders')}>View orders</button></div>}
+    {formOpen && <Modal title="Add annual plan item" subtitle={`Save a requirement for academic year ${review?.yearLabel ?? ''}`} onClose={() => { if (!saving) setFormOpen(false); }} footer={<>
+      <button className="ck-btn ck-btn-ghost" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button>
+      <button className="ck-btn ck-btn-g" disabled={saving} onClick={() => void createPlanItem()}>{saving ? 'Saving...' : 'Save item'}</button>
+    </>}>
+      {error && <p role="alert">{error}</p>}
+      <fieldset disabled={saving} className="ck-form-grid ck-fg-1" style={{ border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+        <div className="ck-field"><label htmlFor="plan-category">Category (required)</label><input id="plan-category" maxLength={255} value={form.category} onChange={event => setForm(current => ({ ...current, category: event.target.value }))} /></div>
+        <div className="ck-field"><label htmlFor="plan-description">Description</label><textarea id="plan-description" maxLength={255} rows={3} value={form.description} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} /></div>
+        <div className="ck-field"><label htmlFor="plan-amount">Estimated amount (required)</label><input id="plan-amount" type="number" min={0} step={1} value={form.estimatedAmount} onChange={event => setForm(current => ({ ...current, estimatedAmount: event.target.value }))} /></div>
+      </fieldset>
+    </Modal>}
+  </ModuleShell>;
 }

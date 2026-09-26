@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>School notice</title>
+</head>
+<body style="margin:0;padding:24px;background:#ffffff;color:#17212b;font-family:Arial,sans-serif;font-size:16px;line-height:1.5">
+  <!-- Candidate only: verify rendering in MSG91 before setting template-verified.
+       Both variables MUST be escaped by Msg91BroadcastLiveProvider.htmlText.
+       Use only this dedicated transport; never insert raw caller values here.
+       Use a static subject: School notice from Custoking. -->
+  <main style="max-width:640px;margin:0 auto">
+    <p style="margin:0 0 16px;font-size:13px;color:#475569">School notice | Custoking</p>
+    <h1 style="margin:0 0 20px;font-size:24px;line-height:1.25">{{{title}}}</h1>
+    <div style="white-space:pre-wrap;overflow-wrap:anywhere">{{{message}}}</div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,551 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking student admission and photos",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "school-core-service",
+  "x-ims-controller": "StudentReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "StudentClient",
+  "x-ims-client-file": "studentClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/students": {
+      "post": {
+        "operationId": "createStudent",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStudentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/photo": {
+      "post": {
+        "operationId": "uploadStudentPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoUpload"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}/photo/content": {
+      "get": {
+        "operationId": "getStudentPhoto",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/roster": {
+      "get": {
+        "operationId": "getRoster",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StudentRosterRow"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/students/{id}": {
+      "put": {
+        "operationId": "updateStudent",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStudentRequest"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CreateStudentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "admissionNumber",
+          "fullName"
+        ],
+        "properties": {
+          "admissionNumber": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "rollNo": {
+            "type": "string"
+          },
+          "boardRegistrationNumber": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string"
+          },
+          "admissionDate": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "fatherName": {
+            "type": "string"
+          },
+          "fatherContactNumber": {
+            "type": "string"
+          },
+          "fatherContact": {
+            "type": "string"
+          },
+          "motherName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "houseNumber": {
+            "type": "string"
+          },
+          "street": {
+            "type": "string"
+          },
+          "locality": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "pinCode": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/CreateStudentRequest.java",
+          "name": "CreateStudentRequest"
+        }
+      },
+      "StudentDetail": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "id",
+          "schoolId",
+          "fullName",
+          "admissionNumber",
+          "classId",
+          "sectionId",
+          "academicYearId",
+          "photoUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "admissionNumber": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PhotoUpload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      },
+      "StudentRosterRow": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "admissionNo": {
+            "type": "string"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "schoolId",
+          "fullName"
+        ],
+        "additionalProperties": true
+      },
+      "UpdateStudentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "fullName",
+          "admissionNumber",
+          "classId",
+          "sectionId",
+          "phone"
+        ],
+        "properties": {
+          "admissionNumber": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "classId": {
+            "type": "string"
+          },
+          "sectionId": {
+            "type": "string"
+          },
+          "gradeLevel": {
+            "type": "string"
+          },
+          "className": {
+            "type": "string"
+          },
+          "sectionName": {
+            "type": "string"
+          },
+          "rollNo": {
+            "type": "string"
+          },
+          "boardRegistrationNumber": {
+            "type": "string"
+          },
+          "dateOfBirth": {
+            "type": "string"
+          },
+          "admissionDate": {
+            "type": "string"
+          },
+          "gender": {
+            "type": "string"
+          },
+          "fatherName": {
+            "type": "string"
+          },
+          "fatherContactNumber": {
+            "type": "string"
+          },
+          "fatherContact": {
+            "type": "string"
+          },
+          "motherName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "houseNumber": {
+            "type": "string"
+          },
+          "street": {
+            "type": "string"
+          },
+          "locality": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "pinCode": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-ims-gateway-service": "student"
+}

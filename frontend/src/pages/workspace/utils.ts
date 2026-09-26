@@ -86,6 +86,16 @@ export function formatLongDate(value?: string): string {
   });
 }
 
+/**
+ * Rows from the order and invoice APIs carry full ISO date-times, which rendered raw as
+ * "2026-09-21T10:00:00Z" in the Placed and Issued columns. formatLongDate takes a date only,
+ * so trim the time before handing it over.
+ */
+export function formatIsoDay(value?: string): string {
+  if (!value) return '—';
+  return formatLongDate(String(value).slice(0, 10));
+}
+
 export function splitCsvLine(line: string): string[] {
   const values: string[] = [];
   let current = '';

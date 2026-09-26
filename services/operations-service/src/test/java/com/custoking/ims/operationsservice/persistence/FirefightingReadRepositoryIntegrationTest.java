@@ -78,6 +78,7 @@ class FirefightingReadRepositoryIntegrationTest {
 
     private Map<String, Object> newRequest(long schoolId, String title) {
         Map<String, Object> request = new HashMap<>();
+        request.put("idempotencyKey", java.util.UUID.randomUUID().toString());
         request.put("schoolId", schoolId);
         request.put("title", title);
         request.put("category", "Other");

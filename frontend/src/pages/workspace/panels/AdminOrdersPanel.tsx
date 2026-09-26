@@ -94,7 +94,7 @@ export function AdminOrdersPanel({
       )}
       <div className="ck-grid ck-grid-4" style={{ marginBottom: 16 }}>
         <Stat label="Active orders" value={stats?.activeOrders ?? 0} sub="Awaiting, processing, transit" pill="Live" tone="blue" />
-        <Stat label="Term spend" value={`₹${formatMoney(Number(stats?.termSpend || 0) / 100)}`} sub="Placed this term" pill="Paise→₹" tone="green" />
+        <Stat label="Term spend" value={`₹${formatMoney(Number(stats?.termSpend || 0) / 100)}`} sub="Placed this term" tone="green" />
         <Stat label="Active services" value={stats?.activeServices ?? 0} sub="Running contracts" pill="Service" tone="blue" />
         <Stat label="Delivered" value={stats?.deliveredCount ?? 0} sub="Completed orders" pill="Closed" tone="orange" />
       </div>

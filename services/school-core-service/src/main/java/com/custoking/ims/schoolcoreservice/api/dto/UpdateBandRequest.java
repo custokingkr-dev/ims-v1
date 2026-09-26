@@ -19,5 +19,13 @@ public record UpdateBandRequest(
         Integer classFrom,
         Integer classTo,
         List<String> schedules,
-        @PositiveOrZero(message = "discount must be zero or positive") Double discount
-) {}
+        @PositiveOrZero(message = "discount must be zero or positive") Double discount,
+        Integer gracePeriodDays,
+        String lateFeeType,
+        Double lateFeeAmount,
+        Integer lateFeeIntervalDays
+) {
+    public UpdateBandRequest(String name, Integer classFrom, Integer classTo, List<String> schedules, Double discount) {
+        this(name, classFrom, classTo, schedules, discount, null, null, null, null);
+    }
+}

@@ -74,6 +74,20 @@ app:
   cookie-same-site: ${APP_COOKIE_SAME_SITE:Strict}
 
 identity:
+  quotas:
+    login-per-minute: ${IDENTITY_QUOTA_LOGIN_PER_MINUTE:300}
+    user-reads-per-minute: ${IDENTITY_QUOTA_USER_READS_PER_MINUTE:900}
+    user-writes-per-minute: ${IDENTITY_QUOTA_USER_WRITES_PER_MINUTE:180}
+  password-reset:
+    enabled: ${IDENTITY_PASSWORD_RESET_ENABLED:false}
+    worker-ready: ${IDENTITY_PASSWORD_RESET_WORKER_READY:false}
+    url: ${IDENTITY_PASSWORD_RESET_URL:}
+    from: ${IDENTITY_PASSWORD_RESET_FROM:}
+    smtp-host: ${IDENTITY_PASSWORD_RESET_SMTP_HOST:}
+    smtp-port: ${IDENTITY_PASSWORD_RESET_SMTP_PORT:587}
+    smtp-user: ${IDENTITY_PASSWORD_RESET_SMTP_USER:}
+    smtp-password: ${IDENTITY_PASSWORD_RESET_SMTP_PASSWORD:}
+    delivery-delay-ms: ${IDENTITY_PASSWORD_RESET_DELIVERY_DELAY_MS:5000}
   db:
     schema: ${IDENTITY_DB_SCHEMA:identity}
   introspection-token: ${IDENTITY_INTROSPECTION_TOKEN:}

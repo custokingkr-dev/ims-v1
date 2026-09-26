@@ -31,11 +31,13 @@ class FirefightingPublicCompatibilityControllerTest {
     @Test
     void workspaceCreateDelegatesToCreateRequest() {
         TenantContext.set(new TenantContext(1L, "s@x", "SUPERADMIN", null, null));
-        Map<String, Object> request = Map.of("title", "Extinguisher", "schoolId", 4L);
-        when(repo.createRequest(request)).thenReturn(Map.of("code", "FF-1"));
+        Map<String, Object> request = Map.of("title", "Extinguisher", "schoolId", 4L, "idempotencyKey", "workspace-save", "actorId", 99L, "actorEmail", "forged@x");
+        when(repo.createRequest(any())).thenReturn(Map.of("code", "FF-1"));
 
         assertThat(controller.createFromWorkspace("tok", request)).containsEntry("code", "FF-1");
-        verify(repo).createRequest(request);
+        verify(repo).createRequest(argThat(body -> Long.valueOf(1).equals(body.get("actorId"))
+                && "s@x".equals(body.get("actorEmail")) && Long.valueOf(4).equals(body.get("schoolId"))
+                && "workspace-save".equals(body.get("idempotencyKey"))));
     }
 
     @Test

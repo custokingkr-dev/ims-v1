@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
+import com.custoking.ims.platformservice.application.BroadcastDispatchService;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantContextFilter;
@@ -37,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   header-less HTTP caller of this controller. A header-less HTTP request is fail-closed → 403.
  */
 class NotificationTenantScopingTest {
+    private final BroadcastDispatchService dispatch = mock(BroadcastDispatchService.class);
 
     private static final String TOKEN = "notif-token";
 
@@ -50,7 +52,7 @@ class NotificationTenantScopingTest {
             null, null, null, null, "en", null, null, null);
 
     private final MockMvc broadcastMvc = MockMvcBuilders
-            .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN))
+            .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN, dispatch))
             .addFilters(new TenantContextFilter())
             .build();
 

@@ -58,6 +58,7 @@ const {
   verifyJwtLocally,
   principalFromClaims,
   authenticate,
+  introspect,
   proxyToUrl,
 } = require('./server');
 const {
@@ -855,16 +856,38 @@ function reqWithToken(token) {
   return { headers: token ? { authorization: `Bearer ${token}` } : {} };
 }
 
-test('authenticate uses local claims for an enriched token and does NOT introspect', async () => {
+test('authenticate uses current identity scope even for a valid enriched token', async () => {
   let calls = 0;
-  const introspectStub = async () => { calls += 1; return { userId: 999 }; };
+  const introspectStub = async () => { calls += 1; return { userId: 42, branchId: 8, permissions: [], operatorSchools: [] }; };
   const token = signHS512(enrichedClaims, JWT_SECRET);
   const principal = await authenticate(reqWithToken(token), 'req-1', {
     localVerify: true, secret: JWT_SECRET, introspect: introspectStub, now: NOW,
   });
-  assert.equal(calls, 0);
+  assert.equal(calls, 1);
   assert.equal(principal.userId, 42);
-  assert.equal(principal.branchId, 7);
+  assert.equal(principal.branchId, 8);
+  assert.deepEqual(principal.permissions, []);
+  assert.deepEqual(principal.operatorSchools, []);
+});
+
+test('MSG91 callback is the only public provider-report path and spoofed service identity is stripped', () => {
+  assert.equal(requiresUserAuth('/api/v1/notifications/provider-reports/msg91/email'), false);
+  for (const path of ['/api/v1/notifications/provider-reports/msg91/email/extra', '/api/v1/notifications/provider-reports/msg91/sms', '/notification-api/v1/provider-reports/msg91/email']) {
+    assert.equal(requiresUserAuth(path), true);
+  }
+  assert.equal(isClientSpoofableHeader('x-notification-service-token'), true);
+  assert.equal(isClientSpoofableHeader('x-authenticated-role'), true);
+  assert.equal(isClientSpoofableHeader('x-msg91-webhook-token'), false);
+});
+
+test('authenticate rejects revoked enriched access tokens and propagates identity outages', async () => {
+  const req = reqWithToken(signHS512(enrichedClaims, JWT_SECRET));
+  const opts = { localVerify: true, secret: JWT_SECRET, now: NOW };
+  assert.equal(await authenticate(req, 'revoked', { ...opts, introspect: async () => null }), null);
+  assert.equal(req.authFailureReason, 'introspection_rejected');
+  await assert.rejects(authenticate(req, 'outage', {
+    ...opts, introspect: async () => { throw new Error('identity unavailable'); },
+  }), /identity unavailable/);
 });
 
 test('authenticate falls back to introspection for a valid un-enriched token', async () => {
@@ -952,7 +975,7 @@ test('authenticate records an introspection rejection and leaves no reason on su
 
   const ok = reqWithToken(signHS512(enrichedClaims, JWT_SECRET));
   assert.ok(await authenticate(ok, 'req-i2', {
-    localVerify: true, secret: JWT_SECRET, introspect: async () => null, now: NOW,
+    localVerify: true, secret: JWT_SECRET, introspect: async () => ({ userId: 42 }), now: NOW,
   }));
   assert.equal(ok.authFailureReason, undefined);
 });
@@ -964,3 +987,24 @@ async function listen() {
   const address = server.address();
   return `http://${address.address}:${address.port}`;
 }
+
+test('password recovery is public only on its declared routes and canonical catalog/billing are routed', () => {
+  for (const leaf of ['capabilities', 'request', 'confirm']) assert.equal(requiresUserAuth(`/api/v1/auth/password-reset/${leaf}`), false);
+  assert.equal(requiresUserAuth('/api/v1/auth/password-reset/admin'), true);
+  assert.equal(routes.find(route => route.matches('/api/v1/catalog/products', 'GET')).service, 'catalog');
+  assert.equal(routes.find(route => route.matches('/api/v1/billing/invoices/statistics', 'GET')).service, 'billing');
+});
+
+test('introspection passes canonical decoded operation context and preserves shared quota retry hints', async () => {
+  const originalFetch = global.fetch;
+  let body;
+  try {
+    global.fetch = async (_url, init) => {
+      body = JSON.parse(init.body);
+      return new Response('{}', { status: 429, headers: { 'retry-after': '120' } });
+    };
+    await assert.rejects(() => introspect({ headers: { authorization: 'Bearer test-token' }, method: 'POST', url: '/api/v1/students/%69mports/confirm?secret=not-copied' }, 'quota-test'),
+      error => error.code === 'IDENTITY_QUOTA_EXCEEDED' && error.retryAfter === 120);
+    assert.deepEqual(body, { token: 'test-token', method: 'POST', path: '/api/v1/students/imports/confirm' });
+  } finally { global.fetch = originalFetch; }
+});

@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.application.SenderProfile;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
+import com.custoking.ims.platformservice.application.BroadcastDispatchService;
 import com.custoking.ims.platformservice.persistence.SenderProfileRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantContextFilter;
@@ -39,6 +40,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *            valid payload → repo called once with correct map keys/values.
  */
 class NotificationValidationTest {
+    private final BroadcastDispatchService dispatch = mock(BroadcastDispatchService.class);
 
     private static final String TOKEN = "notif-token";
 
@@ -53,7 +55,7 @@ class NotificationValidationTest {
     @BeforeEach
     void setUp() {
         broadcastMvc = MockMvcBuilders
-                .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN))
+                .standaloneSetup(new NotificationBroadcastCommandController(broadcasts, TOKEN, dispatch))
                 .setControllerAdvice(new ValidationExceptionHandler())
                 .addFilters(new TenantContextFilter())
                 .build();
@@ -228,7 +230,7 @@ class NotificationValidationTest {
     @SuppressWarnings("unchecked")
     void approveBroadcast_validActorId_callsRepoWithActorId() throws Exception {
         UUID id = UUID.randomUUID();
-        when(broadcasts.approve(eq(id), eq(5L))).thenReturn(Map.of("id", id, "status", "SCHEDULED"));
+        when(broadcasts.get(id)).thenReturn(Map.of("id", id, "status", "APPROVED"));
 
         broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/approve")
                         .header("X-Notification-Service-Token", TOKEN)
@@ -239,13 +241,13 @@ class NotificationValidationTest {
                 .andExpect(status().isOk());
 
         // actor comes from the authenticated principal (TenantContext), not the client body.
-        verify(broadcasts).approve(eq(id), eq(5L));
+        verify(dispatch).approve(eq(id), eq(5L), isNull());
     }
 
     @Test
     void sendBroadcast_validActorId_callsRepoWithActorId() throws Exception {
         UUID id = UUID.randomUUID();
-        when(broadcasts.send(eq(id), eq(5L))).thenReturn(Map.of("id", id, "status", "SENT"));
+        when(dispatch.queue(eq(id), eq(5L))).thenReturn(Map.of("broadcastId", id, "status", "QUEUED"));
 
         broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/send")
                         .header("X-Notification-Service-Token", TOKEN)
@@ -256,20 +258,20 @@ class NotificationValidationTest {
                 .andExpect(status().isOk());
 
         // actor comes from the authenticated principal (TenantContext), not the client body.
-        verify(broadcasts).send(eq(id), eq(5L));
+        verify(dispatch).queue(eq(id), eq(5L));
     }
 
     @Test
     void approveBroadcast_noBody_callsRepoWithNullActorId() throws Exception {
         UUID id = UUID.randomUUID();
-        when(broadcasts.approve(eq(id), isNull())).thenReturn(Map.of("id", id, "status", "SCHEDULED"));
+        when(broadcasts.get(id)).thenReturn(Map.of("id", id, "status", "APPROVED"));
 
         broadcastMvc.perform(post("/api/v1/notifications/broadcasts/" + id + "/approve")
                         .header("X-Notification-Service-Token", TOKEN)
                         .header("X-Authenticated-Role", "SUPERADMIN"))
                 .andExpect(status().isOk());
 
-        verify(broadcasts).approve(eq(id), isNull());
+        verify(dispatch).approve(eq(id), isNull(), isNull());
     }
 
     @Test

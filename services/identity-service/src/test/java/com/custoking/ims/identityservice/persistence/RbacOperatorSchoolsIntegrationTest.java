@@ -42,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
     "identity.tenant-school.base-url=http://localhost:19999",
     "identity.tenant-school.token=it-ts-token"
 })
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
 class RbacOperatorSchoolsIntegrationTest {
 

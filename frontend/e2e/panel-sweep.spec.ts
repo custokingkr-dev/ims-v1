@@ -95,7 +95,7 @@ async function signInAs(page: Page, role: string, permissions: string[]) {
     const pathname = new URL(route.request().url()).pathname;
     let body: unknown = {};
     if (pathname.includes('/auth/')) body = user;
-    else if (pathname === '/api/v1/workspace') body = workspace;
+    else if (pathname === '/api/v1/reporting/workspace') body = workspace;
     else if (pathname.endsWith('/modules/active')) body = ALL_MODULES;
     else if (pathname.endsWith('/student-photo-imports/context')) body = photoImportContext;
     else if (pathname.endsWith('/students/export/context')) body = exportContext;
@@ -154,25 +154,38 @@ for (const persona of personas) {
     expect(broken).toEqual([]);
   });
 
-  test(`panels reflow at 320px: ${persona.name}`, async ({ page }) => {
+  test(`panels reflow at 320px: ${persona.name}`, async ({ page }, testInfo) => {
     test.setTimeout(180_000);
     await page.setViewportSize({ width: 320, height: 900 });
     await signInAs(page, persona.role, persona.permissions);
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
 
+    await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
     const labels = await visibleNavLabels(page);
     expect(labels.length).toBeGreaterThan(3);
 
     const overflowing: string[] = [];
     for (const label of labels) {
+      const openNavigation = page.getByRole('button', { name: 'Open navigation menu', exact: true });
+      if (await page.locator('#ck-sidebar-nav').getAttribute('aria-modal') !== 'true') await openNavigation.click();
       const button = page.locator(`button.ck-nav-item[aria-label="${label}"]`).first();
       const clicked = await button.click({ timeout: 5000 }).then(() => true).catch(() => false);
-      if (!clicked) continue;
+      expect(clicked, `${persona.name}: could not reach ${label} in the mobile drawer`).toBe(true);
       await page.waitForTimeout(300);
       const bleed = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-      if (bleed > 0) overflowing.push(`${label}: ${bleed}px`);
+      if (bleed > 0) {
+        const offenders = await page.locator('.ck-main').evaluate((main) => {
+          const edge = document.documentElement.clientWidth;
+          return Array.from(main.querySelectorAll<HTMLElement>('*')).map(el => {
+            const rect = el.getBoundingClientRect();
+            return { tag: el.tagName, className: el.className, text: el.textContent?.trim().slice(0, 80), right: Math.round(rect.right), width: Math.round(rect.width) };
+          }).filter(item => item.right > edge + 1 && item.width > 0).slice(-12);
+        });
+        overflowing.push(`${label}: ${bleed}px ${JSON.stringify(offenders)}`);
+        await page.screenshot({ path: testInfo.outputPath(`overflow-${label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), fullPage: true });
+      }
     }
 
     for (const o of overflowing) console.log('  OVERFLOW ' + o);

@@ -2,6 +2,7 @@ import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/re
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AddStudentPanel } from './AddStudentPanel';
 import api from '../../../services/api';
+import { WorkspaceDraftProvider } from '../WorkspaceDrafts';
 
 vi.mock('../../../services/api');
 
@@ -13,6 +14,7 @@ describe('AddStudentPanel class/section dropdowns', () => {
   });
 
   beforeEach(() => {
+    vi.mocked(api.post).mockReset();
     vi.mocked(api.get).mockReset();
     vi.mocked(api.get).mockImplementation((url: string) => {
       if (url === '/classes') {
@@ -127,5 +129,30 @@ describe('AddStudentPanel class/section dropdowns', () => {
     expect(photoUrl).toBe('/students/42/photo');
     expect(body).toBeInstanceOf(FormData);
     expect((body as FormData).get('file')).toBe(file);
+  });
+
+  it('retries only the photo after the admission was committed', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn().mockResolvedValue({ width: 400, height: 800, close: vi.fn() }));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => ({ fillRect: vi.fn(), drawImage: vi.fn() }) as unknown as CanvasRenderingContext2D);
+    vi.mocked(api.post).mockResolvedValueOnce({ data: { id: 73 } })
+      .mockRejectedValueOnce(new Error('Upload timed out'))
+      .mockResolvedValueOnce({ data: {} });
+    const setPanel = vi.fn();
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const { container, rerender } = render(<WorkspaceDraftProvider><AddStudentPanel setPanel={setPanel} onRefresh={onRefresh} /></WorkspaceDraftProvider>);
+    fireEvent.change(screen.getByPlaceholderText('Manual unique ID'), { target: { value: 'ADM-73' } });
+    fireEvent.change(screen.getByPlaceholderText('Student full name'), { target: { value: 'Asha Rao' } });
+    await screen.findByRole('option', { name: 'A' });
+    fireEvent.change(container.querySelector('input[type="file"]')!, { target: { files: [new File(['photo'], 'student.png', { type: 'image/png' })] } });
+    await screen.findByRole('img', { name: 'Student preview' });
+    fireEvent.click(screen.getByRole('button', { name: /save & enroll/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Student saved (record 73)');
+    rerender(<WorkspaceDraftProvider><p>Another panel</p></WorkspaceDraftProvider>);
+    rerender(<WorkspaceDraftProvider><AddStudentPanel setPanel={setPanel} onRefresh={onRefresh} /></WorkspaceDraftProvider>);
+    await screen.findByRole('option', { name: 'A' });
+    expect(screen.getByPlaceholderText('Student full name')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry photo upload' }));
+    await waitFor(() => expect(setPanel).toHaveBeenCalledWith('students'));
+    expect(vi.mocked(api.post).mock.calls.map(call => call[0])).toEqual(['/students', '/students/73/photo', '/students/73/photo']);
   });
 });

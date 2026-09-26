@@ -299,6 +299,17 @@ belts, there are no dependency rows. The list is exactly those five lengths; the
 Ties needed **no frontend change at all**. The tiles and the form are driven by the definition, so
 seeding a category is now enough to make it orderable - which is the whole point of the earlier fix.
 
+## Two more, later on 2026-09-25
+
+**A wholesale notebook run offers no upload.** It is printed from stock, so there is no artwork to
+attach. The sample design is matched to `CUSTOMIZATION = CUSTOMIZED`, which hides the field for
+wholesale with no code change - the rule engine already filtered offers by their match.
+
+**Bill books collect a note after all.** This reverses part of the decision taken earlier the same
+day, when the note became flier-only and the `PRINT_CONTENT` group was removed from bill books.
+`notes_enabled` is now true for fliers and bill books. The earlier test asserted "fliers alone" and
+was rewritten rather than worked around; the decision changed, so the test had to.
+
 ## Two changes on 2026-09-25
 
 **Artwork no longer blocks a customised notebook order.** The 2026-09-15 record said a customised

@@ -1,0 +1,588 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "catalogClient canonical browser API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "school-core-service",
+  "x-ims-controller": "CatalogReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "CatalogClient",
+  "x-ims-client-file": "catalogClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/catalog/orders/page": {
+      "get": {
+        "operationId": "getOrderPage",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOrderPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/summary": {
+      "get": {
+        "operationId": "getOrderSummary",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOrderStatistics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/status": {
+      "patch": {
+        "operationId": "updateOrderStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOrder"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/orders/{id}/deliver": {
+      "post": {
+        "operationId": "markDelivered",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOrder"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/annual-plan/review": {
+      "get": {
+        "operationId": "reviewAnnualPlan",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualPlanReview"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Choose a school"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "409": {
+            "description": "Missing or changed review fingerprint, or empty current-year plan"
+          },
+          "503": {
+            "description": "Confirmation unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/catalog/annual-plan/confirm": {
+      "post": {
+        "operationId": "confirmAnnualPlan",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnualPlanConfirmation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Choose a school"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or school scope"
+          },
+          "409": {
+            "description": "Missing or changed review fingerprint, or empty current-year plan"
+          },
+          "503": {
+            "description": "Confirmation unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fingerprint": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "fingerprint"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CatalogOrder": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "totalAmount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "schoolId",
+          "status"
+        ],
+        "additionalProperties": true
+      },
+      "CatalogOrderPage": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CatalogOrder"
+            }
+          },
+          "page": {
+            "type": "integer"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "totalElements": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "content",
+          "page",
+          "size",
+          "totalElements",
+          "totalPages"
+        ],
+        "additionalProperties": true
+      },
+      "CatalogOrderStatistics": {
+        "type": "object",
+        "properties": {
+          "totalOrders": {
+            "type": "number"
+          },
+          "pendingApproval": {
+            "type": "number"
+          },
+          "approved": {
+            "type": "number"
+          },
+          "rejected": {
+            "type": "number"
+          },
+          "gmv": {
+            "type": "number"
+          },
+          "activeOrders": {
+            "type": "number"
+          },
+          "termSpend": {
+            "type": "number"
+          },
+          "activeServices": {
+            "type": "number"
+          },
+          "deliveredCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "totalOrders",
+          "pendingApproval",
+          "approved",
+          "rejected",
+          "gmv",
+          "activeOrders",
+          "termSpend",
+          "activeServices",
+          "deliveredCount"
+        ],
+        "additionalProperties": true
+      },
+      "AnnualPlanConfirmation": {
+        "type": "object",
+        "properties": {
+          "confirmed": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "itemCount": {
+            "type": "integer"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "notificationStatus": {
+            "type": "string",
+            "enum": [
+              "NOT_SENT"
+            ]
+          }
+        },
+        "required": [
+          "confirmed",
+          "id",
+          "schoolId",
+          "academicYearId",
+          "revision",
+          "confirmedAt",
+          "itemCount",
+          "fingerprint",
+          "notificationStatus"
+        ],
+        "additionalProperties": true
+      },
+      "AnnualPlanReviewItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "term": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "linkedOrderId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "estimatedAmount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "term",
+          "category",
+          "description",
+          "quantity",
+          "status",
+          "linkedOrderId",
+          "estimatedAmount"
+        ],
+        "additionalProperties": true
+      },
+      "AnnualPlanReview": {
+        "type": "object",
+        "properties": {
+          "schoolId": {
+            "type": "integer"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "yearLabel": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnnualPlanReviewItem"
+            }
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "confirmation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnnualPlanConfirmation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "schoolId",
+          "academicYearId",
+          "yearLabel",
+          "items",
+          "fingerprint",
+          "confirmation"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "x-ims-gateway-service": "catalog"
+}

@@ -68,7 +68,7 @@ export default function ZoneManagementPage() {
     setError('');
     setSaving(true);
     try {
-      await api.post(`/zones/${selectedZoneId}/admin`, adminForm);
+      await api.post(`/users/provisioning/zones/${selectedZoneId}/admin`, adminForm);
       setNotice('Zone admin set');
       setShowAdminModal(false);
       setAdminForm(defaultAdminForm);

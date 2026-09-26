@@ -1,7 +1,8 @@
-import { ModuleShell, Stat } from '../ui';
-import { formatMoney } from '../utils';
+import { ModuleShell, PanelMessage, Stat } from '../ui';
+import { formatIsoDay, formatMoney } from '../utils';
 import { useState } from 'react';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
+import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
 
 interface Props {
   orders: any[];
@@ -24,6 +25,7 @@ export function SaOrderApprovalsPanel({
   onRefresh, onApprove, onOpenRejectModal, onCloseRejectModal, onSetRejectReason, onReject,
 }: Props) {
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const categoryLabel = useCategoryLabel();
   if (selectedOrder) return <ProductOrderDetail orderId={selectedOrder} onBack={() => setSelectedOrder(null)} onChanged={onRefresh} />;
   return (
     <ModuleShell
@@ -48,32 +50,38 @@ export function SaOrderApprovalsPanel({
       </div>
       <div className="ck-card">
         {loading ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>Loading orders…</div>
+          <PanelMessage>Loading orders…</PanelMessage>
         ) : orders.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--ink3)' }}>
-            No orders awaiting final approval.
-          </div>
+          <PanelMessage>No orders awaiting final approval.</PanelMessage>
         ) : (
-          <table className="ck-table">
+          <div className="ck-table-wrap"><table className="ck-table">
             <thead>
               <tr>
-                <th>Order ID</th><th>School</th><th>Category</th><th>Description</th>
-                <th>Amount</th><th>Placed on</th><th style={{ textAlign: 'right' }}>Actions</th>
+                <th>Order ID</th><th>School</th><th>Category</th>
+                <th className="ck-num">Amount</th><th>Placed on</th><th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {orders.map((row: any) => (
                 <tr key={row.id}>
-                  <td><div className="tb">{row.id}</div><div className="ts">{row.estimatedDelivery || '—'}</div></td>
+                  {/* The Description column repeated the Category verbatim: the order row carries no
+                      description, title or items field, so the whole column could only ever echo its
+                      neighbour. An order awaiting pricing also has no placedAt, and falling through to
+                      an em dash hid how long it had been waiting; createdAt is always present. */}
+                  <td>
+                    <div className="tb">{row.id}</div>
+                    {row.estimatedDelivery ? <div className="ts">{row.estimatedDelivery}</div> : null}
+                  </td>
                   <td><div className="tb">{row.schoolName}</div></td>
-                  <td>{row.category}</td>
-                  <td><div style={{ maxWidth: 220 }}>{row.description || row.title || row.category}</div><div className="ts">{row.items}</div></td>
-                  <td style={{ fontWeight: 600 }}>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
-                  <td style={{ color: 'var(--ink3)' }}>{row.placedAt ? new Date(row.placedAt).toLocaleDateString('en-IN') : row.date || '—'}</td>
+                  <td className="ck-whole">{categoryLabel(row.category)}</td>
+                  <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
+                    ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
+                    : <span style={{ fontWeight: 600 }}>{`₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</span>}</td>
+                  <td className="ck-whole" style={{ color: 'var(--ink3)' }}>{formatIsoDay(row.placedAt || row.createdAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                       {Number(row.formVersion) === 2 ? <button className="ck-btn ck-btn-g" onClick={() => setSelectedOrder(row.id)}>Review order</button> : <button className="ck-btn ck-btn-g" disabled={savingId === row.id} onClick={() => onApprove(row.id)}>
-                        {savingId === row.id ? 'Saving…' : '✓ Approve'}
+                        {savingId === row.id ? 'Saving…' : 'Approve'}
                       </button>}
                       <button className="ck-btn ck-btn-ghost" disabled={savingId === row.id} onClick={() => onOpenRejectModal(row.id)}>
                         Return
@@ -83,13 +91,13 @@ export function SaOrderApprovalsPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
 
       {rejectModalOrderId && (
         <div className="ck-modal-bg" onClick={onCloseRejectModal}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Return order for revision" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Return order for revision</div>
               <button className="ck-modal-x" onClick={onCloseRejectModal}>×</button>
@@ -110,7 +118,8 @@ export function SaOrderApprovalsPanel({
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={onCloseRejectModal}>Cancel</button>
-              <button className="ck-btn ck-btn-g" disabled={savingId === rejectModalOrderId} onClick={onReject}>
+              {/* Approve and Return are opposite outcomes and wore the same green. */}
+              <button className="ck-btn ck-btn-re" disabled={savingId === rejectModalOrderId} onClick={onReject}>
                 {savingId === rejectModalOrderId ? 'Returning…' : 'Return to admin'}
               </button>
             </div>

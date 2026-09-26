@@ -51,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "identity.tenant-school.token=it-ts-token"
     }
 )
+@org.springframework.test.annotation.DirtiesContext(classMode = org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @Testcontainers(disabledWithoutDocker = true)
 class IdentityAuthServiceReuseCommitIntegrationTest {
 
@@ -75,6 +76,41 @@ class IdentityAuthServiceReuseCommitIntegrationTest {
 
     @Autowired IdentityAuthService identityAuthService;
     @Autowired JwtService          jwtService;
+
+    @Test
+    void logoutImmediatelyRejectsAccessFromBothActiveAndRotatedFamilyRows() throws Exception {
+        String email = "logout-" + UUID.randomUUID() + "@example.com";
+        String family = UUID.randomUUID().toString();
+        long userId;
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
+             PreparedStatement ps = c.prepareStatement("INSERT INTO identity.app_users "
+                     + "(full_name,email,password_hash,role,created_at) VALUES ('Logout Test',?,'unused','ADMIN',now()) RETURNING id")) {
+            ps.setString(1, email);
+            try (ResultSet rs = ps.executeQuery()) { rs.next(); userId = rs.getLong(1); }
+        }
+        var snapshot = new AuthenticatedUserSnapshot(userId, "Logout Test", email, "ADMIN", null, null, null, null);
+        String[] access = { jwtService.generateAccessToken(snapshot), jwtService.generateAccessToken(snapshot) };
+        String[] refresh = { jwtService.generateRefreshToken(snapshot), jwtService.generateRefreshToken(snapshot) };
+        try (Connection c = DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
+             PreparedStatement ps = c.prepareStatement("INSERT INTO identity.auth_sessions "
+                     + "(id,user_id,access_token_hash,refresh_token_hash,family_id,status,created_at,expires_at) "
+                     + "VALUES (?,?,?,?,?,?,now(),now()+interval '7 days')")) {
+            for (int i = 0; i < 2; i++) {
+                ps.setString(1, UUID.randomUUID().toString());
+                ps.setLong(2, userId);
+                ps.setString(3, sha256Hex(access[i]));
+                ps.setString(4, sha256Hex(refresh[i]));
+                ps.setString(5, family);
+                ps.setString(6, i == 0 ? "ROTATED" : "ACTIVE");
+                ps.executeUpdate();
+            }
+        }
+        assertThat(identityAuthService.introspect(access[0]).active()).isTrue();
+        assertThat(identityAuthService.introspect(access[1]).active()).isTrue();
+        identityAuthService.logout(refresh[1]);
+        assertThat(identityAuthService.introspect(access[0]).active()).isFalse();
+        assertThat(identityAuthService.introspect(access[1]).active()).isFalse();
+    }
 
     @Test
     void reuseDetection_throws401_andPersistsFamilyRevokeAndAudit() throws Exception {

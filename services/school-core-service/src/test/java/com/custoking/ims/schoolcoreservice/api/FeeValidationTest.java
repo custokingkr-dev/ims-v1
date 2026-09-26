@@ -159,7 +159,7 @@ class FeeValidationTest {
         assertEquals("band-1", captor.getValue().get("bandId"));
         assertEquals("Tuition", captor.getValue().get("name"));
         assertEquals("Monthly", captor.getValue().get("frequency"));
-        assertEquals(500L, captor.getValue().get("amount"));
+        assertEquals(new java.math.BigDecimal("500"), captor.getValue().get("amount"));
     }
 
     // ─── POST /assignments ───────────────────────────────────────────────────
@@ -459,7 +459,7 @@ class FeeValidationTest {
         assertTrue(captor.getValue().containsKey("itemName"), "itemName key must be present when sent");
         assertEquals("Tuition Fee", captor.getValue().get("itemName"));
         assertTrue(captor.getValue().containsKey("amount"), "amount key must be present when sent");
-        assertEquals(50000L, captor.getValue().get("amount"));
+        assertEquals(new java.math.BigDecimal("50000"), captor.getValue().get("amount"));
     }
 
     @Test
@@ -478,10 +478,21 @@ class FeeValidationTest {
         assertTrue(captor.getValue().containsKey("frequency"));
         assertEquals("Monthly", captor.getValue().get("frequency"));
         assertTrue(captor.getValue().containsKey("amount"));
-        assertEquals(1000L, captor.getValue().get("amount"));
+        assertEquals(new java.math.BigDecimal("1000"), captor.getValue().get("amount"));
     }
 
     // ─── POST /payments ──────────────────────────────────────────────────────
+
+    @Test
+    void recordPayment_missingIdempotencyKey_returns400BeforeWriting() throws Exception {
+        mvc.perform(post("/api/v1/fees/payments")
+                        .header("X-Fee-Service-Token", VALID_TOKEN)
+                        .contentType("application/json")
+                        .content("{\"studentId\":1001,\"amount\":5000}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.idempotencyKey").exists());
+        verifyNoInteractions(fees);
+    }
 
     @Test
     void recordPayment_missingStudentId_returns400WithFieldError() throws Exception {
@@ -514,7 +525,7 @@ class FeeValidationTest {
         mvc.perform(post("/api/v1/fees/payments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"studentId\":1001,\"amount\":5000,\"mode\":\"Cash\"}"))
+                        .content("{\"idempotencyKey\":\"test-payment-1\",\"studentId\":1001,\"amount\":5000,\"mode\":\"Cash\"}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).recordPayment(captor.capture());
@@ -530,7 +541,7 @@ class FeeValidationTest {
         mvc.perform(post("/api/v1/fees/payments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"studentId\":1001,\"amount\":5000,\"actorId\":42}"))
+                        .content("{\"idempotencyKey\":\"test-payment-1\",\"studentId\":1001,\"amount\":5000,\"actorId\":42}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).recordPayment(captor.capture());
@@ -545,7 +556,7 @@ class FeeValidationTest {
         mvc.perform(post("/api/v1/fees/payments")
                         .header("X-Fee-Service-Token", VALID_TOKEN)
                         .contentType("application/json")
-                        .content("{\"studentId\":1001,\"amount\":5000}"))
+                        .content("{\"idempotencyKey\":\"test-payment-1\",\"studentId\":1001,\"amount\":5000}"))
                 .andExpect(status().isOk());
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(fees).recordPayment(captor.capture());

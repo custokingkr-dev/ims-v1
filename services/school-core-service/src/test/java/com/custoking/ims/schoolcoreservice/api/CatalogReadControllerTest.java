@@ -88,12 +88,11 @@ class CatalogReadControllerTest {
     }
 
     @Test
-    void confirmAnnualPlanReturnsCompatibilityPayload() {
-        Object response = controller.confirmAnnualPlan("catalog-token");
-
-        assertThat(response).isEqualTo(Map.of(
-                "ok", true,
-                "message", "Annual plan confirmed and Custoking notified"));
+    void confirmationCannotReportSuccessWithoutPersistence() {
+        TenantContext.set(new TenantContext(1L, "sa@x", "SUPERADMIN", null, null));
+        assertThatThrownBy(() -> controller.confirmAnnualPlan("catalog-token", 10L, Map.of("fingerprint", "reviewed")))
+            .isInstanceOf(ResponseStatusException.class)
+            .extracting(error -> ((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     @SuppressWarnings("unused")

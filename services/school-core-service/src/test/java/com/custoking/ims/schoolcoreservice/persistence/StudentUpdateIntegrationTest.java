@@ -98,6 +98,18 @@ class StudentUpdateIntegrationTest {
     // ── admission number uniqueness ─────────────────────────────────────────────
 
     @Test
+    void profileUpdateCannotReplacePrivatePhotoObjectKey() {
+        long id = create(SCHOOL_A, "ADM-100", "Asha", "c1", "a1");
+        jdbc.sql("UPDATE student.students SET photo_url = 'private/original-photo' WHERE id = :id").param("id", id).update();
+        Map<String, Object> request = update(SCHOOL_A, "ADM-100", "Asha Rao", "c1", "a1");
+        request.put("photoUrl", "private/another-students-photo");
+        request.put("photo_url", "private/another-students-photo");
+        students.updateStudent(id, request);
+        assertThat(jdbc.sql("SELECT photo_url FROM student.students WHERE id = :id").param("id", id).query(String.class).single())
+            .isEqualTo("private/original-photo");
+    }
+
+    @Test
     void admissionNumber_mayRepeatAcrossSchools_butNotWithinOne() {
         long ashaA = create(SCHOOL_A, "ADM-100", "Asha", "c1", "a1");
         long bharatB = create(SCHOOL_B, "ADM-200", "Bharat", "c1", "b1");

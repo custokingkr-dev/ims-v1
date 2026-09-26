@@ -2,6 +2,7 @@ package com.custoking.ims.billingservice.persistence;
 
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -23,10 +24,17 @@ public class BillingInvoiceRepository {
     private final String schoolInvoiceTable;
     private final String schoolInvoiceItemTable;
     private final String paymentTable;
+    private final BillingInvoiceStatistics statistics;
 
     public BillingInvoiceRepository(
-            JdbcClient jdbc,
-            @Value("${billing.db.schema:billing}") String schema) {
+            JdbcClient jdbc, String schema) {
+        this(jdbc, schema, "UTC");
+    }
+
+    @Autowired
+    public BillingInvoiceRepository(JdbcClient jdbc,
+            @Value("${billing.db.schema:billing}") String schema,
+            @Value("${billing.reporting-time-zone:UTC}") String reportingTimeZone) {
         this.jdbc = jdbc;
         this.invoiceTable = qualifiedTable(schema, "superadmin_invoices");
         this.sequenceTable = qualifiedTable(schema, "superadmin_order_seq");
@@ -34,6 +42,8 @@ public class BillingInvoiceRepository {
         this.schoolInvoiceTable = qualifiedTable(schema, "billing_invoices");
         this.schoolInvoiceItemTable = qualifiedTable(schema, "billing_invoice_items");
         this.paymentTable = qualifiedTable(schema, "billing_payments");
+        this.statistics = new BillingInvoiceStatistics(jdbc, invoiceTable,
+                java.time.Clock.systemUTC(), java.time.ZoneId.of(reportingTimeZone));
     }
 
     public List<InvoiceRow> list(Long schoolId, String status, int limit) {
@@ -57,21 +67,7 @@ public class BillingInvoiceRepository {
     }
 
     public Map<String, Object> stats() {
-        List<InvoiceRow> all = list(null, null, 500);
-        long paid = all.stream()
-                .filter(invoice -> "Paid".equalsIgnoreCase(str(invoice.status(), "")))
-                .count();
-        long pending = all.stream()
-                .filter(invoice -> "Awaiting payment".equalsIgnoreCase(str(invoice.status(), "")))
-                .count();
-        long total = all.stream()
-                .mapToLong(invoice -> invoice.total() == null ? 0L : invoice.total())
-                .sum();
-        return Map.of(
-                "sentThisMonth", (long) all.size(),
-                "paid", paid,
-                "pending", pending,
-                "totalInvoiced", total);
+        return statistics.current();
     }
 
     public InvoiceRow byOrderRef(String orderRef) {

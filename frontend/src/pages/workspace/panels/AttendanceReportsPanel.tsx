@@ -67,7 +67,7 @@ export function AttendanceReportsPanel({ schoolScopedParams }: Props) {
       setStudents([]);
       return;
     }
-    void api.get<StudentOpt[]>(`/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(sectionId)}/students`, { params: scoped })
+    void api.get<StudentOpt[]>('/students/roster', { params: { classId, sectionId, ...scoped } })
       .then((response) => setStudents(Array.isArray(response.data) ? response.data : []))
       .catch(() => setStudents([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps

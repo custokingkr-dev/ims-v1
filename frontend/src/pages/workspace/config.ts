@@ -250,7 +250,7 @@ export const SUPERADMIN_NAV_SECTIONS: Array<{
   {
     title: 'Analytics',
     items: [
-      { key: 'sa-revenue', label: 'Revenue', icon: '₹' },
+      { key: 'sa-revenue', label: 'Invoice analytics', icon: '₹' },
       { key: 'sa-catalog', label: 'Catalog mgmt', icon: '📋' },
     ],
   },
@@ -281,7 +281,7 @@ export const PANEL_TITLES: Record<PanelKey, string> = {
   'sa-invoices': 'Invoices',
   'sa-schools': 'School accounts',
   'sa-erp': 'ERP activity',
-  'sa-revenue': 'Revenue',
+  'sa-revenue': 'Invoice analytics',
   'sa-catalog': 'Catalog management',
   'za-overview': 'Zone overview',
   'za-schools': 'My schools',

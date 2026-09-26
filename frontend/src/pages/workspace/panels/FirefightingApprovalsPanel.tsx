@@ -5,6 +5,9 @@ import { formatMoney } from '../utils';
 import type { FirefightingRequest, Quotation } from '../../../types/workspace';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { formatFfDate } from './ffUtils';
+import { createQuotationDocumentClient } from '../../../generated/quotationDocumentClient';
+
+const documents = createQuotationDocumentClient(api);
 
 const FF_STAGES = [
   { key: 'DRAFT', label: 'Draft' },
@@ -53,6 +56,37 @@ function WorkflowStepper({ status }: { status: string }) {
 interface Props {
   isSuperAdmin: boolean;
   onRefresh: () => Promise<void>;
+}
+
+function QuotationAttachment({ code, quote }: { code: string; quote: Quotation }) {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState('');
+  if (!quote.document) return <span>{quote.documentUrl ? `Reference: ${quote.documentUrl}` : 'No attached file'}</span>;
+  const download = async () => {
+    if (!quote.id || !quote.document) return;
+    setDownloading(true); setError('');
+    try {
+      const file = await documents.downloadDocument({ code, quotationId: quote.id });
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a'); link.href = url; link.download = quote.document.filename;
+      try { document.body.appendChild(link); link.click(); }
+      finally { link.remove(); window.setTimeout(() => URL.revokeObjectURL(url), 1000); }
+    } catch (failure) {
+      const status = (failure as { response?: { status?: number } })?.response?.status;
+      setError(status === 403 ? 'Your access to this file has changed. Refresh the request to check your access.'
+        : status === 404 ? 'This file is no longer attached. Refresh the request to see its current documents.'
+        : status === 503 ? 'Private file storage is temporarily unavailable. Retry the download later.'
+        : 'The file could not be downloaded. Check the connection and retry.');
+    } finally { setDownloading(false); }
+  };
+  return <div style={{ overflowWrap: 'anywhere' }}>
+    <span>{quote.document.filename}</span>
+    <button type="button" className="ck-btn ck-btn-ghost" disabled={downloading || !quote.id}
+      aria-label={`Download ${quote.document.filename}`} onClick={() => void download()}>
+      {downloading ? 'Downloading…' : error ? 'Retry download' : 'Download file'}
+    </button>
+    {error && <p role="alert" style={{ color: 'var(--re)', marginTop: 6 }}>{error}</p>}
+  </div>;
 }
 
 export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
@@ -204,7 +238,7 @@ export function FirefightingApprovalsPanel({ isSuperAdmin, onRefresh }: Props) {
                           <td style={{ fontWeight: 600 }}>{q.vendorName || '—'}{q.isCustoking && <span style={{ fontSize: 10, fontWeight: 700, background: 'var(--g)', color: 'var(--ck-text-inverse)', padding: '1px 7px', borderRadius: 5, marginLeft: 6 }}>✦ Our quote</span>}</td>
                           <td style={{ fontWeight: 700, color: 'var(--g)' }}>₹{formatMoney(Number(q.amount))}</td>
                           <td>{q.deliveryTimeline || '—'}</td>
-                          <td style={{ fontSize: 12, color: q.documentUrl ? 'var(--g)' : 'var(--ink3)' }}>{q.documentUrl || 'No file'}</td>
+                          <td style={{ fontSize: 12 }}><QuotationAttachment code={req.code} quote={q} /></td>
                           <td style={{ fontSize: 12, color: 'var(--ink2)' }}>{q.notes || '—'}</td>
                         </tr>
                       ))}

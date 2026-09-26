@@ -47,6 +47,10 @@
   --ck-color-warning-soft:   #fff3e6;
   --ck-color-danger:         #b42318;
   --ck-color-danger-soft:    #fdecea;
+  /* Quiet text ON the danger tint. The neutral secondary and muted greys measure
+     4.35:1 and 4.38:1 there, under the 4.5 they need; tinting from the surface's own
+     hue reads as subdued and clears 6.5:1. */
+  --ck-text-on-danger-soft:  #84423c;
   /* #d14e12 measures 4.37:1 on white - just under the AA floor, and axe caught
      it rendering as 10px bold on the dashboard. #c4470f clears it (4.93). */
   --ck-color-orange:         #c4470f;

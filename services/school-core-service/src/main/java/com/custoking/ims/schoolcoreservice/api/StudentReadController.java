@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -102,6 +103,40 @@ public class StudentReadController {
             return students.workspaceStudents(scope, className, sectionName, feeStatus, query, page, size);
         }
         return students.workspaceStudents(scope, className, sectionName, feeStatus, page, size);
+    }
+
+    @GetMapping("/roster")
+    public List<StudentRow> roster(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @RequestParam String classId,
+            @RequestParam String sectionId,
+            @RequestParam(required = false) Long schoolId,
+            @RequestParam(defaultValue = "500") int limit) {
+        requireToken(token, "student:read");
+        TenantScope.requirePermissionIfAuthenticated("student:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireStudentModule(scope);
+        return students.list(scope, classId, sectionId, limit);
+    }
+
+    @PutMapping("/{id}")
+    public Map<String, Object> update(
+            @RequestHeader(value = "X-Student-Service-Token", required = false) String token,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "student:write");
+        TenantScope.requirePermissionIfAuthenticated("student:update");
+        Map<String, Object> body = new HashMap<>(request);
+        applyResolvedSchool(body);
+        requireStudentModule(longValue(body.get("schoolId")));
+        // The existing repository validates required profile/placement fields and
+        // stamps updatedBy from TenantContext; photo object keys are not writable here.
+        try { return students.updateStudent(id, body); }
+        catch (SecurityException ex) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, ex.getMessage(), ex);
+        } catch (IllegalArgumentException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
+        }
     }
 
     @GetMapping("/{id}")
@@ -205,6 +240,7 @@ public class StudentReadController {
         if (req.city() != null) params.put("city", req.city());
         if (req.state() != null) params.put("state", req.state());
         if (req.pinCode() != null) params.put("pinCode", req.pinCode());
+        if (req.address() != null) params.put("address", req.address());
         // A non-URL photo_url is a private bucket object key that only the upload paths may assign;
         // accepting one here would let a caller point a student at any object in the bucket.
         if (req.photoUrl() != null && req.photoUrl().matches("(?i)^https?://.*")) params.put("photoUrl", req.photoUrl());

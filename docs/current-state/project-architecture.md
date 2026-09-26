@@ -96,9 +96,9 @@ The gateway owns:
 - CORS allowlist (`GATEWAY_CORS_ALLOWED_ORIGINS`).
 - Security headers including CSP, HSTS, and referrer policy.
 - Request body size protection.
-- Token-bucket rate limiting.
-- Local HS256/HS512 JWT verification when `GATEWAY_LOCAL_JWT_VERIFY` is enabled and `APP_JWT_SECRET` is present.
-- Fallback token introspection through identity-service.
+- Process-local token-bucket rate limiting. This is per replica, not a fleet-wide school quota.
+- Optional local HS256/HS512 signature/expiry prefilter when `GATEWAY_LOCAL_JWT_VERIFY` is enabled and `APP_JWT_SECRET` is present.
+- Authoritative token introspection through identity-service on every authenticated request, including enriched JWTs. Identity verifies the persisted access-token session and current permissions/school assignments. Logout or refresh-token reuse revokes access from every row in the family; ordinary rotation retains valid access until its expiry. Introspection has a 10-second gateway deadline and availability errors fail closed as upstream errors, without pretending the login expired.
 - Cloud Run ID-token upstream auth when `GATEWAY_CLOUD_RUN_AUTH=auto`.
 - Per-service token header injection:
   - `X-Identity-Service-Token`

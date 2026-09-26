@@ -1,4 +1,5 @@
 import { DragEvent, useEffect, useRef, useState } from 'react';
+import { studentClient } from '../../../services/studentApi';
 import api from '../../../services/api';
 import {
   emptyStudentProfileForm,
@@ -13,6 +14,7 @@ import { ModuleShell, Field } from '../ui';
 import type { PanelKey } from '../config';
 import { StudentProfileForm } from './StudentProfileForm';
 import { StudentModuleTabs } from './StudentModuleTabs';
+import { useDraftDirty, useWorkspaceDraft } from '../WorkspaceDrafts';
 import {
   Check,
   FileSpreadsheet,
@@ -34,12 +36,15 @@ interface Props {
 }
 
 export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canImportStudents = true }: Props) {
-  const [studentForm, setStudentForm] = useState<StudentProfileFormState>(emptyStudentProfileForm());
-  const [saving, setSaving] = useState(false);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [studentForm, setStudentForm] = useWorkspaceDraft<StudentProfileFormState>('admission.form', emptyStudentProfileForm);
+  const [createdStudentId, setCreatedStudentId] = useWorkspaceDraft<number | null>('admission.createdId', null);
+  const [dirty, setDirty] = useWorkspaceDraft('admission.dirty', false);
+  const clearDraftDirty = useDraftDirty('admission', dirty);
+  const [saving, setSaving] = useWorkspaceDraft('admission.saving', false);
+  const [photoFile, setPhotoFile] = useWorkspaceDraft<File | null>('admission.photo', null);
   const [photoBitmap, setPhotoBitmap] = useState<ImageBitmap | null>(null);
   const [photoError, setPhotoError] = useState('');
-  const [photoFeedback, setPhotoFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [photoFeedback, setPhotoFeedback] = useWorkspaceDraft<{ type: 'success' | 'error'; message: string } | null>('admission.feedback', null);
   const [photoDragActive, setPhotoDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const photoPreviewCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -49,6 +54,8 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   const [sections, setSections] = useState<StudentSectionOption[]>([]);
   const [activeSection, setActiveSection] = useState('student-form-details');
   const schoolId = schoolScopedParams?.schoolId;
+
+  useEffect(() => { if (photoFile) void selectPhoto(photoFile); }, []);
 
   useEffect(() => {
     let alive = true;
@@ -76,19 +83,15 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       `/classes/${encodeURIComponent(studentForm.classId)}/sections`,
       { params: { ...(schoolScopedParams || {}), active: true } },
     )
-      .then((res) => { if (alive) setSections(Array.isArray(res.data) ? res.data : []); })
+      .then((res) => {
+        if (!alive) return;
+        const options = Array.isArray(res.data) ? res.data : [];
+        setSections(options);
+        setStudentForm(previous => options.some(section => section.id === previous.sectionId) ? previous : { ...previous, sectionId: options[0]?.id || '' });
+      })
       .catch(() => { if (alive) setSections([]); });
     return () => { alive = false; };
   }, [studentForm.classId, schoolId]);
-
-  useEffect(() => {
-    setStudentForm((prev) => {
-      if (sections.length === 0) return prev.sectionId ? { ...prev, sectionId: '' } : prev;
-      return sections.some((s) => s.id === prev.sectionId)
-        ? prev
-        : { ...prev, sectionId: sections[0].id };
-    });
-  }, [sections]);
 
   useEffect(() => {
     const canvas = photoPreviewCanvasRef.current;
@@ -117,10 +120,12 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   }, []);
 
   const updateStudentForm = (patch: Partial<StudentProfileFormState>) => {
+    setDirty(true);
     setStudentForm((prev) => ({ ...prev, ...patch }));
   };
 
   const onClassChange = (classId: string) => {
+    setDirty(true);
     setStudentForm((prev) => ({ ...prev, classId, sectionId: '' }));
   };
 
@@ -139,6 +144,9 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
     setStudentForm(emptyStudentProfileForm());
     resetPhotoState();
     setPhotoFeedback(null);
+    setCreatedStudentId(null);
+    setDirty(false);
+    clearDraftDirty();
   };
 
   const validateImageFile = (file: File) => {
@@ -164,8 +172,9 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       photoBitmapRef.current = decoded;
       setPhotoBitmap(decoded);
       setPhotoFile(file);
+      setDirty(true);
       setPhotoError('');
-      setPhotoFeedback(null);
+      if (!createdStudentId) setPhotoFeedback(null);
     } catch (err: unknown) {
       if (selection !== photoSelectionRef.current) return;
       photoBitmapRef.current?.close();
@@ -179,41 +188,43 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
   const handlePhotoDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setPhotoDragActive(false);
+    if (saving) return;
     const file = event.dataTransfer.files?.[0];
     if (file) void selectPhoto(file);
   };
 
   const handleSaveStudent = async () => {
+    if (saving) return;
+    let savedId = createdStudentId;
     try {
       setSaving(true);
       setPhotoError('');
       setPhotoFeedback(null);
-      if (!studentForm.admissionNumber.trim() || !studentForm.fullName.trim()) {
-        throw new Error('Admission number and full name are required.');
+      if (!savedId) {
+        if (!studentForm.admissionNumber.trim() || !studentForm.fullName.trim()) {
+          throw new Error('Admission number and full name are required.');
+        }
+        if (!studentForm.classId || !studentForm.sectionId) {
+          throw new Error('Class and section are required.');
+        }
+        const studentResponse = await studentClient.createStudent({ ...studentProfileFormToCreatePayload(studentForm), ...(schoolScopedParams || {}) });
+        savedId = studentResponse.id ?? null;
+        if (!savedId) throw new Error('The save response did not include a student ID. Check the student list before trying again.');
+        setCreatedStudentId(savedId);
       }
-      if (!studentForm.classId || !studentForm.sectionId) {
-        throw new Error('Class and section are required.');
-      }
-
-      const studentResponse = await api.post<{ student?: { id: number }; id?: number }>(
-        '/workspace/students',
-        { ...studentProfileFormToCreatePayload(studentForm), ...(schoolScopedParams || {}) },
-      );
-      const createdStudent = (studentResponse.data as { student?: { id: number }; id?: number })?.student || studentResponse.data;
       if (photoFile) {
-        const formData = new FormData();
-        formData.append('file', photoFile);
-        await api.post(`/students/${(createdStudent as { id: number }).id}/photo`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        await studentClient.uploadStudentPhoto({ id: savedId }, { file: photoFile });
         setPhotoFeedback({ type: 'success', message: 'Student saved and photo uploaded successfully.' });
       } else {
         setPhotoFeedback({ type: 'success', message: 'Student saved successfully.' });
       }
-      await onRefresh();
+      // Refreshing the dashboard is independent of the committed admission.
+      void Promise.resolve().then(onRefresh).catch(() => undefined);
       resetStudentForm();
       setPanel('students');
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err instanceof Error ? err.message : 'Unable to save student.');
-      setPhotoFeedback({ type: 'error', message: msg });
+      setPhotoFeedback({ type: 'error', message: savedId ? `Student saved (record ${savedId}). The photo could not be uploaded: ${msg} Retry the photo upload or continue to the student list.` : msg });
     } finally {
       setSaving(false);
     }
@@ -246,11 +257,13 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
       <StudentModuleTabs active="addstudent" setPanel={setPanel} canImport={canImportStudents} />
 
       {photoFeedback ? (
-        <div className={`ck-alert ${photoFeedback.type === 'success' ? 'ck-alert-g' : 'ck-alert-re'}`}>
+        <div role={photoFeedback.type === 'error' ? 'alert' : 'status'} className={`ck-alert ${photoFeedback.type === 'success' ? 'ck-alert-g' : 'ck-alert-re'}`}>
           <span>{photoFeedback.type === 'success' ? <Check size={16} /> : '!'}</span>
           <div>{photoFeedback.message}</div>
         </div>
       ) : null}
+      {dirty && <p className="ts" role="status">Your unfinished admission stays available while you move between workspace panels. Save it before refreshing or signing out.</p>}
+      {createdStudentId && <button className="ck-btn ck-btn-ghost" disabled={saving} onClick={() => { resetStudentForm(); setPanel('students'); }}>Continue to student list without photo</button>}
 
       <div className="ck-admission-layout">
         <aside className="ck-admission-rail" aria-label="Student form sections">
@@ -285,9 +298,10 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
               <strong>Student profile</strong>
               <div className="ck-card-sub">Fields marked with * are required before enrollment.</div>
             </div>
-            <span className="ck-status sgr">Draft</span>
+            <span className="ck-status sgr">{createdStudentId ? 'Student saved · photo pending' : 'Draft'}</span>
           </div>
           <div className="ck-form-body">
+            <fieldset disabled={saving || !!createdStudentId} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
             <StudentProfileForm
               form={studentForm}
               classes={classes}
@@ -295,20 +309,21 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
               onChange={updateStudentForm}
               onClassChange={onClassChange}
             />
+            </fieldset>
 
             <div className="ck-photo-panel">
               <div className="ck-photo-panel-copy">
                 <h3>Student profile photo</h3>
                 <p>Upload a clear face photo. JPG, PNG, or WEBP up to {STUDENT_PHOTO_MAX_LABEL}.</p>
               </div>
-              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void selectPhoto(file); }} />
+              <input ref={fileInputRef} type="file" disabled={saving} accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} onChange={(e) => { const file = e.target.files?.[0]; if (file) void selectPhoto(file); }} />
               <div className={`ck-photo-dropzone ${photoDragActive ? 'drag' : ''} ${photoBitmap ? 'has-image' : ''}`} onDragOver={(e) => { e.preventDefault(); setPhotoDragActive(true); }} onDragLeave={() => setPhotoDragActive(false)} onDrop={handlePhotoDrop}>
                 <div className="ck-photo-drop-icon"><ImagePlus size={24} aria-hidden="true" /></div>
                 <div className="ck-photo-drop-title">Drop the student photo here</div>
                 <div className="ck-photo-drop-sub">The complete photo frame is preserved when it is saved.</div>
                 <div className="ck-actions-inline">
-                  <button type="button" className="ck-btn ck-btn-g ck-icon-label" onClick={() => fileInputRef.current?.click()}><ImagePlus size={15} />Choose photo</button>
-                  {photoFile ? <button type="button" className="ck-btn ck-btn-ghost" onClick={resetPhotoState}>Remove</button> : null}
+                  <button type="button" className="ck-btn ck-btn-g ck-icon-label" disabled={saving} onClick={() => fileInputRef.current?.click()}><ImagePlus size={15} />Choose photo</button>
+                  {photoFile ? <button type="button" className="ck-btn ck-btn-ghost" disabled={saving} onClick={resetPhotoState}>Remove</button> : null}
                 </div>
               </div>
               {photoError ? <div className="ck-photo-error">{photoError}</div> : null}
@@ -326,11 +341,11 @@ export function AddStudentPanel({ setPanel, onRefresh, schoolScopedParams, canIm
             </div>
 
             <div className="ck-admission-footer">
-              <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" onClick={resetStudentForm}>
+              <button className="ck-btn ck-btn-ghost ck-icon-label" type="button" disabled={saving} onClick={() => { if (!dirty || window.confirm('Clear this unfinished admission? Any already saved student record will remain.')) resetStudentForm(); }}>
                 <RotateCcw size={15} aria-hidden="true" />Clear form
               </button>
               <button className="ck-btn ck-btn-g ck-icon-label" disabled={saving} onClick={() => void handleSaveStudent()}>
-                <Save size={15} aria-hidden="true" />{saving ? 'Saving...' : 'Save & enroll student'}
+                <Save size={15} aria-hidden="true" />{saving ? 'Saving...' : createdStudentId ? photoFile ? 'Retry photo upload' : 'Finish without photo' : 'Save & enroll student'}
               </button>
             </div>
           </div>

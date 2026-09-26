@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field, Stat } from '../ui';
+import { ModuleShell, Field, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 import { DEFAULT_SCHOOL_TIME_ZONE, SCHOOL_TIME_ZONES } from '../../../utils/timeZones';
 import { DEFAULT_SCHOOL_LOCALIZATION, SCHOOL_COUNTRY_PRESETS, formatSchoolCurrency, localizationForCountry } from '../../../utils/schoolLocalization';
@@ -242,13 +242,18 @@ export function SaSchoolsPanel() {
           );
         })()}
         <div className="ck-card">
-          {saSchoolsLoading ? <div style={{ padding: 16 }}>Loading schools…</div>
-          : saSchoolsError ? <div style={{ padding: 16 }}>{saSchoolsError}</div>
-          : <table className="ck-table">
-            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th>Orders YTD</th><th>Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
+          {saSchoolsLoading ? <PanelMessage>Loading schools…</PanelMessage>
+          : saSchoolsError ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{saSchoolsError}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void loadSaSchools()}>Retry</button>
+            </div>
+          )
+          : <div className="ck-table-wrap"><table className="ck-table">
+            <thead><tr><th>School</th><th>Setup</th><th>Short code</th><th>City</th><th>Timezone</th><th>Classes</th><th>Sections / class</th><th>Academic start</th><th>Financial start</th><th>Admins</th><th>Operators</th><th className="ck-num">Orders YTD</th><th className="ck-num">Order Value YTD</th><th>ERP since</th><th></th></tr></thead>
             <tbody>
               {saSchools.length === 0
-                ? <tr><td colSpan={15}><div className="ts">No schools found.</div></td></tr>
+                ? <tr><td colSpan={15}><PanelMessage>No schools found.</PanelMessage></td></tr>
                 : saSchools.map((school: any) => (
                   <tr key={school.id}>
                     <td><div className="tb">{school.name}</div><div className="ts">{school.active ? 'Active' : 'Inactive'} · {school.countryCode || 'IN'} · {school.currencyCode || 'INR'}</div></td>
@@ -262,8 +267,8 @@ export function SaSchoolsPanel() {
                     <td>{financialStartLabel(school.financialYearStartMonth)}</td>
                     <td>{renderAccountList(accountList(school, 'adminAccounts', 'adminEmail'))}</td>
                     <td>{renderAccountList(accountList(school, 'operatorAccounts', 'operationsEmail'))}</td>
-                    <td>{school.ordersYTD ?? 0}</td>
-                    <td>{formatSchoolCurrency(Number(school.gmvYTD || 0) / 100, school)}</td>
+                    <td className="ck-num">{school.ordersYTD ?? 0}</td>
+                    <td className="ck-num">{formatSchoolCurrency(Number(school.gmvYTD || 0) / 100, school)}</td>
                     <td>{school.erpSince || '—'}</td>
                     <td>
                       <div className="ck-actions-inline">
@@ -274,13 +279,13 @@ export function SaSchoolsPanel() {
                   </tr>
                 ))}
             </tbody>
-          </table>}
+          </table></div>}
         </div>
       </ModuleShell>
 
       {saOnboardOpen && (
         <div className="ck-modal-bg" onClick={() => setSaOnboardOpen(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Onboard school" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Onboard school</div>
               <button className="ck-modal-x" onClick={() => setSaOnboardOpen(false)}>×</button>
@@ -330,7 +335,7 @@ export function SaSchoolsPanel() {
 
       {editSchool && (
         <div className="ck-modal-bg" onClick={() => setEditSchool(null)}>
-          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Edit structure" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Edit structure — {editSchool.name}</div>
               <button className="ck-modal-x" onClick={() => setEditSchool(null)}>×</button>

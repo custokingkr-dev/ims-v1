@@ -18,7 +18,8 @@ public interface NotificationInboxRepository extends JpaRepository<NotificationI
 
     List<NotificationInboxEvent> findByStatusOrderByReceivedAtAsc(String status, Pageable pageable);
 
-    @Query("SELECT e FROM NotificationInboxEvent e WHERE e.status = :status AND (e.nextAttemptAt IS NULL OR e.nextAttemptAt <= :now) ORDER BY e.receivedAt ASC")
+    // Broadcast retries belong to their scoped worker, which refreshes current guardian consent first.
+    @Query("SELECT e FROM NotificationInboxEvent e WHERE e.status = :status AND e.eventId NOT LIKE 'broadcast:%' AND (e.nextAttemptAt IS NULL OR e.nextAttemptAt <= :now) ORDER BY e.receivedAt ASC")
     List<NotificationInboxEvent> findRetryable(@Param("status") String status,
                                                 @Param("now") OffsetDateTime now,
                                                 Pageable pageable);

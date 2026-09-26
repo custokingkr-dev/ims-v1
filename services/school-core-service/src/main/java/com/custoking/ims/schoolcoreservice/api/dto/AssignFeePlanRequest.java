@@ -19,5 +19,12 @@ public record AssignFeePlanRequest(
         Double bandDiscount,
         Double manualDiscount,
         Double surcharge,
-        Long actorId
-) {}
+        Long actorId,
+        java.util.List<String> optionalItemIds,
+        Long discountRuleId,
+        String academicYearId
+) {
+    public AssignFeePlanRequest(Long studentId, String bandId, String schedule, Double bandDiscount, Double manualDiscount, Double surcharge, Long actorId) {
+        this(studentId, bandId, schedule, bandDiscount, manualDiscount, surcharge, actorId, null, null, null);
+    }
+}

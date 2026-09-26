@@ -43,7 +43,7 @@ async function signInWithSparsePayloads(page: Page, permissions: string[]) {
     if (pathname.includes('/auth/')) body = user;
     // Only the two payloads the shell itself needs are well-formed. Everything
     // a panel asks for comes back as {}.
-    else if (pathname === '/api/v1/workspace') {
+    else if (pathname === '/api/v1/reporting/workspace') {
       body = { school: { name: 'Green Valley School', meta: '2026-27', timeZone: 'Asia/Kolkata' }, dashboard: {}, orders: [], staff: [] };
     } else if (pathname.endsWith('/modules/active')) body = ALL_MODULES;
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });

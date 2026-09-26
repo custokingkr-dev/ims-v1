@@ -33,11 +33,11 @@ async function mockAuthenticatedApi(page: Page) {
 
     if (pathname === '/api/v1/auth/login') return json(route, user);
     if (pathname === '/api/v1/auth/refresh') return json(route, user);
-    if (pathname === '/api/v1/workspace') return json(route, workspace);
+    if (pathname === '/api/v1/reporting/workspace') return json(route, workspace);
     if (pathname === '/api/v1/schools/7/modules/active') return json(route, []);
-    if (pathname === '/api/v1/command-centre/actions') return json(route, []);
+    if (pathname === '/api/v1/reporting/command-center/actions') return json(route, []);
     if (pathname === '/api/v1/notifications/broadcasts') return json(route, []);
-    if (pathname === '/api/v1/command-centre/feed') return json(route, []);
+    if (pathname === '/api/v1/reporting/command-center/feed') return json(route, []);
 
     return json(route, {});
   });
@@ -64,7 +64,7 @@ test('login establishes an in-memory session and opens the protected workspace',
     email: 'asha@example.test',
     password: 'correct horse battery staple',
   });
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(url => url.pathname === '/dashboard');
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
   await expect(page.evaluate(() => localStorage.getItem('custoking_isLoggedIn'))).resolves.toBe('true');
 });
@@ -78,7 +78,7 @@ test('a returning session is restored before the protected route is evaluated', 
   await page.goto('/dashboard');
 
   await refreshRequest;
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(url => url.pathname === '/dashboard');
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'School dashboard' })).toBeVisible();
 });

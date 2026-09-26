@@ -61,6 +61,9 @@ spec:
               value: "true"
             - name: OPERATIONS_DB_SCHEMA
               value: workflow,firefighting
+            # Dedicated private bucket; provision narrow runtime IAM before enabling uploads.
+            - name: FIREFIGHTING_QUOTATION_DOCUMENT_BUCKET
+              value: custoking-dev-quotation-documents # from-param: ${project_id}-quotation-documents
             - name: OPERATIONS_OUTBOX_PUBSUB_TOPIC_ID
               value: ims-reporting-events-v1-dev # from-param: ${reporting_topic}-${env}
             - name: OPERATIONS_OUTBOX_PUBSUB_PROJECT_ID

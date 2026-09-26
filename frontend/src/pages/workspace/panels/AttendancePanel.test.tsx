@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { AttendancePanel } from './AttendancePanel';
 import api from '../../../services/api';
+import { WorkspaceDraftProvider } from '../WorkspaceDrafts';
 
 vi.mock('../../../services/api');
 vi.mock('../../../contexts/AuthContext', () => ({
@@ -76,5 +77,32 @@ describe('AttendancePanel', () => {
     await waitFor(() => expect(api.put).toHaveBeenCalled());
     const putBody = vi.mocked(api.put).mock.calls[0][1] as { records: Array<{ studentId: number; status: string }> };
     expect(putBody.records).toContainEqual(expect.objectContaining({ studentId: 1, status: 'LATE' }));
+  });
+
+  it('retains unsaved marks when leaving and returning to the attendance panel', async () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const { rerender } = render(<WorkspaceDraftProvider><AttendancePanel onRefresh={onRefresh} /></WorkspaceDraftProvider>);
+    await screen.findByText('A One');
+    fireEvent.click(screen.getAllByRole('button', { name: 'LATE' })[0]);
+    rerender(<WorkspaceDraftProvider><p>Another panel</p></WorkspaceDraftProvider>);
+    rerender(<WorkspaceDraftProvider><AttendancePanel onRefresh={onRefresh} /></WorkspaceDraftProvider>);
+    await screen.findByText('A One');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.put).toHaveBeenCalled());
+    expect(vi.mocked(api.put).mock.calls[0][1]).toMatchObject({ records: [{ studentId: 1, status: 'LATE' }] });
+  });
+
+  it('allows cancelling a date change without losing unsaved marks', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<AttendancePanel onRefresh={vi.fn()} />);
+    await screen.findByText('A One');
+    fireEvent.click(screen.getAllByRole('button', { name: 'LATE' })[0]);
+    const date = screen.getByLabelText('Attendance date') as HTMLInputElement;
+    const previousDate = date.value;
+    fireEvent.change(date, { target: { value: '2026-01-01' } });
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(date).toHaveValue(previousDate);
+    expect(screen.getByText(/Unsaved attendance stays available/)).toBeInTheDocument();
+    confirm.mockRestore();
   });
 });

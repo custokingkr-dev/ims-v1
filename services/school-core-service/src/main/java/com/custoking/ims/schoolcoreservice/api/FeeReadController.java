@@ -8,6 +8,7 @@ import com.custoking.ims.schoolcoreservice.api.dto.RecordPaymentRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.UpdateBandRequest;
 import com.custoking.ims.schoolcoreservice.api.dto.UpdateItemRequest;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.PaymentConflictException;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeAssignmentRow;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeBandRow;
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository.FeeItemRow;
@@ -135,6 +136,10 @@ public class FeeReadController {
         if (req.schedules() != null) body.put("schedules", req.schedules());
         if (req.discount() != null) body.put("discount", req.discount());
         if (schoolId != null) body.put("schoolId", schoolId);
+        if (req.gracePeriodDays() != null) body.put("gracePeriodDays", req.gracePeriodDays());
+        if (req.lateFeeType() != null) body.put("lateFeeType", req.lateFeeType());
+        if (req.lateFeeAmount() != null) body.put("lateFeeAmount", req.lateFeeAmount());
+        if (req.lateFeeIntervalDays() != null) body.put("lateFeeIntervalDays", req.lateFeeIntervalDays());
         return execute(() -> fees.createBand(body));
     }
 
@@ -154,6 +159,10 @@ public class FeeReadController {
         if (req.classTo() != null) body.put("classTo", req.classTo());
         if (req.schedules() != null) body.put("schedules", req.schedules());
         if (req.discount() != null) body.put("discount", req.discount());
+        if (req.gracePeriodDays() != null) body.put("gracePeriodDays", req.gracePeriodDays());
+        if (req.lateFeeType() != null) body.put("lateFeeType", req.lateFeeType());
+        if (req.lateFeeAmount() != null) body.put("lateFeeAmount", req.lateFeeAmount());
+        if (req.lateFeeIntervalDays() != null) body.put("lateFeeIntervalDays", req.lateFeeIntervalDays());
         return execute(() -> fees.updateBand(id, body));
     }
 
@@ -198,6 +207,7 @@ public class FeeReadController {
         body.put("name", req.name());
         if (req.frequency() != null) body.put("frequency", req.frequency());
         if (req.amount() != null) body.put("amount", req.amount());
+        if (req.optional() != null) body.put("optional", req.optional());
         return execute(() -> fees.createItem(body));
     }
 
@@ -216,6 +226,7 @@ public class FeeReadController {
         if (req.name() != null) body.put("name", req.name());
         if (req.frequency() != null) body.put("frequency", req.frequency());
         if (req.amount() != null) body.put("amount", req.amount());
+        if (req.optional() != null) body.put("optional", req.optional());
         return execute(() -> fees.updateItem(id, body));
     }
 
@@ -259,6 +270,9 @@ public class FeeReadController {
         if (req.manualDiscount() != null) body.put("manualDiscount", req.manualDiscount());
         if (req.surcharge() != null) body.put("surcharge", req.surcharge());
         body.put("actorId", TenantContext.get().userId());
+        if (req.optionalItemIds() != null) body.put("optionalItemIds", req.optionalItemIds());
+        if (req.discountRuleId() != null) body.put("discountRuleId", req.discountRuleId());
+        if (req.academicYearId() != null) body.put("academicYearId", req.academicYearId());
         return execute(() -> fees.assignFeePlan(body));
     }
 
@@ -365,11 +379,106 @@ public class FeeReadController {
         Map<String, Object> body = new HashMap<>();
         body.put("studentId", req.studentId());
         body.put("amount", req.amount());
+        body.put("idempotencyKey", req.idempotencyKey());
+        if (req.assignmentId() != null) body.put("assignmentId", req.assignmentId());
+        if (req.academicYearId() != null) body.put("academicYearId", req.academicYearId());
         if (req.paidAt() != null) body.put("paidAt", req.paidAt());
         if (req.mode() != null) body.put("mode", req.mode());
         if (req.notes() != null) body.put("notes", req.notes());
         body.put("actorId", TenantContext.get().userId());
+        if (req.schoolId() != null) body.put("schoolId", req.schoolId());
+        body.put("schoolId", TenantScope.resolveSchoolId(req.schoolId()));
         return execute(() -> fees.recordPayment(body));
+    }
+
+    @PutMapping("/bands/{id}/installments")
+    public Map<String, Object> saveInstallments(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String id,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
+        return execute(() -> {
+            Object raw = request.get("installments");
+            if (!(raw instanceof List<?> rows)) {
+                throw new IllegalArgumentException("installments is required");
+            }
+            java.util.ArrayList<Map<String, Object>> installments = new java.util.ArrayList<>();
+            for (Object row : rows) {
+                if (!(row instanceof Map<?, ?> map)) {
+                    throw new IllegalArgumentException("Each installment must be an object");
+                }
+                @SuppressWarnings("unchecked")
+                Map<String, Object> installment = (Map<String, Object>) map;
+                installments.add(installment);
+            }
+            return fees.saveInstallments(id, installments);
+        });
+    }
+
+    @PostMapping("/bands/{id}/publish")
+    public Map<String, Object> publishBand(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String id) {
+        requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
+        return execute(() -> fees.publishBand(id, TenantContext.get().userId()));
+    }
+
+    @PostMapping("/bands/{id}/revision")
+    public Map<String, Object> createBandRevision(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String id) {
+        requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        requireFeeModule(TenantContext.get().schoolId());
+        return execute(() -> fees.createBandRevision(id));
+    }
+
+    @GetMapping("/structure/discount-rules")
+    public java.util.List<Map<String, Object>> discountRules(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "fee:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return fees.discountRules(scope, academicYearId);
+    }
+
+    @PostMapping("/structure/discount-rules")
+    public Map<String, Object> saveDiscountRule(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestBody Map<String, Object> request) {
+        requireToken(token, "fee:write");
+        TenantScope.requirePermissionIfAuthenticated("fee_structure:manage");
+        Long scope = TenantScope.resolveSchoolId(longValue(request.get("schoolId")));
+        requireFeeModule(scope);
+        return execute(() -> fees.saveDiscountRule(scope, request));
+    }
+
+    @GetMapping("/structure/health")
+    public Map<String, Object> configurationHealth(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @RequestParam(required = false) String academicYearId,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "fee:read");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireFeeRead(scope);
+        return execute(() -> fees.configurationHealth(scope, academicYearId));
+    }
+
+    @GetMapping(value = "/payments/{paymentId}/receipt/pdf", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> paymentReceiptPdf(
+            @RequestHeader(value = "X-Fee-Service-Token", required = false) String token,
+            @PathVariable String paymentId) {
+        requireToken(token, "fee:read");
+        requireFeeRead(TenantContext.get().schoolId());
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=" + paymentId + ".pdf")
+                .body(fees.receiptPdfByPaymentId(paymentId));
     }
 
     private void requireFeeRead(Long schoolId) {
@@ -410,6 +519,8 @@ public class FeeReadController {
     private Map<String, Object> execute(Command command) {
         try {
             return command.run();
+        } catch (PaymentConflictException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }

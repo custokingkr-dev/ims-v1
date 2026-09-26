@@ -17,5 +17,10 @@ public record UpdateItemRequest(
         @Size(max = 255, message = "Item name must be at most 255 characters") String name,
         @Size(max = 255, message = "Item name must be at most 255 characters") String itemName,
         @Size(max = 100, message = "Frequency must be at most 100 characters") String frequency,
-        @PositiveOrZero(message = "amount must be zero or positive") Long amount
-) {}
+        @PositiveOrZero(message = "amount must be zero or positive") java.math.BigDecimal amount,
+        Boolean optional
+) {
+    public UpdateItemRequest(String name, String itemName, String frequency, Long amount) {
+        this(name, itemName, frequency, amount == null ? null : java.math.BigDecimal.valueOf(amount), null);
+    }
+}

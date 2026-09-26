@@ -135,7 +135,7 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
       const calcs = getCalcs(category);
       const formData = getFormData(category);
       const requiredByDate = getRequiredByDate(category);
-      const res = await api.post('/supply/orders', {
+      const res = await api.post('/catalog/orders', {
         category,
         orderData: JSON.stringify({ ...formData, title: category }),
         subtotal: toPaise(calcs.subtotalRs),
@@ -147,7 +147,7 @@ export function CatalogPanel({ setPanel, financialYearStartMonth = 4 }: Props) {
       });
       const orderId: string = res.data.id;
       if (place) {
-        await api.post(`/supply/orders/${orderId}/place`);
+        await api.post(`/catalog/orders/${orderId}/place`);
         const msg = category === 'UNIFORMS' || category === 'NOTEBOOKS'
           ? `Order placed. It has moved to Design approval. After design approval it will go to superadmin for final approval.`
           : category === 'STATIONERY' || category === 'EVENTS'

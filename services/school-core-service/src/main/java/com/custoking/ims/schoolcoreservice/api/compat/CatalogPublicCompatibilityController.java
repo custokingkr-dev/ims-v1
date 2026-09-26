@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.AnnualPlanConfirmationRepository;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
@@ -26,17 +27,24 @@ import java.util.Map;
 public class CatalogPublicCompatibilityController {
 
     private final CatalogReadRepository catalog;
+    private final AnnualPlanConfirmationRepository annualPlans;
     private final String readToken;
     private final ModuleEntitlementGuard moduleGuard;
 
     @Autowired
     public CatalogPublicCompatibilityController(
             CatalogReadRepository catalog,
+            AnnualPlanConfirmationRepository annualPlans,
             ModuleEntitlementGuard moduleGuard,
             @Value("${catalog.read-token:}") String readToken) {
         this.catalog = catalog;
+        this.annualPlans = annualPlans;
         this.moduleGuard = moduleGuard;
         this.readToken = readToken == null ? "" : readToken.trim();
+    }
+
+    public CatalogPublicCompatibilityController(CatalogReadRepository catalog, ModuleEntitlementGuard moduleGuard, String readToken) {
+        this(catalog, null, moduleGuard, readToken);
     }
 
     public CatalogPublicCompatibilityController(
@@ -213,11 +221,17 @@ public class CatalogPublicCompatibilityController {
     }
 
     @PostMapping("/api/v1/supply/annual-plan/confirm")
-    public Object confirmAnnualPlan(@RequestHeader(value = "X-Catalog-Service-Token", required = false) String token) {
-        requireToken(token, "catalog:read");
+    public Map<String, Object> confirmAnnualPlan(
+            @RequestHeader(value = "X-Catalog-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId,
+            @RequestBody(required = false) Map<String, Object> request) {
+        requireToken(token, "catalog:write");
         TenantScope.requirePermissionIfAuthenticated("plan:manage");
-        requireOrderModule(TenantContext.get().schoolId());
-        return Map.of("ok", true, "message", "Annual plan confirmed and Custoking notified");
+        Long scope = TenantScope.resolveSchoolId(schoolId);
+        requireOrderModule(scope);
+        if (annualPlans == null) throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Annual plan confirmation is unavailable");
+        String fingerprint = request == null || request.get("fingerprint") == null ? null : String.valueOf(request.get("fingerprint"));
+        return annualPlans.confirm(scope, TenantContext.get().userId(), fingerprint);
     }
 
     @PostMapping("/api/v1/dashboard/vendor-dues/catalog-orders/{id}/mark-paid")

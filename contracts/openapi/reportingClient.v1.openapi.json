@@ -1,0 +1,317 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "reportingClient canonical browser API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "platform-service",
+  "x-ims-controller": "ReportingReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "ReportingClient",
+  "x-ims-client-file": "reportingClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/reporting/workspace": {
+      "get": {
+        "operationId": "getWorkspace",
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportingWorkspace"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ReportingWorkspace": {
+        "type": "object",
+        "properties": {
+          "school": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "meta": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "currencyCode": {
+                "type": "string"
+              },
+              "students": {
+                "type": "number"
+              },
+              "sections": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "name",
+              "meta"
+            ],
+            "additionalProperties": true
+          },
+          "dashboard": {
+            "type": "object",
+            "properties": {
+              "students": {
+                "type": "number"
+              },
+              "sections": {
+                "type": "number"
+              },
+              "attendancePercent": {
+                "type": "number"
+              },
+              "attendanceSubmittedSections": {
+                "type": "number"
+              },
+              "attendanceState": {
+                "type": "string",
+                "enum": [
+                  "NOT_STARTED",
+                  "PARTIAL",
+                  "SUBMITTED"
+                ]
+              },
+              "feeCollectedLakh": {
+                "type": "number"
+              },
+              "feeTargetLakh": {
+                "type": "number"
+              },
+              "feesConfigured": {
+                "type": "boolean"
+              },
+              "feeOverdueCount": {
+                "type": "number"
+              },
+              "firefightingActive": {
+                "type": "number"
+              },
+              "pendingApprovals": {
+                "type": "number"
+              },
+              "attendancePresent": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "students",
+              "sections",
+              "attendancePercent",
+              "attendanceSubmittedSections",
+              "attendanceState",
+              "feeCollectedLakh",
+              "feeTargetLakh",
+              "feesConfigured",
+              "feeOverdueCount",
+              "firefightingActive",
+              "pendingApprovals",
+              "attendancePresent"
+            ],
+            "additionalProperties": true
+          },
+          "fees": {
+            "type": "object",
+            "properties": {
+              "summary": {
+                "type": "object",
+                "properties": {
+                  "collected": {
+                    "type": "number"
+                  },
+                  "target": {
+                    "type": "number"
+                  },
+                  "outstanding": {
+                    "type": "number"
+                  },
+                  "progressPercent": {
+                    "type": "number"
+                  },
+                  "overdueCount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "collected",
+                  "target",
+                  "outstanding",
+                  "progressPercent",
+                  "overdueCount"
+                ],
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "summary"
+            ],
+            "additionalProperties": true
+          },
+          "recentActivity": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "icon": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "meta": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "icon",
+                "title",
+                "meta",
+                "tag"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "designation": {
+                  "type": "string"
+                },
+                "department": {
+                  "type": "string"
+                },
+                "payrollStatus": {
+                  "type": "string"
+                },
+                "monthlySalary": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "designation",
+                "department",
+                "payrollStatus",
+                "monthlySalary"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "annualPlan": {
+            "type": "object",
+            "properties": {
+              "terms": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "term": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "quantity": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "term",
+                    "category",
+                    "status",
+                    "quantity",
+                    "amount"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "terms"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "required": [
+          "school",
+          "dashboard",
+          "fees",
+          "recentActivity",
+          "staff",
+          "annualPlan"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "x-ims-gateway-service": "reporting"
+}

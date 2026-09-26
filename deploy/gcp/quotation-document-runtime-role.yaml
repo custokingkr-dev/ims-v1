@@ -1,0 +1,8 @@
+title: Custoking Quotation Document Runtime
+description: Read bucket privacy and create, read, or retire private quotation objects in its dedicated bucket.
+stage: GA
+includedPermissions:
+  - storage.buckets.get
+  - storage.objects.create
+  - storage.objects.get
+  - storage.objects.delete

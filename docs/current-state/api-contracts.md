@@ -1,55 +1,93 @@
 # API Contracts and Client Migration
 
-Last reconciled: 2026-08-26 against the generated route inventory and identity authentication sources.
+Last reconciled: 2026-09-26 against source controllers, the generated route inventory,
+Java DTOs, and browser contracts.
 
-The API gateway route inventory remains the repository-wide ownership and compatibility-usage contract. It
-describes every Spring mapping and gateway matcher, but it does not describe payload schemas. OpenAPI is now
-being introduced one bounded public workflow at a time so contract review and client migration can proceed
-without deleting compatibility routes.
+The gateway route inventory records controller ownership and compatibility use.
+OpenAPI adds payload schemas for **42 canonical operations across 10 contract files/clients**. The browser migration now has **0 compatibility call sites**, down
+from 95. Static source coverage is not production traffic telemetry, and retained
+aliases can still have external consumers.
 
-## First OpenAPI slice: identity authentication
+## Contract coverage
 
-`contracts/openapi/identity-auth.v1.openapi.json` is the authoritative OpenAPI 3.1 contract for the three
-canonical browser authentication operations:
+| Contract | Operations | Workflow |
+| --- | ---: | --- |
+| Identity | 6 | Login, refresh, logout, password-reset capabilities/request/confirmation |
+| Fees | 6 | Stable-key collection, JSON/PDF receipt, collection/overdue reports, reminders |
+| Students | 5 | Create/update, ID-based roster, multipart photo upload, authenticated photo read |
+| Attendance | 3 | Read/save register and submit section |
+| Billing | 1 | Complete invoice statistics and reporting period |
+| Broadcasts | 8 | Draft/list, capabilities, policy preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
+| Quotation documents | 4 | Capabilities, private upload/download/removal |
+| Catalog | 6 | Paginated orders, scoped statistics, guarded status/delivery, reviewed annual-plan confirmation |
+| Reporting | 1 | Workspace dashboard envelope |
+| Firefighting creation | 2 | Stable-key request and quotation creation |
 
-- `POST /api/v1/auth/login`
-- `POST /api/v1/auth/refresh`
-- `POST /api/v1/auth/logout`
+Specifications live in `contracts/openapi/*.openapi.json`; generated TypeScript
+clients live in `frontend/src/generated`. These are critical workflow contracts,
+not complete schema coverage of every controller. Extensible map responses are
+marked explicitly. Selected Java records are bound to schemas for field/type drift
+checks; behavioral tests cover repository-backed maps and permission boundaries.
 
-The contract includes login and principal payloads, nullable tenant/zone fields, the HttpOnly refresh-cookie
-security scheme, and success/error responses. Internal `POST /api/v1/auth/introspect` is deliberately absent:
-browser code must never receive or model the identity-service token required by that route.
+## Generation and verification
 
-`scripts/generate-openapi-typescript-client.js` validates every contracted operation against the checked-in
-controller inventory before generating `frontend/src/generated/identityAuthApi.ts`. The generated client
-accepts the frontend's configured Axios instance, uses paths relative to its `/api/v1` base URL, and returns
-typed response bodies. The login, silent-refresh and logout call sites now use this generated client through
-the existing shared Axios instance. That preserves the configured `/api/v1` base URL, `withCredentials`,
-authorization header injection, single-flight refresh behavior, auth-endpoint retry suppression, in-memory
-access-token lifecycle, local session marker, and best-effort logout cleanup.
-
-Regenerate both route and payload contracts from the API gateway directory:
+From the API gateway directory:
 
 ```powershell
 npm run contracts:generate
-```
-
-CI and local gateway tests use the non-writing freshness gate:
-
-```powershell
 npm run contracts:check
 ```
 
-The gate fails when the OpenAPI path no longer exists on the named canonical controller, an operation ID is
-missing or duplicated, or the checked-in TypeScript output differs from the contract.
+From the repository root:
 
-Pull-request CI runs this command in the always-run `static-architecture-audits` job, independently of the
-affected-service matrix. A contract-only change therefore cannot skip generation validation, and an
-`IdentityAuthService`-only change runs both the identity-service tests and the same cross-service drift gate.
+```powershell
+node scripts/generate-api-route-inventory.js
+node scripts/generate-openapi-typescript-client.js
+node scripts/generate-openapi-typescript-client.js --check
+node --test scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
+```
 
-## Remaining migration boundary
+The dependency-free generator validates canonical service/controller ownership,
+public gateway routing, local schema references, path parameters, response types,
+Java record bindings and generated output freshness. It rejects compatibility and
+internal operations, unsupported media and ambiguous success representations.
+Per-operation controller ownership supports domains spanning multiple controllers.
 
-OpenAPI coverage is not yet repository-wide. Add one service workflow per reviewed batch, generate its typed
-client, migrate callers, and retain compatibility aliases while their gateway telemetry is non-zero. Route
-deletion still requires the agreed observation window and separate approval; a generated client is not
-evidence that an alias has no consumers.
+Clients share the configured authenticated Axios transport. They return response
+bodies, encode path segments, pass query filters through Axios parameters, build
+multipart FormData without overriding its boundary, and request Blob downloads.
+Internal service tokens are absent from browser contracts. Existing refresh,
+credential and authentication behavior remains in the shared transport.
+
+The always-run CI architecture job verifies inventory/client freshness and runs
+contract generator/routing tests independently of the affected-service matrix.
+Frontend tests exercise the real generated clients with mocked transport, including
+lost-response replay identity, scoped filters, page envelopes, multipart/binary
+operations and reviewed broadcast/annual-plan fingerprints.
+
+## Compatibility and upgrade boundary
+
+All 95 identified browser compatibility calls have canonical replacements with
+reviewed request/response behavior. Pagination and Operations scope are preserved;
+status authorization is strengthened to match the old superadmin-only route.
+See `docs/product/canonical-api-migration-2026-09-26.md` for exact mappings.
+
+Fee collection and firefighting request/quotation creation require a stable
+idempotency key, including on compatibility routes. Retain the original key and
+payload after an uncertain result; payload mismatch returns 409. Annual-plan
+confirmation requires the reviewed fingerprint and returns a saved immutable
+revision with notificationStatus=NOT_SENT. Older clients need these request
+updates; aliases do not bypass integrity checks.
+
+Broadcast capabilities are school-scoped. LIVE queueing requires an explicit
+`{mode: "LIVE", previewFingerprint}` request after the current audience is reviewed;
+dry runs send `{}`. Approval and dispatch modes remain attached to each saved
+broadcast, so a configuration change cannot convert a dry run into live delivery.
+Provider acceptance is not delivery: only confirmed `DELIVERED` rows count as
+such. `SUBMITTING`, `UNKNOWN`, and conflicting reports require outcome refresh and
+reconciliation using the same broadcast ID; the browser never resends them.
+
+No alias deletion or sunset date is introduced. Route removal still needs external
+consumer evidence and separate review. Broader payload coverage can expand one
+reviewed workflow at a time without weakening authorization or inventing equivalent
+response shapes.

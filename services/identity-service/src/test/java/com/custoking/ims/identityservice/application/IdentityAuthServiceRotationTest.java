@@ -194,6 +194,65 @@ class IdentityAuthServiceRotationTest {
         verify(authAudit).recordRefreshTokenReuse(7L, EMAIL, FAMILY_ID);
     }
 
+    private void stubAccessToken() {
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(EMAIL);
+        when(jwtService.claims("access-token")).thenReturn(claims);
+        when(jwtService.isTokenValid("access-token", EMAIL)).thenReturn(true);
+    }
+
+    @Test
+    void introspectRequiresAnExistingUnrevokedUnexpiredSession() {
+        stubAccessToken();
+        assertThat(service.introspect("access-token").active()).isFalse();
+        for (String status : List.of(AuthSessionEntity.REVOKED, "UNKNOWN")) {
+            var session = sessionFixture(status, OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
+            when(sessions.findByAccessTokenHash(anyString())).thenReturn(Optional.of(session));
+            assertThat(service.introspect("access-token").active()).isFalse();
+        }
+        var expired = sessionFixture(AuthSessionEntity.ACTIVE, OffsetDateTime.now(ZoneOffset.UTC).minusSeconds(1));
+        when(sessions.findByAccessTokenHash(anyString())).thenReturn(Optional.of(expired));
+        assertThat(service.introspect("access-token").active()).isFalse();
+        verify(users, never()).findByEmailIgnoreCase(anyString());
+    }
+
+    @Test
+    void introspectReadsCurrentScopeAndRetainsAccessDuringOrdinaryRotation() {
+        stubAccessToken();
+        AppUserEntity user = mockUser();
+        when(user.getBranchId()).thenReturn(19L);
+        when(user.getZoneId()).thenReturn(null);
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(rbacRead.effectivePermissions(7L, 19L, null)).thenReturn(List.of("student:read"));
+        when(rbacRead.operatorSchoolIds(7L)).thenReturn(List.of());
+        for (String status : List.of(AuthSessionEntity.ACTIVE, AuthSessionEntity.ROTATED)) {
+            var session = sessionFixture(status, OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
+            when(sessions.findByAccessTokenHash(anyString())).thenReturn(Optional.of(session));
+            var response = service.introspect("access-token");
+            assertThat(response.active()).isTrue();
+            assertThat(response.principal().branchId()).isEqualTo(19L);
+            assertThat(response.principal().permissions()).containsExactly("student:read");
+            assertThat(response.principal().operatorSchools()).isEmpty();
+        }
+    }
+
+    @Test
+    void introspectRejectsDisabledOrMismatchedOwnerAndDoesNotHideDatabaseOutages() {
+        stubAccessToken();
+        var session = sessionFixture(AuthSessionEntity.ACTIVE, OffsetDateTime.now(ZoneOffset.UTC).plusHours(1));
+        when(sessions.findByAccessTokenHash(anyString())).thenReturn(Optional.of(session));
+        AppUserEntity user = mockUser();
+        when(users.findByEmailIgnoreCase(EMAIL)).thenReturn(Optional.of(user));
+        when(user.isDisabled()).thenReturn(true);
+        assertThat(service.introspect("access-token").active()).isFalse();
+        when(user.isDisabled()).thenReturn(false);
+        when(user.getId()).thenReturn(8L);
+        assertThat(service.introspect("access-token").active()).isFalse();
+        when(sessions.findByAccessTokenHash(anyString())).thenThrow(new IllegalStateException("database offline"));
+        assertThatThrownBy(() -> service.introspect("access-token"))
+                .isInstanceOf(IllegalStateException.class).hasMessage("database offline");
+    }
+
     @Test
     void refresh_revokedToken_reuseDetected() {
         // Arrange: presented token is REVOKED — also a theft signal

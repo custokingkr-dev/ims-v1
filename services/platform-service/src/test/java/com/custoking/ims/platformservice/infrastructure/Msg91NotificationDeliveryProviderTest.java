@@ -30,13 +30,32 @@ class Msg91NotificationDeliveryProviderTest {
                 """));
 
         assertThat(body).containsEntry("template_id", "flow-123");
-        assertThat(body).containsEntry("CRQID", "event-1");
+        assertThat(body).containsEntry("CRQID", Msg91NotificationDeliveryProvider.correlationId("event-1"));
         List<Map<String, Object>> recipients = list(body.get("recipients"));
         assertThat(recipients).hasSize(1);
         assertThat(recipients.getFirst())
                 .containsEntry("mobiles", "919999999999")
                 .containsEntry("student", "Asha")
                 .containsEntry("amount", 1200);
+    }
+
+    @Test
+    void correlationFitsProviderContractAndPreservesRetryIdentity() {
+        String eventId = "broadcast:1a287987-5756-4cb9-b8d1-0e2441522212:9911152:SMS";
+        String correlation = Msg91NotificationDeliveryProvider.correlationId(eventId);
+        assertThat(correlation).matches("ims[0-9a-f]{48}").hasSize(51);
+        assertThat(Msg91NotificationDeliveryProvider.correlationId(eventId)).isEqualTo(correlation);
+        assertThat(Msg91NotificationDeliveryProvider.correlationId(eventId.replace("9911152", "9911153")))
+                .isNotEqualTo(correlation);
+        // Removing punctuation would collide for these two valid internal identifiers.
+        assertThat(Msg91NotificationDeliveryProvider.correlationId("school:12:event:34"))
+                .isNotEqualTo(Msg91NotificationDeliveryProvider.correlationId("school1:2:event3:4"));
+        assertThat(Msg91NotificationDeliveryProvider.correlationId("\u0938\u0942\u091a\u0928\u093e:" + "a".repeat(120)))
+                .matches("ims[0-9a-f]{48}");
+        assertThatThrownBy(() -> Msg91NotificationDeliveryProvider.correlationId(" "))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> Msg91NotificationDeliveryProvider.correlationId(null))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

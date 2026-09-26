@@ -4,13 +4,15 @@ import api from '../../services/api';
 import type { AssetKind, OrderAsset } from './types';
 import './product-form.css';
 
-// A blob URL inherits its blob's type, so a stored file or an API response claiming text/html or
-// image/svg+xml would run script on this origin the moment the URL were opened. The type is taken
-// from this allow-list instead of from the data; anything else previews and downloads as bytes.
-const PREVIEWABLE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
-function safeObjectUrl(data: Blob): string {
-  const type = PREVIEWABLE_TYPES.includes(data.type) ? data.type : 'application/octet-stream';
-  return URL.createObjectURL(data.type === type ? data : new Blob([data], { type }));
+// Never expose the original Blob as a document URL. Downloads are bytes; inline previews use
+// a separate Blob with a fixed raster type. File/API MIME metadata cannot enable HTML or SVG.
+function rasterPreview(data: Blob): Blob | undefined {
+  switch (data.type) {
+    case 'image/png': return new Blob([data], { type: 'image/png' });
+    case 'image/jpeg': return new Blob([data], { type: 'image/jpeg' });
+    case 'image/webp': return new Blob([data], { type: 'image/webp' });
+    default: return undefined;
+  }
 }
 
 export function OrderAssetField({ assetKind, label, requirement, orderId, asset, file, onFile, disabled = false, accept, maxBytes }: {
@@ -21,25 +23,34 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
   accept?: string; maxBytes?: number;
 }) {
   const id = useId();
-  const [url, setUrl] = useState('');
+  const [urls, setUrls] = useState({ preview: '', download: '' });
   const [error, setError] = useState('');
   useEffect(() => {
-    let active = true; let objectUrl = '';
-    setUrl(''); setError('');
-    if (file) { objectUrl = safeObjectUrl(file); setUrl(objectUrl); }
+    let active = true;
+    const ownedUrls: string[] = [];
+    const showFile = (data: Blob) => {
+      const download = URL.createObjectURL(new Blob([data], { type: 'application/octet-stream' }));
+      ownedUrls.push(download);
+      const image = rasterPreview(data);
+      const preview = image ? URL.createObjectURL(image) : '';
+      if (preview) ownedUrls.push(preview);
+      setUrls({ preview, download });
+    };
+    setUrls({ preview: '', download: '' }); setError('');
+    if (file) { showFile(file); }
     else if (asset && orderId) {
       api.get<Blob>(`/supply/orders/${encodeURIComponent(orderId)}/assets/${asset.id}/content`, { responseType: 'blob' })
-        .then(({ data }) => { if (active) { objectUrl = safeObjectUrl(data); setUrl(objectUrl); } })
+        .then(({ data }) => { if (active) showFile(data); })
         .catch(() => { if (active) setError('Preview could not load. Reopen the order to retry.'); });
     }
-    return () => { active = false; if (objectUrl) URL.revokeObjectURL(objectUrl); };
+    return () => { active = false; ownedUrls.forEach((url) => URL.revokeObjectURL(url)); };
   }, [asset?.id, file, orderId]);
   // Only a URL this component minted is ever put in the DOM. createObjectURL always returns a
   // blob: URL, so anything else in this state could only come from a future change routing a
   // server-supplied string here, which must not reach an href or src.
-  const previewUrl = url.startsWith('blob:') ? url : '';
+  const previewUrl = urls.preview.startsWith('blob:') ? urls.preview : '';
+  const downloadUrl = urls.download.startsWith('blob:') ? urls.download : '';
   const filename = file?.name || asset?.originalFilename;
-  const contentType = file?.type || asset?.contentType || '';
   const size = file?.size || asset?.sizeBytes || 0;
   const acceptedTypes = accept ? accept.split(',').map((type) => type.trim()).filter(Boolean)
     : ['image/jpeg', 'image/png', 'image/webp', ...(assetKind === 'DESIGN' ? ['application/pdf'] : [])];
@@ -51,9 +62,9 @@ export function OrderAssetField({ assetKind, label, requirement, orderId, asset,
   return <section className="ck-product-asset" aria-labelledby={`${id}-label`}>
     <div className="ck-product-section-head"><h3 id={`${id}-label`}>{label}</h3><span className="ck-product-muted">{requirement}</span></div>
     {filename ? <div className="ck-product-asset-file">
-      {previewUrl && contentType.startsWith('image/') ? <img className="ck-product-asset-preview" src={previewUrl} alt={label} /> : <FileImage size={32} aria-hidden="true" />}
+      {previewUrl ? <img className="ck-product-asset-preview" src={previewUrl} alt={label} /> : <FileImage size={32} aria-hidden="true" />}
       <div className="ck-product-file-name"><strong>{filename}</strong><span className="ck-product-muted">{(size / 1024 / 1024).toFixed(2)} MB{file ? ' - ready to upload' : ' - uploaded'}</span></div>
-      {previewUrl && <a className="ck-btn ck-btn-ghost ck-product-icon" href={previewUrl} download={filename} title="Download file" aria-label={`Download ${filename}`}><Download size={16} /></a>}
+      {downloadUrl && <a className="ck-btn ck-btn-ghost ck-product-icon" href={downloadUrl} download={filename} title="Download file" aria-label={`Download ${filename}`}><Download size={16} /></a>}
       {file && onFile && <button type="button" className="ck-btn ck-btn-ghost ck-product-icon" disabled={disabled} onClick={() => onFile(undefined)} title="Remove selected file" aria-label={`Remove selected ${label.toLowerCase()}`}><X size={16} /></button>}
     </div> : <p className="ck-product-muted">No file attached</p>}
     {onFile && <div className="ck-product-upload-control"><label className={`ck-btn ck-btn-ghost${disabled ? ' ck-product-disabled' : ''}`} htmlFor={id}><Upload size={15} aria-hidden="true" />{filename ? 'Replace' : 'Choose file'}</label>

@@ -66,7 +66,7 @@ describe('StaffPanel', () => {
     fireEvent.change(within(dialog).getByRole('textbox', { name: /department/i }), { target: { value: 'Middle School' } });
     fireEvent.click(within(dialog).getByRole('button', { name: /create staff/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/workspace/staff', expect.objectContaining({
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools/1/staff', expect.objectContaining({
       schoolId: 1,
       name: 'Priya Shah',
       employeeCode: 'T-002',
@@ -93,7 +93,7 @@ describe('StaffPanel', () => {
     fireEvent.change(within(dialog).getByRole('textbox', { name: /full name/i }), { target: { value: 'Asha Rao Updated' } });
     fireEvent.click(within(dialog).getByRole('button', { name: /save profile/i }));
 
-    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/workspace/staff/1', expect.objectContaining({
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/schools/1/staff/1', expect.objectContaining({
       schoolId: 1,
       name: 'Asha Rao Updated',
     })));
@@ -112,7 +112,7 @@ describe('StaffPanel', () => {
     expect(await screen.findByRole('button', { name: /select asha rao/i })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /deactivate/i }));
 
-    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/workspace/staff/1', { data: { schoolId: 1 } }));
+    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/schools/1/staff/1'));
     expect(onRefresh).toHaveBeenCalled();
   });
 });

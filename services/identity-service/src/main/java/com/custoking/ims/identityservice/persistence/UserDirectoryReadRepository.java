@@ -78,7 +78,10 @@ public class UserDirectoryReadRepository {
             jdbc.sql("""
                             UPDATE identity.app_users
                             SET full_name = COALESCE(:fullName, full_name),
-                                email = COALESCE(:email, email)
+                                email = COALESCE(:email, email),
+                                credential_version = credential_version + CASE
+                                    WHEN CAST(:email AS text) IS NOT NULL AND lower(email) IS DISTINCT FROM CAST(:email AS text)
+                                    THEN 1 ELSE 0 END
                             WHERE id = :userId
                             """)
                     .param("fullName", normalizedName)
@@ -106,7 +109,7 @@ public class UserDirectoryReadRepository {
         requireUser(userId);
         jdbc.sql("""
                         UPDATE identity.app_users
-                        SET password_hash = :passwordHash
+                        SET password_hash = :passwordHash, credential_version = credential_version + 1
                         WHERE id = :userId
                         """)
                 .param("passwordHash", passwordEncoder.encode(password))

@@ -1,0 +1,23 @@
+.fee-payment-recovery {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 16px;
+  color: var(--ck-text-primary);
+  background: var(--ck-color-warning-soft);
+  border: 1px solid var(--ck-color-warning-border);
+  border-radius: var(--ck-radius-md);
+}
+.fee-payment-recovery > div { display: grid; gap: 10px; min-width: 0; }
+.fee-payment-recovery p { margin: 0; max-width: 72ch; overflow-wrap: anywhere; }
+.fee-payment-recovery > svg { color: var(--ck-color-warning); margin-top: 2px; }
+.fee-payment-recovery label { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 8px 0; }
+.fee-payment-recovery input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 18px; margin: 2px 0; }
+.fee-payment-recovery button { justify-self: start; min-height: 44px; white-space: normal; }
+.fee-payment-fields.erp-form-grid { min-width: 0; border: 0; margin: 0; padding: 16px 0 0; }
+.fee-payment-fields > label:last-child { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .fee-payment-recovery { grid-template-columns: minmax(0, 1fr); }
+  .fee-payment-fields.erp-form-grid { grid-template-columns: minmax(0, 1fr); }
+}

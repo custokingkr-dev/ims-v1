@@ -5,28 +5,27 @@
  *   1. Greeting header with clock
  *   2. Critical alert strip (highest-urgency action)
  *   3. Pulse KPIs (4 Stat cards with sparklines)
- *   4. Priority Queue (AI-ranked suggested next steps)
+ *   4. Priority Queue (source-backed suggested next steps)
  *   5. Broadcast Channel (events + outbound notices)
  *   6. Live Signal Feed + Daily Brief (polling via interval)
  *
  * Data contracts:
  *   - KPI cards: workspace.dashboard plus GET /dashboard/command-center
- *   - Actions: GET /command-centre/actions; workspace-derived actions are labeled degraded
+ *   - Actions: GET /reporting/command-center/actions; workspace-derived actions are labeled degraded
  *   - Broadcasts: GET /notifications/broadcasts
- *   - Feed/brief: GET /command-centre/feed and GET /command-centre/brief
+ *   - Feed/brief: GET /reporting/command-center/feed and GET /reporting/command-center/summary
  * Failures are surfaced in-panel so operators know when live dashboard data is degraded.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ArrowUpRight } from 'lucide-react';
-import { Modal } from '../../../components/Modal';
 import { usePermissions } from '../../../hooks/usePermissions';
 import api from '../../../services/api';
-import type { WorkspaceData, Broadcast, BroadcastStatus, ActionModule, ActionUrgency, DeliveryChannel } from '../../../types/workspace';
+import type { WorkspaceData, ActionModule, ActionUrgency } from '../../../types/workspace';
 import type { PanelKey } from '../config';
-import type { CommandCentreCard, PolCode } from './command/commandCentreTypes';
+import type { CommandCentreCard } from './command/commandCentreTypes';
 import { deriveCommandCentreCards, panelForCard } from './command/commandCentreUtils';
-import { ProofOfLifeModal } from './command/ProofOfLifeModals';
+import { BroadcastDrafts } from '../dashboard/components/BroadcastDrafts';
 import { fetchCommandCenterMetrics } from '../../../api/dashboardCommandCenterApi';
 import type { DashboardCommandCenterResponse } from '../../../types/dashboardCommandCenter';
 import { formatSchoolCurrency } from '../../../utils/schoolLocalization';
@@ -72,26 +71,15 @@ interface BackendAction {
   id: string;
   module: string;
   urgency: string;
-  confidence: number;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  createdAt?: string | null;
   title: string;
   reason: string | null;
   impact: string | null;
   currentState: string | null;
   targetState: string | null;
   ctaLabel: string | null;
-}
-
-interface BackendBroadcast {
-  id: string;
-  module: string | null;
-  title: string;
-  message: string | null;
-  audienceType: string;
-  channels: string[];
-  status: string;
-  scheduledAt: string | null;
-  sentAt: string | null;
-  createdAt: string;
 }
 
 interface BackendFeedItem {
@@ -118,11 +106,6 @@ const MODULE_LABEL: Record<ActionModule, string> = {
   attendance:   dashboardModuleLabel('attendance'),
 };
 
-const CHANNEL_ICON: Record<string, string> = {
-  SMS: '✉', WhatsApp: '◍', Email: '@', Push: '◔',
-};
-
-
 type FilterKey = ReturnType<typeof filterKeysForDashboardAccess>[number];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -145,13 +128,17 @@ function relativeTime(iso: string): string {
 
 function mapBackendAction(a: BackendAction): CommandCentreCard {
   const state = a.currentState && a.targetState
-    ? `${a.currentState} → ${a.targetState}`
+    ? `Current: ${a.currentState} · Suggested: ${a.targetState}`
     : (a.currentState ?? '');
   return {
     id: a.id,
     module: coerceModule(a.module),
     urgency: a.urgency.toLowerCase() as ActionUrgency,
-    confidence: a.confidence,
+    sourceKind: 'server',
+    sourceLabel: a.sourceType ? a.sourceType.replace(/_/g, ' ').toLowerCase() : 'Command center record',
+    sourceReference: a.sourceId ?? undefined,
+    recordedAt: a.createdAt ?? undefined,
+    loadedAt: new Date().toISOString(),
     code: `CC-${a.id.slice(-6).toUpperCase()}`,
     title: a.title,
     why: a.reason ?? '',
@@ -160,74 +147,6 @@ function mapBackendAction(a: BackendAction): CommandCentreCard {
     cta: a.ctaLabel ?? 'Review',
   };
 }
-
-function mapBackendBroadcast(b: BackendBroadcast): Broadcast {
-  const statusMap: Record<string, BroadcastStatus> = {
-    DRAFT: 'draft', SENT: 'sending', SCHEDULED: 'scheduled',
-  };
-  const status: BroadcastStatus = statusMap[b.status] ?? 'draft';
-  const refStr = b.scheduledAt ?? b.sentAt ?? b.createdAt;
-  const dt = new Date(refStr);
-  const diffDays = Math.round((dt.getTime() - Date.now()) / 86400000);
-  let when = '', whenShort = '';
-  if (status === 'sending') {
-    when = 'Sent'; whenShort = 'live';
-  } else if (diffDays <= 0) {
-    when = 'Today'; whenShort = 'today';
-  } else if (diffDays === 1) {
-    when = 'Tomorrow'; whenShort = 'tomorrow';
-  } else {
-    when = `In ${diffDays} days`; whenShort = `in ${diffDays}d`;
-  }
-  const audienceLabels: Record<string, string> = {
-    ALL_PARENTS: 'All Parents', ALL_STAFF: 'All Staff', WHOLE_SCHOOL: 'Whole School',
-    GRADE_PARENTS: 'Grade Parents', CLASS_PARENTS: 'Class Parents',
-  };
-  return {
-    id: b.id,
-    kind: 'notice',
-    status,
-    module: coerceModule(b.module),
-    title: b.title,
-    when,
-    whenShort,
-    audience: audienceLabels[b.audienceType] ?? b.audienceType,
-    channels: b.channels as DeliveryChannel[],
-    note: b.message ?? '',
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Confidence visualization
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ConfidenceRing({ pct, module: mod }: { pct: number; module: ActionModule }) {
-  const SIZE = 40;
-  const r = SIZE / 2 - 3.5;
-  const circ = 2 * Math.PI * r;
-  // Map module to CSS var color string (inline SVG needs actual color values)
-  const COLOR_MAP: Record<ActionModule, string> = {
-    fees: 'var(--ck-chart-fees)', students: 'var(--ck-chart-students)', supply: 'var(--ck-chart-supply)',
-    firefighting: 'var(--ck-chart-firefighting)', attendance: 'var(--ck-chart-attendance)',
-  };
-  const color = COLOR_MAP[mod];
-  return (
-    <svg width={SIZE} height={SIZE} aria-hidden="true" style={{ transform: 'rotate(-90deg)' }}>
-      <circle cx={SIZE / 2} cy={SIZE / 2} r={r} fill="none" stroke="var(--border)" strokeWidth="3" />
-      <circle
-        cx={SIZE / 2} cy={SIZE / 2} r={r} fill="none"
-        stroke={color} strokeWidth="3" strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={circ * (1 - pct / 100)}
-        style={{ transition: 'stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1)' }}
-      />
-    </svg>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Greeting helpers
-// ─────────────────────────────────────────────────────────────────────────────
 
 function greeting(h: number): string {
   if (h < 12) return 'Good morning';
@@ -374,7 +293,7 @@ function GreetingHeader({
               className="ck-command-btn-accept firefighting"
               onClick={() => onAcceptCritical(criticalAction)}
             >
-              {criticalAction.cta}
+              Review {MODULE_LABEL[criticalAction.module].toLowerCase()}
             </button>
           </div>
         </div>
@@ -545,16 +464,15 @@ function ActionInsightsSection({
   );
 }
 
-// §4: Priority Queue — AI-ranked suggested next steps
+// §4: Priority Queue — source-backed suggested next steps
 function PriorityQueue({
-  actions, moduleAccess, onAccept, onDismiss, onPrimaryModal, onSecondary, setPanel,
+  actions, moduleAccess, onAccept, onDismiss, pendingActionId, setPanel,
 }: {
   actions: CommandCentreCard[];
   moduleAccess: DashboardModuleAccess;
   onAccept: (a: CommandCentreCard) => void;
   onDismiss: (a: CommandCentreCard) => void;
-  onPrimaryModal: (a: CommandCentreCard) => void;
-  onSecondary: (a: CommandCentreCard) => void;
+  pendingActionId: string | null;
   setPanel: (k: PanelKey) => void;
 }) {
   const { can } = usePermissions();
@@ -596,7 +514,6 @@ function PriorityQueue({
     <section>
       <div className="ck-command-section-head">
         <h2 className="ck-command-section-title">Suggested Next Steps</h2>
-        <span className="ck-command-ai-badge">AI · RANKED</span>
         <span className="ck-command-section-count">{shown.length} open</span>
       </div>
 
@@ -622,18 +539,13 @@ function PriorityQueue({
         {shown.length === 0 && (
           <div className="ck-command-queue-empty">
             <div className="ck-command-queue-empty-icon">✓</div>
-            No open suggestions in this view. The cockpit is calm.
+            No open suggestions in this view. Use the module navigation to review other work.
           </div>
         )}
 
         {shown.map((a, i) => {
-          const primaryHandler = a.primaryPolCode
-            ? () => onPrimaryModal(a)
-            : () => { onAccept(a); setPanel(panelForCard(a, moduleFallback) as PanelKey); };
-
-          const secondaryHandler = a.cta2
-            ? () => onSecondary(a)
-            : undefined;
+          const primaryHandler = () => setPanel(panelForCard(a, moduleFallback) as PanelKey);
+          const secondaryHandler = a.cta2PanelKey ? () => setPanel(a.cta2PanelKey!) : undefined;
 
           return (
             <ActionCard
@@ -643,6 +555,8 @@ function PriorityQueue({
               onPrimary={primaryHandler}
               onSecondary={secondaryHandler}
               onDismiss={() => onDismiss(a)}
+              onAcknowledge={a.sourceKind === 'server' ? () => onAccept(a) : undefined}
+              pending={pendingActionId !== null}
             />
           );
         })}
@@ -652,14 +566,17 @@ function PriorityQueue({
 }
 
 function ActionCard({
-  action: a, index, onPrimary, onSecondary, onDismiss,
+  action: a, index, onPrimary, onSecondary, onDismiss, onAcknowledge, pending,
 }: {
   action: CommandCentreCard;
   index: number;
   onPrimary: () => void;
   onSecondary?: () => void;
   onDismiss: () => void;
+  onAcknowledge?: () => void;
+  pending: boolean;
 }) {
+  const [showReason, setShowReason] = useState(false);
   return (
     <article
       className={`ck-command-acard mod-${a.module}`}
@@ -686,155 +603,34 @@ function ActionCard({
           </div>
         </div>
 
-        <div className="ck-command-ring-wrap">
-          <div className="ck-command-ring-rel">
-            <ConfidenceRing pct={a.confidence} module={a.module} />
-            <span className="ck-command-ring-label">{a.confidence}</span>
-          </div>
-          <div className="ck-command-ring-sub">conf</div>
-        </div>
+
       </div>
 
       <div className="ck-command-acard-actions">
         <button className={`ck-command-btn-accept ${a.module}`} onClick={onPrimary}>
-          {a.cta}
+          Review {MODULE_LABEL[a.module].toLowerCase()}
         </button>
         {a.cta2 && onSecondary && (
           <button className="ck-command-btn-secondary" onClick={onSecondary}>
             {a.cta2}
           </button>
         )}
-        <button className="ck-command-btn-dismiss" onClick={onDismiss}>
-          Dismiss
+        {onAcknowledge && <button className="ck-command-btn-secondary" disabled={pending} onClick={onAcknowledge}>Acknowledge suggestion</button>}
+        <button className="ck-command-btn-dismiss" disabled={pending} onClick={onDismiss}>
+          {a.sourceKind === 'server' ? 'Dismiss suggestion' : 'Hide for this view'}
         </button>
-        <button className="ck-command-acard-why-btn" type="button">
-          Why this? ⌄
+        <button className="ck-command-acard-why-btn" type="button" aria-expanded={showReason} aria-controls={`reason-${a.id}`} onClick={() => setShowReason(value => !value)}>
+          Why this?
         </button>
       </div>
+      {showReason && <div id={`reason-${a.id}`} style={{ padding: '0 18px 18px', fontSize: 14, overflowWrap: 'anywhere' }}>
+        <p><strong>Reason:</strong> {a.why || 'No reason was supplied by the source.'}</p>
+        <p><strong>Source:</strong> {a.sourceLabel || 'Workspace summary'}{a.sourceReference ? ` · ${a.sourceReference}` : ''}</p>
+        <p><strong>Recorded:</strong> {a.recordedAt && Number.isFinite(Date.parse(a.recordedAt)) ? new Date(a.recordedAt).toLocaleString() : 'Source update time not supplied.'}</p>
+        {a.loadedAt && <p><strong>Loaded:</strong> {new Date(a.loadedAt).toLocaleString()}</p>}
+        <p>Review opens the relevant module. Acknowledging or dismissing a suggestion does not complete its task.</p>
+      </div>}
     </article>
-  );
-}
-
-// §5: Broadcast Channel
-function BroadcastChannel({
-  broadcasts, onSend, onApprove, onCompose,
-}: {
-  broadcasts: Broadcast[];
-  onSend: (b: Broadcast) => void;
-  onApprove: (b: Broadcast) => void;
-  onCompose: () => void;
-}) {
-  const { can } = usePermissions();
-  const scheduled = broadcasts.filter(b => b.status === 'scheduled').length;
-  const sending   = broadcasts.filter(b => b.status === 'sending').length;
-  const draft     = broadcasts.filter(b => b.status === 'draft').length;
-
-  return (
-    <div className="ck-command-broadcast">
-      <div className="ck-command-broadcast-head">
-        <span className="ck-command-broadcast-icon">📡</span>
-        <h2 className="ck-command-broadcast-title">Broadcast Channel</h2>
-        {can('notification:send') && (
-          <button className="ck-command-broadcast-compose" onClick={onCompose}>
-            + Compose
-          </button>
-        )}
-      </div>
-
-      <div className="ck-command-broadcast-stats">
-        <span><b className="b">{scheduled}</b> scheduled</span>
-        <span><b className="g">{sending}</b> sending</span>
-        <span><b className="d">{draft}</b> draft</span>
-      </div>
-
-      <div className="ck-command-broadcast-list">
-        {broadcasts.map(b => (
-          <BroadcastItem
-            key={b.id}
-            broadcast={b}
-            onSend={() => onSend(b)}
-            onApprove={() => onApprove(b)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function BroadcastItem({
-  broadcast: b, onSend, onApprove,
-}: {
-  broadcast: Broadcast;
-  onSend: () => void;
-  onApprove: () => void;
-}) {
-  const { can } = usePermissions();
-  const whenClass = b.status === 'sending' ? 'live' : b.status === 'draft' ? 'draft' : 'sched';
-
-  return (
-    <div className={`ck-command-bc-item mod-${b.module}`}>
-      <div className="ck-command-bc-tags">
-        <span className={`ck-command-bc-kind ${b.kind}`}>
-          {b.kind === 'event' ? 'Event' : 'Notice'}
-        </span>
-        <span className={`ck-command-bc-status ${b.status}`}>
-          {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
-          {b.status === 'sending' && <span aria-hidden="true"> ●</span>}
-        </span>
-        <span className={`ck-command-bc-when ${whenClass}`}>{b.whenShort}</span>
-      </div>
-
-      <div className="ck-command-bc-title">{b.title}</div>
-      <div className="ck-command-bc-meta">{b.when} · {b.audience}</div>
-
-      <div className="ck-command-bc-channels">
-        {b.channels.map(ch => (
-          <span key={ch} className="ck-command-bc-channel">
-            <span className={`ck-command-bc-channel-icon ${b.module}`}>
-              {CHANNEL_ICON[ch]}
-            </span>
-            {ch}
-          </span>
-        ))}
-      </div>
-
-      {b.status === 'sending' && b.progress != null && (
-        <div className="ck-command-bc-progress-wrap">
-          <div
-            className="ck-command-bc-progress-fill"
-            style={{ width: `${b.progress}%` }}
-            role="progressbar"
-            aria-valuenow={b.progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-        </div>
-      )}
-
-      <div className="ck-command-bc-note">{b.note}</div>
-
-      <div className="ck-command-bc-actions">
-        {b.status === 'draft' && can('notification:send') && (
-          <button className={`ck-command-bc-btn-approve ${b.module}`} onClick={onApprove}>
-            Approve &amp; schedule
-          </button>
-        )}
-        {b.status === 'scheduled' && (
-          <button className={`ck-command-bc-btn-send ${b.module}`} onClick={onSend}>
-            Send now
-          </button>
-        )}
-        {b.status === 'sending' && (
-          <span className="ck-command-bc-delivering">
-            <span className="ck-command-bc-delivering-dot" aria-hidden="true" />
-            Delivering…
-          </span>
-        )}
-        {b.status !== 'sending' && (
-          <button className="ck-command-bc-btn-edit" type="button">Edit</button>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -873,7 +669,7 @@ function DailyBrief({ brief, actions }: { brief: DailyBriefData | null; actions:
   if (brief) {
     return (
       <div className="ck-command-brief">
-        <div className="ck-command-brief-label">Daily Brief · AI</div>
+        <div className="ck-command-brief-label">Daily brief</div>
         <p className="ck-command-brief-text">{brief.summary}</p>
         {brief.recommendedNextStep && (
           <p className="ck-command-brief-text ts">{brief.recommendedNextStep}</p>
@@ -885,112 +681,19 @@ function DailyBrief({ brief, actions }: { brief: DailyBriefData | null; actions:
   const highCount = actions.filter(a => a.urgency === 'high').length;
   return (
     <div className="ck-command-brief">
-      <div className="ck-command-brief-label">Daily Brief · AI</div>
+      <div className="ck-command-brief-label">Daily brief</div>
       <p className="ck-command-brief-text">
         {critCount > 0 && (
-          <><b className="re">{critCount} critical action{critCount > 1 ? 's' : ''}</b> need{critCount === 1 ? 's' : ''} immediate sign-off. </>
+          <><b className="re">{critCount} critical action{critCount > 1 ? 's' : ''}</b> need{critCount === 1 ? 's' : ''} review. </>
         )}
         {highCount > 0 && (
           <><b className="g">{highCount} high-priority</b> items are queued. </>
         )}
-        Clearing the top {Math.min(3, actions.length)} suggestion{actions.length !== 1 ? 's' : ''} protects operational continuity today.
+        {actions.length === 0 ? 'No open suggestions are available in this view.' : 'Review each source record before taking action.'}
       </p>
     </div>
   );
 }
-
-// Compose broadcast modal — wired to POST /notifications/broadcasts
-function ComposeBroadcastModal({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: (b: Broadcast) => void;
-}) {
-  const [title, setTitle] = useState('');
-  const [audience, setAudience] = useState('');
-  const [channel, setChannel] = useState('');
-  const [note, setNote] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  async function handleSave() {
-    if (!title.trim() || !audience || !channel) return;
-    setSaving(true);
-    try {
-      const r = await api.post<BackendBroadcast>('/notifications/broadcasts', {
-        title,
-        message: note,
-        audienceType: audience,
-        channels: [channel],
-        module: 'fees',
-      });
-      onCreated(mapBackendBroadcast(r.data));
-      onClose();
-    } catch {
-      // stay open on error
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Modal
-      title="Compose Broadcast"
-      subtitle="Schedule or send a notice / event to parents and staff"
-      onClose={onClose}
-      footer={
-        <>
-          <button className="ck-btn ck-btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="ck-btn ck-btn-g" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving…' : 'Save as draft'}
-          </button>
-        </>
-      }
-    >
-      <div className="ck-form-grid" style={{ gap: 14 }}>
-        <div className="ck-field">
-          <label htmlFor="bc-title">Title</label>
-          <input
-            id="bc-title" type="text" placeholder="e.g. Parent–Teacher Meeting · Grade 6–8"
-            value={title} onChange={e => setTitle(e.target.value)}
-          />
-        </div>
-        <div className="ck-field">
-          <label htmlFor="bc-audience">Audience</label>
-          <select id="bc-audience" value={audience} onChange={e => setAudience(e.target.value)}>
-            <option value="">Select audience…</option>
-            <option value="ALL_PARENTS">All parents</option>
-            <option value="ALL_STAFF">All staff</option>
-            <option value="WHOLE_SCHOOL">Whole school</option>
-            <option value="GRADE_PARENTS">Grade parents</option>
-            <option value="CLASS_PARENTS">Class parents</option>
-          </select>
-        </div>
-        <div className="ck-field">
-          <label htmlFor="bc-channels">Delivery channel</label>
-          <select id="bc-channels" value={channel} onChange={e => setChannel(e.target.value)}>
-            <option value="">Select channel…</option>
-            <option value="SMS">SMS</option>
-            <option value="WhatsApp">WhatsApp</option>
-            <option value="Email">Email</option>
-            <option value="Push">Push notification</option>
-          </select>
-        </div>
-        <div className="ck-field">
-          <label htmlFor="bc-note">Message / note</label>
-          <textarea
-            id="bc-note" rows={4} placeholder="Write your announcement…"
-            value={note} onChange={e => setNote(e.target.value)}
-          />
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Toast
-// ─────────────────────────────────────────────────────────────────────────────
 
 function ToastBanner({ toast }: { toast: Toast }) {
   return (
@@ -1103,7 +806,7 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
   const [actions, setActions] = useState<CommandCentreCard[]>([]);
   useEffect(() => {
     let cancelled = false;
-    api.get<BackendAction[]>('/command-centre/actions')
+    api.get<BackendAction[]>('/reporting/command-center/actions')
       .then(r => {
         if (!cancelled) {
           setActions(r.data.map(mapBackendAction));
@@ -1123,34 +826,11 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
     return () => { cancelled = true; };
   }, [workspace, markInitialLoadComplete, setDataIssue]);
 
-  // Broadcasts — from backend
-  const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    api.get<BackendBroadcast[]>('/notifications/broadcasts')
-      .then(r => {
-        if (!cancelled) {
-          setBroadcasts(r.data.map(mapBackendBroadcast));
-          setDataIssue('broadcasts', null);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setBroadcasts([]);
-          setDataIssue('broadcasts', 'Broadcast data could not be loaded.');
-        }
-      })
-      .finally(() => {
-        if (!cancelled) markInitialLoadComplete('broadcasts');
-      });
-    return () => { cancelled = true; };
-  }, [markInitialLoadComplete, setDataIssue]);
-
   // Daily brief — from backend
   const [brief, setBrief] = useState<DailyBriefData | null>(null);
   useEffect(() => {
     let cancelled = false;
-    api.get<DailyBriefData>('/command-centre/brief')
+    api.get<DailyBriefData>('/reporting/command-center/summary')
       .then(r => {
         if (!cancelled) {
           setBrief(r.data);
@@ -1173,7 +853,7 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    api.get<BackendFeedItem[]>('/command-centre/feed?limit=20')
+    api.get<BackendFeedItem[]>('/reporting/command-center/feed?limit=20')
       .then(r => {
         if (cancelled) return;
         const mapped = r.data.map(item => ({
@@ -1198,7 +878,7 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
   // Poll backend feed every 15s, prepend genuinely new items
   useEffect(() => {
     const iv = setInterval(() => {
-      api.get<BackendFeedItem[]>('/command-centre/feed?limit=5')
+      api.get<BackendFeedItem[]>('/reporting/command-center/feed?limit=5')
         .then(r => {
           const newItems = r.data
             .filter(item => !seenFeedIds.current.has(item.id))
@@ -1230,85 +910,41 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
     setTimeout(() => setToast(null), 2600);
   }, []);
 
-  // Compose modal
-  const [showCompose, setShowCompose] = useState(false);
-
-  // Proof-of-life modal state
-  const [polState, setPolState] = useState<{ card: CommandCentreCard; code: PolCode } | null>(null);
-
-  // Action handlers — optimistic UI with backend persistence
-  const handleAccept = useCallback((a: CommandCentreCard) => {
-    setActions(prev => prev.filter(x => x.id !== a.id));
-    setFeed(f => [{ module: a.module, txt: `Executed · ${a.cta} (${a.code})`, t: 'now' }, ...f.slice(0, 8)]);
-    showToast({ ok: true, txt: `${a.cta} — dispatched (${a.code})` });
-    api.post(`/command-centre/actions/${a.id}/accept`).catch(() => {
-      setActions(prev => [a, ...prev]);
-      showToast({ ok: false, txt: 'Failed to confirm — please retry' });
-    });
-  }, [showToast]);
-
-  const handleDismiss = useCallback((a: CommandCentreCard) => {
-    setActions(prev => prev.filter(x => x.id !== a.id));
-    setFeed(f => [{ module: a.module, txt: `Dismissed · ${a.code}`, t: 'now' }, ...f.slice(0, 8)]);
-    showToast({ ok: false, txt: 'Suggestion dismissed' });
-    api.post(`/command-centre/actions/${a.id}/dismiss`, { reason: 'Dismissed by user' }).catch(() => {
-      setActions(prev => [a, ...prev]);
-    });
-  }, [showToast]);
-
-  const handlePrimaryModal = useCallback((a: CommandCentreCard) => {
-    if (a.primaryPolCode) setPolState({ card: a, code: a.primaryPolCode });
-  }, []);
-
-  const handleSecondaryAction = useCallback((a: CommandCentreCard) => {
-    if (a.cta2PanelKey) {
-      setPanel(a.cta2PanelKey);
-    } else if (a.cta2PolCode) {
-      setPolState({ card: a, code: a.cta2PolCode });
+  // Acknowledgement records a decision about a suggestion; work happens in its module.
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+  const actionInFlight = useRef(false);
+  const [actionError, setActionError] = useState('');
+  const recordAction = useCallback(async (a: CommandCentreCard, decision: 'accept' | 'dismiss') => {
+    if (actionInFlight.current) return;
+    if (a.sourceKind !== 'server') {
+      if (decision === 'dismiss') {
+        setActions(current => current.filter(item => item.id !== a.id));
+        showToast({ ok: true, txt: 'Suggestion hidden for this view. The source record is unchanged.' });
+      }
+      return;
     }
-  }, [setPanel]);
-
-  const handleSendBroadcast = useCallback((b: Broadcast) => {
-    setBroadcasts(prev => prev.map(x => x.id === b.id
-      ? { ...x, status: 'sending' as BroadcastStatus, whenShort: 'live', when: 'Sending now', note: 'Queued to gateway · delivering', progress: 5 }
-      : x));
-    setFeed(f => [{ module: b.module, txt: `Broadcast sent · ${b.title}`, t: 'now' }, ...f.slice(0, 8)]);
-    showToast({ ok: true, txt: `Broadcast queued to ${b.channels.join(' · ')}` });
-    api.post(`/notifications/broadcasts/${b.id}/send`).catch(() => {
-      // Revert optimistic update on failure
-      setBroadcasts(prev => prev.map(x => x.id === b.id
-        ? { ...x, status: 'scheduled' as BroadcastStatus }
-        : x));
-      showToast({ ok: false, txt: 'Failed to send broadcast — please retry' });
-    });
-  }, [showToast]);
-
-  const handleApproveBroadcast = useCallback((b: Broadcast) => {
-    // Optimistic update
-    setBroadcasts(prev => prev.map(x => x.id === b.id
-      ? { ...x, status: 'scheduled' as BroadcastStatus, whenShort: 'scheduled', note: 'Approved and scheduled.' }
-      : x));
-    showToast({ ok: true, txt: 'Broadcast approved and scheduled' });
-    api.post(`/notifications/broadcasts/${b.id}/approve`).catch(() => {
-      // Revert optimistic update on failure
-      setBroadcasts(prev => prev.map(x => x.id === b.id
-        ? { ...x, status: 'draft' as BroadcastStatus, whenShort: 'draft', note: b.note }
-        : x));
-      showToast({ ok: false, txt: 'Failed to approve broadcast — please retry' });
-    });
-  }, [showToast]);
-
-  const handleBroadcastCreated = useCallback((b: Broadcast) => {
-    setBroadcasts(prev => [b, ...prev]);
-    showToast({ ok: true, txt: 'Broadcast saved as draft' });
+    actionInFlight.current = true;
+    setPendingActionId(a.id);
+    setActionError('');
+    try {
+      await api.post(`/reporting/command-center/actions/${a.id}/${decision}`, decision === 'dismiss' ? { reason: 'Dismissed by user' } : undefined);
+      setActions(current => current.filter(item => item.id !== a.id));
+      showToast({ ok: true, txt: decision === 'accept'
+        ? 'Suggestion acknowledged. Complete the work in its module.'
+        : 'Suggestion dismissed. The source record is unchanged.' });
+    } catch {
+      setActionError(`${decision === 'accept' ? 'Acknowledgement' : 'Dismissal'} was not saved. The suggestion is still open; try again.`);
+    } finally {
+      actionInFlight.current = false;
+      setPendingActionId(null);
+    }
   }, [showToast]);
 
   const dashboardActions = actions.filter((a) => canAccessDashboardModule(a.module, moduleAccess));
-  const visibleBroadcasts = broadcasts.filter((b) => canAccessDashboardModule(b.module, moduleAccess));
   const visibleFeed = feed.filter((f) => canAccessDashboardModule(f.module, moduleAccess));
   const criticalAction = dashboardActions.find(a => a.urgency === 'critical') ?? null;
   const dataIssueMessages = Object.values(dataIssues);
-  const dashboardReady = initialLoadsCompleted.size === 5;
+  const dashboardReady = initialLoadsCompleted.size === 4;
 
   if (!dashboardReady) {
     return (
@@ -1332,7 +968,6 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
         criticalAction={criticalAction}
         moduleAccess={moduleAccess}
         onAcceptCritical={a => {
-          handleAccept(a);
           setPanel(panelForCard(a, mod => {
             switch (mod) {
               case 'firefighting': return 'ff-approvals';
@@ -1361,6 +996,8 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
 
       {/* §4 + §5 + §6 — main 2-column grid */}
       {/* §3b Action Insights */}
+      <details style={{ marginBottom: 20 }}>
+        <summary style={{ cursor: 'pointer', padding: '12px 0', fontWeight: 600 }}>Operational details by module</summary>
       <ActionInsightsSection
         metrics={commandCenterMetrics}
         school={workspace.school}
@@ -1372,59 +1009,42 @@ export function HomePanel({ workspace, setPanel, moduleAccess }: Props) {
         onOpenVendorDues={() => setShowVendorDues(true)}
         onOpenReorderSignals={() => setShowReorderSignals(true)}
       />
+      </details>
 
       <div className="ck-command-grid">
         {/* LEFT: Priority Queue + Broadcast (full-width on narrow) */}
         <div className="ck-command-left">
+          {actionError && <p role="alert">{actionError}</p>}
           <PriorityQueue
             actions={dashboardActions}
             moduleAccess={moduleAccess}
-            onAccept={handleAccept}
-            onDismiss={handleDismiss}
-            onPrimaryModal={handlePrimaryModal}
-            onSecondary={handleSecondaryAction}
+            onAccept={a => void recordAction(a, 'accept')}
+            onDismiss={a => void recordAction(a, 'dismiss')}
+            pendingActionId={pendingActionId}
             setPanel={setPanel}
           />
 
           {/* §5 Broadcast Channel (moves into left col on narrow screens) */}
           <div className="ck-command-broadcast-left-slot">
-            <BroadcastChannel
-              broadcasts={visibleBroadcasts}
-              onSend={handleSendBroadcast}
-              onApprove={handleApproveBroadcast}
-              onCompose={() => setShowCompose(true)}
-            />
+            <details>
+              <summary style={{ cursor: 'pointer', padding: '12px 0', fontWeight: 600 }}>Broadcast drafts and approvals</summary>
+              <BroadcastDrafts module={moduleAccess.erp ? 'fees' : 'supply'} />
+            </details>
           </div>
         </div>
 
         {/* RIGHT: Signal Feed + Daily Brief */}
         <aside className="ck-command-right">
           {/* §6 Live Signal Feed */}
+          <details>
+            <summary style={{ cursor: 'pointer', padding: '12px 0', fontWeight: 600 }}>Recent activity and daily brief</summary>
           <SignalFeed feed={visibleFeed} pollKey={pollKey} />
 
           {/* Daily Brief */}
           <DailyBrief brief={brief} actions={dashboardActions} />
+          </details>
         </aside>
       </div>
-
-      {/* Compose modal */}
-      {showCompose && (
-        <ComposeBroadcastModal
-          onClose={() => setShowCompose(false)}
-          onCreated={handleBroadcastCreated}
-        />
-      )}
-
-      {/* Proof-of-life modals */}
-      {polState && (
-        <ProofOfLifeModal
-          polCode={polState.code}
-          card={polState.card}
-          workspace={workspace}
-          onClose={() => setPolState(null)}
-          showToast={showToast}
-        />
-      )}
 
       {/* Toast notification */}
       {toast && <ToastBanner toast={toast} />}

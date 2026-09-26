@@ -16,6 +16,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 @Component
 @EnableConfigurationProperties(Msg91Properties.class)
@@ -100,7 +104,7 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
         // MSG91 documents CRQID as correlation metadata returned in reports and webhooks. It is
         // deliberately not treated as an idempotency key: the provider contract does not promise
         // duplicate suppression for this value.
-        body.put("CRQID", request.eventId());
+        body.put("CRQID", correlationId(request.eventId()));
         putIfPresent(body, "short_url", firstText(payload, "shortUrl", "short_url"));
         return body;
     }
@@ -219,6 +223,22 @@ public class Msg91NotificationDeliveryProvider implements NotificationDeliveryPr
 
     private static IllegalStateException liveDeliveryBlocked() {
         return new IllegalStateException(LIVE_DELIVERY_BLOCK_MESSAGE);
+    }
+
+    static String correlationId(String eventId) {
+        if (eventId == null || eventId.isBlank()) {
+            throw new IllegalArgumentException("Missing notification event ID");
+        }
+        try {
+            // Internal IDs contain colons and can exceed MSG91's metadata limits. Use 192 bits
+            // of SHA-256 with a fixed prefix: 51 alphanumeric characters satisfy both the
+            // legacy 52-character and current 80-character contracts. This is correlation
+            // only, never a claim of provider idempotency or recipient delivery.
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(eventId.getBytes(StandardCharsets.UTF_8));
+            return "ims" + HexFormat.of().formatHex(digest, 0, 24);
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException("SHA-256 is unavailable", impossible);
+        }
     }
 
     private Map<String, Object> variables(JsonNode payload) {

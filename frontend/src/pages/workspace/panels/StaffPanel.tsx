@@ -259,10 +259,10 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
     setNotice('');
     try {
       if (dialogMode === 'edit' && selected) {
-        await api.put(`/workspace/staff/${selected.id}`, payload());
+        await api.put(`/schools/${schoolId}/staff/${selected.id}`, payload());
         setNotice('Staff profile updated.');
       } else {
-        await api.post('/workspace/staff', payload());
+        await api.post(`/schools/${schoolId}/staff`, payload());
         setNotice('Staff member added.');
       }
       setDialogMode(null);
@@ -286,7 +286,7 @@ export function StaffPanel({ workspace, onRefresh }: Props) {
     setError('');
     setNotice('');
     try {
-      await api.delete(`/workspace/staff/${row.id}`, { data: { schoolId } });
+      await api.delete(`/schools/${schoolId}/staff/${row.id}`);
       setNotice('Staff member deactivated.');
       setStatusFilter('All');
       await loadStaff();

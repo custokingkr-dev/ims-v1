@@ -16,5 +16,11 @@ public record CreateQuotationRequest(
         Long amount,
         String deliveryTimeline,
         String notes,
-        String documentUrl
-) {}
+        String documentUrl,
+        @NotBlank(message = "Idempotency key is required")
+        @jakarta.validation.constraints.Pattern(regexp = "[A-Za-z0-9._:-]{1,128}", message = "Invalid idempotency key") String idempotencyKey
+) {
+    public CreateQuotationRequest(String vendorName, Long amount, String deliveryTimeline, String notes, String documentUrl) {
+        this(vendorName, amount, deliveryTimeline, notes, documentUrl, null);
+    }
+}

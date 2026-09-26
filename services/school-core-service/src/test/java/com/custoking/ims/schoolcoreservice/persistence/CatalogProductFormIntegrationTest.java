@@ -105,9 +105,10 @@ class CatalogProductFormIntegrationTest {
         assertEquals("FIELD", group(flier, "GSM").get("render"));
     }
 
-    // 2026-09-25: artwork stops blocking a customised order, and the note belongs to fliers alone.
+    // 2026-09-25: artwork stops blocking a customised order, and the note stops appearing on every
+    // category. Bill books were added back later the same day; see the decision test below.
     @Test
-    void customisedArtworkIsOfferedNotRequiredAndOnlyFliersCollectANote() {
+    void customisedArtworkIsOfferedNotRequiredAndTheNoteIsNotOnEveryCategory() {
         var notebook = repository.form("NOTEBOOKS", false);
         var rules = maps(notebook.get("rules"));
         assertTrue(rules.stream().noneMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
@@ -119,8 +120,10 @@ class CatalogProductFormIntegrationTest {
         assertTrue(rules.stream().anyMatch(r -> "REQUIRE_ASSET".equals(r.get("ruleType"))
                 && "PRE_DELIVERY_PHOTO".equals(map(r.get("params")).get("assetKind"))));
 
+        // Which categories collect a note is asserted by the later decision's own test; here it is
+        // enough that it is a deliberate subset rather than every category, which is what it was.
         for (var category : repository.categories(false)) {
-            boolean expected = "FLIERS".equals(category.get("code"));
+            boolean expected = java.util.Set.of("FLIERS", "BILLBOOKS").contains(String.valueOf(category.get("code")));
             assertEquals(expected, Boolean.TRUE.equals(category.get("notesEnabled")),
                     "notesEnabled for " + category.get("code"));
         }
@@ -218,6 +221,20 @@ class CatalogProductFormIntegrationTest {
         assertEquals(250, params.get("foldingFee"));
         assertEquals(6, params.get("printRate"));
         assertEquals(150, params.get("printMinUnits"));
+    }
+
+    // Later on 2026-09-25: wholesale notebooks have no artwork to attach, and bill books collect a
+    // note after all. The second reverses part of the flier-only decision taken earlier the same day.
+    @Test
+    void wholesaleNotebooksOfferNoUploadAndBillBooksCollectANote() {
+        var offer = maps(repository.form("NOTEBOOKS", false).get("rules")).stream()
+                .filter(r -> "OFFER_ASSET".equals(r.get("ruleType"))).findFirst().orElseThrow();
+        assertEquals("CUSTOMIZED", map(offer.get("matchOptions")).get("CUSTOMIZATION"));
+
+        var withNotes = repository.categories(false).stream()
+                .filter(c -> Boolean.TRUE.equals(c.get("notesEnabled")))
+                .map(c -> String.valueOf(c.get("code"))).sorted().toList();
+        assertEquals(List.of("BILLBOOKS", "FLIERS"), withNotes);
     }
 
     @Test

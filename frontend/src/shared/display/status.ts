@@ -32,8 +32,24 @@ const VARIANT_MAP: Record<string, StatusVariant> = {
   OVERDUE:            'danger',
 };
 
+/**
+ * The one rule for turning a stored constant into words. Callers that only replaced underscores
+ * left SUPERADMIN untouched, because that constant has none.
+ */
+export function humaniseCode(code: string | null | undefined): string {
+  const key = String(code ?? '').trim();
+  if (!key) return '';
+  const words = key.replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function getDisplayStatus(status: string): string {
-  return DISPLAY_MAP[status] ?? status;
+  const key = String(status ?? '').trim();
+  if (!key) return '—';
+  if (DISPLAY_MAP[key]) return DISPLAY_MAP[key];
+  // An unmapped status used to render as its raw constant, so PENDING_APPROVAL and QUOTED
+  // sat in the same column as "In Fulfilment". Every status reads as words, mapped or not.
+  return humaniseCode(key);
 }
 
 export function getStatusBadgeVariant(status: string): StatusVariant {

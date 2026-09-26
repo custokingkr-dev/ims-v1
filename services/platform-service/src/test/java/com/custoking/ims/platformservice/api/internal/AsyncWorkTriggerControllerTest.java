@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api.internal;
 
 import com.custoking.ims.platformservice.application.NotificationInboxRetryService;
 import com.custoking.ims.platformservice.application.ReportingEventInboxProcessor;
+import com.custoking.ims.platformservice.application.BroadcastDeliveryWorker;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,11 +14,14 @@ class AsyncWorkTriggerControllerTest {
     void drain_runsBothDurableQueues() {
         ReportingEventInboxProcessor reporting = mock(ReportingEventInboxProcessor.class);
         NotificationInboxRetryService notifications = mock(NotificationInboxRetryService.class);
+        BroadcastDeliveryWorker broadcasts = mock(BroadcastDeliveryWorker.class);
         when(reporting.processBatch()).thenReturn(11);
         when(notifications.retryFailedEvents()).thenReturn(2);
+        when(broadcasts.drainBatch()).thenReturn(3);
 
-        assertThat(new AsyncWorkTriggerController(reporting, notifications).drain())
+        assertThat(new AsyncWorkTriggerController(reporting, notifications, broadcasts).drain())
                 .containsEntry("reportingProjected", 11)
-                .containsEntry("notificationRetriesAttempted", 2);
+                .containsEntry("notificationRetriesAttempted", 2)
+                .containsEntry("broadcastChecksAttempted", 3);
     }
 }

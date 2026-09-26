@@ -2,6 +2,9 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { validateContract, operations } = require('../../scripts/generate-openapi-typescript-client');
 
 const {
   inventory,
@@ -21,11 +24,24 @@ test('generated contract inventories all service and compatibility surfaces', ()
   assert.equal(inventory.summary.diagnosticAliases, 12);
   assert.ok(inventory.summary.gatewayRoutes > 60);
   assert.equal(inventory.summary.gatewayRoutes, inventory.gatewayRoutes.length);
-  assert.ok(inventory.summary.frontendCompatibilityCalls > 0);
-  assert.equal(inventory.summary.frontendCompatibilityCalls, inventory.clientMigrationReferences.length);
-  assert.ok(inventory.clientMigrationReferences.some((reference) =>
-    reference.pathExpression === '/supply/orders/stats'
-      && reference.compatibilityTemplate === '/api/v1/supply/orders/stats'));
+  assert.equal(inventory.summary.frontendCompatibilityCalls, 0, 'browser compatibility routes must not be reintroduced');
+  assert.deepEqual(inventory.clientMigrationReferences, []);
+});
+
+test('every typed browser operation resolves to its canonical controller and gateway owner', () => {
+  const directory = path.resolve(__dirname, '../../contracts/openapi');
+  let covered = 0;
+  for (const filename of fs.readdirSync(directory).filter((name) => name.endsWith('.openapi.json'))) {
+    const spec = JSON.parse(fs.readFileSync(path.join(directory, filename), 'utf8'));
+    validateContract(spec, inventory);
+    for (const operation of operations(spec)) {
+      assert.equal(classifyCompatibilityRequest(operation.url.replace(/\{[^}]+\}/g, 'sample'), operation.method), null,
+        `${operation.operationId} must not route through a deprecated alias`);
+      assert.ok(!operation.parameters.some((parameter) => /Service-Token/i.test(parameter.name)));
+      covered += 1;
+    }
+  }
+  assert.ok(covered >= 31);
 });
 
 test('path template matcher treats variables as one safe path segment', () => {

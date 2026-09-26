@@ -283,7 +283,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-nav-item:hover { background: var(--bg); }
 .ck-nav-item.on { background: var(--g1); color: var(--g); border-left-color: var(--g); font-weight: 600; }
 .ck-nav-item.on > svg { color: var(--g); }
-.ck-nav-item.fire.on { background: var(--or1); color: var(--or); border-left-color: var(--or); }
+.ck-nav-item.fire.on { background: var(--or1); color: var(--ck-color-orange-dark); border-left-color: var(--or); }
 .ck-nav-item.fire.on > svg { color: var(--or); }
 .ck-nav-item:focus-visible { outline: 2px solid var(--g); outline-offset: -2px; }
 
@@ -338,18 +338,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-card-a { color:var(--g); font-size:12px; }
 .ck-alert { display:flex; gap:10px; padding:11px 14px; border-radius:8px; margin-bottom:16px; align-items:flex-start; }
 .ck-alert strong { display:block; margin-bottom:2px; }
+/* That block rule is right for an alert whose bold opens a label line ("Custoking note:"), and
+   wrong for bold used mid-sentence, which it shatters into one block per fragment — leaving,
+   on Approve & fulfill, a two-sentence instruction as seven lines with the closing full stop
+   stranded alone. An alert that is flowing prose says so. */
+.ck-alert .ck-alert-flow strong { display:inline; margin:0; }
 .ck-alert-am { background:var(--am1); border:1px solid var(--ck-color-warning-border); color:var(--am); }
 .ck-alert-g { background:var(--g1); border:1px solid var(--g2); color:var(--g); }
 .ck-inline-link { border:none; background:none; color:inherit; text-decoration:underline; padding:0; }
 .ck-stats { display:grid; gap:12px; margin-bottom:22px; }
 .ck-s4 { grid-template-columns:repeat(4, minmax(0,1fr)); }
-.ck-stat { border:1px solid var(--border); background:var(--ck-bg-surface); border-radius:12px; padding:14px 16px; text-align:left; cursor:pointer; }
+.ck-stat { border:1px solid var(--border); background:var(--ck-bg-surface); border-radius:12px; padding:14px 16px; text-align:left; }
+/* Only a stat that leads somewhere offers the hand. */
+button.ck-stat { cursor:pointer; }
 .ck-stat-l { font-size:10px; text-transform:uppercase; font-weight:700; color:var(--ink3); letter-spacing:.05em; }
 .ck-stat-v { font:400 28px/1 var(--ck-font-heading); margin:8px 0 3px; }
 .ck-stat-s { color:var(--ink3); font-size:12px; margin-bottom:6px; }
 .ck-pill.pg { background:var(--g1); color:var(--g); }
 .ck-pill.pb { background:var(--b1); color:var(--b); }
-.ck-pill.po { background:var(--or1); color:var(--or); }
+/* 4.43:1 measured on --or1, and 12px text needs 4.5. The darker orange already in the
+   palette clears it at 5.73 without changing the pill's hue. */
+.ck-pill.po { background:var(--or1); color:var(--ck-color-orange-dark); }
 .ck-pill.pr { background:var(--re1); color:var(--re); }
 .ck-two-col { display:grid; grid-template-columns:1fr 320px; gap:18px; }
 .ck-act-row, .ck-cta-row, .ck-fee-row { display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border); }
@@ -375,6 +384,34 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
 .ck-table th { font-size:10px; font-weight:700; text-transform:uppercase; color:var(--ink3); letter-spacing:.05em; background:var(--ck-bg-surface-raised); }
 .ck-table tbody tr:last-child td { border-bottom:none; }
 .ck-table-wrap { width:100%; overflow-x:auto; }
+
+/* Waiting and having nothing to show are the same two moments in every panel. They were written
+   four different ways — padding 16 against padding 24, left against centre, default ink against
+   --ink3, inside a card and outside one — so they now share one definition. */
+.ck-panel-msg { padding:24px 16px; text-align:center; color:var(--ink3); font-size:13px; }
+
+/* Row action buttons. display:flex used to sit on the <td> itself, which takes the cell out of
+   the table's column algorithm — the buttons then overhung the card's right edge. */
+.ck-row-actions { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+
+/* A money column is read by comparing magnitudes, which needs the digits in a grid. Left-aligned
+   proportional figures lined ₹1,40,000.00 up with ₹62,400.00 on the rupee sign and nothing else. */
+.ck-table th.ck-num, .ck-table td.ck-num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* Real content broke atomic values across lines: identifiers as "CK-" / "1000", dates as
+   "21 September" / "2026", and the text inside status pills and buttons, so every row was a
+   different height. None of these values mean anything split in half. */
+.ck-table .tb, .ck-table td.ck-whole { white-space:nowrap; }
+.ck-pill, .ck-status, .ck-btn { white-space:nowrap; }
+.ck-stat-v { font-variant-numeric:tabular-nums; }
+
+/* The nav and every input announce focus with a 2px green ring; buttons were left with the
+   browser default, a 1px near-black hairline at zero offset — on a filled dark green button,
+   no announcement at all. Offset keeps it clear of pill and card edges. */
+.ck-btn:focus-visible, .ck-stat:focus-visible, .ck-modal-x:focus-visible,
+.ck-tab:focus-visible, .ck-table-link:focus-visible {
+  outline:2px solid var(--g); outline-offset:2px;
+}
 .ck-data-table { min-width:680px; }
 .ck-data-table td { overflow-wrap:anywhere; }
 .ck-form-body { padding:18px; }
@@ -741,6 +778,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px 
   .ck-staff-detail-head .ck-status { grid-column:2; justify-self:start; }
 }
 .ck-alert-re { background:var(--re1); border:1px solid var(--ck-color-danger-border); color:var(--re); }
+/* Secondary and muted text keep their neutral grey when they land inside an alert, which
+   measured 4.35:1 and 4.38:1 on the danger ground. On a coloured surface the quieter text
+   is tinted from that surface's own hue rather than greyed: this reads as subdued and
+   clears 6.5:1. */
+.ck-alert-re .ts,
+.ck-alert-re .ck-btn-ghost { color:var(--ck-text-on-danger-soft); }
+.ck-alert-re .ck-btn-ghost { border-color:var(--ck-color-danger-border); }
 .ck-student-cell { display:flex; align-items:center; gap:12px; }
 .ck-student-delete-inline { padding:3px 8px; font-size:11px; color:var(--re); border-color:var(--ck-color-danger-border); }
 .ck-student-avatar { width:42px; height:42px; border-radius:8px; object-fit:contain; object-position:center; border:1px solid var(--border); background:var(--ck-status-neutral-bg); flex-shrink:0; }

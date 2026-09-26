@@ -102,7 +102,7 @@ public class IdentityAuthService {
         if (!Objects.equals(session.getUser().getId(), user.getId())) {
             throw unauthorized("Invalid refresh token");
         }
-        if (user.isDisabled()) {
+        if (user.isDisabled() || session.getCredentialVersion() != user.getCredentialVersion()) {
             sessions.revokeFamily(session.getFamilyId());
             throw unauthorized("Invalid refresh token");
         }
@@ -123,6 +123,7 @@ public class IdentityAuthService {
 
     @Transactional(readOnly = true)
     public IntrospectionResponse introspect(String token) {
+        String email;
         try {
             Claims claims = jwtService.claims(token);
             // Refresh tokens deliberately share the JWT signing key, but they are not bearer
@@ -131,27 +132,38 @@ public class IdentityAuthService {
             if ("refresh".equals(claims.get("type", String.class))) {
                 return IntrospectionResponse.inactive();
             }
-            String email = claims.getSubject();
+            email = claims.getSubject();
             if (!jwtService.isTokenValid(token, email)) {
                 return IntrospectionResponse.inactive();
             }
-            AppUserEntity user = users.findByEmailIgnoreCase(email).orElse(null);
-            if (user == null || user.isDisabled()) {
-                return IntrospectionResponse.inactive();
-            }
-            AuthResponse auth = responseFor(user, token);
-            return new IntrospectionResponse(true, auth);
         } catch (RuntimeException ex) {
             return IntrospectionResponse.inactive();
         }
+        // Every access credential belongs to a persisted refresh-token family. Rotation keeps
+        // an already-issued access token usable, but logout/reuse revokes every row in the family.
+        // Database failures deliberately propagate rather than masquerading as expired login.
+        AuthSessionEntity session = sessions.findByAccessTokenHash(tokenDigest(token)).orElse(null);
+        if (session == null
+                || !(AuthSessionEntity.ACTIVE.equals(session.getStatus())
+                     || AuthSessionEntity.ROTATED.equals(session.getStatus()))
+                || session.getExpiresAt() == null
+                || !session.getExpiresAt().isAfter(OffsetDateTime.now(ZoneOffset.UTC))) {
+            return IntrospectionResponse.inactive();
+        }
+        AppUserEntity user = users.findByEmailIgnoreCase(email).orElse(null);
+        if (user == null || user.isDisabled() || !Objects.equals(session.getUser().getId(), user.getId())
+                || session.getCredentialVersion() != user.getCredentialVersion()) {
+            return IntrospectionResponse.inactive();
+        }
+        return new IntrospectionResponse(true, responseFor(user, token));
     }
 
     private LoginResult issueSession(AppUserEntity user, String familyId) {
         AuthenticatedUserSnapshot snapshot = snapshot(user);
-        List<String> permissions = loginPermissions(user);
         // Derive the operator school set from the user's active OPERATIONS assignments, not the
         // display-only legacy `role` column. operatorSchoolIds returns [] for non-operators.
         List<Long> opsSchools = rbacRead.operatorSchoolIds(user.getId());
+        List<String> permissions = loginPermissions(user, opsSchools);
         String accessToken = jwtService.generateAccessToken(snapshot, permissions, opsSchools);
         String refreshToken = jwtService.generateRefreshToken(snapshot);
         AuthSessionEntity session = new AuthSessionEntity();
@@ -160,6 +172,7 @@ public class IdentityAuthService {
         session.setFamilyId(familyId);
         session.setStatus(AuthSessionEntity.ACTIVE);
         session.setUser(user);
+        session.setCredentialVersion(user.getCredentialVersion());
         session.setAccessTokenHash(tokenDigest(accessToken));
         session.setRefreshTokenHash(tokenDigest(refreshToken));
         session.setExpiresAt(OffsetDateTime.ofInstant(jwtService.extractExpiration(refreshToken).toInstant(), ZoneOffset.UTC));
@@ -169,11 +182,10 @@ public class IdentityAuthService {
 
     private AuthResponse responseFor(AppUserEntity user, String accessToken) {
         List<String> roles = rbac.roleNames(user.getId());
-        List<String> permissions = loginPermissions(user);
-        // Carry the operator school set on the response principal too, so the gateway's
-        // introspection fallback (GATEWAY_LOCAL_JWT_VERIFY=disabled / un-enriched tokens) forwards
-        // x-authenticated-operator-schools with the same value as the local-JWT path.
+        // Resolve current assignments on every introspection so removed school access cannot
+        // survive until an enriched JWT expires.
         List<Long> operatorSchools = rbacRead.operatorSchoolIds(user.getId());
+        List<String> permissions = loginPermissions(user, operatorSchools);
         return new AuthResponse(
                 accessToken,
                 user.getId(),
@@ -202,9 +214,9 @@ public class IdentityAuthService {
      * school-level scope is enforced separately via {@code ops_schools}, so unioning them in here
      * is safe and keeps operators from losing all access.
      */
-    private List<String> loginPermissions(AppUserEntity user) {
+    private List<String> loginPermissions(AppUserEntity user, List<Long> operatorSchools) {
         var codes = new TreeSet<>(rbacRead.effectivePermissions(user.getId(), user.getBranchId(), user.getZoneId()));
-        if (!rbacRead.operatorSchoolIds(user.getId()).isEmpty()) {
+        if (!operatorSchools.isEmpty()) {
             codes.addAll(rbacRead.permissionCodesForRole("OPERATIONS"));
         }
         return new ArrayList<>(codes);
@@ -235,7 +247,9 @@ public class IdentityAuthService {
         }
     }
 
-    public record LoginRequest(String email, String password) {
+    public record LoginRequest(@jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Email
+                               @jakarta.validation.constraints.Size(max = 254) String email,
+                               @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 72) String password) {
     }
 
     public record LoginResult(String refreshToken, AuthResponse authResponse) {

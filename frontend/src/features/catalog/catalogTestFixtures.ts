@@ -12,6 +12,7 @@ export const notebookDefinition: FormDefinition = {
     { id: 2, categoryCode: 'NOTEBOOKS', ruleType: 'ROUND_TO_MULTIPLE', targetField: 'PAGE_COUNT', matchOptions: {}, params: { multiple: 7, mode: 'NEAREST', minimum: 7 }, priority: 2, message: '', active: true },
     { id: 3, categoryCode: 'NOTEBOOKS', ruleType: 'REQUIRE_ASSET', matchOptions: { CUSTOMIZATION: 'CUSTOMIZED' }, params: { assetKind: 'DESIGN', stage: 'ON_PLACE' }, priority: 3, message: '', active: true },
     { id: 4, categoryCode: 'NOTEBOOKS', ruleType: 'REQUIRE_ASSET', matchOptions: { CUSTOMIZATION: 'CUSTOMIZED' }, params: { assetKind: 'PRE_DELIVERY_PHOTO', stage: 'BEFORE_DELIVERY' }, priority: 4, message: '', active: true },
+    { id: 5, categoryCode: 'NOTEBOOKS', ruleType: 'OFFER_ASSET', matchOptions: { CUSTOMIZATION: 'CUSTOMIZED' }, params: { assetKind: 'DESIGN', label: 'Sample design', accept: 'image/png,image/jpeg,image/webp,application/pdf', maxBytes: 5242880 }, priority: 50, message: 'Sample design (optional)', active: true },
   ],
 };
 export function savedNotebook(status = 'DRAFT', customized = true): FormOrderDetail {

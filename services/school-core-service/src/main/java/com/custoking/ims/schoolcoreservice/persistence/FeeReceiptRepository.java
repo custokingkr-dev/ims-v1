@@ -36,13 +36,13 @@ public class FeeReceiptRepository {
 
     private Map<String, Object> receipt(
             String predicate, String parameterName, String parameterValue, String notFoundMessage) {
-        return jdbc.sql("""
+        var matches = jdbc.sql("""
                         SELECT p.id, p.amount, p.mode, p.paid_at, p.receipt_number,
                                s.id AS student_id, s.full_name AS student_name
                         FROM fee.payment_records p
                         LEFT JOIN student.students s ON s.id = p.student_id
                         WHERE """ + " " + predicate + " " + """
-                        LIMIT 1
+                        LIMIT 2
                         """)
                 .param(parameterName, parameterValue)
                 .query((rs, rowNum) -> row(
@@ -53,8 +53,11 @@ public class FeeReceiptRepository {
                         "amount", rs.getLong("amount"),
                         "mode", rs.getString("mode"),
                         "paidAt", rs.getObject("paid_at", OffsetDateTime.class)))
-                .optional()
-                .orElseThrow(() -> new IllegalArgumentException(notFoundMessage));
+                .list();
+        if (matches.isEmpty()) throw new IllegalArgumentException(notFoundMessage);
+        if (matches.size() > 1) throw new PaymentConflictException(
+                "This historical receipt number identifies multiple payments. Open the receipt from its payment record.");
+        return matches.getFirst();
     }
 
     private byte[] renderReceipt(Map<String, Object> payment) {

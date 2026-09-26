@@ -79,7 +79,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Authenticated-School-Id", "10")
                         .header("X-Authenticated-Permissions", "firefighting:create")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"Test\",\"schoolId\":99}"))
+                        .content("{\"idempotencyKey\":\"tenant-scope-key\",\"title\":\"Test\",\"schoolId\":99}"))
                 .andExpect(status().isForbidden());
         verify(repo, never()).createRequest(anyMap());
     }
@@ -91,7 +91,7 @@ class FirefightingTenantScopingTest {
                         .header("X-Firefighting-Service-Token", "tok")
                         .header("X-Authenticated-Role", "SUPERADMIN")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"Test\",\"schoolId\":99}"))
+                        .content("{\"idempotencyKey\":\"tenant-scope-key\",\"title\":\"Test\",\"schoolId\":99}"))
                 .andExpect(status().isOk());
         verify(repo).createRequest(argThat(m -> Long.valueOf(99L).equals(m.get("schoolId"))));
     }

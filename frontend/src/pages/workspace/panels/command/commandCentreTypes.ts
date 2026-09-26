@@ -28,7 +28,13 @@ export type PolCode =
  *   - If `cta2PanelKey` is set → navigates to that panel
  *   - If `cta2PolCode` is set  → opens the corresponding POL modal
  */
-export interface CommandCentreCard extends SuggestedAction {
+export interface CommandCentreCard extends Omit<SuggestedAction, 'confidence'> {
+  /** Source metadata shown by Why this; no inferred confidence score. */
+  sourceKind?: 'server' | 'workspace';
+  sourceLabel?: string;
+  sourceReference?: string;
+  recordedAt?: string;
+  loadedAt?: string;
   count?: number;
   amount?: number;           // paise; used for display in POL modals
   primaryPolCode?: PolCode;  // primary opens modal instead of navigating

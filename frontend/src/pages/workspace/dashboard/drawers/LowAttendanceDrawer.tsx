@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
+import { useDialogFocus } from '../../../../hooks/useDialogFocus';
 import { CommandCenterDrawer } from '../components/CommandCenterDrawer';
 import {
   fetchLowAttendanceSections,
@@ -26,7 +27,7 @@ function AttendanceBar({ pct }: { pct: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
       <div style={{ flex: 1, background: 'var(--ck-color-indigo-soft)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-        <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: color, transition: 'width .3s' }} />
+        <div style={{ width: `${Math.max(0, Math.min(100, pct))}%`, height: '100%', background: color }} />
       </div>
       <span style={{ fontSize: 12, fontWeight: 600, color, minWidth: 36 }}>{pct.toFixed(0)}%</span>
     </div>
@@ -46,6 +47,11 @@ function ConfirmInviteModal({ selected, onClose, onSent }: ConfirmModalProps) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const messageId = useId();
+  const channelName = useId();
+  useDialogFocus(ref, true, onClose, sending);
 
   const handleSend = async () => {
     if (!message.trim()) { setError('Message is required.'); return; }
@@ -68,37 +74,39 @@ function ConfirmInviteModal({ selected, onClose, onSent }: ConfirmModalProps) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 2000,
                   display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'var(--ck-bg-surface)', borderRadius: 12, padding: 24, width: 420, maxWidth: '90vw',
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} style={{ background: 'var(--ck-bg-surface)', borderRadius: 12, padding: 24, width: 420, maxWidth: '90vw',
                     boxShadow: '0 8px 32px rgba(0,0,0,0.2)' }}>
-        <h3 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--ck-color-indigo-deep)' }}>
+        <h3 id={titleId} style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 700, color: 'var(--ck-color-indigo-deep)' }}>
           Send Meeting Invites
         </h3>
         <p style={{ margin: '0 0 16px', fontSize: 13, color: 'var(--ck-text-secondary)' }}>
           Sending to <strong>{selected.length}</strong> parent{selected.length !== 1 ? 's' : ''}.
         </p>
 
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-primary)', display: 'block', marginBottom: 4 }}>
+        <fieldset disabled={sending} style={{ border: 0, padding: 0, margin: '0 0 12px' }}>
+          <legend style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-primary)', display: 'block', marginBottom: 4 }}>
             Channel
-          </label>
+          </legend>
           <div style={{ display: 'flex', gap: 8 }}>
             {CHANNELS.map(c => (
-              <button key={c} onClick={() => setChannel(c)}
+              <label key={c}
                 style={{ padding: '5px 12px', borderRadius: 20, border: '1px solid var(--ck-color-indigo-border)',
                          background: channel === c ? 'var(--ck-color-indigo)' : 'var(--ck-bg-surface)',
                          color: channel === c ? 'var(--ck-text-inverse)' : 'var(--ck-color-indigo)',
                          cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                {c}
-              </button>
+                <input type="radio" name={channelName} value={c} checked={channel === c} onChange={() => setChannel(c)} /> {c}
+              </label>
             ))}
           </div>
-        </div>
+        </fieldset>
 
         <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-primary)', display: 'block', marginBottom: 4 }}>
+          <label htmlFor={messageId} style={{ fontSize: 12, fontWeight: 600, color: 'var(--ck-text-primary)', display: 'block', marginBottom: 4 }}>
             Message
           </label>
           <textarea
+            id={messageId}
+            disabled={sending}
             value={message}
             onChange={e => setMessage(e.target.value)}
             rows={4}
@@ -116,7 +124,7 @@ function ConfirmInviteModal({ selected, onClose, onSent }: ConfirmModalProps) {
         )}
 
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={onClose}
+          <button onClick={onClose} disabled={sending}
             style={{ padding: '8px 16px', border: '1px solid var(--ck-color-indigo-border)', borderRadius: 6,
                      cursor: 'pointer', fontSize: 13, background: 'var(--ck-bg-surface)' }}>
             Cancel
