@@ -1,6 +1,8 @@
 # MSG91 Production Setup
 
-This project uses the notification service as the single integration boundary for OTP, SMS, email, and WhatsApp. Schools should not call MSG91 directly.
+The platform service owns the notification integration boundary for OTP, SMS, email, and WhatsApp. Schools should not call MSG91 directly.
+
+**Current implementation:** live MSG91 submission is blocked in code. The checklist below is provisioning background, not an instruction to set `MSG91_DRY_RUN=false` on the deployed release. See [live messaging readiness](product/live-messaging-readiness-2026-09-26.md) for the verified dev setup, missing submission/receipt contracts and bounded acceptance cases. A key, sender or approved template alone does not remove those gates.
 
 ## Sender Model
 
@@ -25,7 +27,7 @@ Required secrets:
 
 Required Cloud Run environment:
 
-- `MSG91_DRY_RUN=false` only after domain and WhatsApp template approval.
+- Keep `MSG91_DRY_RUN=true` until the submission/reconciliation/report implementation and channel-specific acceptance are complete. Setting it to false on the current MSG91 adapter deliberately fails startup.
 - `IMS_NOTIFICATION_SERVICE_HYBRID_SENDER_EMAIL_DOMAIN=custoking.com`
 - `IMS_NOTIFICATION_SERVICE_HYBRID_SENDER_WHATSAPP_LANGUAGE_CODE=en`
 
