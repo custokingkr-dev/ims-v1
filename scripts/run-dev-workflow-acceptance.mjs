@@ -221,7 +221,11 @@ export async function execute(options, { credentialsReader = bootstrapCredential
   const mutation = (name, api, method, endpoint, body, prove, extra = {}) => j.mutate(name, {
     intent: { method, endpoint, body }, send: () => api.request(method, endpoint, body), prove, ...extra });
   try {
-    j.data.attempts++; j.data.completed = false; j.save();
+    if (j.data.attempts > 0) {
+      j.data.attemptHistory ??= [];
+      j.data.attemptHistory.push({ attempt: j.data.attempts, failure: j.data.failure ?? null, cleanup: j.data.cleanup ?? null, finishedAt: j.data.lastFinishedAt ?? null });
+    }
+    j.data.attempts++; j.data.completed = false; j.data.failure = null; delete j.data.cleanupRequired; j.save();
     let credentials = credentialsReader();
     await root.login(credentials.email, credentials.password, 'SUPERADMIN'); credentials = null;
     const reference = await root.get('/schools/1');
@@ -281,10 +285,10 @@ export async function execute(options, { credentialsReader = bootstrapCredential
         const list = await school.get(`/students?schoolId=1&q=${enc(admission)}&page=0&size=20`);
         const rows = array(list.items); check(rows.length < 20, 'STUDENT_LOOKUP_TRUNCATED');
         const found = only(rows.filter(s => s.admissionNumber === admission || s.admissionNo === admission));
-        return found ? verifyStudent(await school.get(`/students/${found.id}`)) : null;
+        return found ? verifyStudent(await school.get(`/students/${found.id}/workspace`)) : null;
       }
     });
-    verifyStudent(await school.get(`/students/${student.id}`));
+    verifyStudent(await school.get(`/students/${student.id}/workspace`));
     const section = await school.get(`/students/roster?schoolId=1&classId=1&sectionId=${enc(student.sectionId)}&limit=5`);
     check(array(section).length === 1 && Number(section[0].id) === Number(student.id), 'SECTION_IS_NOT_EXCLUSIVELY_RUN_OWNED');
     const attendanceBody = { schoolId: SCHOOL, classId, sectionId: student.sectionId, date: today, records: [{ studentId: student.id, status: 'PRESENT', remarks: `Synthetic acceptance ${run}` }] };

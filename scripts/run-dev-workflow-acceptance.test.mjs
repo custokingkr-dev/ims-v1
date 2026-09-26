@@ -119,8 +119,8 @@ test('business request exhaustion and deadline both preserve cleanup reserve', a
   await assert.rejects(client.request('POST', '/auth/logout'), /REQUEST_BUDGET/);
 });
 
-function fakeServer({ lostAdminCreate = false, wrongAdminScope = false, foreignFeeBand = false } = {}) {
-  let owner = null; const calls = [];
+function fakeServer({ lostAdminCreate = false, wrongAdminScope = false, foreignFeeBand = false, studentReadback = false } = {}) {
+  let owner = null, student = null; const calls = [];
   const run = 'product-20260926-a1';
   const date = new Date(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()) + 'T12:00:00Z');
   const yearStart = date.getUTCFullYear() - (date.getUTCMonth() < 3 ? 1 : 0);
@@ -131,7 +131,8 @@ function fakeServer({ lostAdminCreate = false, wrongAdminScope = false, foreignF
     if (path === '/auth/login') {
       const body = JSON.parse(init.body); const school = body.email.endsWith('@synthetic.invalid');
       return response({ role: school ? 'ADMIN' : 'SUPERADMIN', branchId: school ? wrongAdminScope ? 2 : 1 : null,
-        userId: school ? 42 : 10, accessToken: 'TOKEN-MUST-NOT-APPEAR' });
+        userId: school ? 42 : 10, accessToken: 'TOKEN-MUST-NOT-APPEAR',
+        permissions: studentReadback ? ['student:create', 'student:read', 'attendance:manage', 'fee_structure:manage', 'fee:assign', 'fee:collect', 'firefighting:create', 'firefighting:update', 'plan:manage'] : [] });
     }
     if (path === '/auth/logout') return response(null, 204);
     if (path === '/schools/1') return response({ id: 1, active: true, name: 'Local Demo School', academicYearStartMonth: 4 });
@@ -150,6 +151,19 @@ function fakeServer({ lostAdminCreate = false, wrongAdminScope = false, foreignF
     }
     if (path === '/users/42') return response(owner);
     if (path === '/users/42/disable') { owner.active = false; return response(null, 204); }
+    if (path === '/users/42/enable') { owner.active = true; return response(null, 204); }
+    if (path === '/users/42/password-reset') return response(null, 204);
+    if (studentReadback) {
+      if (path === '/classes') return response([{ id: '1' }]);
+      if (path === '/students' && init.method === 'GET') return response({ items: student ? [student] : [] });
+      if (path === '/students' && init.method === 'POST') {
+        student = { ...JSON.parse(init.body), id: 99, sectionId: 'owned-section' }; return response(student);
+      }
+      // The base route is StudentRow; only /workspace supplies admissionNumber and sectionName.
+      if (path === '/students/99') return response({ id: 99, admissionNo: `QA-${run}`, schoolId: 1, classId: '1', sectionId: 'owned-section' });
+      if (path === '/students/99/workspace') return response(student);
+      if (path === '/students/roster') return response({ message: 'Stop after ownership proof' }, 403);
+    }
     throw new Error('UNEXPECTED_MOCK_ROUTE');
   } };
 }
@@ -180,6 +194,21 @@ test('existing non-owned fee band blocks before provisioning or business mutatio
   assert.equal(result.failure, 'EXISTING_FEE_BANDS_NOT_RUN_OWNED');
   assert.equal(server.calls.some(c => c.path === '/schools/1/admin'), false);
   assert.equal(result.cleanup.superadminLogoutConfirmed, true);
+});
+
+test('student ownership uses canonical workspace detail and resumes without a duplicate student', async t => {
+  const { directory } = fixture(t); const server = fakeServer({ studentReadback: true });
+  const dependencies = { credentialsReader: () => ({ email: 'bootstrap@example.invalid', password: 'memory' }), fetchImpl: server.fetch };
+  for (let i = 0; i < 2; i++) {
+    const result = await execute(options(directory), dependencies);
+    assert.equal(result.failure, 'READ_HTTP_403');
+    assert.equal(result.cleanup.administratorDisabled, true);
+    const saved = JSON.parse(readFileSync(result.journal, 'utf8'));
+    assert.equal(saved.operations['student-create'].proof.id, 99);
+  }
+  assert.equal(server.calls.filter(c => c.method === 'POST' && c.path === '/students').length, 1);
+  assert.equal(server.calls.filter(c => c.path === '/students/99/workspace').length, 2);
+  assert.equal(server.calls.filter(c => c.path === '/students/99').length, 0);
 });
 
 test('synthetic PNG has valid chunk checksums and a decodable one-pixel scanline', () => {

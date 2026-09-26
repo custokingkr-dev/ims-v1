@@ -3,16 +3,17 @@ param(
   [Parameter(Mandatory=$true)][ValidateRange(1,[long]::MaxValue)][long]$StudentId,
   [Parameter(Mandatory=$true)][ValidatePattern('^product-[0-9]{8}-[a-z0-9]{2,20}$')][string]$RunId,
   [ValidatePattern('^[a-z][a-z0-9-]+@custoking-dev\.iam\.gserviceaccount\.com$')][string]$PolicyInvokerServiceAccount,
+  [ValidateSet('PrivatePolicy','PublicManifest')][string]$PolicyEvidenceSource='PrivatePolicy',
   [switch]$Apply
 )
-# No Apply: local plan only. Apply: bounded dev-only synthetic fixture mutations, private policy
-# reads, and observation of natural Scheduler ticks. Never invokes a drain or external provider.
+# No Apply: local plan only. Apply: bounded dev-only synthetic fixture mutations, verified policy
+# reads/approved manifests, and natural Scheduler ticks. Never invokes a drain or external provider.
 $ErrorActionPreference='Stop'
 $project=$ProjectId; $base='https://custoking-api-gateway-dev-hd4wfwk7mq-em.a.run.app/api/v1'
 $repoRoot=Split-Path -Parent $PSScriptRoot
 $journalDirectory=Join-Path $repoRoot 'artifacts/product-dev-release-2026-09-26'
 $journalPath=Join-Path $journalDirectory "$RunId-broadcast-journal.json"
-if (-not $Apply) { [ordered]@{project=$project;schoolId=1;studentId=$StudentId;runId=$RunId;mode='DRY_RUN_ONLY';guardianEmail="$($RunId.ToLowerInvariant())@acceptance.invalid";phases=@('verify owned student and empty guardian scope','verify private policy access for only the owned student','create synthetic-only verified guardian and test consent','approve exactly one eligible recipient and validate its stored manifest','observe DRY_RUN with zero delivered and an actual natural Scheduler tick','replay queue without additional attempt','withdraw consent before second queue and observe suppression plus a natural Scheduler tick','reconcile exact owned fixture, withdraw any remaining test grant, verify denied policy, and log out');maxRequests=65;businessRequestLimit=55;cleanupRequestReserve=10;cleanupMinutes=3;maxCloudReads=30;maxRecipients=200;maxMinutes=12} | ConvertTo-Json; exit }
+if (-not $Apply) { [ordered]@{project=$project;schoolId=1;studentId=$StudentId;runId=$RunId;mode='DRY_RUN_ONLY';policyEvidenceSource=$PolicyEvidenceSource;guardianEmail="$($RunId.ToLowerInvariant())@acceptance.invalid";phases=@('verify owned student and empty guardian scope','verify selected policy evidence path for the owned fixture','create synthetic-only verified guardian and test consent','approve exactly one eligible recipient and validate its stored manifest','observe DRY_RUN with zero delivered and an actual natural Scheduler tick','replay queue without additional attempt','withdraw consent before second queue and observe suppression plus a natural Scheduler tick','reconcile exact owned fixture, withdraw any remaining test grant, verify denied policy, and log out');maxRequests=65;businessRequestLimit=55;cleanupRequestReserve=10;cleanupMinutes=3;maxCloudReads=30;maxRecipients=200;maxMinutes=12} | ConvertTo-Json; exit }
 if (Test-Path -LiteralPath $journalPath) {throw 'Journal already exists. Reconcile recorded identifiers before any retry; no automatic restart.'}
 if (-not (Test-Path -LiteralPath $journalDirectory)) {New-Item -ItemType Directory -Path $journalDirectory -Force|Out-Null}
 $state=[ordered]@{project=$project;schoolId=1;studentId=$StudentId;runId=$RunId;startedAt=[datetime]::UtcNow.ToString('o');events=@();completed=$false;deliveryMode='DRY_RUN_ONLY'}
@@ -66,11 +67,40 @@ function Api([string]$Method,[string]$Path,$Body=$null) {
 }
 function Secret([string]$Name) {return (Read-Gcloud @('secrets','versions','access','latest',"--secret=$Name",'--project=custoking-dev')).Trim()}
 function Assert([bool]$Condition,[string]$Message){if(-not $Condition){throw $Message}}
+function Assert-DevServiceUrl([string]$Url,[ValidateSet('platform','school-core')][string]$Service){
+  # Cloud Run exposes both hash-based *.a.run.app and project-number regional URLs.
+  # Metadata is read from the explicit dev project; never accept another service or a URL suffix/path.
+  $pattern='^https://custoking-'+[regex]::Escape($Service)+'-service-dev-(?:[a-z0-9]+-[a-z0-9]+\.a|1087017280590\.asia-south2)\.run\.app$'
+  Assert ($Url -cmatch $pattern) "Unexpected $Service runtime URL"
+}
 function Read-GcloudJson([string[]]$Arguments) {
   $raw=Read-Gcloud $Arguments
   try { return ($raw|ConvertFrom-Json) } catch { throw 'Dev cloud read returned malformed JSON; no raw contents are reported' }
 }
+function Read-OwnedPublicPolicy([string]$Id,[bool]$RequireAllowed,[bool]$RequireDenied) {
+  $overview=Api GET "/students/$StudentId/guardians"
+  Assert ($overview.studentId -eq $StudentId -and $overview.schoolId -eq 1 -and $null -ne $overview.guardians) 'Public policy fixture scope mismatch'
+  if(-not $state.fixtureWritesStarted){
+    Assert (-not $RequireAllowed -and -not $RequireDenied -and @($overview.guardians).Count -eq 0 -and @($overview.consentHistory).Count -eq 0) 'Public policy preflight requires an empty owned fixture'
+    return
+  }
+  $guardians=@($overview.guardians)
+  Assert ($guardians.Count -eq 1 -and $guardians[0].id -ceq $state.guardianId -and $guardians[0].fullName -ceq "Synthetic Guardian $RunId" -and $guardians[0].email -ceq "$($RunId.ToLowerInvariant())@acceptance.invalid" -and $guardians[0].relationship -ceq 'GUARDIAN' -and $guardians[0].primary -eq $true -and $guardians[0].receivesNotifications -eq $true -and $guardians[0].contactVerifiedAt -and $guardians[0].status -ceq 'ACTIVE' -and -not $guardians[0].phone) 'Public policy guardian binding is not exclusively synthetic'
+  $current=@($overview.consents|Where-Object {$_.purpose -ceq 'SCHOOL_COMMUNICATIONS'})
+  Assert ($current.Count -eq 1 -and $current[0].guardianId -ceq $state.guardianId -and $current[0].evidenceReference -ceq $RunId -and $current[0].noticeVersion -ceq 'synthetic-acceptance-v1') 'Public policy consent binding differs from the owned fixture'
+  if($RequireAllowed){Assert ($current[0].status -ceq 'GRANTED' -and $current[0].id -ceq $state.grantedConsentId) 'Public policy grant is not current'}
+  if($RequireDenied){Assert ($current[0].status -ceq 'WITHDRAWN') 'Public policy withdrawal is not current'}
+  Assert ($RequireAllowed -xor $RequireDenied) 'Public policy evidence must require an explicit decision'
+  $proofId=if($RequireDenied){if($state.broadcastrevoked){$state.broadcastrevoked}else{$state.broadcastdryrun}}else{$Id}
+  Assert ($proofId -and $proofId -in @($state.broadcastdryrun,$state.broadcastrevoked)) 'Public policy needs an already journaled owned broadcast; cleanup remains unresolved without one'
+  $preview=Api POST "/notifications/broadcasts/$proofId/preview"
+  $expectedEligible=if($RequireAllowed){1}else{0}
+  Assert ($preview.broadcastId -ceq $proofId -and $preview.eligible -eq $expectedEligible -and $preview.duplicate -eq 0 -and $preview.total -ge 1 -and $preview.total -le 200 -and $preview.suppressed -eq ($preview.total-$expectedEligible) -and $preview.fingerprint -match '^[0-9a-f]{64}$') 'Fresh public preview does not prove the required synthetic policy outcome'
+  # Approval still requires Assert-OwnedManifest before queueing: aggregates alone never authorize a send.
+  $state.publicPolicyEvidence+=,@{broadcastId=$proofId;eligible=$preview.eligible;fixtureGuardianAndConsentBound=$true};Save-Journal
+}
 function Read-OwnedPolicy([string]$Id,[bool]$RequireAllowed=$true,[bool]$RequireDenied=$false) {
+  if($PolicyEvidenceSource -ceq 'PublicManifest'){Read-OwnedPublicPolicy $Id $RequireAllowed $RequireDenied;return}
   Reserve-HttpRequest
   $body=@{schoolId=1;broadcastId=$Id;communicationCategory='SCHOOL_NOTICE';audienceType='ALL_PARENTS';channels=@('EMAIL');studentIds=@($StudentId)}
   $event=[ordered]@{method='POST';path='/api/v1/internal/notifications/broadcast-recipients';studentId=$StudentId;at=[datetime]::UtcNow.ToString('o');status='PENDING'}
@@ -97,10 +127,11 @@ function Consent([string]$Status,[string]$Key){
   if($Status -ceq 'GRANTED'){$state.grantedConsentId=$consent[0].id}else{$state.withdrawnConsentId=$consent[0].id};Save-Journal
 }
 function Cleanup-OwnedFixture {
-  $cleanup=[ordered]@{attempted=[bool]$state.fixtureWritesStarted;confirmed=$false;withdrawalKey="$RunId`:cleanup-withdraw"}
+  $cleanupKey=if($state.cleanupConsentKey){[string]$state.cleanupConsentKey}else{'cleanup-withdraw'}
+  $cleanup=[ordered]@{attempted=[bool]$state.fixtureWritesStarted;confirmed=$false;withdrawalKey="$RunId`:$cleanupKey"}
   if(-not $state.fixtureWritesStarted){$cleanup.confirmed=$true;$cleanup.result='NO_FIXTURE_WRITES_ATTEMPTED';return $cleanup}
   try {
-    $student=Api GET "/students/$StudentId"
+    $student=Api GET "/students/$StudentId/workspace"
     Assert ($student.id -eq $StudentId -and $student.schoolId -eq 1 -and $student.admissionNumber -ceq "QA-$RunId" -and $student.fullName -ceq "Synthetic Student $RunId" -and $student.sectionName -ceq "QA-$($RunId.ToUpperInvariant())") 'Cleanup refused: student ownership could not be verified'
     $overview=Api GET "/students/$StudentId/guardians"
     Assert ($overview.studentId -eq $StudentId -and $overview.schoolId -eq 1 -and $null -ne $overview.guardians) 'Cleanup refused: guardian scope could not be verified'
@@ -122,7 +153,7 @@ function Cleanup-OwnedFixture {
       # A timed-out grant may have committed; the authoritative overview, not the response, decides.
       # Stable key also makes a lost withdrawal response safe for explicit later reconciliation.
       $cleanup.withdrawalAttempted=$true
-      try{Consent 'WITHDRAWN' 'cleanup-withdraw';$cleanup.withdrawalResponseConfirmed=$true}
+      try{Consent 'WITHDRAWN' $cleanupKey;$cleanup.withdrawalResponseConfirmed=$true}
       catch{$cleanup.withdrawalResponseConfirmed=$false}
       $overview=Api GET "/students/$StudentId/guardians"
       Assert ($overview.studentId -eq $StudentId -and $overview.schoolId -eq 1) 'Cleanup withdrawal scope could not be verified'
@@ -177,12 +208,24 @@ function Wait-Outcome([string]$Id,[string]$Expected){
   }
   throw 'Scheduler did not complete the bounded dry-run observation window'
 }
+function Read-DevLogEntries([string]$Filter) {
+  # Windows native argument passing can strip the quotes in timestamp/URL filters.
+  # A structured Logging request preserves the filter and the explicit dev resource scope.
+  $logAccessToken=Read-Gcloud @('auth','print-access-token','--project=custoking-dev')
+  Assert ($script:cloudCount -lt 30 -and (Remaining-Seconds) -gt 15) 'Bounded cloud-read or duration limit reached';$script:cloudCount++
+  try {
+    $body=@{resourceNames=@('projects/custoking-dev');filter=$Filter;orderBy='timestamp asc';pageSize=30}|ConvertTo-Json -Compress
+    $answer=Invoke-RestMethod -Method POST -Uri 'https://logging.googleapis.com/v2/entries:list' -Headers @{Authorization="Bearer $($logAccessToken.Trim())"} -Body $body -ContentType 'application/json' -TimeoutSec ([Math]::Min(20,(Remaining-Seconds)-10))
+    return @($answer.entries)
+  } catch {throw 'Dev log evidence read failed; no response body or credential is reported'}
+  finally {$logAccessToken=$null;$body=$null;$answer=$null}
+}
 function Wait-SchedulerTick([string]$Since) {
   $drainUrl="$platformUrl/api/v1/internal/async/drain"
   $jobName='projects/custoking-dev/locations/asia-south1/jobs/ims-platform-service-async-relay-dev'
   $filter='timestamp>="'+$Since+'" AND ((resource.type="cloud_scheduler_job" AND resource.labels.job_id="ims-platform-service-async-relay-dev") OR (resource.type="cloud_run_revision" AND resource.labels.service_name="custoking-platform-service-dev" AND httpRequest.requestUrl="'+$drainUrl+'" AND httpRequest.userAgent:"Google-Cloud-Scheduler"))'
   for($i=0;$i -lt 4;$i++){
-    $logs=@(Read-GcloudJson @('logging','read',$filter,'--project=custoking-dev','--limit=30','--order=asc','--format=json'))
+    $logs=@(Read-DevLogEntries $filter)
     $scheduler=@($logs|Where-Object {$_.resource.type -ceq 'cloud_scheduler_job' -and $_.resource.labels.project_id -ceq 'custoking-dev' -and $_.resource.labels.location -ceq 'asia-south1' -and $_.resource.labels.job_id -ceq 'ims-platform-service-async-relay-dev' -and $_.jsonPayload.'@type' -ceq 'type.googleapis.com/google.cloud.scheduler.logging.AttemptFinished' -and $_.jsonPayload.jobName -ceq $jobName -and $_.jsonPayload.url -ceq $drainUrl -and $_.jsonPayload.targetType -ceq 'HTTP' -and $_.httpRequest.status -ge 200 -and $_.httpRequest.status -lt 300 -and [datetime]$_.timestamp -ge [datetime]$Since}|Select-Object -First 1)
     $requests=@($logs|Where-Object {$_.resource.type -ceq 'cloud_run_revision' -and $_.resource.labels.project_id -ceq 'custoking-dev' -and $_.resource.labels.service_name -ceq 'custoking-platform-service-dev' -and $_.resource.labels.revision_name -ceq $state.platformRevision -and $_.httpRequest.requestUrl -ceq $drainUrl -and $_.httpRequest.userAgent -like '*Google-Cloud-Scheduler*' -and $_.httpRequest.requestMethod -ceq 'POST' -and $_.httpRequest.status -ge 200 -and $_.httpRequest.status -lt 300 -and [datetime]$_.timestamp -ge [datetime]$Since}|Select-Object -First 1)
     if($scheduler.Count -eq 1 -and $requests.Count -eq 1){return [ordered]@{after=$Since;job=$jobName;schedulerInsertId=$scheduler[0].insertId;schedulerAt=$scheduler[0].timestamp;schedulerStatus=$scheduler[0].httpRequest.status;requestInsertId=$requests[0].insertId;requestAt=$requests[0].timestamp;requestStatus=$requests[0].httpRequest.status;revision=$requests[0].resource.labels.revision_name}}
@@ -192,7 +235,7 @@ function Wait-SchedulerTick([string]$Since) {
   throw 'No paired successful natural Scheduler tick after queue acceptance; result remains incomplete'
 }
 function Queue-Owned([string]$Id) {
-  $answer=Api POST "/notifications/broadcasts/$Id/send"
+  $answer=Api POST "/notifications/broadcasts/$Id/send" @{}
   Assert ($answer.broadcastId -ceq $Id -and $answer.mode -ceq 'DRY_RUN' -and $answer.delivered -eq 0 -and $answer.status -in @('QUEUED','DRY_RUN_COMPLETE')) 'Queue response does not confirm the expected dry-run broadcast'
   return [datetime]::UtcNow.ToString('o')
 }
@@ -202,17 +245,20 @@ try {
   $state.platformRevision=[string]$runtime.status.latestReadyRevisionName
   Assert ($state.platformRevision -like 'custoking-platform-service-dev-*' -and $state.platformRevision -ceq $runtime.status.latestCreatedRevisionName -and @($runtime.status.traffic).Count -eq 1 -and $runtime.status.traffic[0].revisionName -ceq $state.platformRevision -and $runtime.status.traffic[0].percent -eq 100) 'Platform must have a single fully ready serving revision'
   $platformUrl=[string]$runtime.status.url
-  Assert ($platformUrl -match '^https://custoking-platform-service-dev-[a-z0-9-]+\.run\.app$') 'Unexpected platform runtime URL'
+  Assert-DevServiceUrl $platformUrl 'platform'
   $revision=Read-GcloudJson @('run','revisions','describe',$state.platformRevision,'--project=custoking-dev','--region=asia-south2','--format=json')
   $envs=@{};foreach($e in $revision.spec.containers[0].env){$envs[$e.name]=$e.value}
   Assert ($envs.BROADCAST_DISPATCH_MODE -eq 'DRY_RUN' -and $envs.BROADCAST_WORKER_READY -eq 'true' -and $envs.NOTIFICATION_DELIVERY_PROVIDER -eq 'logging' -and $envs.MSG91_DRY_RUN -eq 'true') 'Runtime must explicitly enable verified dry-run with logging'
   $scheduler=Read-GcloudJson @('scheduler','jobs','describe','ims-platform-service-async-relay-dev','--project=custoking-dev','--location=asia-south1','--format=json')
   Assert ($scheduler.state -ceq 'ENABLED' -and $scheduler.httpTarget.httpMethod -ceq 'POST' -and $scheduler.httpTarget.uri -ceq "$platformUrl/api/v1/internal/async/drain" -and $scheduler.httpTarget.oidcToken.audience -ceq $platformUrl -and $scheduler.httpTarget.oidcToken.serviceAccountEmail -ceq 'ims-async-scheduler-dev@custoking-dev.iam.gserviceaccount.com') 'Scheduler target, authentication or enabled state mismatch'
-  $schoolRuntime=Read-GcloudJson @('run','services','describe','custoking-school-core-service-dev','--project=custoking-dev','--region=asia-south2','--format=json')
-  $schoolUrl=[string]$schoolRuntime.status.url;Assert ($schoolUrl -match '^https://custoking-school-core-service-dev-[a-z0-9-]+\.run\.app$') 'Unexpected school runtime URL'
-  $identityArgs=@('auth','print-identity-token','--project=custoking-dev')
-  if($PolicyInvokerServiceAccount){$identityArgs+=@("--impersonate-service-account=$PolicyInvokerServiceAccount","--audiences=$schoolUrl",'--include-email')}
-  $policyHeaders.Authorization='Bearer '+(Read-Gcloud $identityArgs).Trim();$policyHeaders['X-Broadcast-Policy-Token']=Secret 'broadcast-policy-token-dev'
+  $state.policyEvidenceSource=$PolicyEvidenceSource;Save-Journal
+  if($PolicyEvidenceSource -ceq 'PrivatePolicy'){
+    $schoolRuntime=Read-GcloudJson @('run','services','describe','custoking-school-core-service-dev','--project=custoking-dev','--region=asia-south2','--format=json')
+    $schoolUrl=[string]$schoolRuntime.status.url;Assert-DevServiceUrl $schoolUrl 'school-core'
+    $identityArgs=@('auth','print-identity-token','--project=custoking-dev')
+    if($PolicyInvokerServiceAccount){$identityArgs+=@("--impersonate-service-account=$PolicyInvokerServiceAccount","--audiences=$schoolUrl",'--include-email')}
+    $policyHeaders.Authorization='Bearer '+(Read-Gcloud $identityArgs).Trim();$policyHeaders['X-Broadcast-Policy-Token']=Secret 'broadcast-policy-token-dev'
+  }
   $seed=Secret 'seed-superadmin-sql';$emails=@([regex]::Matches($seed,'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}')|ForEach-Object {$_.Value.ToLowerInvariant()}|Sort-Object -Unique);$seed=$null
   Assert ($emails.Count -eq 1) 'Bootstrap account ambiguous'
   $password=Secret 'superadmin-password-dev';$login=Api POST '/auth/login' @{email=$emails[0];password=$password};$password=$null;$emails=$null
@@ -220,7 +266,7 @@ try {
   Assert ($login.role -eq 'SUPERADMIN' -and $login.accessToken) 'Unexpected bootstrap actor'
   $headers.Authorization="Bearer $($login.accessToken)";$login=$null
   $cap=Api GET '/notifications/broadcasts/capabilities';Assert ($cap.mode -ceq 'DRY_RUN' -and $cap.canQueue -eq $true -and $cap.canSend -eq $false -and $cap.canApprove -eq $true -and $cap.canPreview -eq $true) 'Capabilities do not allow dry-run-only queuing'
-  $student=Api GET "/students/$StudentId";Assert ($student.id -eq $StudentId -and $student.schoolId -eq 1 -and $student.admissionNumber -ceq "QA-$RunId" -and $student.fullName -ceq "Synthetic Student $RunId" -and $student.sectionName -ceq "QA-$($RunId.ToUpperInvariant())") 'Student is not owned by this acceptance run';$student=$null
+  $student=Api GET "/students/$StudentId/workspace";Assert ($student.id -eq $StudentId -and $student.schoolId -eq 1 -and $student.admissionNumber -ceq "QA-$RunId" -and $student.fullName -ceq "Synthetic Student $RunId" -and $student.sectionName -ceq "QA-$($RunId.ToUpperInvariant())") 'Student is not owned by this acceptance run';$student=$null
   Read-OwnedPolicy ([guid]::NewGuid().ToString()) $false
   $guardians=Api GET "/students/$StudentId/guardians";Assert ($guardians.studentId -eq $StudentId -and $guardians.schoolId -eq 1 -and $null -ne $guardians.guardians -and @($guardians.guardians).Count -eq 0 -and @($guardians.consentHistory).Count -eq 0) 'Existing guardian or consent scope blocks fixture creation'
   $state.fixtureWritesStarted=$true;Save-Journal
