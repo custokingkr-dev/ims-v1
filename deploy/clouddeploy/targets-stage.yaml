@@ -211,6 +211,8 @@ metadata:
 description: api-gateway stage Cloud Run target
 deployParameters:
   env: stage
+  # No reviewed stage hash alias exists; retain the exact canonical origin only.
+  gateway_cors_allowed_origins: "https://custoking-frontend-stage-__PROJECT_NUMBER__.__REGION__.run.app"
   project_id: __PROJECT_ID__
   photo_bucket: __PHOTO_BUCKET__
   region: asia-south2

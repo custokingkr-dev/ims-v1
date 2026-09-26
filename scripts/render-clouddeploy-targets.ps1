@@ -53,6 +53,43 @@ foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
 }
 
+# Browser CORS needs both Cloud Run aliases, while frontend_url stays one upstream URL.
+# These are exact reviewed aliases, not a hostname pattern or a runtime request-derived list.
+# A new project/hash needs an explicit source review; canonical-only is always available.
+$gatewayTargets = @($text -split '(?m)^---\s*$' | Where-Object {
+  $_ -match "(?m)^  name:\s*api-gateway-$Environment\s*$"
+})
+if ($gatewayTargets.Count -ne 1) {
+  throw "Exactly one api-gateway-$Environment target is required for gateway CORS."
+}
+function Read-GatewayParameter([string]$Name) {
+  $parameterMatches = [regex]::Matches($gatewayTargets[0], "(?m)^  $([regex]::Escape($Name)):[ \t]*([^\r\n]*)")
+  if ($parameterMatches.Count -ne 1) {
+    throw "Gateway CORS target must declare exactly one '$Name' parameter."
+  }
+  $value = $parameterMatches[0].Groups[1].Value.Trim()
+  if ($value -match '^"([^"]*)"$' -or $value -match "^'([^']*)'$") {
+    return $Matches[1]
+  }
+  return $value
+}
+$canonicalFrontendOrigin = "https://custoking-frontend-$Environment-$($replacements['__PROJECT_NUMBER__']).$($replacements['__REGION__']).run.app"
+$reviewedFrontendAliases = @{
+  'custoking-dev/dev/asia-south2' = 'https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app'
+  'custoking-prod/prod/asia-south2' = 'https://custoking-frontend-prod-yter7sugpa-em.a.run.app'
+}
+$allowedFrontendOrigins = @($canonicalFrontendOrigin)
+$reviewedAlias = $reviewedFrontendAliases["$projectId/$Environment/$($replacements['__REGION__'])"]
+if ($reviewedAlias) { $allowedFrontendOrigins += $reviewedAlias }
+$gatewayOrigins = @((Read-GatewayParameter 'gateway_cors_allowed_origins') -split ',' | ForEach-Object { $_.Trim() })
+if ((Read-GatewayParameter 'frontend_url') -cne $canonicalFrontendOrigin -or
+    $gatewayOrigins.Count -lt 1 -or $gatewayOrigins.Count -gt $allowedFrontendOrigins.Count -or
+    $gatewayOrigins -cnotcontains $canonicalFrontendOrigin -or
+    @($gatewayOrigins | Select-Object -Unique).Count -ne $gatewayOrigins.Count -or
+    @($gatewayOrigins | Where-Object { $allowedFrontendOrigins -cnotcontains $_ }).Count -gt 0) {
+  throw "Gateway CORS origins must contain the exact canonical frontend origin and only its reviewed environment/project/region alias, without duplicates."
+}
+
 # Dry-run remains dev-only. Dedicated live email must supply every admission parameter;
 # the generic inbox always retains logging/dry-run. Secret payloads never enter target YAML.
 # Keep this guard in the governed renderer, before any Cloud Deploy target can be applied.

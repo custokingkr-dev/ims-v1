@@ -31,6 +31,24 @@ function Assert-Rejected([string]$Template, [string]$Environment, [string]$Messa
   catch { $rejected = $_.Exception.Message -match 'Broadcast parameters|Platform target must declare' }
   Assert-True $rejected $Message
 }
+function Set-CorsOrigins([string]$Template, [string]$Origins) {
+  return [regex]::Replace($Template, '(?m)^  gateway_cors_allowed_origins:[^\r\n]*', ('  gateway_cors_allowed_origins: "' + $Origins + '"'))
+}
+function Assert-CorsRejected([string]$Template, [string]$Environment, [string]$Message) {
+  $path = Join-Path $testRoot "invalid-cors.yaml"
+  Set-Content -LiteralPath $path -Value $Template
+  $rejected = $false
+  try { & $renderer -Environment $Environment -TemplatePath $path -OutputPath (Join-Path $testRoot "invalid-cors-rendered.yaml") }
+  catch { $rejected = $_.Exception.Message -match 'Gateway CORS' }
+  Assert-True $rejected $Message
+}
+function Assert-CorsRenders([string]$Template, [string]$Environment, [string]$ExpectedOrigins) {
+  $path = Join-Path $testRoot "valid-cors.yaml"
+  $output = Join-Path $testRoot "valid-cors-rendered.yaml"
+  Set-Content -LiteralPath $path -Value $Template
+  & $renderer -Environment $Environment -TemplatePath $path -OutputPath $output
+  Assert-True ((Get-Content -Raw $output).Contains(('gateway_cors_allowed_origins: "' + $ExpectedOrigins + '"'))) "Expected exact $Environment CORS origins"
+}
 try {
   $dev = Get-Content -Raw (Join-Path $repoRoot "deploy/clouddeploy/targets-dev.yaml")
   $prod = Get-Content -Raw (Join-Path $repoRoot "deploy/clouddeploy/targets-prod.yaml")
@@ -41,7 +59,34 @@ try {
     Assert-True ($rendered -notmatch '__[A-Z0-9_]+__') "Unresolved $deploymentEnv placeholder"
     $mode = if ($deploymentEnv -eq "dev") { "DRY_RUN" } else { "OFF" }
     Assert-True ($rendered.Contains("broadcast_dispatch_mode: `"$mode`"")) "Wrong $deploymentEnv mode"
+    $canonical = "https://custoking-frontend-$deploymentEnv-123456789.asia-south2.run.app"
+    $alias = if ($deploymentEnv -eq "dev") { 'https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app' } else { 'https://custoking-frontend-prod-yter7sugpa-em.a.run.app' }
+    Assert-True ($rendered.Contains(('gateway_cors_allowed_origins: "' + $canonical + ',' + $alias + '"'))) "Exact $deploymentEnv aliases must render"
+    Assert-True ([regex]::IsMatch($rendered, ('(?m)^  frontend_url: ' + [regex]::Escape($canonical) + '\s*$'))) "Frontend upstream must remain one canonical URL"
+    $template = if ($deploymentEnv -eq 'dev') { $dev } else { $prod }
+    $canonicalTemplate = "https://custoking-frontend-$deploymentEnv-__PROJECT_NUMBER__.__REGION__.run.app"
+    Assert-CorsRenders (Set-CorsOrigins $template $canonicalTemplate) $deploymentEnv $canonical
+    foreach ($badOrigin in @('*', 'https://*.run.app', ($alias + '.evil.invalid'), 'https://unreviewed.asia-south2.run.app', $alias.Replace('https://', 'http://'), ($alias + '/'), ($alias + '?q=1'), ($alias + '#fragment'), $alias.Replace('https://', 'https://user@'), $canonical)) {
+      Assert-CorsRejected (Set-CorsOrigins $template ($canonicalTemplate + ',' + $badOrigin)) $deploymentEnv "Unreviewed or duplicate CORS origin must fail: $badOrigin"
+    }
+    Assert-CorsRejected (Set-CorsOrigins $template $alias) $deploymentEnv "Missing canonical origin must fail"
+    Assert-CorsRejected (Set-CorsOrigins $template '') $deploymentEnv "Empty CORS origin list must fail"
+    Assert-CorsRejected ([regex]::Replace($template, '(?m)^  gateway_cors_allowed_origins:[^\r\n]*', '')) $deploymentEnv "Missing CORS parameter must fail"
+    Assert-CorsRejected (Set-CorsOrigins $template ($canonicalTemplate + '"' + "`n  gateway_cors_allowed_origins: `"" + $alias)) $deploymentEnv "Duplicate CORS parameter must fail"
+    $otherAlias = if ($deploymentEnv -eq 'dev') { 'https://custoking-frontend-prod-yter7sugpa-em.a.run.app' } else { 'https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app' }
+    Assert-CorsRejected (Set-CorsOrigins $template ($canonicalTemplate + ',' + $otherAlias)) $deploymentEnv "Other environment's alias must fail"
   }
+  $canonicalDevTemplate = 'https://custoking-frontend-dev-__PROJECT_NUMBER__.__REGION__.run.app'
+  try {
+    [Environment]::SetEnvironmentVariable('DEV_GCP_PROJECT_ID', 'other-project')
+    Assert-CorsRejected $dev 'dev' "Foreign project cannot inherit reviewed dev alias"
+    Assert-CorsRenders (Set-CorsOrigins $dev $canonicalDevTemplate) 'dev' 'https://custoking-frontend-dev-123456789.asia-south2.run.app'
+  } finally { [Environment]::SetEnvironmentVariable('DEV_GCP_PROJECT_ID', 'custoking-dev') }
+  try {
+    [Environment]::SetEnvironmentVariable('DEV_GCP_REGION', 'asia-south1')
+    Assert-CorsRejected $dev 'dev' "Other region cannot inherit reviewed dev alias"
+    Assert-CorsRenders (Set-CorsOrigins $dev $canonicalDevTemplate) 'dev' 'https://custoking-frontend-dev-123456789.asia-south1.run.app'
+  } finally { [Environment]::SetEnvironmentVariable('DEV_GCP_REGION', 'asia-south2') }
   Assert-Rejected ($prod.Replace('broadcast_dispatch_mode: "OFF"', 'broadcast_dispatch_mode: "DRY_RUN"').Replace('broadcast_worker_ready: "false"', 'broadcast_worker_ready: "true"')) "prod" "Production dry-run activation must fail"
   Assert-Rejected ($dev.Replace('broadcast_dispatch_mode: "DRY_RUN"', 'broadcast_dispatch_mode: "LIVE"')) "dev" "Live mode must fail"
   Assert-Rejected ($dev.Replace('notification_delivery_provider: logging', 'notification_delivery_provider: msg91')) "dev" "Live provider must fail"
@@ -73,6 +118,7 @@ try {
 
   $stage = Get-Content -Raw (Join-Path $repoRoot "deploy/clouddeploy/targets-stage.yaml")
   Assert-True ($stage.Contains('broadcast_dispatch_mode: "OFF"') -and $stage.Contains('broadcast_worker_ready: "false"')) "Stage must stay off"
+  Assert-True ($stage.Contains('gateway_cors_allowed_origins: "https://custoking-frontend-stage-__PROJECT_NUMBER__.__REGION__.run.app"')) "Stage must use canonical-only CORS until an alias is reviewed"
   $stageRejected = $false
   try { & $renderer -Environment stage -OutputPath (Join-Path $testRoot "stage.yaml") }
   catch { $stageRejected = $_.Exception.Message -match 'ValidateSet|validation|does not belong' }
@@ -82,7 +128,13 @@ try {
   Assert-True ($configRoute.deployment_reconciliation_required -and -not $configRoute.has_service_changes) "Config commit must reconcile without releasing services"
   $manifestRoute = & $resolver -Environment dev -ChangedFilesOverride @("deploy/cloudrun/platform-service.yaml") | ConvertFrom-Json
   Assert-True ($manifestRoute.deployment_config_changed -and -not $manifestRoute.deployment_reconciliation_required -and $manifestRoute.service_matrix.include.Count -eq 1 -and $manifestRoute.service_matrix.include[0].name -eq "platform-service") "Manifest commit must release only platform through Cloud Deploy"
-  Write-Output "PASS: dev/prod render; admitted LIVE email; fourteen unsafe parameter rejections; stage off/unavailable; separate config and platform-release routing."
+  foreach ($deploymentEnv in @('dev', 'prod')) {
+    $gatewayConfigRoute = & $resolver -Environment $deploymentEnv -ChangedFilesOverride @("deploy/clouddeploy/targets-$deploymentEnv.yaml", 'scripts/render-clouddeploy-targets.ps1') | ConvertFrom-Json
+    Assert-True ($gatewayConfigRoute.deployment_reconciliation_required -and -not $gatewayConfigRoute.has_service_changes) "$deploymentEnv gateway CORS config must reconcile before a service release"
+    $gatewayManifestRoute = & $resolver -Environment $deploymentEnv -ChangedFilesOverride @('deploy/cloudrun/api-gateway.yaml') | ConvertFrom-Json
+    Assert-True ($gatewayManifestRoute.deployment_config_changed -and -not $gatewayManifestRoute.deployment_reconciliation_required -and $gatewayManifestRoute.service_matrix.include.Count -eq 1 -and $gatewayManifestRoute.service_matrix.include[0].name -eq 'api-gateway') "$deploymentEnv gateway manifest must release only the gateway"
+  }
+  Write-Output "PASS: dev/prod exact CORS aliases and canonical fallback; 32 CORS rejection cases; project/region binding; unchanged upstream; admitted LIVE email and fourteen unsafe broadcast rejections; stage off/unavailable; separate config, gateway and platform release routing."
 }
 finally {
   foreach ($entry in $saved.GetEnumerator()) { [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value) }
