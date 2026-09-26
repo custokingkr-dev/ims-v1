@@ -97,7 +97,7 @@ export function SaOrderApprovalsPanel({
 
       {rejectModalOrderId && (
         <div className="ck-modal-bg" onClick={onCloseRejectModal}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Return order for revision" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Return order for revision</div>
               <button className="ck-modal-x" onClick={onCloseRejectModal}>×</button>

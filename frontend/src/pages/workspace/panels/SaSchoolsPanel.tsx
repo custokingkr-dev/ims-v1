@@ -285,7 +285,7 @@ export function SaSchoolsPanel() {
 
       {saOnboardOpen && (
         <div className="ck-modal-bg" onClick={() => setSaOnboardOpen(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Onboard school" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Onboard school</div>
               <button className="ck-modal-x" onClick={() => setSaOnboardOpen(false)}>×</button>
@@ -335,7 +335,7 @@ export function SaSchoolsPanel() {
 
       {editSchool && (
         <div className="ck-modal-bg" onClick={() => setEditSchool(null)}>
-          <div className="ck-modal" role="dialog" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Edit structure" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Edit structure — {editSchool.name}</div>
               <button className="ck-modal-x" onClick={() => setEditSchool(null)}>×</button>

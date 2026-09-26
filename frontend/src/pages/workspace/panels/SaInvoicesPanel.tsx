@@ -141,7 +141,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
 
       {saInvOpen && (
         <div className="ck-modal-bg" onClick={closeModal}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Invoice" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Invoice</div>
               <button className="ck-modal-x" onClick={closeModal}>×</button>
@@ -176,11 +176,12 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {saInvExistingId && !saInvEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setSaInvEditing(true)}>Edit invoice</button> : null}
               {saInvExistingId && saInvEditing ? <button className="ck-btn ck-btn-ghost" disabled={saInvSaving} onClick={saveSaInvoiceEdit}>{saInvSaving ? 'Saving…' : 'Save changes'}</button> : null}
+              {/* There is no resend or PDF endpoint, so these were a primary button and a
+                  footer action that could never be taken. An existing invoice is edited. */}
               {saInvExistingId
-                ? <button className="ck-btn ck-btn-g" disabled title="Coming soon">Resend to school</button>
+                ? null
                 : <button className="ck-btn ck-btn-g" disabled={saInvSaving} onClick={sendSaInvoice}>{saInvSaving ? 'Sending…' : 'Send to school'}</button>}
             </div>
           </div>

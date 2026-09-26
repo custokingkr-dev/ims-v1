@@ -258,7 +258,6 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
             </div>
 
             <div className="ck-actions-inline" style={{ marginTop: 16 }}>
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Save as draft</button>
               <button className="ck-btn ck-btn-g" disabled={saving} onClick={submit}>{saving ? 'Creating…' : 'Create order →'}</button>
             </div>
             </>}

@@ -276,7 +276,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
       {detailOpen && (
         <div className="ck-modal-bg" onClick={() => setDetailOpen(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Order detail" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Order detail</div>
               <button className="ck-modal-x" onClick={() => setDetailOpen(false)}>×</button>
@@ -316,8 +316,6 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
             </div>
             <div className="ck-modal-foot">
               {canManage && <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>}
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">WhatsApp school</button>
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download order sheet</button>
               {canManage && <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>}
             </div>
           </div>
@@ -326,7 +324,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
       {invOpen && (
         <div className="ck-modal-bg" onClick={() => setInvOpen(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Invoice" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Invoice</div>
               <button className="ck-modal-x" onClick={() => setInvOpen(false)}>×</button>
@@ -361,11 +359,10 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {invExistingId && !invEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setInvEditing(true)}>Edit invoice</button> : null}
               {invExistingId && invEditing ? <button className="ck-btn ck-btn-ghost" disabled={invSaving} onClick={saveInvEdit}>{invSaving ? 'Saving…' : 'Save changes'}</button> : null}
               {invExistingId
-                ? <button className="ck-btn ck-btn-g" disabled title="Coming soon">Resend to school</button>
+                ? null
                 : <button className="ck-btn ck-btn-g" disabled={invSaving} onClick={sendInvoice}>{invSaving ? 'Sending…' : 'Send to school'}</button>}
             </div>
           </div>
