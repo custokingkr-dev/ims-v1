@@ -56,7 +56,7 @@ spec:
             - name: GATEWAY_LOCAL_JWT_VERIFY
               value: enabled
             - name: GATEWAY_CORS_ALLOWED_ORIGINS
-              value: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app # from-param: ${frontend_url}
+              value: https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app # from-param: ${gateway_cors_allowed_origins}
             - name: FRONTEND_UPSTREAM
               value: https://custoking-frontend-dev-l7mhms5c2a-em.a.run.app # from-param: ${frontend_url}
             - name: IDENTITY_UPSTREAM
