@@ -209,13 +209,13 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               <Field label="Category">
                 <select value={filter.cat} onChange={(e) => setFilter({ ...filter, cat: e.target.value })}>
                   <option value="">All</option>
-                  {categoryOptions.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                  {categoryOptions.map((cat) => <option key={cat} value={cat}>{categoryLabel(cat)}</option>)}
                 </select>
               </Field>
               <Field label="Status">
                 <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
                   <option value="">All</option>
-                  {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {statusOptions.map((s) => <option key={s} value={s}>{getDisplayStatus(s)}</option>)}
                 </select>
               </Field>
               <Field label="Search">
@@ -247,12 +247,12 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                           secondary line could only ever repeat the Category column beside it. */}
                       <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
-                      <td>{categoryLabel(row.category)}</td>
+                      <td className="ck-whole">{categoryLabel(row.category)}</td>
                       <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
-                        ? <span className="ck-pill ck-pill-am">Pending pricing</span>
+                        ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
                         : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
-                      <td>{formatIsoDay(row.placedAt || row.createdAt)}</td>
+                      <td className="ck-whole">{formatIsoDay(row.placedAt || row.createdAt)}</td>
                       <td><div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
                         {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'

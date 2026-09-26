@@ -391,7 +391,13 @@ button.ck-stat { cursor:pointer; }
 
 /* A money column is read by comparing magnitudes, which needs the digits in a grid. Left-aligned
    proportional figures lined ₹1,40,000.00 up with ₹62,400.00 on the rupee sign and nothing else. */
-.ck-table th.ck-num, .ck-table td.ck-num { text-align:right; font-variant-numeric:tabular-nums; }
+.ck-table th.ck-num, .ck-table td.ck-num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* Real content broke atomic values across lines: identifiers as "CK-" / "1000", dates as
+   "21 September" / "2026", and the text inside status pills and buttons, so every row was a
+   different height. None of these values mean anything split in half. */
+.ck-table .tb, .ck-table td.ck-whole { white-space:nowrap; }
+.ck-pill, .ck-status, .ck-btn { white-space:nowrap; }
 .ck-stat-v { font-variant-numeric:tabular-nums; }
 
 /* The nav and every input announce focus with a 2px green ring; buttons were left with the

@@ -73,11 +73,11 @@ export function SaOrderApprovalsPanel({
                     {row.estimatedDelivery ? <div className="ts">{row.estimatedDelivery}</div> : null}
                   </td>
                   <td><div className="tb">{row.schoolName}</div></td>
-                  <td>{categoryLabel(row.category)}</td>
+                  <td className="ck-whole">{categoryLabel(row.category)}</td>
                   <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
-                    ? <span className="ck-pill ck-pill-am">Pending pricing</span>
+                    ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
                     : <span style={{ fontWeight: 600 }}>{`₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</span>}</td>
-                  <td style={{ color: 'var(--ink3)' }}>{formatIsoDay(row.placedAt || row.createdAt)}</td>
+                  <td className="ck-whole" style={{ color: 'var(--ink3)' }}>{formatIsoDay(row.placedAt || row.createdAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                       {Number(row.formVersion) === 2 ? <button className="ck-btn ck-btn-g" onClick={() => setSelectedOrder(row.id)}>Review order</button> : <button className="ck-btn ck-btn-g" disabled={savingId === row.id} onClick={() => onApprove(row.id)}>

@@ -126,7 +126,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td>{row.orderRef || '—'}</td>
                     <td className="ck-num">₹{formatMoney(Number(row.total || 0) / 100)}</td>
                     <td><span className={`ck-status ${String(row.status).toLowerCase().includes('paid') ? 'sg' : 'sam'}`}>{row.status}</span></td>
-                    <td>{formatIsoDay(row.issuedAt)}</td>
+                    <td className="ck-whole">{formatIsoDay(row.issuedAt)}</td>
                     <td>
                       <div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
