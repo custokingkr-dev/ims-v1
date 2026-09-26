@@ -63,6 +63,13 @@ spec:
               value: "true" # from-param: ${msg91_dry_run}
             - name: NOTIFICATION_DELIVERY_PROVIDER
               value: logging # from-param: ${notification_delivery_provider}
+            # Missing parameters stay OFF. Only the dev target opts into DRY_RUN after
+            # authenticated Scheduler verification; stage/prod remain OFF.
+            # Live broadcast sending is not implemented and must remain unavailable.
+            - name: BROADCAST_DISPATCH_MODE
+              value: "OFF" # from-param: ${broadcast_dispatch_mode}
+            - name: BROADCAST_WORKER_READY
+              value: "false" # from-param: ${broadcast_worker_ready}
             - name: SCHOOL_CORE_URL
               value: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${school_core_url}
             - name: OPERATIONS_URL
@@ -134,6 +141,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: notification-status-token-dev # from-param: notification-status-token-${env}
+                  key: latest
+            - name: BROADCAST_POLICY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: broadcast-policy-token-dev # from-param: broadcast-policy-token-${env}
                   key: latest
             - name: MSG91_AUTH_KEY
               valueFrom:

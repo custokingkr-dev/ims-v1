@@ -4,6 +4,8 @@ param(
   [string]$SchedulerLocation = "asia-south1",
   [ValidateSet("dev", "prod")]
   [string]$Environment = "dev",
+  [ValidateSet("school-core-service", "operations-service", "billing-service", "platform-service")]
+  [string[]]$Service = @("school-core-service", "operations-service", "billing-service", "platform-service"),
   [string]$Schedule = "* * * * *",
   [ValidateRange(60, 600)]
   [int]$DeliveryVerificationTimeoutSeconds = 180,
@@ -48,7 +50,8 @@ $targets = @(
   [ordered]@{ service = "operations-service"; path = "/api/v1/internal/outbox/relay" },
   [ordered]@{ service = "billing-service"; path = "/api/v1/internal/outbox/relay" },
   [ordered]@{ service = "platform-service"; path = "/api/v1/internal/async/drain" }
-)
+) | Where-Object { $_.service -in $Service }
+if (@($targets).Count -eq 0) { throw "Select at least one async relay service." }
 
 $resolved = @()
 foreach ($target in $targets) {
