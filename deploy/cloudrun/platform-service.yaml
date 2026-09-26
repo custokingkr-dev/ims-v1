@@ -65,11 +65,31 @@ spec:
               value: logging # from-param: ${notification_delivery_provider}
             # Missing parameters stay OFF. Only the dev target opts into DRY_RUN after
             # authenticated Scheduler verification; stage/prod remain OFF.
-            # Live broadcast sending is not implemented and must remain unavailable.
+            # LIVE requires the separate verified sender, bounded recipient and receipt configuration.
             - name: BROADCAST_DISPATCH_MODE
               value: "OFF" # from-param: ${broadcast_dispatch_mode}
             - name: BROADCAST_WORKER_READY
               value: "false" # from-param: ${broadcast_worker_ready}
+            - name: BROADCAST_LIVE_ENABLED
+              value: "false" # from-param: ${broadcast_live_enabled}
+            - name: BROADCAST_LIVE_CHANNEL
+              value: EMAIL
+            - name: BROADCAST_LIVE_SENDER_VERIFIED
+              value: "false" # from-param: ${broadcast_live_sender_verified}
+            - name: BROADCAST_LIVE_SCHOOL_IDS
+              value: "" # from-param: ${broadcast_live_school_ids}
+            - name: BROADCAST_LIVE_DESTINATION_SHA256
+              value: "" # from-param: ${broadcast_live_destination_sha256}
+            - name: BROADCAST_LIVE_EMAIL_SENDER
+              value: "" # from-param: ${broadcast_live_email_sender}
+            - name: BROADCAST_LIVE_EMAIL_SENDER_NAME
+              value: "" # from-param: ${broadcast_live_email_sender_name}
+            - name: BROADCAST_LIVE_EMAIL_DOMAIN
+              value: "" # from-param: ${broadcast_live_email_domain}
+            - name: BROADCAST_LIVE_EMAIL_TEMPLATE_ID
+              value: "" # from-param: ${broadcast_live_email_template_id}
+            - name: BROADCAST_LIVE_EMAIL_TEMPLATE_VERIFIED
+              value: "false" # from-param: ${broadcast_live_email_template_verified}
             - name: SCHOOL_CORE_URL
               value: https://custoking-school-core-service-dev-l7mhms5c2a-em.a.run.app # from-param: ${school_core_url}
             - name: OPERATIONS_URL
@@ -146,6 +166,11 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: broadcast-policy-token-dev # from-param: broadcast-policy-token-${env}
+                  key: latest
+            - name: BROADCAST_LIVE_WEBHOOK_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: broadcast-live-webhook-token-dev # from-param: broadcast-live-webhook-token-${env}
                   key: latest
             - name: MSG91_AUTH_KEY
               valueFrom:

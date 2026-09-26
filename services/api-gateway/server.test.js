@@ -870,6 +870,16 @@ test('authenticate uses current identity scope even for a valid enriched token',
   assert.deepEqual(principal.operatorSchools, []);
 });
 
+test('MSG91 callback is the only public provider-report path and spoofed service identity is stripped', () => {
+  assert.equal(requiresUserAuth('/api/v1/notifications/provider-reports/msg91/email'), false);
+  for (const path of ['/api/v1/notifications/provider-reports/msg91/email/extra', '/api/v1/notifications/provider-reports/msg91/sms', '/notification-api/v1/provider-reports/msg91/email']) {
+    assert.equal(requiresUserAuth(path), true);
+  }
+  assert.equal(isClientSpoofableHeader('x-notification-service-token'), true);
+  assert.equal(isClientSpoofableHeader('x-authenticated-role'), true);
+  assert.equal(isClientSpoofableHeader('x-msg91-webhook-token'), false);
+});
+
 test('authenticate rejects revoked enriched access tokens and propagates identity outages', async () => {
   const req = reqWithToken(signHS512(enrichedClaims, JWT_SECRET));
   const opts = { localVerify: true, secret: JWT_SECRET, now: NOW };

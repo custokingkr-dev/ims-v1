@@ -9,5 +9,8 @@ import jakarta.validation.constraints.Positive;
  */
 public record BroadcastActionRequest(
         @Positive Long actorId,
-        String previewFingerprint
-) {}
+        String previewFingerprint,
+        String mode
+) {
+    public BroadcastActionRequest(Long actorId, String previewFingerprint) { this(actorId, previewFingerprint, null); }
+}

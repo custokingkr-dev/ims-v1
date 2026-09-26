@@ -395,6 +395,9 @@ function isInternalUpstreamPath(upstreamPathname) {
 }
 
 function requiresUserAuth(pathname) {
+  // Exact provider callback only. Platform verifies both the injected service identity
+  // and its dedicated callback secret; sibling paths and compatibility aliases stay private.
+  if (pathname === '/api/v1/notifications/provider-reports/msg91/email') return false;
   if (!pathname.startsWith('/api/v1/') && !/^\/[a-z-]+-api\/v1\//.test(pathname)) {
     return false;
   }
@@ -544,7 +547,14 @@ async function proxyFrontend(req, res, parsed, requestId) {
 async function proxy(req, res, matched, parsed, requestId, principal, compatibility = null) {
   const upstream = upstreams[matched.service];
   const target = buildUpstreamTarget(upstream, matched.rewrite(parsed.pathname), parsed.search);
-  await proxyToUrl(req, res, target, requestId, matched.service, principal, { compatibility });
+  const report = parsed.pathname === '/api/v1/notifications/provider-reports/msg91/email';
+  if (report && Number(req.headers['content-length']) > 32768) {
+    return sendJson(res, 413, { error: 'Provider report is too large' });
+  }
+  await proxyToUrl(req, res, target, requestId, matched.service, principal, {
+    compatibility,
+    ...(report ? { maxBodyBytes: 32768 } : {}),
+  });
 }
 
 async function proxyToUrl(req, res, target, requestId, service, principal, opts = {}) {

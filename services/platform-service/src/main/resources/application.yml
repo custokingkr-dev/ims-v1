@@ -103,6 +103,20 @@ notification:
     worker-ready: ${BROADCAST_WORKER_READY:false}
     policy-token: ${BROADCAST_POLICY_TOKEN:}
     fixed-delay-ms: ${BROADCAST_DISPATCH_FIXED_DELAY_MS:30000}
+    live:
+      # Separate, bounded live broadcast transport; the generic inbox remains logging/dry-run.
+      enabled: ${BROADCAST_LIVE_ENABLED:false}
+      channel: ${BROADCAST_LIVE_CHANNEL:EMAIL}
+      sender-verified: ${BROADCAST_LIVE_SENDER_VERIFIED:false}
+      school-ids: ${BROADCAST_LIVE_SCHOOL_IDS:}
+      destination-sha256: ${BROADCAST_LIVE_DESTINATION_SHA256:}
+      webhook-token: ${BROADCAST_LIVE_WEBHOOK_TOKEN:}
+      email:
+        sender-email: ${BROADCAST_LIVE_EMAIL_SENDER:}
+        sender-name: ${BROADCAST_LIVE_EMAIL_SENDER_NAME:}
+        domain: ${BROADCAST_LIVE_EMAIL_DOMAIN:}
+        template-id: ${BROADCAST_LIVE_EMAIL_TEMPLATE_ID:}
+        template-verified: ${BROADCAST_LIVE_EMAIL_TEMPLATE_VERIFIED:false}
   pubsub:
     push-token: ${NOTIFICATION_PUBSUB_PUSH_TOKEN:}
     require-shared-token: ${NOTIFICATION_PUBSUB_REQUIRE_SHARED_TOKEN:true}

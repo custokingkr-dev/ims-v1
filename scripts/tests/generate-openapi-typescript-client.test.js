@@ -73,3 +73,21 @@ test('multipart clients let the browser supply the boundary and downloads reques
   assert.match(result, /responseType: 'blob'/);
   assert.match(result, /removeDocument.*Promise<void>/);
 });
+
+test('live broadcast queueing binds explicit mode and fingerprint while preserving empty dry-run requests', () => {
+  const spec = read('broadcastClient.v1.openapi.json');
+  const variants = spec.components.schemas.QueueBroadcastRequest.oneOf;
+  const live = variants.find(schema => schema.properties.mode.enum.includes('LIVE'));
+  const dry = variants.find(schema => schema.properties.mode.enum.includes('DRY_RUN'));
+  assert.deepEqual(live.required, ['mode', 'previewFingerprint']);
+  assert.equal(live.properties.previewFingerprint.minLength, 1);
+  assert.equal(dry.required?.length ?? 0, 0);
+  assert.equal(spec.paths['/api/v1/notifications/broadcasts/{id}/send'].post.requestBody.required, true);
+  assert.ok(spec.components.schemas.BroadcastCapabilities.properties.mode.enum.includes('LIVE'));
+  assert.equal(spec.components.schemas.BroadcastCapabilities.properties.canSend.type, 'boolean');
+  assert.equal(spec.components.schemas.BroadcastCapabilities.properties.canSend.enum, undefined);
+  assert.equal(spec.paths['/api/v1/notifications/broadcasts/capabilities'].get.parameters[0].name, 'schoolId');
+  const result = renderClient(spec, 'broadcastClient.v1.openapi.json');
+  assert.match(result, /queueBroadcast\(parameters: \{ id: string; \}, request: QueueBroadcastRequest\)/);
+  assert.match(result, /http.post<BroadcastOutcomes>\(`[^`]+\/send`, request\)/);
+});

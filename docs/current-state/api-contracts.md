@@ -17,7 +17,7 @@ aliases can still have external consumers.
 | Students | 5 | Create/update, ID-based roster, multipart photo upload, authenticated photo read |
 | Attendance | 3 | Read/save register and submit section |
 | Billing | 1 | Complete invoice statistics and reporting period |
-| Broadcasts | 8 | Draft/list, capabilities, policy preview, fingerprint approval, dry-run queue/outcomes/retry |
+| Broadcasts | 8 | Draft/list, capabilities, policy preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, private upload/download/removal |
 | Catalog | 6 | Paginated orders, scoped statistics, guarded status/delivery, reviewed annual-plan confirmation |
 | Reporting | 1 | Workspace dashboard envelope |
@@ -78,6 +78,14 @@ payload after an uncertain result; payload mismatch returns 409. Annual-plan
 confirmation requires the reviewed fingerprint and returns a saved immutable
 revision with notificationStatus=NOT_SENT. Older clients need these request
 updates; aliases do not bypass integrity checks.
+
+Broadcast capabilities are school-scoped. LIVE queueing requires an explicit
+`{mode: "LIVE", previewFingerprint}` request after the current audience is reviewed;
+dry runs send `{}`. Approval and dispatch modes remain attached to each saved
+broadcast, so a configuration change cannot convert a dry run into live delivery.
+Provider acceptance is not delivery: only confirmed `DELIVERED` rows count as
+such. `SUBMITTING`, `UNKNOWN`, and conflicting reports require outcome refresh and
+reconciliation using the same broadcast ID; the browser never resends them.
 
 No alias deletion or sunset date is introduced. Route removal still needs external
 consumer evidence and separate review. Broader payload coverage can expand one

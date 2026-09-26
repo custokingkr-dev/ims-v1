@@ -111,7 +111,7 @@ public class NotificationBroadcastCommandRepository {
     public List<Map<String, Object>> list(Long schoolId, String status, int limit) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, school_id, module, title, message, audience_type, channels,
-                       status, scheduled_at, sent_at, created_at, communication_category
+                       status, scheduled_at, sent_at, created_at, communication_category, approval_mode, dispatch_mode
                 FROM notification.notification_broadcasts
                 WHERE 1=1
                 """);
@@ -139,6 +139,8 @@ public class NotificationBroadcastCommandRepository {
                 "audienceType", rs.getString("audience_type"),
                 "channels", splitChannels(rs.getString("channels")),
                 "status", rs.getString("status"),
+                "approvalMode", rs.getString("approval_mode"),
+                "dispatchMode", rs.getString("dispatch_mode"),
                 "scheduledAt", rs.getObject("scheduled_at", OffsetDateTime.class),
                 "sentAt", rs.getObject("sent_at", OffsetDateTime.class),
                 "createdAt", rs.getObject("created_at", OffsetDateTime.class)))
@@ -148,7 +150,7 @@ public class NotificationBroadcastCommandRepository {
     private Map<String, Object> row(UUID id) {
         return jdbc.sql("""
                 SELECT id, school_id, module, title, message, audience_type, channels,
-                       status, scheduled_at, sent_at, created_at, communication_category
+                       status, scheduled_at, sent_at, created_at, communication_category, approval_mode, dispatch_mode
                 FROM notification.notification_broadcasts
                 WHERE id = :id
                 """)
@@ -163,6 +165,8 @@ public class NotificationBroadcastCommandRepository {
                         "audienceType", rs.getString("audience_type"),
                         "channels", splitChannels(rs.getString("channels")),
                         "status", rs.getString("status"),
+                        "approvalMode", rs.getString("approval_mode"),
+                        "dispatchMode", rs.getString("dispatch_mode"),
                         "scheduledAt", rs.getObject("scheduled_at", OffsetDateTime.class),
                         "sentAt", rs.getObject("sent_at", OffsetDateTime.class),
                         "createdAt", rs.getObject("created_at", OffsetDateTime.class)))

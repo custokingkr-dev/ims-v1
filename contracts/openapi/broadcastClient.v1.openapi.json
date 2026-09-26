@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Custoking broadcast policy and dry-run dispatch",
+    "title": "Custoking broadcast review and delivery",
     "version": "1.0.0"
   },
   "servers": [
@@ -120,7 +120,17 @@
     "/api/v1/notifications/broadcasts/capabilities": {
       "get": {
         "operationId": "getCapabilities",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Resolve live sending availability for this school. An omitted school cannot authorize live queueing."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
@@ -274,6 +284,17 @@
           "503": {
             "description": "Recipient policy service unavailable"
           }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueBroadcastRequest"
+              }
+            }
+          },
+          "description": "Generated clients send an explicit body. LIVE requires the reviewed fingerprint and mode; dry-run clients send an empty object. The server also retains absent-body dry-run compatibility."
         }
       }
     },
@@ -433,6 +454,14 @@
           },
           "previewFingerprint": {
             "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "DRY_RUN",
+              "LIVE"
+            ],
+            "description": "Reserved wire-compatible action field. Approval uses the configured mode; the browser sends only the reviewed fingerprint."
           }
         },
         "x-ims-java-record": {
@@ -508,6 +537,38 @@
           },
           "createdAt": {
             "type": "string"
+          },
+          "approvalMode": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DRY_RUN",
+                  "LIVE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "description": "Recorded mode, independent of the current deployment configuration. Optional for older responses."
+          },
+          "dispatchMode": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DRY_RUN",
+                  "LIVE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true,
+            "description": "Recorded mode, independent of the current deployment configuration. Optional for older responses."
           }
         }
       },
@@ -539,9 +600,7 @@
           },
           "canSend": {
             "type": "boolean",
-            "enum": [
-              false
-            ]
+            "description": "True only when live delivery is configured and the requested school and channel are allowed."
           },
           "canQueue": {
             "type": "boolean"
@@ -550,7 +609,8 @@
             "type": "string",
             "enum": [
               "OFF",
-              "DRY_RUN"
+              "DRY_RUN",
+              "LIVE"
             ]
           },
           "sendUnavailableReason": {
@@ -639,19 +699,29 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "description": "Includes QUEUED, DRY_RUN_COMPLETE, COMPLETED_WITH_FAILURES, DELIVERED, COMPLETED, AWAITING_DELIVERY and NEEDS_RECONCILIATION. A completed dry run never becomes live."
           },
           "mode": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DRY_RUN",
+                  "LIVE"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "total": {
             "type": "integer"
           },
           "delivered": {
-            "type": "integer"
+            "type": "integer",
+            "description": "Recipients with confirmed DELIVERED status only. Provider acceptance or a dry run does not count as delivery."
           },
           "counts": {
             "type": "object",
@@ -682,7 +752,8 @@
                   "type": "string"
                 },
                 "status": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Live outcomes include SUBMITTING, ACCEPTED, UNKNOWN, DELIVERED, DELIVERY_FAILED, REJECTED and REPORT_CONFLICT. SUBMITTING and UNKNOWN require reconciliation, never automatic resend; ACCEPTED is not delivery."
                 },
                 "reason": {
                   "type": [
@@ -707,11 +778,71 @@
                 },
                 "dryRun": {
                   "type": "boolean"
+                },
+                "providerMessageId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "readOnly": true
                 }
               }
             }
+          },
+          "approvalMode": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DRY_RUN",
+                  "LIVE"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "readOnly": true
           }
         }
+      },
+      "QueueBroadcastRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode",
+              "previewFingerprint"
+            ],
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "LIVE"
+                ]
+              },
+              "previewFingerprint": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "description": "Explicit confirmation to send actual messages to the approved, freshly reviewed audience."
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "DRY_RUN"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "A previously queued mode or approved audience cannot be changed by replay. Ambiguous queue responses must be reconciled using the same broadcast identifier."
       }
     }
   },
