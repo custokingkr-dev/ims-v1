@@ -11,9 +11,9 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 43,
-    "endpoints": 435,
-    "canonicalEndpoints": 337,
+    "controllers": 44,
+    "endpoints": 436,
+    "canonicalEndpoints": 338,
     "compatibilityEndpoints": 90,
     "internalEndpoints": 8,
     "diagnosticAliases": 12,
@@ -1132,6 +1132,16 @@
       ],
       "endpointCount": 1,
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/AuditPublicCompatibilityController.java"
+    },
+    {
+      "service": "platform-service",
+      "controller": "Msg91BroadcastReportController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/notifications/provider-reports/msg91/email"
+      ],
+      "endpointCount": 1,
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java"
     },
     {
       "service": "platform-service",
@@ -2411,7 +2421,7 @@
       "path": "/api/v1/internal/async/drain",
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncWorkTriggerController.java",
-      "line": 32
+      "line": 41
     },
     {
       "service": "platform-service",
@@ -2438,7 +2448,7 @@
       "path": "/api/v1/notifications/broadcasts",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 76
+      "line": 77
     },
     {
       "service": "platform-service",
@@ -2456,7 +2466,7 @@
       "path": "/api/v1/notifications/broadcasts/{id}/approve",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 89
+      "line": 90
     },
     {
       "service": "platform-service",
@@ -2465,7 +2475,7 @@
       "path": "/api/v1/notifications/broadcasts/{id}/delivery-status",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 119
+      "line": 121
     },
     {
       "service": "platform-service",
@@ -2474,7 +2484,7 @@
       "path": "/api/v1/notifications/broadcasts/{id}/preview",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 129
+      "line": 131
     },
     {
       "service": "platform-service",
@@ -2483,7 +2493,7 @@
       "path": "/api/v1/notifications/broadcasts/{id}/retry",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 138
+      "line": 140
     },
     {
       "service": "platform-service",
@@ -2492,7 +2502,7 @@
       "path": "/api/v1/notifications/broadcasts/{id}/send",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 107
+      "line": 108
     },
     {
       "service": "platform-service",
@@ -2502,6 +2512,15 @@
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
       "line": 67
+    },
+    {
+      "service": "platform-service",
+      "controller": "Msg91BroadcastReportController",
+      "method": "POST",
+      "path": "/api/v1/notifications/provider-reports/msg91/email/application/json",
+      "classification": "canonical",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "line": 35
     },
     {
       "service": "platform-service",

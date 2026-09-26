@@ -66,11 +66,12 @@ public class NotificationBroadcastCommandController {
     /** Capabilities describe the same restrictions enforced by the command endpoints. */
     @GetMapping("/capabilities")
     public Map<String, Object> capabilities(
-            @RequestHeader(value = "X-Notification-Service-Token", required = false) String token) {
+            @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
         requireToken(token, "notification:read");
         TenantScope.requirePermissionIfAuthenticated("notification:read");
         boolean canManage = TenantContext.get().isSuperAdmin();
-        return dispatch.capabilities(canManage);
+        return schoolId == null ? dispatch.capabilities(canManage) : dispatch.capabilities(canManage, TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping
@@ -113,7 +114,8 @@ public class NotificationBroadcastCommandController {
         TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         Long actorId = TenantContext.get().userId();
-        return command(() -> dispatch.queue(id, actorId));
+        return command(() -> req == null || req.mode() == null ? dispatch.queue(id, actorId)
+                : dispatch.queue(id, actorId, req.mode(), req.previewFingerprint()));
     }
 
     @GetMapping("/{id}/delivery-status")

@@ -14,7 +14,7 @@ Current coverage is **42 canonical operations across 10 contract files/clients**
 | Students | 5 | Admission, profile update, ID-based roster, multipart photo upload, authenticated photo download |
 | Attendance | 3 | Read/save register, submit section |
 | Billing | 1 | Complete invoice statistics and reporting period |
-| Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, dry-run queue/outcomes/retry |
+| Broadcasts | 8 | Draft/list, capabilities, preview, fingerprint approval, explicit live confirmation, dry-run/live outcomes |
 | Quotation documents | 4 | Capabilities, multipart upload, authenticated download, removal |
 | Catalog | 6 | Paginated order read, scoped statistics, guarded status/delivery, annual-plan review/confirmation |
 | Reporting | 1 | Workspace dashboard envelope |
@@ -38,6 +38,14 @@ encode path segments, pass filters through Axios `params`, build multipart bodie
 without overriding the browser boundary, and request Blob responses for downloads.
 No browser contract contains an internal service token. Payment retries preserve
 the original request and key; they never generate retry keys inside the client.
+
+Broadcast capabilities are school-scoped. LIVE queueing requires an explicit
+`{mode: "LIVE", previewFingerprint}` request after the current audience is reviewed;
+dry runs send `{}`. Approval and dispatch modes remain attached to each saved
+broadcast, so a configuration change cannot convert a dry run into live delivery.
+Provider acceptance is not delivery: only confirmed `DELIVERED` rows count as
+such. `SUBMITTING`, `UNKNOWN`, and conflicting reports require outcome refresh and
+reconciliation using the same broadcast ID; the browser never resends them.
 
 The generator intentionally supports a bounded OpenAPI subset. New media formats
 or parameter locations must gain implementation and regression coverage before

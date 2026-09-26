@@ -44,6 +44,11 @@ param(
   [string]$CodeQlWorkflow = ".github/workflows/codeql-analysis.yml",
   [string]$ContainerWorkflow = ".github/workflows/security-scan.yml",
   [string]$Msg91Provider = "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91NotificationDeliveryProvider.java",
+  [string]$LiveProvider = "services/platform-service/src/main/java/com/custoking/ims/platformservice/infrastructure/Msg91BroadcastLiveProvider.java",
+  [string]$LiveWorker = "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/BroadcastLiveWorker.java",
+  [string]$LiveLedger = "services/platform-service/src/main/java/com/custoking/ims/platformservice/persistence/BroadcastLiveRepository.java",
+  [string]$LiveReports = "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+  [string]$LiveConfiguration = "services/platform-service/src/main/java/com/custoking/ims/platformservice/application/LiveBroadcastConfiguration.java",
   [string]$PlatformApplicationConfig = "services/platform-service/src/main/resources/application.yml",
   [string]$PlatformCloudRunManifest = "deploy/cloudrun/platform-service.yaml",
   [string]$NotificationConsentEvidence = "docs/NOTIFICATION-CONSENT-ENFORCEMENT-2026-08-24.md"
@@ -65,7 +70,7 @@ $paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
   $NotificationResilienceConfigurator, $ReportingResilienceConfigurator,
   $ScaleFixtureScript, $LoadCertificationScript,
   $CicdTerraform, $DependabotConfig, $CodeQlWorkflow,
-  $ContainerWorkflow, $Msg91Provider, $PlatformApplicationConfig,
+  $ContainerWorkflow, $Msg91Provider, $LiveProvider, $LiveWorker, $LiveLedger, $LiveReports, $LiveConfiguration, $PlatformApplicationConfig,
   $PlatformCloudRunManifest, $NotificationConsentEvidence)
 $contents = @{}
 foreach ($relative in $paths) {
@@ -277,7 +282,47 @@ if ($msg91HasLiveDispatch) {
 }
 Require-Text $PlatformApplicationConfig @(
   'provider: ${NOTIFICATION_DELIVERY_PROVIDER:logging}',
-  'dry-run: ${MSG91_DRY_RUN:true}'
+  'dry-run: ${MSG91_DRY_RUN:true}',
+  'enabled: ${BROADCAST_LIVE_ENABLED:false}',
+  'sender-verified: ${BROADCAST_LIVE_SENDER_VERIFIED:false}',
+  'template-verified: ${BROADCAST_LIVE_EMAIL_TEMPLATE_VERIFIED:false}'
+)
+# Dedicated EMAIL pilot uses a durable single-submission fence, not provider idempotency.
+# These structural tripwires complement the transport, worker, and restricted-role PostgreSQL tests.
+Require-Text $LiveProvider @(
+  'https://control.msg91.com/api/v5/email/send',
+  'TransactionSynchronizationManager.isActualTransactionActive()',
+  'live.destinationAllowed(row.destinationSha256())',
+  'singleUseBody(prepared.body())',
+  'consumed.compareAndSet(false, true)',
+  'HttpClient.Redirect.NEVER',
+  'to.put("CRQID", correlation)',
+  'PROVIDER_OUTCOME_UNCONFIRMED'
+)
+Require-Text $LiveWorker @(
+  'transaction.execute(tx -> prepareNext())',
+  'provider.submit(plan.prepared())',
+  'ledger.reserve(row,prepared)',
+  'queue.claim(OffsetDateTime.now(),"LIVE")',
+  'POLICY_BINDING_CHANGED'
+)
+Require-Text $LiveLedger @(
+  'ON CONFLICT DO NOTHING',
+  'Submission fingerprint mismatch',
+  'SUBMITTING',
+  'REPORT_CONFLICT',
+  'NEEDS_RECONCILIATION',
+  'saved.destinationHash().equals(destinationHash)',
+  'saved.senderHash().equals(senderHash)'
+)
+Require-Text $LiveReports @(
+  'X-Notification-Service-Token', 'X-MSG91-Webhook-Token',
+  'MessageDigest.isEqual', 'configuration.webhookToken().length()<32',
+  'bytes.length>32768', 'Provider report persistence unavailable'
+)
+Require-Text $LiveConfiguration @(
+  'schools.size() <= 100', 'destinations.size() <= 1000',
+  'schools.contains(Long.toString(schoolId))', 'destinations.contains(sha256)'
 )
 Require-Text $PlatformCloudRunManifest @(
   '- name: MSG91_DRY_RUN',

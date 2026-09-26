@@ -6,23 +6,25 @@ import type { AxiosInstance } from 'axios';
 
 export type CreateBroadcastRequest = { "title": string; "message": string; "schoolId"?: number; "module"?: string; "audienceType"?: string; "channels"?: (string | Array<string>); "scheduledAt"?: string | null; "createdBy"?: number; "communicationCategory"?: string; };
 
-export type ApproveBroadcastRequest = { "actorId"?: number; "previewFingerprint": string; };
+export type ApproveBroadcastRequest = { "actorId"?: number; "previewFingerprint": string; "mode"?: "DRY_RUN" | "LIVE"; };
 
-export type BroadcastRecord = { "id": string; "schoolId": number | null; "module": string | null; "communicationCategory": string; "title": string; "message": string; "audienceType": string; "channels": Array<string>; "status": string; "scheduledAt": string | null; "sentAt": string | null; "createdAt": string; };
+export type BroadcastRecord = { "id": string; "schoolId": number | null; "module": string | null; "communicationCategory": string; "title": string; "message": string; "audienceType": string; "channels": Array<string>; "status": string; "scheduledAt": string | null; "sentAt": string | null; "createdAt": string; "approvalMode"?: ("DRY_RUN" | "LIVE" | null); "dispatchMode"?: ("DRY_RUN" | "LIVE" | null); };
 
-export type BroadcastCapabilities = { "canCreateDraft": boolean; "canApprove": boolean; "canPreview": boolean; "canSend": false; "canQueue": boolean; "mode": "OFF" | "DRY_RUN"; "sendUnavailableReason": string; "queueUnavailableReason": string; "supportedAudiences": Array<string>; "supportedChannels": Array<string>; "supportedCategories": Array<string>; };
+export type BroadcastCapabilities = { "canCreateDraft": boolean; "canApprove": boolean; "canPreview": boolean; "canSend": boolean; "canQueue": boolean; "mode": "OFF" | "DRY_RUN" | "LIVE"; "sendUnavailableReason": string; "queueUnavailableReason": string; "supportedAudiences": Array<string>; "supportedChannels": Array<string>; "supportedCategories": Array<string>; };
 
 export type RecipientPreview = { "broadcastId": string; "total": number; "eligible": number; "suppressed": number; "duplicate": number; "reasons": { [key: string]: number; }; "fingerprint": string; "explanation": string; };
 
-export type BroadcastOutcomes = { "broadcastId": string; "status": string; "mode": string | null; "total": number; "delivered": number; "counts": { [key: string]: number; }; "recipients": Array<{ "studentId": number; "channel": string; "status": string; "reason": string | null; "attempts": number; "nextAttemptAt": string | null; "provider": string | null; "dryRun": boolean; }>; };
+export type BroadcastOutcomes = { "broadcastId": string; "status": string; "mode": ("DRY_RUN" | "LIVE" | null); "total": number; "delivered": number; "counts": { [key: string]: number; }; "recipients": Array<{ "studentId": number; "channel": string; "status": string; "reason": string | null; "attempts": number; "nextAttemptAt": string | null; "provider": string | null; "dryRun": boolean; "providerMessageId"?: string | null; }>; "approvalMode"?: ("DRY_RUN" | "LIVE" | null); };
+
+export type QueueBroadcastRequest = ({ "mode": "LIVE"; "previewFingerprint": string; } | { "mode"?: "DRY_RUN"; });
 
 export interface BroadcastClient {
   listBroadcasts(parameters?: { schoolId?: number; status?: string; limit?: number; }): Promise<Array<BroadcastRecord>>;
   createBroadcast(request: CreateBroadcastRequest): Promise<BroadcastRecord>;
-  getCapabilities(): Promise<BroadcastCapabilities>;
+  getCapabilities(parameters?: { schoolId?: number; }): Promise<BroadcastCapabilities>;
   previewBroadcast(parameters: { id: string; }): Promise<RecipientPreview>;
   approveBroadcast(parameters: { id: string; }, request: ApproveBroadcastRequest): Promise<BroadcastRecord>;
-  queueBroadcast(parameters: { id: string; }): Promise<BroadcastOutcomes>;
+  queueBroadcast(parameters: { id: string; }, request: QueueBroadcastRequest): Promise<BroadcastOutcomes>;
   getDeliveryStatus(parameters: { id: string; }): Promise<BroadcastOutcomes>;
   retryBroadcast(parameters: { id: string; }): Promise<BroadcastOutcomes>;
 }
@@ -37,8 +39,8 @@ export function createBroadcastClient(http: AxiosInstance): BroadcastClient {
       const response = await http.post<BroadcastRecord>("/notifications/broadcasts", request);
       return response.data;
     },
-    async getCapabilities() {
-      const response = await http.get<BroadcastCapabilities>("/notifications/broadcasts/capabilities");
+    async getCapabilities(parameters: { schoolId?: number; } = {}) {
+      const response = await http.get<BroadcastCapabilities>("/notifications/broadcasts/capabilities", { params: { schoolId: parameters.schoolId } });
       return response.data;
     },
     async previewBroadcast(parameters: { id: string; }) {
@@ -49,8 +51,8 @@ export function createBroadcastClient(http: AxiosInstance): BroadcastClient {
       const response = await http.post<BroadcastRecord>(`/notifications/broadcasts/${encodeURIComponent(String(parameters.id))}/approve`, request);
       return response.data;
     },
-    async queueBroadcast(parameters: { id: string; }) {
-      const response = await http.post<BroadcastOutcomes>(`/notifications/broadcasts/${encodeURIComponent(String(parameters.id))}/send`);
+    async queueBroadcast(parameters: { id: string; }, request: QueueBroadcastRequest) {
+      const response = await http.post<BroadcastOutcomes>(`/notifications/broadcasts/${encodeURIComponent(String(parameters.id))}/send`, request);
       return response.data;
     },
     async getDeliveryStatus(parameters: { id: string; }) {

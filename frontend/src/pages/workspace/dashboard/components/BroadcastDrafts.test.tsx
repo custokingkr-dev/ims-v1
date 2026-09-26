@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import api from '../../../../services/api';
 import { BroadcastDrafts, type BroadcastRecord } from './BroadcastDrafts';
@@ -113,5 +113,124 @@ describe('Policy-backed broadcast review and dry run', () => {
     expect(screen.getByLabelText('Message (required)')).toHaveValue(draft.message);
     load(); fireEvent.click(screen.getByRole('button', { name: 'Retry schools' }));
     expect(await screen.findByRole('option', { name: 'Test school' })).toBeInTheDocument();
+  });
+});
+
+
+const liveDraft: BroadcastRecord = { ...draft, status: 'APPROVED', channels: ['EMAIL'], approvalMode: 'LIVE', dispatchMode: null };
+const liveCapabilities = { ...capabilities, mode: 'LIVE', canSend: true, supportedChannels: ['EMAIL'], sendUnavailableReason: '' };
+const liveOutcomes = { ...outcomes, mode: 'LIVE', approvalMode: 'LIVE', status: 'AWAITING_DELIVERY', counts: { ACCEPTED: 1 },
+  recipients: [{ ...outcomes.recipients[0], channel: 'EMAIL', status: 'ACCEPTED', dryRun: false, provider: 'msg91', providerMessageId: 'provider-1' }] };
+
+describe('Live broadcast confirmation and reconciliation', () => {
+  beforeEach(() => { vi.resetAllMocks(); load([liveDraft], liveCapabilities); });
+  afterEach(cleanup);
+
+  async function review() {
+    fireEvent.click(await screen.findByRole('button', { name: 'Review live send' }));
+    return within(await screen.findByRole('dialog', { name: 'Confirm live sending' }));
+  }
+
+  it('reviews scoped capabilities and requires explicit consent before posting the exact live fingerprint once', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: preview }).mockResolvedValueOnce({ data: liveOutcomes });
+    render(<BroadcastDrafts schoolId={10} />);
+    const dialog = await review();
+    expect(api.get).toHaveBeenLastCalledWith('/notifications/broadcasts/capabilities', { params: { schoolId: 10 } });
+    expect(dialog.getByText(draft.message!)).toBeInTheDocument();
+    expect(dialog.getByText('School 10. Channels: EMAIL.')).toBeInTheDocument();
+    expect(dialog.getByText('1 eligible destinations; 1 excluded; 1 shared destinations skipped.')).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Send actual messages' })).toBeDisabled();
+    expect(api.post).toHaveBeenCalledTimes(1);
+    fireEvent.click(dialog.getByRole('checkbox', { name: /I reviewed the message and recipients/ }));
+    const send = dialog.getByRole('button', { name: 'Send actual messages' });
+    fireEvent.click(send); fireEvent.click(send);
+    expect(await screen.findByText('Waiting for delivery reports')).toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(api.post).toHaveBeenLastCalledWith('/notifications/broadcasts/draft-1/send', { mode: 'LIVE', previewFingerprint: preview.fingerprint });
+    expect(screen.getByText('Confirmed deliveries: 0. Provider acceptance is not delivery confirmation.')).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: /Accepted by provider; delivery unconfirmed/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Retry failed|Send actual|Review live/ })).not.toBeInTheDocument();
+  });
+
+  it('cancels without sending and resets the acknowledgement on a new review', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: preview });
+    render(<BroadcastDrafts schoolId={10} />);
+    let dialog = await review();
+    fireEvent.click(dialog.getByRole('checkbox'));
+    fireEvent.click(dialog.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    dialog = await review();
+    expect(dialog.getByRole('checkbox')).not.toBeChecked();
+    expect(dialog.getByRole('button', { name: 'Send actual messages' })).toBeDisabled();
+    expect(vi.mocked(api.post).mock.calls.every(([url]) => url.endsWith('/preview'))).toBe(true);
+  });
+
+  it('disables live sending when scoped school capability is unavailable', async () => {
+    load([liveDraft], { ...liveCapabilities, canSend: false, canQueue: false, sendUnavailableReason: 'School is not enabled for live email.' });
+    render(<BroadcastDrafts schoolId={10} />);
+    expect(await screen.findByRole('button', { name: 'Review live send' })).toBeDisabled();
+    expect(screen.getByText('School is not enabled for live email.')).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it('fetches the record school in a global view and fails closed for unsupported live channels', async () => {
+    load([liveDraft], { ...liveCapabilities, canSend: false, canQueue: false });
+    vi.mocked(api.post).mockResolvedValue({ data: preview });
+    render(<BroadcastDrafts />);
+    const button = await screen.findByRole('button', { name: 'Review live send' });
+    expect(button).toBeEnabled();
+    vi.mocked(api.get).mockResolvedValue({ data: { ...liveCapabilities, supportedChannels: ['SMS'] } });
+    fireEvent.click(button);
+    expect(await screen.findByRole('alert')).toHaveTextContent('unavailable for this school and channel');
+    expect(api.get).toHaveBeenLastCalledWith('/notifications/broadcasts/capabilities', { params: { schoolId: 10 } });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(api.post).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['SUBMITTING', 'UNKNOWN', 'REPORT_CONFLICT'])('reconciles a lost queue response with %s without resending', async status => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: preview }).mockRejectedValueOnce(new Error('Response lost after commit'));
+    render(<BroadcastDrafts schoolId={10} />);
+    const dialog = await review();
+    fireEvent.click(dialog.getByRole('checkbox'));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send actual messages' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Messages may already be processing');
+    expect(screen.getByRole('button', { name: 'Review live send' })).toBeDisabled();
+    vi.mocked(api.get).mockResolvedValue({ data: { ...liveOutcomes, status: 'NEEDS_RECONCILIATION', counts: { [status]: 1 }, recipients: [{ ...liveOutcomes.recipients[0], status }] } });
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh outcomes' }));
+    expect(await screen.findByText('Delivery needs reconciliation')).toBeInTheDocument();
+    expect(screen.getByText(/Delivery may have started. Do not resend/)).toBeInTheDocument();
+    expect(api.get).toHaveBeenLastCalledWith('/notifications/broadcasts/draft-1/delivery-status');
+    expect(api.post).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: /Retry failed|Send actual|Review live/ })).not.toBeInTheDocument();
+  });
+
+  it('keeps a changed-review rejection uncertain until the same broadcast is reconciled', async () => {
+    vi.mocked(api.post).mockResolvedValueOnce({ data: preview }).mockRejectedValueOnce({ response: { status: 409 } });
+    render(<BroadcastDrafts schoolId={10} />);
+    const dialog = await review();
+    fireEvent.click(dialog.getByRole('checkbox'));
+    fireEvent.click(dialog.getByRole('button', { name: 'Send actual messages' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('newly reviewed draft only after this result is resolved');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review live send' })).toBeDisabled();
+    expect(api.post).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not convert a dry-run approval into live sending or relabel historical dry-run outcomes', async () => {
+    load([{ ...draft, status: 'APPROVED', approvalMode: 'DRY_RUN', dispatchMode: 'DRY_RUN' }], liveCapabilities);
+    render(<BroadcastDrafts schoolId={10} />);
+    expect(await screen.findByText(/This approval belongs to a dry run/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Queue dry run|Review live send/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh outcomes' }));
+    expect(await screen.findByText('Dry run complete')).toBeInTheDocument();
+    expect(screen.getByText('No recipient delivery is confirmed by these checks.')).toBeInTheDocument();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  it('cannot queue a live approval as dry run after deployment mode changes', async () => {
+    load([liveDraft]);
+    render(<BroadcastDrafts schoolId={10} />);
+    expect(await screen.findByText(/This live approval cannot be queued as a dry run/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Queue dry run|Review live send/ })).not.toBeInTheDocument();
   });
 });

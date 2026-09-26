@@ -34,7 +34,7 @@ class BroadcastDispatchServiceTest {
         assertThat(preview).containsEntry("eligible", 1L).containsEntry("duplicate", 1L).containsEntry("suppressed", 1L);
         assertThat(preview.toString()).doesNotContain("9999999999");
         service.approve(id, 5L, (String) preview.get("fingerprint"));
-        verify(repository).approve(broadcast("DRAFT"), recipients, 5L);
+        verify(repository).approve(broadcast("DRAFT"), recipients, 5L, "DRY_RUN", (String) preview.get("fingerprint"));
         verifyNoInteractions(delivery);
     }
     @Test void changedOrUnreviewedAudienceCannotBeApproved() {
@@ -43,13 +43,13 @@ class BroadcastDispatchServiceTest {
         when(policy.resolve(10, id, List.of("SMS"), null)).thenReturn(List.of(recipient(1, false, "hash")));
         assertThatThrownBy(() -> service.approve(id, 5L, fingerprint)).isInstanceOf(ResponseStatusException.class).hasMessageContaining("eligibility changed");
         assertThatThrownBy(() -> service.approve(id, 5L, null)).isInstanceOf(ResponseStatusException.class);
-        verify(repository, never()).approve(any(), any(), any());
+        verify(repository, never()).approve(any(), any(), any(), any(), any());
     }
     @Test void zeroEligibleCannotBeApprovedEvenWithFreshPreview() {
         when(policy.resolve(10, id, List.of("SMS"), null)).thenReturn(List.of(recipient(1, false, "hash")));
         String fingerprint = (String) service.preview(id).get("fingerprint");
         assertThatThrownBy(() -> service.approve(id, 5L, fingerprint)).hasMessageContaining("No recipients");
-        verify(repository, never()).approve(any(), any(), any());
+        verify(repository, never()).approve(any(), any(), any(), any(), any());
     }
     @Test void queueRequiresApprovalAndDefaultsOffAndNeverAdvertisesLiveSend() {
         assertThatThrownBy(() -> service.queue(id, 5L)).hasMessageContaining("Preview and approve");
@@ -68,7 +68,7 @@ class BroadcastDispatchServiceTest {
         assertThat(service.queue(id, 5L)).containsEntry("status", "QUEUED");
         service.approve(id, 5L, "old-fingerprint");
         verify(repository, never()).queue(any(), any(), any());
-        verify(repository, never()).approve(any(), any(), any());
+        verify(repository, never()).approve(any(), any(), any(), any(), any());
         verify(policy, never()).resolve(anyLong(), any(), any(), any());
     }
     @Test void unsupportedLegacyDraftAndMissingPolicyConnectionFailClosed() {

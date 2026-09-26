@@ -96,13 +96,30 @@ describe('critical generated browser contracts', () => {
       .mockResolvedValueOnce({ data: { mode: 'DRY_RUN', delivered: 0 } });
     const preview = await client.previewBroadcast({ id: 'draft-1' });
     await client.approveBroadcast({ id: 'draft-1' }, { previewFingerprint: preview.fingerprint });
-    await expect(client.queueBroadcast({ id: 'draft-1' })).resolves.toEqual({ mode: 'DRY_RUN', delivered: 0 });
+    await expect(client.queueBroadcast({ id: 'draft-1' }, {})).resolves.toEqual({ mode: 'DRY_RUN', delivered: 0 });
     expect(post.mock.calls).toEqual([
       ['/notifications/broadcasts/draft-1/preview'],
       ['/notifications/broadcasts/draft-1/approve', { previewFingerprint: 'reviewed-hash' }],
-      ['/notifications/broadcasts/draft-1/send'],
+      ['/notifications/broadcasts/draft-1/send', {}],
     ]);
   });
+  it('scopes live capabilities and binds actual sending to the reviewed fingerprint', async () => {
+    const { http, get, post } = transport();
+    const client = createBroadcastClient(http);
+    get.mockResolvedValue({ data: { mode: 'LIVE', canSend: true } });
+    await client.getCapabilities({ schoolId: 10 });
+    expect(get).toHaveBeenCalledWith('/notifications/broadcasts/capabilities', { params: { schoolId: 10 } });
+    const request = { mode: 'LIVE' as const, previewFingerprint: 'original-reviewed-fingerprint' };
+    post.mockRejectedValueOnce(new Error('Response lost'));
+    await expect(client.queueBroadcast({ id: 'draft/1' }, request)).rejects.toThrow('Response lost');
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith('/notifications/broadcasts/draft%2F1/send', request);
+    get.mockResolvedValue({ data: { status: 'NEEDS_RECONCILIATION', mode: 'LIVE', delivered: 0 } });
+    await expect(client.getDeliveryStatus({ id: 'draft/1' })).resolves.toHaveProperty('delivered', 0);
+    expect(get).toHaveBeenLastCalledWith('/notifications/broadcasts/draft%2F1/delivery-status');
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
   it('preserves order pagination, filters, and the distinct guarded lifecycle routes', async () => {
     const { http, get, patch, post } = transport();
     const client = createCatalogClient(http);
