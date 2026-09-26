@@ -50,6 +50,27 @@ try {
   Assert-Rejected ($dev.Replace('broadcast_dispatch_mode: "DRY_RUN"', '# missing mode')) "dev" "Missing explicit target mode must fail"
   Assert-Rejected ($dev.Replace('broadcast_dispatch_mode: "DRY_RUN"', "broadcast_dispatch_mode: `"DRY_RUN`"`n  broadcast_dispatch_mode: `"OFF`"")) "dev" "Duplicate target mode must fail"
 
+  $live = $dev.Replace('broadcast_dispatch_mode: "DRY_RUN"', 'broadcast_dispatch_mode: "LIVE"')
+  foreach ($entry in @{
+    broadcast_live_enabled = 'true'; broadcast_live_sender_verified = 'true';
+    broadcast_live_school_ids = '1'; broadcast_live_destination_sha256 = ('a' * 64);
+    broadcast_live_email_sender = 'notice@example.test'; broadcast_live_email_sender_name = 'Test school';
+    broadcast_live_email_domain = 'example.test'; broadcast_live_email_template_id = 'reviewed-template';
+    broadcast_live_email_template_verified = 'true'
+  }.GetEnumerator()) {
+    $live = [regex]::Replace($live, "(?m)^  $($entry.Key):[^\r\n]*", ('  ' + $entry.Key + ': "' + $entry.Value + '"'))
+  }
+  $livePath = Join-Path $testRoot 'live-admitted.yaml'
+  Set-Content -LiteralPath $livePath -Value $live
+  & $renderer -Environment dev -TemplatePath $livePath -OutputPath (Join-Path $testRoot 'live-rendered.yaml')
+  Assert-Rejected ($live.Replace('broadcast_live_school_ids: "1"','broadcast_live_school_ids: "*"')) 'dev' 'Wildcard school must fail'
+  Assert-Rejected ($live.Replace(('a' * 64), '*')) 'dev' 'Wildcard destination must fail'
+  Assert-Rejected ($live.Replace('broadcast_live_email_template_verified: "true"','broadcast_live_email_template_verified: "false"')) 'dev' 'Unverified template must fail'
+  Assert-Rejected ($live.Replace('broadcast_live_sender_verified: "true"','broadcast_live_sender_verified: "false"')) 'dev' 'Unverified sender must fail'
+  Assert-Rejected ($live.Replace('notice@example.test','notice@different.test')) 'dev' 'Sender domain mismatch must fail'
+  Assert-Rejected ($live.Replace('notification_delivery_provider: logging','notification_delivery_provider: msg91')) 'dev' 'Dedicated live path cannot enable generic provider'
+  Assert-Rejected ($live.Replace('msg91_dry_run: "true"','msg91_dry_run: "false"')) 'dev' 'Dedicated live path cannot disable generic dry-run'
+
   $stage = Get-Content -Raw (Join-Path $repoRoot "deploy/clouddeploy/targets-stage.yaml")
   Assert-True ($stage.Contains('broadcast_dispatch_mode: "OFF"') -and $stage.Contains('broadcast_worker_ready: "false"')) "Stage must stay off"
   $stageRejected = $false
@@ -61,7 +82,7 @@ try {
   Assert-True ($configRoute.deployment_reconciliation_required -and -not $configRoute.has_service_changes) "Config commit must reconcile without releasing services"
   $manifestRoute = & $resolver -Environment dev -ChangedFilesOverride @("deploy/cloudrun/platform-service.yaml") | ConvertFrom-Json
   Assert-True ($manifestRoute.deployment_config_changed -and -not $manifestRoute.deployment_reconciliation_required -and $manifestRoute.service_matrix.include.Count -eq 1 -and $manifestRoute.service_matrix.include[0].name -eq "platform-service") "Manifest commit must release only platform through Cloud Deploy"
-  Write-Output "PASS: dev/prod render; seven unsafe parameter rejections; stage off/unavailable; separate config and platform-release routing."
+  Write-Output "PASS: dev/prod render; admitted LIVE email; fourteen unsafe parameter rejections; stage off/unavailable; separate config and platform-release routing."
 }
 finally {
   foreach ($entry in $saved.GetEnumerator()) { [Environment]::SetEnvironmentVariable($entry.Key, $entry.Value) }
