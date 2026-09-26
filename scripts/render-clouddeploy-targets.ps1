@@ -53,7 +53,8 @@ foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
 }
 
-# Broadcast dispatch is deliberately dev-only and never selects a live provider.
+# Dry-run remains dev-only. Dedicated live email must supply every admission parameter;
+# the generic inbox always retains logging/dry-run. Secret payloads never enter target YAML.
 # Keep this guard in the governed renderer, before any Cloud Deploy target can be applied.
 $platformTargets = @($text -split '(?m)^---\s*$' | Where-Object {
   $_ -match "(?m)^  name:\s*platform-service-$Environment\s*$"
@@ -70,13 +71,32 @@ function Read-PlatformParameter([string]$Name) {
 }
 $broadcastMode = Read-PlatformParameter "broadcast_dispatch_mode"
 $broadcastWorkerReady = Read-PlatformParameter "broadcast_worker_ready"
-$broadcastOff = $broadcastMode -ceq "OFF" -and $broadcastWorkerReady -ceq "false"
+$liveEnabled = Read-PlatformParameter "broadcast_live_enabled"
+$broadcastOff = $broadcastMode -ceq "OFF" -and $broadcastWorkerReady -ceq "false" -and $liveEnabled -ceq "false"
 $broadcastDevDryRun = $Environment -eq "dev" -and $broadcastMode -ceq "DRY_RUN" -and
-  $broadcastWorkerReady -ceq "true" -and
+  $broadcastWorkerReady -ceq "true" -and $liveEnabled -ceq "false" -and
   (Read-PlatformParameter "notification_delivery_provider") -ceq "logging" -and
   (Read-PlatformParameter "msg91_dry_run") -ceq "true"
-if (-not ($broadcastOff -or $broadcastDevDryRun)) {
-  throw "Broadcast parameters must be OFF/false, or dev-only DRY_RUN/true with logging and MSG91 dry-run."
+$broadcastLive = $false
+if ($broadcastMode -ceq "LIVE" -and $liveEnabled -ceq "true" -and $broadcastWorkerReady -ceq "true") {
+  $liveSchools = Read-PlatformParameter "broadcast_live_school_ids"
+  $liveDestinations = Read-PlatformParameter "broadcast_live_destination_sha256"
+  $liveSender = Read-PlatformParameter "broadcast_live_email_sender"
+  $liveDomain = Read-PlatformParameter "broadcast_live_email_domain"
+  $liveName = Read-PlatformParameter "broadcast_live_email_sender_name"
+  $broadcastLive = (Read-PlatformParameter "notification_delivery_provider") -ceq "logging" -and
+    (Read-PlatformParameter "msg91_dry_run") -ceq "true" -and
+    (Read-PlatformParameter "broadcast_live_sender_verified") -ceq "true" -and
+    (Read-PlatformParameter "broadcast_live_email_template_verified") -ceq "true" -and
+    (Read-PlatformParameter "broadcast_live_email_template_id") -cmatch '^[A-Za-z0-9_-]{1,150}$' -and
+    $liveSchools -cmatch '^[1-9][0-9]{0,17}(,[1-9][0-9]{0,17}){0,99}$' -and
+    $liveDestinations -cmatch '^[0-9a-f]{64}(,[0-9a-f]{64}){0,999}$' -and
+    $liveDomain -cmatch '^[a-z0-9][a-z0-9.-]*\.[a-z]{2,63}$' -and
+    $liveSender -cmatch ('^[^\s@<>]+@' + [regex]::Escape($liveDomain) + '$') -and
+    $liveName.Length -ge 1 -and $liveName.Length -le 100 -and $liveName -notmatch '[\x00-\x1f\x7f]'
+}
+if (-not ($broadcastOff -or $broadcastDevDryRun -or $broadcastLive)) {
+  throw "Broadcast parameters must be OFF/false, dev-only DRY_RUN/true, or fully admitted LIVE email with logging and MSG91 dry-run."
 }
 
 $targetCount = ([regex]::Matches($text, '(?m)^kind:\s*Target\s*$')).Count
