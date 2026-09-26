@@ -17,7 +17,7 @@ public class PasswordResetController {
     private final PasswordResetService service;
     private final String serviceToken;
     public PasswordResetController(PasswordResetService service, @Value("${identity.introspection-token:}") String serviceToken) {
-        this.service = service; this.serviceToken = serviceToken == null ? "" : serviceToken;
+        this.service = service; this.serviceToken = serviceToken == null ? "" : serviceToken.trim();
     }
 
     @GetMapping("/capabilities")

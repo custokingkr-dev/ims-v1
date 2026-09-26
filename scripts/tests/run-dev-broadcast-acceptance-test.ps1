@@ -40,6 +40,10 @@ foreach($change in @('student','guardian','destination','consent','extra','denie
   Expect-Rejected {Read-OwnedPolicy $id} "policy $change"
 }
 $script:policyRows=@(Policy-Row)
+Expect-Rejected {Read-OwnedPolicy $id $false $true} 'cleanup cannot accept still-allowed policy'
+$script:policyRows[0].allowed=$false;$script:policyRows[0].reason='SCHOOL_COMMUNICATIONS_NOT_GRANTED'
+Read-OwnedPolicy $id $false $true;$script:cases++
+$script:policyRows=@(Policy-Row)
 function Manifest {
   return [pscustomobject]@{broadcastId=$id;status='APPROVED';mode='OFF';delivered=0;total=2;recipients=@(
     [pscustomobject]@{studentId=$StudentId;channel='EMAIL';status='APPROVED';attempts=0},
@@ -62,10 +66,15 @@ foreach($change in @('ordinary-approved','ordinary-attempt','wrong-owned','wrong
 $script:transportFailure=$true
 try{Api POST '/auth/login' @{password='FAKE_PASSWORD_MUST_NEVER_PERSIST'}}catch{if($_.Exception.Message -like '*FAKE_SECRET*'){throw 'Transport exception leaked'}}
 if(($state|ConvertTo-Json -Depth 12) -match 'FAKE_PASSWORD|FAKE_SECRET'){throw 'Credential leaked to journal'};$script:cases++
-$script:transportFailure=$false;$script:count=54
-Expect-Rejected {Api GET '/anything'} 'reserved logout slot'
-if($script:count -ne 54){throw 'Rejected request consumed the logout reservation'}
-Api POST '/auth/logout'|Out-Null;$script:cases++
+$script:transportFailure=$false;$script:count=55;$script:cleanupMode=$false
+Expect-Rejected {Api GET '/anything'} 'business request limit'
+if($script:count -ne 55){throw 'Rejected request consumed cleanup reservation'}
+$script:cleanupMode=$true;$script:cleanupDeadline=[datetime]::UtcNow.AddMinutes(3);$script:cleanupCount=9
+$deadline=[datetime]::UtcNow.AddMinutes(-1)
+Expect-Rejected {Api GET '/anything'} 'independent reserved cleanup logout slot'
+Api POST '/auth/logout'|Out-Null
+if($script:cleanupCount -ne 10 -or $script:count -ne 56){throw 'Cleanup logout could not use its independent deadline/budget'};$script:cases++
+$script:cleanupMode=$false;$deadline=[datetime]::UtcNow.AddMinutes(12)
 
 $platformUrl='https://custoking-platform-service-dev-fixture.run.app';$since=[datetime]::UtcNow.AddMinutes(-1).ToString('o')
 $script:logs=@(
@@ -99,6 +108,67 @@ Expect-Rejected {New-ReviewedBroadcast 'dryrun'} 'own policy not allowed'
 if(@($script:paths|Where-Object {$_ -like '*/approve'}).Count){throw 'Denied own policy reached approval'}
 $script:policyRows=@(Policy-Row);$script:approvedManifest.recipients[1].status='APPROVED'
 Expect-Rejected {New-ReviewedBroadcast 'dryrun'} 'stored approval contains another student'
+
+# Exercise cleanup with server-owned overview responses. No real request/client or cloud read runs.
+$script:cleanupPaths=@();$script:withdrawals=0;$script:policyDeniedChecks=0
+function Cleanup-Fixtures {
+  $script:cleanupStudent=[pscustomobject]@{id=$StudentId;schoolId=1;admissionNumber="QA-$RunId";fullName="Synthetic Student $RunId";sectionName="QA-$($RunId.ToUpperInvariant())"}
+  $script:cleanupGuardian=[pscustomobject]@{id='guardian-owned';fullName="Synthetic Guardian $RunId";email="$RunId@acceptance.invalid";relationship='GUARDIAN';phone=$null}
+  $script:cleanupConsent=[pscustomobject]@{id='grant-owned';purpose='SCHOOL_COMMUNICATIONS';guardianId='guardian-owned';status='GRANTED';evidenceReference=$RunId;noticeVersion='synthetic-acceptance-v1';lawfulBasis='CONSENT'}
+  $script:cleanupPaths=@();$script:withdrawals=0;$script:policyDeniedChecks=0;$script:loseWithdrawalResponse=$false;$script:failWithdrawalBeforeCommit=$false;$script:cleanupPolicyStillAllowed=$false
+  $script:state=[ordered]@{fixtureWritesStarted=$true;grantAttempted=$true;events=@();failure='ORIGINAL_FAILURE_PRESERVED'}
+}
+function Api {
+  param($Method,$Path,$Body)
+  $script:cleanupPaths+=,$Path
+  if($Method -ceq 'GET' -and $Path -ceq "/students/$StudentId"){return $script:cleanupStudent}
+  if($Method -ceq 'GET' -and $Path -ceq "/students/$StudentId/guardians"){
+    return [pscustomobject]@{studentId=$StudentId;schoolId=1;guardians=@($script:cleanupGuardian);consents=@($script:cleanupConsent|Where-Object {$null -ne $_})}
+  }
+  if($Method -ceq 'POST' -and $Path -ceq "/students/$StudentId/consents"){
+    if($Body.status -cne 'WITHDRAWN' -or $Body.guardianId -cne 'guardian-owned' -or $Body.idempotencyKey -cne "$RunId`:cleanup-withdraw"){throw 'Cleanup used wrong fixture or unstable withdrawal key'}
+    $script:withdrawals++
+    if($script:failWithdrawalBeforeCommit){throw 'Sanitized withdrawal failure'}
+    $script:cleanupConsent.status='WITHDRAWN';$script:cleanupConsent.id='withdraw-owned'
+    if($script:loseWithdrawalResponse){throw 'Sanitized lost withdrawal response'}
+    return [pscustomobject]@{studentId=$StudentId;schoolId=1;consents=@($script:cleanupConsent)}
+  }
+  throw 'Unexpected cleanup route'
+}
+function Read-OwnedPolicy {
+  param($Id,[bool]$RequireAllowed=$true,[bool]$RequireDenied=$false)
+  if($RequireAllowed -or -not $RequireDenied){throw 'Cleanup did not require denied policy'}
+  $script:policyDeniedChecks++
+  if($script:cleanupPolicyStillAllowed){throw 'Synthetic fixture is still eligible after cleanup'}
+}
+Cleanup-Fixtures
+$cleaned=Cleanup-OwnedFixture
+if(-not $cleaned.confirmed -or $script:withdrawals -ne 1 -or $state.guardianId -cne 'guardian-owned' -or $cleaned.withdrawnConsentId -cne 'withdraw-owned' -or $script:policyDeniedChecks -ne 1 -or $state.failure -cne 'ORIGINAL_FAILURE_PRESERVED'){throw 'Uncertain creation/grant was not reconciled and withdrawn'};$script:cases++
+# Exact ID is deliberately absent above, as after a lost guardian-create response.
+Cleanup-Fixtures;$script:loseWithdrawalResponse=$true
+$cleaned=Cleanup-OwnedFixture
+if(-not $cleaned.confirmed -or $cleaned.withdrawalResponseConfirmed -ne $false -or $cleaned.withdrawnConsentId -cne 'withdraw-owned'){throw 'Lost withdrawal response did not reconcile authoritative state'};$script:cases++
+Cleanup-Fixtures;$script:cleanupConsent.status='WITHDRAWN';$script:cleanupConsent.id='existing-withdrawal'
+$cleaned=Cleanup-OwnedFixture
+if(-not $cleaned.confirmed -or $script:withdrawals -ne 0 -or $script:policyDeniedChecks -ne 1){throw 'Already withdrawn cleanup should be read-only'};$script:cases++
+foreach($case in @('wrong-student','wrong-guardian','changed-id','foreign-consent','missing-uncertain-grant','withdrawal-not-recorded','policy-still-allowed')){
+  Cleanup-Fixtures
+  switch($case){
+    wrong-student {$script:cleanupStudent.fullName='Unrelated student'}
+    wrong-guardian {$script:cleanupGuardian.email='someone@example.com'}
+    changed-id {$state.guardianId='another-id'}
+    foreign-consent {$script:cleanupConsent.evidenceReference='another-run'}
+    missing-uncertain-grant {$script:cleanupConsent=$null}
+    withdrawal-not-recorded {$script:failWithdrawalBeforeCommit=$true}
+    policy-still-allowed {$script:cleanupPolicyStillAllowed=$true}
+  }
+  $cleaned=Cleanup-OwnedFixture
+  if($cleaned.confirmed -or -not $cleaned.failure -or $state.failure -cne 'ORIGINAL_FAILURE_PRESERVED'){throw "Cleanup falsely completed or lost original error: $case"}
+  if($case -notin @('withdrawal-not-recorded','policy-still-allowed') -and $script:withdrawals -ne 0){throw "Cleanup mutated an unowned/uncertain scope: $case"};$script:cases++
+}
+Cleanup-Fixtures;$state.grantAttempted=$false;$script:cleanupConsent=$null
+$cleaned=Cleanup-OwnedFixture
+if(-not $cleaned.confirmed -or $script:withdrawals -ne 0 -or $script:policyDeniedChecks -ne 1){throw 'Created guardian with no attempted grant did not confirm denied policy'};$script:cases++
 
 # The real entry point must refuse an existing journal before credentials/network are accessed.
 $journalDirectory=Join-Path $repoRoot 'artifacts/product-dev-release-2026-09-26'

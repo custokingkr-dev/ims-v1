@@ -2,14 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, dirname, basename } from 'node:path';
 import { inflateSync } from 'node:zlib';
-import { Api, Journal, parseArgs, plan, execute, SYNTHETIC_PNG } from './run-dev-workflow-acceptance.mjs';
+import { Api, Journal, parseArgs, plan, execute, SYNTHETIC_PNG, feePublicationSnapshot, proveFeePublication } from './run-dev-workflow-acceptance.mjs';
 
 const options = directory => ({ project: 'custoking-dev', runId: 'product-20260926-a1', apply: true, directory });
 function fixture(t) {
   const directory = mkdtempSync(join(tmpdir(), 'ims-dev-acceptance-test-'));
-  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  t.after(() => {
+    assert.equal(dirname(resolve(directory)), resolve(tmpdir()));
+    assert.ok(basename(directory).startsWith('ims-dev-acceptance-test-'));
+    rmSync(directory, { recursive: true, force: true });
+  });
   return { directory, path: join(directory, 'journal.json'), journal: new Journal(join(directory, 'journal.json'), 'test-run') };
 }
 
@@ -41,6 +45,46 @@ test('same payment intent can replay after timeout; changed intent cannot reuse 
   assert.deepEqual(await j.mutate('pay', request), { paymentId: 'same' });
   await assert.rejects(j.mutate('pay', { ...request, intent: { idempotencyKey: 'stable', amount: 101 } }), /JOURNAL_INTENT_CHANGED/);
   assert.equal(sends, 2);
+});
+
+function publicationFixture() {
+  return { id: 'owned-band', schoolId: 1, academicYearId: 'ay_2026_27', name: 'Synthetic acceptance test-run',
+    status: 'PUBLISHED', classFrom: 1, classTo: 1, discount: 0, activeSchedules: ['Annual'], annualTotal: 100,
+    gracePeriodDays: 0, lateFeeType: 'NONE', lateFeeAmount: 0, lateFeeIntervalDays: 0,
+    items: [{ id: 'owned-item', name: 'Synthetic fee test-run', frequency: 'Annual', amount: 100, optional: false }],
+    installments: [{ label: 'Synthetic test-run', dueDate: '2026-09-26', sharePercent: 100 }] };
+}
+
+test('first and already-published response shapes prove the same exact owned fee snapshot', () => {
+  const band = publicationFixture(); const expected = feePublicationSnapshot(band);
+  const initial = proveFeePublication({ status: 200, data: { ok: true, actorId: 42, band } }, expected);
+  const replay = proveFeePublication({ status: 200, data: { ...band, publishedAt: '2026-09-26T12:00:00Z' } }, expected);
+  assert.deepEqual(initial, replay);
+  assert.equal(replay.id, 'owned-band'); assert.match(replay.fingerprint, /^[a-f0-9]{64}$/);
+  for (const change of [
+    b => { b.id = 'other-band'; }, b => { b.schoolId = 2; }, b => { b.academicYearId = 'ay_2025_26'; },
+    b => { b.items[0].id = 'other-item'; }, b => { b.items[0].amount = 101; },
+    b => { b.installments[0].sharePercent = 50; }, b => { b.lateFeeType = 'DAILY'; },
+    b => { b.activeSchedules = ['Monthly']; }, b => { b.classTo = 2; },
+  ]) {
+    const changed = structuredClone(band); change(changed);
+    assert.throws(() => proveFeePublication({ status: 200, data: changed }, expected), /OWNERSHIP_OR_CONTENT/);
+  }
+  assert.throws(() => proveFeePublication({ status: 200, data: { ...band, status: 'DRAFT' } }, expected), /NOT_CONFIRMED/);
+});
+
+test('lost publication response recovers the matching published band without another mutation', async t => {
+  const { journal: j } = fixture(t); const band = publicationFixture(); const expected = feePublicationSnapshot(band);
+  let published = false, sends = 0;
+  const request = { intent: { method: 'POST', endpoint: '/fees/bands/owned-band/publish', snapshot: expected }, replaySafe: true,
+    reconcile: async () => published ? proveFeePublication({ status: 200, data: band }, expected) : null,
+    send: async () => { sends++; published = true; throw new Error('lost after commit'); },
+    prove: response => proveFeePublication(response, expected) };
+  await assert.rejects(j.mutate('fee-publish', request));
+  const recovered = await j.mutate('fee-publish', request);
+  assert.equal(sends, 1); assert.equal(recovered.id, 'owned-band');
+  assert.equal(j.data.operations['fee-publish'].reconciled, true);
+  assert.equal(j.data.operations['fee-publish'].state, 'confirmed');
 });
 
 test('later validation failure never clears an earlier uncertain mutation', async t => {

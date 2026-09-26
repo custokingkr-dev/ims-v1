@@ -170,6 +170,28 @@ function bootstrapCredentials() {
 const ok = r => check(r.status >= 200 && r.status < 300, `WRITE_HTTP_${r.status}`);
 const verifyConflict = r => { check(r.status === 409, `EXPECTED_409_GOT_${r.status}`); return { rejected: true, httpStatus: 409 }; };
 
+// Publication's first response wraps the band; the server's already-published replay returns it
+// directly. Both must prove exactly the reviewed synthetic plan, not merely a PUBLISHED status.
+export function feePublicationSnapshot(band) {
+  check(band && typeof band === 'object' && Array.isArray(band.items) && Array.isArray(band.installments)
+    && Array.isArray(band.activeSchedules), 'FEE_PUBLICATION_SNAPSHOT_MISSING');
+  return { id: band.id, schoolId: band.schoolId, academicYearId: band.academicYearId, name: band.name,
+    classFrom: band.classFrom, classTo: band.classTo, discount: band.discount, activeSchedules: band.activeSchedules,
+    annualTotal: band.annualTotal, gracePeriodDays: band.gracePeriodDays, lateFeeType: band.lateFeeType,
+    lateFeeAmount: band.lateFeeAmount, lateFeeIntervalDays: band.lateFeeIntervalDays,
+    items: band.items.map(i => ({ id: i.id, name: i.name, frequency: i.frequency, amount: i.amount, optional: i.optional })),
+    installments: band.installments.map(i => ({ label: i.label, dueDate: i.dueDate, sharePercent: i.sharePercent })) };
+}
+
+export function proveFeePublication(response, expectedSnapshot) {
+  ok(response);
+  const band = response.data?.band ?? response.data;
+  check(band?.status === 'PUBLISHED', 'FEE_PUBLISH_NOT_CONFIRMED');
+  const fingerprint = sha(expectedSnapshot);
+  check(sha(feePublicationSnapshot(band)) === fingerprint, 'FEE_PUBLICATION_OWNERSHIP_OR_CONTENT_CHANGED');
+  return { id: band.id, status: 'PUBLISHED', fingerprint };
+}
+
 export async function execute(options, { credentialsReader = bootstrapCredentials, fetchImpl = fetch } = {}) {
   check(options.apply && options.project === PROJECT, 'APPLY_DEV_REQUIRED');
   const directory = resolve(options.directory);
@@ -296,8 +318,23 @@ export async function execute(options, { credentialsReader = bootstrapCredential
     await mutation('fee-installments', school, 'PUT', `/fees/bands/${band.id}/installments`, { installments }, r => { ok(r); check(r.data?.installments?.length === 1 && r.data.installments[0].sharePercent === 100, 'INSTALLMENTS_NOT_SAVED'); return { count: 1, sharePercent: 100 }; }, {
       replaySafe: true, reconcile: async () => { const b = await ownedBand(); const rows = array(b?.installments); return rows.length === 1 && rows[0].label === installments[0].label && rows[0].dueDate === today && rows[0].sharePercent === 100 ? { count: 1, sharePercent: 100 } : null; }
     });
-    await mutation('fee-publish', school, 'POST', `/fees/bands/${band.id}/publish`, undefined, r => { ok(r); check(r.data?.band?.status === 'PUBLISHED', 'FEE_PUBLISH_NOT_CONFIRMED'); return { id: band.id, status: 'PUBLISHED' }; }, { replaySafe: true });
-    const published = await ownedBand(); check(published?.status === 'PUBLISHED' && published.annualTotal === 100 && published.items.length === 1 && published.items[0].id === item.id, 'PUBLISHED_FEE_PLAN_MISMATCH');
+    const publicationSnapshot = { id: band.id, schoolId: SCHOOL, academicYearId: year, name: bandName,
+      classFrom: 1, classTo: 1, discount: 0, activeSchedules: ['Annual'], annualTotal: 100,
+      gracePeriodDays: 0, lateFeeType: 'NONE', lateFeeAmount: 0, lateFeeIntervalDays: 0,
+      items: [{ id: item.id, name: itemName, frequency: 'Annual', amount: 100, optional: false }], installments };
+    const publicationFingerprint = sha(publicationSnapshot);
+    const publishPath = `/fees/bands/${band.id}/publish`;
+    await mutation('fee-publish', school, 'POST', publishPath, undefined, r => proveFeePublication(r, publicationSnapshot), {
+      intent: { method: 'POST', endpoint: publishPath, fingerprint: publicationFingerprint }, replaySafe: true,
+      reconcile: async () => {
+        const current = await ownedBand();
+        check(current && sha(feePublicationSnapshot(current)) === publicationFingerprint, 'FEE_PUBLICATION_OWNERSHIP_OR_CONTENT_CHANGED');
+        if (current.status === 'PUBLISHED') return proveFeePublication({ status: 200, data: current }, publicationSnapshot);
+        check(current.status === 'DRAFT', 'FEE_PUBLICATION_STATE_UNEXPECTED');
+        return null;
+      }
+    });
+    proveFeePublication({ status: 200, data: await ownedBand() }, publicationSnapshot);
     const assignmentsPath = `/fees/assignments?studentId=${student.id}&academicYearId=${year}&limit=5`;
     const assignmentProof = a => { check(a?.id && a.bandId === band.id && Number(a.studentId) === Number(student.id) && a.academicYearId === year && a.netPayable === 100, 'FEE_ASSIGNMENT_MISMATCH'); return { id: a.id }; };
     const assignment = await mutation('fee-assign', school, 'POST', '/fees/assignments', { studentId: student.id, bandId: band.id, schedule: 'Annual', academicYearId: year }, r => { ok(r); return assignmentProof(r.data?.assignment); }, {
