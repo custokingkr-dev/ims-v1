@@ -244,6 +244,7 @@ deployParameters:
   photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-api-gateway-prod@__PROJECT_ID__.iam.gserviceaccount.com
+  gateway_cors_allowed_origins: "https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-frontend-prod-yter7sugpa-em.a.run.app"
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"
