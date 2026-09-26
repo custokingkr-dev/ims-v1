@@ -82,6 +82,12 @@ jobs:
           ./scripts/audit-security-governance-controls.ps1
       - name: Test immutable GitHub governance check verification
         run: python3 -m unittest scripts.tests.test_verify_github_governance_checks
+      - name: Test bounded Cloud Deploy dependency groups
+        shell: pwsh
+        run: ./scripts/tests/clouddeploy-rollout-groups-test.ps1
+      - name: Test parallel image promotion trust boundaries
+        shell: pwsh
+        run: ./scripts/tests/resolve-release-images-test.ps1
       - name: Test offline GCP governance audits
         run: python3 -m unittest scripts.tests.test_export_gcp_asset_drift scripts.tests.test_audit_gcp_observability scripts.tests.test_validate_gcp_governance_audit_enablement
       - name: Test OpenAPI CI routing invariants
@@ -229,10 +235,12 @@ jobs:
       - name: Install Playwright Chromium
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Run authenticated frontend browser tests
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
+        env:
+          PLAYWRIGHT_USE_PREBUILT: "1"
         run: npm run test:e2e
 
   docker-build:

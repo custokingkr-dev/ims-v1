@@ -53,8 +53,8 @@ Use `force_full_deploy` only when all seven services are intended. Supplying an 
 1. Complete dev acceptance for the intended service sources. Open a PR **from `dev` to `main`**; `promotion-source-policy` rejects PRs to `main` from other branches. Do not substitute a feature-branch PR or direct push for the promotion path.
 2. Complete any configuration reconciliation sequence above. A `main` push starts the production workflow, but a configuration trigger suppresses its release.
 3. Review the exact main SHA, changed-service matrix, dev evidence, migrations, required secrets, rollback plan and production project at the `prod` Environment gate. Confirm the repository's required-reviewer protection is actually configured; the YAML `environment: prod` alone does not create reviewers. Obtain the production approval before the release job proceeds.
-4. The release resolves `dev-approved-src-*` tags for each service source ID and verifies a Sigstore signature issued to this workflow on `refs/heads/dev`. It does not rebuild images. It copies the approved digest to the production registry when needed and checks the copied digest is identical.
-5. Cloud Deploy advances each affected service through `5`, `25`, `50`, and stable before creating the next service release. Inspect the rollout result; do not treat creation of a release as completion.
+4. The release resolves `dev-approved-src-*` tags with at most three image workers and verifies a Sigstore signature issued to this workflow on `refs/heads/dev` for every production digest before copying. It does not rebuild images. Manifest inspection and copying use the resolved digest, not the mutable tag. The copied full and runnable digests must match; promotion tags are created without overwriting an existing tag. Any worker failure blocks all deployment and scan outputs.
+5. Cloud Deploy advances every affected service through `5`, `25`, `50`, and stable. School-core completes first; independent backends then overlap in groups of at most two (identity/operations, then billing/platform for a full release). Gateway starts only after all selected backends succeed, and frontend starts after gateway. A subset release includes only affected services. Inspect all rollout results; creation is not completion.
 6. Confirm service digest/revision/traffic checks, frontend check when applicable, and gateway health. Retain `release-evidence-prod-<sha>`, configuration run evidence when applicable, and the GitHub Environment approval record.
 
 If production reports a missing dev-approved image, deploy that exact source on `dev`; do not create or move an approval tag manually.
@@ -86,13 +86,19 @@ These files belong to an application release. A reconciliation run records its c
 
 Timing depends on runner queues, affected tests/browser checks, cache state, vulnerability scans, Cloud Run startup and canary progression. Use the run's job timestamps to separate these phases. A green no-op/configuration summary may finish quickly because it created no application release; elapsed time is not deployment evidence. No duration here is an SLA.
 
+The [27 September 2026 production baseline](https://github.com/custokingkr-dev/ims-v1/actions/runs/36276245314) took approximately 41 minutes: service rollouts consumed 23m23s, image resolution/promotion 4m, and the slowest service test job 4m57s. The pipeline now overlaps only independent work: three image workers, two backend rollouts, and two browser workers against the production bundle already built by the job. Headless browser installation downloads only Chromium's headless shell. Tests, retries, vulnerability gates (including unfixed findings), signed dev approvals, Environment review, all canary percentages and final digest/traffic/health checks remain required.
+
+Compare subsequent full releases with this baseline; a partial release or configuration-only run is not a fair timing comparison. Do not claim a measured production reduction from mock tests or local browser timings alone. Use `MaxParallelRollouts=1` when invoking the orchestrator directly for a fully serial fallback; its default remains one. The governed workflow explicitly selects two, and the orchestrator rejects larger values. Reassess database connection/CPU capacity before increasing concurrency.
+
+Local browser validation on 27 September retained all 109 tests with no skips, retries or flakes: the former one-worker Vite development server took 189.03s, and two workers against the prebuilt production bundle took 95.10s (49.7% less). The production build passed separately in 16.56s; both CI configurations already include that build. These are local measurements, not a GitHub-runner or deployment SLA.
+
 ## Failure Handling
 
 - Build failure: fix the service; no approval tag is created.
 - Dev deployment or smoke failure: roll back dev and fix forward.
 - Missing prod approval tag: deploy the source to dev successfully.
 - Signing/verification or digest conflict: retain the evidence, fix the approval chain and rerun through the normal workflow; do not move tags to make it pass.
-- Canary failure: stop advancing and use `CD / Rollback target`.
+- Canary failure: a failed rollout or phase blocks all group advancement and later groups. A peer phase already in flight may finish; inspect both receipts before using `CD / Rollback target`. Partial evidence includes `create-requested` entries for ambiguous creation responses—inspect that exact release before retrying. A successful advance is never repeated just because a later API read still shows the old pending phase. No automatic rollback is attempted.
 - Deployment configuration failure: inspect the rendered targets/pipelines, correct and reconcile them, then release a qualifying separate commit. Do not use direct deployment to bypass it.
 
 See [rollback.md](rollback.md) and [deployment-evidence.md](deployment-evidence.md).

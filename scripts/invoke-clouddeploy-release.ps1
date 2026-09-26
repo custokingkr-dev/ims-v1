@@ -10,6 +10,7 @@ param(
   [string]$Environment,
 
   [Parameter(Mandatory = $true)]
+  [ValidatePattern('^[0-9a-f]{40}$')]
   [string]$CommitSha,
 
   [Parameter(Mandatory = $true)]
@@ -26,7 +27,12 @@ param(
 
   [switch]$AutoAdvanceCanary,
 
-  [int]$RolloutTimeoutMinutes = 45
+  [int]$RolloutTimeoutMinutes = 45,
+
+  # Default preserves serial operator invocations. The governed workflow opts
+  # into two independent backend services at a time, never parallel gateways.
+  [ValidateRange(1, 2)]
+  [int]$MaxParallelRollouts = 1
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,7 +59,14 @@ $releaseOrder = @(
 )
 $byService = @{}
 foreach ($image in $images) {
+  if ([string]$image.service -notin $releaseOrder -or $byService.ContainsKey([string]$image.service)) {
+    throw "Unknown or duplicate release service: $($image.service)"
+  }
   $byService[[string]$image.service] = $image
+}
+if ($images.Count -eq 0) { throw "Release image evidence must contain at least one service." }
+if ($MaxParallelRollouts -gt 1 -and -not $WaitForRollout) {
+  throw "Parallel rollout groups require WaitForRollout to enforce dependency barriers."
 }
 
 $shortSha = $CommitSha.Substring(0, [Math]::Min(12, $CommitSha.Length))
@@ -74,73 +87,97 @@ function Write-DeploymentEvidence {
   } | ConvertTo-Json -Depth 10 | Set-Content -Path $OutputPath
 }
 
-foreach ($service in $releaseOrder) {
-  $image = $byService[$service]
-  if (-not $image) {
-    continue
-  }
+$groups = @(
+  @{ services = @('school-core-service') },
+  @{ services = @('identity-service', 'operations-service', 'billing-service', 'platform-service') },
+  @{ services = @('api-gateway') },
+  @{ services = @('frontend') }
+)
+# Shared school contracts/migrations first; independent schema owners next;
+# gateway only after every selected backend; frontend only after gateway.
+foreach ($group in $groups) {
+  $selected = @($group.services | Where-Object { $byService.ContainsKey($_) })
+  for ($offset = 0; $offset -lt $selected.Count; $offset += $MaxParallelRollouts) {
+    $wave = @($selected | Select-Object -Skip $offset -First $MaxParallelRollouts)
+    $waveDeployments = @()
+    foreach ($service in $wave) {
+      $image = $byService[$service]
+      if (-not $image) {
+        continue
+      }
 
-  $pipeline = "custoking-$service-$Environment"
-  Write-Host "Creating Cloud Deploy release $pipeline/$releaseId."
-  $createArguments = @(
-    "deploy"
-    "releases"
-    "create"
-    $releaseId
-    "--project=$ProjectId"
-    "--region=$Region"
-    "--delivery-pipeline=$pipeline"
-    "--to-target=$service-$Environment"
-    "--skaffold-file=$skaffoldFile"
-    "--images=$($image.image)=$($image.immutableRef)"
-    "--deploy-parameters=git_sha=$CommitSha"
-    "--quiet"
-  )
-  $createArguments += "--gcs-source-staging-dir=$($SourceStagingDir.TrimEnd('/'))/$releaseId/$service"
+      $pipeline = "custoking-$service-$Environment"
+      $deployment = [ordered]@{
+        service = $service
+        cloudRunService = "custoking-$service-$Environment"
+        image = $image.immutableRef
+        pipeline = $pipeline
+        release = $releaseId
+        target = "$service-$Environment"
+        rollout = $null
+        status = "create-requested"
+      }
+      $deployments += $deployment
+      # Journal intent before a remote create: a lost response must still leave
+      # the exact release name to inspect, never invite a blind retry.
+      Write-DeploymentEvidence
+      Write-Host "Creating Cloud Deploy release $pipeline/$releaseId."
+      $createArguments = @(
+        "deploy"
+        "releases"
+        "create"
+        $releaseId
+        "--project=$ProjectId"
+        "--region=$Region"
+        "--delivery-pipeline=$pipeline"
+        "--to-target=$service-$Environment"
+        "--skaffold-file=$skaffoldFile"
+        "--images=$($image.image)=$($image.immutableRef)"
+        "--deploy-parameters=git_sha=$CommitSha"
+        "--quiet"
+      )
+      $createArguments += "--gcs-source-staging-dir=$($SourceStagingDir.TrimEnd('/'))/$releaseId/$service"
 
-  & $GcloudCommand @createArguments
-  if ($LASTEXITCODE -ne 0) {
-    throw "Could not create Cloud Deploy release $pipeline/$releaseId."
-  }
+      & $GcloudCommand @createArguments
+      if ($LASTEXITCODE -ne 0) {
+        throw "Could not create Cloud Deploy release $pipeline/$releaseId."
+      }
 
-  $rollout = (& $GcloudCommand deploy rollouts list `
-    "--project=$ProjectId" `
-    "--region=$Region" `
-    "--delivery-pipeline=$pipeline" `
-    "--release=$releaseId" `
-    --limit=1 `
-    --format="value(name)").Trim()
-  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($rollout)) {
-    throw "Cloud Deploy release $pipeline/$releaseId did not create an initial rollout."
-  }
+      $rawRollout = & $GcloudCommand deploy rollouts list `
+        "--project=$ProjectId" `
+        "--region=$Region" `
+        "--delivery-pipeline=$pipeline" `
+        "--release=$releaseId" `
+        --limit=1 `
+        --format="value(name)"
+      $rollout = ($rawRollout -join "").Trim()
+      if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($rollout)) {
+        throw "Cloud Deploy release $pipeline/$releaseId did not create an initial rollout."
+      }
 
-  $deployments += [ordered]@{
-    service = $service
-    cloudRunService = "custoking-$service-$Environment"
-    image = $image.immutableRef
-    pipeline = $pipeline
-    release = $releaseId
-    target = "$service-$Environment"
-    rollout = $rollout.Split("/")[-1]
-  }
+      $deployment.rollout = $rollout.Split("/")[-1]
+      $deployment.status = "submitted"
+      $waveDeployments += $deployment
 
-  # Persist after every release so failed jobs retain actionable rollout evidence.
-  Write-DeploymentEvidence
+      # Persist after every release so failed jobs retain actionable rollout evidence.
+      Write-DeploymentEvidence
 
-  if ($WaitForRollout) {
-    $waitArguments = @{
-      ProjectId = $ProjectId
-      Region = $Region
-      Pipeline = $pipeline
-      Release = $releaseId
-      Rollout = $rollout.Split("/")[-1]
-      TimeoutMinutes = $RolloutTimeoutMinutes
     }
-    if ($AutoAdvanceCanary) {
-      $waitArguments.AutoAdvanceCanary = $true
-    }
+    if ($WaitForRollout -and $waveDeployments.Count -gt 0) {
+      $waitArguments = @{
+        ProjectId = $ProjectId
+        Region = $Region
+        Rollouts = $waveDeployments
+        TimeoutMinutes = $RolloutTimeoutMinutes
+      }
+      if ($AutoAdvanceCanary) {
+        $waitArguments.AutoAdvanceCanary = $true
+      }
 
-    & (Join-Path $PSScriptRoot "wait-clouddeploy-rollout.ps1") @waitArguments
+      & (Join-Path $PSScriptRoot "wait-clouddeploy-rollout-group.ps1") @waitArguments
+      foreach ($completed in $waveDeployments) { $completed.status = "succeeded" }
+      Write-DeploymentEvidence
+    }
   }
 }
 

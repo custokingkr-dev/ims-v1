@@ -24,6 +24,7 @@ $gateway = Read-RequiredFile $GatewayFile
 $directRelease = Read-RequiredFile "scripts/invoke-direct-cloudrun-release.ps1"
 $cloudDeployRelease = Read-RequiredFile "scripts/invoke-clouddeploy-release.ps1"
 $cloudDeployWaiter = Read-RequiredFile "scripts/wait-clouddeploy-rollout.ps1"
+$cloudDeployGroupWaiter = Read-RequiredFile "scripts/wait-clouddeploy-rollout-group.ps1"
 $releaseVerification = Read-RequiredFile "scripts/verify-cloudrun-release.ps1"
 $violations = New-Object System.Collections.Generic.List[string]
 $catalog = @(Get-MicroserviceBuildCatalog)
@@ -91,10 +92,18 @@ foreach ($required in @("--async", "--update-env-vars", "OTEL_RESOURCE_ATTRIBUTE
   }
 }
 
-foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout.ps1", "SourceStagingDir", "--gcs-source-staging-dir", "automatic bucket discovery is not allowed")) {
+foreach ($required in @("WaitForRollout", "Write-DeploymentEvidence", "wait-clouddeploy-rollout-group.ps1", "SourceStagingDir", "--gcs-source-staging-dir", "automatic bucket discovery is not allowed", "MaxParallelRollouts", '[ValidateRange(1, 2)]')) {
   if (-not $cloudDeployRelease.Contains($required)) {
-    $violations.Add("Cloud Deploy release orchestration is missing serialized rollout control: $required")
+    $violations.Add("Cloud Deploy release orchestration is missing bounded dependency control: $required")
   }
+}
+foreach ($required in @('PENDING_RELEASE', '$state.state -eq "IN_PROGRESS"', 'APPROVAL_REJECTED', '$Rollouts.Count -gt 2')) {
+  if (-not $cloudDeployGroupWaiter.Contains($required)) {
+    $violations.Add("Cloud Deploy group waiter is missing canary/failure protection: $required")
+  }
+}
+if (-not $workflow.Contains('MaxParallelRollouts = 2') -or -not $workflow.Contains('clouddeploy-rollout-groups-test.ps1')) {
+  $violations.Add('The workflow must retain the two-rollout cap and dependency/failure regression tests.')
 }
 
 foreach ($required in @('$state -eq "IN_PROGRESS"', 'PENDING_RELEASE')) {

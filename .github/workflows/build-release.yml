@@ -140,6 +140,12 @@ jobs:
           ./scripts/audit-security-governance-controls.ps1
       - name: Verify guarded duplicate classes
         run: python3 scripts/check-duplicate-class-drift.py
+      - name: Test bounded Cloud Deploy dependency groups
+        shell: pwsh
+        run: ./scripts/tests/clouddeploy-rollout-groups-test.ps1
+      - name: Test parallel image promotion trust boundaries
+        shell: pwsh
+        run: ./scripts/tests/resolve-release-images-test.ps1
 
   release-service-test:
     name: release-service-test (${{ matrix.name }})
@@ -198,10 +204,12 @@ jobs:
       - name: Install Playwright Chromium
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Run authenticated frontend browser tests
         if: ${{ matrix.tool == 'npm' }}
         working-directory: ${{ matrix.path }}
+        env:
+          PLAYWRIGHT_USE_PREBUILT: "1"
         run: npm run test:e2e
 
   release-secret-scan:
@@ -473,147 +481,16 @@ jobs:
         env:
           AFFECTED_MATRIX_JSON: ${{ needs.detect.outputs.docker_matrix }}
         run: |
-          $ErrorActionPreference = "Stop"
-          $targetEnv = "${{ needs.resolve-target.outputs.target_env }}"
-          $sha = "${{ needs.resolve-target.outputs.commit_sha }}"
-          # Two registries, deliberately. Resolution reads from the BUILD project, because that is where
-          # the dev-approved tag lives. Deployment must reference the TARGET project, because Cloud Run
-          # re-pulls on every scale-out: leaving production pointed at the build project's registry makes
-          # a development project a runtime dependency of production, so pruning an image there degrades
-          # prod. For dev the two are the same and nothing is copied.
-          $sourceRegistry  = "$env:GCP_REGION-docker.pkg.dev/$env:ARTIFACT_REGISTRY_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
-          $runtimeRegistry = "$env:GCP_REGION-docker.pkg.dev/$env:GCP_PROJECT_ID/$env:ARTIFACT_REGISTRY_REPOSITORY"
-          $registry = $sourceRegistry
-          $matrix = $env:AFFECTED_MATRIX_JSON | ConvertFrom-Json
-          $services = @()
-
-          foreach ($entry in @($matrix.include)) {
-            $sourceArguments = @{
-              CommitSha = $sha
-              Context = [string]$entry.context
-              SourcePaths = [string]$entry.source_paths
-              BuildArgs = [string]$entry.build_args
-            }
-            $metadata = ./scripts/resolve-image-source-id.ps1 @sourceArguments | ConvertFrom-Json
-            $resolvedTag = if ($targetEnv -eq "prod") {
-              "dev-approved-$($metadata.sourceTag)"
-            } else {
-              $metadata.sourceTag
-            }
-            $tagRef = "$registry/$($entry.image):$resolvedTag"
-            $digestOutput = & gcloud artifacts docker images describe $tagRef --format="value(image_summary.digest)" 2>$null
-            $describeExitCode = $LASTEXITCODE
-            $digest = if ($null -eq $digestOutput) { "" } else { ([string]$digestOutput).Trim() }
-            if ($describeExitCode -ne 0 -or $digest -notmatch "^sha256:[0-9a-f]{64}$") {
-              if ($targetEnv -eq "prod") {
-                throw "No dev-approved image exists for $($entry.name) source $($metadata.sourceId). Deploy this source to dev successfully before production."
-              }
-              throw "No built image exists for $($entry.name) source $($metadata.sourceId)."
-            }
-
-            $rawManifest = (& docker buildx imagetools inspect --raw $tagRef) -join "`n"
-            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($rawManifest)) {
-              throw "Could not inspect OCI manifest for $tagRef."
-            }
-            $manifest = $rawManifest | ConvertFrom-Json
-            $runtimeDigest = $digest
-            if (@($manifest.manifests).Count -gt 0) {
-              $runtimeDescriptor = $manifest.manifests | Where-Object {
-                $_.platform.os -eq "linux" -and $_.platform.architecture -eq "amd64"
-              } | Select-Object -First 1
-              if (-not $runtimeDescriptor -or [string]$runtimeDescriptor.digest -notmatch "^sha256:[0-9a-f]{64}$") {
-                throw "OCI index $tagRef does not contain a runnable linux/amd64 manifest."
-              }
-              $runtimeDigest = [string]$runtimeDescriptor.digest
-            }
-
-            # Promote the resolved digest into the target project's registry before anything references
-            # it. imagetools create is a server-side manifest copy -- it moves no layers and completes in
-            # seconds -- and because images are content addressed, the digest is identical on both sides,
-            # so the promoted reference is provably the same bytes that were approved on dev.
-            # Production consumes a tag that lives in the development registry. The tag is mutable and
-            # anyone holding artifactregistry.writer there could repoint it, so the digest is trusted
-            # only when it carries a Sigstore signature produced by a run of this workflow on the dev
-            # branch. Verification happens against the source digest, before anything is copied.
-            if ($targetEnv -eq "prod") {
-              $signedRef = "$sourceRegistry/$($entry.image)@$digest"
-              & cosign verify $signedRef `
-                --certificate-identity "https://github.com/$env:GITHUB_REPOSITORY/.github/workflows/build-release.yml@refs/heads/dev" `
-                --certificate-oidc-issuer "https://token.actions.githubusercontent.com" `
-                --output text 2>&1 | Out-Null
-              if ($LASTEXITCODE -ne 0) {
-                throw "No valid dev-release signature for $($entry.name) at $digest. The approved tag may have been repointed; refusing to promote."
-              }
-              Write-Host "Verified dev-release signature for $($entry.image)@$digest."
-            }
-
-            if ($runtimeRegistry -ne $sourceRegistry) {
-              # Writing the tag is skipped when it already resolves to this digest, so re-running a
-              # release is a no-op instead of a rewrite. A tag that already points somewhere else is a
-              # conflict, never something to overwrite. This mirrors the commit- and approval-tag steps
-              # and is what allows the registry to be switched to immutable tags.
-              $existingOutput = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
-              $existingExitCode = $LASTEXITCODE
-              $global:LASTEXITCODE = 0
-              $existingDigest = if ($null -eq $existingOutput) { "" } else { ([string]$existingOutput).Trim() }
-              if ($existingExitCode -eq 0 -and $existingDigest -match "^sha256:[0-9a-f]{64}$") {
-                if ($existingDigest -ne $digest) {
-                  throw "Promotion tag conflict for $($entry.image): $resolvedTag already points to $existingDigest, not the approved $digest."
-                }
-                Write-Host "Promotion tag for $($entry.image) already points to $digest."
-              } else {
-                & docker buildx imagetools create --tag "$runtimeRegistry/$($entry.image):$resolvedTag" "$sourceRegistry/$($entry.image)@$digest"
-                if ($LASTEXITCODE -ne 0) {
-                  throw "Could not promote $($entry.image)@$digest into $runtimeRegistry."
-                }
-              }
-              $promoted = & gcloud artifacts docker images describe "$runtimeRegistry/$($entry.image):$resolvedTag" --format="value(image_summary.digest)" 2>$null
-              $promotedDigest = if ($null -eq $promoted) { "" } else { ([string]$promoted).Trim() }
-              # A copy that lands under a different digest would mean the bytes changed in transit. Deploying
-              # that would silently ship something other than what dev approved and what Trivy scanned.
-              if ($promotedDigest -ne $digest) {
-                throw "Promoted digest $promotedDigest does not match approved digest $digest for $($entry.image)."
-              }
-            }
-
-            $immutableRef = "$runtimeRegistry/$($entry.image)@$digest"
-            $scanKey = switch ([string]$entry.name) {
-              "identity-service" { "identity" }
-              "school-core-service" { "school_core" }
-              "operations-service" { "operations" }
-              "platform-service" { "platform" }
-              "billing-service" { "billing" }
-              "frontend" { "frontend" }
-              "api-gateway" { "api_gateway" }
-              default { throw "Unsupported release image '$($entry.name)' cannot be mapped to a scan gate." }
-            }
-            "${scanKey}_ref=$immutableRef" >> $env:GITHUB_OUTPUT
-            "${scanKey}_digest_key=$($digest.Replace(':', '-'))" >> $env:GITHUB_OUTPUT
-
-            $services += [ordered]@{
-              service = [string]$entry.name
-              image = [string]$entry.image
-              context = [string]$entry.context
-              sourceId = [string]$metadata.sourceId
-              sourceTag = [string]$metadata.sourceTag
-              resolvedTag = $resolvedTag
-              digest = $digest
-              immutableRef = $immutableRef
-              runtimeDigest = $runtimeDigest
-              runtimeRef = "$runtimeRegistry/$($entry.image)@$runtimeDigest"
-            }
-          }
-
-          New-Item -ItemType Directory -Force -Path release-evidence | Out-Null
-          [ordered]@{
-            commit = $sha
-            environment = $targetEnv
-            registry = $registry
-            resolvedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
-            services = $services
-          } | ConvertTo-Json -Depth 10 | Set-Content release-evidence/images.json
-
-          New-Item -ItemType Directory -Force -Path release-evidence/trivy | Out-Null
+          ./scripts/resolve-release-images.ps1 `
+            -Environment "${{ needs.resolve-target.outputs.target_env }}" `
+            -CommitSha "${{ needs.resolve-target.outputs.commit_sha }}" `
+            -ProjectId "$env:GCP_PROJECT_ID" `
+            -SourceProjectId "$env:ARTIFACT_REGISTRY_PROJECT_ID" `
+            -Region "$env:GCP_REGION" `
+            -Repository "$env:ARTIFACT_REGISTRY_REPOSITORY" `
+            -GitHubRepository "$env:GITHUB_REPOSITORY" `
+            -MatrixJson $env:AFFECTED_MATRIX_JSON `
+            -MaxConcurrency 3
 
       # Scanning an image pulls it from Artifact Registry to this runner, which sits outside GCP and
       # is therefore billed internet egress. A release resolves all seven services whether or not they
@@ -1171,7 +1048,7 @@ jobs:
             -ImagesJson release-evidence/images.json `
             -OutputPath release-evidence/deployment.json
 
-      - name: Create and serially promote Cloud Deploy releases
+      - name: Create and promote Cloud Deploy dependency groups
         if: ${{ needs.resolve-target.outputs.target_env == 'prod' || needs.detect.outputs.deployment_config_changed == 'true' }}
         shell: pwsh
         run: |
@@ -1184,6 +1061,7 @@ jobs:
             ImagesJson = "release-evidence/images.json"
             OutputPath = "release-evidence/deployment.json"
             WaitForRollout = $true
+            MaxParallelRollouts = 2
           }
           if ("${{ needs.resolve-target.outputs.target_env }}" -eq "prod") {
             $arguments.AutoAdvanceCanary = $true
