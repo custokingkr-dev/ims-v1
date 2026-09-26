@@ -53,6 +53,32 @@ foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
 }
 
+# Broadcast dispatch is deliberately dev-only and never selects a live provider.
+# Keep this guard in the governed renderer, before any Cloud Deploy target can be applied.
+$platformTargets = @($text -split '(?m)^---\s*$' | Where-Object {
+  $_ -match "(?m)^  name:\s*platform-service-$Environment\s*$"
+})
+if ($platformTargets.Count -ne 1) {
+  throw "Exactly one platform-service-$Environment target is required."
+}
+function Read-PlatformParameter([string]$Name) {
+  $matches = [regex]::Matches($platformTargets[0], "(?m)^  $([regex]::Escape($Name)):\s*([^\r\n#]+)")
+  if ($matches.Count -ne 1) {
+    throw "Platform target must declare exactly one '$Name' parameter."
+  }
+  return $matches[0].Groups[1].Value.Trim().Trim('"', "'")
+}
+$broadcastMode = Read-PlatformParameter "broadcast_dispatch_mode"
+$broadcastWorkerReady = Read-PlatformParameter "broadcast_worker_ready"
+$broadcastOff = $broadcastMode -ceq "OFF" -and $broadcastWorkerReady -ceq "false"
+$broadcastDevDryRun = $Environment -eq "dev" -and $broadcastMode -ceq "DRY_RUN" -and
+  $broadcastWorkerReady -ceq "true" -and
+  (Read-PlatformParameter "notification_delivery_provider") -ceq "logging" -and
+  (Read-PlatformParameter "msg91_dry_run") -ceq "true"
+if (-not ($broadcastOff -or $broadcastDevDryRun)) {
+  throw "Broadcast parameters must be OFF/false, or dev-only DRY_RUN/true with logging and MSG91 dry-run."
+}
+
 $targetCount = ([regex]::Matches($text, '(?m)^kind:\s*Target\s*$')).Count
 if ($targetCount -ne 7) {
   throw "Cloud Deploy $Environment target template must contain exactly seven service targets; found $targetCount."

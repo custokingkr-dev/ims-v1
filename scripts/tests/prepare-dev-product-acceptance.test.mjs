@@ -44,6 +44,19 @@ test('retries use exactly the original payload/key and conflicts differ only in 
   }
 });
 
+test('principal preflight uses the login response and a real authorized school read', () => {
+  const plan = buildAcceptancePlan(config);
+  assert.match(plan.principalPreflight.source, /POST \/api\/v1\/auth\/login/);
+  assert.match(plan.principalPreflight.safety, /before any write/);
+  assert.deepEqual(plan.preflight[0], {
+    id: 'school-scope', method: 'GET', path: '/api/v1/schools/1',
+    expect: ['Returned school id equals schoolId; authorized gateway read succeeds for the checked login principal.'], safety: [],
+  });
+  assert.ok(plan.preflight.every(step => !step.path.startsWith('/api/v1/auth/')));
+  assert.match(readFileSync('services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java', 'utf8'), /@PostMapping\("\/login"\)/);
+  assert.match(readFileSync('services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/TenantSchoolController.java', 'utf8'), /@GetMapping\("\/schools\/\{id\}"\)/);
+});
+
 test('actual current gross cost blocks even when credits make net spend nearly zero', () => {
   const data = ready(); data.billing.grossMonthInr = 1966.3141; data.billing.netMonthInr = -0.0019;
   const assessment = assessCapacityReadiness(data, now);
