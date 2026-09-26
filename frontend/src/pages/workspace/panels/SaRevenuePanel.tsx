@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Stat } from '../ui';
+import { ModuleShell, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
 interface InvStats {
@@ -15,7 +15,7 @@ export function SaRevenuePanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
     setError('');
     api
@@ -25,21 +25,23 @@ export function SaRevenuePanel() {
         setError(e?.response?.data?.message || 'Failed to load revenue stats.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   return (
     <ModuleShell title="Revenue analytics" subtitle="Platform-wide invoice revenue and collection summary">
       {loading ? (
-        <div className="ck-card" style={{ padding: 16 }}>Loading revenue stats…</div>
+        <div className="ck-card"><PanelMessage>Loading revenue stats…</PanelMessage></div>
       ) : error ? (
         <div className="ck-card">
-          <div className="ck-alert ck-alert-re" style={{ margin: 16 }}>
-            <span>✕</span>
+          <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
             <div>{error}</div>
+            <button className="ck-btn ck-btn-ghost" onClick={load}>Retry</button>
           </div>
         </div>
       ) : !stats ? (
-        <div className="ck-card" style={{ padding: 16 }}>No revenue data available.</div>
+        <div className="ck-card"><PanelMessage>No revenue data available.</PanelMessage></div>
       ) : (
         <div className="ck-grid ck-grid-4">
           <Stat
@@ -67,7 +69,6 @@ export function SaRevenuePanel() {
             label="Total invoiced (GMV)"
             value={`₹${formatMoney(Number(stats.totalInvoiced || 0) / 100)}`}
             sub="Grand total billed"
-            pill="Paise→₹"
             tone="blue"
           />
         </div>

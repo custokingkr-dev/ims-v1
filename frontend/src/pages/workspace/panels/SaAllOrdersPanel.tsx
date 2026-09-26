@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field, Info, Stat } from '../ui';
-import { formatMoney, todayIso } from '../utils';
+import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
+import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
+import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const [notebookOrderId, setNotebookOrderId] = useState<string | null>(null);
+  const categoryLabel = useCategoryLabel();
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -198,7 +201,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <Stat label="Total orders" value={stats?.totalOrders ?? 0} sub="Across all schools" pill="Live" tone="blue" />
           <Stat label="New requests" value={stats?.pendingApproval ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
           <Stat label="In progress" value={stats?.approved ?? 0} sub="Approved or processing" pill="Active" tone="green" />
-          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
+          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" tone="blue" />
         </div>
         <div className="ck-form-card" style={{ marginBottom: 16 }}>
           <div className="ck-form-body">
@@ -225,23 +228,32 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}><span>i</span><div>Showing the first {orders.length} orders — some older orders are not displayed. Refine the filters to narrow the list.</div></div>
         )}
         <div className="ck-card">
-          {loading ? <div style={{ padding: 16 }}>Loading orders…</div>
-          : error ? <div style={{ padding: 16 }}>{error}</div>
+          {loading ? <PanelMessage>Loading orders…</PanelMessage>
+          : error ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{error}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void load()}>Retry</button>
+            </div>
+          )
           : (
-            <table className="ck-table">
-              <thead><tr><th>Order</th><th>School</th><th>Category</th><th>Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
+            <div className="ck-table-wrap"><table className="ck-table">
+              <thead><tr><th>Order</th><th>School</th><th>Category</th><th className="ck-num">Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={7}><div className="ts">No orders found.</div></td></tr>
+                  ? <tr><td colSpan={7}><PanelMessage>No orders found.</PanelMessage></td></tr>
                   : filtered.map((row: any) => (
                     <tr key={row.id}>
-                      <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || row.category}</div></td>
+                      {/* description and title are not fields on a catalog order row, so this
+                          secondary line could only ever repeat the Category column beside it. */}
+                      <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
-                      <td>{row.category}</td>
-                      <td>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
+                      <td>{categoryLabel(row.category)}</td>
+                      <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
+                        ? <span className="ck-pill ck-pill-am">Pending pricing</span>
+                        : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
-                      <td>{row.placedAt || row.createdAt || '—'}</td>
-                      <td style={{ display: 'flex', gap: 8 }}>
+                      <td>{formatIsoDay(row.placedAt || row.createdAt)}</td>
+                      <td><div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
                         {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
@@ -253,11 +265,11 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                               <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>
                             </>
                           ))}
-                      </td>
+                      </div></td>
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </ModuleShell>

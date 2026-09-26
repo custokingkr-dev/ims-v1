@@ -33,7 +33,13 @@ const VARIANT_MAP: Record<string, StatusVariant> = {
 };
 
 export function getDisplayStatus(status: string): string {
-  return DISPLAY_MAP[status] ?? status;
+  const key = String(status ?? '').trim();
+  if (!key) return '—';
+  if (DISPLAY_MAP[key]) return DISPLAY_MAP[key];
+  // An unmapped status used to render as its raw constant, so PENDING_APPROVAL and QUOTED
+  // sat in the same column as "In Fulfilment". Every status reads as words, mapped or not.
+  const words = key.replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
 }
 
 export function getStatusBadgeVariant(status: string): StatusVariant {

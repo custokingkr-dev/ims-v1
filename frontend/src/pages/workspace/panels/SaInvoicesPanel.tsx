@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field, Stat } from '../ui';
-import { formatMoney, todayIso } from '../utils';
+import { ModuleShell, Field, PanelMessage, Stat } from '../ui';
+import { formatIsoDay, formatMoney, todayIso } from '../utils';
 
 interface Props {
   onBadgeChange?: (count: number) => void;
@@ -99,34 +99,43 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
           <Stat label="Sent this month" value={saInvStats?.sentThisMonth ?? 0} sub="Invoices issued" pill="Current" tone="blue" />
           <Stat label="Paid" value={saInvStats?.paid ?? 0} sub="Settled invoices" pill="Received" tone="green" />
           <Stat label="Pending" value={saInvStats?.pending ?? 0} sub="Awaiting payment" pill="Action" tone="orange" />
-          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total" pill="Paise→₹" tone="blue" />
+          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total" tone="blue" />
         </div>
         <div className="ck-card">
-          {saInvoicesLoading ? <div style={{ padding: 16 }}>Loading invoices…</div>
-          : saInvoicesError ? <div style={{ padding: 16 }}>{saInvoicesError}</div>
-          : <table className="ck-table">
-            <thead><tr><th>Invoice</th><th>School</th><th>Order ref</th><th>Total</th><th>Status</th><th>Issued</th><th /></tr></thead>
+          {saInvoicesLoading ? <PanelMessage>Loading invoices…</PanelMessage>
+          : saInvoicesError ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{saInvoicesError}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void loadSaInvoices()}>Retry</button>
+            </div>
+          )
+          : <div className="ck-table-wrap"><table className="ck-table">
+            <thead><tr><th>Invoice</th><th>School</th><th>Order ref</th><th className="ck-num">Total</th><th>Status</th><th>Issued</th><th /></tr></thead>
             <tbody>
               {saInvoices.length === 0
-                ? <tr><td colSpan={7}><div className="ts">No invoices found.</div></td></tr>
+                ? <tr><td colSpan={7}><PanelMessage>No invoices found.</PanelMessage></td></tr>
                 : saInvoices.map((row: any) => (
                   <tr key={row.id}>
-                    <td><div className="tb">{row.id}</div><div className="ts">{row.description || 'Invoice'}</div></td>
+                    {/* An invoice's description is free text and often empty; labelling the
+                        blank case "Invoice" under an invoice number told the reader nothing. */}
+                    <td>
+                      <div className="tb">{row.id}</div>
+                      {row.description ? <div className="ts">{row.description}</div> : null}
+                    </td>
                     <td>{row.school || '—'}</td>
                     <td>{row.orderRef || '—'}</td>
-                    <td>₹{formatMoney(Number(row.total || 0) / 100)}</td>
+                    <td className="ck-num">₹{formatMoney(Number(row.total || 0) / 100)}</td>
                     <td><span className={`ck-status ${String(row.status).toLowerCase().includes('paid') ? 'sg' : 'sam'}`}>{row.status}</span></td>
-                    <td>{row.issuedAt || '—'}</td>
-                    <td style={{ display: 'flex', gap: 8 }}>
-                      <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
-                      {String(row.status).toLowerCase().includes('awaiting')
-                        ? <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Resend</button>
-                        : <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download</button>}
+                    <td>{formatIsoDay(row.issuedAt)}</td>
+                    <td>
+                      <div className="ck-row-actions">
+                        <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
+                      </div>
                     </td>
                   </tr>
                 ))}
             </tbody>
-          </table>}
+          </table></div>}
         </div>
       </ModuleShell>
 
