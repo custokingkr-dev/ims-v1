@@ -32,7 +32,7 @@ if ($cost.Count -ne 1 -or $cost[0].currency -ne 'INR' -or [long]$cost[0].matchin
 $readOnlyToken = ((& gcloud.cmd auth print-access-token --project=custoking-dev) -join '').Trim()
 if ($LASTEXITCODE -ne 0 -or -not $readOnlyToken) { throw 'Monitoring read authentication unavailable.' }
 $observedAt = [datetime]::UtcNow
-function Read-Metric([string]$Metric, [datetime]$Start, [string]$ExtraFilter = '') {
+function Read-Metric([string]$Metric, [datetime]$Start, [string]$ExtraFilter = '', [switch]$Raw) {
     $filter = 'metric.type="' + $Metric + '"' + $ExtraFilter
     $series = @(); $page = ''; $pageCount = 0
     do {
@@ -41,7 +41,7 @@ function Read-Metric([string]$Metric, [datetime]$Start, [string]$ExtraFilter = '
         $uri = "https://monitoring.googleapis.com/v3/projects/$projectId/timeSeries?filter=" + [uri]::EscapeDataString($filter) +
             '&interval.startTime=' + [uri]::EscapeDataString($Start.ToString('o')) +
             '&interval.endTime=' + [uri]::EscapeDataString($observedAt.ToString('o')) + '&view=FULL&pageSize=1000'
-        if ($Metric -eq 'logging.googleapis.com/billing/monthly_bytes_ingested') {
+        if ($Metric -eq 'logging.googleapis.com/billing/monthly_bytes_ingested' -and -not $Raw) {
             # Cumulative month gauge: daily maxima retain the latest month total per
             # resource type while bounding a month's otherwise redundant hourly points.
             $uri += '&aggregation.alignmentPeriod=86400s&aggregation.perSeriesAligner=ALIGN_MAX'
@@ -64,13 +64,22 @@ $connections = @(Read-Metric 'cloudsql.googleapis.com/database/postgresql/num_ba
 if (-not $cpu.Count -or -not $memory.Count -or -not $connections.Count) { throw 'All database metrics are required; no workload may start.' }
 $logging = @(Read-Metric 'logging.googleapis.com/billing/monthly_bytes_ingested' ([datetime]::new($observedAt.Year,$observedAt.Month,1,0,0,0,[datetimekind]::Utc)))
 if (-not $logging.Count) { throw 'Logging ingestion metrics are required; no workload may start.' }
+# ALIGN_MAX uses bucket boundaries as timestamps, which are not raw sample freshness.
+# Inspect a separate bounded two-hour window without alignment; query time is never evidence time.
+$loggingRecent = @(Read-Metric 'logging.googleapis.com/billing/monthly_bytes_ingested' $observedAt.AddHours(-2) -Raw)
+if (-not $loggingRecent.Count) { throw 'Recent raw Logging samples are required; no workload may start.' }
+$loggingSampleAt = @($loggingRecent | Sort-Object { [datetime]$_.at } | Select-Object -First 1)[0].at
+$loggingSampleUtc = ([datetimeoffset]$loggingSampleAt).UtcDateTime
+if ($loggingSampleUtc -lt $observedAt.AddHours(-2) -or $loggingSampleUtc -gt $observedAt) {
+    throw 'Raw Logging sample timestamp is stale or in the future; no workload may start.'
+}
 function Billing-Utc([string]$Value) {
     return [datetime]::SpecifyKind([datetime]::Parse($Value,[Globalization.CultureInfo]::InvariantCulture),[datetimekind]::Utc).ToString('o')
 }
 $result = [ordered]@{
     mode='READ_ONLY_NO_LOAD'; capturedAt=$observedAt.ToString('o'); project=$projectId; instance=$instanceName
     billing=@{ source='detailed-billing-export'; sourceTable='custoking-prod.billing_export.gcp_billing_export_resource_v1_014C0A_C6B9AF_5FABC0'; scopeProject=$projectId; currency='INR'; grossMonthInr=[double]$cost[0].gross_cost_inr; budgetInr=$budgetInr; estimatedRunInr=15; latestExportAt=(Billing-Utc $cost[0].latest_export_time); latestUsageAt=(Billing-Utc $cost[0].latest_usage_end) }
-    logging=@{ monthGib=[math]::Round([double](($logging | Measure-Object value -Sum).Sum)/[math]::Pow(1024,3),6); estimatedRunGib=0.01; observedAt=$observedAt.ToString('o') }
+    logging=@{ monthGib=[math]::Round([double](($logging | Measure-Object value -Sum).Sum)/[math]::Pow(1024,3),6); estimatedRunGib=0.01; observedAt=$loggingSampleAt; freshnessSource='raw-monthly-bytes-samples-in-last-two-hours'; rawSeriesCount=$loggingRecent.Count }
     database=@{ state=$instance.state; tier=$instance.settings.tier; maxConnections=@($instance.settings.databaseFlags | Where-Object name -eq 'max_connections')[0].value; cpuRatio=($cpu | Measure-Object value -Maximum).Maximum; memoryUsagePercent=($memory | Measure-Object value -Maximum).Maximum; connections=($connections | Measure-Object value -Sum).Sum; observedAt=(@($cpu + $memory + $connections | Sort-Object { [datetime]$_.at } | Select-Object -First 1)[0].at) }
     fixture=@{ schoolId=$null; verifiedSynthetic=$false; reason='Not inspected by this cloud-metadata-only collector; require a read-only reserved-fixture status check.' }
     services=@($services | ForEach-Object { @{ name=$_.metadata.name; revision=$_.status.latestReadyRevisionName; maxInstances=$_.spec.template.metadata.annotations.'autoscaling.knative.dev/maxScale'; minInstances=$_.spec.template.metadata.annotations.'autoscaling.knative.dev/minScale'; concurrency=$_.spec.template.spec.containerConcurrency; resources=$_.spec.template.spec.containers[0].resources.limits } })
