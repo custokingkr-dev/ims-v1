@@ -1,7 +1,7 @@
 // Presentational components and style constants shared across workspace panels.
 // These components are stateless — they render props, nothing more.
 
-import { type CSSProperties, type ReactNode } from 'react';
+import { Children, cloneElement, isValidElement, useId, type CSSProperties, type ReactNode, type ReactElement } from 'react';
 import { formatMoney } from './utils';
 
 // ─── Layout shells ────────────────────────────────────────────────────────────
@@ -36,14 +36,31 @@ export function Field({
   error?: string;
   style?: CSSProperties;
 }) {
+  const generatedId = useId();
+  const descriptionId = `${generatedId}-description`;
+  let controlId: string | undefined;
+  const connectControl = (nodes: ReactNode): ReactNode => Children.map(nodes, node => {
+    if (!isValidElement(node)) return node;
+    const element = node as ReactElement<any>;
+    if (!controlId && typeof element.type === 'string' && ['input', 'select', 'textarea'].includes(element.type)) {
+      controlId = element.props.id ?? generatedId;
+      return cloneElement(element, {
+        id: controlId,
+        'aria-describedby': [element.props['aria-describedby'], (hint || error) ? descriptionId : undefined].filter(Boolean).join(' ') || undefined,
+        'aria-invalid': error ? true : element.props['aria-invalid'],
+      });
+    }
+    return element.props.children ? cloneElement(element, {}, connectControl(element.props.children)) : element;
+  });
+  const content = connectControl(children);
   return (
     <div className="ck-field" style={style}>
-      <label>{label}</label>
-      {children}
+      <label htmlFor={controlId}>{label}</label>
+      {content}
       {error
-        ? <div className="ts" style={{ marginTop: 4, color: 'var(--ck-color-danger)' }}>{error}</div>
+        ? <div id={descriptionId} role="alert" className="ts" style={{ marginTop: 4, color: 'var(--ck-color-danger)' }}>{error}</div>
         : hint
-          ? <div className="ts" style={{ marginTop: 4 }}>{hint}</div>
+          ? <div id={descriptionId} className="ts" style={{ marginTop: 4 }}>{hint}</div>
           : null}
     </div>
   );

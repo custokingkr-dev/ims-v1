@@ -80,3 +80,23 @@ describe('ERP activity uses the portal section heading', () => {
     }
   });
 });
+
+describe('the order filters offer words, not stored codes', () => {
+  afterEach(() => { vi.clearAllMocks(); cleanup(); });
+
+  it('names categories and statuses the way the table does', async () => {
+    // The Category and Status dropdowns are built from the rows themselves and rendered the
+    // raw value as the option text, so the filters still read REPORT_CARDS and
+    // AWAITING_APPROVAL after the table beside them had been fixed.
+    vi.mocked(api.get).mockResolvedValue({ data: [
+      { id: 'CK-1042', schoolName: 'DPS', category: 'REPORT_CARDS', totalAmount: 100,
+        status: 'AWAITING_APPROVAL', createdAt: '2026-09-21T10:00:00Z', pricingStatus: 'QUOTED' },
+    ] });
+    render(<SaAllOrdersPanel onNewOrder={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('row', { name: /CK-1042/ })).toBeInTheDocument());
+    expect(screen.queryByRole('option', { name: 'REPORT_CARDS' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'AWAITING_APPROVAL' })).toBeNull();
+    expect(screen.getByRole('option', { name: 'Report cards' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Awaiting approval' })).toBeInTheDocument();
+  });
+});

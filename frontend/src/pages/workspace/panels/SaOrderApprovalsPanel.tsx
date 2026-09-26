@@ -73,11 +73,11 @@ export function SaOrderApprovalsPanel({
                     {row.estimatedDelivery ? <div className="ts">{row.estimatedDelivery}</div> : null}
                   </td>
                   <td><div className="tb">{row.schoolName}</div></td>
-                  <td>{categoryLabel(row.category)}</td>
+                  <td className="ck-whole">{categoryLabel(row.category)}</td>
                   <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
-                    ? <span className="ck-pill ck-pill-am">Pending pricing</span>
+                    ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
                     : <span style={{ fontWeight: 600 }}>{`₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</span>}</td>
-                  <td style={{ color: 'var(--ink3)' }}>{formatIsoDay(row.placedAt || row.createdAt)}</td>
+                  <td className="ck-whole" style={{ color: 'var(--ink3)' }}>{formatIsoDay(row.placedAt || row.createdAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                       {Number(row.formVersion) === 2 ? <button className="ck-btn ck-btn-g" onClick={() => setSelectedOrder(row.id)}>Review order</button> : <button className="ck-btn ck-btn-g" disabled={savingId === row.id} onClick={() => onApprove(row.id)}>
@@ -97,7 +97,7 @@ export function SaOrderApprovalsPanel({
 
       {rejectModalOrderId && (
         <div className="ck-modal-bg" onClick={onCloseRejectModal}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Return order for revision" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Return order for revision</div>
               <button className="ck-modal-x" onClick={onCloseRejectModal}>×</button>
@@ -118,7 +118,8 @@ export function SaOrderApprovalsPanel({
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={onCloseRejectModal}>Cancel</button>
-              <button className="ck-btn ck-btn-g" disabled={savingId === rejectModalOrderId} onClick={onReject}>
+              {/* Approve and Return are opposite outcomes and wore the same green. */}
+              <button className="ck-btn ck-btn-re" disabled={savingId === rejectModalOrderId} onClick={onReject}>
                 {savingId === rejectModalOrderId ? 'Returning…' : 'Return to admin'}
               </button>
             </div>

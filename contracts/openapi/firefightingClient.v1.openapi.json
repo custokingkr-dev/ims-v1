@@ -1,0 +1,262 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Idempotent firefighting creation browser API",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "operations-service",
+  "x-ims-controller": "FirefightingReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "FirefightingClient",
+  "x-ims-client-file": "firefightingClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/ff/requests": {
+      "post": {
+        "operationId": "createRequest",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFirefightingRequestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created, or replay of the original operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FirefightingRequestDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload or missing idempotency key"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Key already used with another payload or invalid lifecycle state"
+          }
+        }
+      }
+    },
+    "/api/v1/ff/requests/{code}/quotations": {
+      "post": {
+        "operationId": "createQuotation",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuotationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created, or replay of the original operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedQuotation"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload or missing idempotency key"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Key already used with another payload or invalid lifecycle state"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "CreateFirefightingRequestRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "urgency": {
+            "type": "string"
+          },
+          "requiredByDate": {
+            "type": "string"
+          },
+          "estimatedBudget": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "referenceFileUrl": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "integer",
+            "deprecated": true,
+            "description": "Ignored; server uses the authenticated actor."
+          },
+          "actorEmail": {
+            "type": "string",
+            "deprecated": true,
+            "description": "Ignored; server uses the authenticated actor."
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+            "description": "Stable identity for this exact logical mutation. Reuse the original key and payload after an uncertain response; payload mismatch returns 409."
+          }
+        },
+        "required": [
+          "title",
+          "idempotencyKey"
+        ],
+        "additionalProperties": false,
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/dto/CreateFirefightingRequestRequest.java",
+          "name": "CreateFirefightingRequestRequest"
+        }
+      },
+      "CreateQuotationRequest": {
+        "type": "object",
+        "properties": {
+          "vendorName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "deliveryTimeline": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "documentUrl": {
+            "type": "string"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+            "description": "Stable identity for this exact logical mutation. Reuse the original key and payload after an uncertain response; payload mismatch returns 409."
+          }
+        },
+        "required": [
+          "vendorName",
+          "idempotencyKey"
+        ],
+        "additionalProperties": false,
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/dto/CreateQuotationRequest.java",
+          "name": "CreateQuotationRequest"
+        }
+      },
+      "FirefightingRequestDetail": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "title",
+          "status"
+        ],
+        "additionalProperties": true
+      },
+      "CreatedQuotation": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "vendorName": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "vendorName",
+          "amount"
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "x-ims-gateway-service": "firefighting"
+}

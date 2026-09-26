@@ -1,6 +1,7 @@
 package com.custoking.ims.identityservice.api;
 
 import com.custoking.ims.identityservice.application.IdentityAuthService;
+import com.custoking.ims.identityservice.application.AuthAbuseProtection;
 import com.custoking.ims.identityservice.application.IdentityAuthService.AuthResponse;
 import com.custoking.ims.identityservice.application.IdentityAuthService.IntrospectionResponse;
 import com.custoking.ims.identityservice.application.IdentityAuthService.LoginRequest;
@@ -31,6 +32,7 @@ public class AuthController {
     private static final String COOKIE_NAME = "refresh_token";
 
     private final IdentityAuthService authService;
+    private final AuthAbuseProtection abuse;
     private final boolean cookieSecure;
     private final String cookieSameSite;
     private final Duration cookieMaxAge;
@@ -38,11 +40,13 @@ public class AuthController {
 
     public AuthController(
             IdentityAuthService authService,
+            AuthAbuseProtection abuse,
             @Value("${app.cookie-secure:false}") boolean cookieSecure,
             @Value("${app.cookie-same-site:Strict}") String cookieSameSite,
             @Value("${app.refresh-token-expiration-ms:604800000}") long refreshTokenExpirationMs,
             @Value("${identity.introspection-token:}") String introspectionToken) {
         this.authService = authService;
+        this.abuse = abuse;
         this.cookieSecure = cookieSecure;
         this.cookieSameSite = normalizeSameSite(cookieSameSite);
         this.cookieMaxAge = Duration.ofMillis(refreshTokenExpirationMs);
@@ -51,6 +55,7 @@ public class AuthController {
 
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+        abuse.login(request.email());
         LoginResult result = authService.login(request);
         setRefreshCookie(response, result.refreshToken());
         return result.authResponse();
@@ -82,7 +87,9 @@ public class AuthController {
             @RequestHeader(value = "X-Identity-Service-Token", required = false) String token,
             @Valid @RequestBody IntrospectionRequest request) {
         requireToken(token, "identity:introspect");
-        return authService.introspect(request.token());
+        IntrospectionResponse result = authService.introspect(request.token());
+        if (result.active()) abuse.authenticated(result.principal(), request.method(), request.path(), request.schoolId());
+        return result;
     }
 
     private void requireToken(String token, String requiredScope) {
@@ -114,7 +121,10 @@ public class AuthController {
         return "Strict";
     }
 
-    public record IntrospectionRequest(@NotBlank String token) {
+    public record IntrospectionRequest(@NotBlank String token,
+            @jakarta.validation.constraints.Size(max = 10) String method,
+            @jakarta.validation.constraints.Size(max = 2048) String path, Long schoolId) {
+        public IntrospectionRequest(String token) { this(token, null, null, null); }
     }
 }
 

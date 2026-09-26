@@ -37,8 +37,11 @@ class CatalogRlsIntegrationTest {
         try (Connection c = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner");
              Statement st = c.createStatement()) {
             // Unprivileged runtime role, subject to RLS.
+            st.execute("CREATE SCHEMA IF NOT EXISTS tenant_school");
+            st.execute("CREATE TABLE IF NOT EXISTS tenant_school.schools (id BIGINT PRIMARY KEY, name TEXT)");
             st.execute("CREATE ROLE app_rt LOGIN PASSWORD 'app_rt' NOINHERIT NOCREATEROLE NOCREATEDB NOBYPASSRLS");
-            st.execute("GRANT USAGE ON SCHEMA catalog TO app_rt");
+            st.execute("GRANT USAGE ON SCHEMA catalog, tenant_school TO app_rt");
+            st.execute("GRANT SELECT ON tenant_school.schools TO app_rt");
             st.execute("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA catalog TO app_rt");
             st.execute("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA catalog TO app_rt");
 
@@ -79,7 +82,37 @@ class CatalogRlsIntegrationTest {
     }
 
     @AfterEach
-    void clearCtx() { TenantContext.clear(); }
+    void clearCtx() throws SQLException {
+        TenantContext.clear();
+        try (Connection owner = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); Statement st = owner.createStatement()) {
+            st.execute("DELETE FROM catalog.catalog_orders WHERE id LIKE 'pg-%'");
+        }
+    }
+
+    @Test
+    void repositoryPaginationKeepsStablePagesCountsFiltersAndAssignedSchoolRls() throws Exception {
+        try (Connection owner = java.sql.DriverManager.getConnection(PG.getJdbcUrl(), "owner", "owner"); Statement st = owner.createStatement()) {
+            st.execute("INSERT INTO catalog.catalog_orders(id,category,school_id,status,created_at,subtotal,gst,total_amount) VALUES "
+                + "('pg-1','UNIFORMS',77,'APPROVED',now(),0,0,0),('pg-2','UNIFORMS',77,'APPROVED',now(),0,0,0),"
+                + "('pg-3','UNIFORMS',78,'APPROVED',now(),0,0,0),('pg-4','UNIFORMS',79,'APPROVED',now(),0,0,0),('pg-draft','UNIFORMS',77,'DRAFT',now(),0,0,0)");
+        }
+        var jdbc = org.springframework.jdbc.core.simple.JdbcClient.create(appRt);
+        var repo = new com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository(jdbc,
+            org.mockito.Mockito.mock(com.custoking.ims.schoolcoreservice.outbox.OutboxWriter.class));
+        var tx = new org.springframework.transaction.support.TransactionTemplate(new org.springframework.jdbc.datasource.DataSourceTransactionManager(appRt));
+        TenantContext.set(new TenantContext(7L, "ops@x", "OPERATIONS", null, null, java.util.Set.of(77L, 78L)));
+        var first = tx.execute(status -> repo.ordersPage(null, "APPROVED", 0, 2));
+        var second = tx.execute(status -> repo.ordersPage(null, "APPROVED", 1, 2));
+        assertEquals(3L, first.get("totalElements")); assertEquals(2, first.get("totalPages"));
+        @SuppressWarnings("unchecked") var firstRows = (java.util.List<com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.CatalogOrderRow>) first.get("content");
+        @SuppressWarnings("unchecked") var secondRows = (java.util.List<com.custoking.ims.schoolcoreservice.persistence.CatalogReadRepository.CatalogOrderRow>) second.get("content");
+        assertEquals(java.util.List.of("pg-3", "pg-2"), firstRows.stream().map(row -> row.id()).toList());
+        assertEquals(java.util.List.of("pg-1"), secondRows.stream().map(row -> row.id()).toList());
+        var scoped = tx.execute(status -> repo.ordersPage(77L, "APPROVED", -1, 999));
+        assertEquals(2L, scoped.get("totalElements")); assertEquals(0, scoped.get("page")); assertEquals(200, scoped.get("size"));
+        TenantContext.set(new TenantContext(7L, "ops@x", "OPERATIONS", null, null, java.util.Set.of()));
+        assertEquals(0L, tx.execute(status -> repo.ordersPage(null, "APPROVED", 0, 20)).get("totalElements"));
+    }
 
     private long countRows() throws SQLException {
         try (Connection c = appRt.getConnection();

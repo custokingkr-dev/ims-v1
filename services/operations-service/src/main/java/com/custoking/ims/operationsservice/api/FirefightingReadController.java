@@ -110,6 +110,7 @@ public class FirefightingReadController {
         TenantScope.requirePermissionIfAuthenticated("firefighting:create");
         Map<String, Object> body = new HashMap<>();
         body.put("title", req.title());
+        if (req.idempotencyKey() != null) body.put("idempotencyKey", req.idempotencyKey());
         if (req.category() != null) body.put("category", req.category());
         if (req.urgency() != null) body.put("urgency", req.urgency());
         if (req.requiredByDate() != null) body.put("requiredByDate", req.requiredByDate());
@@ -161,6 +162,7 @@ public class FirefightingReadController {
         TenantScope.requirePermissionIfAuthenticated("firefighting:update");
         Map<String, Object> body = new HashMap<>();
         body.put("vendorName", req.vendorName());
+        if (req.idempotencyKey() != null) body.put("idempotencyKey", req.idempotencyKey());
         if (req.amount() != null) body.put("amount", req.amount());
         if (req.deliveryTimeline() != null) body.put("deliveryTimeline", req.deliveryTimeline());
         if (req.notes() != null) body.put("notes", req.notes());

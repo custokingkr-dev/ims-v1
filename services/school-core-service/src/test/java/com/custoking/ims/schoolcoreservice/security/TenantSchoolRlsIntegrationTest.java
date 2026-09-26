@@ -71,8 +71,8 @@ class TenantSchoolRlsIntegrationTest {
                     "(20,'FEES',true)");
 
             // Seed a zone + zone_school_mappings row (Group C, bypass-only).
-            st.execute("INSERT INTO tenant_school.zones (id, name, code) VALUES (1,'Zone 1','Z1')");
-            st.execute("INSERT INTO tenant_school.zone_school_mappings (zone_id, school_id) VALUES (1, 10)");
+            st.execute("INSERT INTO tenant_school.zones (id, name, code) VALUES (1,'Zone 1','Z1'), (2,'Zone 2','Z2')");
+            st.execute("INSERT INTO tenant_school.zone_school_mappings (zone_id, school_id, active) VALUES (1, 10, true), (1, 20, false), (2, 20, true)");
         }
 
         HikariDataSource pool = new HikariDataSource();
@@ -242,6 +242,42 @@ class TenantSchoolRlsIntegrationTest {
     @Test
     void zoneSchoolMappings_superadmin_seesRow() throws Exception {
         TenantContext.set(new TenantContext(3L, "s@x", "SUPERADMIN", null, null));
+        assertEquals(3, countRows("tenant_school.zone_school_mappings"));
+    }
+
+    @Test
+    void zoneAdminReadsOnlyOwnZoneActiveMappingsAndMappedSchools() throws Exception {
+        TenantContext.set(new TenantContext(9L, "zone@x", "ZONE_ADMIN", null, 1L,
+                java.util.Set.of(), java.util.Set.of("zone:read")));
+        assertEquals(1, countRows("tenant_school.zones"));
         assertEquals(1, countRows("tenant_school.zone_school_mappings"));
+        assertEquals(1, countRows("tenant_school.schools"));
+        assertEquals(0, countRows("tenant_school.zone_admin_assignments"));
+        assertEquals(0, countRows("tenant_school.staff_members"));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement()) {
+            try (ResultSet rs = st.executeQuery("SELECT id FROM tenant_school.schools")) {
+                assertTrue(rs.next());
+                assertEquals(10L, rs.getLong(1));
+                assertFalse(rs.next());
+            }
+            assertEquals(0, st.executeUpdate("UPDATE tenant_school.schools SET name = 'Forbidden' WHERE id = 10"));
+            assertEquals(0, st.executeUpdate("DELETE FROM tenant_school.zone_school_mappings WHERE zone_id = 1"));
+            assertThrows(SQLException.class, () -> st.execute(
+                    "INSERT INTO tenant_school.zone_school_mappings(zone_id, school_id) VALUES (1,20)"));
+        }
+        // Reuse the same pool with another zone, then no permission/context: no scope leaks.
+        TenantContext.set(new TenantContext(10L, "zone2@x", "ZONE_ADMIN", null, 2L,
+                java.util.Set.of(), java.util.Set.of("zone:read")));
+        try (Connection c = appRt.getConnection(); Statement st = c.createStatement();
+             ResultSet rs = st.executeQuery("SELECT id FROM tenant_school.schools")) {
+            assertTrue(rs.next());
+            assertEquals(20L, rs.getLong(1));
+            assertFalse(rs.next());
+        }
+        TenantContext.set(new TenantContext(9L, "zone@x", "ZONE_ADMIN", null, 1L));
+        assertEquals(0, countRows("tenant_school.zones"));
+        assertEquals(0, countRows("tenant_school.schools"));
+        TenantContext.clear();
+        assertEquals(0, countRows("tenant_school.zone_school_mappings"));
     }
 }

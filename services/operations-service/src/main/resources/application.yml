@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: custoking-operations-service
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -67,6 +71,9 @@ workflow:
 
 firefighting:
   read-token: ${FIREFIGHTING_READ_TOKEN:}
+  quotation-documents:
+    bucket: ${FIREFIGHTING_QUOTATION_DOCUMENT_BUCKET:}
+    cleanup-delay-ms: ${FIREFIGHTING_QUOTATION_DOCUMENT_CLEANUP_DELAY_MS:300000}
   db:
     schema: ${FIREFIGHTING_DB_SCHEMA:firefighting}
 

@@ -89,3 +89,23 @@ describe('superadmin tables do not pad rows with filler', () => {
   });
 });
 
+describe('the invoice modal offers only what it can do', () => {
+  afterEach(() => { vi.clearAllMocks(); cleanup(); });
+
+  it('carries no permanently disabled control when viewing an existing invoice', async () => {
+    // Removing the dead Resend/Download from every table row left the same two behind in the
+    // modal footer, where "Resend to school" is the primary button — so the modal's main
+    // action was one that could never be taken. There is no resend or PDF endpoint.
+    vi.mocked(api.get).mockResolvedValue({ data: [
+      { id: 'INV-9', school: 'Green Valley School', orderRef: 'CK-1042', total: 100000,
+        status: 'Awaiting payment', issuedAt: '2026-09-21', description: 'Notebooks' },
+    ] });
+    render(<SaInvoicesPanel onBadgeChange={() => {}} />);
+    const row = await screen.findByRole('row', { name: /INV-9/ });
+    fireEvent.click(within(row).getByRole('button', { name: /view/i }));
+    const dialog = await screen.findByRole('dialog');
+    const dead = within(dialog).getAllByRole('button').filter((b) => (b as HTMLButtonElement).disabled);
+    expect(dead.map((b) => b.textContent)).toEqual([]);
+  });
+});
+

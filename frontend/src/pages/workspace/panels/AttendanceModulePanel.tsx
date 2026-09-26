@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useWorkspaceDraft } from '../WorkspaceDrafts';
 import { ChartNoAxesCombined, ListChecks, MessageSquareWarning } from 'lucide-react';
 import { AttendancePanel } from './AttendancePanel';
 import { AttendanceReportsPanel } from './AttendanceReportsPanel';
@@ -13,7 +13,7 @@ interface Props {
 type Tab = 'mark' | 'reports' | 'absentees';
 
 export function AttendanceModulePanel({ onRefresh, schoolScopedParams }: Props) {
-  const [tab, setTab] = useState<Tab>('mark');
+  const [tab, setTab] = useWorkspaceDraft<Tab>('attendance.tab', 'mark');
   const tabs = [
     { id: 'mark' as const, label: 'Daily register', Icon: ListChecks },
     { id: 'absentees' as const, label: 'Exceptions', Icon: MessageSquareWarning },

@@ -1,0 +1,104 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking billing statistics",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "billing-service",
+  "x-ims-controller": "BillingInvoiceController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "BillingClient",
+  "x-ims-client-file": "billingClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/billing/sa/invoices/stats": {
+      "get": {
+        "operationId": "getInvoiceStatistics",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceStatistics"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "InvoiceStatistics": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sentThisMonth",
+          "paid",
+          "pending",
+          "totalInvoiced",
+          "periodStart",
+          "periodEndExclusive",
+          "reportingTimeZone"
+        ],
+        "properties": {
+          "sentThisMonth": {
+            "type": "integer"
+          },
+          "paid": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "totalInvoiced": {
+            "type": "integer"
+          },
+          "periodStart": {
+            "type": "string",
+            "format": "date"
+          },
+          "periodEndExclusive": {
+            "type": "string",
+            "format": "date"
+          },
+          "reportingTimeZone": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "x-ims-gateway-service": "billing"
+}

@@ -119,6 +119,10 @@ attendance:
     # the provider would otherwise fall back to the contract template id, which MSG91 does not know.
     whatsapp-template-name: ${ATTENDANCE_ABSENTEE_WHATSAPP_TEMPLATE_NAME:}
 
+notification:
+  broadcast:
+    policy-token: ${BROADCAST_POLICY_TOKEN:}
+
 platform:
   # platform-service peer for the live absentee delivery path. Unused in dry-run.
   base-url: ${PLATFORM_BASE_URL:}

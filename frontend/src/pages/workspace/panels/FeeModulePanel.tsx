@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { getFeeCollectionRows, getFeeOverdueRows } from '../../../services/feeApi';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   Check,
@@ -17,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import api from '../../../services/api';
+import '../../../styles/fee-payment.css';
+import { Modal } from '../../../components/Modal';
 import {
   assignFeePlan,
   createFeeBand,
@@ -26,7 +29,11 @@ import {
   getFeeDiscountRules,
   getFeeStructure,
   publishFeeBand,
-  recordFeePayment,
+  confirmFeePayment,
+  prepareFeePayment,
+  readFeePaymentRecovery,
+  clearFeePaymentRecovery,
+  type PendingFeePayment,
   saveFeeDiscountRule,
   saveFeeInstallments,
   updateFeeBand,
@@ -134,6 +141,13 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [paymentRow, setPaymentRow] = useState<any | null>(null);
   const [payment, setPayment] = useState({ amount: '', mode: 'UPI', notes: '' });
+  const paymentScope = `${user?.userId ?? user?.email}:${schoolId ?? 'platform'}`;
+  const [initialPaymentRecovery] = useState(() => readFeePaymentRecovery(paymentScope));
+  const [pendingPayment, setPendingPayment] = useState<PendingFeePayment | null>(initialPaymentRecovery.pending);
+  const [recoveryProblem, setRecoveryProblem] = useState(initialPaymentRecovery.error);
+  const [recoveryReviewed, setRecoveryReviewed] = useState(false);
+  const [paymentProblem, setPaymentProblem] = useState('');
+  const paymentBusy = useRef(false);
   const [planForm, setPlanForm] = useState({
     name: '',
     classFrom: '1',
@@ -306,9 +320,9 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
     setError('');
     try {
       const [reportResult, overdueResult, studentsResult] = await Promise.all([
-        api.get('/fees/report', { params: { classId, sectionId: nextSectionId, academicYearId: nextYearId, ...schoolParams } }),
-        api.get('/fees/overdue', { params: { classId, sectionId: nextSectionId, academicYearId: nextYearId, ...schoolParams } }),
-        api.get(`/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(nextSectionId)}/students`, { params: schoolParams }),
+        getFeeCollectionRows({ classId, sectionId: nextSectionId, academicYearId: nextYearId, ...schoolParams }),
+        getFeeOverdueRows({ classId, sectionId: nextSectionId, academicYearId: nextYearId, ...schoolParams }),
+        api.get('/students/roster', { params: { classId, sectionId: nextSectionId, ...schoolParams } }),
       ]);
       setRows(Array.isArray(reportResult.data) ? reportResult.data : []);
       setOverdueRows(Array.isArray(overdueResult.data) ? overdueResult.data : []);
@@ -336,30 +350,49 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
   }, [rows, search, status]);
 
   const submitPayment = async () => {
-    if (!paymentRow || !canCollect || !isActiveYear) return;
-    const amount = Math.round(Number(payment.amount || 0) * 100);
-    if (amount <= 0) {
-      setError('Enter a payment amount greater than zero.');
-      return;
-    }
+    if (!canCollect || paymentBusy.current) return;
+    paymentBusy.current = true;
     setSaving('payment');
-    setError('');
+    setPaymentProblem('');
     try {
-      await recordFeePayment({
-        studentId: valueOf(paymentRow, ['studentId', 'id']),
-        amount,
-        mode: payment.mode,
-        notes: payment.notes,
-        paidAt: new Date().toISOString(),
-        actorId: user?.userId,
-        ...schoolParams,
-      });
-      setNotice('Payment recorded and the student ledger was refreshed.');
+      let attempt = pendingPayment ?? readFeePaymentRecovery(paymentScope).pending;
+      if (!attempt) {
+        if (!paymentRow) return;
+        const amount = Math.round(Number(payment.amount || 0) * 100);
+        const due = money(paymentRow, ['dueAmountPaise', 'dueAmount', 'due']);
+        if (!Number.isSafeInteger(amount) || amount <= 0 || amount > due) {
+          setPaymentProblem('Enter an amount greater than zero and no more than the selected balance.');
+          return;
+        }
+        attempt = prepareFeePayment(paymentScope, {
+          studentId: valueOf(paymentRow, ['studentId', 'id']),
+          assignmentId: String(paymentRow.assignmentId || ''),
+          academicYearId: String(paymentRow.academicYearId || yearId),
+          amount, mode: payment.mode, notes: payment.notes, ...schoolParams,
+        }, String(valueOf(paymentRow, ['studentName', 'student', 'name'], 'Student')));
+        setPendingPayment(attempt);
+      }
+      const result = await confirmFeePayment(paymentScope, attempt);
+      setPendingPayment(null);
+      setRecoveryProblem(result.recoveryWarning);
+      setRecoveryReviewed(false);
       setPaymentRow(null);
-      await Promise.all([refreshOverview(), changeSection(sectionId), Promise.resolve(onRefresh())]);
+      setNotice(`Payment recorded for ${attempt.studentName}. Receipt ${result.data.receiptNumber}.`);
+      try {
+        await Promise.all([refreshOverview(), changeSection(sectionId), Promise.resolve(onRefresh())]);
+      } catch {
+        setError('Payment is recorded. The ledger could not refresh; reload it to see the updated balance.');
+      }
     } catch (saveError) {
-      setError(errorMessage(saveError, 'Payment could not be recorded.'));
+      const recovery = readFeePaymentRecovery(paymentScope);
+      const unresolved = recovery.pending;
+      setPendingPayment(unresolved);
+      setRecoveryProblem(recovery.error);
+      setPaymentProblem(errorMessage(saveError, unresolved
+        ? 'Payment confirmation is unavailable. Retry this same collection to retrieve its receipt safely.'
+        : 'Payment was not recorded. Check the details and try again.'));
     } finally {
+      paymentBusy.current = false;
       setSaving('');
     }
   };
@@ -582,7 +615,7 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
     setSaving('reminders');
     setError('');
     try {
-      const result = await api.post('/fees/send-reminders', { classId, sectionId, academicYearId: yearId, ...schoolParams });
+      const result = await api.post('/fees/reminders/fee', { classId, sectionId, academicYearId: yearId, ...schoolParams });
       setNotice(`${Number(result.data?.queued || overdueRows.length)} overdue reminders queued.`);
     } catch (saveError) {
       setError(errorMessage(saveError, 'Reminders could not be queued.'));
@@ -631,7 +664,24 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
 
         {notice && <div className="erp-notice good"><Check size={16} /><span>{notice}</span><button aria-label="Dismiss" onClick={() => setNotice('')}><X size={15} /></button></div>}
         {error && <div className="erp-notice danger"><AlertTriangle size={16} /><span>{error}</span><button aria-label="Dismiss" onClick={() => setError('')}><X size={15} /></button></div>}
-        {!isActiveYear && <div className="erp-notice neutral"><ShieldCheck size={16} /><span>Historical academic years are read-only. Switch to the current year to collect, assign, or change fee rules.</span></div>}
+      {(pendingPayment || recoveryProblem) && !paymentRow && (
+        <div className="fee-payment-recovery" role="status">
+          <AlertTriangle size={18} aria-hidden="true" />
+          <div><strong>Review the saved collection</strong>
+            {pendingPayment && <p>{pendingPayment.studentName}: {currency(pendingPayment.request.amount)}. Retry to retrieve the original receipt before recording another payment.</p>}
+            {recoveryProblem && <p role="alert">{recoveryProblem}</p>}
+            {paymentProblem && <p role="alert">{paymentProblem}</p>}
+            {pendingPayment && <button className="erp-btn secondary" disabled={saving === 'payment' || !canCollect} onClick={() => void submitPayment()}>{saving === 'payment' ? 'Confirming...' : 'Retry payment confirmation'}</button>}
+            <p>Clearing a saved entry does not cancel a payment. Check the ledger and receipts first.</p>
+            <label><input type="checkbox" checked={recoveryReviewed} onChange={event => setRecoveryReviewed(event.target.checked)} /> I have checked whether this collection is already recorded.</label>
+            <button className="erp-btn secondary" disabled={!recoveryReviewed || saving === 'payment'} onClick={() => {
+              try { clearFeePaymentRecovery(paymentScope); setPendingPayment(null); setRecoveryProblem(''); setPaymentProblem(''); setRecoveryReviewed(false); }
+              catch (storageError) { setRecoveryProblem(errorMessage(storageError, 'The recovery entry could not be cleared.')); }
+            }}>Clear reviewed recovery entry</button>
+          </div>
+        </div>
+      )}
+        {!isActiveYear && <div className="erp-notice neutral"><ShieldCheck size={16} /><span>Historical fee plans are read-only. Payments settle the selected year's original assignment; they do not move its balance into the current year.</span></div>}
 
         {view === 'overview' && (
           <>
@@ -679,7 +729,7 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
                         <td>{currency(money(row, ['paidPaise', 'paid']))}</td>
                         <td><strong>{currency(due)}</strong>{money(row, ['lateFeePaise', 'lateFee']) > 0 && <small>includes {currency(money(row, ['lateFeePaise', 'lateFee']))} late fee</small>}</td>
                         <td><span className={`erp-status ${statusTone(nextStatus)}`}>{nextStatus.toLowerCase()}</span></td>
-                        <td><button className="erp-icon-btn" title="Record payment" aria-label={`Record payment for ${name}`} disabled={!isActiveYear || !canCollect || due <= 0} onClick={() => { setPaymentRow(row); setPayment({ amount: paiseToRupeeInput(due), mode: 'UPI', notes: '' }); }}><CircleDollarSign size={17} /></button></td>
+                        <td><button className="erp-icon-btn" title="Record payment" aria-label={`Record payment for ${name}`} disabled={!canCollect || due <= 0 || !!pendingPayment || !!recoveryProblem} onClick={() => { setPaymentProblem(''); setPaymentRow(row); setPayment({ amount: paiseToRupeeInput(due), mode: 'UPI', notes: '' }); }}><CircleDollarSign size={17} /></button></td>
                       </tr>
                     );
                   })}
@@ -915,18 +965,19 @@ export function FeeModulePanel({ workspace, onRefresh, initialView = 'overview' 
       )}
 
       {paymentRow && (
-        <div className="erp-dialog-backdrop" onMouseDown={() => setPaymentRow(null)}>
-          <div className="erp-dialog narrow" role="dialog" aria-modal="true" aria-labelledby="payment-title" onMouseDown={(event) => event.stopPropagation()}>
-            <header><div><span className="erp-eyebrow">Student ledger</span><h2 id="payment-title">Record payment</h2></div><button className="erp-icon-btn" aria-label="Close" onClick={() => setPaymentRow(null)}><X size={18} /></button></header>
-            <div className="erp-payment-student"><CircleDollarSign size={20} /><div><strong>{valueOf(paymentRow, ['studentName', 'name'])}</strong><span>Balance {currency(money(paymentRow, ['dueAmountPaise', 'dueAmount', 'due']))}</span></div></div>
-            <div className="erp-form-grid single">
-              <label>Amount (Rs)<input autoFocus type="number" min="0.01" step="0.01" value={payment.amount} onChange={(event) => setPayment({ ...payment, amount: event.target.value })} /></label>
-              <label>Payment mode<select value={payment.mode} onChange={(event) => setPayment({ ...payment, mode: event.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Cheque</option></select></label>
-              <label>Notes<textarea rows={3} value={payment.notes} onChange={(event) => setPayment({ ...payment, notes: event.target.value })} /></label>
-            </div>
-            <footer><button className="erp-btn secondary" onClick={() => setPaymentRow(null)}>Cancel</button><button className="erp-btn primary" disabled={!payment.amount || saving === 'payment'} onClick={() => void submitPayment()}><CircleDollarSign size={16} /> Record payment</button></footer>
-          </div>
-        </div>
+        <Modal title="Record payment" subtitle={`Academic year: ${years.find((year) => String(year.id) === String(paymentRow.academicYearId || yearId))?.label || paymentRow.academicYearId || yearId}`}
+          onClose={() => setPaymentRow(null)} disabled={saving === 'payment'}
+          footer={<><button className="erp-btn secondary" disabled={saving === 'payment'} onClick={() => setPaymentRow(null)}>Close</button><button className="erp-btn primary" disabled={(!payment.amount && !pendingPayment) || saving === 'payment'} onClick={() => void submitPayment()}><CircleDollarSign size={16} /> {saving === 'payment' ? 'Confirming...' : pendingPayment ? 'Retry payment confirmation' : 'Record payment'}</button></>}
+        >
+          <div className="erp-payment-student"><CircleDollarSign size={20} /><div><strong>{valueOf(paymentRow, ['studentName', 'student', 'name'])}</strong><span>Balance {currency(money(paymentRow, ['dueAmountPaise', 'dueAmount', 'due']))}</span></div></div>
+          {paymentProblem && <p role="alert">{paymentProblem}</p>}
+          {pendingPayment && <p>Confirmation is pending. Retry this collection to retrieve its original receipt; its details are held until confirmed.</p>}
+          <fieldset className="erp-form-grid fee-payment-fields" disabled={saving === 'payment' || !!pendingPayment || !!recoveryProblem}>
+            <label>Amount (Rs)<input autoFocus type="number" min="0.01" step="0.01" value={payment.amount} onChange={(event) => setPayment({ ...payment, amount: event.target.value })} /></label>
+            <label>Payment mode<select value={payment.mode} onChange={(event) => setPayment({ ...payment, mode: event.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Cheque</option></select></label>
+            <label>Notes<textarea rows={3} value={payment.notes} onChange={(event) => setPayment({ ...payment, notes: event.target.value })} /></label>
+          </fieldset>
+        </Modal>
       )}
     </ModuleShell>
   );

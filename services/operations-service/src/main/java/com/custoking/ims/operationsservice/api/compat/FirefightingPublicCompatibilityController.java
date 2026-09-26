@@ -2,6 +2,7 @@ package com.custoking.ims.operationsservice.api.compat;
 
 import com.custoking.ims.operationsservice.persistence.FirefightingReadRepository;
 import com.custoking.ims.operationsservice.security.TenantScope;
+import com.custoking.ims.operationsservice.security.TenantContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
@@ -36,6 +37,8 @@ public class FirefightingPublicCompatibilityController {
         requireToken(token, "firefighting:write");
         TenantScope.requirePermissionIfAuthenticated("firefighting:create");
         Map<String, Object> mutableRequest = new HashMap<>(request);
+        mutableRequest.put("actorId", TenantContext.get().userId());
+        mutableRequest.put("actorEmail", TenantContext.get().email());
         applyResolvedSchool(mutableRequest);
         return run(() -> firefighting.createRequest(mutableRequest));
     }

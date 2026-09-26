@@ -1,0 +1,287 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking quotation documents",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "operations-service",
+  "x-ims-controller": "QuotationDocumentController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "QuotationDocumentClient",
+  "x-ims-client-file": "quotationDocumentClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/ff/quotation-documents/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentCapabilities"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or draft state"
+          },
+          "403": {
+            "description": "Tenant or permission rejected"
+          },
+          "404": {
+            "description": "Request, quotation, or attachment not found"
+          },
+          "503": {
+            "description": "Attachment storage unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/ff/requests/{code}/quotations/{quotationId}/document": {
+      "post": {
+        "operationId": "uploadDocument",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationDocument"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or draft state"
+          },
+          "403": {
+            "description": "Tenant or permission rejected"
+          },
+          "404": {
+            "description": "Request, quotation, or attachment not found"
+          },
+          "503": {
+            "description": "Attachment storage unavailable"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentUpload"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "downloadDocument",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid file or draft state"
+          },
+          "403": {
+            "description": "Tenant or permission rejected"
+          },
+          "404": {
+            "description": "Request, quotation, or attachment not found"
+          },
+          "503": {
+            "description": "Attachment storage unavailable"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeDocument",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quotationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success"
+          },
+          "400": {
+            "description": "Invalid file or draft state"
+          },
+          "403": {
+            "description": "Tenant or permission rejected"
+          },
+          "404": {
+            "description": "Request, quotation, or attachment not found"
+          },
+          "503": {
+            "description": "Attachment storage unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "DocumentCapabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "available",
+          "canUpload",
+          "maxBytes",
+          "allowedContentTypes",
+          "unavailableReason"
+        ],
+        "properties": {
+          "available": {
+            "type": "boolean"
+          },
+          "canUpload": {
+            "type": "boolean"
+          },
+          "maxBytes": {
+            "type": "integer"
+          },
+          "allowedContentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "unavailableReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "QuotationDocument": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "filename",
+          "contentType",
+          "sizeBytes",
+          "uploadedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "uploadedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/dto/QuotationDocumentResponse.java",
+          "name": "QuotationDocumentResponse"
+        }
+      },
+      "DocumentUpload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary"
+          }
+        }
+      }
+    }
+  },
+  "x-ims-gateway-service": "firefighting"
+}

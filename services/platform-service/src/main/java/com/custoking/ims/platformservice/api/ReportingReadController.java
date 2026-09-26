@@ -44,6 +44,16 @@ public class ReportingReadController {
         this.readToken = readToken == null ? "" : readToken.trim();
     }
 
+    @GetMapping("/workspace")
+    public Map<String, Object> workspace(
+            @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "reporting:read");
+        TenantScope.requirePermissionIfAuthenticated("report:read");
+        return com.custoking.ims.platformservice.application.ReportingWorkspaceView.assemble(
+                reporting.workspaceDashboardSummary(TenantScope.resolveSchoolId(schoolId)));
+    }
+
     @GetMapping("/summary")
     public Map<String, Object> summary(
             @RequestHeader(value = "X-Reporting-Service-Token", required = false) String token,

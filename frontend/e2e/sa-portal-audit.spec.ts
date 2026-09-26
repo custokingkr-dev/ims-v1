@@ -18,8 +18,14 @@ const PANELS = [
   'Order approvals',
   'School accounts',
   'ERP activity',
-  'Revenue',
+  'Invoice analytics',
   'Catalog mgmt',
+  // The superadmin nav has twelve entries, not eight. These four sat outside every audit this
+  // repository has — including, for a long while, this one.
+  'Student photo import',
+  'Student data export',
+  'Request pipeline',
+  'Approve & fulfill',
 ];
 
 async function openPortal(page: Page) {
@@ -145,3 +151,47 @@ test('keyboard focus is as visible on buttons as it is on the nav', async ({ pag
   }
 });
 
+/**
+ * .ck-alert strong is display:block so an alert can carry a bold label above its body, which is
+ * right for "Custoking note: ...". Used mid-sentence it shatters the prose into one block per
+ * fragment — on Approve & fulfill a two-sentence instruction became five lines with the final
+ * full stop stranded alone on the last one.
+ */
+test('bold inside a flowing alert stays in the sentence', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openPortal(page);
+  await openPanel(page, 'Approve & fulfill');
+  // Without this the loop below has nothing to iterate and the test asserts nothing.
+  expect(await page.locator('.ck-alert .ck-alert-flow').count(),
+    'no flowing alert on this panel to measure').toBeGreaterThan(0);
+  const stranded = await page.evaluate(() => {
+    const offenders: string[] = [];
+    for (const flow of Array.from(document.querySelectorAll<HTMLElement>('.ck-alert .ck-alert-flow'))) {
+      for (const el of Array.from(flow.querySelectorAll<HTMLElement>('strong'))) {
+        if (getComputedStyle(el).display !== 'inline') offenders.push(`strong: "${el.textContent}"`);
+      }
+      // A line box holding nothing but punctuation is prose that has been broken apart.
+      const range = document.createRange();
+      range.selectNodeContents(flow);
+      const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0);
+      const tops = new Set(rects.map((r) => Math.round(r.top)));
+      if (tops.size > 3) offenders.push(`flow broken into ${tops.size} lines`);
+    }
+    return offenders;
+  });
+  expect(stranded, stranded.join(' | ')).toEqual([]);
+});
+
+/**
+ * Pass two gave the eight sa-* panels one way to say "nothing here". The four panels that were
+ * outside every audit kept their own: padding 20 and centred in one place, padding '10px 0' and
+ * left-aligned in another. Two more spellings of the same sentence.
+ */
+test('the unaudited panels say "nothing here" the way the rest of the portal does', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openPortal(page);
+  await openPanel(page, 'Approve & fulfill');
+  const message = page.getByText('No approved orders yet.');
+  await expect(message).toBeVisible();
+  await expect(message).toHaveClass(/\bck-panel-msg\b/);
+});

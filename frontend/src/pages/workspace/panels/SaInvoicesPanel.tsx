@@ -1,3 +1,4 @@
+import { billingClient } from '../../../services/billingApi';
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { ModuleShell, Field, PanelMessage, Stat } from '../ui';
@@ -29,7 +30,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
   const loadSaInvoices = async () => {
     setSaInvoicesLoading(true); setSaInvoicesError('');
     try {
-      const [invRes, statsRes] = await Promise.all([api.get('/sa/invoices'), api.get('/sa/invoices/stats')]);
+      const [invRes, statsRes] = await Promise.all([api.get('/billing/sa/invoices'), billingClient.getInvoiceStatistics().then(data => ({ data }))]);
       setSaInvoices(Array.isArray(invRes.data) ? invRes.data : []);
       setSaInvStats(statsRes.data || null);
       const pending = Number(statsRes.data?.pending || 0);
@@ -65,7 +66,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
     setSaInvSaving(true); setSaInvError('');
     try {
       const amount = Number(saInvData.qty || 0) * Number(saInvData.rate || 0);
-      const res = await api.post('/sa/invoices', { orderRef: saInvData.orderRef, school: saInvData.school, schoolId: saInvData.schoolId ?? null, description: saInvData.description, qty: Number(saInvData.qty || 0), rate: Number(saInvData.rate || 0), amount, notes: saInvData.notes || '' });
+      const res = await api.post('/billing/sa/invoices', { orderRef: saInvData.orderRef, school: saInvData.school, schoolId: saInvData.schoolId ?? null, description: saInvData.description, qty: Number(saInvData.qty || 0), rate: Number(saInvData.rate || 0), amount, notes: saInvData.notes || '' });
       setSaInvExistingId(res.data.id); setSaInvData({ ...res.data });
       setToast(`Invoice ${res.data.id} sent to ${saInvData.school}`);
       await loadSaInvoices();
@@ -80,7 +81,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
     if (!saInvExistingId) return;
     setSaInvSaving(true); setSaInvError('');
     try {
-      await api.patch(`/sa/invoices/${saInvExistingId}`, { description: saInvData.description, qty: Number(saInvData.qty || 0), rate: Number(saInvData.rate || 0), school: saInvData.school, status: saInvData.status });
+      await api.patch(`/billing/sa/invoices/${saInvExistingId}`, { description: saInvData.description, qty: Number(saInvData.qty || 0), rate: Number(saInvData.rate || 0), school: saInvData.school, status: saInvData.status });
       setSaInvEditing(false);
       await loadSaInvoices();
     } catch (e: any) {
@@ -96,10 +97,10 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
     <>
       <ModuleShell title="Invoices" subtitle="All platform invoices across schools" actions={<button className="ck-btn ck-btn-g" onClick={openBlankSaInvoice}>+ Create invoice</button>}>
         <div className="ck-grid ck-grid-4" style={{ marginBottom: 16 }}>
-          <Stat label="Sent this month" value={saInvStats?.sentThisMonth ?? 0} sub="Invoices issued" pill="Current" tone="blue" />
-          <Stat label="Paid" value={saInvStats?.paid ?? 0} sub="Settled invoices" pill="Received" tone="green" />
-          <Stat label="Pending" value={saInvStats?.pending ?? 0} sub="Awaiting payment" pill="Action" tone="orange" />
-          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total" tone="blue" />
+          <Stat label="Issued this month" value={saInvStats?.sentThisMonth ?? 0} sub={`Invoices issued · ${saInvStats?.reportingTimeZone || 'UTC'}`} pill="Current" tone="blue" />
+          <Stat label="Paid" value={saInvStats?.paid ?? 0} sub="Settled invoices · all time" tone="green" />
+          <Stat label="Pending" value={saInvStats?.pending ?? 0} sub="Awaiting payment · all time" pill="Action" tone="orange" />
+          <Stat label="Total invoiced" value={`₹${formatMoney(Number(saInvStats?.totalInvoiced || 0) / 100)}`} sub="Grand total billed · all time" tone="blue" />
         </div>
         <div className="ck-card">
           {saInvoicesLoading ? <PanelMessage>Loading invoices…</PanelMessage>
@@ -126,7 +127,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
                     <td>{row.orderRef || '—'}</td>
                     <td className="ck-num">₹{formatMoney(Number(row.total || 0) / 100)}</td>
                     <td><span className={`ck-status ${String(row.status).toLowerCase().includes('paid') ? 'sg' : 'sam'}`}>{row.status}</span></td>
-                    <td>{formatIsoDay(row.issuedAt)}</td>
+                    <td className="ck-whole">{formatIsoDay(row.issuedAt)}</td>
                     <td>
                       <div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => openSaInvoiceView(row.id)}>View</button>
@@ -141,7 +142,7 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
 
       {saInvOpen && (
         <div className="ck-modal-bg" onClick={closeModal}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Invoice" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Invoice</div>
               <button className="ck-modal-x" onClick={closeModal}>×</button>
@@ -176,11 +177,12 @@ export function SaInvoicesPanel({ onBadgeChange }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {saInvExistingId && !saInvEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setSaInvEditing(true)}>Edit invoice</button> : null}
               {saInvExistingId && saInvEditing ? <button className="ck-btn ck-btn-ghost" disabled={saInvSaving} onClick={saveSaInvoiceEdit}>{saInvSaving ? 'Saving…' : 'Save changes'}</button> : null}
+              {/* There is no resend or PDF endpoint, so these were a primary button and a
+                  footer action that could never be taken. An existing invoice is edited. */}
               {saInvExistingId
-                ? <button className="ck-btn ck-btn-g" disabled title="Coming soon">Resend to school</button>
+                ? null
                 : <button className="ck-btn ck-btn-g" disabled={saInvSaving} onClick={sendSaInvoice}>{saInvSaving ? 'Sending…' : 'Send to school'}</button>}
             </div>
           </div>

@@ -104,6 +104,91 @@
           }
         }
       }
+    },
+    "/api/v1/auth/password-reset/capabilities": {
+      "get": {
+        "operationId": "passwordResetCapabilities",
+        "x-ims-controller": "PasswordResetController",
+        "responses": {
+          "200": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetCapabilities"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Shared request allowance exceeded; Retry-After header is provided"
+          },
+          "503": {
+            "description": "Recovery is not configured"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password-reset/request": {
+      "post": {
+        "operationId": "requestPasswordReset",
+        "x-ims-controller": "PasswordResetController",
+        "responses": {
+          "202": {
+            "description": "Successful request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordResetAccepted"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Shared request allowance exceeded; Retry-After header is provided"
+          },
+          "503": {
+            "description": "Recovery is not configured"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/password-reset/confirm": {
+      "post": {
+        "operationId": "confirmPasswordReset",
+        "x-ims-controller": "PasswordResetController",
+        "responses": {
+          "204": {
+            "description": "Password changed; existing sessions invalidated"
+          },
+          "429": {
+            "description": "Shared request allowance exceeded; Retry-After header is provided"
+          },
+          "503": {
+            "description": "Recovery is not configured"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordResetConfirm"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -131,6 +216,11 @@
             "type": "string",
             "format": "password"
           }
+        },
+        "x-ims-java-record": {
+          "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/application/IdentityAuthService.java",
+          "name": "LoginRequest",
+          "requireAll": true
         }
       },
       "AuthResponse": {
@@ -223,11 +313,70 @@
               "format": "int64"
             }
           }
+        },
+        "x-ims-java-record": {
+          "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/application/IdentityAuthService.java",
+          "name": "AuthResponse",
+          "requireAll": true
         }
       },
       "Problem": {
         "type": "object",
         "additionalProperties": true,
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "PasswordResetCapabilities": {
+        "type": "object",
+        "required": [
+          "enabled"
+        ],
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PasswordResetRequest": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254
+          }
+        }
+      },
+      "PasswordResetConfirm": {
+        "type": "object",
+        "required": [
+          "token",
+          "password"
+        ],
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{43}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 72,
+            "description": "At most72 UTF-8 bytes; no trimming or normalization."
+          }
+        }
+      },
+      "PasswordResetAccepted": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
         "properties": {
           "message": {
             "type": "string"
@@ -247,5 +396,7 @@
         }
       }
     }
-  }
+  },
+  "x-ims-client-file": "identityAuthApi.ts",
+  "x-ims-gateway-service": "identity"
 }

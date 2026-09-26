@@ -64,6 +64,8 @@ jobs:
           node-version: "24"
       - name: Verify generated OpenAPI clients are current
         run: node scripts/generate-openapi-typescript-client.js --check
+      - name: Test browser contract generation and canonical routing
+        run: node --test scripts/tests/generate-openapi-typescript-client.test.js services/api-gateway/api-contract.test.js
       - name: Audit offline service boundaries
         shell: pwsh
         run: |

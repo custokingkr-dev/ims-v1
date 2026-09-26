@@ -97,6 +97,7 @@ class FirefightingOutboxIntegrationTest {
     @Test
     void createRequest_emitsOutboxRow_inSameTransaction() {
         Map<String, Object> request = new HashMap<>();
+        request.put("idempotencyKey", java.util.UUID.randomUUID().toString());
         request.put("schoolId", 10L);
         request.put("title", "New fire extinguisher");
         request.put("category", "Other");
@@ -121,6 +122,7 @@ class FirefightingOutboxIntegrationTest {
     @Test
     void fullLifecycle_eachMutation_emitsAnAdditionalOutboxRow() {
         Map<String, Object> request = new HashMap<>();
+        request.put("idempotencyKey", java.util.UUID.randomUUID().toString());
         request.put("schoolId", 20L);
         request.put("title", "Playground repair");
         request.put("category", "Sports & playground");

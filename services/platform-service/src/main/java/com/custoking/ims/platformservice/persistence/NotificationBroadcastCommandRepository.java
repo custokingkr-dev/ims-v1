@@ -14,6 +14,9 @@ import java.util.UUID;
 @Repository
 public class NotificationBroadcastCommandRepository {
 
+    public static final String DISPATCH_BLOCK_REASON =
+            "Broadcast dispatch is blocked until communication category and recipient policy evidence are recorded";
+
     private final JdbcClient jdbc;
 
     public NotificationBroadcastCommandRepository(JdbcClient jdbc) {
@@ -27,10 +30,10 @@ public class NotificationBroadcastCommandRepository {
         jdbc.sql("""
                 INSERT INTO notification.notification_broadcasts (
                     id, school_id, module, title, message, audience_type, channels,
-                    status, scheduled_at, created_by, created_at, updated_at
+                    status, scheduled_at, created_by, created_at, updated_at, communication_category
                 ) VALUES (
                     :id, :schoolId, :module, :title, :message, :audienceType, :channels,
-                    'DRAFT', :scheduledAt, :createdBy, :createdAt, :updatedAt
+                    'DRAFT', :scheduledAt, :createdBy, :createdAt, :updatedAt, :category
                 )
                 """)
                 .param("id", id)
@@ -44,6 +47,7 @@ public class NotificationBroadcastCommandRepository {
                 .param("createdBy", longObj(request.get("createdBy")))
                 .param("createdAt", now)
                 .param("updatedAt", now)
+                .param("category", str(request.get("communicationCategory"), "UNCLASSIFIED"))
                 .update();
         return row(id);
     }
@@ -67,8 +71,7 @@ public class NotificationBroadcastCommandRepository {
     @Transactional
     public Map<String, Object> send(UUID id, Long actorId) {
         requireBroadcast(id);
-        throw new IllegalArgumentException(
-                "Broadcast dispatch is blocked until communication category and recipient policy evidence are recorded");
+        throw new IllegalArgumentException(DISPATCH_BLOCK_REASON);
     }
 
     public Map<String, Object> deliveryStatus(UUID id) {
@@ -108,7 +111,7 @@ public class NotificationBroadcastCommandRepository {
     public List<Map<String, Object>> list(Long schoolId, String status, int limit) {
         StringBuilder sql = new StringBuilder("""
                 SELECT id, school_id, module, title, message, audience_type, channels,
-                       status, scheduled_at, sent_at, created_at
+                       status, scheduled_at, sent_at, created_at, communication_category
                 FROM notification.notification_broadcasts
                 WHERE 1=1
                 """);
@@ -130,6 +133,7 @@ public class NotificationBroadcastCommandRepository {
                 "id", rs.getObject("id", UUID.class),
                 "schoolId", rs.getObject("school_id"),
                 "module", rs.getString("module"),
+                "communicationCategory", rs.getString("communication_category"),
                 "title", rs.getString("title"),
                 "message", rs.getString("message"),
                 "audienceType", rs.getString("audience_type"),
@@ -144,7 +148,7 @@ public class NotificationBroadcastCommandRepository {
     private Map<String, Object> row(UUID id) {
         return jdbc.sql("""
                 SELECT id, school_id, module, title, message, audience_type, channels,
-                       status, scheduled_at, sent_at, created_at
+                       status, scheduled_at, sent_at, created_at, communication_category
                 FROM notification.notification_broadcasts
                 WHERE id = :id
                 """)
@@ -153,6 +157,7 @@ public class NotificationBroadcastCommandRepository {
                         "id", rs.getObject("id", UUID.class),
                         "schoolId", rs.getObject("school_id"),
                         "module", rs.getString("module"),
+                        "communicationCategory", rs.getString("communication_category"),
                         "title", rs.getString("title"),
                         "message", rs.getString("message"),
                         "audienceType", rs.getString("audience_type"),
@@ -163,6 +168,8 @@ public class NotificationBroadcastCommandRepository {
                         "createdAt", rs.getObject("created_at", OffsetDateTime.class)))
                 .single();
     }
+
+    public Map<String, Object> get(UUID id) { return row(id); }
 
     private void requireBroadcast(UUID id) {
         long count = jdbc.sql("SELECT count(*) FROM notification.notification_broadcasts WHERE id = :id")

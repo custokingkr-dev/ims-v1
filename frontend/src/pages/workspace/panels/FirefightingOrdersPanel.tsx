@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell } from '../ui';
+import { ModuleShell, PanelMessage } from '../ui';
 import { formatMoney } from '../utils';
 import type { FirefightingRequest } from '../../../types/workspace';
 import { getDisplayStatus } from '../../../shared/display/status';
@@ -107,16 +107,17 @@ export function FirefightingOrdersPanel({ isSuperAdmin, onRefresh }: Props) {
         title={isSuperAdmin ? 'Urgent Procurement — Fulfilment Tracking' : 'Urgent Procurement — Placed Orders'}
         subtitle={isSuperAdmin ? 'Approve for Custoking fulfilment and mark orders as delivered' : 'Urgent procurement requests approved and fulfilled by Custoking'}
       >
-        {saFfLoading && <div style={{ padding: '10px 0', color: 'var(--ink3)', fontSize: 13 }}>Loading orders…</div>}
+        {saFfLoading && <PanelMessage>Loading orders…</PanelMessage>}
         {saFfError && <div className="ck-alert ck-alert-re" style={{ marginBottom: 16 }}><span>✕</span><div>{saFfError}</div></div>}
         {isSuperAdmin && (
           <div className="ck-alert ck-alert-b" style={{ marginBottom: 18 }}>
             <span>ℹ</span>
-            <div>Once Finance Review and Admin Approval are complete, click <strong>Move to Fulfilment</strong> to start Custoking processing. After delivery and invoice, click <strong>Mark as Delivered</strong>.</div>
+            <div className="ck-alert-flow">Once Finance Review and Admin Approval are complete, click <strong>Move to Fulfilment</strong> to start Custoking processing. After delivery and invoice, click <strong>Mark as Delivered</strong>.</div>
           </div>
         )}
         <div className="ck-card">
-          <table className="ck-table">
+          {/* Unwrapped, this table was 555px wide in a 375px viewport and scrolled the page. */}
+          <div className="ck-table-wrap"><table className="ck-table">
             <thead>
               <tr>
                 <th>Request</th><th>Category</th><th>Vendor</th><th>Amount</th><th>Status</th><th>Date</th>
@@ -142,16 +143,16 @@ export function FirefightingOrdersPanel({ isSuperAdmin, onRefresh }: Props) {
                     <td>
                       {row.status === 'APPROVED' && <button className="ck-btn ck-btn-or" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void approveFfCustoking(row)}>Move to Fulfilment</button>}
                       {row.status === 'CUSTOKING_APPROVED' && <button className="ck-btn ck-btn-g" style={{ fontSize: 11, padding: '5px 12px' }} onClick={() => void fulfillFfRequest(row)}>Mark as Delivered</button>}
-                      {row.status === 'FULFILLED' && <button className="ck-btn ck-btn-b" style={{ fontSize: 11, padding: '5px 12px' }} disabled={vendorPaidLoading === row.code} onClick={() => void handleMarkVendorPaid(row)}>{vendorPaidLoading === row.code ? 'Saving…' : 'Mark Vendor Paid'}</button>}
+                      {row.status === 'FULFILLED' && <button className="ck-btn ck-btn-b ck-btn-sm" disabled={vendorPaidLoading === row.code} onClick={() => void handleMarkVendorPaid(row)}>{vendorPaidLoading === row.code ? 'Saving…' : 'Mark Vendor Paid'}</button>}
                     </td>
                   )}
                 </tr>
               ))}
               {displayRows.length === 0 && (
-                <tr><td colSpan={isSuperAdmin ? 7 : 6} style={{ textAlign: 'center', color: 'var(--ink3)', padding: 20 }}>No approved orders yet.</td></tr>
+                <tr><td colSpan={isSuperAdmin ? 7 : 6}><PanelMessage>No approved orders yet.</PanelMessage></td></tr>
               )}
             </tbody>
-          </table>
+          </table></div>
         </div>
         <div className="ck-alert ck-alert-g" style={{ marginTop: 16 }}><span>✦</span><div><strong>Custoking note:</strong> Click any request title to view the full approval timeline.</div></div>
       </ModuleShell>

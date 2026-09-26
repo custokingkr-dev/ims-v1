@@ -1,5 +1,7 @@
+import { reportingClient } from '../services/reportingApi';
+import { catalogClient } from '../services/catalogApi';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -10,8 +12,10 @@ import {
   SUPERADMIN_NAV_SECTIONS, TEACHER_NAV_SECTIONS, VIEWER_NAV_SECTIONS,
   ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES, filterNavSectionsForModules, withDerivedModuleGroups,
 } from './workspace/config';
+import { humaniseCode } from '../shared/display/status';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
+import { WorkspaceDraftProvider, useConfirmWorkspaceExit } from './workspace/WorkspaceDrafts';
 
 // Panels are navigation-level features. Loading them on demand keeps large,
 // role-specific modules out of the initial workspace download without changing
@@ -42,6 +46,7 @@ const SaAllOrdersPanel = lazy(() => import('./workspace/panels/SaAllOrdersPanel'
 const SaNewOrderPanel = lazy(() => import('./workspace/panels/SaNewOrderPanel').then((module) => ({ default: module.SaNewOrderPanel })));
 const SaSchoolsPanel = lazy(() => import('./workspace/panels/SaSchoolsPanel').then((module) => ({ default: module.SaSchoolsPanel })));
 const SaInvoicesPanel = lazy(() => import('./workspace/panels/SaInvoicesPanel').then((module) => ({ default: module.SaInvoicesPanel })));
+const ZoneAdminPanel = lazy(() => import('./workspace/panels/ZoneAdminPanel').then((module) => ({ default: module.ZoneAdminPanel })));
 
 /**
  * Mirrors the drawer breakpoint in styles/sidebar.css. Below it the sidebar is
@@ -77,8 +82,15 @@ function focusableWithin(root: HTMLElement): HTMLElement[] {
 }
 
 export default function UnifiedWorkspacePage() {
+  const { user } = useAuth();
+  return <WorkspaceDraftProvider key={`${user?.userId}:${user?.branchId}:${user?.zoneId}`}><WorkspaceContent /></WorkspaceDraftProvider>;
+}
+
+function WorkspaceContent() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const confirmExit = useConfirmWorkspaceExit();
   const { can, canAny } = usePermissions();
 
   const role = user?.role;
@@ -99,10 +111,19 @@ export default function UnifiedWorkspacePage() {
   // ── Core workspace state ────────────────────────────────────────────────────
   const [workspace, setWorkspace] = useState<WorkspaceData | null>(null);
   const [workspaceError, setWorkspaceError] = useState('');
-  const [panel, setPanel] = useState<PanelKey>(defaultPanel);
+  const requestedPanel = searchParams.get('panel');
+  const panel = requestedPanel && Object.prototype.hasOwnProperty.call(PANEL_TITLES, requestedPanel) ? requestedPanel as PanelKey : defaultPanel;
+  const setPanel = (nextPanel: PanelKey, replace = false) => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      next.set('panel', nextPanel);
+      if (nextPanel !== 'ff-new') next.delete('request');
+      return next;
+    }, { replace });
+  };
 
   // ffEditingCode: passed into FirefightingNewPanel when opening a draft from the dashboard.
-  const [ffEditingCode, setFfEditingCode] = useState<string | null>(null);
+  const ffEditingCode = panel === 'ff-new' ? searchParams.get('request') : null;
 
   // saInvBadge: invoice notification badge in the SA nav sidebar.
   const [saInvBadge, setSaInvBadge] = useState(0);
@@ -214,7 +235,7 @@ export default function UnifiedWorkspacePage() {
   }, [drawerIsModal]);
 
   const [pinned, setPinned] = useState(() => {
-    try { return localStorage.getItem('ck_nav_pinned') === '1'; } catch { return false; }
+    try { return localStorage.getItem('ck_nav_pinned') !== '0'; } catch { return true; }
   });
   const togglePinned = () => {
     setPinned((prev) => {
@@ -239,11 +260,11 @@ export default function UnifiedWorkspacePage() {
   const refresh = async () => {
     try {
       setWorkspaceError('');
-      if (isOperations && !user?.branchId) {
+      if (isZoneAdmin || (isOperations && !user?.branchId)) {
         setWorkspace({
           school: {
-            name: 'Custoking Operations',
-            meta: 'Assigned school workflows',
+            name: isZoneAdmin ? user?.zoneName || 'Zone administration' : 'Custoking Operations',
+            meta: isZoneAdmin ? 'Assigned zone schools' : 'Assigned school workflows',
           },
           dashboard: {
             students: 0,
@@ -267,7 +288,7 @@ export default function UnifiedWorkspacePage() {
       if (!isPlatformAdmin && !user?.branchId) {
         throw new Error('This account is not assigned to a school.');
       }
-      const workspaceRequest = api.get('/workspace', { params: schoolScopedParams });
+      const workspaceRequest = reportingClient.getWorkspace(schoolScopedParams).then(data => ({ data }));
       const modulesRequest = isPlatformAdmin
         ? Promise.resolve<string[]>([])
         : api.get(`/schools/${user!.branchId}/modules/active`).then(res =>
@@ -296,8 +317,8 @@ export default function UnifiedWorkspacePage() {
     setOrdersLoading(true);
     try {
       const [ordRes, statsRes] = await Promise.all([
-        api.get('/supply/orders', { params: { ...schoolScopedParams, page, size: 20 } }),
-        api.get('/supply/orders/stats', { params: schoolScopedParams }),
+        catalogClient.getOrderPage({ ...schoolScopedParams, page, size: 20 }).then(data => ({ data })),
+        catalogClient.getOrderSummary(schoolScopedParams).then(data => ({ data })),
       ]);
       // GET /supply/orders now returns a real PageResponse envelope
       // ({content, page, size, totalElements, totalPages}). Fall back to treating a
@@ -320,7 +341,7 @@ export default function UnifiedWorkspacePage() {
   const loadPendingApprovalOrders = async () => {
     setPendingApprovalLoading(true);
     try {
-      const res = await api.get('/supply/orders/pending-approval');
+      const res = await api.get('/catalog/orders/pending-approval');
       setPendingApprovalOrders(Array.isArray(res.data) ? res.data : []);
     } catch (e: any) {
       setApprovalNotice({ type: 'error', msg: e?.response?.data?.message || 'Failed to load orders.' });
@@ -333,7 +354,7 @@ export default function UnifiedWorkspacePage() {
     setApprovalActionSaving(orderId);
     setApprovalNotice(null);
     try {
-      await api.post(`/supply/orders/${orderId}/superadmin-approve`);
+      await api.post(`/catalog/orders/${orderId}/superadmin-approve`);
       setApprovalNotice({ type: 'success', msg: `Order ${orderId} approved and marked for fulfilment.` });
       await loadPendingApprovalOrders();
     } catch (e: any) {
@@ -348,7 +369,7 @@ export default function UnifiedWorkspacePage() {
     setApprovalActionSaving(rejectModalOrderId);
     setApprovalNotice(null);
     try {
-      await api.post(`/supply/orders/${rejectModalOrderId}/superadmin-reject`, {
+      await api.post(`/catalog/orders/${rejectModalOrderId}/superadmin-reject`, {
         reason: rejectReason || 'Rejected by Superadmin',
       });
       setApprovalNotice({ type: 'success', msg: `Order ${rejectModalOrderId} sent back for revision.` });
@@ -366,7 +387,7 @@ export default function UnifiedWorkspacePage() {
     if (designApprovingSaving === orderId) return;
     setDesignApprovingSaving(orderId);
     try {
-      await api.post(`/supply/orders/${orderId}/design-approved`);
+      await api.post(`/catalog/orders/${orderId}/design-approved`);
       setCatalogNotice({ type: 'success', msg: `Order ${orderId} marked design approved and moved to superadmin review.` });
       await loadLiveOrders();
       if (isPlatformAdmin) await loadPendingApprovalOrders();
@@ -401,7 +422,7 @@ export default function UnifiedWorkspacePage() {
       return;
     }
     refresh();
-  }, [isPlatformAdmin]);
+  }, [isPlatformAdmin, isZoneAdmin, user?.branchId, user?.zoneId]);
 
   useEffect(() => {
     if (!isPlatformAdmin) return;
@@ -412,13 +433,6 @@ export default function UnifiedWorkspacePage() {
     ];
     if (adminOnlyPanels.includes(panel)) setPanel('orders');
   }, [isPlatformAdmin, panel]);
-
-  useEffect(() => {
-    if (panel === 'orders') {
-      loadLiveOrders();
-      if (isPlatformAdmin) loadPendingApprovalOrders();
-    }
-  }, [panel]);
 
   // ── Derived values ──────────────────────────────────────────────────────────
   const currentTitle = isPlatformAdmin && panel === 'orders'
@@ -483,7 +497,13 @@ export default function UnifiedWorkspacePage() {
   const studentSubpanelAllowed = (panel === 'addstudent' || panel === 'bulkimport')
     && allowedPanelKeys.includes('students')
     && panelAllowedByPermission(panel);
-  const panelAllowed = isPlatformAdmin || allowedPanelKeys.includes(panel) || studentSubpanelAllowed;
+  const feeSubpanelAllowed = panel === 'feestructure' && allowedPanelKeys.includes('fees') && panelAllowedByPermission(panel);
+  const panelAllowed = allowedPanelKeys.includes(panel) || studentSubpanelAllowed || feeSubpanelAllowed;
+  useEffect(() => {
+    if (!entitlementsReady || !panelAllowed || panel !== 'orders') return;
+    void loadLiveOrders();
+    if (isPlatformAdmin) void loadPendingApprovalOrders();
+  }, [panel, panelAllowed, entitlementsReady]);
   const dashboardModuleAccess = {
     erp: isPlatformAdmin || resolvedActiveModules.has('ERP'),
     supplyOs: isPlatformAdmin || resolvedActiveModules.has('SUPPLY_OS'),
@@ -494,10 +514,13 @@ export default function UnifiedWorkspacePage() {
   const orderRows: any[] = (liveOrders?.content) ?? workspace?.orders ?? [];
 
   useEffect(() => {
-    if (!panelAllowed) {
-      setPanel(allowedPanelKeys.includes(defaultPanel) ? defaultPanel : (allowedPanelKeys[0] ?? panel));
+    if (!entitlementsReady) return;
+    if (!panelAllowed && allowedPanelKeys.length) {
+      setPanel(allowedPanelKeys.includes(defaultPanel) ? defaultPanel : allowedPanelKeys[0], true);
+    } else if (!requestedPanel || !Object.prototype.hasOwnProperty.call(PANEL_TITLES, requestedPanel)) {
+      setPanel(panel, true);
     }
-  }, [allowedPanelKeys.join('|'), defaultPanel, panel, panelAllowed]);
+  }, [allowedPanelKeys.join('|'), defaultPanel, panel, panelAllowed, entitlementsReady, requestedPanel]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (!workspace && workspaceError) {
@@ -614,13 +637,13 @@ export default function UnifiedWorkspacePage() {
             </div>
             <div className="ck-user-card-details">
               <div className="ck-user-name">{user?.fullName ?? user?.email}</div>
-              <div className="ck-user-meta">{role?.replace('_', ' ') ?? 'User'}</div>
+              <div className="ck-user-meta">{humaniseCode(role) || 'User'}</div>
             </div>
           </div>
           <div className="ck-badge-row ck-user-card-details" style={{ marginTop: 10 }}>
             <button
               className="ck-btn ck-btn-ghost ck-btn-sm"
-              onClick={() => { logout(); navigate('/login', { replace: true }); }}
+              onClick={() => { if (confirmExit()) { logout(); navigate('/login', { replace: true }); } }}
             >
               Sign out
             </button>
@@ -646,7 +669,7 @@ export default function UnifiedWorkspacePage() {
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--g)', background: 'var(--g1)', padding: '4px 10px', borderRadius: 8 }}>
                 Custoking Platform
               </span>
-              <button className="ck-btn ck-btn-ghost" onClick={() => navigate('/schools')}>
+              <button className="ck-btn ck-btn-ghost" onClick={() => { if (confirmExit()) navigate('/schools'); }}>
                 🏫 Manage schools
               </button>
             </div>
@@ -695,18 +718,7 @@ export default function UnifiedWorkspacePage() {
 
           {panelAllowed && panel === 'staff' && workspace && <StaffPanel workspace={workspace} onRefresh={refresh} />}
 
-          {(panel === 'za-overview' || panel === 'za-schools') && (
-            <ModuleShell
-              title={panel === 'za-overview' ? 'Zone overview' : 'Zone schools'}
-              subtitle="Zone-admin dashboard is coming soon."
-            >
-              <div className="ck-card">
-                <div style={{ padding: 24, color: 'var(--ink2)' }}>
-                  Zone admin dashboard is coming soon. This view is not built yet — check back later.
-                </div>
-              </div>
-            </ModuleShell>
-          )}
+          {panelAllowed && isZoneAdmin && (panel === 'za-overview' || panel === 'za-schools') && <ZoneAdminPanel zoneId={user?.zoneId} zoneName={user?.zoneName} view={panel === 'za-overview' ? 'overview' : 'schools'} setPanel={setPanel} />}
 
           {panelAllowed && panel === 'catalog' && (
             <CatalogPanel
@@ -762,7 +774,7 @@ export default function UnifiedWorkspacePage() {
               onMarkDesignApproved={markDesignApproved}
               onReorder={async (row) => {
                 try {
-                  await api.post('/supply/orders', {
+                  await api.post('/catalog/orders', {
                     category: row.category,
                     orderData: row.orderData || JSON.stringify({ title: row.description || row.category }),
                     subtotal: row.subtotal || 0,
@@ -787,7 +799,7 @@ export default function UnifiedWorkspacePage() {
             <FirefightingDashboardPanel
               isSuperAdmin={isPlatformAdmin}
               setPanel={setPanel}
-              onOpenFfDraft={(code) => { setFfEditingCode(code); setPanel('ff-new'); }}
+              onOpenFfDraft={(code) => { setSearchParams({ panel: 'ff-new', request: code }); }}
             />
           )}
           {panelAllowed && panel === 'ff-new' && (

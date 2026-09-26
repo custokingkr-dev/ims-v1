@@ -43,7 +43,7 @@ class FeeReceiptRepositoryTest {
     @Test
     void findsReceiptByPaymentIdUsingTheCanonicalPaymentPredicate() {
         Map<String, Object> expected = receipt("PAY-1", "RCPT-1");
-        when(query.optional()).thenReturn(Optional.of(expected));
+        when(query.list()).thenReturn(java.util.List.of(expected));
 
         assertThat(receipts.byPaymentId("PAY-1")).isSameAs(expected);
 
@@ -55,7 +55,7 @@ class FeeReceiptRepositoryTest {
     @Test
     void findsReceiptByReceiptNumberUsingTheCanonicalReceiptPredicate() {
         Map<String, Object> expected = receipt("PAY-2", "RCPT-2");
-        when(query.optional()).thenReturn(Optional.of(expected));
+        when(query.list()).thenReturn(java.util.List.of(expected));
 
         assertThat(receipts.byReceiptNumber("RCPT-2")).isSameAs(expected);
 
@@ -65,7 +65,7 @@ class FeeReceiptRepositoryTest {
 
     @Test
     void preservesNotFoundMessages() {
-        when(query.optional()).thenReturn(Optional.empty());
+        when(query.list()).thenReturn(java.util.List.of());
 
         assertThatThrownBy(() -> receipts.byPaymentId("missing"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -78,7 +78,7 @@ class FeeReceiptRepositoryTest {
     @Test
     void rendersReceiptPdfFromThePersistedReceiptShape() {
         Map<String, Object> payment = receipt("PAY-3", "RCPT-3");
-        when(query.optional()).thenReturn(Optional.of(payment));
+        when(query.list()).thenReturn(java.util.List.of(payment));
         when(documents.render(anyString())).thenReturn(new byte[] {1, 2, 3});
 
         assertThat(receipts.pdfByPaymentId("PAY-3")).containsExactly(1, 2, 3);

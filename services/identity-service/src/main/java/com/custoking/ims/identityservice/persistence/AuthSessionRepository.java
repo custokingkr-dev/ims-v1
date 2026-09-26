@@ -16,6 +16,8 @@ public interface AuthSessionRepository extends JpaRepository<AuthSessionEntity, 
 
     Optional<AuthSessionEntity> findByRefreshTokenHash(String refreshTokenHash);
 
+    Optional<AuthSessionEntity> findByAccessTokenHash(String accessTokenHash);
+
     /**
      * Locks the presented token row for the duration of refresh rotation.
      *

@@ -8,6 +8,9 @@ interface InvStats {
   paid: number;
   pending: number;
   totalInvoiced: number; // paise
+  periodStart?: string;
+  periodEndExclusive?: string;
+  reportingTimeZone?: string;
 }
 
 export function SaRevenuePanel() {
@@ -22,7 +25,7 @@ export function SaRevenuePanel() {
       .get<InvStats>('/sa/invoices/stats')
       .then((res) => setStats(res.data ?? null))
       .catch((e: any) => {
-        setError(e?.response?.data?.message || 'Failed to load revenue stats.');
+        setError(e?.response?.data?.message || 'Failed to load invoice statistics.');
       })
       .finally(() => setLoading(false));
   };
@@ -30,9 +33,9 @@ export function SaRevenuePanel() {
   useEffect(() => { load(); }, []);
 
   return (
-    <ModuleShell title="Revenue analytics" subtitle="Platform-wide invoice revenue and collection summary">
+    <ModuleShell title="Invoice analytics" subtitle="Platform invoice counts and billed value. GMV does not measure revenue, cash collected, or profit.">
       {loading ? (
-        <div className="ck-card"><PanelMessage>Loading revenue stats…</PanelMessage></div>
+        <div className="ck-card"><PanelMessage>Loading invoice statistics…</PanelMessage></div>
       ) : error ? (
         <div className="ck-card">
           <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
@@ -41,34 +44,35 @@ export function SaRevenuePanel() {
           </div>
         </div>
       ) : !stats ? (
-        <div className="ck-card"><PanelMessage>No revenue data available.</PanelMessage></div>
+        <div className="ck-card"><PanelMessage>No invoice data available.</PanelMessage></div>
       ) : (
         <div className="ck-grid ck-grid-4">
           <Stat
-            label="Sent this month"
+            label="Issued this month"
             value={stats.sentThisMonth ?? 0}
-            sub="Invoices issued"
+            sub={stats.periodStart
+              ? `${new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${stats.periodStart}T00:00:00Z`))} · ${stats.reportingTimeZone || 'UTC'}`
+              : 'Invoices issued in the current reporting month'}
             pill="Current"
             tone="blue"
           />
           <Stat
             label="Paid"
             value={stats.paid ?? 0}
-            sub="Settled invoices"
-            pill="Received"
+            sub="Settled invoices · all time"
             tone="green"
           />
           <Stat
             label="Pending"
             value={stats.pending ?? 0}
-            sub="Awaiting payment"
+            sub="Awaiting payment · all time"
             pill="Action"
             tone="orange"
           />
           <Stat
             label="Total invoiced (GMV)"
             value={`₹${formatMoney(Number(stats.totalInvoiced || 0) / 100)}`}
-            sub="Grand total billed"
+            sub="Grand total billed · all time"
             tone="blue"
           />
         </div>

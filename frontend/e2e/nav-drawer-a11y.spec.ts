@@ -25,7 +25,7 @@ async function boot(page: Page, viewport: { width: number; height: number }) {
   // The rail's pinned state persists in localStorage; a pinned rail is already
   // expanded, which would make the collapsed-rail assertions vacuous.
   await page.addInitScript(() => {
-    try { localStorage.removeItem('ck_nav_pinned'); } catch { /* ignore */ }
+    try { localStorage.setItem('ck_nav_pinned', '0'); } catch { /* ignore */ }
   });
   await page.goto('/dashboard');
   await page.waitForLoadState('networkidle');

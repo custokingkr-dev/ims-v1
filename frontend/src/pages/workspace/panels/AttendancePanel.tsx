@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { CalendarDays, CheckCircle2, Layers3, LockKeyhole, TriangleAlert, UserCheck } from 'lucide-react';
 import api from '../../../services/api';
+import { attendanceClient } from '../../../services/attendanceApi';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePermissions } from '../../../hooks/usePermissions';
 import { todayIso } from '../utils';
 import { SectionRail } from './attendance/SectionRail';
 import { SectionRoster } from './attendance/SectionRoster';
+import { useDraftDirty, useWorkspaceDraft } from '../WorkspaceDrafts';
 import type {
   AttendanceDailySummaryResponse,
   AttendanceDailySummarySection,
@@ -40,15 +42,18 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   const canManageAttendance = role === 'SUPERADMIN' || can('platform:admin') || can('attendance:manage');
 
   const [summary, setSummary] = useState<AttendanceDailySummaryResponse>(EMPTY_SUMMARY);
-  const [currentDate, setCurrentDate] = useState(todayIso());
+  const [currentDate, setCurrentDate] = useWorkspaceDraft('attendance.date', todayIso);
 
-  const [selectedSection, setSelectedSection] = useState<AttendanceDailySummarySection | null>(null);
-  const [register, setRegister] = useState<SectionRegisterResponse | null>(null);
-  const [records, setRecords] = useState<StudentEditRecord[] | null>(null);
+  const [selectedSection, setSelectedSection] = useWorkspaceDraft<AttendanceDailySummarySection | null>('attendance.section', null);
+  const [register, setRegister] = useWorkspaceDraft<SectionRegisterResponse | null>('attendance.register', null);
+  const [records, setRecords] = useWorkspaceDraft<StudentEditRecord[] | null>('attendance.records', null);
+  const dirty = !!records && !!register && JSON.stringify(records) !== JSON.stringify(register.students.map(s => ({ studentId: s.studentId, status: s.status ?? null, remarks: s.remarks || '' })));
+  const clearDraftDirty = useDraftDirty('attendance', dirty);
+  const confirmDiscard = () => !dirty || window.confirm('Discard unsaved attendance changes for this section? Save the register first to keep them.');
 
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [rosterLoading, setRosterLoading] = useState(false);
-  const [saving, setSaving] = useState<'' | 'save' | 'submit'>('');
+  const [saving, setSaving] = useWorkspaceDraft<'' | 'save' | 'submit'>('attendance.saving', '');
   const [submittingDay, setSubmittingDay] = useState(false);
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
@@ -113,6 +118,8 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   }, [summary.sections, summaryLoading]);
 
   const handleDateChange = (dateValue: string) => {
+    if (!confirmDiscard()) return;
+    clearDraftDirty();
     setCurrentDate(dateValue);
     setSelectedSection(null);
     setRegister(null);
@@ -124,7 +131,9 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   const toRecords = (reg: SectionRegisterResponse): StudentEditRecord[] =>
     reg.students.map((s) => ({ studentId: s.studentId, status: s.status ?? null, remarks: s.remarks || '' }));
 
-  const openSection = async (section: AttendanceDailySummarySection) => {
+  const openSection = async (section: AttendanceDailySummarySection, saved = false) => {
+    if (!saved && !confirmDiscard()) return;
+    clearDraftDirty();
     setSelectedSection(section);
     setRosterLoading(true);
     setError('');
@@ -145,7 +154,9 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
     }
   };
 
-  const backToRail = () => {
+  const backToRail = (saved = false) => {
+    if (!saved && !confirmDiscard()) return;
+    clearDraftDirty();
     setSelectedSection(null);
     setRegister(null);
     setRecords(null);
@@ -185,13 +196,13 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
   };
 
   const putRegister = async (payload: StudentEditRecord[]) => {
-    await api.put('/attendance/section-register', {
+    await attendanceClient.saveSectionRegister({
       date: currentDate,
       classId: selectedSection!.classId,
       sectionId: selectedSection!.sectionId,
       records: payload
         .filter((r) => r.status !== null)
-        .map((r) => ({ studentId: r.studentId, status: r.status, remarks: r.remarks || '' })),
+        .map((r) => ({ studentId: r.studentId, status: r.status!, remarks: r.remarks || '' })),
       ...scoped,
     });
   };
@@ -204,7 +215,7 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
     setToast('');
     try {
       await putRegister(records);
-      await openSection(selectedSection);
+      await openSection(selectedSection, true);
       await loadSummary(currentDate);
       await onRefresh();
       setToast('Attendance saved successfully');
@@ -227,14 +238,14 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
     setToast('');
     try {
       await putRegister(records);
-      await api.post('/attendance/submit-section', {
+      await attendanceClient.submitSection({
         date: currentDate,
         classId: selectedSection.classId,
         sectionId: selectedSection.sectionId,
         ...scoped,
       });
       setToast('Section attendance locked');
-      backToRail();
+      backToRail(true);
       await loadSummary(currentDate);
       await onRefresh();
     } catch (err) {
@@ -263,6 +274,7 @@ export function AttendancePanel({ onRefresh, schoolScopedParams }: Props) {
 
   return (
     <div className="ck-panel-stack">
+      {dirty && <p className="ts" role="status">Unsaved attendance stays available while you move between workspace panels. Save this section before changing its date or section, refreshing, or signing out.</p>}
       <div className="ck-att-day-toolbar">
         <label className="ck-att-date-field">
           <span>Attendance date</span>
