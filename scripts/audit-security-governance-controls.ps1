@@ -267,7 +267,9 @@ Require-Text $Msg91Provider @(
   "an authenticated current-consent revalidation mechanism",
   "idempotency contract must be implemented",
   "throw liveDeliveryBlocked();",
-  'body.put("CRQID", request.eventId())'
+  # Provider correlation must preserve retry identity without passing internal IDs whose
+  # punctuation/length violate MSG91's format. Behavioral coverage lives in the provider tests.
+  'body.put("CRQID", correlationId(request.eventId()))'
 )
 $msg91HasLiveDispatch = $contents[$Msg91Provider].Contains('.header("authkey"') -or $contents[$Msg91Provider].Contains('.retrieve().toBodilessEntity()')
 if ($msg91HasLiveDispatch) {
