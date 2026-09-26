@@ -34,6 +34,11 @@ const api = axios.create({
 export const identityAuthClient = createIdentityAuthClient(api);
 
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  // A cold identity-service start can exceed the ordinary 30-second deadline.
+  // Extend only the canonical login POST; never retry credential submission.
+  if (config.method?.toLowerCase() === 'post' && config.url === '/auth/login') {
+    config.timeout = 60000;
+  }
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
