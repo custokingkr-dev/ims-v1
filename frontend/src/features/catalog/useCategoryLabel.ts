@@ -1,3 +1,4 @@
+import { humaniseCode } from '../../shared/display/status';
 import { useProductCategories } from './api';
 
 /**
@@ -13,7 +14,6 @@ export function useCategoryLabel(): (code?: string | null) => string {
     if (!key) return '—';
     const known = catalog.categories?.find((category) => category.code === key);
     if (known) return known.label;
-    const words = key.replace(/_/g, ' ').toLowerCase();
-    return words.charAt(0).toUpperCase() + words.slice(1);
+    return humaniseCode(key);
   };
 }

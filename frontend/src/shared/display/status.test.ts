@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getDisplayStatus } from './status';
+import { getDisplayStatus, humaniseCode } from './status';
 
 describe('getDisplayStatus', () => {
   it('keeps the curated wording for mapped statuses', () => {
@@ -18,4 +18,13 @@ describe('getDisplayStatus', () => {
   it('never renders an empty cell as blank', () => {
     expect(getDisplayStatus('')).toBe('—');
   });
+});
+
+it('humaniseCode turns any stored constant into words', () => {
+  // SUPERADMIN reached the sidebar verbatim under the user's own name, because the footer
+  // only replaced underscores and that constant has none.
+  expect(humaniseCode('SUPERADMIN')).toBe('Superadmin');
+  expect(humaniseCode('SCHOOL_ADMIN')).toBe('School admin');
+  expect(humaniseCode('')).toBe('');
+  expect(humaniseCode(null)).toBe('');
 });

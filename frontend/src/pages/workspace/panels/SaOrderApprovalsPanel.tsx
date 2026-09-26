@@ -118,7 +118,8 @@ export function SaOrderApprovalsPanel({
             </div>
             <div className="ck-modal-foot">
               <button className="ck-btn ck-btn-ghost" onClick={onCloseRejectModal}>Cancel</button>
-              <button className="ck-btn ck-btn-g" disabled={savingId === rejectModalOrderId} onClick={onReject}>
+              {/* Approve and Return are opposite outcomes and wore the same green. */}
+              <button className="ck-btn ck-btn-re" disabled={savingId === rejectModalOrderId} onClick={onReject}>
                 {savingId === rejectModalOrderId ? 'Returning…' : 'Return to admin'}
               </button>
             </div>

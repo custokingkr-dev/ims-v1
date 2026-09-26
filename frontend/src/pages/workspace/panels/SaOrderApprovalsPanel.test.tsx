@@ -68,3 +68,18 @@ describe('SaOrderApprovalsPanel table', () => {
     expect(within(row).queryByText('—')).toBeNull();
   });
 });
+
+describe('returning an order is not dressed as approving one', () => {
+  afterEach(cleanup);
+
+  it('confirms the return in the danger variant, not the affirmative one', async () => {
+    // Approve and Return are opposite outcomes; the modal that confirms a return wore the same
+    // green as the button that approves, so the two read identically at a glance.
+    catalogue();
+    render(<SaOrderApprovalsPanel orders={[rowFor()]} {...NOOP} rejectModalOrderId="CK-1042" />);
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: /return to admin/i });
+    expect(confirm.className).not.toMatch(/\bck-btn-g\b/);
+    expect(confirm.className).toMatch(/\bck-btn-re\b/);
+  });
+});

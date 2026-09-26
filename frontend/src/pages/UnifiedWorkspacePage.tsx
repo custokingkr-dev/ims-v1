@@ -10,6 +10,7 @@ import {
   SUPERADMIN_NAV_SECTIONS, TEACHER_NAV_SECTIONS, VIEWER_NAV_SECTIONS,
   ZONE_ADMIN_NAV_SECTIONS, PANEL_TITLES, filterNavSectionsForModules, withDerivedModuleGroups,
 } from './workspace/config';
+import { humaniseCode } from '../shared/display/status';
 import { NavIcon } from '../shared/display/icons';
 import { ModuleShell } from './workspace/ui';
 
@@ -614,7 +615,7 @@ export default function UnifiedWorkspacePage() {
             </div>
             <div className="ck-user-card-details">
               <div className="ck-user-name">{user?.fullName ?? user?.email}</div>
-              <div className="ck-user-meta">{role?.replace('_', ' ') ?? 'User'}</div>
+              <div className="ck-user-meta">{humaniseCode(role) || 'User'}</div>
             </div>
           </div>
           <div className="ck-badge-row ck-user-card-details" style={{ marginTop: 10 }}>
