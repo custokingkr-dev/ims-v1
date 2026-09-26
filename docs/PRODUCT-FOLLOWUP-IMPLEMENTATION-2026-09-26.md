@@ -2,6 +2,8 @@
 
 This follows [the initial remediation](PRODUCT-FINDINGS-REMEDIATION-2026-09-26.md). It records the second implementation pass after the user said to proceed, selected any suitable dev school for acceptance, and chose password reset before SSO.
 
+**Subsequent release:** the implementation is now deployed to dev and the selected synthetic workflows passed. See [dev release and acceptance](product/dev-release-acceptance-2026-09-26.md) for current deployment, migration, cleanup and remaining activation evidence. The phase-specific statements below describe the earlier predeployment snapshot.
+
 ## Implemented work
 
 | Area | Change | Operational limit |

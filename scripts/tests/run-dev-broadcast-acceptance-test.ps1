@@ -14,6 +14,11 @@ $id='11111111-1111-4111-8111-111111111111';$script:cases=0
 function Save-Journal {}
 function Start-Sleep {param($Seconds)}
 function Expect-Rejected([scriptblock]$Action,[string]$Label){$failed=$false;try{&$Action}catch{$failed=$true};if(-not $failed){throw "Expected fail-closed: $Label"};$script:cases++}
+Assert-DevServiceUrl 'https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app' 'platform';$script:cases++
+Assert-DevServiceUrl 'https://custoking-school-core-service-dev-1087017280590.asia-south2.run.app' 'school-core';$script:cases++
+foreach($badUrl in @('https://custoking-platform-service-prod-hd4wfwk7mq-em.a.run.app','https://custoking-school-core-service-dev-hd4wfwk7mq-em.a.run.app','https://custoking-platform-service-dev-999999.asia-south2.run.app','https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app.evil.invalid','https://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app/path','http://custoking-platform-service-dev-hd4wfwk7mq-em.a.run.app')){
+  Expect-Rejected {Assert-DevServiceUrl $badUrl 'platform'} 'wrong runtime destination'
+}
 function Policy-Row {return [pscustomobject]@{studentId=$StudentId;schoolId=1;channel='EMAIL';eventId="broadcast:$id`:$StudentId`:EMAIL";allowed=$true;reason='ALLOWED';guardianId=$state.guardianId;destination="$RunId@acceptance.invalid";policyEvidence=@{consentEventId=$state.grantedConsentId;guardianId=$state.guardianId}}}
 $script:policyRows=@(Policy-Row)
 function Invoke-WebRequest {
@@ -81,7 +86,7 @@ $script:logs=@(
   [pscustomobject]@{timestamp=[datetime]::UtcNow.ToString('o');insertId='scheduler-fixture';resource=@{type='cloud_scheduler_job';labels=@{project_id='custoking-dev';location='asia-south1';job_id='ims-platform-service-async-relay-dev'}};jsonPayload=@{'@type'='type.googleapis.com/google.cloud.scheduler.logging.AttemptFinished';jobName='projects/custoking-dev/locations/asia-south1/jobs/ims-platform-service-async-relay-dev';url="$platformUrl/api/v1/internal/async/drain";targetType='HTTP'};httpRequest=@{status=200}},
   [pscustomobject]@{timestamp=[datetime]::UtcNow.ToString('o');insertId='request-fixture';resource=@{type='cloud_run_revision';labels=@{project_id='custoking-dev';service_name='custoking-platform-service-dev';revision_name=$state.platformRevision}};httpRequest=@{requestUrl="$platformUrl/api/v1/internal/async/drain";requestMethod='POST';userAgent='Google-Cloud-Scheduler';status=200}}
 )
-function Read-GcloudJson {param($Arguments) return $script:logs}
+function Read-DevLogEntries {param($Filter) return $script:logs}
 $tick=Wait-SchedulerTick $since
 if($tick.schedulerInsertId -ne 'scheduler-fixture' -or $tick.requestInsertId -ne 'request-fixture'){throw 'Scheduler evidence mismatch'};$script:cases++
 $script:logs[0].httpRequest.status=500
@@ -121,7 +126,8 @@ function Cleanup-Fixtures {
 function Api {
   param($Method,$Path,$Body)
   $script:cleanupPaths+=,$Path
-  if($Method -ceq 'GET' -and $Path -ceq "/students/$StudentId"){return $script:cleanupStudent}
+  if($Method -ceq 'GET' -and $Path -ceq "/students/$StudentId"){return [pscustomobject]@{id=$StudentId;admissionNo="QA-$RunId"}}
+  if($Method -ceq 'GET' -and $Path -ceq "/students/$StudentId/workspace"){return $script:cleanupStudent}
   if($Method -ceq 'GET' -and $Path -ceq "/students/$StudentId/guardians"){
     return [pscustomobject]@{studentId=$StudentId;schoolId=1;guardians=@($script:cleanupGuardian);consents=@($script:cleanupConsent|Where-Object {$null -ne $_})}
   }

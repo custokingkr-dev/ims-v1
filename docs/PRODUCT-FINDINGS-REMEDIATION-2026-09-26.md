@@ -1,6 +1,6 @@
 # Product findings remediation — 26 September 2026
 
-This records implementation against [the product assessment](PRODUCT-DEEP-ANALYSIS-2026-09-26.md). The assessment remains a historical baseline. Changes are in the working tree, alongside preserved pre-existing user changes. They have not been deployed.
+This records the initial implementation against [the product assessment](PRODUCT-DEEP-ANALYSIS-2026-09-26.md). Both are historical snapshots. The fixes are now deployed to dev, and the selected synthetic workflows passed; see [verified dev release and acceptance](product/dev-release-acceptance-2026-09-26.md) for the current evidence and remaining activation gates.
 
 The [second implementation pass](PRODUCT-FOLLOWUP-IMPLEMENTATION-2026-09-26.md) supersedes the pending-code status below for password reset, shared quotas, private quotation files, broadcast dry-run dispatch, and API contract migration. External deployment/provider/acceptance gates are still distinguished from local implementation.
 
@@ -37,6 +37,8 @@ The [second implementation pass](PRODUCT-FOLLOWUP-IMPLEMENTATION-2026-09-26.md) 
 - Unresolved payment recovery has different durability needs: retaining the original request/key is necessary after a lost response. Its stored payload is scoped to the user and school, excludes the display name, and is removed after confirmed completion. Original payment notes must remain unchanged while resolution is pending because they are part of the replay fingerprint.
 
 ## External acceptance and decisions still required
+
+This initial-pass snapshot is superseded by [the follow-up implementation](PRODUCT-FOLLOWUP-IMPLEMENTATION-2026-09-26.md) and [verified dev release and acceptance](product/dev-release-acceptance-2026-09-26.md). Those reports cover the subsequently deployed private storage, shared quotas, API migration and synthetic workflow checks.
 
 These are not represented as completed code fixes:
 
