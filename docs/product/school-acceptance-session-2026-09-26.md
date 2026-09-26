@@ -2,6 +2,8 @@
 
 Status: **prepared; awaiting a nominated school representative and support owner**. Automated dev acceptance passed, but no person has signed off this session. Local Demo School (ID 1) is the approved technical rehearsal environment; it is not evidence of an external school's adoption.
 
+Updated 27 September 2026 (IST): the EMAIL implementation in [PR 294](https://github.com/custokingkr-dev/ims-v1/pull/294) deployed at source `a07c2fa73a4bc8731b2d41015f31f65624bfdb8c` through successful [release 36261225626](https://github.com/custokingkr-dev/ims-v1/actions/runs/36261225626), after successful dev backup `1790446335149`. The platform's ready revision is `custoking-platform-service-dev-muipmx2l`. PR 296's frontend timeout fix has since deployed at source `1da0dc1d99f839bdd6b24aeb6565bb85d7728f63`. These are technical results, not a staff acceptance decision.
+
 ## Session record
 
 | Field | Value |
@@ -13,10 +15,16 @@ Status: **prepared; awaiting a nominated school representative and support owner
 | Appointment/date | To be agreed with the owner |
 | Test environment | `custoking-dev`, Local Demo School ID 1; no production changes |
 | Starting evidence | [Deployed technical acceptance](dev-release-acceptance-2026-09-26.md), run `product-20260926-a1` |
-| Live test recipient | Awaiting explicit destination/channel; no real school roster is a test-recipient list |
+| EMAIL release | Dev source `a07c2fa73a4bc8731b2d41015f31f65624bfdb8c`; platform `custoking-platform-service-dev-muipmx2l` |
+| Latest frontend release | Dev source `1da0dc1d99f839bdd6b24aeb6565bb85d7728f63`; frontend `custoking-frontend-dev-00050-snx` ready with 100% traffic; [CD 36262889154](https://github.com/custokingkr-dev/ims-v1/actions/runs/36262889154) succeeded |
+| Live test recipient | Dev school/recipient selection is already authorized and school 1 is selected; a reachable, verified dev test inbox has not been established. Retained `.invalid` fixtures cannot receive mail |
 | Decision | NOT ASSESSED |
 
 A product owner can approve a dev rehearsal. Independent school acceptance requires a representative of the actual intended school/cohort to perform the work and record their decision. Record these decisions separately.
+
+The deployed check in `artifacts/product-dev-release-2026-09-26/live-release-dev-verification.json` is complete: school 1 remains `DRY_RUN` with `canQueue=true` and `canSend=false`, retained broadcasts remain dry-run, missing/wrong callback credentials receive 401, and an authenticated unknown synthetic callback receives 202 on both original and replay. No external message was sent. The separate `live-postdeploy-database-proof.json` confirms notification V12, scoped runtime grants/RLS, zero school 1 live submissions/reports, and the original dry-run broadcast modes. `live-postdeploy-scheduler-proof.json` records five natural successful Scheduler requests on the new revision from 18:26 through 18:30 UTC.
+
+Before PR 296, the first gateway login took 33.621 seconds and returned 200; a repeat returned 200 in 0.483 seconds. The login-only 60-second timeout fix in [PR 296](https://github.com/custokingkr-dev/ims-v1/pull/296) passed [CI](https://github.com/custokingkr-dev/ims-v1/actions/runs/36262566669) and [CodeQL](https://github.com/custokingkr-dev/ims-v1/actions/runs/36262566385), including 401 frontend tests and 109 browser checks, and is now deployed. Frontend HTTP 200 was verified at 18:42:26 UTC, gateway UP at 18:42:36 UTC, and signing/approval completed at 18:42:56 UTC. Evidence is in `artifacts/product-dev-release-2026-09-26/release-evidence-dev-1da0dc1d/`. The participant's actual login acceptance remains NOT ASSESSED; do not mark A1 passed from these automated observations.
 
 ## Rehearsal preparation
 
@@ -38,7 +46,7 @@ Estimated session length: 60–90 minutes, subject to the owner's availability. 
 | A4 Fees | Review the synthetic assignment, record a 100-paise test CASH payment, recover/replay the original request, inspect receipt and ledger | One payment/receipt, correct outstanding amount and year; operator can identify and resolve an uncertain result | NOT RUN |
 | A5 Procurement | Create a labeled request/quotation, attach a synthetic document, download it with an authorized role, submit and reopen | Same request/quotation after recovery, private file accessible only to authorized users, review status understood; stop before purchase approval or vendor payment | NOT RUN |
 | A6 Annual plan | Review exact current-year test items, confirm and reopen the persisted confirmation | Same reviewed snapshot/revision; operator understands confirmation does not place an order or send a message | NOT RUN |
-| A7 Communication | Review audience and approval, observe the separately approved live test, then review withdrawal/suppression | Operator distinguishes queued/accepted/delivered/unknown; recipient evidence exists for the live case; withdrawal produces no provider attempt | BLOCKED — EMAIL implementation locally verified; provider activation and approved recipient pending |
+| A7 Communication | Review audience and approval, observe the authorized dev live test, then review withdrawal/suppression | Operator distinguishes queued/accepted/delivered/unknown; recipient evidence exists for the live case; withdrawal produces no provider attempt | BLOCKED — EMAIL path deployed with live disabled; MSG91 read-only API returned 401 and console is signed out; provider verification and a reachable verified dev inbox remain unavailable |
 | A8 Support and recovery | Report one controlled workflow interruption through the nominated support path and resume using the original identifiers | Named owner acknowledges, original outcome is reconciled, no duplicate transaction; escalation and next action are recorded | BLOCKED — support owner pending |
 
 Do not mix the synthetic 100-paise ledger record with real collections or bank reconciliation. Do not use a real purchase or message to simulate a network failure. Fault injection belongs in disposable/synthetic tests; real ambiguous outcomes are investigated without blind resubmission.

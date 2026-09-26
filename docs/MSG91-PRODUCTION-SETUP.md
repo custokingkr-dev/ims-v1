@@ -73,7 +73,7 @@ The send body puts case-sensitive `CRQID` inside the individual recipient, per t
 
 ## Controlled rollout and acceptance
 
-1. Provision the required secrets and verify their scoped access in **both dev and production before the next rollout**. Keep all live parameters disabled/empty. Apply target/renderer configuration through its reconciliation workflow, then deploy the service-manifest/application release through the normal promotion path.
+1. Provision the required secrets and verify their scoped access **in each environment before its rollout**. Keep all live parameters disabled/empty. Apply target/renderer configuration through its reconciliation workflow, then deploy the service-manifest/application release through the normal promotion path. Production follows the accepted dev pilot and school decision.
 2. Verify that the serving revision stays in its intended OFF/DRY_RUN state, that the private Scheduler reaches the platform drain, and that existing synthetic dry-run results remain dry-run. Request-based Cloud Run CPU is supported through authenticated Scheduler calls; do not rely on idle background execution.
 3. Obtain the approved live email recipient and school scope, current consent, verified sender/domain/template, and exact callback settings. Begin with one destination hash and one school. Activate only that reviewed scope through governed parameters.
 4. Create a fresh live draft, review the eligible audience and explicit live approval fingerprint, and send one clearly labeled test notice. Persisted provider acceptance is **ACCEPTED**, not **DELIVERED**. Require a bound delivery report plus recipient observation, replay without an extra attempt, and withdrawal-before-dispatch suppression.
