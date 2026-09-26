@@ -23,6 +23,8 @@ param(
   [string]$CloudDeployPipelineRenderer = "scripts/render-clouddeploy-pipelines.ps1",
   [string]$AffectedResolver = "scripts/resolve-affected-ci-targets.ps1",
   [string]$BuildReleaseWorkflow = ".github/workflows/build-release.yml",
+  [string]$ReleaseImageResolver = "scripts/resolve-release-images.ps1",
+  [string]$ReleaseImageWorker = "scripts/resolve-release-image-worker.ps1",
   [string]$CiWorkflow = ".github/workflows/ci-pr.yml",
   [string]$DetectWorkflow = ".github/workflows/_detect-changes.yml",
   [string]$ConfigWorkflow = ".github/workflows/reconcile-deployment-config.yml",
@@ -64,7 +66,7 @@ $paths = @($ReadinessAudit, $GovernanceConfigurator, $GitHubExactCheckVerifier,
   $ReportingConfigurator, $SecretRotationAudit, $SecretRotationPolicy, $RecoveryBucketRole,
   $CloudDeployDevTargets, $CloudDeployProdTargets, $CloudDeployRenderer,
   $CloudDeployPipelineRenderer, $AffectedResolver,
-  $BuildReleaseWorkflow, $CiWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
+  $BuildReleaseWorkflow, $ReleaseImageResolver, $ReleaseImageWorker, $CiWorkflow, $DetectWorkflow, $ConfigWorkflow, $RollbackWorkflow,
   $RecoveryWorkflow, $RestoreDrillScript, $RecoveryPrerequisiteAudit, $CloudSqlTransportAudit, $CloudSqlTransportSql,
   $CloudSqlTransportCapture, $DeadLetterReplayScript, $AsyncSchedulerConfigurator,
   $NotificationResilienceConfigurator, $ReportingResilienceConfigurator,
@@ -714,9 +716,9 @@ Require-Text $BuildReleaseWorkflow @(
   "Ops / Reconcile deployment configuration",
   "Resolve immutable release images",
   "id: images",
-  '$immutableRef = "$runtimeRegistry/$($entry.image)@$digest"',
-  '${scanKey}_ref=$immutableRef',
-  "immutableRef = `$immutableRef",
+  'resolve-release-images.ps1',
+  '-MaxConcurrency 3',
+  'resolve-release-images-test.ps1',
   "Trivy exact-digest HIGH/CRITICAL gate",
   "Trivy exact-digest SARIF evidence",
   "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0",
@@ -728,6 +730,18 @@ Require-Text $BuildReleaseWorkflow @(
   "Get-Item -LiteralPath `$tablePath",
   "Get-Item -LiteralPath `$sarifPath",
   "No immutable release image was scanned. Deployment is blocked."
+)
+Require-Text $ReleaseImageResolver @(
+  '[ValidateRange(1,3)]', 'ForEach-Object -Parallel', '-ThrottleLimit $MaxConcurrency',
+  '$failed.Count -gt 0', '${key}_ref=$($service.immutableRef)',
+  '${key}_digest_key=$($service.digest.Replace', 'resolve-release-image-worker.ps1'
+)
+Require-Text $ReleaseImageWorker @(
+  'Invoke-ImageCommand cosign', '--certificate-identity', '--certificate-oidc-issuer',
+  '.github/workflows/build-release.yml@refs/heads/dev', 'https://token.actions.githubusercontent.com',
+  'dev-approved-', 'Read-OciManifest $sourceRef', '$promoted -cne $digest',
+  'Promotion tag conflict', 'immutableRef=$immutableRef', 'runtimeRef=',
+  "'artifacts','tags','create'", '--prefer-index=false'
 )
 if ($contents[$BuildReleaseWorkflow].Contains("Apply changed deployment configuration") -or
     $contents[$BuildReleaseWorkflow].Contains("gcloud deploy apply") -or
@@ -785,7 +799,7 @@ if ($releaseTableCount -ne 7 -or $releaseSarifCount -ne 7) {
 }
 $releaseGateIndex = $buildReleaseContent.IndexOf("- name: Enforce exact-digest Trivy gates and evidence", [System.StringComparison]::Ordinal)
 $devDeployIndex = $buildReleaseContent.IndexOf("- name: Fast dev deployment", [System.StringComparison]::Ordinal)
-$prodDeployIndex = $buildReleaseContent.IndexOf("- name: Create and serially promote Cloud Deploy releases", [System.StringComparison]::Ordinal)
+$prodDeployIndex = $buildReleaseContent.IndexOf("- name: Create and promote Cloud Deploy dependency groups", [System.StringComparison]::Ordinal)
 if ($releaseGateIndex -lt 0 -or $devDeployIndex -le $releaseGateIndex -or $prodDeployIndex -le $releaseGateIndex) {
   $violations.Add("The aggregate exact-digest Trivy gate must precede every deploy or promotion step.") | Out-Null
 }
