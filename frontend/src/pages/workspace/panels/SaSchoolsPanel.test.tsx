@@ -76,3 +76,25 @@ describe('SaSchoolsPanel structure edit', () => {
   });
 
 });
+
+describe('SaSchoolsPanel load failure', () => {
+  afterEach(cleanup);
+
+  it('offers a way out of a failed load instead of a dead end', async () => {
+    // A bare sentence in a card gave the reader no way back: every other panel in the portal
+    // raises a real alert with a Retry beside it.
+    vi.mocked(api.get).mockRejectedValue({ response: { data: { message: 'Upstream unavailable.' } } });
+    render(<SaSchoolsPanel />);
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText('Upstream unavailable.')).toBeInTheDocument();
+
+    vi.mocked(api.get).mockResolvedValue({ data: [
+      { id: 7, name: 'Demo School', shortCode: 'DEMO', city: 'Hyd', active: true,
+        configuredClassCount: 12, configuredSectionCount: 3, academicYearStartMonth: 4,
+        financialYearStartMonth: 4, timeZone: 'Asia/Kolkata', adminEmail: 'a@x.com',
+        ordersYTD: 0, gmvYTD: 0 },
+    ] });
+    fireEvent.click(within(alert).getByRole('button', { name: /retry/i }));
+    await waitFor(() => expect(screen.getByText('Demo School')).toBeInTheDocument());
+  });
+});

@@ -2,6 +2,7 @@ package com.custoking.ims.platformservice.api;
 
 import com.custoking.ims.platformservice.api.dto.BroadcastActionRequest;
 import com.custoking.ims.platformservice.api.dto.CreateBroadcastRequest;
+import com.custoking.ims.platformservice.application.BroadcastDispatchService;
 import com.custoking.ims.platformservice.persistence.NotificationBroadcastCommandRepository;
 import com.custoking.ims.platformservice.security.TenantContext;
 import com.custoking.ims.platformservice.security.TenantScope;
@@ -30,10 +31,13 @@ public class NotificationBroadcastCommandController {
 
     private final NotificationBroadcastCommandRepository broadcasts;
     private final String statusToken;
+    private final BroadcastDispatchService dispatch;
 
     public NotificationBroadcastCommandController(NotificationBroadcastCommandRepository broadcasts,
-                                                  @Value("${notification.status.token:}") String statusToken) {
+                                                  @Value("${notification.status.token:}") String statusToken,
+                                                  BroadcastDispatchService dispatch) {
         this.broadcasts = broadcasts;
+        this.dispatch = dispatch;
         this.statusToken = statusToken == null ? "" : statusToken.trim();
     }
 
@@ -53,9 +57,21 @@ public class NotificationBroadcastCommandController {
         if (req.audienceType() != null) body.put("audienceType", req.audienceType());
         if (req.channels() != null) body.put("channels", req.channels());
         if (req.scheduledAt() != null) body.put("scheduledAt", req.scheduledAt());
+        if (req.communicationCategory() != null) body.put("communicationCategory", req.communicationCategory());
         Long createdBy = TenantContext.get().userId();
         if (createdBy != null) body.put("createdBy", createdBy);
         return command(() -> broadcasts.create(body));
+    }
+
+    /** Capabilities describe the same restrictions enforced by the command endpoints. */
+    @GetMapping("/capabilities")
+    public Map<String, Object> capabilities(
+            @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
+            @RequestParam(required = false) Long schoolId) {
+        requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
+        boolean canManage = TenantContext.get().isSuperAdmin();
+        return schoolId == null ? dispatch.capabilities(canManage) : dispatch.capabilities(canManage, TenantScope.resolveSchoolId(schoolId));
     }
 
     @GetMapping
@@ -70,11 +86,7 @@ public class NotificationBroadcastCommandController {
         return broadcasts.list(resolvedSchoolId, status, limit);
     }
 
-    /**
-     * CONVERTED: optional body with optional actorId. Body may be absent entirely (required=false),
-     * in which case req is null and actorId is null. @Positive on actorId fires only when present.
-     * No @NotNull/@NotBlank — actorId is optional (null means action taken without a recorded actor).
-     */
+    /** Approval requires the current preview fingerprint; the authenticated actor is authoritative. */
     @PostMapping("/{id}/approve")
     public Map<String, Object> approve(
             @RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
@@ -84,7 +96,10 @@ public class NotificationBroadcastCommandController {
         TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         Long actorId = TenantContext.get().userId();
-        return command(() -> broadcasts.approve(id, actorId));
+        return command(() -> {
+            dispatch.approve(id, actorId, req == null ? null : req.previewFingerprint());
+            return broadcasts.get(id);
+        });
     }
 
     /**
@@ -99,7 +114,8 @@ public class NotificationBroadcastCommandController {
         TenantScope.requirePermissionIfAuthenticated("notification:send");
         TenantScope.requireSuperAdmin();
         Long actorId = TenantContext.get().userId();
-        return command(() -> broadcasts.send(id, actorId));
+        return command(() -> req == null || req.mode() == null ? dispatch.queue(id, actorId)
+                : dispatch.queue(id, actorId, req.mode(), req.previewFingerprint()));
     }
 
     @GetMapping("/{id}/delivery-status")
@@ -109,7 +125,25 @@ public class NotificationBroadcastCommandController {
         requireToken(token, "notification:read");
         TenantScope.requirePermissionIfAuthenticated("notification:read");
         TenantScope.requireSuperAdmin();
-        return command(() -> broadcasts.deliveryStatus(id));
+        return command(() -> dispatch.outcomes(id));
+    }
+
+    @PostMapping("/{id}/preview")
+    public Map<String, Object> preview(@RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
+            @PathVariable UUID id) {
+        requireToken(token, "notification:read");
+        TenantScope.requirePermissionIfAuthenticated("notification:read");
+        TenantScope.requireSuperAdmin();
+        return command(() -> dispatch.preview(id));
+    }
+
+    @PostMapping("/{id}/retry")
+    public Map<String, Object> retry(@RequestHeader(value = "X-Notification-Service-Token", required = false) String token,
+            @PathVariable UUID id) {
+        requireToken(token, "notification:write");
+        TenantScope.requirePermissionIfAuthenticated("notification:send");
+        TenantScope.requireSuperAdmin();
+        return command(() -> dispatch.retry(id));
     }
 
     private void requireToken(String token, String requiredScope) {

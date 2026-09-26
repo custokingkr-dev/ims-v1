@@ -26,6 +26,9 @@ public class AuthSessionEntity {
     private String refreshTokenHash;
 
     @Column(nullable = false)
+    private long credentialVersion;
+
+    @Column(nullable = false)
     private OffsetDateTime createdAt;
 
     @Column(nullable = false)
@@ -51,6 +54,8 @@ public class AuthSessionEntity {
     public String getAccessTokenHash() { return accessTokenHash; }
     public void setAccessTokenHash(String accessTokenHash) { this.accessTokenHash = accessTokenHash; }
     public String getRefreshTokenHash() { return refreshTokenHash; }
+    public long getCredentialVersion() { return credentialVersion; }
+    public void setCredentialVersion(long credentialVersion) { this.credentialVersion = credentialVersion; }
     public void setRefreshTokenHash(String refreshTokenHash) { this.refreshTokenHash = refreshTokenHash; }
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

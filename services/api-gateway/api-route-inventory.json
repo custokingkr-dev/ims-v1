@@ -11,15 +11,15 @@
   ],
   "summary": {
     "services": 5,
-    "controllers": 40,
-    "endpoints": 410,
-    "canonicalEndpoints": 313,
+    "controllers": 44,
+    "endpoints": 436,
+    "canonicalEndpoints": 338,
     "compatibilityEndpoints": 90,
-    "internalEndpoints": 7,
+    "internalEndpoints": 8,
     "diagnosticAliases": 12,
-    "gatewayRoutes": 67,
-    "frontendCompatibilityCalls": 95,
-    "frontendCompatibilityFiles": 21
+    "gatewayRoutes": 70,
+    "frontendCompatibilityCalls": 0,
+    "frontendCompatibilityFiles": 0
   },
   "diagnosticAliases": [
     {
@@ -422,10 +422,10 @@
     },
     {
       "order": 26,
-      "service": "attendance",
+      "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/attendance/",
+      "matcher": "/api/v1/reporting/",
       "methods": [
         "ANY"
       ],
@@ -434,10 +434,10 @@
     },
     {
       "order": 27,
-      "service": "fee",
+      "service": "attendance",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/fee-structure",
+      "matcher": "/api/v1/attendance/",
       "methods": [
         "ANY"
       ],
@@ -449,7 +449,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/fee-assignments",
+      "matcher": "/api/v1/fee-structure",
       "methods": [
         "ANY"
       ],
@@ -461,7 +461,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/payments",
+      "matcher": "/api/v1/fee-assignments",
       "methods": [
         "ANY"
       ],
@@ -473,7 +473,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/fees/",
+      "matcher": "/api/v1/payments",
       "methods": [
         "ANY"
       ],
@@ -485,7 +485,7 @@
       "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/receipts/",
+      "matcher": "/api/v1/fees/",
       "methods": [
         "ANY"
       ],
@@ -494,10 +494,10 @@
     },
     {
       "order": 32,
-      "service": "catalog",
+      "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/supply/",
+      "matcher": "/api/v1/receipts/",
       "methods": [
         "ANY"
       ],
@@ -506,10 +506,10 @@
     },
     {
       "order": 33,
-      "service": "billing",
+      "service": "catalog",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/sa/invoices/",
+      "matcher": "/api/v1/supply/",
       "methods": [
         "ANY"
       ],
@@ -518,10 +518,10 @@
     },
     {
       "order": 34,
-      "service": "billing",
+      "service": "catalog",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/sa/invoices",
+      "matcher": "/api/v1/catalog/",
       "methods": [
         "ANY"
       ],
@@ -533,7 +533,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/customers/",
+      "matcher": "/api/v1/billing/",
       "methods": [
         "ANY"
       ],
@@ -545,7 +545,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/customers",
+      "matcher": "/api/v1/sa/invoices/",
       "methods": [
         "ANY"
       ],
@@ -557,7 +557,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/invoices/",
+      "matcher": "/api/v1/sa/invoices",
       "methods": [
         "ANY"
       ],
@@ -569,7 +569,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/invoices",
+      "matcher": "/api/v1/customers/",
       "methods": [
         "ANY"
       ],
@@ -581,7 +581,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/billing-payments/",
+      "matcher": "/api/v1/customers",
       "methods": [
         "ANY"
       ],
@@ -593,7 +593,7 @@
       "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/billing-payments",
+      "matcher": "/api/v1/invoices/",
       "methods": [
         "ANY"
       ],
@@ -602,10 +602,10 @@
     },
     {
       "order": 41,
-      "service": "catalog",
+      "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/sa/orders",
+      "matcher": "/api/v1/invoices",
       "methods": [
         "ANY"
       ],
@@ -614,10 +614,10 @@
     },
     {
       "order": 42,
-      "service": "tenant",
+      "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/sa/schools",
+      "matcher": "/api/v1/billing-payments/",
       "methods": [
         "ANY"
       ],
@@ -626,10 +626,10 @@
     },
     {
       "order": 43,
-      "service": "workflow",
+      "service": "billing",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/workflows/",
+      "matcher": "/api/v1/billing-payments",
       "methods": [
         "ANY"
       ],
@@ -638,10 +638,10 @@
     },
     {
       "order": 44,
-      "service": "firefighting",
+      "service": "catalog",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/ff/",
+      "matcher": "/api/v1/sa/orders",
       "methods": [
         "ANY"
       ],
@@ -650,10 +650,10 @@
     },
     {
       "order": 45,
-      "service": "audit",
+      "service": "tenant",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/audit-logs",
+      "matcher": "/api/v1/sa/schools",
       "methods": [
         "ANY"
       ],
@@ -662,10 +662,10 @@
     },
     {
       "order": 46,
-      "service": "notification",
+      "service": "workflow",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/notifications/",
+      "matcher": "/api/v1/workflows/",
       "methods": [
         "ANY"
       ],
@@ -674,10 +674,10 @@
     },
     {
       "order": 47,
-      "service": "reporting",
+      "service": "firefighting",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/approvals/",
+      "matcher": "/api/v1/ff/",
       "methods": [
         "ANY"
       ],
@@ -686,10 +686,10 @@
     },
     {
       "order": 48,
-      "service": "reporting",
+      "service": "audit",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/approvals",
+      "matcher": "/api/v1/audit-logs",
       "methods": [
         "ANY"
       ],
@@ -698,10 +698,10 @@
     },
     {
       "order": 49,
-      "service": "catalog",
+      "service": "notification",
       "kind": "public",
-      "matcherType": "regex",
-      "matcher": "^\\/api\\/v1\\/dashboard\\/vendor-dues\\/catalog-orders\\/[^/]+\\/mark-paid$",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/notifications/",
       "methods": [
         "ANY"
       ],
@@ -710,10 +710,10 @@
     },
     {
       "order": 50,
-      "service": "firefighting",
+      "service": "reporting",
       "kind": "public",
-      "matcherType": "regex",
-      "matcher": "^\\/api\\/v1\\/dashboard\\/vendor-dues\\/firefighting\\/[^/]+\\/mark-paid$",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/approvals/",
       "methods": [
         "ANY"
       ],
@@ -722,10 +722,10 @@
     },
     {
       "order": 51,
-      "service": "fee",
+      "service": "reporting",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/dashboard/finance/fee-defaulters/reminders",
+      "matcher": "/api/v1/approvals",
       "methods": [
         "ANY"
       ],
@@ -734,10 +734,10 @@
     },
     {
       "order": 52,
-      "service": "reporting",
+      "service": "catalog",
       "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/dashboard/",
+      "matcherType": "regex",
+      "matcher": "^\\/api\\/v1\\/dashboard\\/vendor-dues\\/catalog-orders\\/[^/]+\\/mark-paid$",
       "methods": [
         "ANY"
       ],
@@ -746,10 +746,10 @@
     },
     {
       "order": 53,
-      "service": "reporting",
+      "service": "firefighting",
       "kind": "public",
-      "matcherType": "prefix",
-      "matcher": "/api/v1/dashboard",
+      "matcherType": "regex",
+      "matcher": "^\\/api\\/v1\\/dashboard\\/vendor-dues\\/firefighting\\/[^/]+\\/mark-paid$",
       "methods": [
         "ANY"
       ],
@@ -758,10 +758,10 @@
     },
     {
       "order": 54,
-      "service": "reporting",
+      "service": "fee",
       "kind": "public",
       "matcherType": "prefix",
-      "matcher": "/api/v1/command-centre/",
+      "matcher": "/api/v1/dashboard/finance/fee-defaulters/reminders",
       "methods": [
         "ANY"
       ],
@@ -770,6 +770,42 @@
     },
     {
       "order": 55,
+      "service": "reporting",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/dashboard/",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 160
+    },
+    {
+      "order": 56,
+      "service": "reporting",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/dashboard",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 161
+    },
+    {
+      "order": 57,
+      "service": "reporting",
+      "kind": "public",
+      "matcherType": "prefix",
+      "matcher": "/api/v1/command-centre/",
+      "methods": [
+        "ANY"
+      ],
+      "source": "services/api-gateway/server.js",
+      "line": 162
+    },
+    {
+      "order": 58,
       "service": "notification",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -779,10 +815,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 160
+      "line": 163
     },
     {
-      "order": 56,
+      "order": 59,
       "service": "audit",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -792,10 +828,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 161
+      "line": 164
     },
     {
-      "order": 57,
+      "order": 60,
       "service": "identity",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -805,10 +841,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 162
+      "line": 165
     },
     {
-      "order": 58,
+      "order": 61,
       "service": "tenant",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -818,10 +854,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 163
+      "line": 166
     },
     {
-      "order": 59,
+      "order": 62,
       "service": "student",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -831,10 +867,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 164
+      "line": 167
     },
     {
-      "order": 60,
+      "order": 63,
       "service": "attendance",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -844,10 +880,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 165
+      "line": 168
     },
     {
-      "order": 61,
+      "order": 64,
       "service": "fee",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -857,10 +893,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 166
+      "line": 169
     },
     {
-      "order": 62,
+      "order": 65,
       "service": "catalog",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -870,10 +906,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 167
+      "line": 170
     },
     {
-      "order": 63,
+      "order": 66,
       "service": "workflow",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -883,10 +919,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 168
+      "line": 171
     },
     {
-      "order": 64,
+      "order": 67,
       "service": "firefighting",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -896,10 +932,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 169
+      "line": 172
     },
     {
-      "order": 65,
+      "order": 68,
       "service": "reporting",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -909,10 +945,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 170
+      "line": 173
     },
     {
-      "order": 66,
+      "order": 69,
       "service": "billing",
       "kind": "diagnostic-alias",
       "matcherType": "prefix",
@@ -922,676 +958,10 @@
       ],
       "rewritePrefix": "/api/v1/",
       "source": "services/api-gateway/server.js",
-      "line": 171
+      "line": 174
     }
   ],
-  "clientMigrationReferences": [
-    {
-      "method": "PUT",
-      "pathExpression": "/student-review-items/${itemId}",
-      "compatibilityTemplate": "/api/v1/student-review-items/{itemId}",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 223
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/attendance/low-sections",
-      "compatibilityTemplate": "/api/v1/dashboard/attendance/low-sections",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 245
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/attendance/sections/${sectionId}/low-students",
-      "compatibilityTemplate": "/api/v1/dashboard/attendance/sections/{sectionId}/low-students",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 253
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/vendor-dues",
-      "compatibilityTemplate": "/api/v1/dashboard/vendor-dues",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 272
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/dashboard/vendor-dues/catalog-orders/${orderId}/mark-paid",
-      "compatibilityTemplate": "/api/v1/dashboard/vendor-dues/catalog-orders/{id}/mark-paid",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 280
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/dashboard/vendor-dues/firefighting/${code}/mark-paid",
-      "compatibilityTemplate": "/api/v1/dashboard/vendor-dues/firefighting/{code}/mark-paid",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 287
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/reorder-signals",
-      "compatibilityTemplate": "/api/v1/dashboard/reorder-signals",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 293
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/command-center",
-      "compatibilityTemplate": "/api/v1/dashboard/command-center",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 49
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/finance/fee-defaulters",
-      "compatibilityTemplate": "/api/v1/dashboard/finance/fee-defaulters",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 71
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/dashboard/finance/fee-defaulters/reminders",
-      "compatibilityTemplate": "/api/v1/dashboard/finance/fee-defaulters/reminders",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 76
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/dashboard/events/class-photography/payment-status",
-      "compatibilityTemplate": "/api/v1/dashboard/events/class-photography/payment-status",
-      "source": "frontend/src/api/dashboardCommandCenterApi.ts",
-      "line": 87
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders",
-      "compatibilityTemplate": "/api/v1/supply/orders",
-      "source": "frontend/src/features/catalog/ProductFormBuilder.tsx",
-      "line": 66
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${detail.order.id}/place",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/place",
-      "source": "frontend/src/features/catalog/ProductFormBuilder.tsx",
-      "line": 81
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/design-approved",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/design-approved",
-      "source": "frontend/src/features/catalog/ProductOrderDetail.tsx",
-      "line": 81
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/superadmin-approve",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-approve",
-      "source": "frontend/src/features/catalog/ProductOrderDetail.tsx",
-      "line": 82
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/deliver",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/deliver",
-      "source": "frontend/src/features/catalog/ProductOrderDetail.tsx",
-      "line": 83
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/schools/${selectedSchool.id}/admin",
-      "compatibilityTemplate": "/api/v1/schools/{schoolId}/admin",
-      "source": "frontend/src/pages/SchoolManagementPage.tsx",
-      "line": 494
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/schools/${primarySchoolId}/operations-user",
-      "compatibilityTemplate": "/api/v1/schools/{schoolId}/operations-user",
-      "source": "frontend/src/pages/SchoolManagementPage.tsx",
-      "line": 517
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/workspace",
-      "compatibilityTemplate": "/api/v1/workspace",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 270
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/supply/orders",
-      "compatibilityTemplate": "/api/v1/supply/orders",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 299
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/supply/orders/stats",
-      "compatibilityTemplate": "/api/v1/supply/orders/stats",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 300
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/supply/orders/pending-approval",
-      "compatibilityTemplate": "/api/v1/supply/orders/pending-approval",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 323
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/superadmin-approve",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-approve",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 336
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${rejectModalOrderId}/superadmin-reject",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/superadmin-reject",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 351
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/design-approved",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/design-approved",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 369
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders",
-      "compatibilityTemplate": "/api/v1/supply/orders",
-      "source": "frontend/src/pages/UnifiedWorkspacePage.tsx",
-      "line": 765
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/workspace/students",
-      "compatibilityTemplate": "/api/v1/workspace/students",
-      "source": "frontend/src/pages/workspace/panels/AddStudentPanel.tsx",
-      "line": 198
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(sectionId)}/students",
-      "compatibilityTemplate": "/api/v1/classes/{classId}/sections/{sectionId}/students",
-      "source": "frontend/src/pages/workspace/panels/AttendanceReportsPanel.tsx",
-      "line": 70
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders",
-      "compatibilityTemplate": "/api/v1/supply/orders",
-      "source": "frontend/src/pages/workspace/panels/CatalogPanel.tsx",
-      "line": 128
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/place",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/place",
-      "source": "frontend/src/pages/workspace/panels/CatalogPanel.tsx",
-      "line": 140
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fees/report",
-      "compatibilityTemplate": "/api/v1/fees/report",
-      "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 309
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fees/overdue",
-      "compatibilityTemplate": "/api/v1/fees/overdue",
-      "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 310
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/classes/${encodeURIComponent(classId)}/sections/${encodeURIComponent(nextSectionId)}/students",
-      "compatibilityTemplate": "/api/v1/classes/{classId}/sections/{sectionId}/students",
-      "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 311
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fees/send-reminders",
-      "compatibilityTemplate": "/api/v1/fees/send-reminders",
-      "source": "frontend/src/pages/workspace/panels/FeeModulePanel.tsx",
-      "line": 585
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fees/report",
-      "compatibilityTemplate": "/api/v1/fees/report",
-      "source": "frontend/src/pages/workspace/panels/FeesPanel.tsx",
-      "line": 227
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fees/report",
-      "compatibilityTemplate": "/api/v1/fees/report",
-      "source": "frontend/src/pages/workspace/panels/FeesPanel.tsx",
-      "line": 252
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fees/overdue",
-      "compatibilityTemplate": "/api/v1/fees/overdue",
-      "source": "frontend/src/pages/workspace/panels/FeesPanel.tsx",
-      "line": 253
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fees/receipts/${encodeURIComponent(receiptPaymentId)}/pdf",
-      "compatibilityTemplate": "/api/v1/fees/receipts/{paymentId}/pdf",
-      "source": "frontend/src/pages/workspace/panels/FeesPanel.tsx",
-      "line": 279
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/workspace/fees/record-payment",
-      "compatibilityTemplate": "/api/v1/workspace/fees/record-payment",
-      "source": "frontend/src/pages/workspace/panels/FeesPanel.tsx",
-      "line": 363
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fees/send-reminders",
-      "compatibilityTemplate": "/api/v1/fees/send-reminders",
-      "source": "frontend/src/pages/workspace/panels/FeesPanel.tsx",
-      "line": 406
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fee-structure",
-      "compatibilityTemplate": "/api/v1/fee-structure",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 118
-    },
-    {
-      "method": "PATCH",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(bandId)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 138
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fee-structure/export",
-      "compatibilityTemplate": "/api/v1/fee-structure/export",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 190
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/item",
-      "compatibilityTemplate": "/api/v1/fee-structure/item",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 211
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/fee-structure/item/${encodeURIComponent(editingFeeItem.id)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/item/{id}",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 230
-    },
-    {
-      "method": "DELETE",
-      "pathExpression": "/fee-structure/item/${encodeURIComponent(itemId)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/item/{id}",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 250
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/band",
-      "compatibilityTemplate": "/api/v1/fee-structure/band",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 269
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(band.id)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 293
-    },
-    {
-      "method": "DELETE",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(bandId)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 307
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/classes/${encodeURIComponent(assignSelection.classId)}/sections/${encodeURIComponent(sectionId)}/students",
-      "compatibilityTemplate": "/api/v1/classes/{classId}/sections/{sectionId}/students",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 342
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fee-structure/match",
-      "compatibilityTemplate": "/api/v1/fee-structure/match",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 356
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-assignments",
-      "compatibilityTemplate": "/api/v1/fee-assignments",
-      "source": "frontend/src/pages/workspace/panels/FeeStructurePanel.tsx",
-      "line": 389
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/workspace/firefighting",
-      "compatibilityTemplate": "/api/v1/workspace/firefighting",
-      "source": "frontend/src/pages/workspace/panels/FirefightingNewPanel.tsx",
-      "line": 113
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/workspace/firefighting",
-      "compatibilityTemplate": "/api/v1/workspace/firefighting",
-      "source": "frontend/src/pages/workspace/panels/FirefightingNewPanel.tsx",
-      "line": 153
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/command-centre/actions",
-      "compatibilityTemplate": "/api/v1/command-centre/actions",
-      "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1106
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/command-centre/brief",
-      "compatibilityTemplate": "/api/v1/command-centre/brief",
-      "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1153
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/command-centre/feed?limit=20",
-      "compatibilityTemplate": "/api/v1/command-centre/feed",
-      "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1176
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/command-centre/feed?limit=5",
-      "compatibilityTemplate": "/api/v1/command-centre/feed",
-      "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1201
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/command-centre/actions/${a.id}/accept",
-      "compatibilityTemplate": "/api/v1/command-centre/actions/{id}/accept",
-      "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1244
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/command-centre/actions/${a.id}/dismiss",
-      "compatibilityTemplate": "/api/v1/command-centre/actions/{id}/dismiss",
-      "source": "frontend/src/pages/workspace/panels/HomePanel.tsx",
-      "line": 1254
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/annual-plan/items",
-      "compatibilityTemplate": "/api/v1/supply/annual-plan/items",
-      "source": "frontend/src/pages/workspace/panels/PlanningPanel.tsx",
-      "line": 118
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/annual-plan/confirm",
-      "compatibilityTemplate": "/api/v1/supply/annual-plan/confirm",
-      "source": "frontend/src/pages/workspace/panels/PlanningPanel.tsx",
-      "line": 137
-    },
-    {
-      "method": "PATCH",
-      "pathExpression": "/sa/orders/${detailOrder.id}/status",
-      "compatibilityTemplate": "/api/v1/sa/orders/{id}/status",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 106
-    },
-    {
-      "method": "PATCH",
-      "pathExpression": "/sa/orders/${orderId}/status",
-      "compatibilityTemplate": "/api/v1/sa/orders/{id}/status",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 117
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/supply/orders/${orderId}/deliver",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}/deliver",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 126
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/sa/invoices/by-order/${orderId}",
-      "compatibilityTemplate": "/api/v1/sa/invoices/by-order/{orderRef}",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 136
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/sa/invoices",
-      "compatibilityTemplate": "/api/v1/sa/invoices",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 170
-    },
-    {
-      "method": "PATCH",
-      "pathExpression": "/sa/invoices/${invExistingId}",
-      "compatibilityTemplate": "/api/v1/sa/invoices/{id}",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 184
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/sa/orders",
-      "compatibilityTemplate": "/api/v1/sa/orders",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 50
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/sa/orders/stats",
-      "compatibilityTemplate": "/api/v1/sa/orders/stats",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 59
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/supply/orders/${orderId}",
-      "compatibilityTemplate": "/api/v1/supply/orders/{id}",
-      "source": "frontend/src/pages/workspace/panels/SaAllOrdersPanel.tsx",
-      "line": 92
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/sa/invoices",
-      "compatibilityTemplate": "/api/v1/sa/invoices",
-      "source": "frontend/src/pages/workspace/panels/SaInvoicesPanel.tsx",
-      "line": 32
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/sa/invoices/stats",
-      "compatibilityTemplate": "/api/v1/sa/invoices/stats",
-      "source": "frontend/src/pages/workspace/panels/SaInvoicesPanel.tsx",
-      "line": 32
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/sa/invoices",
-      "compatibilityTemplate": "/api/v1/sa/invoices",
-      "source": "frontend/src/pages/workspace/panels/SaInvoicesPanel.tsx",
-      "line": 68
-    },
-    {
-      "method": "PATCH",
-      "pathExpression": "/sa/invoices/${saInvExistingId}",
-      "compatibilityTemplate": "/api/v1/sa/invoices/{id}",
-      "source": "frontend/src/pages/workspace/panels/SaInvoicesPanel.tsx",
-      "line": 83
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/sa/orders",
-      "compatibilityTemplate": "/api/v1/sa/orders",
-      "source": "frontend/src/pages/workspace/panels/SaNewOrderPanel.tsx",
-      "line": 63
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/workspace/staff/${selected.id}",
-      "compatibilityTemplate": "/api/v1/workspace/staff/{staffId}",
-      "source": "frontend/src/pages/workspace/panels/StaffPanel.tsx",
-      "line": 262
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/workspace/staff",
-      "compatibilityTemplate": "/api/v1/workspace/staff",
-      "source": "frontend/src/pages/workspace/panels/StaffPanel.tsx",
-      "line": 265
-    },
-    {
-      "method": "DELETE",
-      "pathExpression": "/workspace/staff/${row.id}",
-      "compatibilityTemplate": "/api/v1/workspace/staff/{staffId}",
-      "source": "frontend/src/pages/workspace/panels/StaffPanel.tsx",
-      "line": 289
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/workspace/students/${studentDetail.id}",
-      "compatibilityTemplate": "/api/v1/workspace/students/{id}",
-      "source": "frontend/src/pages/workspace/panels/StudentsPanel.tsx",
-      "line": 354
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/zones/${selectedZoneId}/admin",
-      "compatibilityTemplate": "/api/v1/zones/{zoneId}/admin",
-      "source": "frontend/src/pages/ZoneManagementPage.tsx",
-      "line": 71
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fee-structure/discount-rules",
-      "compatibilityTemplate": "/api/v1/fee-structure/discount-rules",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 100
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/discount-rules",
-      "compatibilityTemplate": "/api/v1/fee-structure/discount-rules",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 103
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-assignments",
-      "compatibilityTemplate": "/api/v1/fee-assignments",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 106
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/workspace/fees/record-payment",
-      "compatibilityTemplate": "/api/v1/workspace/fees/record-payment",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 109
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fee-structure",
-      "compatibilityTemplate": "/api/v1/fee-structure",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 70
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/band",
-      "compatibilityTemplate": "/api/v1/fee-structure/band",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 73
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(id)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 76
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/item",
-      "compatibilityTemplate": "/api/v1/fee-structure/item",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 79
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/fee-structure/item/${encodeURIComponent(id)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/item/{id}",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 82
-    },
-    {
-      "method": "DELETE",
-      "pathExpression": "/fee-structure/item/${encodeURIComponent(id)}",
-      "compatibilityTemplate": "/api/v1/fee-structure/item/{id}",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 85
-    },
-    {
-      "method": "PUT",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(bandId)}/installments",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}/installments",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 88
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(bandId)}/publish",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}/publish",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 91
-    },
-    {
-      "method": "POST",
-      "pathExpression": "/fee-structure/band/${encodeURIComponent(bandId)}/revision",
-      "compatibilityTemplate": "/api/v1/fee-structure/band/{id}/revision",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 94
-    },
-    {
-      "method": "GET",
-      "pathExpression": "/fee-structure/health",
-      "compatibilityTemplate": "/api/v1/fee-structure/health",
-      "source": "frontend/src/services/feeApi.ts",
-      "line": 97
-    }
-  ],
+  "clientMigrationReferences": [],
   "controllers": [
     {
       "service": "billing-service",
@@ -1655,6 +1025,16 @@
     },
     {
       "service": "identity-service",
+      "controller": "PasswordResetController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/auth/password-reset"
+      ],
+      "endpointCount": 3,
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasswordResetController.java"
+    },
+    {
+      "service": "identity-service",
       "controller": "RbacReadController",
       "classification": "canonical",
       "basePaths": [
@@ -1705,6 +1085,16 @@
     },
     {
       "service": "operations-service",
+      "controller": "QuotationDocumentController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/ff"
+      ],
+      "endpointCount": 4,
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/QuotationDocumentController.java"
+    },
+    {
+      "service": "operations-service",
       "controller": "WorkflowReadController",
       "classification": "canonical",
       "basePaths": [
@@ -1745,12 +1135,22 @@
     },
     {
       "service": "platform-service",
+      "controller": "Msg91BroadcastReportController",
+      "classification": "canonical",
+      "basePaths": [
+        "/api/v1/notifications/provider-reports/msg91/email"
+      ],
+      "endpointCount": 1,
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java"
+    },
+    {
+      "service": "platform-service",
       "controller": "NotificationBroadcastCommandController",
       "classification": "canonical",
       "basePaths": [
         "/api/v1/notifications/broadcasts"
       ],
-      "endpointCount": 5,
+      "endpointCount": 8,
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java"
     },
     {
@@ -1820,7 +1220,7 @@
       "basePaths": [
         "/api/v1/reporting"
       ],
-      "endpointCount": 21,
+      "endpointCount": 22,
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java"
     },
     {
@@ -1842,6 +1242,16 @@
       ],
       "endpointCount": 18,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/AttendanceReadController.java"
+    },
+    {
+      "service": "school-core-service",
+      "controller": "BroadcastRecipientPolicyController",
+      "classification": "internal",
+      "basePaths": [
+        "/api/v1/internal/notifications/broadcast-recipients"
+      ],
+      "endpointCount": 1,
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/BroadcastRecipientPolicyController.java"
     },
     {
       "service": "school-core-service",
@@ -1881,7 +1291,7 @@
       "basePaths": [
         "/api/v1/catalog"
       ],
-      "endpointCount": 19,
+      "endpointCount": 23,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java"
     },
     {
@@ -1901,7 +1311,7 @@
       "basePaths": [
         "/api/v1/fees"
       ],
-      "endpointCount": 23,
+      "endpointCount": 30,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java"
     },
     {
@@ -1951,7 +1361,7 @@
       "basePaths": [
         "/api/v1/students"
       ],
-      "endpointCount": 42,
+      "endpointCount": 44,
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java"
     },
     {
@@ -2183,7 +1593,7 @@
       "path": "/api/v1/auth/introspect",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 80
+      "line": 85
     },
     {
       "service": "identity-service",
@@ -2192,7 +1602,7 @@
       "path": "/api/v1/auth/login",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 52
+      "line": 56
     },
     {
       "service": "identity-service",
@@ -2201,7 +1611,34 @@
       "path": "/api/v1/auth/logout",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 71
+      "line": 76
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasswordResetController",
+      "method": "GET",
+      "path": "/api/v1/auth/password-reset/capabilities",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasswordResetController.java",
+      "line": 23
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasswordResetController",
+      "method": "POST",
+      "path": "/api/v1/auth/password-reset/confirm",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasswordResetController.java",
+      "line": 38
+    },
+    {
+      "service": "identity-service",
+      "controller": "PasswordResetController",
+      "method": "POST",
+      "path": "/api/v1/auth/password-reset/request",
+      "classification": "canonical",
+      "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/PasswordResetController.java",
+      "line": 29
     },
     {
       "service": "identity-service",
@@ -2210,7 +1647,7 @@
       "path": "/api/v1/auth/refresh",
       "classification": "canonical",
       "source": "services/identity-service/src/main/java/com/custoking/ims/identityservice/api/AuthController.java",
-      "line": 59
+      "line": 64
     },
     {
       "service": "identity-service",
@@ -2453,7 +1890,16 @@
       "path": "/api/v1/dashboard/vendor-dues/firefighting/{code}/mark-paid",
       "classification": "compatibility",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/compat/FirefightingPublicCompatibilityController.java",
-      "line": 43
+      "line": 46
+    },
+    {
+      "service": "operations-service",
+      "controller": "QuotationDocumentController",
+      "method": "GET",
+      "path": "/api/v1/ff/quotation-documents/capabilities",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/QuotationDocumentController.java",
+      "line": 29
     },
     {
       "service": "operations-service",
@@ -2489,7 +1935,7 @@
       "path": "/api/v1/ff/requests/{code}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 127
+      "line": 128
     },
     {
       "service": "operations-service",
@@ -2498,7 +1944,7 @@
       "path": "/api/v1/ff/requests/{code}/approve-bursar",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 208
+      "line": 210
     },
     {
       "service": "operations-service",
@@ -2507,7 +1953,7 @@
       "path": "/api/v1/ff/requests/{code}/approve-custoking",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 233
+      "line": 235
     },
     {
       "service": "operations-service",
@@ -2516,7 +1962,7 @@
       "path": "/api/v1/ff/requests/{code}/approve-principal",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 220
+      "line": 222
     },
     {
       "service": "operations-service",
@@ -2525,7 +1971,7 @@
       "path": "/api/v1/ff/requests/{code}/fulfill",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 257
+      "line": 259
     },
     {
       "service": "operations-service",
@@ -2534,7 +1980,7 @@
       "path": "/api/v1/ff/requests/{code}/quotations",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 146
+      "line": 147
     },
     {
       "service": "operations-service",
@@ -2543,7 +1989,7 @@
       "path": "/api/v1/ff/requests/{code}/quotations",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 155
+      "line": 156
     },
     {
       "service": "operations-service",
@@ -2552,7 +1998,7 @@
       "path": "/api/v1/ff/requests/{code}/quotations/{quotationId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 189
+      "line": 191
     },
     {
       "service": "operations-service",
@@ -2561,7 +2007,34 @@
       "path": "/api/v1/ff/requests/{code}/quotations/{quotationId}",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 171
+      "line": 173
+    },
+    {
+      "service": "operations-service",
+      "controller": "QuotationDocumentController",
+      "method": "DELETE",
+      "path": "/api/v1/ff/requests/{code}/quotations/{quotationId}/document",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/QuotationDocumentController.java",
+      "line": 59
+    },
+    {
+      "service": "operations-service",
+      "controller": "QuotationDocumentController",
+      "method": "GET",
+      "path": "/api/v1/ff/requests/{code}/quotations/{quotationId}/document",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/QuotationDocumentController.java",
+      "line": 45
+    },
+    {
+      "service": "operations-service",
+      "controller": "QuotationDocumentController",
+      "method": "POST",
+      "path": "/api/v1/ff/requests/{code}/quotations/{quotationId}/document",
+      "classification": "canonical",
+      "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/QuotationDocumentController.java",
+      "line": 35
     },
     {
       "service": "operations-service",
@@ -2570,7 +2043,7 @@
       "path": "/api/v1/ff/requests/{code}/reject",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 243
+      "line": 245
     },
     {
       "service": "operations-service",
@@ -2579,7 +2052,7 @@
       "path": "/api/v1/ff/requests/{code}/submit",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 199
+      "line": 201
     },
     {
       "service": "operations-service",
@@ -2597,7 +2070,7 @@
       "path": "/api/v1/ff/requests/{code}/vendor-paid",
       "classification": "canonical",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/FirefightingReadController.java",
-      "line": 266
+      "line": 268
     },
     {
       "service": "operations-service",
@@ -2624,7 +2097,7 @@
       "path": "/api/v1/internal/outbox/relay",
       "classification": "internal",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/internal/OutboxRelayTriggerController.java",
-      "line": 21
+      "line": 24
     },
     {
       "service": "operations-service",
@@ -2768,7 +2241,7 @@
       "path": "/api/v1/workspace/firefighting",
       "classification": "compatibility",
       "source": "services/operations-service/src/main/java/com/custoking/ims/operationsservice/api/compat/FirefightingPublicCompatibilityController.java",
-      "line": 32
+      "line": 33
     },
     {
       "service": "platform-service",
@@ -2822,7 +2295,7 @@
       "path": "/api/v1/command-centre/actions",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 199
+      "line": 140
     },
     {
       "service": "platform-service",
@@ -2831,7 +2304,7 @@
       "path": "/api/v1/command-centre/actions/{id}/accept",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 209
+      "line": 150
     },
     {
       "service": "platform-service",
@@ -2840,7 +2313,7 @@
       "path": "/api/v1/command-centre/actions/{id}/dismiss",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 221
+      "line": 162
     },
     {
       "service": "platform-service",
@@ -2849,7 +2322,7 @@
       "path": "/api/v1/command-centre/brief",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 243
+      "line": 184
     },
     {
       "service": "platform-service",
@@ -2858,7 +2331,7 @@
       "path": "/api/v1/command-centre/feed",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 233
+      "line": 174
     },
     {
       "service": "platform-service",
@@ -2867,7 +2340,7 @@
       "path": "/api/v1/command-centre/summary",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 188
+      "line": 129
     },
     {
       "service": "platform-service",
@@ -2885,7 +2358,7 @@
       "path": "/api/v1/dashboard/attendance/low-sections",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 143
+      "line": 84
     },
     {
       "service": "platform-service",
@@ -2894,7 +2367,7 @@
       "path": "/api/v1/dashboard/attendance/sections/{sectionId}/low-students",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 152
+      "line": 93
     },
     {
       "service": "platform-service",
@@ -2903,7 +2376,7 @@
       "path": "/api/v1/dashboard/command-center",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 119
+      "line": 60
     },
     {
       "service": "platform-service",
@@ -2912,7 +2385,7 @@
       "path": "/api/v1/dashboard/events/class-photography/payment-status",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 175
+      "line": 116
     },
     {
       "service": "platform-service",
@@ -2921,7 +2394,7 @@
       "path": "/api/v1/dashboard/finance/fee-defaulters",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 161
+      "line": 102
     },
     {
       "service": "platform-service",
@@ -2930,7 +2403,7 @@
       "path": "/api/v1/dashboard/reorder-signals",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 135
+      "line": 76
     },
     {
       "service": "platform-service",
@@ -2939,7 +2412,7 @@
       "path": "/api/v1/dashboard/vendor-dues",
       "classification": "compatibility",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/compat/ReportingPublicCompatibilityController.java",
-      "line": 127
+      "line": 68
     },
     {
       "service": "platform-service",
@@ -2948,7 +2421,7 @@
       "path": "/api/v1/internal/async/drain",
       "classification": "internal",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/internal/AsyncWorkTriggerController.java",
-      "line": 29
+      "line": 41
     },
     {
       "service": "platform-service",
@@ -2975,7 +2448,7 @@
       "path": "/api/v1/notifications/broadcasts",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 61
+      "line": 77
     },
     {
       "service": "platform-service",
@@ -2984,7 +2457,7 @@
       "path": "/api/v1/notifications/broadcasts",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 41
+      "line": 45
     },
     {
       "service": "platform-service",
@@ -2993,7 +2466,7 @@
       "path": "/api/v1/notifications/broadcasts/{id}/approve",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 78
+      "line": 90
     },
     {
       "service": "platform-service",
@@ -3002,7 +2475,25 @@
       "path": "/api/v1/notifications/broadcasts/{id}/delivery-status",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 105
+      "line": 121
+    },
+    {
+      "service": "platform-service",
+      "controller": "NotificationBroadcastCommandController",
+      "method": "POST",
+      "path": "/api/v1/notifications/broadcasts/{id}/preview",
+      "classification": "canonical",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
+      "line": 131
+    },
+    {
+      "service": "platform-service",
+      "controller": "NotificationBroadcastCommandController",
+      "method": "POST",
+      "path": "/api/v1/notifications/broadcasts/{id}/retry",
+      "classification": "canonical",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
+      "line": 140
     },
     {
       "service": "platform-service",
@@ -3011,7 +2502,25 @@
       "path": "/api/v1/notifications/broadcasts/{id}/send",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
-      "line": 93
+      "line": 108
+    },
+    {
+      "service": "platform-service",
+      "controller": "NotificationBroadcastCommandController",
+      "method": "GET",
+      "path": "/api/v1/notifications/broadcasts/capabilities",
+      "classification": "canonical",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/NotificationBroadcastCommandController.java",
+      "line": 67
+    },
+    {
+      "service": "platform-service",
+      "controller": "Msg91BroadcastReportController",
+      "method": "POST",
+      "path": "/api/v1/notifications/provider-reports/msg91/email/application/json",
+      "classification": "canonical",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/Msg91BroadcastReportController.java",
+      "line": 35
     },
     {
       "service": "platform-service",
@@ -3119,7 +2628,7 @@
       "path": "/api/v1/reporting/academic-events",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 234
+      "line": 244
     },
     {
       "service": "platform-service",
@@ -3128,7 +2637,7 @@
       "path": "/api/v1/reporting/broadcasts",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 270
+      "line": 280
     },
     {
       "service": "platform-service",
@@ -3137,7 +2646,7 @@
       "path": "/api/v1/reporting/class-photography/payment-status",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 256
+      "line": 266
     },
     {
       "service": "platform-service",
@@ -3146,7 +2655,7 @@
       "path": "/api/v1/reporting/command-center/actions",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 129
+      "line": 139
     },
     {
       "service": "platform-service",
@@ -3155,7 +2664,7 @@
       "path": "/api/v1/reporting/command-center/actions/{id}/accept",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 152
+      "line": 162
     },
     {
       "service": "platform-service",
@@ -3164,7 +2673,7 @@
       "path": "/api/v1/reporting/command-center/actions/{id}/dismiss",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 164
+      "line": 174
     },
     {
       "service": "platform-service",
@@ -3173,7 +2682,7 @@
       "path": "/api/v1/reporting/command-center/feed",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 118
+      "line": 128
     },
     {
       "service": "platform-service",
@@ -3182,7 +2691,7 @@
       "path": "/api/v1/reporting/command-center/feed",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 181
+      "line": 191
     },
     {
       "service": "platform-service",
@@ -3191,7 +2700,7 @@
       "path": "/api/v1/reporting/command-center/summary",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 140
+      "line": 150
     },
     {
       "service": "platform-service",
@@ -3200,7 +2709,7 @@
       "path": "/api/v1/reporting/dashboard-command-center",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 74
+      "line": 84
     },
     {
       "service": "platform-service",
@@ -3209,7 +2718,7 @@
       "path": "/api/v1/reporting/event-contributions",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 245
+      "line": 255
     },
     {
       "service": "platform-service",
@@ -3218,7 +2727,7 @@
       "path": "/api/v1/reporting/event-contributions/reminder-targets",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 203
+      "line": 213
     },
     {
       "service": "platform-service",
@@ -3227,7 +2736,7 @@
       "path": "/api/v1/reporting/event-contributions/reminders",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 192
+      "line": 202
     },
     {
       "service": "platform-service",
@@ -3236,7 +2745,7 @@
       "path": "/api/v1/reporting/fee-defaulters",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 103
+      "line": 113
     },
     {
       "service": "platform-service",
@@ -3245,7 +2754,7 @@
       "path": "/api/v1/reporting/invoices",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 214
+      "line": 224
     },
     {
       "service": "platform-service",
@@ -3254,7 +2763,7 @@
       "path": "/api/v1/reporting/invoices/stats",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 225
+      "line": 235
     },
     {
       "service": "platform-service",
@@ -3263,7 +2772,7 @@
       "path": "/api/v1/reporting/low-attendance/sections",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 83
+      "line": 93
     },
     {
       "service": "platform-service",
@@ -3272,7 +2781,7 @@
       "path": "/api/v1/reporting/low-attendance/sections/{sectionId}/students",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 93
+      "line": 103
     },
     {
       "service": "platform-service",
@@ -3281,7 +2790,7 @@
       "path": "/api/v1/reporting/reorder-signals",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 65
+      "line": 75
     },
     {
       "service": "platform-service",
@@ -3290,7 +2799,7 @@
       "path": "/api/v1/reporting/summary",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 47
+      "line": 57
     },
     {
       "service": "platform-service",
@@ -3299,7 +2808,16 @@
       "path": "/api/v1/reporting/vendor-dues",
       "classification": "canonical",
       "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
-      "line": 56
+      "line": 66
+    },
+    {
+      "service": "platform-service",
+      "controller": "ReportingReadController",
+      "method": "GET",
+      "path": "/api/v1/reporting/workspace",
+      "classification": "canonical",
+      "source": "services/platform-service/src/main/java/com/custoking/ims/platformservice/api/ReportingReadController.java",
+      "line": 47
     },
     {
       "service": "platform-service",
@@ -3488,7 +3006,7 @@
       "path": "/api/v1/catalog/annual-plan",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 236
+      "line": 293
     },
     {
       "service": "school-core-service",
@@ -3497,7 +3015,7 @@
       "path": "/api/v1/catalog/annual-plan/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 269
+      "line": 338
     },
     {
       "service": "school-core-service",
@@ -3506,7 +3024,7 @@
       "path": "/api/v1/catalog/annual-plan/entries",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 278
+      "line": 352
     },
     {
       "service": "school-core-service",
@@ -3515,7 +3033,7 @@
       "path": "/api/v1/catalog/annual-plan/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 223
+      "line": 280
     },
     {
       "service": "school-core-service",
@@ -3524,7 +3042,16 @@
       "path": "/api/v1/catalog/annual-plan/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 247
+      "line": 304
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogReadController",
+      "method": "GET",
+      "path": "/api/v1/catalog/annual-plan/review",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
+      "line": 326
     },
     {
       "service": "school-core-service",
@@ -3533,7 +3060,7 @@
       "path": "/api/v1/catalog/categories",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 67
+      "line": 75
     },
     {
       "service": "school-core-service",
@@ -3542,7 +3069,7 @@
       "path": "/api/v1/catalog/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 59
+      "line": 67
     },
     {
       "service": "school-core-service",
@@ -3551,7 +3078,7 @@
       "path": "/api/v1/catalog/orders",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 75
+      "line": 83
     },
     {
       "service": "school-core-service",
@@ -3560,7 +3087,7 @@
       "path": "/api/v1/catalog/orders",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 108
+      "line": 140
     },
     {
       "service": "school-core-service",
@@ -3569,7 +3096,7 @@
       "path": "/api/v1/catalog/orders/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 98
+      "line": 130
     },
     {
       "service": "school-core-service",
@@ -3620,10 +3147,19 @@
       "service": "school-core-service",
       "controller": "CatalogReadController",
       "method": "POST",
+      "path": "/api/v1/catalog/orders/{id}/deliver",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
+      "line": 237
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogReadController",
+      "method": "POST",
       "path": "/api/v1/catalog/orders/{id}/design-approved",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 156
+      "line": 190
     },
     {
       "service": "school-core-service",
@@ -3641,7 +3177,7 @@
       "path": "/api/v1/catalog/orders/{id}/place",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 134
+      "line": 167
     },
     {
       "service": "school-core-service",
@@ -3659,7 +3195,7 @@
       "path": "/api/v1/catalog/orders/{id}/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 145
+      "line": 178
     },
     {
       "service": "school-core-service",
@@ -3668,7 +3204,7 @@
       "path": "/api/v1/catalog/orders/{id}/superadmin-approve",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 166
+      "line": 200
     },
     {
       "service": "school-core-service",
@@ -3677,7 +3213,7 @@
       "path": "/api/v1/catalog/orders/{id}/superadmin-reject",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 176
+      "line": 210
     },
     {
       "service": "school-core-service",
@@ -3686,7 +3222,16 @@
       "path": "/api/v1/catalog/orders/{id}/vendor-paid",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 188
+      "line": 222
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogReadController",
+      "method": "GET",
+      "path": "/api/v1/catalog/orders/page",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
+      "line": 97
     },
     {
       "service": "school-core-service",
@@ -3695,7 +3240,7 @@
       "path": "/api/v1/catalog/orders/pending-approval",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 88
+      "line": 120
     },
     {
       "service": "school-core-service",
@@ -3704,7 +3249,16 @@
       "path": "/api/v1/catalog/orders/stats",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 203
+      "line": 260
+    },
+    {
+      "service": "school-core-service",
+      "controller": "CatalogReadController",
+      "method": "GET",
+      "path": "/api/v1/catalog/orders/summary",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
+      "line": 110
     },
     {
       "service": "school-core-service",
@@ -3713,7 +3267,7 @@
       "path": "/api/v1/catalog/supply-orders",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/CatalogReadController.java",
-      "line": 214
+      "line": 271
     },
     {
       "service": "school-core-service",
@@ -3749,7 +3303,7 @@
       "path": "/api/v1/dashboard/finance/fee-defaulters/reminders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 315
+      "line": 320
     },
     {
       "service": "school-core-service",
@@ -3758,7 +3312,7 @@
       "path": "/api/v1/dashboard/vendor-dues/catalog-orders/{id}/mark-paid",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 223
+      "line": 237
     },
     {
       "service": "school-core-service",
@@ -3767,7 +3321,7 @@
       "path": "/api/v1/fee-assignments",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 253
+      "line": 254
     },
     {
       "service": "school-core-service",
@@ -3776,7 +3330,7 @@
       "path": "/api/v1/fee-structure",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 52
+      "line": 53
     },
     {
       "service": "school-core-service",
@@ -3785,7 +3339,7 @@
       "path": "/api/v1/fee-structure/band",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 94
+      "line": 95
     },
     {
       "service": "school-core-service",
@@ -3794,7 +3348,7 @@
       "path": "/api/v1/fee-structure/band/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 134
+      "line": 135
     },
     {
       "service": "school-core-service",
@@ -3803,7 +3357,7 @@
       "path": "/api/v1/fee-structure/band/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 123
+      "line": 124
     },
     {
       "service": "school-core-service",
@@ -3812,7 +3366,7 @@
       "path": "/api/v1/fee-structure/band/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 112
+      "line": 113
     },
     {
       "service": "school-core-service",
@@ -3821,7 +3375,7 @@
       "path": "/api/v1/fee-structure/band/{id}/installments",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 158
+      "line": 159
     },
     {
       "service": "school-core-service",
@@ -3830,7 +3384,7 @@
       "path": "/api/v1/fee-structure/band/{id}/publish",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 184
+      "line": 185
     },
     {
       "service": "school-core-service",
@@ -3839,7 +3393,7 @@
       "path": "/api/v1/fee-structure/band/{id}/revision",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 194
+      "line": 195
     },
     {
       "service": "school-core-service",
@@ -3848,7 +3402,7 @@
       "path": "/api/v1/fee-structure/discount-rules",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 204
+      "line": 205
     },
     {
       "service": "school-core-service",
@@ -3857,7 +3411,7 @@
       "path": "/api/v1/fee-structure/discount-rules",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 215
+      "line": 216
     },
     {
       "service": "school-core-service",
@@ -3866,7 +3420,7 @@
       "path": "/api/v1/fee-structure/export",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 237
+      "line": 238
     },
     {
       "service": "school-core-service",
@@ -3875,7 +3429,7 @@
       "path": "/api/v1/fee-structure/health",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 226
+      "line": 227
     },
     {
       "service": "school-core-service",
@@ -3884,7 +3438,7 @@
       "path": "/api/v1/fee-structure/item",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 63
+      "line": 64
     },
     {
       "service": "school-core-service",
@@ -3893,7 +3447,7 @@
       "path": "/api/v1/fee-structure/item/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 84
+      "line": 85
     },
     {
       "service": "school-core-service",
@@ -3902,7 +3456,7 @@
       "path": "/api/v1/fee-structure/item/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 73
+      "line": 74
     },
     {
       "service": "school-core-service",
@@ -3911,21 +3465,12 @@
       "path": "/api/v1/fee-structure/match",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 147
+      "line": 148
     },
     {
       "service": "school-core-service",
       "controller": "FeeReadController",
       "method": "GET",
-      "path": "/api/v1/fees/assignments",
-      "classification": "canonical",
-      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 235
-    },
-    {
-      "service": "school-core-service",
-      "controller": "FeeReadController",
-      "method": "POST",
       "path": "/api/v1/fees/assignments",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
@@ -3934,11 +3479,20 @@
     {
       "service": "school-core-service",
       "controller": "FeeReadController",
+      "method": "POST",
+      "path": "/api/v1/fees/assignments",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 257
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
       "method": "GET",
       "path": "/api/v1/fees/bands",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 66
+      "line": 67
     },
     {
       "service": "school-core-service",
@@ -3947,7 +3501,7 @@
       "path": "/api/v1/fees/bands",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 123
+      "line": 124
     },
     {
       "service": "school-core-service",
@@ -3956,7 +3510,7 @@
       "path": "/api/v1/fees/bands/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 176
+      "line": 185
     },
     {
       "service": "school-core-service",
@@ -3965,7 +3519,7 @@
       "path": "/api/v1/fees/bands/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 160
+      "line": 169
     },
     {
       "service": "school-core-service",
@@ -3974,7 +3528,34 @@
       "path": "/api/v1/fees/bands/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 141
+      "line": 146
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "PUT",
+      "path": "/api/v1/fees/bands/{id}/installments",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 394
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "POST",
+      "path": "/api/v1/fees/bands/{id}/publish",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 420
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "POST",
+      "path": "/api/v1/fees/bands/{id}/revision",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 430
     },
     {
       "service": "school-core-service",
@@ -3983,7 +3564,7 @@
       "path": "/api/v1/fees/dashboard/module",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 336
+      "line": 350
     },
     {
       "service": "school-core-service",
@@ -3992,7 +3573,7 @@
       "path": "/api/v1/fees/dashboard/overdue-count",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 347
+      "line": 361
     },
     {
       "service": "school-core-service",
@@ -4001,7 +3582,7 @@
       "path": "/api/v1/fees/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 77
+      "line": 78
     },
     {
       "service": "school-core-service",
@@ -4010,7 +3591,7 @@
       "path": "/api/v1/fees/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 189
+      "line": 198
     },
     {
       "service": "school-core-service",
@@ -4019,7 +3600,7 @@
       "path": "/api/v1/fees/items/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 222
+      "line": 233
     },
     {
       "service": "school-core-service",
@@ -4028,7 +3609,7 @@
       "path": "/api/v1/fees/items/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 204
+      "line": 214
     },
     {
       "service": "school-core-service",
@@ -4037,7 +3618,7 @@
       "path": "/api/v1/fees/overdue",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 286
+      "line": 291
     },
     {
       "service": "school-core-service",
@@ -4046,7 +3627,7 @@
       "path": "/api/v1/fees/payments",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 265
+      "line": 279
     },
     {
       "service": "school-core-service",
@@ -4055,7 +3636,7 @@
       "path": "/api/v1/fees/payments",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 358
+      "line": 372
     },
     {
       "service": "school-core-service",
@@ -4064,7 +3645,16 @@
       "path": "/api/v1/fees/payments/{paymentId}/receipt",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 276
+      "line": 290
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "GET",
+      "path": "/api/v1/fees/payments/{paymentId}/receipt/pdf",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 473
     },
     {
       "service": "school-core-service",
@@ -4073,7 +3663,7 @@
       "path": "/api/v1/fees/receipts/{paymentId}/pdf",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 331
+      "line": 336
     },
     {
       "service": "school-core-service",
@@ -4082,7 +3672,7 @@
       "path": "/api/v1/fees/receipts/{receiptNumber}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 285
+      "line": 299
     },
     {
       "service": "school-core-service",
@@ -4091,7 +3681,7 @@
       "path": "/api/v1/fees/reminders/fee",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 320
+      "line": 334
     },
     {
       "service": "school-core-service",
@@ -4100,7 +3690,7 @@
       "path": "/api/v1/fees/report",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 273
+      "line": 278
     },
     {
       "service": "school-core-service",
@@ -4109,7 +3699,7 @@
       "path": "/api/v1/fees/reports/collection",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 294
+      "line": 308
     },
     {
       "service": "school-core-service",
@@ -4118,7 +3708,7 @@
       "path": "/api/v1/fees/reports/overdue",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 307
+      "line": 321
     },
     {
       "service": "school-core-service",
@@ -4127,7 +3717,7 @@
       "path": "/api/v1/fees/send-reminders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 299
+      "line": 304
     },
     {
       "service": "school-core-service",
@@ -4136,7 +3726,25 @@
       "path": "/api/v1/fees/structure",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 86
+      "line": 87
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "GET",
+      "path": "/api/v1/fees/structure/discount-rules",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 440
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "POST",
+      "path": "/api/v1/fees/structure/discount-rules",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 451
     },
     {
       "service": "school-core-service",
@@ -4145,7 +3753,16 @@
       "path": "/api/v1/fees/structure/export",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 108
+      "line": 109
+    },
+    {
+      "service": "school-core-service",
+      "controller": "FeeReadController",
+      "method": "GET",
+      "path": "/api/v1/fees/structure/health",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
+      "line": 462
     },
     {
       "service": "school-core-service",
@@ -4154,7 +3771,16 @@
       "path": "/api/v1/fees/structure/match",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/FeeReadController.java",
-      "line": 97
+      "line": 98
+    },
+    {
+      "service": "school-core-service",
+      "controller": "BroadcastRecipientPolicyController",
+      "method": "POST",
+      "path": "/api/v1/internal/notifications/broadcast-recipients",
+      "classification": "internal",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/internal/BroadcastRecipientPolicyController.java",
+      "line": 32
     },
     {
       "service": "school-core-service",
@@ -4172,7 +3798,7 @@
       "path": "/api/v1/payments",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 263
+      "line": 266
     },
     {
       "service": "school-core-service",
@@ -4181,7 +3807,7 @@
       "path": "/api/v1/receipts/{paymentId}/pdf",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 331
+      "line": 336
     },
     {
       "service": "school-core-service",
@@ -4190,7 +3816,7 @@
       "path": "/api/v1/sa/orders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 55
+      "line": 63
     },
     {
       "service": "school-core-service",
@@ -4199,7 +3825,7 @@
       "path": "/api/v1/sa/orders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 97
+      "line": 105
     },
     {
       "service": "school-core-service",
@@ -4208,7 +3834,7 @@
       "path": "/api/v1/sa/orders/{id}/status",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 120
+      "line": 128
     },
     {
       "service": "school-core-service",
@@ -4217,7 +3843,7 @@
       "path": "/api/v1/sa/orders/stats",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 68
+      "line": 76
     },
     {
       "service": "school-core-service",
@@ -4532,7 +4158,7 @@
       "path": "/api/v1/students",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 177
+      "line": 211
     },
     {
       "service": "school-core-service",
@@ -4541,7 +4167,7 @@
       "path": "/api/v1/students/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 236
+      "line": 271
     },
     {
       "service": "school-core-service",
@@ -4550,7 +4176,16 @@
       "path": "/api/v1/students/{id}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 108
+      "line": 142
+    },
+    {
+      "service": "school-core-service",
+      "controller": "StudentReadController",
+      "method": "PUT",
+      "path": "/api/v1/students/{id}",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
+      "line": 122
     },
     {
       "service": "school-core-service",
@@ -4559,7 +4194,7 @@
       "path": "/api/v1/students/{id}/history",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 250
+      "line": 285
     },
     {
       "service": "school-core-service",
@@ -4568,7 +4203,7 @@
       "path": "/api/v1/students/{id}/photo",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 217
+      "line": 252
     },
     {
       "service": "school-core-service",
@@ -4577,7 +4212,7 @@
       "path": "/api/v1/students/{id}/photo-from-url",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 262
+      "line": 297
     },
     {
       "service": "school-core-service",
@@ -4586,7 +4221,7 @@
       "path": "/api/v1/students/{id}/photo/content",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 159
+      "line": 193
     },
     {
       "service": "school-core-service",
@@ -4595,7 +4230,7 @@
       "path": "/api/v1/students/{id}/verification",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 543
+      "line": 578
     },
     {
       "service": "school-core-service",
@@ -4604,7 +4239,7 @@
       "path": "/api/v1/students/{id}/verification/photo/verify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 568
+      "line": 603
     },
     {
       "service": "school-core-service",
@@ -4613,7 +4248,7 @@
       "path": "/api/v1/students/{id}/verification/profile/verify",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 555
+      "line": 590
     },
     {
       "service": "school-core-service",
@@ -4622,7 +4257,7 @@
       "path": "/api/v1/students/{id}/workspace",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 147
+      "line": 181
     },
     {
       "service": "school-core-service",
@@ -4703,7 +4338,7 @@
       "path": "/api/v1/students/import/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 351
+      "line": 386
     },
     {
       "service": "school-core-service",
@@ -4712,7 +4347,7 @@
       "path": "/api/v1/students/import/preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 295
+      "line": 330
     },
     {
       "service": "school-core-service",
@@ -4721,7 +4356,7 @@
       "path": "/api/v1/students/import/status/{jobId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 369
+      "line": 404
     },
     {
       "service": "school-core-service",
@@ -4730,7 +4365,7 @@
       "path": "/api/v1/students/import/template",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 376
+      "line": 411
     },
     {
       "service": "school-core-service",
@@ -4739,7 +4374,7 @@
       "path": "/api/v1/students/import/upload-preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 302
+      "line": 337
     },
     {
       "service": "school-core-service",
@@ -4748,7 +4383,7 @@
       "path": "/api/v1/students/imports/batches",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 620
+      "line": 655
     },
     {
       "service": "school-core-service",
@@ -4757,7 +4392,7 @@
       "path": "/api/v1/students/imports/confirm",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 337
+      "line": 372
     },
     {
       "service": "school-core-service",
@@ -4766,7 +4401,7 @@
       "path": "/api/v1/students/imports/preview",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 281
+      "line": 316
     },
     {
       "service": "school-core-service",
@@ -4775,7 +4410,7 @@
       "path": "/api/v1/students/imports/rows",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 631
+      "line": 666
     },
     {
       "service": "school-core-service",
@@ -4784,7 +4419,7 @@
       "path": "/api/v1/students/imports/status/{jobId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 358
+      "line": 393
     },
     {
       "service": "school-core-service",
@@ -4793,7 +4428,7 @@
       "path": "/api/v1/students/imports/usage",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 644
+      "line": 679
     },
     {
       "service": "school-core-service",
@@ -4802,7 +4437,7 @@
       "path": "/api/v1/students/promotion-batches",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 387
+      "line": 422
     },
     {
       "service": "school-core-service",
@@ -4811,7 +4446,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 399
+      "line": 434
     },
     {
       "service": "school-core-service",
@@ -4820,7 +4455,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}/apply",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 425
+      "line": 460
     },
     {
       "service": "school-core-service",
@@ -4829,7 +4464,7 @@
       "path": "/api/v1/students/promotion-batches/{batchId}/items/{itemId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 411
+      "line": 446
     },
     {
       "service": "school-core-service",
@@ -4838,7 +4473,7 @@
       "path": "/api/v1/students/review-campaigns",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 656
+      "line": 691
     },
     {
       "service": "school-core-service",
@@ -4847,7 +4482,7 @@
       "path": "/api/v1/students/review-campaigns/{campaignId}/complete",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 607
+      "line": 642
     },
     {
       "service": "school-core-service",
@@ -4856,7 +4491,7 @@
       "path": "/api/v1/students/review-campaigns/{campaignId}/items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 684
+      "line": 719
     },
     {
       "service": "school-core-service",
@@ -4865,7 +4500,7 @@
       "path": "/api/v1/students/review-items",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 670
+      "line": 705
     },
     {
       "service": "school-core-service",
@@ -4874,7 +4509,7 @@
       "path": "/api/v1/students/reviews/full-name/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 466
+      "line": 501
     },
     {
       "service": "school-core-service",
@@ -4883,7 +4518,7 @@
       "path": "/api/v1/students/reviews/full-name/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 484
+      "line": 519
     },
     {
       "service": "school-core-service",
@@ -4892,7 +4527,7 @@
       "path": "/api/v1/students/reviews/id-card/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 437
+      "line": 472
     },
     {
       "service": "school-core-service",
@@ -4901,7 +4536,7 @@
       "path": "/api/v1/students/reviews/id-card/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 455
+      "line": 490
     },
     {
       "service": "school-core-service",
@@ -4910,7 +4545,7 @@
       "path": "/api/v1/students/reviews/items/{itemId}",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 581
+      "line": 616
     },
     {
       "service": "school-core-service",
@@ -4919,7 +4554,7 @@
       "path": "/api/v1/students/reviews/items/{itemId}/full-name-verification",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 594
+      "line": 629
     },
     {
       "service": "school-core-service",
@@ -4928,7 +4563,7 @@
       "path": "/api/v1/students/reviews/photo/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 519
+      "line": 554
     },
     {
       "service": "school-core-service",
@@ -4937,7 +4572,7 @@
       "path": "/api/v1/students/reviews/photo/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 532
+      "line": 567
     },
     {
       "service": "school-core-service",
@@ -4946,7 +4581,7 @@
       "path": "/api/v1/students/reviews/profile/initiate",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 495
+      "line": 530
     },
     {
       "service": "school-core-service",
@@ -4955,7 +4590,16 @@
       "path": "/api/v1/students/reviews/profile/status",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 508
+      "line": 543
+    },
+    {
+      "service": "school-core-service",
+      "controller": "StudentReadController",
+      "method": "GET",
+      "path": "/api/v1/students/roster",
+      "classification": "canonical",
+      "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
+      "line": 108
     },
     {
       "service": "school-core-service",
@@ -4964,7 +4608,7 @@
       "path": "/api/v1/students/workspace",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/StudentReadController.java",
-      "line": 121
+      "line": 155
     },
     {
       "service": "school-core-service",
@@ -4982,7 +4626,7 @@
       "path": "/api/v1/supply/annual-plan",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 189
+      "line": 197
     },
     {
       "service": "school-core-service",
@@ -4991,7 +4635,7 @@
       "path": "/api/v1/supply/annual-plan/confirm",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 215
+      "line": 223
     },
     {
       "service": "school-core-service",
@@ -5000,7 +4644,7 @@
       "path": "/api/v1/supply/annual-plan/items",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 200
+      "line": 208
     },
     {
       "service": "school-core-service",
@@ -5009,7 +4653,7 @@
       "path": "/api/v1/supply/catalog-categories",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 48
+      "line": 56
     },
     {
       "service": "school-core-service",
@@ -5018,7 +4662,7 @@
       "path": "/api/v1/supply/orders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 55
+      "line": 63
     },
     {
       "service": "school-core-service",
@@ -5027,7 +4671,7 @@
       "path": "/api/v1/supply/orders",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 97
+      "line": 105
     },
     {
       "service": "school-core-service",
@@ -5036,7 +4680,7 @@
       "path": "/api/v1/supply/orders/{id}",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 88
+      "line": 96
     },
     {
       "service": "school-core-service",
@@ -5090,7 +4734,7 @@
       "path": "/api/v1/supply/orders/{id}/deliver",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 166
+      "line": 174
     },
     {
       "service": "school-core-service",
@@ -5099,7 +4743,7 @@
       "path": "/api/v1/supply/orders/{id}/design-approved",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 134
+      "line": 142
     },
     {
       "service": "school-core-service",
@@ -5117,7 +4761,7 @@
       "path": "/api/v1/supply/orders/{id}/place",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 110
+      "line": 118
     },
     {
       "service": "school-core-service",
@@ -5135,7 +4779,7 @@
       "path": "/api/v1/supply/orders/{id}/status",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 120
+      "line": 128
     },
     {
       "service": "school-core-service",
@@ -5144,7 +4788,7 @@
       "path": "/api/v1/supply/orders/{id}/superadmin-approve",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 144
+      "line": 152
     },
     {
       "service": "school-core-service",
@@ -5153,7 +4797,7 @@
       "path": "/api/v1/supply/orders/{id}/superadmin-reject",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 154
+      "line": 162
     },
     {
       "service": "school-core-service",
@@ -5162,7 +4806,7 @@
       "path": "/api/v1/supply/orders/pending-approval",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 78
+      "line": 86
     },
     {
       "service": "school-core-service",
@@ -5171,7 +4815,7 @@
       "path": "/api/v1/supply/orders/stats",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/CatalogPublicCompatibilityController.java",
-      "line": 68
+      "line": 76
     },
     {
       "service": "school-core-service",
@@ -5531,7 +5175,7 @@
       "path": "/api/v1/workspace/fees/assign-plan",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 253
+      "line": 254
     },
     {
       "service": "school-core-service",
@@ -5540,7 +5184,7 @@
       "path": "/api/v1/workspace/fees/receipts/{receiptNumber}/pdf",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 341
+      "line": 346
     },
     {
       "service": "school-core-service",
@@ -5549,7 +5193,7 @@
       "path": "/api/v1/workspace/fees/record-payment",
       "classification": "compatibility",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/compat/FeePublicCompatibilityController.java",
-      "line": 263
+      "line": 266
     },
     {
       "service": "school-core-service",
@@ -5639,7 +5283,7 @@
       "path": "/api/v1/zones/{id}/admins",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/TenantSchoolController.java",
-      "line": 469
+      "line": 470
     },
     {
       "service": "school-core-service",
@@ -5648,7 +5292,7 @@
       "path": "/api/v1/zones/{id}/admins",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/TenantSchoolController.java",
-      "line": 480
+      "line": 481
     },
     {
       "service": "school-core-service",
@@ -5657,7 +5301,7 @@
       "path": "/api/v1/zones/{id}/admins/retire",
       "classification": "canonical",
       "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/TenantSchoolController.java",
-      "line": 494
+      "line": 495
     },
     {
       "service": "school-core-service",

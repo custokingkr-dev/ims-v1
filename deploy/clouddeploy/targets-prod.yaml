@@ -153,6 +153,17 @@ deployParameters:
   otel_sample: "0.05"
   notification_delivery_provider: logging
   msg91_dry_run: "true"
+  broadcast_dispatch_mode: "OFF"
+  broadcast_worker_ready: "false"
+  broadcast_live_enabled: "false"
+  broadcast_live_sender_verified: "false"
+  broadcast_live_school_ids: ""
+  broadcast_live_destination_sha256: ""
+  broadcast_live_email_sender: ""
+  broadcast_live_email_sender_name: ""
+  broadcast_live_email_domain: ""
+  broadcast_live_email_template_id: ""
+  broadcast_live_email_template_verified: "false"
   reporting_topic: ims-reporting-events-v1
   reporting_pubsub_require_shared_token: "false"
   notification_pubsub_require_shared_token: "false"
@@ -233,6 +244,7 @@ deployParameters:
   photo_bucket: __PHOTO_BUCKET__
   region: asia-south2
   runtime_service_account: ims-api-gateway-prod@__PROJECT_ID__.iam.gserviceaccount.com
+  gateway_cors_allowed_origins: "https://custoking-frontend-prod-__PROJECT_NUMBER__.__REGION__.run.app,https://custoking-frontend-prod-yter7sugpa-em.a.run.app"
   db_host: __DB_HOST__
   db_name: __DB_NAME__
   domain_min_instances: "0"

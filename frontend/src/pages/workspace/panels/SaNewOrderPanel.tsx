@@ -77,7 +77,7 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
     setErrors({}); setSaving(true);
     try {
       const value = computeSaOrderValue(activeCat || 'CUSTOM', form, eventItems);
-      const res = await api.post('/sa/orders', {
+      const res = await api.post('/catalog/orders', {
         schoolId: form.schoolId,
         category: activeCat,
         orderData: JSON.stringify({ ...form, eventItems, title: activeCat }),
@@ -258,7 +258,6 @@ export function SaNewOrderPanel({ onOrderCreated }: Props) {
             </div>
 
             <div className="ck-actions-inline" style={{ marginTop: 16 }}>
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Save as draft</button>
               <button className="ck-btn ck-btn-g" disabled={saving} onClick={submit}>{saving ? 'Creating…' : 'Create order →'}</button>
             </div>
             </>}

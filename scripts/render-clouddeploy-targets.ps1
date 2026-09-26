@@ -53,6 +53,89 @@ foreach ($key in $replacements.Keys) {
   $text = $text.Replace($key, $replacements[$key])
 }
 
+# Browser CORS needs both Cloud Run aliases, while frontend_url stays one upstream URL.
+# These are exact reviewed aliases, not a hostname pattern or a runtime request-derived list.
+# A new project/hash needs an explicit source review; canonical-only is always available.
+$gatewayTargets = @($text -split '(?m)^---\s*$' | Where-Object {
+  $_ -match "(?m)^  name:\s*api-gateway-$Environment\s*$"
+})
+if ($gatewayTargets.Count -ne 1) {
+  throw "Exactly one api-gateway-$Environment target is required for gateway CORS."
+}
+function Read-GatewayParameter([string]$Name) {
+  $parameterMatches = [regex]::Matches($gatewayTargets[0], "(?m)^  $([regex]::Escape($Name)):[ \t]*([^\r\n]*)")
+  if ($parameterMatches.Count -ne 1) {
+    throw "Gateway CORS target must declare exactly one '$Name' parameter."
+  }
+  $value = $parameterMatches[0].Groups[1].Value.Trim()
+  if ($value -match '^"([^"]*)"$' -or $value -match "^'([^']*)'$") {
+    return $Matches[1]
+  }
+  return $value
+}
+$canonicalFrontendOrigin = "https://custoking-frontend-$Environment-$($replacements['__PROJECT_NUMBER__']).$($replacements['__REGION__']).run.app"
+$reviewedFrontendAliases = @{
+  'custoking-dev/dev/asia-south2' = 'https://custoking-frontend-dev-hd4wfwk7mq-em.a.run.app'
+  'custoking-prod/prod/asia-south2' = 'https://custoking-frontend-prod-yter7sugpa-em.a.run.app'
+}
+$allowedFrontendOrigins = @($canonicalFrontendOrigin)
+$reviewedAlias = $reviewedFrontendAliases["$projectId/$Environment/$($replacements['__REGION__'])"]
+if ($reviewedAlias) { $allowedFrontendOrigins += $reviewedAlias }
+$gatewayOrigins = @((Read-GatewayParameter 'gateway_cors_allowed_origins') -split ',' | ForEach-Object { $_.Trim() })
+if ((Read-GatewayParameter 'frontend_url') -cne $canonicalFrontendOrigin -or
+    $gatewayOrigins.Count -lt 1 -or $gatewayOrigins.Count -gt $allowedFrontendOrigins.Count -or
+    $gatewayOrigins -cnotcontains $canonicalFrontendOrigin -or
+    @($gatewayOrigins | Select-Object -Unique).Count -ne $gatewayOrigins.Count -or
+    @($gatewayOrigins | Where-Object { $allowedFrontendOrigins -cnotcontains $_ }).Count -gt 0) {
+  throw "Gateway CORS origins must contain the exact canonical frontend origin and only its reviewed environment/project/region alias, without duplicates."
+}
+
+# Dry-run remains dev-only. Dedicated live email must supply every admission parameter;
+# the generic inbox always retains logging/dry-run. Secret payloads never enter target YAML.
+# Keep this guard in the governed renderer, before any Cloud Deploy target can be applied.
+$platformTargets = @($text -split '(?m)^---\s*$' | Where-Object {
+  $_ -match "(?m)^  name:\s*platform-service-$Environment\s*$"
+})
+if ($platformTargets.Count -ne 1) {
+  throw "Exactly one platform-service-$Environment target is required."
+}
+function Read-PlatformParameter([string]$Name) {
+  $matches = [regex]::Matches($platformTargets[0], "(?m)^  $([regex]::Escape($Name)):\s*([^\r\n#]+)")
+  if ($matches.Count -ne 1) {
+    throw "Platform target must declare exactly one '$Name' parameter."
+  }
+  return $matches[0].Groups[1].Value.Trim().Trim('"', "'")
+}
+$broadcastMode = Read-PlatformParameter "broadcast_dispatch_mode"
+$broadcastWorkerReady = Read-PlatformParameter "broadcast_worker_ready"
+$liveEnabled = Read-PlatformParameter "broadcast_live_enabled"
+$broadcastOff = $broadcastMode -ceq "OFF" -and $broadcastWorkerReady -ceq "false" -and $liveEnabled -ceq "false"
+$broadcastDevDryRun = $Environment -eq "dev" -and $broadcastMode -ceq "DRY_RUN" -and
+  $broadcastWorkerReady -ceq "true" -and $liveEnabled -ceq "false" -and
+  (Read-PlatformParameter "notification_delivery_provider") -ceq "logging" -and
+  (Read-PlatformParameter "msg91_dry_run") -ceq "true"
+$broadcastLive = $false
+if ($broadcastMode -ceq "LIVE" -and $liveEnabled -ceq "true" -and $broadcastWorkerReady -ceq "true") {
+  $liveSchools = Read-PlatformParameter "broadcast_live_school_ids"
+  $liveDestinations = Read-PlatformParameter "broadcast_live_destination_sha256"
+  $liveSender = Read-PlatformParameter "broadcast_live_email_sender"
+  $liveDomain = Read-PlatformParameter "broadcast_live_email_domain"
+  $liveName = Read-PlatformParameter "broadcast_live_email_sender_name"
+  $broadcastLive = (Read-PlatformParameter "notification_delivery_provider") -ceq "logging" -and
+    (Read-PlatformParameter "msg91_dry_run") -ceq "true" -and
+    (Read-PlatformParameter "broadcast_live_sender_verified") -ceq "true" -and
+    (Read-PlatformParameter "broadcast_live_email_template_verified") -ceq "true" -and
+    (Read-PlatformParameter "broadcast_live_email_template_id") -cmatch '^[A-Za-z0-9_-]{1,150}$' -and
+    $liveSchools -cmatch '^[1-9][0-9]{0,17}(,[1-9][0-9]{0,17}){0,99}$' -and
+    $liveDestinations -cmatch '^[0-9a-f]{64}(,[0-9a-f]{64}){0,999}$' -and
+    $liveDomain -cmatch '^[a-z0-9][a-z0-9.-]*\.[a-z]{2,63}$' -and
+    $liveSender -cmatch ('^[^\s@<>]+@' + [regex]::Escape($liveDomain) + '$') -and
+    $liveName.Length -ge 1 -and $liveName.Length -le 100 -and $liveName -notmatch '[\x00-\x1f\x7f]'
+}
+if (-not ($broadcastOff -or $broadcastDevDryRun -or $broadcastLive)) {
+  throw "Broadcast parameters must be OFF/false, dev-only DRY_RUN/true, or fully admitted LIVE email with logging and MSG91 dry-run."
+}
+
 $targetCount = ([regex]::Matches($text, '(?m)^kind:\s*Target\s*$')).Count
 if ($targetCount -ne 7) {
   throw "Cloud Deploy $Environment target template must contain exactly seven service targets; found $targetCount."

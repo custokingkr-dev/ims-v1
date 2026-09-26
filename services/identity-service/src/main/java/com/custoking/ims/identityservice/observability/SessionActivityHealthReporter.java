@@ -57,10 +57,12 @@ public class SessionActivityHealthReporter {
 
     Map<String, Object> snapshot() {
         return jdbc.sql("""
-                        SELECT (SELECT count(DISTINCT user_id) FROM %1$s
-                                WHERE status = 'ACTIVE' AND expires_at > now())            AS active_users,
-                               (SELECT count(*) FROM %1$s
-                                WHERE status = 'ACTIVE' AND expires_at > now())            AS active_sessions,
+                        SELECT (SELECT count(DISTINCT s.user_id) FROM %1$s s JOIN %2$s u ON u.id = s.user_id
+                                WHERE s.status = 'ACTIVE' AND s.expires_at > now() AND u.deleted_at IS NULL
+                                  AND s.credential_version = u.credential_version)        AS active_users,
+                               (SELECT count(*) FROM %1$s s JOIN %2$s u ON u.id = s.user_id
+                                WHERE s.status = 'ACTIVE' AND s.expires_at > now() AND u.deleted_at IS NULL
+                                  AND s.credential_version = u.credential_version)        AS active_sessions,
                                (SELECT count(DISTINCT user_id) FROM %1$s
                                 WHERE created_at > now() - interval '15 minutes')          AS users_last_15m,
                                (SELECT count(*) FROM %1$s

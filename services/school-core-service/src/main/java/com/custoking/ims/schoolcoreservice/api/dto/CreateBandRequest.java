@@ -13,5 +13,13 @@ public record CreateBandRequest(
         Integer classTo,
         @NotNull(message = "At least one schedule is required") Object schedules,
         Double discount,
-        Long schoolId
-) {}
+        Long schoolId,
+        Integer gracePeriodDays,
+        String lateFeeType,
+        Double lateFeeAmount,
+        Integer lateFeeIntervalDays
+) {
+    public CreateBandRequest(String name, Integer classFrom, Integer classTo, Object schedules, Double discount, Long schoolId) {
+        this(name, classFrom, classTo, schedules, discount, schoolId, null, null, null, null);
+    }
+}

@@ -113,7 +113,7 @@ function mockApi() {
 
   vi.mocked(api.post).mockImplementation((async (url: string) => {
     if (url === '/schools') return { data: { id: 77 } };
-    if (url === '/schools/10/operations-user') return { data: { userId: 303 } };
+    if (url === '/users/provisioning/schools/10/users/OPERATIONS') return { data: { userId: 303 } };
     return { data: {} };
   }) as any);
 
@@ -210,7 +210,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
     await user.type(within(addDialog).getByLabelText(/temporary password/i), 'Temporary!2026');
     await user.click(within(addDialog).getByRole('button', { name: /save admin/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools/20/admin', {
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/users/provisioning/schools/20/users/ADMIN', {
       fullName: 'Priya Admin',
       email: 'priya.admin@nsa.edu',
       temporaryPassword: 'Temporary!2026',
@@ -255,7 +255,7 @@ describe('SchoolManagementPage superadmin workflows', () => {
     await user.click(within(createDialog).getByRole('checkbox', { name: /north star academy/i }));
     await user.click(within(createDialog).getByRole('button', { name: /^create operator$/i }));
 
-    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/schools/10/operations-user', {
+    await waitFor(() => expect(api.post).toHaveBeenCalledWith('/users/provisioning/schools/10/users/OPERATIONS', {
       fullName: 'Ravi Operator',
       email: 'ravi.operator@ops.edu',
       temporaryPassword: 'Temporary!2026',

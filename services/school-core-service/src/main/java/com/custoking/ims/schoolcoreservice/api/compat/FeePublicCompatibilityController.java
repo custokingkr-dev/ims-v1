@@ -1,6 +1,7 @@
 package com.custoking.ims.schoolcoreservice.api.compat;
 
 import com.custoking.ims.schoolcoreservice.persistence.FeeReadRepository;
+import com.custoking.ims.schoolcoreservice.persistence.PaymentConflictException;
 import com.custoking.ims.schoolcoreservice.security.ModuleEntitlementGuard;
 import com.custoking.ims.schoolcoreservice.security.TenantContext;
 import com.custoking.ims.schoolcoreservice.security.TenantScope;
@@ -257,7 +258,9 @@ public class FeePublicCompatibilityController {
         requireToken(token, "fee:read");
         TenantScope.requirePermissionIfAuthenticated("fee:assign");
         requireFeeModule(TenantContext.get().schoolId());
-        return run(() -> fees.assignFeePlan(request));
+        Map<String, Object> body = new java.util.HashMap<>(request);
+        body.put("actorId", TenantContext.get().userId());
+        return run(() -> fees.assignFeePlan(body));
     }
 
     @PostMapping({"/api/v1/payments", "/api/v1/workspace/fees/record-payment"})
@@ -267,7 +270,9 @@ public class FeePublicCompatibilityController {
         requireToken(token, "fee:read");
         TenantScope.requireAnyPermissionIfAuthenticated("fee:collect", "payment:create");
         requireFeeModule(TenantContext.get().schoolId());
-        return run(() -> fees.recordPayment(request));
+        Map<String, Object> body = new java.util.HashMap<>(request);
+        body.put("actorId", TenantContext.get().userId());
+        return run(() -> fees.recordPayment(body));
     }
 
     @GetMapping("/api/v1/fees/report")
@@ -374,6 +379,8 @@ public class FeePublicCompatibilityController {
     private Map<String, Object> run(Command command) {
         try {
             return command.run();
+        } catch (PaymentConflictException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }
@@ -382,6 +389,8 @@ public class FeePublicCompatibilityController {
     private Object runObject(ObjectCommand command) {
         try {
             return command.run();
+        } catch (PaymentConflictException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage(), ex);
         } catch (IllegalArgumentException ex) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage(), ex);
         }

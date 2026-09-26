@@ -1,6 +1,12 @@
 package com.custoking.ims.schoolcoreservice.persistence;
 
 import com.custoking.ims.schoolcoreservice.outbox.OutboxWriter;
+import com.custoking.ims.schoolcoreservice.security.TenantContext;
+import com.custoking.ims.schoolcoreservice.security.TenantScope;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
@@ -662,11 +668,13 @@ public class FeeReadRepository {
         return spec.query(PaymentRow.class).list();
     }
 
+    @Transactional
     public Map<String, Object> feeReport(String classId, String sectionId, String academicYearId, Long schoolId) {
         academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         return row("content", feeReportRows(classId, sectionId, academicYearId, schoolId, false));
     }
 
+    @Transactional
     public Map<String, Object> feeOverdue(String classId, String sectionId, String academicYearId, Long schoolId) {
         academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         return row("content", feeReportRows(classId, sectionId, academicYearId, schoolId, true).stream()
@@ -679,6 +687,7 @@ public class FeeReadRepository {
                 .toList());
     }
 
+    @Transactional
     public Map<String, Object> feeReminderRequests(
             String classId, String sectionId, String academicYearId, Long schoolId, Long actorId) {
         academicYearId = resolveAcademicYearId(academicYearId, schoolId);
@@ -768,6 +777,7 @@ public class FeeReadRepository {
                 "content", requests, "suppressedCount", suppressed.size(), "suppressed", suppressed);
     }
 
+    @Transactional
     public Map<String, Object> feesModule(String academicYearId, Long schoolId) {
         academicYearId = resolveAcademicYearId(academicYearId, schoolId);
         refreshLateFeesForScope(schoolId, academicYearId);
@@ -830,23 +840,12 @@ public class FeeReadRepository {
                 "records", records);
     }
 
+    @Transactional
     public Map<String, Object> feeOverdueCount(String academicYearId, Long schoolId) {
         academicYearId = resolveAcademicYearId(academicYearId, schoolId);
-        refreshLateFeesForScope(schoolId, academicYearId);
-        List<String> assignmentIds = jdbc.sql("""
-                        SELECT fa.id
-                        FROM fee.fee_assignments fa
-                        JOIN student.students s ON s.id = fa.student_id
-                        WHERE fa.academic_year_id = :academicYearId
-                          AND s.school_id = :schoolId
-                          AND s.deleted_at IS NULL
-                        """)
-                .param("academicYearId", academicYearId)
-                .param("schoolId", schoolId)
-                .query(String.class)
-                .list();
-        long count = assignmentIds.stream()
-                .filter(id -> assignmentInstallments(id, false).stream()
+        var breakdowns = refreshLateFeesForScope(schoolId, academicYearId);
+        long count = breakdowns.values().stream()
+                .filter(installments -> installments.stream()
                         .anyMatch(installment -> "Overdue".equals(installment.get("status"))))
                 .count();
         return row("count", count);
@@ -917,6 +916,7 @@ public class FeeReadRepository {
         String assignmentId = jdbc.sql("""
                 SELECT id FROM fee.fee_assignments
                 WHERE student_id = :studentId AND academic_year_id = :academicYearId
+                FOR UPDATE
                 """)
                 .param("studentId", studentId)
                 .param("academicYearId", academicYearId)
@@ -973,10 +973,13 @@ public class FeeReadRepository {
         }
         long netPayable = calculateNetPayable(
                 bandTotal, bandDiscount, manualDiscount + ruleDiscount, surcharge, schedule);
-        Long actorId = request.get("actorId") != null ? longValue(request.get("actorId"), 0) : null;
+        Long actorId = TenantContext.get().userId();
         OffsetDateTime now = OffsetDateTime.now();
 
         if (exists) {
+            long alreadyPaid = jdbc.sql("SELECT paid_amount FROM fee.fee_assignments WHERE id = :id")
+                    .param("id", assignmentId).query(Long.class).single();
+            if (netPayable < alreadyPaid) throw new IllegalArgumentException("The revised plan cannot be less than payments already collected");
             jdbc.sql("""
                     UPDATE fee.fee_assignments
                     SET schedule = :schedule, band_discount = :bandDiscount, manual_discount = :manualDiscount,
@@ -1046,120 +1049,128 @@ public class FeeReadRepository {
     public Map<String, Object> recordPayment(Map<String, Object> request) {
         long studentId = longValue(request.get("studentId"), -1);
         long amount = paymentAmountToPaise(request);
-        if (studentId <= 0) {
-            throw new IllegalArgumentException("Student id is required");
-        }
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Amount must be greater than zero");
-        }
+        if (studentId <= 0) throw new IllegalArgumentException("Student id is required");
+        if (amount <= 0) throw new IllegalArgumentException("Amount must be greater than zero");
+        String key = requireText(request.get("idempotencyKey"), "A payment idempotency key is required");
+        if (key.length() > 128) throw new IllegalArgumentException("Payment idempotency key is too long");
         Long schoolId = studentSchoolId(studentId);
-        String academicYearId = currentAcademicYearId(schoolId);
-        refreshLateFeesForStudent(schoolId, academicYearId, studentId);
-        Map<String, Object> assignment = jdbc.sql("""
-                SELECT id, net_payable, paid_amount FROM fee.fee_assignments
-                WHERE student_id = :studentId AND academic_year_id = :academicYearId
-                ORDER BY assigned_at DESC
-                LIMIT 1
+        if (TenantContext.get().isAuthenticated()) TenantScope.resolveSchoolId(schoolId);
+        if (request.get("schoolId") != null && longValue(request.get("schoolId"), -1) != schoolId) {
+            throw new IllegalArgumentException("The student belongs to a different school");
+        }
+        String requestedAssignment = textOrDefault(request.get("assignmentId"), "");
+        String requestedYear = textOrDefault(request.get("academicYearId"), "");
+        String mode = textOrDefault(request.get("mode"), "UPI").toUpperCase(Locale.ROOT);
+        String notes = textOrDefault(request.get("notes"), "");
+        String suppliedPaidAt = textOrDefault(request.get("paidAt"), "");
+        String fingerprint = paymentFingerprint(String.valueOf(studentId), String.valueOf(amount),
+                requestedAssignment, requestedYear, mode, notes,
+                suppliedPaidAt.isEmpty() ? "" : parsePaidAt(suppliedPaidAt).toInstant().toString());
+        // Serializes duplicate keys even when the two requests target different assignments.
+        // The database unique index remains the final guard. This lock lives for the transaction.
+        jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))")
+                .param("key", "fee-payment:" + schoolId + ":" + key).query((rs, n) -> 1).single();
+        Map<String, Object> existing = jdbc.sql("""
+                SELECT id, request_fingerprint FROM fee.payment_records
+                WHERE school_id = :schoolId AND idempotency_key = :key
                 """)
-                .param("studentId", studentId)
-                .param("academicYearId", academicYearId)
-                .query((rs, rowNum) -> row(
-                        "id", rs.getString("id"),
-                        "netPayable", rs.getLong("net_payable"),
-                        "paidAmount", rs.getLong("paid_amount")))
-                .optional()
-                .or(() -> jdbc.sql("""
-                        SELECT id, net_payable, paid_amount FROM fee.fee_assignments
-                        WHERE student_id = :studentId
-                        ORDER BY assigned_at DESC
-                        LIMIT 1
-                        """)
-                        .param("studentId", studentId)
-                        .query((rs, rowNum) -> row(
-                                "id", rs.getString("id"),
-                                "netPayable", rs.getLong("net_payable"),
-                                "paidAmount", rs.getLong("paid_amount")))
-                        .optional())
-                .orElseThrow(() -> new IllegalArgumentException("Fee assignment not found. Assign a fee plan first."));
+                .param("schoolId", schoolId).param("key", key)
+                .query((rs, n) -> row("id", rs.getString("id"), "fingerprint", rs.getString("request_fingerprint")))
+                .optional().orElse(null);
+        if (existing != null) {
+            if (!fingerprint.equals(existing.get("fingerprint"))) {
+                throw new PaymentConflictException("This payment key was already used with different details. Review the original payment before starting another collection.");
+            }
+            return paymentResult(String.valueOf(existing.get("id")), schoolId);
+        }
 
-        String paymentId = UUID.randomUUID().toString();
+        String academicYearId = requestedYear.isEmpty() ? currentAcademicYearId(schoolId) : requestedYear;
+        String assignmentId = jdbc.sql("""
+                SELECT id FROM fee.fee_assignments
+                WHERE student_id = :studentId AND school_id = :schoolId
+                  AND ((:assignmentId <> '' AND id = :assignmentId)
+                    OR (:assignmentId = '' AND academic_year_id = :academicYearId))
+                FOR UPDATE
+                """)
+                .param("studentId", studentId).param("schoolId", schoolId)
+                .param("assignmentId", requestedAssignment).param("academicYearId", academicYearId)
+                .query(String.class).optional()
+                .orElseThrow(() -> new IllegalArgumentException("Fee assignment not found for the selected academic year. Select the original assignment to settle historical fees."));
+        String assignmentYear = jdbc.sql("SELECT academic_year_id FROM fee.fee_assignments WHERE id = :id")
+                .param("id", assignmentId).query(String.class).single();
+        if (!requestedYear.isEmpty() && !requestedYear.equals(assignmentYear)) {
+            throw new IllegalArgumentException("The fee assignment belongs to a different academic year");
+        }
+        // Recalculate only after acquiring the row lock; a concurrent collector may have paid.
+        assignmentInstallments(assignmentId, true);
+        Long actorId = TenantContext.get().userId();
         OffsetDateTime paidAt = parsePaidAt(request.get("paidAt"));
         OffsetDateTime now = OffsetDateTime.now();
-        Long actorId = request.get("actorId") != null ? longValue(request.get("actorId"), 0) : null;
-        String receiptNumber = "RCPT-" + System.currentTimeMillis();
-        String assignmentId = String.valueOf(assignment.get("id"));
-        long netPayable = longValue(assignment.get("netPayable"), 0);
-        long paidAmount = longValue(assignment.get("paidAmount"), 0);
-        long remainingDue = Math.max(0, netPayable - paidAmount);
-        if (amount > remainingDue) {
-            throw new IllegalArgumentException("Amount exceeds the remaining due");
-        }
-
+        Map<String, Object> balance = jdbc.sql("""
+                UPDATE fee.fee_assignments
+                SET paid_amount = paid_amount + :amount, updated_by = :actorId, updated_at = :now,
+                    version = version + 1
+                WHERE id = :id AND school_id = :schoolId AND :amount <= net_payable - paid_amount
+                RETURNING paid_amount, net_payable
+                """)
+                .param("amount", amount).param("actorId", actorId).param("now", now)
+                .param("id", assignmentId).param("schoolId", schoolId)
+                .query((rs, n) -> row("paid", rs.getLong("paid_amount"), "net", rs.getLong("net_payable")))
+                .optional().orElseThrow(() -> new IllegalArgumentException("Amount exceeds the remaining due"));
+        String paymentId = UUID.randomUUID().toString();
+        String receiptNumber = "RCPT-V2-" + jdbc.sql("SELECT nextval('fee.payment_receipt_seq')").query(Long.class).single();
         jdbc.sql("""
                 INSERT INTO fee.payment_records(id, amount, mode, notes, paid_at, recorded_by, receipt_number,
-                                            created_at, student_id, assignment_id, version, school_id)
-                VALUES (:id, :amount, :mode, :notes, :paidAt, :recordedBy, :receiptNumber,
-                        :createdAt, :studentId, :assignmentId, 0, :schoolId)
+                    created_at, student_id, assignment_id, version, school_id, idempotency_key,
+                    request_fingerprint, paid_total_after, net_payable_at_payment)
+                VALUES (:id, :amount, :mode, :notes, :paidAt, :actorId, :receipt,
+                    :now, :studentId, :assignmentId, 0, :schoolId, :key, :fingerprint, :paidTotal, :net)
                 """)
-                .param("id", paymentId)
-                .param("amount", amount)
-                .param("mode", textOrDefault(request.get("mode"), "UPI"))
-                .param("notes", textOrDefault(request.get("notes"), ""))
-                .param("paidAt", paidAt)
-                .param("recordedBy", actorId)
-                .param("receiptNumber", receiptNumber)
-                .param("createdAt", now)
-                .param("studentId", studentId)
-                .param("assignmentId", assignmentId)
-                .param("schoolId", schoolId)
-                .update();
-
-        jdbc.sql("""
-                UPDATE fee.fee_assignments
-                SET paid_amount = paid_amount + :amount, updated_by = :actorId, updated_at = :updatedAt,
-                    academic_year_id = :academicYearId
-                WHERE id = :assignmentId
-                """)
-                .param("amount", amount)
-                .param("actorId", actorId)
-                .param("updatedAt", now)
-                .param("academicYearId", academicYearId)
-                .param("assignmentId", assignmentId)
-                .update();
-        updateStudentFeeStatus(studentId, assignmentId);
-        Map<String, Object> updatedAssignment = jdbc.sql("""
-                        SELECT paid_amount, net_payable
-                        FROM fee.fee_assignments
-                        WHERE id = :assignmentId
-                        """)
-                .param("assignmentId", assignmentId)
-                .query((rs, rowNum) -> row(
-                        "paidAmount", rs.getLong("paid_amount"),
-                        "netPayable", rs.getLong("net_payable")))
-                .single();
+                .param("id", paymentId).param("amount", amount).param("mode", mode).param("notes", notes)
+                .param("paidAt", paidAt).param("actorId", actorId).param("receipt", receiptNumber)
+                .param("now", now).param("studentId", studentId).param("assignmentId", assignmentId)
+                .param("schoolId", schoolId).param("key", key).param("fingerprint", fingerprint)
+                .param("paidTotal", balance.get("paid")).param("net", balance.get("net")).update();
+        // A historical settlement must not overwrite the current enrollment's fee status.
+        if (assignmentYear.equals(currentAcademicYearId(schoolId))) updateStudentFeeStatus(studentId, assignmentId);
         emitFeeAssignmentUpserted(assignmentId);
         emitPaymentRecorded(paymentId, assignmentId, schoolId, studentId, amount, paidAt);
-        return row(
-                "paymentId", paymentId,
-                "receiptNumber", receiptNumber,
-                "receiptUrl", "/api/v1/receipts/" + paymentId + "/pdf",
-                "studentId", studentId,
-                "schoolId", schoolId,
-                "assignmentId", assignmentId,
-                "academicYearId", academicYearId,
-                "amount", amount,
-                "mode", textOrDefault(request.get("mode"), "UPI"),
-                "paidAmount", updatedAssignment.get("paidAmount"),
-                "netPayable", updatedAssignment.get("netPayable"),
-                "actorId", actorId,
-                "paidAt", paidAt);
+        return paymentResult(paymentId, schoolId);
+    }
+
+    private Map<String, Object> paymentResult(String paymentId, Long schoolId) {
+        return jdbc.sql("""
+                SELECT p.*, fa.academic_year_id FROM fee.payment_records p
+                JOIN fee.fee_assignments fa ON fa.id = p.assignment_id
+                WHERE p.id = :id AND p.school_id = :schoolId
+                """).param("id", paymentId).param("schoolId", schoolId)
+                .query((rs, n) -> row("paymentId", rs.getString("id"),
+                        "receiptNumber", rs.getString("receipt_number"),
+                        "receiptUrl", "/api/v1/receipts/" + rs.getString("id") + "/pdf",
+                        "studentId", rs.getLong("student_id"), "schoolId", rs.getLong("school_id"),
+                        "assignmentId", rs.getString("assignment_id"), "academicYearId", rs.getString("academic_year_id"),
+                        "amount", rs.getLong("amount"), "mode", rs.getString("mode"),
+                        "paidAmount", rs.getLong("paid_total_after"), "netPayable", rs.getLong("net_payable_at_payment"),
+                        "actorId", rs.getObject("recorded_by", Long.class),
+                        "paidAt", rs.getObject("paid_at", OffsetDateTime.class))).single();
+    }
+
+    private String paymentFingerprint(String... fields) {
+        StringBuilder canonical = new StringBuilder();
+        for (String field : fields) canonical.append(field.length()).append(':').append(field);
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.toString().getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException impossible) {
+            throw new IllegalStateException(impossible);
+        }
     }
 
     private List<Map<String, Object>> feeReportRows(
             String classId, String sectionId, String academicYearId, Long schoolId, boolean overdueOnly) {
-        refreshLateFeesForClass(schoolId, academicYearId, classId, sectionId);
+        Map<String, List<Map<String, Object>>> breakdowns = refreshLateFeesForClass(schoolId, academicYearId, classId, sectionId);
         StringBuilder sql = new StringBuilder("""
-                SELECT fa.id, fa.schedule, fa.band_discount, fa.manual_discount, fa.rule_discount,
+                SELECT fa.id, fa.academic_year_id, fa.schedule, fa.band_discount, fa.manual_discount, fa.rule_discount,
                        dr.name AS discount_rule_name, fa.surcharge,
                        fa.gross_fee, fa.selected_optional_item_ids_csv,
                        fa.base_payable, fa.late_fee_accrued, fa.net_payable, fa.paid_amount,
@@ -1180,7 +1191,7 @@ public class FeeReadRepository {
                 LEFT JOIN LATERAL (
                     SELECT id
                     FROM fee.payment_records p
-                    WHERE p.student_id = s.id
+                    WHERE p.assignment_id = fa.id AND p.school_id = fa.school_id
                     ORDER BY p.paid_at DESC NULLS LAST, p.created_at DESC NULLS LAST
                     LIMIT 1
                 ) latest_payment ON true
@@ -1214,6 +1225,7 @@ public class FeeReadRepository {
                     long due = Math.max(0, rs.getLong("net_payable") - rs.getLong("paid_amount"));
                     return row(
                             "assignmentId", rs.getString("id"),
+                            "academicYearId", rs.getString("academic_year_id"),
                             "studentId", rs.getLong("student_id"),
                             "paymentId", textOrDefault(rs.getString("latest_payment_id"), ""),
                             "student", rs.getString("student_name"),
@@ -1244,7 +1256,7 @@ public class FeeReadRepository {
                 })
                 .list();
         for (Map<String, Object> reportRow : rows) {
-            List<Map<String, Object>> breakdown = assignmentInstallments(String.valueOf(reportRow.get("assignmentId")), false);
+            List<Map<String, Object>> breakdown = breakdowns.getOrDefault(String.valueOf(reportRow.get("assignmentId")), List.of());
             reportRow.put("installments", breakdown);
             long daysOverdue = breakdown.stream()
                     .mapToLong(row -> longValue(row.get("daysOverdue"), 0))
@@ -1455,7 +1467,7 @@ public class FeeReadRepository {
 
     private Map<String, Object> assignmentRecord(String id) {
         return jdbc.sql("""
-                SELECT fa.id, fa.schedule, fa.band_discount, fa.manual_discount, fa.rule_discount,
+                SELECT fa.id, fa.academic_year_id, fa.schedule, fa.band_discount, fa.manual_discount, fa.rule_discount,
                        fa.discount_rule_id, dr.name AS discount_rule_name, fa.surcharge,
                        fa.gross_fee, fa.selected_optional_item_ids_csv,
                        fa.base_payable, fa.late_fee_accrued, fa.net_payable, fa.paid_amount,
@@ -1494,7 +1506,7 @@ public class FeeReadRepository {
                 .single();
     }
 
-    private void refreshLateFeesForClass(
+    private Map<String, List<Map<String, Object>>> refreshLateFeesForClass(
             Long schoolId, String academicYearId, String classId, String sectionId) {
         List<String> assignmentIds = jdbc.sql("""
                 SELECT fa.id
@@ -1512,73 +1524,63 @@ public class FeeReadRepository {
                 .param("sectionId", sectionId)
                 .query(String.class)
                 .list();
-        assignmentIds.forEach(id -> assignmentInstallments(id, true));
+        return assignmentInstallments(assignmentIds, true);
     }
 
-    private void refreshLateFeesForStudent(Long schoolId, String academicYearId, long studentId) {
-        jdbc.sql("""
-                SELECT id
-                FROM fee.fee_assignments
-                WHERE school_id = :schoolId AND academic_year_id = :academicYearId
-                  AND student_id = :studentId
-                """)
-                .param("schoolId", schoolId)
-                .param("academicYearId", academicYearId)
-                .param("studentId", studentId)
-                .query(String.class)
-                .list()
-                .forEach(id -> assignmentInstallments(id, true));
-    }
-
-    private void refreshLateFeesForScope(Long schoolId, String academicYearId) {
-        jdbc.sql("""
-                SELECT id
-                FROM fee.fee_assignments
-                WHERE school_id = :schoolId AND academic_year_id = :academicYearId
-                """)
-                .param("schoolId", schoolId)
-                .param("academicYearId", academicYearId)
-                .query(String.class)
-                .list()
-                .forEach(id -> assignmentInstallments(id, true));
+    private Map<String, List<Map<String, Object>>> refreshLateFeesForScope(Long schoolId, String academicYearId) {
+        List<String> ids = jdbc.sql("""
+                SELECT fa.id FROM fee.fee_assignments fa
+                JOIN student.students s ON s.id = fa.student_id
+                WHERE fa.school_id = :schoolId AND fa.academic_year_id = :academicYearId
+                  AND s.deleted_at IS NULL
+                """).param("schoolId", schoolId).param("academicYearId", academicYearId).query(String.class).list();
+        return assignmentInstallments(ids, true);
     }
 
     private List<Map<String, Object>> assignmentInstallments(String assignmentId, boolean accrueLateFee) {
-        Map<String, Object> assignment = jdbc.sql("""
-                SELECT fa.base_payable, fa.paid_amount, fa.late_fee_accrued, fa.assigned_at,
+        return assignmentInstallments(List.of(assignmentId), accrueLateFee).getOrDefault(assignmentId, List.of());
+    }
+
+    // Load all assignments and all distinct plan schedules in two reads, rather than
+    // two queries per student (previously repeated again while building the report).
+    private Map<String, List<Map<String, Object>>> assignmentInstallments(List<String> ids, boolean accrueLateFee) {
+        if (ids.isEmpty()) return Map.of();
+        List<Map<String, Object>> assignments = jdbc.sql("""
+                SELECT fa.id, fa.base_payable, fa.paid_amount, fa.late_fee_accrued, fa.assigned_at,
                        fb.grace_period_days, fb.late_fee_type, fb.late_fee_amount,
                        fb.late_fee_interval_days, fb.id AS band_id
-                FROM fee.fee_assignments fa
-                JOIN fee.fee_bands fb ON fb.id = fa.band_id
-                WHERE fa.id = :assignmentId
-                """)
-                .param("assignmentId", assignmentId)
-                .query((rs, rowNum) -> row(
-                        "basePayable", rs.getLong("base_payable"),
-                        "paidAmount", rs.getLong("paid_amount"),
+                FROM fee.fee_assignments fa JOIN fee.fee_bands fb ON fb.id = fa.band_id
+                WHERE fa.id IN (:ids) ORDER BY fa.id
+                """ + (accrueLateFee ? " FOR UPDATE OF fa" : ""))
+                .param("ids", ids)
+                .query((rs, rowNum) -> row("id", rs.getString("id"),
+                        "basePayable", rs.getLong("base_payable"), "paidAmount", rs.getLong("paid_amount"),
                         "lateFeeAccrued", rs.getLong("late_fee_accrued"),
                         "assignedAt", rs.getObject("assigned_at", OffsetDateTime.class),
-                        "gracePeriodDays", rs.getInt("grace_period_days"),
-                        "lateFeeType", rs.getString("late_fee_type"),
-                        "lateFeeAmount", rs.getLong("late_fee_amount"),
-                        "lateFeeIntervalDays", rs.getInt("late_fee_interval_days"),
-                        "bandId", rs.getString("band_id")))
-                .optional()
-                .orElseGet(LinkedHashMap::new);
-        if (assignment.isEmpty()) return List.of();
+                        "gracePeriodDays", rs.getInt("grace_period_days"), "lateFeeType", rs.getString("late_fee_type"),
+                        "lateFeeAmount", rs.getLong("late_fee_amount"), "lateFeeIntervalDays", rs.getInt("late_fee_interval_days"),
+                        "bandId", rs.getString("band_id"))).list();
+        if (assignments.isEmpty()) return Map.of();
+        var bandIds = assignments.stream().map(a -> String.valueOf(a.get("bandId"))).distinct().toList();
+        Map<String, List<Map<String, Object>>> schedules = new LinkedHashMap<>();
+        jdbc.sql("""
+                SELECT band_id, label, due_date, share_percent FROM fee.fee_installments
+                WHERE band_id IN (:bands) ORDER BY band_id, sort_order, due_date, id
+                """).param("bands", bandIds)
+                .query((rs, n) -> row("bandId", rs.getString("band_id"), "label", rs.getString("label"),
+                        "dueDate", rs.getObject("due_date", LocalDate.class), "sharePercent", rs.getDouble("share_percent")))
+                .list().forEach(item -> schedules.computeIfAbsent(String.valueOf(item.get("bandId")), ignored -> new ArrayList<>()).add(item));
+        Map<String, List<Map<String, Object>>> result = new LinkedHashMap<>();
+        for (var assignment : assignments) {
+            String id = String.valueOf(assignment.get("id"));
+            result.put(id, calculateAssignmentInstallments(id, assignment,
+                    schedules.getOrDefault(String.valueOf(assignment.get("bandId")), List.of()), accrueLateFee));
+        }
+        return result;
+    }
 
-        List<Map<String, Object>> configured = jdbc.sql("""
-                SELECT label, due_date, share_percent, sort_order
-                FROM fee.fee_installments
-                WHERE band_id = :bandId
-                ORDER BY sort_order, due_date, id
-                """)
-                .param("bandId", assignment.get("bandId"))
-                .query((rs, rowNum) -> row(
-                        "label", rs.getString("label"),
-                        "dueDate", rs.getObject("due_date", LocalDate.class),
-                        "sharePercent", rs.getDouble("share_percent")))
-                .list();
+    private List<Map<String, Object>> calculateAssignmentInstallments(String assignmentId,
+            Map<String, Object> assignment, List<Map<String, Object>> configured, boolean accrueLateFee) {
         if (configured.isEmpty()) {
             OffsetDateTime assignedAt = (OffsetDateTime) assignment.get("assignedAt");
             configured = new ArrayList<>();

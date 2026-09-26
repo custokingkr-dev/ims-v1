@@ -1,8 +1,10 @@
+import { catalogClient } from '../../../services/catalogApi';
 import { useEffect, useMemo, useState } from 'react';
 import api from '../../../services/api';
-import { ModuleShell, Field, Info, Stat } from '../ui';
-import { formatMoney, todayIso } from '../utils';
+import { ModuleShell, Field, Info, PanelMessage, Stat } from '../ui';
+import { formatIsoDay, formatMoney, todayIso } from '../utils';
 import { getDisplayStatus } from '../../../shared/display/status';
+import { useCategoryLabel } from '../../../features/catalog/useCategoryLabel';
 import { ProductOrderDetail } from '../../../features/catalog/ProductOrderDetail';
 
 interface Props {
@@ -12,6 +14,8 @@ interface Props {
 
 export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const [notebookOrderId, setNotebookOrderId] = useState<string | null>(null);
+  const categoryLabel = useCategoryLabel();
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,7 +51,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
       const size = 200;
       let page = 0; let all: any[] = []; let totalPages = 1; let totalElements = 0;
       do {
-        const res = await api.get('/sa/orders', { params: { page, size } });
+        const res = await catalogClient.getOrderPage({ page, size }).then(data => ({ data }));
         const d = res.data;
         const content = Array.isArray(d) ? d : (d?.content ?? []);
         totalPages = Array.isArray(d) ? 1 : (d?.totalPages ?? 1);
@@ -56,7 +60,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
         page += 1;
       } while (page < totalPages && page < 25); // hard cap 25 pages (5000 orders) to avoid runaway
       setTruncated(all.length < totalElements);
-      const statsRes = await api.get('/sa/orders/stats');
+      const statsRes = await catalogClient.getOrderSummary().then(data => ({ data }));
       setOrders(all);
       setStats(statsRes.data || null);
     } catch (e: any) {
@@ -89,7 +93,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const openDetail = async (orderId: string) => {
     setDetailLoading(true); setDetailError(''); setDetailOpen(true); setDetailOrder(null);
     try {
-      const res = await api.get(`/supply/orders/${orderId}`);
+      const res = await api.get(`/catalog/orders/${orderId}`);
       if (Number(res.data?.formVersion) === 2) { setDetailOpen(false); setNotebookOrderId(orderId); return; }
       setDetailOrder(res.data); setNewStatus(res.data?.status || '');
     } catch (e: any) {
@@ -103,7 +107,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     if (!detailOrder) return;
     setStatusSaving(true); setDetailError('');
     try {
-      await api.patch(`/sa/orders/${detailOrder.id}/status`, { status: newStatus });
+      await catalogClient.updateOrderStatus({ id: detailOrder.id }, { status: newStatus });
       setDetailOpen(false); await load();
     } catch (e: any) {
       setDetailError(e?.response?.data?.message || 'Save failed.');
@@ -114,7 +118,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
   const acceptOrder = async (orderId: string) => {
     try {
-      await api.patch(`/sa/orders/${orderId}/status`, { status: 'IN_PROGRESS' });
+      await catalogClient.updateOrderStatus({ id: orderId }, { status: 'IN_PROGRESS' });
       await load();
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Failed to accept order. Please try again.');
@@ -123,7 +127,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
   const markDelivered = async (orderId: string) => {
     try {
-      await api.post(`/supply/orders/${orderId}/deliver`);
+      await catalogClient.markDelivered({ id: orderId });
       await load();
     } catch (e: any) {
       setToast(e?.response?.data?.message || 'Could not mark delivered.');
@@ -133,7 +137,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
   const openInvoiceFromOrder = async (orderId: string, school: string, schoolId: number | null, valuePaise: number) => {
     setInvError(''); setInvEditing(false); setInvSaving(false);
     try {
-      const res = await api.get(`/sa/invoices/by-order/${orderId}`);
+      const res = await api.get(`/billing/sa/invoices/by-order/${orderId}`);
       if (res.data) {
         setInvData({ ...res.data }); setInvExistingId(res.data.id);
       } else {
@@ -167,7 +171,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     setInvSaving(true); setInvError('');
     try {
       const amount = Number(invData.qty || 0) * Number(invData.rate || 0);
-      const res = await api.post('/sa/invoices', { orderRef: invData.orderRef, school: invData.school, schoolId: invData.schoolId ?? null, description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), amount, notes: invData.notes || '' });
+      const res = await api.post('/billing/sa/invoices', { orderRef: invData.orderRef, school: invData.school, schoolId: invData.schoolId ?? null, description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), amount, notes: invData.notes || '' });
       setInvExistingId(res.data.id); setInvData({ ...res.data });
       setToast(`Invoice ${res.data.id} sent to ${invData.school}`);
     } catch (e: any) {
@@ -181,7 +185,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
     if (!invExistingId) return;
     setInvSaving(true); setInvError('');
     try {
-      await api.patch(`/sa/invoices/${invExistingId}`, { description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), school: invData.school, status: invData.status });
+      await api.patch(`/billing/sa/invoices/${invExistingId}`, { description: invData.description, qty: Number(invData.qty || 0), rate: Number(invData.rate || 0), school: invData.school, status: invData.status });
       setInvEditing(false);
     } catch (e: any) {
       setInvError(e?.response?.data?.message || 'Save failed. Please try again.');
@@ -198,7 +202,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <Stat label="Total orders" value={stats?.totalOrders ?? 0} sub="Across all schools" pill="Live" tone="blue" />
           <Stat label="New requests" value={stats?.pendingApproval ?? 0} sub="Awaiting approval" pill="Needs review" tone="orange" />
           <Stat label="In progress" value={stats?.approved ?? 0} sub="Approved or processing" pill="Active" tone="green" />
-          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" pill="Paise→₹" tone="blue" />
+          <Stat label="Order Value" value={`₹${formatMoney(Number(stats?.gmv || 0) / 100)}`} sub="Total platform order value" tone="blue" />
         </div>
         <div className="ck-form-card" style={{ marginBottom: 16 }}>
           <div className="ck-form-body">
@@ -206,13 +210,13 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               <Field label="Category">
                 <select value={filter.cat} onChange={(e) => setFilter({ ...filter, cat: e.target.value })}>
                   <option value="">All</option>
-                  {categoryOptions.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
+                  {categoryOptions.map((cat) => <option key={cat} value={cat}>{categoryLabel(cat)}</option>)}
                 </select>
               </Field>
               <Field label="Status">
                 <select value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value })}>
                   <option value="">All</option>
-                  {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {statusOptions.map((s) => <option key={s} value={s}>{getDisplayStatus(s)}</option>)}
                 </select>
               </Field>
               <Field label="Search">
@@ -225,23 +229,32 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
           <div className="ck-alert ck-alert-am" style={{ marginBottom: 16 }}><span>i</span><div>Showing the first {orders.length} orders — some older orders are not displayed. Refine the filters to narrow the list.</div></div>
         )}
         <div className="ck-card">
-          {loading ? <div style={{ padding: 16 }}>Loading orders…</div>
-          : error ? <div style={{ padding: 16 }}>{error}</div>
+          {loading ? <PanelMessage>Loading orders…</PanelMessage>
+          : error ? (
+            <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+              <div>{error}</div>
+              <button className="ck-btn ck-btn-ghost" onClick={() => void load()}>Retry</button>
+            </div>
+          )
           : (
-            <table className="ck-table">
-              <thead><tr><th>Order</th><th>School</th><th>Category</th><th>Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
+            <div className="ck-table-wrap"><table className="ck-table">
+              <thead><tr><th>Order</th><th>School</th><th>Category</th><th className="ck-num">Amount</th><th>Status</th><th>Placed</th><th /></tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={7}><div className="ts">No orders found.</div></td></tr>
+                  ? <tr><td colSpan={7}><PanelMessage>No orders found.</PanelMessage></td></tr>
                   : filtered.map((row: any) => (
                     <tr key={row.id}>
-                      <td><div className="tb">{row.id}</div><div className="ts">{row.description || row.title || row.category}</div></td>
+                      {/* description and title are not fields on a catalog order row, so this
+                          secondary line could only ever repeat the Category column beside it. */}
+                      <td><div className="tb">{row.id}</div></td>
                       <td>{row.schoolName || row.school || '—'}</td>
-                      <td>{row.category}</td>
-                      <td>{row.pricingStatus === 'PENDING_PRICING' ? 'Pending pricing' : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
+                      <td className="ck-whole">{categoryLabel(row.category)}</td>
+                      <td className="ck-num">{row.pricingStatus === 'PENDING_PRICING'
+                        ? <span style={{ color: 'var(--ink3)' }}>Pending pricing</span>
+                        : `₹${formatMoney(Number(row.totalAmount ?? 0) / 100)}`}</td>
                       <td><span className={`ck-status ${String(row.status).includes('DELIVER') ? 'sg' : String(row.status).includes('APPROV') || String(row.status).includes('PROGRESS') ? 'sb2' : 'sam'}`}>{getDisplayStatus(row.status)}</span></td>
-                      <td>{row.placedAt || row.createdAt || '—'}</td>
-                      <td style={{ display: 'flex', gap: 8 }}>
+                      <td className="ck-whole">{formatIsoDay(row.placedAt || row.createdAt)}</td>
+                      <td><div className="ck-row-actions">
                         <button className="ck-btn ck-btn-ghost" onClick={() => Number(row.formVersion) === 2 ? setNotebookOrderId(row.id) : void openDetail(row.id)}>View</button>
                         {canManage && Number(row.formVersion) !== 2 && (String(row.status).toUpperCase() === 'AWAITING_APPROVAL'
                           ? <button className="ck-btn ck-btn-g" onClick={() => acceptOrder(row.id)}>Accept</button>
@@ -253,18 +266,18 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
                               <button className="ck-btn ck-btn-ghost" onClick={() => openInvoiceFromOrder(row.id, row.schoolName || row.school || '—', row.schoolId ?? null, Number(row.totalAmount || 0))}>Invoice</button>
                             </>
                           ))}
-                      </td>
+                      </div></td>
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </ModuleShell>
 
       {detailOpen && (
         <div className="ck-modal-bg" onClick={() => setDetailOpen(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Order detail" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Order detail</div>
               <button className="ck-modal-x" onClick={() => setDetailOpen(false)}>×</button>
@@ -304,8 +317,6 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
             </div>
             <div className="ck-modal-foot">
               {canManage && <button className="ck-btn ck-btn-ghost" onClick={() => detailOrder && openInvoiceFromOrder(detailOrder.id, detailOrder.schoolName || '—', detailOrder.schoolId ?? null, Number(detailOrder.totalAmount || 0))}>Generate invoice</button>}
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">WhatsApp school</button>
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download order sheet</button>
               {canManage && <button className="ck-btn ck-btn-g" disabled={statusSaving} onClick={saveStatus}>{statusSaving ? 'Saving…' : 'Update status'}</button>}
             </div>
           </div>
@@ -314,7 +325,7 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
 
       {invOpen && (
         <div className="ck-modal-bg" onClick={() => setInvOpen(false)}>
-          <div className="ck-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="ck-modal" role="dialog" aria-modal="true" aria-label="Invoice" onClick={(e) => e.stopPropagation()}>
             <div className="ck-modal-h">
               <div className="ck-modal-title">Invoice</div>
               <button className="ck-modal-x" onClick={() => setInvOpen(false)}>×</button>
@@ -349,11 +360,10 @@ export function SaAllOrdersPanel({ onNewOrder, canManage = true }: Props) {
               </div>
             </div>
             <div className="ck-modal-foot">
-              <button className="ck-btn ck-btn-ghost" disabled title="Coming soon">Download PDF</button>
               {invExistingId && !invEditing ? <button className="ck-btn ck-btn-ghost" onClick={() => setInvEditing(true)}>Edit invoice</button> : null}
               {invExistingId && invEditing ? <button className="ck-btn ck-btn-ghost" disabled={invSaving} onClick={saveInvEdit}>{invSaving ? 'Saving…' : 'Save changes'}</button> : null}
               {invExistingId
-                ? <button className="ck-btn ck-btn-g" disabled title="Coming soon">Resend to school</button>
+                ? null
                 : <button className="ck-btn ck-btn-g" disabled={invSaving} onClick={sendInvoice}>{invSaving ? 'Sending…' : 'Send to school'}</button>}
             </div>
           </div>

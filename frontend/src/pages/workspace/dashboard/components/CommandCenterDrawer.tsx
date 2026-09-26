@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useId, useRef } from 'react';
+import { useDialogFocus } from '../../../../hooks/useDialogFocus';
 
 interface Props {
   title: string;
@@ -10,23 +11,10 @@ interface Props {
 }
 
 export function CommandCenterDrawer({ title, subtitle, open, onClose, children, footer }: Props) {
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-
-  // Body scroll lock while open
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [open]);
+  const ref = useRef<HTMLElement>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  useDialogFocus(ref, open, onClose);
 
   if (!open) return null;
 
@@ -39,15 +27,18 @@ export function CommandCenterDrawer({ title, subtitle, open, onClose, children, 
         aria-hidden="true"
       />
       <aside
+        ref={ref}
+        tabIndex={-1}
         className="ck-drawer"
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
+        aria-describedby={subtitle ? descriptionId : undefined}
       >
         <div className="ck-drawer-header">
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h2 className="ck-drawer-title">{title}</h2>
-            {subtitle && <p className="ck-drawer-subtitle">{subtitle}</p>}
+            <h2 id={titleId} className="ck-drawer-title">{title}</h2>
+            {subtitle && <p id={descriptionId} className="ck-drawer-subtitle">{subtitle}</p>}
           </div>
           <button
             className="ck-drawer-close"

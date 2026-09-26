@@ -63,6 +63,7 @@ export interface Quotation {
   deliveryTimeline: string;
   notes: string;
   documentUrl: string;
+  document?: QuotationDocument | null;
   isCustoking?: boolean;
 }
 
@@ -214,3 +215,4 @@ export interface WorkspaceData {
   firefighting?: { requests: FirefightingRequest[] };
   orders?: SupplyOrder[];
 }
+import type { QuotationDocument } from '../generated/quotationDocumentClient';

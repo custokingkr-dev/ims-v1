@@ -521,19 +521,22 @@ public class CatalogReadRepository {
     @Transactional
     public AnnualPlanItemRow saveAnnualPlanItem(Long schoolId, Map<String, Object> request) {
         requireSchool(schoolId);
+        // Confirmation and item changes serialize on the same school, across application replicas.
+        jdbc.sql("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))")
+                .param("key", "annual-plan:" + schoolId).query().singleRow();
         String id = trimToNull(str(request.get("id"), ""));
         if (id == null) id = UUID.randomUUID().toString();
         String academicYearId = currentAcademicYearId(schoolId);
         String category = str(request.get("category"), "STATIONERY");
-        boolean exists = jdbc.sql("SELECT count(*) FROM catalog.annual_plan_items WHERE id = :id")
-                .param("id", id).query(Long.class).single() > 0;
+        boolean exists = jdbc.sql("SELECT count(*) FROM catalog.annual_plan_items WHERE id = :id AND school_id = :schoolId AND academic_year_id = :academicYearId")
+                .param("id", id).param("schoolId", schoolId).param("academicYearId", academicYearId).query(Long.class).single() > 0;
         if (exists) {
             jdbc.sql("""
                     UPDATE catalog.annual_plan_items
-                    SET school_id = :schoolId, academic_year_id = :academicYearId, term_name = :termName,
+                    SET term_name = :termName,
                         category = :category, description = :description, quantity = :quantity,
                         estimated_amount = :estimatedAmount, status = :status
-                    WHERE id = :id
+                    WHERE id = :id AND school_id = :schoolId AND academic_year_id = :academicYearId
                     """)
                     .param("id", id)
                     .param("schoolId", schoolId)
@@ -546,7 +549,7 @@ public class CatalogReadRepository {
                     .param("status", str(request.get("status"), "PLANNED").toUpperCase(Locale.ROOT))
                     .update();
         } else {
-            jdbc.sql("""
+            int inserted = jdbc.sql("""
                     INSERT INTO catalog.annual_plan_items (
                         id, school_id, academic_year_id, term_name, category, description,
                         quantity, estimated_amount, status, created_at
@@ -554,6 +557,7 @@ public class CatalogReadRepository {
                         :id, :schoolId, :academicYearId, :termName, :category, :description,
                         :quantity, :estimatedAmount, :status, :createdAt
                     )
+                    ON CONFLICT (id) DO NOTHING
                     """)
                     .param("id", id)
                     .param("schoolId", schoolId)
@@ -566,6 +570,7 @@ public class CatalogReadRepository {
                     .param("status", str(request.get("status"), "PLANNED").toUpperCase(Locale.ROOT))
                     .param("createdAt", OffsetDateTime.now())
                     .update();
+            if (inserted != 1) throw new IllegalArgumentException("The plan item reference is not available in this school and academic year");
         }
         return annualPlanItem(id).orElseThrow();
     }

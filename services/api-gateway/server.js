@@ -12,8 +12,8 @@ const PORT = Number(process.env.PORT || 80);
 const AUTH_MODE = (process.env.GATEWAY_AUTH_MODE || 'enforce').toLowerCase();
 const CLOUD_RUN_AUTH = (process.env.GATEWAY_CLOUD_RUN_AUTH || 'auto').toLowerCase();
 
-// Task 2.3: verify the access token locally instead of introspecting per request.
-// 'disabled' forces pure introspection (instant rollback lever, no redeploy).
+// Optional signature prefilter. Current permissions and session revocation are always
+// resolved through identity; embedded claims are never authoritative for access scope.
 const LOCAL_JWT_VERIFY = (process.env.GATEWAY_LOCAL_JWT_VERIFY || 'enabled').toLowerCase() !== 'disabled';
 const APP_JWT_SECRET = process.env.APP_JWT_SECRET || '';
 let warnedMissingJwtSecret = false;
@@ -25,7 +25,7 @@ const CORS_ALLOWED_ORIGINS = (process.env.GATEWAY_CORS_ALLOWED_ORIGINS || '')
   .map((value) => value.trim())
   .filter(Boolean);
 const CORS_ALLOW_METHODS = process.env.GATEWAY_CORS_ALLOW_METHODS || 'GET,POST,PUT,PATCH,DELETE,OPTIONS';
-const CORS_ALLOW_HEADERS = process.env.GATEWAY_CORS_ALLOW_HEADERS || 'Authorization,Content-Type,X-Request-ID,X-Student-Delete-Confirmation';
+const CORS_ALLOW_HEADERS = process.env.GATEWAY_CORS_ALLOW_HEADERS || 'Authorization,Content-Type,X-Request-ID,X-Student-Delete-Confirmation,Idempotency-Key';
 const CORS_MAX_AGE = process.env.GATEWAY_CORS_MAX_AGE || '600';
 
 // Security response headers (overridable so deployments can tune the CSP for the SPA).
@@ -40,7 +40,7 @@ const REFERRER_POLICY = process.env.GATEWAY_REFERRER_POLICY || 'strict-origin-wh
 // 5 MiB file uploads plus multipart envelope overhead.
 const MAX_BODY_BYTES = Number(process.env.GATEWAY_MAX_BODY_BYTES || 8 * 1024 * 1024);
 
-// Global token-bucket rate limit, keyed by a digest of the bearer token (else client IP).
+// Per-replica token-bucket rate limit, keyed by a digest of the bearer token (else client IP).
 // Keep bearer credentials out of long-lived process memory and reject unusually large values
 // before either authentication or rate-limit state is allocated.
 const configuredMaxBearerTokenBytes = Number(process.env.GATEWAY_MAX_BEARER_TOKEN_BYTES || 8 * 1024);
@@ -128,6 +128,7 @@ const routes = [
   route('fee', '/api/v1/workspace/fees/'),
   route('reporting', '/api/v1/workspace/'),
   route('reporting', '/api/v1/workspace'),
+  route('reporting', '/api/v1/reporting/'),
   route('attendance', '/api/v1/attendance/'),
   route('fee', '/api/v1/fee-structure'),
   route('fee', '/api/v1/fee-assignments'),
@@ -135,6 +136,8 @@ const routes = [
   route('fee', '/api/v1/fees/'),
   route('fee', '/api/v1/receipts/'),
   route('catalog', '/api/v1/supply/'),
+  route('catalog', '/api/v1/catalog/'),
+  route('billing', '/api/v1/billing/'),
   route('billing', '/api/v1/sa/invoices/'),
   route('billing', '/api/v1/sa/invoices'),
   route('billing', '/api/v1/customers/'),
@@ -271,7 +274,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    // Global rate limit (token-bucket) before any upstream work.
+    // Per-replica rate limit (token-bucket) before any upstream work.
     const limit = checkRateLimit(req);
     if (!limit.allowed) {
       res.setHeader('Retry-After', String(limit.retryAfter));
@@ -322,6 +325,11 @@ const server = http.createServer(async (req, res) => {
     matchedService = 'frontend';
     await proxyFrontend(req, res, parsed, requestId);
   } catch (error) {
+    if (error && error.code === 'IDENTITY_QUOTA_EXCEEDED') {
+      res.setHeader('Retry-After', String(error.retryAfter));
+      sendJson(res, 429, { message: 'Too many requests. Try again later.' });
+      return;
+    }
     if (isPayloadTooLargeError(error)) {
       if (!res.headersSent) {
         sendJson(res, 413, { message: 'Payload too large' });
@@ -387,6 +395,9 @@ function isInternalUpstreamPath(upstreamPathname) {
 }
 
 function requiresUserAuth(pathname) {
+  // Exact provider callback only. Platform verifies both the injected service identity
+  // and its dedicated callback secret; sibling paths and compatibility aliases stay private.
+  if (pathname === '/api/v1/notifications/provider-reports/msg91/email') return false;
   if (!pathname.startsWith('/api/v1/') && !/^\/[a-z-]+-api\/v1\//.test(pathname)) {
     return false;
   }
@@ -394,6 +405,9 @@ function requiresUserAuth(pathname) {
     '/api/v1/auth/login',
     '/api/v1/auth/refresh',
     '/api/v1/auth/logout',
+    '/api/v1/auth/password-reset/capabilities',
+    '/api/v1/auth/password-reset/request',
+    '/api/v1/auth/password-reset/confirm',
   ].some((publicPath) => pathname === publicPath || pathname.startsWith(`${publicPath}/`));
 }
 
@@ -457,8 +471,7 @@ function principalFromClaims(claims) {
   };
 }
 
-// Resolve the caller's principal. Prefers local HMAC JWT verification; falls back to
-// introspection for un-enriched legacy tokens or when local verify is off/misconfigured.
+// Resolve the caller's current principal through identity, after an optional local prefilter.
 // `opts` overrides are for deterministic unit tests.
 async function authenticate(req, requestId, opts = {}) {
   const localVerify = opts.localVerify !== undefined ? opts.localVerify : LOCAL_JWT_VERIFY;
@@ -479,9 +492,7 @@ async function authenticate(req, requestId, opts = {}) {
     // A refresh token is validly signed but is never a bearer credential. Do not send it to
     // introspection as an "un-enriched legacy token"; identity enforces the same boundary too.
     if (claims.type === 'refresh') return reject('refresh_token_as_bearer');
-    const principal = principalFromClaims(claims);
-    if (principal) return principal; // enriched token → no network call
-    const introspected = await introspectFn(req, requestId); // valid but un-enriched → fall back
+    const introspected = await introspectFn(req, requestId);
     return introspected || reject('introspection_rejected');
   }
   if (localVerify && !secret && !warnedMissingJwtSecret) {
@@ -504,12 +515,26 @@ async function introspect(req, requestId) {
   };
   await addCloudRunAuthorization(headers, upstreams.identity);
 
+  const requestUrl = new URL(req.url || '/', 'http://gateway.local');
+  const requestPath = decodeURIComponent(requestUrl.pathname);
+  const schoolCandidate = /\/schools\/(\d+)(?:\/|$)/.exec(requestPath)?.[1] || requestUrl.searchParams.get('schoolId');
+  const schoolId = schoolCandidate && /^\d+$/.test(schoolCandidate) && Number.isSafeInteger(Number(schoolCandidate))
+    && Number(schoolCandidate) > 0 ? Number(schoolCandidate) : undefined;
+
   const response = await fetch(target, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, method: req.method || 'GET', path: requestPath, ...(schoolId ? { schoolId } : {}) }),
+    signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) return null;
+  if (response.status === 401 || response.status === 403) return null;
+  if (response.status === 429) {
+    const error = new Error('Identity request quota exceeded');
+    error.code = 'IDENTITY_QUOTA_EXCEEDED';
+    error.retryAfter = Math.max(1, Math.min(3600, Number(response.headers.get('retry-after')) || 60));
+    throw error;
+  }
+  if (!response.ok) throw new Error(`Identity introspection unavailable (${response.status})`);
   const payload = await response.json();
   return payload && payload.active ? payload.principal : null;
 }
@@ -522,7 +547,14 @@ async function proxyFrontend(req, res, parsed, requestId) {
 async function proxy(req, res, matched, parsed, requestId, principal, compatibility = null) {
   const upstream = upstreams[matched.service];
   const target = buildUpstreamTarget(upstream, matched.rewrite(parsed.pathname), parsed.search);
-  await proxyToUrl(req, res, target, requestId, matched.service, principal, { compatibility });
+  const report = parsed.pathname === '/api/v1/notifications/provider-reports/msg91/email';
+  if (report && Number(req.headers['content-length']) > 32768) {
+    return sendJson(res, 413, { error: 'Provider report is too large' });
+  }
+  await proxyToUrl(req, res, target, requestId, matched.service, principal, {
+    compatibility,
+    ...(report ? { maxBodyBytes: 32768 } : {}),
+  });
 }
 
 async function proxyToUrl(req, res, target, requestId, service, principal, opts = {}) {
@@ -968,5 +1000,6 @@ module.exports = {
   verifyJwtLocally,
   principalFromClaims,
   authenticate,
+  introspect,
   proxyToUrl,
 };

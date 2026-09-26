@@ -1,7 +1,7 @@
 // Presentational components and style constants shared across workspace panels.
 // These components are stateless — they render props, nothing more.
 
-import { type CSSProperties } from 'react';
+import { Children, cloneElement, isValidElement, useId, type CSSProperties, type ReactNode, type ReactElement } from 'react';
 import { formatMoney } from './utils';
 
 // ─── Layout shells ────────────────────────────────────────────────────────────
@@ -36,14 +36,31 @@ export function Field({
   error?: string;
   style?: CSSProperties;
 }) {
+  const generatedId = useId();
+  const descriptionId = `${generatedId}-description`;
+  let controlId: string | undefined;
+  const connectControl = (nodes: ReactNode): ReactNode => Children.map(nodes, node => {
+    if (!isValidElement(node)) return node;
+    const element = node as ReactElement<any>;
+    if (!controlId && typeof element.type === 'string' && ['input', 'select', 'textarea'].includes(element.type)) {
+      controlId = element.props.id ?? generatedId;
+      return cloneElement(element, {
+        id: controlId,
+        'aria-describedby': [element.props['aria-describedby'], (hint || error) ? descriptionId : undefined].filter(Boolean).join(' ') || undefined,
+        'aria-invalid': error ? true : element.props['aria-invalid'],
+      });
+    }
+    return element.props.children ? cloneElement(element, {}, connectControl(element.props.children)) : element;
+  });
+  const content = connectControl(children);
   return (
     <div className="ck-field" style={style}>
-      <label>{label}</label>
-      {children}
+      <label htmlFor={controlId}>{label}</label>
+      {content}
       {error
-        ? <div className="ts" style={{ marginTop: 4, color: 'var(--ck-color-danger)' }}>{error}</div>
+        ? <div id={descriptionId} role="alert" className="ts" style={{ marginTop: 4, color: 'var(--ck-color-danger)' }}>{error}</div>
         : hint
-          ? <div className="ts" style={{ marginTop: 4 }}>{hint}</div>
+          ? <div id={descriptionId} className="ts" style={{ marginTop: 4 }}>{hint}</div>
           : null}
     </div>
   );
@@ -66,19 +83,25 @@ export function Stat({
   label: string;
   value: string | number;
   sub: string;
-  pill: string;
+  /** The small state chip. Omit it where the card has no state worth naming. */
+  pill?: string;
   tone: 'green' | 'blue' | 'orange' | 'red';
   onClick?: () => void;
 }) {
   const toneClass = tone === 'green' ? 'pg' : tone === 'blue' ? 'pb' : tone === 'orange' ? 'po' : 'pr';
-  return (
-    <button className="ck-stat" onClick={onClick}>
+  // A stat card with nowhere to go is a reading, not a control. Rendering every one of them as
+  // a <button> put a row of dead tab stops in front of anyone using a keyboard.
+  const body = (
+    <>
       <div className="ck-stat-l">{label}</div>
       <div className="ck-stat-v">{value}</div>
       <div className="ck-stat-s">{sub}</div>
-      <div className={`ck-pill ${toneClass}`}>{pill}</div>
-    </button>
+      {pill ? <div className={`ck-pill ${toneClass}`}>{pill}</div> : null}
+    </>
   );
+  return onClick
+    ? <button className="ck-stat" onClick={onClick}>{body}</button>
+    : <div className="ck-stat">{body}</div>;
 }
 
 // ─── Catalog order summary sidebar ───────────────────────────────────────────
@@ -124,6 +147,14 @@ export function OrderSummaryPanel({
 }
 
 // ─── Shared style constants ──────────��────────────────────────────────────────
+
+/**
+ * The one way this portal says "waiting" or "nothing here". Both moments used to be written
+ * inline, differently, in every panel that had them.
+ */
+export function PanelMessage({ children }: { children: ReactNode }) {
+  return <div className="ck-panel-msg">{children}</div>;
+}
 
 export const thStyle: CSSProperties = { textAlign: 'left', padding: '10px 12px', fontSize: 12, color: 'var(--ink2)' };
 export const tdStyle: CSSProperties = { padding: '10px 12px', borderTop: '1px solid var(--border)', fontSize: 13, verticalAlign: 'middle' };

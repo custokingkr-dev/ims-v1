@@ -35,7 +35,8 @@ final class NotificationPolicyGuard {
             new AdmittedContract("fees.fee-reminder-requested.v1", "FEE_REMINDER", "fee-reminder.v1",
                     "reminderRequestId"),
             new AdmittedContract("attendance.absentee-notification-requested.v1", "ABSENTEE_ALERT",
-                    "absentee-alert.v1", "absenteeRequestId"));
+                    "absentee-alert.v1", "absenteeRequestId"),
+            new AdmittedContract("school.broadcast-requested.v1", "SCHOOL_NOTICE", "school-notice.v1", "broadcastRequestId"));
 
     private final Clock clock;
 

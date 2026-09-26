@@ -18,13 +18,13 @@ describe('FeeStructurePanel student assignment', () => {
       if (url === '/classes') {
         return Promise.resolve({ data: [{ id: 'class-1', name: 'Class 1', sortOrder: 1 }] });
       }
-      if (url === '/fee-structure') {
+      if (url === '/fees/structure') {
         return Promise.resolve({ data: { academicYear: '2026-27', academicYearId: 'ay-1', bands: [] } });
       }
       if (url === '/classes/class-1/sections') {
         return Promise.resolve({ data: [{ id: 'section-a', name: 'A' }] });
       }
-      if (url === '/classes/class-1/sections/section-a/students') {
+      if (url === '/students/roster') {
         return Promise.resolve({ data: [{ id: 101, admissionNo: 'ADM-101', fullName: 'Aarav Sharma' }] });
       }
       return Promise.resolve({ data: [] });
@@ -41,7 +41,7 @@ describe('FeeStructurePanel student assignment', () => {
     fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'section-a' } });
 
     await waitFor(() =>
-      expect(api.get).toHaveBeenCalledWith('/classes/class-1/sections/section-a/students', { params: { schoolId: 7 } }),
+      expect(api.get).toHaveBeenCalledWith('/students/roster', { params: { classId: 'class-1', sectionId: 'section-a', schoolId: 7 } }),
     );
     const studentSelect = screen.getAllByRole('combobox')[2];
     expect(within(studentSelect).getByRole('option', { name: 'ADM-101 - Aarav Sharma' })).toBeInTheDocument();

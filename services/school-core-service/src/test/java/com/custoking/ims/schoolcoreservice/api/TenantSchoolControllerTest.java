@@ -54,6 +54,39 @@ class TenantSchoolControllerTest {
     void cleanup() { TenantContext.clear(); }
 
     @Test
+    void zoneAdminReadsOnlyAssignedZoneAndActiveSchools() {
+        TenantContext.set(new TenantContext(9L, "zone@x", "ZONE_ADMIN", null, 7L,
+                java.util.Set.of(), java.util.Set.of("zone:read")));
+        ZoneEntity ownZone = zone(7L, "North", "N");
+        when(zones.findById(7L)).thenReturn(Optional.of(ownZone));
+        when(structure.zoneSchools(7L, true)).thenReturn(List.of());
+        assertThat(controller.zone("tenant-token", 7L).id()).isEqualTo(7L);
+        assertThat(controller.zoneSchools("tenant-token", 7L, false)).isEqualTo(List.of());
+        verify(structure).zoneSchools(7L, true);
+        assertThatThrownBy(() -> controller.zone("tenant-token", 8L))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> controller.zoneSchools("tenant-token", 8L, true))
+                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> controller.updateZone("tenant-token", 7L, Map.of("name", "Changed")))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(zones, never()).findById(8L);
+        verify(structure, never()).zoneSchools(8L, true);
+    }
+
+    @Test
+    void zoneReadRejectsMissingPermissionAndUnassignedOrWrongRoles() {
+        for (TenantContext ctx : List.of(
+                new TenantContext(9L, "zone@x", "ZONE_ADMIN", null, 7L),
+                new TenantContext(9L, "zone@x", "ZONE_ADMIN", null, null, java.util.Set.of(), java.util.Set.of("zone:read")),
+                new TenantContext(9L, "zone@x", "ADMIN", 10L, 7L, java.util.Set.of(), java.util.Set.of("zone:read")))) {
+            TenantContext.set(ctx);
+            assertThatThrownBy(() -> controller.zoneSchools("tenant-token", 7L, true))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+        verify(structure, never()).zoneSchools(7L, true);
+    }
+
+    @Test
     void schoolsRejectsInvalidTokenBeforeQuerying() {
         assertThatThrownBy(() -> controller.schools("wrong-token"))
                 .isInstanceOf(ResponseStatusException.class)

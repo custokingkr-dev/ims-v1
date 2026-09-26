@@ -1,0 +1,480 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Custoking fee collections",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "x-ims-service": "school-core-service",
+  "x-ims-controller": "FeeReadController",
+  "x-ims-audience": "browser",
+  "x-ims-client-name": "FeeClient",
+  "x-ims-client-file": "feeClient.ts",
+  "x-ims-client-base-path": "/api/v1",
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/fees/payments": {
+      "post": {
+        "operationId": "recordPayment",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPaymentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fees/payments/{paymentId}/receipt": {
+      "get": {
+        "operationId": "getPaymentReceipt",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [],
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/fees/reports/collection": {
+      "get": {
+        "operationId": "getCollectionReport",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "academicYearId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/fees/reports/overdue": {
+      "get": {
+        "operationId": "getOverdueReport",
+        "parameters": [
+          {
+            "name": "classId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sectionId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "academicYearId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "schoolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeeReport"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        }
+      }
+    },
+    "/api/v1/fees/reminders/fee": {
+      "post": {
+        "operationId": "requestFeeReminders",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "required": [],
+                  "properties": {}
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Insufficient permission or tenant scope"
+          },
+          "409": {
+            "description": "Conflicting state"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [],
+                "properties": {
+                  "classId": {
+                    "type": "string"
+                  },
+                  "sectionId": {
+                    "type": "string"
+                  },
+                  "academicYearId": {
+                    "type": "string"
+                  },
+                  "schoolId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fees/payments/{paymentId}/receipt/pdf": {
+      "get": {
+        "operationId": "downloadPaymentReceipt",
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authenticated PDF receipt",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant or permission scope rejected"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "RecordPaymentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "studentId",
+          "amount",
+          "idempotencyKey"
+        ],
+        "properties": {
+          "studentId": {
+            "type": "integer"
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "paidAt": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "actorId": {
+            "type": "integer"
+          },
+          "idempotencyKey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Stable logical collection key. Reuse exactly after uncertain outcomes; never regenerate for a retry."
+          },
+          "assignmentId": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "schoolId": {
+            "type": "integer"
+          }
+        },
+        "x-ims-java-record": {
+          "source": "services/school-core-service/src/main/java/com/custoking/ims/schoolcoreservice/api/dto/RecordPaymentRequest.java",
+          "name": "RecordPaymentRequest"
+        }
+      },
+      "PaymentResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "paymentId",
+          "receiptNumber",
+          "receiptUrl",
+          "studentId",
+          "schoolId",
+          "assignmentId",
+          "academicYearId",
+          "amount",
+          "mode",
+          "paidAmount",
+          "netPayable",
+          "actorId",
+          "paidAt"
+        ],
+        "properties": {
+          "paymentId": {
+            "type": "string"
+          },
+          "receiptNumber": {
+            "type": "string"
+          },
+          "receiptUrl": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "integer"
+          },
+          "schoolId": {
+            "type": "integer"
+          },
+          "assignmentId": {
+            "type": "string"
+          },
+          "academicYearId": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "integer"
+          },
+          "mode": {
+            "type": "string"
+          },
+          "paidAmount": {
+            "type": "integer"
+          },
+          "netPayable": {
+            "type": "integer"
+          },
+          "actorId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "FeeReport": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "required": [
+                "studentId"
+              ],
+              "properties": {
+                "studentId": {
+                  "type": "integer"
+                },
+                "assignmentId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "academicYearId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-ims-gateway-service": "fee"
+}

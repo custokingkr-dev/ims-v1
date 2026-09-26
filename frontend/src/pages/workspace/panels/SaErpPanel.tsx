@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchCommandCenterMetrics } from '../../../api/dashboardCommandCenterApi';
 import type { DashboardCommandCenterResponse } from '../../../types/dashboardCommandCenter';
-import { ModuleShell, Stat } from '../ui';
+import { ModuleShell, PanelMessage, Stat } from '../ui';
 import { formatMoney } from '../utils';
 
 export function SaErpPanel() {
@@ -9,21 +9,24 @@ export function SaErpPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = () => {
     setLoading(true);
     setError('');
+    setMetrics(null);
     fetchCommandCenterMetrics()
       .then((data) => setMetrics(data))
       .catch((e: any) => {
         setError(e?.response?.data?.message || 'Failed to load ERP metrics.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
 
   if (loading) {
     return (
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
-        <div className="ck-card" style={{ padding: 16 }}>Loading ERP metrics…</div>
+        <div className="ck-card"><PanelMessage>Loading ERP metrics…</PanelMessage></div>
       </ModuleShell>
     );
   }
@@ -32,9 +35,30 @@ export function SaErpPanel() {
     return (
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
         <div className="ck-card">
-          <div className="ck-alert ck-alert-re" style={{ margin: 16 }}>
-            <span>✕</span>
+          <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
             <div>{error}</div>
+            <button className="ck-btn ck-btn-ghost" onClick={load}>Retry</button>
+          </div>
+        </div>
+      </ModuleShell>
+    );
+  }
+
+  // Every section below is dereferenced directly, so a response that is not the expected shape
+  // used to throw during render and take the whole application into the global error boundary,
+  // losing the nav and every other panel with it. A panel that cannot read its data shows that
+  // in its own error state instead.
+  const sections = ['fees', 'lifecycle', 'attendance', 'vendorDues', 'reorderSignals'] as const;
+  const usable = !!metrics && typeof metrics === 'object'
+    && sections.every((section) => metrics[section] && typeof metrics[section] === 'object');
+
+  if (metrics && !usable) {
+    return (
+      <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
+        <div className="ck-card">
+          <div className="ck-alert ck-alert-re" role="alert" style={{ margin: 16 }}>
+            <div>ERP metrics could not be read.</div>
+            <button className="ck-btn ck-btn-ghost" onClick={load}>Retry</button>
           </div>
         </div>
       </ModuleShell>
@@ -44,7 +68,7 @@ export function SaErpPanel() {
   if (!metrics) {
     return (
       <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
-        <div className="ck-card" style={{ padding: 16 }}>No ERP metrics available.</div>
+        <div className="ck-card"><PanelMessage>No ERP metrics available.</PanelMessage></div>
       </ModuleShell>
     );
   }
@@ -52,7 +76,7 @@ export function SaErpPanel() {
   return (
     <ModuleShell title="ERP activity" subtitle="School ERP activity across all tenants">
       {/* Fee collection */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Fee collection
       </div>
       <div className="ck-grid ck-grid-3" style={{ marginBottom: 20 }}>
@@ -67,7 +91,6 @@ export function SaErpPanel() {
           label="Total overdue"
           value={`₹${formatMoney(metrics.fees.totalOverdueAmountPaise / 100)}`}
           sub="Overdue fee amount"
-          pill="Paise→₹"
           tone="orange"
         />
         <Stat
@@ -80,7 +103,7 @@ export function SaErpPanel() {
       </div>
 
       {/* Attendance */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Attendance
       </div>
       <div className="ck-grid ck-grid-2" style={{ marginBottom: 20 }}>
@@ -101,7 +124,7 @@ export function SaErpPanel() {
       </div>
 
       {/* Vendor dues */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Vendor dues
       </div>
       <div className="ck-grid ck-grid-3" style={{ marginBottom: 20 }}>
@@ -109,7 +132,6 @@ export function SaErpPanel() {
           label="Total vendor dues"
           value={`₹${formatMoney(metrics.vendorDues.totalDuesPaise / 100)}`}
           sub="Unpaid vendor amounts"
-          pill="Paise→₹"
           tone="orange"
         />
         <Stat
@@ -129,7 +151,7 @@ export function SaErpPanel() {
       </div>
 
       {/* Student lifecycle & reorder */}
-      <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 13, color: 'var(--ink2)', paddingLeft: 4 }}>
+      <div className="section-label" style={{ marginBottom: 8, paddingLeft: 4 }}>
         Student lifecycle &amp; inventory
       </div>
       <div className="ck-grid ck-grid-2">

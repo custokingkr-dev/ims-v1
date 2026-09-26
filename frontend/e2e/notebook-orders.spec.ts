@@ -61,7 +61,7 @@ async function setup(page: Page, role: 'ADMIN' | 'SUPERADMIN' = 'ADMIN', placed 
     const method = route.request().method();
     let body: unknown = {};
     if (path.includes('/auth/')) body = user;
-    else if (path === '/workspace') body = { school: { name: 'Green Valley School', meta: '2026-27', timeZone: 'Asia/Kolkata' }, dashboard: {}, orders: [], staff: [] };
+    else if (path === '/reporting/workspace') body = { school: { name: 'Green Valley School', meta: '2026-27', timeZone: 'Asia/Kolkata' }, dashboard: {}, orders: [], staff: [] };
     else if (path.endsWith('/modules/active')) body = ['ORDERS', 'SUPPLY_OS', 'ERP'].map((moduleCode) => ({ moduleCode }));
     else if (path.includes('command-center') || path.includes('command-centre/brief')) body = commandCenter;
     else if (path === '/supply/product-catalog/categories' || path === '/supply/product-catalog/admin/categories') body = [state.form.category];
@@ -69,7 +69,7 @@ async function setup(page: Page, role: 'ADMIN' | 'SUPERADMIN' = 'ADMIN', placed 
     else if (/^\/supply\/product-catalog\/rules\/\d+$/.test(path) && method === 'PATCH') {
       const patch = route.request().postDataJSON(); state.patches.push(patch);
       const rule = state.form.rules.find((item) => item.id === Number(path.split('/').pop())); Object.assign(rule!, patch); body = rule;
-    } else if (path === '/supply/orders' && method === 'POST') {
+    } else if (path === '/catalog/orders' && method === 'POST') {
       const request = route.request().postDataJSON(); state.creates++;
       expect(request).not.toHaveProperty('subtotal'); expect(request).not.toHaveProperty('totalAmount');
       state.detail = savedOrder(state.form, request.orderData); body = state.detail.order;
@@ -81,7 +81,7 @@ async function setup(page: Page, role: 'ADMIN' | 'SUPERADMIN' = 'ADMIN', placed 
       const asset = { id: 1, assetKind: 'DESIGN' as const, contentType: 'image/png', sizeBytes: png.length, originalFilename: 'school-cover.png', contentUrl: '/api/v1/supply/orders/CK-1001/assets/1/content', uploadedAt: '2026-09-15T10:00:00Z' };
       state.detail!.assets = [asset]; state.detail!.version++; body = asset;
     } else if (path.endsWith('/assets/1/content')) { await route.fulfill({ status: 200, contentType: 'image/png', body: png }); return;
-    } else if (path === '/supply/orders/CK-1001/place') {
+    } else if (path === '/catalog/orders/CK-1001/place') {
       state.placements++; state.detail!.order.status = state.detail!.assets.length ? 'DESIGN_APPROVAL' : 'PROCESSING'; state.detail!.version++; body = state.detail!.order;
     } else if (path === '/supply/orders/CK-1001/quote') {
       const quote = route.request().postDataJSON(); expect(quote.version).toBe(state.detail!.version); state.quotes++;
@@ -89,10 +89,11 @@ async function setup(page: Page, role: 'ADMIN' | 'SUPERADMIN' = 'ADMIN', placed 
       state.detail!.order.subtotal = state.detail!.lines.reduce((total, line) => total + line.lineTotalPaise!, 0);
       state.detail!.order.gst = quote.gstPaise; state.detail!.order.totalAmount = state.detail!.order.subtotal + quote.gstPaise;
       state.detail!.pricingStatus = 'QUOTED'; state.detail!.order.pricingStatus = 'QUOTED'; state.detail!.version++; body = state.detail;
-    } else if (path === '/supply/orders/CK-1001/superadmin-approve') {
+    } else if (path === '/catalog/orders/CK-1001/superadmin-approve') {
       expect(state.detail!.pricingStatus).toBe('QUOTED'); state.detail!.order.status = 'APPROVED'; state.detail!.version++; body = state.detail!.order;
     } else if (path === '/supply/orders/CK-1001/form') body = state.detail;
-    else if (path === '/sa/orders' || path === '/supply/orders' || path === '/orders') body = state.detail ? [state.detail.order] : [];
+    else if (path === '/catalog/orders/page') body = { content: state.detail ? [state.detail.order] : [], page: 0, size: 20, totalElements: state.detail ? 1 : 0, totalPages: state.detail ? 1 : 0 };
+    else if (path === '/orders') body = state.detail ? [state.detail.order] : [];
     else if (/(schools|staff|invoices|students|sections|classes|years|approvals)$/.test(path)) body = [];
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
   });
